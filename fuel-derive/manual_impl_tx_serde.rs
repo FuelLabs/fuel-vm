@@ -24,7 +24,7 @@ impl fuel_types::canonical::Serialize for Transaction {
         buffer: &mut O,
     ) -> Result<(), fuel_types::canonical::Error> {
         // Since the variants are prefixed with discriminant already, just encode them
-        // directlu
+        // directly
         match self {
             Transaction::Script(t) => t.encode_static(buffer),
             Transaction::Create(t) => t.encode_static(buffer),

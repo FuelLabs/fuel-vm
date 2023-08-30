@@ -205,6 +205,7 @@ impl FormatValidityChecks for Script {
             block_height,
             consensus_params.tx_params(),
             consensus_params.predicate_params(),
+            consensus_params.fee_params(),
         )?;
         let script_params = consensus_params.script_params();
         if self.script.len() > script_params.max_script_length as usize {

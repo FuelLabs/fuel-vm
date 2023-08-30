@@ -252,7 +252,7 @@ impl FormatValidityChecks for Create {
             ..
         } = consensus_params;
 
-        check_common_part(self, block_height, tx_params, predicate_params)?;
+        check_common_part(self, block_height, tx_params, predicate_params, fee_params)?;
 
         let bytecode_witness_len = self
             .witnesses

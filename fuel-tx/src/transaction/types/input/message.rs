@@ -165,7 +165,6 @@ where
     /// The receiver on the `Fuel` chain.
     pub recipient: Address,
     pub amount: Word,
-    pub asset_id: AssetId,
     pub nonce: Nonce,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
@@ -248,13 +247,13 @@ where
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index,
             data,
             predicate,
             predicate_data,
             predicate_gas_used,
+            ..
         } = self;
         type S = MessageSizes;
         const LEN: usize = MessageSizes::LEN;
@@ -414,7 +413,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index,
             data,
@@ -425,7 +423,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index,
             data,
@@ -440,7 +437,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             data,
             predicate,
@@ -453,7 +449,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index: (),
             data,
@@ -468,7 +463,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index,
             ..
@@ -478,7 +472,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index,
             data: (),
@@ -493,7 +486,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             predicate,
             predicate_data,
@@ -505,7 +497,6 @@ impl FullMessage {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index: (),
             data: (),

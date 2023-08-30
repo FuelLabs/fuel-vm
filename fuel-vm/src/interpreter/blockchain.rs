@@ -413,10 +413,12 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
+        let base_asset_id = self.interpreter_params.fee_params.base_asset_id;
         let max_message_data_length = self.max_message_data_length();
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         let input = MessageOutputCtx {
+            base_asset_id,
             max_message_data_length,
             memory: &mut self.memory,
             tx_offset,
@@ -883,6 +885,7 @@ where
     S: ContractsAssetsStorage + ?Sized,
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
+    base_asset_id: AssetId,
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
     tx_offset: usize,
@@ -930,11 +933,12 @@ where
             balance_decrease(
                 self.storage,
                 &source_contract,
-                &AssetId::BASE,
+                &self.base_asset_id,
                 self.amount_coins_to_send,
             )?;
         } else {
             base_asset_balance_sub(
+                &self.base_asset_id,
                 self.balances,
                 self.memory,
                 self.amount_coins_to_send,

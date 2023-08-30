@@ -49,15 +49,11 @@ where
                 *non_retryable_balances.entry(*asset_id).or_default() += amount;
             }
             // Sum message coin inputs
-            Input::MessageCoinSigned(MessageCoinSigned {
-                asset_id, amount, ..
-            })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                asset_id,
-                amount,
-                ..
-            }) => {
-                *non_retryable_balances.entry(*asset_id).or_default() += amount;
+            Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
+                *non_retryable_balances
+                    .entry(params.base_asset_id)
+                    .or_default() += amount;
             }
             // Sum data messages
             Input::MessageDataSigned(MessageDataSigned { amount, .. })

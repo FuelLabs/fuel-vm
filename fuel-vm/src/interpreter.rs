@@ -399,6 +399,7 @@ pub trait ExecutableTransaction:
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
+        let base_asset_id = &fee_params.base_asset_id;
         let gas_refund =
             TransactionFee::gas_refund_value(fee_params, remaining_gas, self.price())
                 .ok_or(CheckError::ArithmeticOverflow)?;
@@ -409,8 +410,8 @@ pub trait ExecutableTransaction:
             // Note: the initial balance deducts the gas limit from base asset
             Output::Change {
                 asset_id, amount, ..
-            } if revert && asset_id == &AssetId::BASE => initial_balances.non_retryable
-                [&AssetId::BASE]
+            } if revert && asset_id == base_asset_id => initial_balances.non_retryable
+                [base_asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
@@ -426,7 +427,7 @@ pub trait ExecutableTransaction:
             // The change for the base asset will be the available balance + unused gas
             Output::Change {
                 asset_id, amount, ..
-            } if asset_id == &AssetId::BASE => balances[asset_id]
+            } if asset_id == base_asset_id => balances[asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),

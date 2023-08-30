@@ -359,6 +359,10 @@ impl ContractId {
     pub const SEED: [u8; 4] = 0x4655454C_u32.to_be_bytes();
 }
 
+impl AssetId {
+    pub const BASE: AssetId = AssetId::zeroed();
+}
+
 impl From<u64> for Nonce {
     fn from(value: u64) -> Self {
         let mut default = [0u8; 32];

@@ -37,6 +37,7 @@ where
         &mut self,
         tx: Tx,
         initial_balances: InitialBalances,
+        runtime_balances: RuntimeBalances,
         gas_limit: Word,
     ) -> Result<(), InterpreterError> {
         self.tx = tx;
@@ -58,7 +59,7 @@ where
         self.push_stack(self.transaction().id(&self.chain_id()).as_ref())
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        RuntimeBalances::try_from(initial_balances)?.to_vm(self);
+        runtime_balances.to_vm(self);
 
         let tx_size = self.transaction().serialized_size() as Word;
         self.set_gas(gas_limit);
@@ -91,7 +92,9 @@ where
         self.context = context;
         tx.prepare_init_predicate();
 
-        self.init_inner(tx, InitialBalances::default(), gas_limit)
+        let initial_balances: InitialBalances = Default::default();
+        let runtime_balances = initial_balances.clone().try_into()?;
+        self.init_inner(tx, initial_balances, runtime_balances, gas_limit)
     }
 }
 
@@ -121,6 +124,8 @@ where
             .checked_sub(gas_used_by_predicates)
             .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
 
-        self.init_inner(tx, metadata.balances(), gas_limit)
+        let initial_balances = metadata.balances();
+        let runtime_balances = initial_balances.try_into()?;
+        self.init_inner(tx, metadata.balances(), runtime_balances, gas_limit)
     }
 }

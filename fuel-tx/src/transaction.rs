@@ -272,22 +272,19 @@ impl Transaction {
 
 pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     /// Returns the assets' ids used in the inputs in the order of inputs.
-    fn input_asset_ids(&self) -> IntoIter<&AssetId> {
+    fn input_asset_ids<'a>(
+        &'a self,
+        base_asset_id: &'a AssetId,
+    ) -> IntoIter<&'a AssetId> {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
                 Input::CoinPredicate(CoinPredicate { asset_id, .. })
                 | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
-                Input::MessageCoinSigned(MessageCoinSigned { asset_id, .. })
-                | Input::MessageCoinPredicate(MessageCoinPredicate {
-                    asset_id, ..
-                })
-                | Input::MessageDataPredicate(MessageDataPredicate {
-                    asset_id, ..
-                })
-                | Input::MessageDataSigned(MessageDataSigned { asset_id, .. }) => {
-                    Some(asset_id)
-                }
+                Input::MessageCoinSigned(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_)
+                | Input::MessageDataSigned(_) => Some(base_asset_id),
                 _ => None,
             })
             .collect_vec()
@@ -295,8 +292,11 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     }
 
     /// Returns unique assets' ids used in the inputs.
-    fn input_asset_ids_unique(&self) -> IntoIter<&AssetId> {
-        let asset_ids = self.input_asset_ids();
+    fn input_asset_ids_unique<'a>(
+        &'a self,
+        base_asset_id: &'a AssetId,
+    ) -> IntoIter<&'a AssetId> {
+        let asset_ids = self.input_asset_ids(base_asset_id);
 
         #[cfg(feature = "std")]
         let asset_ids = asset_ids.unique();
@@ -394,25 +394,16 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         recipient: Address,
         nonce: Nonce,
         amount: Word,
-        asset_id: AssetId,
         data: Vec<u8>,
         witness_index: u8,
     ) {
         let input = if data.is_empty() {
-            Input::message_coin_signed(
-                sender,
-                recipient,
-                amount,
-                asset_id,
-                nonce,
-                witness_index,
-            )
+            Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
         } else {
             Input::message_data_signed(
                 sender,
                 recipient,
                 amount,
-                asset_id,
                 nonce,
                 witness_index,
                 data,

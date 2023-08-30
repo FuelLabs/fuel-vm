@@ -253,7 +253,6 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        asset_id: AssetId,
         nonce: Nonce,
         witness_index: u8,
     ) -> Self {
@@ -261,7 +260,6 @@ impl Input {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index,
             predicate_gas_used: (),
@@ -275,7 +273,6 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        asset_id: AssetId,
         nonce: Nonce,
         predicate_gas_used: Word,
         predicate: Vec<u8>,
@@ -285,7 +282,6 @@ impl Input {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index: (),
             predicate_gas_used,
@@ -299,7 +295,6 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        asset_id: AssetId,
         nonce: Nonce,
         witness_index: u8,
         data: Vec<u8>,
@@ -308,7 +303,6 @@ impl Input {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index,
             data,
@@ -322,7 +316,6 @@ impl Input {
         sender: Address,
         recipient: Address,
         amount: Word,
-        asset_id: AssetId,
         nonce: Nonce,
         predicate_gas_used: Word,
         data: Vec<u8>,
@@ -333,7 +326,6 @@ impl Input {
             sender,
             recipient,
             amount,
-            asset_id,
             nonce,
             witness_index: (),
             predicate_gas_used,
@@ -367,16 +359,17 @@ impl Input {
         }
     }
 
-    pub const fn asset_id(&self) -> Option<&AssetId> {
+    pub const fn asset_id<'a>(
+        &'a self,
+        base_asset_id: &'a AssetId,
+    ) -> Option<&'a AssetId> {
         match self {
             Input::CoinSigned(CoinSigned { asset_id, .. })
             | Input::CoinPredicate(CoinPredicate { asset_id, .. }) => Some(asset_id),
-            Input::MessageCoinSigned(MessageCoinSigned { asset_id, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate { asset_id, .. })
-            | Input::MessageDataSigned(MessageDataSigned { asset_id, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { asset_id, .. }) => {
-                Some(asset_id)
-            }
+            Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_) => Some(base_asset_id),
             Input::Contract(_) => None,
         }
     }

@@ -72,9 +72,9 @@ impl TryFrom<InitialBalances> for RuntimeBalances {
     fn try_from(initial_balances: InitialBalances) -> Result<Self, CheckError> {
         let mut balances: BTreeMap<_, _> = initial_balances.non_retryable.into();
         if let Some(retryable_amount) = initial_balances.retryable {
-            let entry = balances.entry(AssetId::BASE).or_default();
+            let entry = balances.entry(retryable_amount.base_asset_id).or_default();
             *entry = entry
-                .checked_add(*retryable_amount)
+                .checked_add(retryable_amount.amount)
                 .ok_or(CheckError::ArithmeticOverflow)?;
         }
         Self::try_from_iter(balances.into_iter())

@@ -219,6 +219,7 @@ fn test_smo(
     let fp = 0;
     let mut pc = 0;
     let input = MessageOutputCtx {
+        base_asset_id: Default::default(),
         max_message_data_length,
         memory: &mut memory,
         tx_offset: 0,

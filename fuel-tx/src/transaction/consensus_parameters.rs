@@ -126,7 +126,7 @@ impl ConsensusParameters {
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct FeeParameters {
     /// The base native asset of the Fuel protocol.
-    pub base_asset_id: Bytes32,
+    pub base_asset_id: AssetId,
     /// Factor to convert between gas and transaction assets value.
     pub gas_price_factor: u64,
     /// A fixed ratio linking metered bytes to gas price
@@ -136,7 +136,7 @@ pub struct FeeParameters {
 impl FeeParameters {
     /// Default consensus parameters with settings suggested in fuel-specs
     pub const DEFAULT: Self = Self {
-        base_asset_id: Bytes32::zeroed(),
+        base_asset_id: AssetId::zeroed(),
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
     };

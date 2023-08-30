@@ -243,12 +243,16 @@ impl FormatValidityChecks for Create {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        check_common_part(
-            self,
-            block_height,
-            consensus_params.tx_params(),
-            consensus_params.predicate_params(),
-        )?;
+        let ConsensusParameters {
+            tx_params,
+            predicate_params,
+            contract_params,
+            fee_params,
+            chain_id,
+            ..
+        } = consensus_params;
+
+        check_common_part(self, block_height, tx_params, predicate_params)?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -256,7 +260,7 @@ impl FormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
 
-        let contract_params = consensus_params.contract_params();
+        // let contract_params = consensus_params.contract_params();
 
         if bytecode_witness_len > contract_params.contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length
@@ -303,8 +307,7 @@ impl FormatValidityChecks for Create {
             } else {
                 #[cfg(feature = "std")]
                 {
-                    let metadata =
-                        CreateMetadata::compute(self, &consensus_params.chain_id())?;
+                    let metadata = CreateMetadata::compute(self, chain_id)?;
                     (metadata.state_root, metadata.contract_id)
                 }
 
@@ -333,7 +336,9 @@ impl FormatValidityChecks for Create {
                     Err(CheckError::TransactionCreateOutputVariable { index })
                 }
 
-                Output::Change { asset_id, .. } if asset_id != &AssetId::BASE => {
+                Output::Change { asset_id, .. }
+                    if asset_id != &fee_params.base_asset_id =>
+                {
                     Err(CheckError::TransactionCreateOutputChangeNotBaseAsset { index })
                 }
 

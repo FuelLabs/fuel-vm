@@ -33,6 +33,7 @@ use crate::Signable;
 
 use fuel_crypto::SecretKey;
 use fuel_types::{
+    AssetId,
     BlockHeight,
     ChainId,
     Nonce,
@@ -371,6 +372,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         sender: fuel_types::Address,
         nonce: Nonce,
         amount: Word,
+        asset_id: AssetId,
         data: Vec<u8>,
     ) -> &mut Self {
         let pk = secret.public_key();
@@ -383,6 +385,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
             recipient,
             nonce,
             amount,
+            asset_id,
             data,
             witness_index,
         );

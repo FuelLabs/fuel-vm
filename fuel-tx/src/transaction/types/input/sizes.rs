@@ -46,6 +46,7 @@ mem_layout!(
     sender: Address = {Address::LEN},
     recipient: Address = {Address::LEN},
     amount: Word = WORD_SIZE,
+    asset_id: AssetId = {AssetId::LEN},
     nonce: Nonce = {Nonce::LEN},
     witness_index: u8 = WORD_SIZE,
     predicate_gas_used: Word = WORD_SIZE,

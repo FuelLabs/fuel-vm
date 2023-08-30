@@ -58,8 +58,7 @@ where
         &mut self,
         raw: R,
     ) -> Result<ExecuteState, InterpreterError> {
-        #[cfg(feature = "debug")]
-        {
+        if self.debugger.is_active() {
             let debug = self.eval_debugger_state();
             if !debug.should_continue() {
                 return Ok(debug.into())

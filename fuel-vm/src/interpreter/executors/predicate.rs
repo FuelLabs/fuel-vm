@@ -54,7 +54,6 @@ where
 
                 ExecuteState::Proceed => (),
 
-                #[cfg(feature = "debug")]
                 ExecuteState::DebugEvent(d) => {
                     return Ok(ProgramState::VerifyPredicate(d))
                 }

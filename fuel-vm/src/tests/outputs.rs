@@ -27,14 +27,16 @@ use rand::{
 
 #[test]
 fn full_change_with_no_fees() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let gas_price = 0;
+    let base_asset_id: AssetId = rng.gen();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
-        .coin_input(AssetId::default(), input_amount)
-        .change_output(AssetId::default())
-        .execute_get_change(AssetId::default());
+        .coin_input(base_asset_id, input_amount)
+        .change_output(base_asset_id)
+        .execute_get_change(base_asset_id);
 
     assert_eq!(change, input_amount);
 }

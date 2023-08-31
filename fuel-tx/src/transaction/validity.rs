@@ -8,10 +8,7 @@ use crate::{
 };
 use core::hash::Hash;
 
-use fuel_types::{
-    AssetId,
-    BlockHeight,
-};
+use fuel_types::BlockHeight;
 
 #[cfg(feature = "std")]
 use fuel_types::{
@@ -363,7 +360,7 @@ where
                         Some(())
                     }
                     Output::Change { asset_id, .. }
-                        if asset_id != &AssetId::default()
+                        if asset_id != &fee_params.base_asset_id
                             && input_asset_id == asset_id =>
                     {
                         Some(())

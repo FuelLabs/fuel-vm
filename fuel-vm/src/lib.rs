@@ -60,8 +60,6 @@ pub use fuel_tx;
 #[doc(no_inline)]
 pub use fuel_types;
 
-use rand as _;
-
 pub mod prelude {
     //! Required implementations for full functionality
     #[doc(no_inline)]

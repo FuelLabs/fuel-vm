@@ -252,7 +252,6 @@ where
             predicate,
             predicate_data,
             predicate_gas_used,
-            ..
         } = self;
         type S = MessageSizes;
         const LEN: usize = MessageSizes::LEN;

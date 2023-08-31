@@ -17,7 +17,7 @@ pub const fn empty_sum() -> &'static Bytes32 {
 
 // Merkle tree hash of an n-element list D[n]
 // MTH(D[n]) = Hash(0x01 || MTH(D[0:k]) || MTH(D[k:n])
-pub fn node_sum(lhs_data: &[u8], rhs_data: &[u8]) -> Bytes32 {
+pub fn node_sum(lhs_data: &Bytes32, rhs_data: &Bytes32) -> Bytes32 {
     let mut hash = Hash::new();
 
     hash.update(Prefix::Node);

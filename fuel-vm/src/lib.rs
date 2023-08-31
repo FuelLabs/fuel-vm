@@ -150,7 +150,6 @@ pub mod prelude {
         transactor::Transactor,
     };
 
-    #[cfg(feature = "debug")]
     pub use crate::state::{
         Breakpoint,
         DebugEval,

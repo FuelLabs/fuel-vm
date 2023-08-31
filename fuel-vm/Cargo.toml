@@ -55,7 +55,6 @@ tokio-rayon = "2.1.0"
 [features]
 default = []
 arbitrary = ["fuel-asm/arbitrary"]
-debug = []
 optimized = []
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]

@@ -41,7 +41,7 @@ fn full_change_with_no_fees() {
 
 #[test]
 fn used_gas_is_deducted_from_base_asset_change() {
-    let mut rng = StdRng::seed_from_u64(100);
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let base_asset_id = rng.gen();
     let input_amount = 1000;
     let gas_price = 1;
@@ -58,7 +58,7 @@ fn used_gas_is_deducted_from_base_asset_change() {
 
 #[test]
 fn used_gas_is_deducted_from_base_asset_change_on_revert() {
-    let mut rng = StdRng::seed_from_u64(100);
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let base_asset_id = rng.gen();
     let input_amount = 1000;
     let gas_price = 1;
@@ -86,7 +86,7 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
 
 #[test]
 fn correct_change_is_provided_for_coin_outputs_script() {
-    let mut rng = StdRng::seed_from_u64(100);
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let gas_price = 0;
     let spend_amount = 600;

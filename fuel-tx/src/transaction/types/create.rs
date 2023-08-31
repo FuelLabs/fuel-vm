@@ -34,7 +34,6 @@ use fuel_types::{
         WORD_SIZE,
     },
     mem_layout,
-    AssetId,
     BlockHeight,
     Bytes32,
     ContractId,
@@ -259,8 +258,6 @@ impl FormatValidityChecks for Create {
             .get(self.bytecode_witness_index as usize)
             .map(|w| w.as_ref().len() as Word)
             .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
-
-        // let contract_params = consensus_params.contract_params();
 
         if bytecode_witness_len > contract_params.contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length

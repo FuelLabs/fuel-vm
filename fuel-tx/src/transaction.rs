@@ -63,10 +63,6 @@ use crate::input::coin::{
 };
 use input::*;
 
-use crate::input::message::{
-    MessageCoinSigned,
-    MessageDataSigned,
-};
 #[cfg(feature = "std")]
 use crate::input::{
     contract::Contract,

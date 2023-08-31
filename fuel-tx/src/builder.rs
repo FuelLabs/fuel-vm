@@ -33,7 +33,6 @@ use crate::Signable;
 
 use fuel_crypto::SecretKey;
 use fuel_types::{
-    AssetId,
     BlockHeight,
     ChainId,
     Nonce,

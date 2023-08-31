@@ -11,7 +11,6 @@ use fuel_types::{
     bytes,
     bytes::SizedBytes,
     Address,
-    AssetId,
     MemLayout,
     MessageId,
     Nonce,

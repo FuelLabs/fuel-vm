@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#573](https://github.com/FuelLabs/fuel-vm/pull/573): Added `base_asset_id` as a required field to `FeeParameters`. `base_asset_id` is used to supply the ID of the base asset. 
 - [#554](https://github.com/FuelLabs/fuel-vm/pull/554): Removed `debug` feature from the `fuel-vm`. The debugger is always available and becomes active after calling any `set_*` method.
 - [#537](https://github.com/FuelLabs/fuel-vm/pull/537): Use dependent cost for `k256`, `s256`, `mcpi`, `scwq`, `swwq` opcodes.
     These opcodes charged inadequately low costs in comparison to the amount of work.

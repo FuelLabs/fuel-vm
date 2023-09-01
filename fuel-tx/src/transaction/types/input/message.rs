@@ -216,9 +216,7 @@ impl FullMessage {
             nonce,
             witness_index,
             data,
-            predicate: (),
-            predicate_data: (),
-            predicate_gas_used: (),
+            ..Default::default()
         }
     }
 
@@ -240,11 +238,11 @@ impl FullMessage {
             recipient,
             amount,
             nonce,
-            witness_index: (),
             data,
             predicate,
             predicate_data,
             predicate_gas_used,
+            ..Default::default()
         }
     }
 
@@ -264,10 +262,7 @@ impl FullMessage {
             amount,
             nonce,
             witness_index,
-            data: (),
-            predicate: (),
-            predicate_data: (),
-            predicate_gas_used: (),
+            ..Default::default()
         }
     }
 
@@ -288,11 +283,10 @@ impl FullMessage {
             recipient,
             amount,
             nonce,
-            witness_index: (),
-            data: (),
             predicate,
             predicate_data,
             predicate_gas_used,
+            ..Default::default()
         }
     }
 }

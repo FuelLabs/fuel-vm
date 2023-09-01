@@ -151,9 +151,7 @@ impl Coin<Full> {
             tx_pointer,
             witness_index,
             maturity,
-            predicate: (),
-            predicate_data: (),
-            predicate_gas_used: (),
+            ..Default::default()
         }
     }
 
@@ -177,11 +175,11 @@ impl Coin<Full> {
             amount,
             asset_id,
             tx_pointer,
-            witness_index: (),
             maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
+            ..Default::default()
         }
     }
 }

@@ -76,7 +76,7 @@ pub fn sign_prehashed(
     Ok(Bytes64::from(encode_signature(signature, recovery_id)))
 }
 
-/// Convert the publi key point to it's uncompressed non-prefixed representation,
+/// Convert the public key point to its uncompressed non-prefixed representation,
 /// i.e. 32 bytes of x coordinate and 32 bytes of y coordinate.
 pub fn encode_pubkey(key: VerifyingKey) -> [u8; 64] {
     let point = key.to_encoded_point(false);

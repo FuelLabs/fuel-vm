@@ -51,30 +51,29 @@ impl From<Infallible> for Error {
 mod use_std {
     use super::*;
     use coins_bip39::MnemonicError;
-    use secp256k1::Error as Secp256k1Error;
     use std::{
         error,
         fmt,
         io,
     };
 
-    impl From<Secp256k1Error> for Error {
-        fn from(secp: Secp256k1Error) -> Self {
-            match secp {
-                Secp256k1Error::IncorrectSignature
-                | Secp256k1Error::InvalidSignature
-                | Secp256k1Error::InvalidTweak
-                | Secp256k1Error::InvalidSharedSecret
-                | Secp256k1Error::InvalidPublicKeySum
-                | Secp256k1Error::InvalidParityValue(_)
-                | Secp256k1Error::InvalidRecoveryId => Self::InvalidSignature,
-                Secp256k1Error::InvalidMessage => Self::InvalidMessage,
-                Secp256k1Error::InvalidPublicKey => Self::InvalidPublicKey,
-                Secp256k1Error::InvalidSecretKey => Self::InvalidSecretKey,
-                Secp256k1Error::NotEnoughMemory => Self::NotEnoughMemory,
-            }
-        }
-    }
+    // impl From<Secp256k1Error> for Error {
+    //     fn from(secp: Secp256k1Error) -> Self {
+    //         match secp {
+    //             Secp256k1Error::IncorrectSignature
+    //             | Secp256k1Error::InvalidSignature
+    //             | Secp256k1Error::InvalidTweak
+    //             | Secp256k1Error::InvalidSharedSecret
+    //             | Secp256k1Error::InvalidPublicKeySum
+    //             | Secp256k1Error::InvalidParityValue(_)
+    //             | Secp256k1Error::InvalidRecoveryId => Self::InvalidSignature,
+    //             Secp256k1Error::InvalidMessage => Self::InvalidMessage,
+    //             Secp256k1Error::InvalidPublicKey => Self::InvalidPublicKey,
+    //             Secp256k1Error::InvalidSecretKey => Self::InvalidSecretKey,
+    //             Secp256k1Error::NotEnoughMemory => Self::NotEnoughMemory,
+    //         }
+    //     }
+    // }
 
     impl From<MnemonicError> for Error {
         fn from(_: MnemonicError) -> Self {

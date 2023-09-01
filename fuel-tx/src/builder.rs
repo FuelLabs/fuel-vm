@@ -355,7 +355,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         };
         let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
         self.add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(&mut rng),
             rng.gen(),
             rng.gen(),
             rng.gen(),

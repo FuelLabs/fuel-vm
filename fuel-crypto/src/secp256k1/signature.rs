@@ -8,10 +8,21 @@ use core::{
     str,
 };
 
+use crate::{
+    Message,
+    PublicKey,
+    SecretKey,
+};
+
+use k256::ecdsa::{
+    RecoveryId,
+    VerifyingKey,
+};
+
+/// Compact-form Secp256k1 signature.
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
-/// Secp256k1 signature implementation
 pub struct Signature(Bytes64);
 
 impl Signature {
@@ -114,111 +125,101 @@ impl str::FromStr for Signature {
     }
 }
 
-#[cfg(feature = "std")]
-mod use_std {
-    use crate::{
-        Error,
-        Message,
-        PublicKey,
-        SecretKey,
-        Signature,
-    };
+impl Signature {
+    /// Separates recovery id from the signature bytes. See the following link for
+    /// explanation. https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography
+    fn decode(&self) -> (k256::ecdsa::Signature, RecoveryId) {
+        let mut sig = *self.0;
+        let v = (sig[32] & 0x80) != 0;
+        sig[32] &= 0x7f;
 
-    use k256::{
-        ecdsa::{
-            RecoverableSignature as SecpRecoverableSignature,
-            RecoveryId,
-        },
-        Secp256k1,
-    };
-    use lazy_static::lazy_static;
+        let sig =
+            k256::ecdsa::Signature::from_slice(&sig).expect("Signature must be valid");
+        (sig, RecoveryId::new(v, false))
+    }
+}
 
-    use std::borrow::Borrow;
+impl Signature {
+    /// Sign a given message and compress the `v` to the signature
+    ///
+    /// The compression scheme is described in
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md>
+    pub fn sign(secret: &SecretKey, message: &Message) -> Self {
+        let sk: k256::SecretKey = (*secret).into();
+        let sk: ecdsa::SigningKey<k256::Secp256k1> = sk.into();
+        let (signature, _recid) = sk
+            .sign_prehash_recoverable(&**message)
+            .expect("Infallible signature operation");
 
-    lazy_static! {
-        static ref SIGNING_SECP: Secp256k1<secp256k1::SignOnly> =
-            Secp256k1::signing_only();
-        static ref RECOVER_SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
+        // Hack: see secp256k1 more more info
+        // TODO: clean up
+        // TODO: merge impl with secp256k1
+
+        let recid1 = RecoveryId::new(false, false);
+        let recid2 = RecoveryId::new(true, false);
+
+        let rec1 = VerifyingKey::recover_from_prehash(&**message, &signature, recid1);
+        let rec2 = VerifyingKey::recover_from_prehash(&**message, &signature, recid2);
+
+        let actual = sk.verifying_key();
+
+        let recovery_id = if rec1.map(|r| r == *actual).unwrap_or(false) {
+            recid1
+        } else if rec2.map(|r| r == *actual).unwrap_or(false) {
+            recid2
+        } else {
+            unreachable!("Invalid signature generated");
+        };
+
+        // encode_signature cannot panic as we don't generate reduced-x recovery ids.
+
+        // Combine recovery id with the signature bytes. See the following link for
+        // explanation. https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography
+        // Panics if the highest bit of byte at index 32 is set, as this indicates
+        // non-normalized signature. Panics if the recovery id is in reduced-x
+        // form.
+        let mut signature: [u8; 64] = signature.to_bytes().into();
+        assert!(signature[32] >> 7 == 0, "Non-normalized signature");
+        assert!(!recovery_id.is_x_reduced(), "Invalid recovery id");
+
+        let v = recovery_id.is_y_odd() as u8;
+
+        signature[32] = (v << 7) | (signature[32] & 0x7f);
+
+        Self(Bytes64::from(signature))
     }
 
-    impl Signature {
-        // Internal API - this isn't meant to be made public because some assumptions and
-        // pre-checks are performed prior to this call
-        fn to_secp(&mut self) -> SecpRecoverableSignature {
-            let v = (self.as_mut()[32] >> 7) as i32;
+    /// Recover the public key from a signature performed with
+    /// [`Signature::sign`]
+    ///
+    /// It takes the signature as owned because this operation is not idempotent. The
+    /// taken signature will not be recoverable. Signatures are meant to be
+    /// single use, so this avoids unnecessary copy.
+    pub fn recover(self, message: &Message) -> Result<PublicKey, Error> {
+        let (sig, recid) = self.decode();
 
-            self.truncate_recovery_id();
-
-            let v = RecoveryId::from_i32(v).unwrap_or_else(|_| {
-                RecoveryId::from_i32(0).expect("0 is infallible recovery ID")
-            });
-
-            let signature = SecpRecoverableSignature::from_compact(self.as_ref(), v)
-                .unwrap_or_else(|_| {
-                    SecpRecoverableSignature::from_compact(&[0u8; 64], v)
-                        .expect("Zeroed signature is infallible")
-                });
-
-            signature
+        match VerifyingKey::recover_from_prehash(&**message, &sig, recid) {
+            Ok(vk) => Ok(PublicKey::from(vk)),
+            Err(_) => Err(Error::InvalidSignature),
         }
+    }
 
-        fn from_secp(signature: SecpRecoverableSignature) -> Self {
-            let (v, mut signature) = signature.serialize_compact();
+    /// Verify a signature produced by [`Signature::sign`]
+    ///
+    /// It takes the signature as owned because this operation is not idempotent. The
+    /// taken signature will not be recoverable. Signatures are meant to be
+    /// single use, so this avoids unnecessary copy.
+    pub fn verify(self, vk: &PublicKey, message: &Message) -> Result<(), Error> {
+        // TODO: explain why hazmat is needed and why Message is prehash
+        use ecdsa::signature::hazmat::PrehashVerifier;
 
-            let v = v.to_i32();
+        let vk: k256::PublicKey = (*vk).into(); // TODO: remove clone
+        let vk: ecdsa::VerifyingKey<k256::Secp256k1> = vk.into();
 
-            signature[32] |= (v << 7) as u8;
-            Signature::from_bytes(signature)
-        }
+        let (sig, _) = self.decode();
 
-        /// Truncate the recovery id from the signature, producing a valid `secp256k1`
-        /// representation.
-        fn truncate_recovery_id(&mut self) {
-            self.as_mut()[32] &= 0x7f;
-        }
-
-        /// Sign a given message and compress the `v` to the signature
-        ///
-        /// The compression scheme is described in
-        /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md>
-        pub fn sign(secret: &SecretKey, message: &Message) -> Self {
-            let secret = secret.borrow();
-            let message = message.to_secp();
-
-            let signature = SIGNING_SECP.sign_ecdsa_recoverable(&message, secret);
-
-            Signature::from_secp(signature)
-        }
-
-        /// Recover the public key from a signature performed with
-        /// [`Signature::sign`]
-        ///
-        /// It takes the signature as owned because this operation is not idempotent. The
-        /// taken signature will not be recoverable. Signatures are meant to be
-        /// single use, so this avoids unnecessary copy.
-        pub fn recover(mut self, message: &Message) -> Result<PublicKey, Error> {
-            let signature = self.to_secp();
-            let message = message.to_secp();
-
-            let pk = RECOVER_SECP
-                .recover_ecdsa(&message, &signature)
-                .map(|pk| PublicKey::from_secp(&pk))?;
-
-            Ok(pk)
-        }
-
-        /// Verify a signature produced by [`Signature::sign`]
-        ///
-        /// It takes the signature as owned because this operation is not idempotent. The
-        /// taken signature will not be recoverable. Signatures are meant to be
-        /// single use, so this avoids unnecessary copy.
-        pub fn verify(mut self, pk: &PublicKey, message: &Message) -> Result<(), Error> {
-            let signature = self.to_secp().to_standard();
-            let message = message.to_secp();
-            let pk = pk.to_secp()?;
-            RECOVER_SECP
-                .verify_ecdsa(&message, &signature, &pk)
-                .map_err(|_| Error::InvalidSignature)
-        }
+        vk.verify_prehash(&**message, &sig)
+            .map_err(|_| Error::InvalidSignature)?;
+        Ok(())
     }
 }

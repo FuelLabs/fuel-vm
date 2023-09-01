@@ -339,7 +339,7 @@ fn get_transaction_fields() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(rng),
             rng.gen(),
             input,
             AssetId::zeroed(),
@@ -362,7 +362,7 @@ fn get_transaction_fields() {
         ))
         .add_witness(Witness::from(b"some-data".to_vec()))
         .add_unsigned_message_input(
-            rng.gen(),
+            SecretKey::random(rng),
             rng.gen(),
             rng.gen(),
             message_amount,
@@ -370,7 +370,7 @@ fn get_transaction_fields() {
         )
         .add_input(message_predicate)
         .add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(rng),
             rng.gen(),
             asset_amt,
             asset,

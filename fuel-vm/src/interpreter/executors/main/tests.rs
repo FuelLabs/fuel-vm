@@ -42,7 +42,7 @@ fn estimate_gas_gives_proper_gas_used() {
     let coin_amount = 10_000_000;
 
     builder.add_unsigned_coin_input(
-        rng.gen(),
+        SecretKey::random(rng),
         rng.gen(),
         coin_amount,
         AssetId::default(),

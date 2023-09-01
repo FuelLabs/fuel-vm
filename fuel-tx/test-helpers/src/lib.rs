@@ -3,7 +3,10 @@
 extern crate alloc;
 
 use fuel_types::bytes;
-use rand::Rng;
+use rand::{
+    CryptoRng,
+    Rng,
+};
 
 #[cfg(feature = "std")]
 pub use use_std::*;
@@ -12,7 +15,7 @@ use alloc::vec::Vec;
 
 pub fn generate_nonempty_padded_bytes<R>(rng: &mut R) -> Vec<u8>
 where
-    R: Rng,
+    R: Rng + CryptoRng,
 {
     let len = rng.gen_range(1..512);
     let len = bytes::padded_len_usize(len);
@@ -25,7 +28,7 @@ where
 
 pub fn generate_bytes<R>(rng: &mut R) -> Vec<u8>
 where
-    R: Rng,
+    R: Rng + CryptoRng,
 {
     let len = rng.gen_range(1..512);
 
@@ -58,6 +61,7 @@ mod use_std {
             Uniform,
         },
         rngs::StdRng,
+        CryptoRng,
         Rng,
         SeedableRng,
     };
@@ -70,7 +74,7 @@ mod use_std {
 
     pub struct TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         rng: R,
         input_sampler: Uniform<usize>,
@@ -80,7 +84,7 @@ mod use_std {
 
     impl<R, Tx> From<R> for TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         fn from(rng: R) -> Self {
             use strum::EnumCount;
@@ -142,7 +146,7 @@ mod use_std {
 
     impl<R, Tx> TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
         Tx: field::Outputs,
     {
         fn fill_outputs(&mut self, builder: &mut TransactionBuilder<Tx>) {
@@ -167,7 +171,7 @@ mod use_std {
 
     impl<R, Tx> TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
         Tx: Buildable,
     {
         fn fill_transaction(
@@ -324,7 +328,7 @@ mod use_std {
 
     impl<R> TransactionFactory<R, Create>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Create {
             self.transaction_with_keys().0
@@ -345,7 +349,7 @@ mod use_std {
 
     impl<R> TransactionFactory<R, Script>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Script {
             self.transaction_with_keys().0
@@ -364,7 +368,7 @@ mod use_std {
 
     impl<R> TransactionFactory<R, Mint>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Mint {
             let mut builder =
@@ -377,7 +381,7 @@ mod use_std {
 
     impl<R> Iterator for TransactionFactory<R, Create>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         type Item = (Create, Vec<SecretKey>);
 
@@ -388,7 +392,7 @@ mod use_std {
 
     impl<R> Iterator for TransactionFactory<R, Script>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         type Item = (Script, Vec<SecretKey>);
 
@@ -399,7 +403,7 @@ mod use_std {
 
     impl<R> Iterator for TransactionFactory<R, Mint>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         type Item = Mint;
 

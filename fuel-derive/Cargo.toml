@@ -2,9 +2,9 @@
 name = "fuel-derive"
 version = { workspace = true }
 authors = { workspace = true }
-categories = ["cryptography::cryptocurrencies", "data-structures"]
+categories = { workspace = true }
 edition = { workspace = true }
-homepage = "https://fuel.network/"
+homepage = { workspace = true }
 keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 license = { workspace = true }
 repository = { workspace = true }

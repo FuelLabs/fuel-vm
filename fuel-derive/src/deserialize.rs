@@ -93,9 +93,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             });
 
 
-            let discr = if let Some(discr_type) = attrs
-                .discriminant.as_ref()
-                .or(attrs.inner_discriminant.as_ref()) {
+            let discr = if let Some(discr_type) = attrs.inner_discriminant.as_ref() {
                 let vname = variant.ast().ident;
                 quote! { #discr_type::#vname }
             } else {
@@ -145,10 +143,8 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         }
     };
 
-    // Handle #[canonical(discriminant = Type)]
-    let mapped_discr = if let Some(discr_type) =
-        attrs.discriminant.or(attrs.inner_discriminant)
-    {
+    // Handle #[canonical(inner_discriminant = Type)]
+    let mapped_discr = if let Some(discr_type) = attrs.inner_discriminant {
         quote! { {
             use ::num_enum::{TryFromPrimitive, IntoPrimitive};
             let Ok(discr) = #discr_type::try_from_primitive(raw_discr) else {

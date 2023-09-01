@@ -36,6 +36,7 @@ use fuel_types::{
     Word,
 };
 use message::*;
+use num_enum::TryFromPrimitive;
 
 pub mod coin;
 mod consts;
@@ -178,44 +179,47 @@ fn input_serialize_helper<O: fuel_types::canonical::Output + ?Sized>(
 }
 
 fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
-    discr: InputRepr,
+    discr: u64,
     data: &mut I,
 ) -> Result<Input, fuel_types::canonical::Error> {
-    Ok(match discr {
-        InputRepr::Coin => {
-            let coin = CoinFull::decode(data)?;
-            if coin.predicate.is_empty() {
-                Input::CoinSigned(coin.into_signed())
-            } else {
-                Input::CoinPredicate(coin.into_predicate())
-            }
-        }
-        InputRepr::Contract => {
-            let contract = Contract::decode(data)?;
-            Input::Contract(contract)
-        }
-        InputRepr::Message => {
-            let message = FullMessage::decode(data)?;
-            match (message.data.is_empty(), message.predicate.is_empty()) {
-                (true, true) => Input::MessageCoinSigned(message.into_coin_signed()),
-                (true, false) => {
-                    Input::MessageCoinPredicate(message.into_coin_predicate())
-                }
-                (false, true) => {
-                    Input::MessageDataSigned(message.into_message_data_signed())
-                }
-                (false, false) => {
-                    Input::MessageDataPredicate(message.into_message_data_predicate())
+    Ok(
+        match InputRepr::try_from_primitive(discr)
+            .map_err(|_| fuel_types::canonical::Error::UnknownDiscriminant)?
+        {
+            InputRepr::Coin => {
+                let coin = CoinFull::decode(data)?;
+                if coin.predicate.is_empty() {
+                    Input::CoinSigned(coin.into_signed())
+                } else {
+                    Input::CoinPredicate(coin.into_predicate())
                 }
             }
-        }
-    })
+            InputRepr::Contract => {
+                let contract = Contract::decode(data)?;
+                Input::Contract(contract)
+            }
+            InputRepr::Message => {
+                let message = FullMessage::decode(data)?;
+                match (message.data.is_empty(), message.predicate.is_empty()) {
+                    (true, true) => Input::MessageCoinSigned(message.into_coin_signed()),
+                    (true, false) => {
+                        Input::MessageCoinPredicate(message.into_coin_predicate())
+                    }
+                    (false, true) => {
+                        Input::MessageDataSigned(message.into_message_data_signed())
+                    }
+                    (false, false) => {
+                        Input::MessageDataPredicate(message.into_message_data_predicate())
+                    }
+                }
+            }
+        },
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Deserialize, Serialize)]
-#[canonical(discriminant = InputRepr)]
 #[canonical(serialized_size_static_with = input_serialized_size_static_helper)]
 #[canonical(serialized_size_dynamic_with = input_serialized_size_dynamic_helper)]
 #[canonical(serialize_with = input_serialize_helper)]

@@ -118,8 +118,8 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
         });
 
-        // Handle #[canonical(discriminant = Type)] and  #[canonical(inner_discriminant)]
-        let discr = if let Some(discr_type) = attrs.discriminant.as_ref().or(attrs.inner_discriminant.as_ref()) {
+        // Handle #[canonical(inner_discriminant = Type)]
+        let discr = if let Some(discr_type) = attrs.inner_discriminant.as_ref() {
             if v.ast().discriminant.is_some() {
                 panic!("User-specified discriminants are not supported with #[canonical(discriminant = Type)]")
             }

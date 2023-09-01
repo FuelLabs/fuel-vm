@@ -58,6 +58,7 @@ fn parse_attrs(s: &synstructure::Structure) -> HashMap<String, TokenStream> {
 pub struct StructAttrs {
     /// The struct is prefixed with the given word.
     /// Useful with`#[canonical(inner_discriminant)]`.
+    /// The type must implement `Into<u64>`, which is used to serialize it.
     pub prefix: Option<TokenStream>,
 }
 
@@ -78,10 +79,11 @@ impl StructAttrs {
 /// Pop-level `canonical` attributes for an enum
 #[allow(non_snake_case)]
 pub struct EnumAttrs {
-    /// Use a custom type as a discriminant. Mapped using `TryFromPrimitive` and `Into`.
-    pub discriminant: Option<TokenStream>,
-    /// Same as `discriminant`, but each field is prefixed with the discriminant,
-    /// so it's not removed when the enum itself is deserialized.
+    /// This is a wrapper enum where every variant can be recognized from it's first
+    /// word. This means that the enum itself doesn't have to serialize the
+    /// discriminant, but the field itself does so. This can be done using
+    /// `#[canonical(prefix = ...)]` attribute. `TryFromPrimitive` traits are used to
+    /// convert the raw bytes into the given type.
     pub inner_discriminant: Option<TokenStream>,
     /// Replaces calculation of the serialized static size with a custom function.
     pub serialized_size_static_with: Option<TokenStream>,
@@ -100,7 +102,6 @@ impl EnumAttrs {
     pub fn parse(s: &synstructure::Structure) -> Self {
         let mut attrs = parse_attrs(s);
 
-        let discriminant = attrs.remove("discriminant");
         let inner_discriminant = attrs.remove("inner_discriminant");
         let serialized_size_static_with = attrs.remove("serialized_size_static_with");
         let serialized_size_dynamic_with = attrs.remove("serialized_size_dynamic_with");
@@ -113,7 +114,6 @@ impl EnumAttrs {
         }
 
         Self {
-            discriminant,
             inner_discriminant,
             serialized_size_static_with,
             serialized_size_dynamic_with,

@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#554](https://github.com/FuelLabs/fuel-vm/pull/554): Removed `debug` feature from the `fuel-vm`. The debugger is always available and becomes active after calling any `set_*` method.
 - [#537](https://github.com/FuelLabs/fuel-vm/pull/537): Use dependent cost for `k256`, `s256`, `mcpi`, `scwq`, `swwq` opcodes.
     These opcodes charged inadequately low costs in comparison to the amount of work.
     This change should make all transactions that used these opcodes much more expensive than before.
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- [#574](https://github.com/FuelLabs/fuel-vm/pull/574): Enforce fixed 32-byte input length for LHS and RHS inputs to the BMT's internal node sum.
 - [#547](https://github.com/FuelLabs/fuel-vm/pull/547): Bump `ed25519-dalek` to `2.0.0` to deal with RustSec Advisory. 
 
 #### Breaking

@@ -87,7 +87,7 @@ mod use_std {
         borrow::Borrow,
         str,
     };
-    use secp256k1::{
+    use k256::{
         Error as Secp256k1Error,
         SecretKey as Secp256k1SecretKey,
     };

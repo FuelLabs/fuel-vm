@@ -91,7 +91,7 @@ mod use_std {
         SecretKey,
     };
 
-    use secp256k1::{
+    use k256::{
         constants::UNCOMPRESSED_PUBLIC_KEY_SIZE,
         Error as Secp256k1Error,
         PublicKey as Secp256k1PublicKey,

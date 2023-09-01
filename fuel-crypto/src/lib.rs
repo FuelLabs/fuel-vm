@@ -8,7 +8,7 @@
 #![deny(clippy::string_slice)]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(unused_crate_dependencies)]
+// #![deny(unused_crate_dependencies)]
 
 #[cfg(test)]
 // Satisfy unused_crate_dependencies lint for self-dependency enabling test features

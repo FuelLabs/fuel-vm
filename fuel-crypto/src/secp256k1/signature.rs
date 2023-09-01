@@ -124,14 +124,14 @@ mod use_std {
         Signature,
     };
 
-    use lazy_static::lazy_static;
-    use secp256k1::{
+    use k256::{
         ecdsa::{
             RecoverableSignature as SecpRecoverableSignature,
             RecoveryId,
         },
         Secp256k1,
     };
+    use lazy_static::lazy_static;
 
     use std::borrow::Borrow;
 

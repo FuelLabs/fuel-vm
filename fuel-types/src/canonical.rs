@@ -16,17 +16,14 @@ pub use fuel_derive::{
 
 /// Error when serializing or deserializing.
 #[derive(Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum Error {
-    /// The data of each field should be 64 bits aligned.
-    IsNotAligned,
     /// The buffer is to short for writing or reading.
     BufferIsTooShort,
     /// Got unknown enum's discriminant.
     UnknownDiscriminant,
-    /// Struct prefix was invalid.
+    /// Struct prefix (set with `#[canonical(prefix = ...)]`) was invalid.
     InvalidPrefix,
-    /// Wrong align.
-    WrongAlign,
     /// Allocation too large to be correct.
     AllocationLimit,
     /// Unknown error.
@@ -44,7 +41,7 @@ pub trait Output {
     }
 }
 
-/// Types with fixed static size, any types except `enum` with diffrently-sized variants
+/// Calculates the size of the serialized object.
 pub trait SerializedSize: Serialize {
     /// Size of the static part of the serialized object, in bytes.
     fn size_static(&self) -> usize;
@@ -101,13 +98,12 @@ pub trait Serialize {
         self.encode_dynamic(buffer)
     }
 
-    /// Encodes static data, required for `Self` deserialization, into the `buffer`.
+    /// Encodes staticly-sized part of `Self`.
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error>;
 
-    /// Encodes dynamic information required to fill `Self` during deserialization.
-    ///
-    /// # Note: It is empty for primitives. But it can be helpful for containers because this
-    /// method is called at the end of struct/enum serialization.
+    /// Encodes dynamically-sized part of `Self`.
+    /// The default implementation does nothing. Dynamically-sized contains should
+    /// override this.
     fn encode_dynamic<O: Output + ?Sized>(&self, _buffer: &mut O) -> Result<(), Error> {
         Ok(())
     }
@@ -154,8 +150,8 @@ pub trait Deserialize: Sized {
     fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error>;
 
     /// Decodes dynamic part of the information from the `buffer` to fill `Self`.
-    ///
-    /// # Note: It is empty for primitives. But it can be helpful for containers to fill elements.
+    /// The default implementation does nothing. Dynamically-sized contains should
+    /// override this.
     fn decode_dynamic<I: Input + ?Sized>(
         &mut self,
         _buffer: &mut I,
@@ -178,15 +174,15 @@ pub const fn add_sizes(a: usize, b: usize) -> usize {
     }
 }
 
-/// The data of each field should be 64 bits aligned.
+/// The data of each field should be aligned to 64 bits.
 pub const ALIGN: usize = 8;
 
-/// Returns the number of bytes to fill aligned
+/// The number of padding bytes required to align the given length correctly.
 const fn alignment_bytes(len: usize) -> usize {
     (ALIGN - (len % ALIGN)) % ALIGN
 }
 
-/// Size after alignment
+/// Size after alignment.
 pub const fn aligned_size(len: usize) -> usize {
     add_sizes(len, alignment_bytes(len))
 }
@@ -267,7 +263,7 @@ impl Deserialize for () {
     }
 }
 
-/// To protect against malicious large inputs, vectors size is limited on decoding.
+/// To protect against malicious large inputs, vector size is limited when decoding.
 pub const VEC_DECODE_LIMIT: usize = 100 * (1 << 20); // 100 MiB
 
 #[cfg(feature = "alloc")]

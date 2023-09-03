@@ -12,9 +12,9 @@ use fuel_tx::{
 };
 use fuel_tx_test_helpers::TransactionFactory;
 use fuel_types::{
-    bytes::{
-        Deserializable,
-        SerializableVec,
+    canonical::{
+        Deserialize,
+        SerializedSize,
     },
     ChainId,
 };
@@ -329,7 +329,7 @@ fn tx_offset_create() {
     // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Create>::from_seed(1295)
         .take(number_cases)
-        .for_each(|(mut tx, _)| {
+        .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
 
             cases.salt = true;
@@ -398,7 +398,7 @@ fn tx_offset_script() {
     // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Script>::from_seed(1295)
         .take(number_cases)
-        .for_each(|(mut tx, _)| {
+        .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
             common_parts_create_and_script(&tx, &bytes, &mut cases);
         });
@@ -437,7 +437,7 @@ fn tx_offset_mint() {
     // pick a seed that, with low number of cases, will cover everything.
     TransactionFactory::<_, Mint>::from_seed(1295)
         .take(number_cases)
-        .for_each(|mut tx| {
+        .for_each(|tx| {
             let bytes = tx.to_bytes();
 
             let ofs = tx.tx_pointer_offset();
@@ -475,34 +475,34 @@ fn iow_offset() {
             tx.inputs().iter().enumerate().for_each(|(x, i)| {
                 let offset = tx.inputs_offset_at(x).unwrap();
                 let offset_p = tx_p.inputs_offset_at(x).unwrap();
+                assert_eq!(offset, offset_p);
 
                 let input = Input::from_bytes(&bytes[offset..])
                     .expect("Failed to deserialize input!");
 
                 assert_eq!(i, &input);
-                assert_eq!(offset, offset_p);
             });
 
             tx.outputs().iter().enumerate().for_each(|(x, o)| {
                 let offset = tx.outputs_offset_at(x).unwrap();
                 let offset_p = tx_p.outputs_offset_at(x).unwrap();
+                assert_eq!(offset, offset_p);
 
                 let output = Output::from_bytes(&bytes[offset..])
                     .expect("Failed to deserialize output!");
 
                 assert_eq!(o, &output);
-                assert_eq!(offset, offset_p);
             });
 
             tx.witnesses().iter().enumerate().for_each(|(x, w)| {
                 let offset = tx.witnesses_offset_at(x).unwrap();
                 let offset_p = tx_p.witnesses_offset_at(x).unwrap();
+                assert_eq!(offset, offset_p);
 
                 let witness = Witness::from_bytes(&bytes[offset..])
                     .expect("Failed to deserialize witness!");
 
                 assert_eq!(w, &witness);
-                assert_eq!(offset, offset_p);
             });
 
             let offset = tx.receipts_root_offset();

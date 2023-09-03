@@ -23,17 +23,15 @@ use crate::{
     ConsensusParameters,
     Input,
     Output,
+    TransactionRepr,
     Witness,
 };
 use derivative::Derivative;
 use fuel_types::{
     bytes,
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
+    bytes::WORD_SIZE,
+    canonical::SerializedSize,
     fmt_truncated_hex,
-    mem_layout,
     BlockHeight,
     Bytes32,
     Word,
@@ -42,15 +40,9 @@ use fuel_types::{
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
-use fuel_types::{
-    ChainId,
-    MemLayout,
-    MemLocType,
-};
+use fuel_types::ChainId;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::io;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {
@@ -60,6 +52,8 @@ pub(crate) struct ScriptMetadata {
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
     pub(crate) gas_price: Word,
@@ -75,22 +69,9 @@ pub struct Script {
     pub(crate) receipts_root: Bytes32,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[canonical(skip)]
     pub(crate) metadata: Option<ScriptMetadata>,
 }
-
-mem_layout!(
-    ScriptLayout for Script
-    repr: u8 = WORD_SIZE,
-    gas_price: Word = WORD_SIZE,
-    gas_limit: Word = WORD_SIZE,
-    maturity: u32 = WORD_SIZE,
-    script_len: Word = WORD_SIZE,
-    script_data_len: Word = WORD_SIZE,
-    inputs_len: Word = WORD_SIZE,
-    outputs_len: Word = WORD_SIZE,
-    witnesses_len: Word = WORD_SIZE,
-    receipts_root: Bytes32 = {Bytes32::LEN}
-);
 
 impl Default for Script {
     fn default() -> Self {
@@ -242,17 +223,6 @@ impl crate::Cacheable for Script {
             script_data_offset: self.script_data_offset(),
         });
         Ok(())
-    }
-}
-
-impl SizedBytes for Script {
-    fn serialized_size(&self) -> usize {
-        self.witnesses_offset()
-            + self
-                .witnesses()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
     }
 }
 
@@ -417,7 +387,7 @@ mod field {
                             .inputs()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
@@ -471,12 +441,7 @@ mod field {
                 return *outputs_offset
             }
 
-            self.inputs_offset()
-                + self
-                    .inputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -499,7 +464,7 @@ mod field {
                             .outputs()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
@@ -532,12 +497,7 @@ mod field {
                 return *witnesses_offset
             }
 
-            self.outputs_offset()
-                + self
-                    .outputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -561,195 +521,12 @@ mod field {
                             .witnesses()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
                 None
             }
         }
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for Script {
-    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if full_buf.len() < n {
-            return Err(bytes::eof())
-        }
-        let buf: &mut [_; Self::LEN] = full_buf
-            .get_mut(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.repr),
-            crate::TransactionRepr::Script as u8,
-        );
-        let Script {
-            gas_price,
-            gas_limit,
-            maturity,
-            receipts_root,
-            script,
-            script_data,
-            inputs,
-            outputs,
-            witnesses,
-            metadata: _,
-        } = self;
-
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), **maturity);
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.script_len),
-            script.len() as Word,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.script_data_len),
-            script_data.len() as Word,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.inputs_len),
-            inputs.len() as Word,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.outputs_len),
-            outputs.len() as Word,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.witnesses_len),
-            witnesses.len() as Word,
-        );
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.receipts_root), receipts_root);
-
-        let buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
-        let (_, buf) = bytes::store_raw_bytes(buf, script.as_slice())?;
-        let (_, mut buf) = bytes::store_raw_bytes(buf, script_data.as_slice())?;
-
-        for input in self.inputs.iter_mut() {
-            let input_len = input.read(buf)?;
-            buf = &mut buf[input_len..];
-        }
-
-        for output in self.outputs.iter_mut() {
-            let output_len = output.read(buf)?;
-            buf = &mut buf[output_len..];
-        }
-
-        for witness in self.witnesses.iter_mut() {
-            let witness_len = witness.read(buf)?;
-            buf = &mut buf[witness_len..];
-        }
-
-        Ok(n)
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for Script {
-    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
-        let mut n = crate::consts::TRANSACTION_SCRIPT_FIXED_SIZE;
-        if full_buf.len() < n {
-            return Err(bytes::eof())
-        }
-        let buf: &[_; Self::LEN] = full_buf
-            .get(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let identifier = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.repr));
-        let identifier = crate::TransactionRepr::try_from(identifier as Word)?;
-        if identifier != crate::TransactionRepr::Script {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "The provided identifier to the `Script` is invalid!",
-            ))
-        }
-
-        let gas_price =
-            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
-        let gas_limit =
-            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
-        let maturity =
-            bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
-        let script_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_len));
-        let script_data_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.script_data_len));
-        let inputs_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
-        let outputs_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
-        let witnesses_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
-        let receipts_root =
-            bytes::restore_at(buf, Self::layout(Self::LAYOUT.receipts_root));
-
-        let receipts_root = receipts_root.into();
-
-        let buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
-        let (size, script, buf) = bytes::restore_raw_bytes(buf, script_len)?;
-        n += size;
-
-        let (size, script_data, mut buf) =
-            bytes::restore_raw_bytes(buf, script_data_len)?;
-        n += size;
-
-        let mut inputs = vec![Input::default(); inputs_len];
-        for input in inputs.iter_mut() {
-            let input_len = input.write(buf)?;
-            buf = &buf[input_len..];
-            n += input_len;
-        }
-
-        let mut outputs = vec![Output::default(); outputs_len];
-        for output in outputs.iter_mut() {
-            let output_len = output.write(buf)?;
-            buf = &buf[output_len..];
-            n += output_len;
-        }
-
-        let mut witnesses = vec![Witness::default(); witnesses_len];
-        for witness in witnesses.iter_mut() {
-            let witness_len = witness.write(buf)?;
-            buf = &buf[witness_len..];
-            n += witness_len;
-        }
-
-        *self = Script {
-            gas_price,
-            gas_limit,
-            maturity,
-            receipts_root,
-            script,
-            script_data,
-            inputs,
-            outputs,
-            witnesses,
-            metadata: None,
-        };
-
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.inputs.iter_mut().try_for_each(|input| input.flush())?;
-        self.outputs
-            .iter_mut()
-            .try_for_each(|output| output.flush())?;
-        self.witnesses
-            .iter_mut()
-            .try_for_each(|witness| witness.flush())?;
-
-        Ok(())
     }
 }

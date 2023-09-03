@@ -1,8 +1,7 @@
+use core::default::Default;
+
 use crate::{
-    input::{
-        fmt_as_field,
-        sizes::CoinSizes,
-    },
+    input::fmt_as_field,
     transaction::types::input::AsField,
     TxPointer,
     UtxoId,
@@ -10,16 +9,11 @@ use crate::{
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_types::{
-    bytes,
     Address,
     AssetId,
     BlockHeight,
-    MemLayout,
     Word,
 };
-
-#[cfg(feature = "std")]
-use fuel_types::MemLocType;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -101,6 +95,7 @@ impl CoinSpecification for Full {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Coin<Specification>
 where
     Specification: CoinSpecification,
@@ -135,214 +130,6 @@ where
     }
 }
 
-impl<Specification> bytes::SizedBytes for Coin<Specification>
-where
-    Specification: CoinSpecification,
-{
-    #[inline(always)]
-    fn serialized_size(&self) -> usize {
-        let predicate_size = if let Some(predicate) = self.predicate.as_field() {
-            bytes::padded_len(predicate.as_slice())
-        } else {
-            0
-        };
-        let predicate_date_size =
-            if let Some(predicate_data) = self.predicate_data.as_field() {
-                bytes::padded_len(predicate_data.as_slice())
-            } else {
-                0
-            };
-
-        CoinSizes::LEN + predicate_size + predicate_date_size
-    }
-}
-
-#[cfg(feature = "std")]
-impl<Specification> std::io::Read for Coin<Specification>
-where
-    Specification: CoinSpecification,
-{
-    fn read(&mut self, full_buf: &mut [u8]) -> std::io::Result<usize> {
-        use fuel_types::bytes::SizedBytes;
-        let serialized_size = self.serialized_size();
-        if full_buf.len() < serialized_size {
-            return Err(bytes::eof())
-        }
-
-        let Self {
-            utxo_id,
-            owner,
-            amount,
-            asset_id,
-            tx_pointer,
-            witness_index,
-            maturity,
-            predicate,
-            predicate_data,
-            predicate_gas_used,
-        } = self;
-
-        type S = CoinSizes;
-        const LEN: usize = CoinSizes::LEN;
-        let buf: &mut [_; LEN] = full_buf
-            .get_mut(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let n = utxo_id.read(&mut buf[S::LAYOUT.utxo_id.range()])?;
-        if n != S::LAYOUT.utxo_id.size() {
-            return Err(bytes::eof())
-        }
-
-        bytes::store_at(buf, S::layout(S::LAYOUT.owner), owner);
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
-        bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
-
-        let n = tx_pointer.read(&mut buf[S::LAYOUT.tx_pointer.range()])?;
-        if n != S::LAYOUT.tx_pointer.size() {
-            return Err(bytes::eof())
-        }
-
-        let witness_index = if let Some(witness_index) = witness_index.as_field() {
-            *witness_index
-        } else {
-            // Witness index zeroed for coin predicate
-            0
-        };
-
-        let predicate_gas_used =
-            if let Some(predicate_gas_used) = predicate_gas_used.as_field() {
-                *predicate_gas_used
-            } else {
-                // predicate gas used zeroed for coin predicate
-                0
-            };
-
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.witness_index), witness_index);
-        bytes::store_number_at(buf, S::layout(S::LAYOUT.maturity), **maturity);
-        bytes::store_number_at(
-            buf,
-            S::layout(S::LAYOUT.predicate_gas_used),
-            predicate_gas_used as Word,
-        );
-
-        let predicate_len = if let Some(predicate) = predicate.as_field() {
-            predicate.len()
-        } else {
-            0
-        };
-
-        let predicate_data_len = if let Some(predicate_data) = predicate_data.as_field() {
-            predicate_data.len()
-        } else {
-            0
-        };
-
-        bytes::store_number_at(
-            buf,
-            S::layout(S::LAYOUT.predicate_len),
-            predicate_len as Word,
-        );
-
-        bytes::store_number_at(
-            buf,
-            S::layout(S::LAYOUT.predicate_data_len),
-            predicate_data_len as Word,
-        );
-
-        let buf = if let Some(predicate) = predicate.as_field() {
-            let (_, buf) = bytes::store_raw_bytes(
-                full_buf.get_mut(LEN..).ok_or(bytes::eof())?,
-                predicate.as_slice(),
-            )?;
-            buf
-        } else {
-            buf
-        };
-
-        if let Some(predicate_data) = predicate_data.as_field() {
-            bytes::store_raw_bytes(buf, predicate_data.as_slice())?;
-        };
-
-        Ok(serialized_size)
-    }
-}
-
-#[cfg(feature = "std")]
-impl<Specification> std::io::Write for Coin<Specification>
-where
-    Specification: CoinSpecification,
-{
-    fn write(&mut self, full_buf: &[u8]) -> std::io::Result<usize> {
-        use fuel_types::bytes::Deserializable;
-        type S = CoinSizes;
-        const LEN: usize = CoinSizes::LEN;
-        let buf: &[_; LEN] = full_buf
-            .get(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let mut n = LEN;
-
-        let utxo_id = UtxoId::from_bytes(&buf[S::LAYOUT.utxo_id.range()])?;
-        self.utxo_id = utxo_id;
-
-        let owner = bytes::restore_at(buf, S::layout(S::LAYOUT.owner));
-        let owner = owner.into();
-        self.owner = owner;
-
-        let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
-        self.amount = amount;
-
-        let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
-        let asset_id = asset_id.into();
-        self.asset_id = asset_id;
-
-        let tx_pointer = TxPointer::from_bytes(&buf[S::LAYOUT.tx_pointer.range()])?;
-        self.tx_pointer = tx_pointer;
-
-        let witness_index = bytes::restore_u8_at(buf, S::layout(S::LAYOUT.witness_index));
-        if let Some(witness_index_field) = self.witness_index.as_mut_field() {
-            *witness_index_field = witness_index;
-        }
-        let maturity = bytes::restore_u32_at(buf, S::layout(S::LAYOUT.maturity)).into();
-        self.maturity = maturity;
-
-        let predicate_gas_used =
-            bytes::restore_number_at(buf, S::layout(S::LAYOUT.predicate_gas_used));
-        if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
-            *predicate_gas_used_field = predicate_gas_used;
-        }
-
-        let predicate_len =
-            bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_len));
-        let predicate_data_len =
-            bytes::restore_usize_at(buf, S::layout(S::LAYOUT.predicate_data_len));
-
-        let (size, predicate, buf) = bytes::restore_raw_bytes(
-            full_buf.get(LEN..).ok_or(bytes::eof())?,
-            predicate_len,
-        )?;
-        n += size;
-        if let Some(predicate_field) = self.predicate.as_mut_field() {
-            *predicate_field = predicate;
-        }
-
-        let (size, predicate_data, _) =
-            bytes::restore_raw_bytes(buf, predicate_data_len)?;
-        n += size;
-        if let Some(predicate_data_field) = self.predicate_data.as_mut_field() {
-            *predicate_data_field = predicate_data;
-        }
-
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        Ok(())
-    }
-}
-
 impl Coin<Full> {
     pub fn into_signed(self) -> Coin<Signed> {
         let Self {
@@ -364,9 +151,7 @@ impl Coin<Full> {
             tx_pointer,
             witness_index,
             maturity,
-            predicate: (),
-            predicate_data: (),
-            predicate_gas_used: (),
+            ..Default::default()
         }
     }
 
@@ -390,11 +175,67 @@ impl Coin<Full> {
             amount,
             asset_id,
             tx_pointer,
-            witness_index: (),
             maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
+            ..Default::default()
+        }
+    }
+}
+
+impl Coin<Signed> {
+    pub fn into_full(self) -> Coin<Full> {
+        let Self {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            maturity,
+            ..
+        } = self;
+
+        Coin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            maturity,
+            ..Default::default()
+        }
+    }
+}
+
+impl Coin<Predicate> {
+    pub fn into_full(self) -> Coin<Full> {
+        let Self {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            maturity,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..
+        } = self;
+
+        Coin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            maturity,
+            predicate,
+            predicate_data,
+            predicate_gas_used,
+            ..Default::default()
         }
     }
 }

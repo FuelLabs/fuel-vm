@@ -9,8 +9,8 @@
 ///
 /// ```
 /// use fuel_asm::{op, RegId};
-/// use fuel_types::{Immediate18, Word};
-/// use fuel_vm::prelude::{Call, TxParameters, ContractId, Opcode, SerializableVec};
+/// use fuel_types::{Immediate18, Word, canonical::{Serialize, SerializedSize}};
+/// use fuel_vm::prelude::{Call, TxParameters, ContractId, Opcode};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
 ///
@@ -135,10 +135,9 @@ pub mod test_helpers {
         Witness,
     };
     use fuel_types::{
-        bytes::{
-            Deserializable,
-            SerializableVec,
-            SizedBytes,
+        canonical::{
+            Deserialize,
+            SerializedSize,
         },
         Address,
         AssetId,
@@ -460,9 +459,9 @@ pub mod test_helpers {
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
             let tx_offset = self.get_tx_params().tx_offset();
-            let tx_mem = &interpreter.memory()
-                [tx_offset..(tx_offset + transaction.serialized_size())];
-            let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
+            let mut tx_mem =
+                &interpreter.memory()[tx_offset..(tx_offset + transaction.size())];
+            let deser_tx = Transaction::decode(&mut tx_mem).unwrap();
 
             assert_eq!(deser_tx, transaction);
             if is_reverted {

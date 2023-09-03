@@ -9,6 +9,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_crypto::Hasher;
+use fuel_types::canonical::SerializedSize;
 use itertools::Itertools;
 
 const SET_STATUS_REG: u8 = 0x29;
@@ -192,7 +193,7 @@ fn call_frame_code_offset() {
     let asset_id = AssetId::default();
     let contract = Contract::from(program.as_ref());
 
-    let mut frame = CallFrame::new(
+    let frame = CallFrame::new(
         contract_id,
         asset_id,
         [0; VM_REGISTER_COUNT],

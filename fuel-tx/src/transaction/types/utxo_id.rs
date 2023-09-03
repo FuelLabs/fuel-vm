@@ -1,28 +1,14 @@
 use crate::TxId;
 
 use fuel_types::{
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
-    mem_layout,
+    canonical::SerializedSizeFixed,
     Bytes32,
-    MemLayout,
 };
 
 use core::{
     fmt,
     str,
 };
-
-#[cfg(feature = "std")]
-use fuel_types::{
-    bytes,
-    MemLocType,
-};
-
-#[cfg(feature = "std")]
-use std::io;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -36,6 +22,7 @@ use rand::{
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct UtxoId {
     /// transaction id
     tx_id: TxId,
@@ -43,13 +30,8 @@ pub struct UtxoId {
     output_index: u8,
 }
 
-mem_layout!(UtxoIdLayout for UtxoId
-    tx_id: TxId = {TxId::LEN},
-    output_index: u8 = WORD_SIZE
-);
-
 impl UtxoId {
-    pub const LEN: usize = <Self as MemLayout>::LEN;
+    pub const LEN: usize = Self::SIZE_STATIC;
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
         Self {
@@ -126,56 +108,6 @@ impl str::FromStr for UtxoId {
                 u8::from_str_radix(output_index, 16).map_err(|_| ERR)?,
             )
         })
-    }
-}
-
-impl SizedBytes for UtxoId {
-    fn serialized_size(&self) -> usize {
-        Self::LEN
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for UtxoId {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        const LEN: usize = UtxoId::LEN;
-        let buf: &[_; LEN] = buf
-            .get(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let tx_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.tx_id));
-        let output_index =
-            bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.output_index));
-
-        self.tx_id = tx_id.into();
-        self.output_index = output_index;
-
-        Ok(Self::LEN)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for UtxoId {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        const LEN: usize = UtxoId::LEN;
-        let buf: &mut [_; LEN] = buf
-            .get_mut(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.tx_id), &self.tx_id);
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.output_index),
-            self.output_index,
-        );
-
-        Ok(Self::LEN)
     }
 }
 

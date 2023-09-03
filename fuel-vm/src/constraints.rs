@@ -7,6 +7,9 @@ use std::ops::{
 use fuel_asm::Word;
 use fuel_types::ContractId;
 
+#[cfg(test)]
+use fuel_types::canonical::Deserialize;
+
 use crate::{
     consts::MEM_SIZE,
     prelude::{
@@ -61,11 +64,10 @@ impl<T> CheckedMemValue<T> {
     /// Inspect a value of type `T` from memory.
     pub fn inspect(self, memory: &[u8; MEM_SIZE]) -> T
     where
-        T: std::io::Write + Default,
+        T: Deserialize,
     {
-        let mut t = T::default();
-        t.write_all(&memory[self.0.usizes()]).unwrap();
-        t
+        T::from_bytes(&memory[self.0.usizes()])
+            .expect("Inspect failed; invalid value for type")
     }
 }
 

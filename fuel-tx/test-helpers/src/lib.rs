@@ -51,7 +51,7 @@ mod use_std {
         Transaction,
         TransactionBuilder,
     };
-    use fuel_types::bytes::Deserializable;
+    use fuel_types::canonical::Deserialize;
     use rand::{
         distributions::{
             Distribution,
@@ -91,8 +91,9 @@ mod use_std {
             //
             // When and if a new variant is added, this implementation enforces it will be
             // listed here.
+            let empty: [u8; 0] = [];
             debug_assert!({
-                Input::from_bytes(&[])
+                Input::decode(&mut &empty[..])
                     .map(|i| match i {
                         Input::CoinSigned(_) => (),
                         Input::CoinPredicate(_) => (),
@@ -104,7 +105,7 @@ mod use_std {
                     })
                     .unwrap_or(());
 
-                Output::from_bytes(&[])
+                Output::decode(&mut &empty[..])
                     .map(|o| match o {
                         Output::Coin { .. } => (),
                         Output::Contract { .. } => (),
@@ -114,7 +115,7 @@ mod use_std {
                     })
                     .unwrap_or(());
 
-                Transaction::from_bytes(&[])
+                Transaction::decode(&mut &empty[..])
                     .map(|t| match t {
                         Transaction::Script(_) => (),
                         Transaction::Create(_) => (),

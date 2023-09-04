@@ -3,12 +3,14 @@ use crate::{
     FeeParameters,
     Input,
     Output,
-    Transaction,
     Witness,
 };
 use core::hash::Hash;
 
 use fuel_types::BlockHeight;
+
+#[cfg(feature = "std")]
+use crate::Transaction;
 
 #[cfg(feature = "std")]
 use fuel_types::{
@@ -271,8 +273,8 @@ pub trait FormatValidityChecks {
     ) -> Result<(), CheckError>;
 }
 
+#[cfg(feature = "std")]
 impl FormatValidityChecks for Transaction {
-    #[cfg(feature = "std")]
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => script.check_signatures(chain_id),

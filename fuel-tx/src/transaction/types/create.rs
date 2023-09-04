@@ -1,39 +1,40 @@
 use crate::{
-    transaction::{
-        field::{
-            BytecodeLength,
-            BytecodeWitnessIndex,
-            GasLimit,
-            GasPrice,
-            Inputs,
-            Maturity,
-            Outputs,
-            Salt as SaltField,
-            StorageSlots,
-            Witnesses,
-        },
-        validity::{
-            check_common_part,
-            FormatValidityChecks,
-        },
+    transaction::validity::{
+        check_common_part,
+        FormatValidityChecks,
+    },
+    ConsensusParameters,
+};
+
+use fuel_types::AssetId;
+
+use crate::{
+    transaction::field::{
+        BytecodeLength,
+        BytecodeWitnessIndex,
+        GasLimit,
+        GasPrice,
+        Inputs,
+        Maturity,
+        Outputs,
+        Salt as SaltField,
+        StorageSlots,
+        Witnesses,
     },
     Chargeable,
     CheckError,
-    ConsensusParameters,
     Contract,
     Input,
     Output,
     StorageSlot,
+    TransactionRepr,
     Witness,
 };
 use derivative::Derivative;
 use fuel_types::{
     bytes,
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
-    mem_layout,
+    bytes::WORD_SIZE,
+    canonical::SerializedSize,
     BlockHeight,
     Bytes32,
     ContractId,
@@ -44,15 +45,9 @@ use fuel_types::{
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
-use fuel_types::{
-    ChainId,
-    MemLayout,
-    MemLocType,
-};
+use fuel_types::ChainId;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::io;
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -115,6 +110,8 @@ impl CreateMetadata {
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[canonical(prefix = TransactionRepr::Create)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
     pub(crate) gas_price: Word,
@@ -129,23 +126,9 @@ pub struct Create {
     pub(crate) salt: Salt,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[canonical(skip)]
     pub(crate) metadata: Option<CreateMetadata>,
 }
-
-mem_layout!(
-    CreateLayout for Create
-    repr: u8 = WORD_SIZE,
-    gas_price: Word = WORD_SIZE,
-    gas_limit: Word = WORD_SIZE,
-    maturity: u32 = WORD_SIZE,
-    bytecode_length: Word = WORD_SIZE,
-    bytecode_witness_index: u8 = WORD_SIZE,
-    storage_slots_len: Word = WORD_SIZE,
-    inputs_len: Word = WORD_SIZE,
-    outputs_len: Word = WORD_SIZE,
-    witnesses_len: Word = WORD_SIZE,
-    salt: Salt = {Salt::LEN}
-);
 
 impl Create {
     pub fn metadata(&self) -> &Option<CreateMetadata> {
@@ -387,17 +370,6 @@ impl crate::Cacheable for Create {
     }
 }
 
-impl SizedBytes for Create {
-    fn serialized_size(&self) -> usize {
-        self.witnesses_offset()
-            + self
-                .witnesses()
-                .iter()
-                .map(|w| w.serialized_size())
-                .sum::<usize>()
-    }
-}
-
 mod field {
     use super::*;
     use crate::field::StorageSlotRef;
@@ -569,7 +541,7 @@ mod field {
                             .inputs()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
@@ -615,12 +587,7 @@ mod field {
                 return *outputs_offset
             }
 
-            self.inputs_offset()
-                + self
-                    .inputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -640,7 +607,7 @@ mod field {
                             .outputs()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
@@ -669,12 +636,7 @@ mod field {
                 return *witnesses_offset
             }
 
-            self.outputs_offset()
-                + self
-                    .outputs()
-                    .iter()
-                    .map(|i| i.serialized_size())
-                    .sum::<usize>()
+            self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
         }
 
         #[inline(always)]
@@ -694,216 +656,13 @@ mod field {
                             .witnesses()
                             .iter()
                             .take(idx)
-                            .map(|i| i.serialized_size())
+                            .map(|i| i.size())
                             .sum::<usize>(),
                 )
             } else {
                 None
             }
         }
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for Create {
-    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if full_buf.len() < n {
-            return Err(bytes::eof())
-        }
-        let buf: &mut [_; Self::LEN] = full_buf
-            .get_mut(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.repr),
-            crate::TransactionRepr::Create as u8,
-        );
-        let Create {
-            gas_price,
-            gas_limit,
-            maturity,
-            bytecode_length,
-            bytecode_witness_index,
-            salt,
-            storage_slots,
-            inputs,
-            outputs,
-            witnesses,
-            ..
-        } = self;
-
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_price), *gas_price);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.gas_limit), *gas_limit);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.maturity), **maturity);
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.bytecode_length),
-            *bytecode_length,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.bytecode_witness_index),
-            *bytecode_witness_index,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.storage_slots_len),
-            storage_slots.len() as Word,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.inputs_len),
-            inputs.len() as Word,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.outputs_len),
-            outputs.len() as Word,
-        );
-        bytes::store_number_at(
-            buf,
-            Self::layout(Self::LAYOUT.witnesses_len),
-            witnesses.len() as Word,
-        );
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.salt), salt);
-
-        let buf = full_buf.get_mut(Self::LEN..).ok_or(bytes::eof())?;
-        let mut slot_len = 0;
-        for (storage_slot, buf) in storage_slots
-            .iter_mut()
-            .zip(buf.chunks_exact_mut(StorageSlot::SLOT_SIZE))
-        {
-            let storage_len = storage_slot.read(buf)?;
-            slot_len += storage_len;
-            if storage_len != StorageSlot::SLOT_SIZE {
-                return Err(bytes::eof())
-            }
-        }
-
-        let mut buf = full_buf
-            .get_mut(Self::LEN + slot_len..)
-            .ok_or(bytes::eof())?;
-        for input in self.inputs.iter_mut() {
-            let input_len = input.read(buf)?;
-            buf = &mut buf[input_len..];
-        }
-
-        for output in self.outputs.iter_mut() {
-            let output_len = output.read(buf)?;
-            buf = &mut buf[output_len..];
-        }
-
-        for witness in self.witnesses.iter_mut() {
-            let witness_len = witness.read(buf)?;
-            buf = &mut buf[witness_len..];
-        }
-
-        Ok(n)
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for Create {
-    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
-        let buf: &[_; Self::LEN] = full_buf
-            .get(..Self::LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-        let mut n = crate::consts::TRANSACTION_CREATE_FIXED_SIZE;
-
-        let identifier = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.repr));
-        let identifier = crate::TransactionRepr::try_from(identifier as Word)?;
-        if identifier != crate::TransactionRepr::Create {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "The provided identifier to the `Create` is invalid!",
-            ))
-        }
-
-        let gas_price =
-            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_price));
-        let gas_limit =
-            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.gas_limit));
-        let maturity =
-            bytes::restore_u32_at(buf, Self::layout(Self::LAYOUT.maturity)).into();
-        let bytecode_length =
-            bytes::restore_number_at(buf, Self::layout(Self::LAYOUT.bytecode_length));
-        let bytecode_witness_index =
-            bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.bytecode_witness_index));
-        let storage_slots_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.storage_slots_len));
-        let inputs_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.inputs_len));
-        let outputs_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.outputs_len));
-        let witnesses_len =
-            bytes::restore_usize_at(buf, Self::layout(Self::LAYOUT.witnesses_len));
-        let salt = bytes::restore_at(buf, Self::layout(Self::LAYOUT.salt));
-
-        let salt = salt.into();
-
-        let mut buf = full_buf.get(Self::LEN..).ok_or(bytes::eof())?;
-        let mut storage_slots = vec![StorageSlot::default(); storage_slots_len];
-        n += StorageSlot::SLOT_SIZE * storage_slots_len;
-        for storage_slot in storage_slots.iter_mut() {
-            let _ = storage_slot.write(buf)?;
-            buf = &buf[StorageSlot::SLOT_SIZE..];
-        }
-
-        let mut inputs = vec![Input::default(); inputs_len];
-        for input in inputs.iter_mut() {
-            let input_len = input.write(buf)?;
-            buf = &buf[input_len..];
-            n += input_len;
-        }
-
-        let mut outputs = vec![Output::default(); outputs_len];
-        for output in outputs.iter_mut() {
-            let output_len = output.write(buf)?;
-            buf = &buf[output_len..];
-            n += output_len;
-        }
-
-        let mut witnesses = vec![Witness::default(); witnesses_len];
-        for witness in witnesses.iter_mut() {
-            let witness_len = witness.write(buf)?;
-            buf = &buf[witness_len..];
-            n += witness_len;
-        }
-
-        *self = Create {
-            gas_price,
-            gas_limit,
-            maturity,
-            bytecode_length,
-            bytecode_witness_index,
-            salt,
-            storage_slots,
-            inputs,
-            outputs,
-            witnesses,
-            metadata: None,
-        };
-
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.inputs.iter_mut().try_for_each(|input| input.flush())?;
-        self.outputs
-            .iter_mut()
-            .try_for_each(|output| output.flush())?;
-        self.witnesses
-            .iter_mut()
-            .try_for_each(|witness| witness.flush())?;
-        self.storage_slots
-            .iter_mut()
-            .try_for_each(|slot| slot.flush())?;
-
-        Ok(())
     }
 }
 

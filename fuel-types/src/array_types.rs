@@ -32,6 +32,9 @@ macro_rules! key {
         /// FuelVM atomic array type.
         #[repr(transparent)]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        #[derive(
+            fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
+        )]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -47,10 +50,13 @@ macro_rules! key {
 
 macro_rules! key_with_big_array {
     ($i:ident, $s:expr) => {
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// FuelVM atomic type.
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[repr(transparent)]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+        #[derive(
+            fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
+        )]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -390,9 +396,9 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
     }
 }
 
-/// Roundtrip encode/decode tests
+/// Roundtrip serde encode/decode tests
 #[cfg(all(test, feature = "serde"))]
-mod tests {
+mod tests_serde {
     use rand::{
         rngs::StdRng,
         SeedableRng,

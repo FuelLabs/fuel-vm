@@ -99,10 +99,8 @@ pub use transaction::{
 };
 
 #[cfg(feature = "std")]
-pub use transaction::{
-    Signable,
-    UniqueIdentifier,
-};
+pub use transaction::Signable;
+pub use transaction::UniqueIdentifier;
 
 #[cfg(feature = "alloc")]
 #[allow(deprecated)]

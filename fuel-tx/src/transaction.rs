@@ -1,6 +1,6 @@
 use fuel_crypto::PublicKey;
 use fuel_types::{
-    bytes::SizedBytes,
+    canonical::SerializedSizeFixed,
     Address,
     AssetId,
     BlockHeight,
@@ -22,11 +22,7 @@ mod repr;
 mod types;
 mod validity;
 
-#[cfg(feature = "std")]
 mod id;
-
-#[cfg(feature = "std")]
-mod txio;
 
 pub mod consensus_parameters;
 
@@ -73,11 +69,11 @@ use crate::input::{
 };
 #[cfg(feature = "std")]
 pub use fuel_types::ChainId;
+
 #[cfg(feature = "std")]
-pub use id::{
-    Signable,
-    UniqueIdentifier,
-};
+pub use id::Signable;
+
+pub use id::UniqueIdentifier;
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
@@ -85,6 +81,8 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[canonical(inner_discriminant = TransactionRepr)]
 pub enum Transaction {
     Script(Script),
     Create(Create),
@@ -437,16 +435,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 }
 
 impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}
-
-impl SizedBytes for Transaction {
-    fn serialized_size(&self) -> usize {
-        match self {
-            Self::Script(script) => script.serialized_size(),
-            Self::Create(create) => create.serialized_size(),
-            Self::Mint(mint) => mint.serialized_size(),
-        }
-    }
-}
 
 impl From<Script> for Transaction {
     fn from(script: Script) -> Self {

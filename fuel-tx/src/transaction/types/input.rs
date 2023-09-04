@@ -19,9 +19,10 @@ use fuel_crypto::{
 };
 use fuel_types::{
     bytes,
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSizeFixed,
     },
     fmt_truncated_hex,
     Address,
@@ -35,16 +36,13 @@ use fuel_types::{
     Word,
 };
 use message::*;
-
-#[cfg(feature = "std")]
-use std::io;
+use num_enum::TryFromPrimitive;
 
 pub mod coin;
 mod consts;
 pub mod contract;
 pub mod message;
 mod repr;
-pub mod sizes;
 
 pub use repr::InputRepr;
 
@@ -136,8 +134,97 @@ where
     field.fmt_as_field(f)
 }
 
+fn input_serialized_size_static_helper(value: &Input) -> usize {
+    fuel_types::canonical::add_sizes(
+        8, // Discriminant
+        match value.clone() {
+            Input::CoinSigned(_) => CoinFull::SIZE_STATIC,
+            Input::CoinPredicate(_) => CoinFull::SIZE_STATIC,
+            Input::Contract(_) => Contract::SIZE_STATIC,
+            Input::MessageCoinSigned(_) => FullMessage::SIZE_STATIC,
+            Input::MessageCoinPredicate(_) => FullMessage::SIZE_STATIC,
+            Input::MessageDataSigned(_) => FullMessage::SIZE_STATIC,
+            Input::MessageDataPredicate(_) => FullMessage::SIZE_STATIC,
+        },
+    )
+}
+
+fn input_serialized_size_dynamic_helper(value: &Input) -> usize {
+    match value.clone() {
+        Input::CoinSigned(coin) => coin.into_full().size_dynamic(),
+        Input::CoinPredicate(coin) => coin.into_full().size_dynamic(),
+        Input::Contract(contract) => contract.size_dynamic(),
+        Input::MessageCoinSigned(message) => message.into_full().size_dynamic(),
+        Input::MessageCoinPredicate(message) => message.into_full().size_dynamic(),
+        Input::MessageDataSigned(message) => message.into_full().size_dynamic(),
+        Input::MessageDataPredicate(message) => message.into_full().size_dynamic(),
+    }
+}
+
+fn input_serialize_helper<O: fuel_types::canonical::Output + ?Sized>(
+    value: &Input,
+    output: &mut O,
+) -> Result<(), fuel_types::canonical::Error> {
+    let discr: u64 = InputRepr::from(value).into();
+    discr.encode(output)?;
+    match value.clone() {
+        Input::CoinSigned(coin) => coin.into_full().encode(output),
+        Input::CoinPredicate(coin) => coin.into_full().encode(output),
+        Input::Contract(contract) => contract.encode(output),
+        Input::MessageCoinSigned(message) => message.into_full().encode(output),
+        Input::MessageCoinPredicate(message) => message.into_full().encode(output),
+        Input::MessageDataSigned(message) => message.into_full().encode(output),
+        Input::MessageDataPredicate(message) => message.into_full().encode(output),
+    }
+}
+
+fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
+    discr: u64,
+    data: &mut I,
+) -> Result<Input, fuel_types::canonical::Error> {
+    Ok(
+        match InputRepr::try_from_primitive(discr)
+            .map_err(|_| fuel_types::canonical::Error::UnknownDiscriminant)?
+        {
+            InputRepr::Coin => {
+                let coin = CoinFull::decode(data)?;
+                if coin.predicate.is_empty() {
+                    Input::CoinSigned(coin.into_signed())
+                } else {
+                    Input::CoinPredicate(coin.into_predicate())
+                }
+            }
+            InputRepr::Contract => {
+                let contract = Contract::decode(data)?;
+                Input::Contract(contract)
+            }
+            InputRepr::Message => {
+                let message = FullMessage::decode(data)?;
+                match (message.data.is_empty(), message.predicate.is_empty()) {
+                    (true, true) => Input::MessageCoinSigned(message.into_coin_signed()),
+                    (true, false) => {
+                        Input::MessageCoinPredicate(message.into_coin_predicate())
+                    }
+                    (false, true) => {
+                        Input::MessageDataSigned(message.into_message_data_signed())
+                    }
+                    (false, false) => {
+                        Input::MessageDataPredicate(message.into_message_data_predicate())
+                    }
+                }
+            }
+        },
+    )
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Deserialize, Serialize)]
+#[canonical(serialized_size_static_with = input_serialized_size_static_helper)]
+#[canonical(serialized_size_dynamic_with = input_serialized_size_dynamic_helper)]
+#[canonical(serialize_with = input_serialize_helper)]
+#[canonical(deserialize_with = input_deserialize_helper)]
+#[canonical(SIZE_NO_DYNAMIC = CoinFull::SIZE_NO_DYNAMIC && Contract::SIZE_NO_DYNAMIC && FullMessage::SIZE_NO_DYNAMIC)]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
@@ -157,20 +244,6 @@ impl Default for Input {
             Default::default(),
             Default::default(),
         )
-    }
-}
-
-impl SizedBytes for Input {
-    fn serialized_size(&self) -> usize {
-        match self {
-            Self::CoinSigned(coin) => WORD_SIZE + coin.serialized_size(),
-            Self::CoinPredicate(coin) => WORD_SIZE + coin.serialized_size(),
-            Self::Contract(contract) => WORD_SIZE + contract.serialized_size(),
-            Self::MessageCoinSigned(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageCoinPredicate(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageDataSigned(message) => WORD_SIZE + message.serialized_size(),
-            Self::MessageDataPredicate(message) => WORD_SIZE + message.serialized_size(),
-        }
     }
 }
 
@@ -750,120 +823,6 @@ impl Input {
     /// Prepare the output for VM predicate execution
     pub fn prepare_init_predicate(&mut self) {
         self.prepare_sign()
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for Input {
-    fn read(&mut self, full_buf: &mut [u8]) -> io::Result<usize> {
-        let serialized_size = self.serialized_size();
-        if full_buf.len() < serialized_size {
-            return Err(bytes::eof())
-        }
-
-        let ident_buf: &mut [_; WORD_SIZE] = full_buf
-            .get_mut(..WORD_SIZE)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-        match self {
-            Self::CoinSigned(coin) => {
-                bytes::store_number(ident_buf, InputRepr::Coin as Word);
-                let _ = coin.read(&mut full_buf[WORD_SIZE..])?;
-            }
-            Self::CoinPredicate(coin) => {
-                bytes::store_number(ident_buf, InputRepr::Coin as Word);
-                let _ = coin.read(&mut full_buf[WORD_SIZE..])?;
-            }
-
-            Self::Contract(contract) => {
-                bytes::store_number(ident_buf, InputRepr::Contract as Word);
-                let _ = contract.read(&mut full_buf[WORD_SIZE..])?;
-            }
-
-            Self::MessageCoinSigned(message) => {
-                bytes::store_number(ident_buf, InputRepr::Message as Word);
-                let _ = message.read(&mut full_buf[WORD_SIZE..])?;
-            }
-
-            Self::MessageCoinPredicate(message) => {
-                bytes::store_number(ident_buf, InputRepr::Message as Word);
-                let _ = message.read(&mut full_buf[WORD_SIZE..])?;
-            }
-            Self::MessageDataSigned(message) => {
-                bytes::store_number(ident_buf, InputRepr::Message as Word);
-                let _ = message.read(&mut full_buf[WORD_SIZE..])?;
-            }
-            Self::MessageDataPredicate(message) => {
-                bytes::store_number(ident_buf, InputRepr::Message as Word);
-                let _ = message.read(&mut full_buf[WORD_SIZE..])?;
-            }
-        }
-
-        Ok(serialized_size)
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for Input {
-    fn write(&mut self, full_buf: &[u8]) -> io::Result<usize> {
-        let identifier: &[_; WORD_SIZE] = full_buf
-            .get(..WORD_SIZE)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        // Safety: buf len is checked
-        let identifier = bytes::restore_word(bytes::from_array(identifier));
-        let identifier = InputRepr::try_from(identifier)?;
-
-        match identifier {
-            InputRepr::Coin => {
-                let mut coin = CoinFull::default();
-                let n = WORD_SIZE + CoinFull::write(&mut coin, &full_buf[WORD_SIZE..])?;
-
-                *self = if coin.predicate.is_empty() {
-                    Self::CoinSigned(coin.into_signed())
-                } else {
-                    Self::CoinPredicate(coin.into_predicate())
-                };
-
-                Ok(n)
-            }
-
-            InputRepr::Contract => {
-                let mut contract = Contract::default();
-                let n =
-                    WORD_SIZE + Contract::write(&mut contract, &full_buf[WORD_SIZE..])?;
-
-                *self = Self::Contract(contract);
-
-                Ok(n)
-            }
-
-            InputRepr::Message => {
-                let mut message = FullMessage::default();
-                let n =
-                    WORD_SIZE + FullMessage::write(&mut message, &full_buf[WORD_SIZE..])?;
-
-                *self = match (message.data.is_empty(), message.predicate.is_empty()) {
-                    (true, true) => Self::MessageCoinSigned(message.into_coin_signed()),
-                    (true, false) => {
-                        Self::MessageCoinPredicate(message.into_coin_predicate())
-                    }
-                    (false, true) => {
-                        Self::MessageDataSigned(message.into_message_data_signed())
-                    }
-                    (false, false) => {
-                        Self::MessageDataPredicate(message.into_message_data_predicate())
-                    }
-                };
-
-                Ok(n)
-            }
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }
 

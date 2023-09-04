@@ -91,11 +91,6 @@ pub mod prelude {
     pub use fuel_tx::*;
     #[doc(no_inline)]
     pub use fuel_types::{
-        bytes::{
-            Deserializable,
-            SerializableVec,
-            SizedBytes,
-        },
         Address,
         AssetId,
         Bytes32,

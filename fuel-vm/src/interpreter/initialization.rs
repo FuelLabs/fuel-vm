@@ -20,7 +20,10 @@ use crate::{
 };
 
 use fuel_asm::RegId;
-use fuel_types::Word;
+use fuel_types::{
+    canonical::SerializedSize,
+    Word,
+};
 
 use crate::{
     error::BugVariant::GlobalGasUnderflow,
@@ -61,7 +64,7 @@ where
 
         runtime_balances.to_vm(self);
 
-        let tx_size = self.transaction().serialized_size() as Word;
+        let tx_size = self.transaction().size() as Word;
         self.set_gas(gas_limit);
 
         self.push_stack(&tx_size.to_be_bytes())

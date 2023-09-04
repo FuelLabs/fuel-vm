@@ -73,8 +73,6 @@ use fuel_types::{
     Word,
 };
 
-use std::borrow::Borrow;
-
 #[cfg(test)]
 mod code_tests;
 #[cfg(test)]
@@ -820,8 +818,13 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     let value = storage
         .merkle_contract_state(contract, key)
         .map_err(RuntimeError::from_io)?
-        .map(|state| bytes::from_array(state.as_ref().borrow()))
-        .map(Word::from_be_bytes);
+        .map(|bytes| {
+            Word::from_be_bytes(
+                bytes[..8]
+                    .try_into()
+                    .expect("8 bytes can be converted to a Word"),
+            )
+        });
 
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;

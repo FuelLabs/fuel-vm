@@ -1,6 +1,10 @@
 use fuel_crypto::Hasher;
 use fuel_types::{
-    bytes,
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSizeFixed,
+    },
     Address,
     AssetId,
     Bytes32,
@@ -11,32 +15,14 @@ use fuel_types::{
 
 use core::mem;
 
-#[cfg(feature = "std")]
-use fuel_types::{
-    bytes::{
-        SizedBytes,
-        WORD_SIZE,
-    },
-    MemLayout,
-    MemLocType,
-};
-
-#[cfg(feature = "std")]
-use std::io;
-
 mod consts;
 mod repr;
-mod sizes;
-
-use consts::*;
-
-#[cfg(feature = "std")]
-use sizes::*;
 
 pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Deserialize, Serialize)]
 pub enum Output {
     Coin {
         to: Address,
@@ -73,20 +59,6 @@ impl Default for Output {
         Self::ContractCreated {
             contract_id: Default::default(),
             state_root: Default::default(),
-        }
-    }
-}
-
-impl bytes::SizedBytes for Output {
-    fn serialized_size(&self) -> usize {
-        match self {
-            Self::Coin { .. } | Self::Change { .. } | Self::Variable { .. } => {
-                OUTPUT_CCV_SIZE
-            }
-
-            Self::Contract { .. } => OUTPUT_CONTRACT_SIZE,
-
-            Self::ContractCreated { .. } => OUTPUT_CONTRACT_CREATED_SIZE,
         }
     }
 }
@@ -275,199 +247,5 @@ impl Output {
     /// Prepare the output for VM initialization for predicate verification
     pub fn prepare_init_predicate(&mut self) {
         self.prepare_sign()
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for Output {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = self.serialized_size();
-        if buf.len() < n {
-            return Err(bytes::eof())
-        }
-
-        let identifier: OutputRepr = self.into();
-
-        match self {
-            Self::Coin {
-                to,
-                amount,
-                asset_id,
-            }
-            | Self::Change {
-                to,
-                amount,
-                asset_id,
-            }
-            | Self::Variable {
-                to,
-                amount,
-                asset_id,
-            } => {
-                type S = CoinSizes;
-                let buf: &mut [_; S::LEN] = buf
-                    .get_mut(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.to), to);
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.amount), *amount);
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.asset_id), asset_id);
-            }
-
-            Self::Contract {
-                input_index,
-                balance_root,
-                state_root,
-            } => {
-                type S = ContractSizes;
-                let buf: &mut [_; S::LEN] = buf
-                    .get_mut(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
-
-                bytes::store_number_at(
-                    buf,
-                    S::layout(S::LAYOUT.input_index),
-                    *input_index,
-                );
-                bytes::store_at(buf, S::layout(S::LAYOUT.balance_root), balance_root);
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
-            }
-
-            Self::ContractCreated {
-                contract_id,
-                state_root,
-            } => {
-                type S = ContractCreatedSizes;
-                let buf: &mut [_; S::LEN] = buf
-                    .get_mut(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                bytes::store_number_at(buf, S::layout(S::LAYOUT.repr), identifier as u8);
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.contract_id), contract_id);
-
-                bytes::store_at(buf, S::layout(S::LAYOUT.state_root), state_root);
-            }
-        }
-
-        Ok(n)
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for Output {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let identifier: &[_; WORD_SIZE] = buf
-            .get(..WORD_SIZE)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let identifier = bytes::restore_word(bytes::from_array(identifier));
-        let identifier = OutputRepr::try_from(identifier)?;
-
-        match identifier {
-            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
-                type S = CoinSizes;
-                let buf: &[_; S::LEN] = buf
-                    .get(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                let to = bytes::restore_at(buf, S::layout(S::LAYOUT.to));
-                let amount = bytes::restore_number_at(buf, S::layout(S::LAYOUT.amount));
-                let asset_id = bytes::restore_at(buf, S::layout(S::LAYOUT.asset_id));
-
-                let to = to.into();
-                let asset_id = asset_id.into();
-
-                match identifier {
-                    OutputRepr::Coin => {
-                        *self = Self::Coin {
-                            to,
-                            amount,
-                            asset_id,
-                        }
-                    }
-                    OutputRepr::Change => {
-                        *self = Self::Change {
-                            to,
-                            amount,
-                            asset_id,
-                        }
-                    }
-                    OutputRepr::Variable => {
-                        *self = Self::Variable {
-                            to,
-                            amount,
-                            asset_id,
-                        }
-                    }
-
-                    _ => unreachable!(),
-                }
-
-                Ok(OUTPUT_CCV_SIZE)
-            }
-
-            OutputRepr::Contract => {
-                type S = ContractSizes;
-                let buf: &[_; S::LEN] = buf
-                    .get(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                let input_index =
-                    bytes::restore_u8_at(buf, S::layout(S::LAYOUT.input_index));
-                let balance_root =
-                    bytes::restore_at(buf, S::layout(S::LAYOUT.balance_root));
-                let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
-
-                let balance_root = balance_root.into();
-                let state_root = state_root.into();
-
-                *self = Self::Contract {
-                    input_index,
-                    balance_root,
-                    state_root,
-                };
-
-                Ok(OUTPUT_CONTRACT_SIZE)
-            }
-
-            OutputRepr::ContractCreated => {
-                type S = ContractCreatedSizes;
-                let buf: &[_; S::LEN] = buf
-                    .get(..S::LEN)
-                    .and_then(|slice| slice.try_into().ok())
-                    .ok_or(bytes::eof())?;
-
-                let contract_id =
-                    bytes::restore_at(buf, S::layout(S::LAYOUT.contract_id));
-                let state_root = bytes::restore_at(buf, S::layout(S::LAYOUT.state_root));
-
-                let contract_id = contract_id.into();
-                let state_root = state_root.into();
-
-                *self = Self::ContractCreated {
-                    contract_id,
-                    state_root,
-                };
-
-                Ok(OUTPUT_CONTRACT_CREATED_SIZE)
-            }
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }

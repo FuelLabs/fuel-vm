@@ -6,8 +6,6 @@ use crate::{
     ConsensusParameters,
 };
 
-use fuel_types::AssetId;
-
 use crate::{
     transaction::field::{
         BytecodeLength,

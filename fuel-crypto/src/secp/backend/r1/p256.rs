@@ -1,8 +1,12 @@
 //! secp256r1 (P-256) functions
 
 use crate::{
+    message::Message,
+    secp::signature_format::{
+        decode_signature,
+        encode_signature,
+    },
     Error,
-    Message,
 };
 use ecdsa::RecoveryId;
 use fuel_types::Bytes64;
@@ -10,33 +14,6 @@ use p256::ecdsa::{
     Signature,
     VerifyingKey,
 };
-
-/// Combines recovery id with the signature bytes. See the following link for explanation.
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography
-/// Panics if the highest bit of byte at index 32 is set, as this indicates non-normalized
-/// signature. Panics if the recovery id is in reduced-x form.
-#[cfg(feature = "test-helpers")]
-fn encode_signature(signature: Signature, recovery_id: RecoveryId) -> [u8; 64] {
-    let mut signature: [u8; 64] = signature.to_bytes().into();
-    assert!(signature[32] >> 7 == 0, "Non-normalized signature");
-    assert!(!recovery_id.is_x_reduced(), "Invalid recovery id");
-
-    let v = recovery_id.is_y_odd() as u8;
-
-    signature[32] = (v << 7) | (signature[32] & 0x7f);
-    signature
-}
-
-/// Separates recovery id from the signature bytes. See the following link for
-/// explanation. https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography
-fn decode_signature(mut signature: [u8; 64]) -> Option<(Signature, RecoveryId)> {
-    let v = (signature[32] & 0x80) != 0;
-    signature[32] &= 0x7f;
-
-    let signature = Signature::from_slice(&signature).ok()?;
-
-    Some((signature, RecoveryId::new(v, false)))
-}
 
 /// Sign a prehashed message. With the given key.
 #[cfg(feature = "test-helpers")]
@@ -72,8 +49,13 @@ pub fn sign_prehashed(
         unreachable!("Invalid signature generated");
     };
 
-    // encode_signature cannot panic as we don't generate reduced-x recovery ids.
-    Ok(Bytes64::from(encode_signature(signature, recovery_id)))
+    let recovery_id = recovery_id
+        .try_into()
+        .expect("reduced-x recovery ids are never generated");
+    Ok(Bytes64::from(encode_signature(
+        signature.to_bytes().into(),
+        recovery_id,
+    )))
 }
 
 /// Convert the public key point to its uncompressed non-prefixed representation,
@@ -89,22 +71,25 @@ pub fn encode_pubkey(key: VerifyingKey) -> [u8; 64] {
 /// Recover a public key from a signature and a message digest. It assumes
 /// a compacted signature
 pub fn recover(signature: &Bytes64, message: &Message) -> Result<Bytes64, Error> {
-    let (signature, recovery_id) =
-        decode_signature(**signature).ok_or(Error::InvalidSignature)?;
-
-    if let Ok(pub_key) =
-        VerifyingKey::recover_from_prehash(&**message, &signature, recovery_id)
-    {
-        Ok(Bytes64::from(encode_pubkey(pub_key)))
-    } else {
-        Err(Error::InvalidSignature)
-    }
+    let (sig, recid) = decode_signature(**signature);
+    let sig =
+        p256::ecdsa::Signature::from_slice(&sig).map_err(|_| Error::InvalidSignature)?;
+    let vk = VerifyingKey::recover_from_prehash(&**message, &sig, recid.into())
+        .map_err(|_| Error::InvalidSignature)?;
+    let point = vk.to_encoded_point(false);
+    let mut raw = Bytes64::zeroed();
+    raw[..32].copy_from_slice(point.x().unwrap());
+    raw[32..].copy_from_slice(point.y().unwrap());
+    Ok(raw)
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::secp::signature;
+
     use super::*;
 
+    use ecdsa::SignatureEncoding;
     use p256::ecdsa::SigningKey;
     use rand::{
         rngs::StdRng,
@@ -140,8 +125,8 @@ mod tests {
             let verifying_key = signing_key.verifying_key();
 
             let message = Message::new([rng.gen(); 100]);
-            let signature = crate::secp256r1::sign_prehashed(&signing_key, &message)
-                .expect("Couldn't sign");
+            let signature =
+                sign_prehashed(&signing_key, &message).expect("Couldn't sign");
 
             let Ok(recovered) = recover(&signature, &message) else {
                 panic!("Failed to recover public key from the message");
@@ -160,18 +145,19 @@ mod tests {
             let signing_key = SigningKey::random(&mut rng);
             let (signature, _) = signing_key.sign_prehash_recoverable(&*message).unwrap();
             let signature = signature.normalize_s().unwrap_or(signature);
+            let signature: [u8; 64] = signature.to_bytes().into();
 
-            let recovery_id = RecoveryId::from_byte(0).unwrap();
+            let recovery_id = RecoveryId::from_byte(0).unwrap().try_into().unwrap();
             let encoded = encode_signature(signature, recovery_id);
 
-            let (de_sig, de_recid) = decode_signature(encoded).unwrap();
+            let (de_sig, de_recid) = decode_signature(encoded);
             assert_eq!(signature, de_sig);
             assert_eq!(recovery_id, de_recid);
 
-            let recovery_id = RecoveryId::from_byte(1).unwrap();
+            let recovery_id = RecoveryId::from_byte(1).unwrap().try_into().unwrap();
             let encoded = encode_signature(signature, recovery_id);
 
-            let (de_sig, de_recid) = decode_signature(encoded).unwrap();
+            let (de_sig, de_recid) = decode_signature(encoded);
             assert_eq!(signature, de_sig);
             assert_eq!(recovery_id, de_recid);
         }

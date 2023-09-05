@@ -1,6 +1,7 @@
-use std::str::FromStr;
+use core::str::FromStr;
 
 use crate::SecretKey;
+
 use coins_bip32::path::DerivationPath;
 use coins_bip39::{
     English,

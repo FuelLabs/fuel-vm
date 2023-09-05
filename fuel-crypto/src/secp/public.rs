@@ -1,7 +1,7 @@
 use crate::{
     hasher::Hasher,
+    secp::SecretKey,
     Error,
-    SecretKey,
 };
 use core::{
     fmt,
@@ -96,26 +96,21 @@ impl From<k256::PublicKey> for PublicKey {
     }
 }
 
-impl From<ecdsa::VerifyingKey<k256::Secp256k1>> for PublicKey {
-    fn from(vk: ecdsa::VerifyingKey<k256::Secp256k1>) -> Self {
+impl From<&ecdsa::VerifyingKey<k256::Secp256k1>> for PublicKey {
+    fn from(vk: &ecdsa::VerifyingKey<k256::Secp256k1>) -> Self {
         let vk: k256::PublicKey = vk.into();
         vk.into()
     }
 }
 
-impl Into<k256::ecdsa::VerifyingKey> for PublicKey {
-    fn into(self) -> k256::ecdsa::VerifyingKey {
-        k256::ecdsa::VerifyingKey::from_encoded_point(
-            &k256::EncodedPoint::from_untagged_bytes((&*self).into()),
-        )
-        .expect("Invalid public key")
-    }
-}
-
-impl Into<k256::PublicKey> for PublicKey {
-    fn into(self) -> k256::PublicKey {
-        let k: k256::ecdsa::VerifyingKey = self.into();
-        k.into()
+#[cfg(feature = "std")]
+impl From<secp256k1::PublicKey> for PublicKey {
+    fn from(key: secp256k1::PublicKey) -> Self {
+        let key_bytes = key.serialize_uncompressed();
+        let mut raw = Bytes64::zeroed();
+        // Remove leading identifier byte
+        raw.copy_from_slice(&key_bytes[1..]);
+        Self(raw)
     }
 }
 

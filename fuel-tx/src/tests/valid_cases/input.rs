@@ -17,8 +17,9 @@ use fuel_tx_test_helpers::{
 use fuel_types::ChainId;
 use rand::{
     rngs::StdRng,
+    CryptoRng,
     Rng,
-    SeedableRng, CryptoRng,
+    SeedableRng,
 };
 
 #[test]

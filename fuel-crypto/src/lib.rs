@@ -1,4 +1,7 @@
 //! Fuel cryptographic primitives.
+//!
+//! TODO: Primitives like Signature, SecretKey and PublicKey should be valid by
+//! construction
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -37,9 +40,18 @@ mod error;
 mod hasher;
 mod message;
 mod mnemonic;
+mod secp;
 
 pub mod ed25519;
-pub mod secp256r1;
+
+pub use secp::backend::k1 as secp256k1;
+pub use secp::backend::r1 as secp256r1;
+
+pub use secp::{
+    PublicKey,
+    SecretKey,
+    Signature,
+};
 
 #[cfg(test)]
 mod tests;
@@ -50,16 +62,3 @@ pub use message::Message;
 
 #[cfg(all(feature = "std", feature = "random"))]
 pub use mnemonic::generate_mnemonic_phrase;
-
-mod secp256k1 {
-    mod public;
-    mod secret;
-    mod signature;
-
-    pub use public::PublicKey;
-    pub use secret::SecretKey;
-    pub use signature::Signature;
-}
-
-// The default cryptographic primitives
-pub use self::secp256k1::*;

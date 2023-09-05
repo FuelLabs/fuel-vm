@@ -17,9 +17,9 @@ use fuel_types::{
     ChainId,
 };
 use itertools::Itertools;
-use rand::CryptoRng;
 use rand::{
     rngs::StdRng,
+    CryptoRng,
     Rng,
     SeedableRng,
 };

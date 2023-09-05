@@ -114,3 +114,10 @@ impl fmt::Display for Message {
         self.0.fmt(f)
     }
 }
+
+#[cfg(feature = "std")]
+impl From<&Message> for secp256k1::Message {
+    fn from(message: &Message) -> Self {
+        secp256k1::Message::from_slice(&*message.0).expect("length always matches")
+    }
+}

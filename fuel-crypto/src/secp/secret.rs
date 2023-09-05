@@ -4,20 +4,24 @@ use core::{
     fmt,
     ops::Deref,
     str,
+    str::FromStr,
 };
 
 use zeroize::Zeroize;
 
 use crate::{
+    secp::PublicKey,
     Error,
-    PublicKey,
 };
+
+#[cfg(feature = "std")]
 use coins_bip32::path::DerivationPath;
+
+#[cfg(feature = "std")]
 use coins_bip39::{
     English,
     Mnemonic,
 };
-use std::str::FromStr;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -25,7 +29,7 @@ use rand::{
     RngCore,
 };
 
-/// Asymmetric secret key
+/// Asymmetric secret key, guaranteed to be valid by construction
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Zeroize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
@@ -88,33 +92,53 @@ impl fmt::Display for SecretKey {
     }
 }
 
-impl From<k256::SecretKey> for SecretKey {
-    fn from(s: k256::SecretKey) -> Self {
+impl From<::k256::SecretKey> for SecretKey {
+    fn from(s: ::k256::SecretKey) -> Self {
         let mut raw_bytes = [0u8; Self::LEN];
         raw_bytes.copy_from_slice(&s.to_bytes());
         Self(Bytes32::from(raw_bytes))
     }
 }
 
-impl Into<k256::SecretKey> for SecretKey {
-    fn into(self) -> k256::SecretKey {
-        k256::SecretKey::from_bytes((&*self.0).into()).expect("Invalid secret key")
+#[cfg(feature = "std")]
+impl From<::secp256k1::SecretKey> for SecretKey {
+    fn from(s: ::secp256k1::SecretKey) -> Self {
+        let mut raw_bytes = [0u8; Self::LEN];
+        raw_bytes.copy_from_slice(s.as_ref());
+        Self(Bytes32::from(raw_bytes))
     }
 }
 
+impl From<&SecretKey> for ::k256::SecretKey {
+    fn from(sk: &SecretKey) -> Self {
+        ::k256::SecretKey::from_bytes(&(*sk.0).into())
+            .expect("SecretKey is guaranteed to be valid")
+    }
+}
+
+#[cfg(feature = "std")]
+impl From<&SecretKey> for ::secp256k1::SecretKey {
+    fn from(sk: &SecretKey) -> Self {
+        ::secp256k1::SecretKey::from_slice(sk.as_ref())
+            .expect("SecretKey is guaranteed to be valid")
+    }
+}
+
+#[cfg(feature = "std")]
 pub type W = English;
 
 impl SecretKey {
     /// Create a new random secret
     #[cfg(feature = "random")]
     pub fn random(rng: &mut (impl CryptoRng + RngCore)) -> Self {
-        k256::SecretKey::random(rng).into()
+        super::backend::k1::random_secret(rng)
     }
 
     /// Generate a new secret key from a mnemonic phrase and its derivation path.
     /// Both are passed as `&str`. If you want to manually create a `DerivationPath`
     /// and `Mnemonic`, use [`SecretKey::new_from_mnemonic`].
     /// The derivation path is a list of integers, each representing a child index.
+    #[cfg(feature = "std")]
     pub fn new_from_mnemonic_phrase_with_path(
         phrase: &str,
         path: &str,
@@ -127,6 +151,7 @@ impl SecretKey {
     /// Generate a new secret key from a `DerivationPath` and `Mnemonic`.
     /// If you want to pass strings instead, use
     /// [`SecretKey::new_from_mnemonic_phrase_with_path`].
+    #[cfg(feature = "std")]
     pub fn new_from_mnemonic(d: DerivationPath, m: Mnemonic<W>) -> Result<Self, Error> {
         let derived_priv_key = m.derive_key(d, None)?;
         let key: &coins_bip32::prelude::SigningKey = derived_priv_key.as_ref();
@@ -135,12 +160,8 @@ impl SecretKey {
     }
 
     /// Return the curve representation of this secret.
-    ///
-    /// The discrete logarithm property guarantees this is a one-way
-    /// function.
     pub fn public_key(&self) -> PublicKey {
-        let vk: k256::SecretKey = (*self).into();
-        vk.public_key().into()
+        crate::secp::backend::k1::public_key(self)
     }
 }
 

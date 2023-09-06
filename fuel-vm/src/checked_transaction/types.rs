@@ -108,7 +108,11 @@ pub mod create {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, consensus_params.fee_params())?;
+            } = initial_free_balances(
+                &self,
+                consensus_params.fee_params(),
+                consensus_params.base_asset_id(),
+            )?;
             assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionCreateMessageData` above"
@@ -218,13 +222,17 @@ pub mod script {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, consensus_params.fee_params())?;
+            } = initial_free_balances(
+                &self,
+                consensus_params.fee_params(),
+                consensus_params.base_asset_id(),
+            )?;
 
             let metadata = CheckedMetadata {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
                 retryable_balance: RetryableAmount {
                     amount: retryable_balance,
-                    base_asset_id: consensus_params.fee_params.base_asset_id,
+                    base_asset_id: consensus_params.base_asset_id,
                 },
                 block_height,
                 fee,

@@ -411,7 +411,7 @@ where
         c: Word,
         d: Word,
     ) -> Result<(), RuntimeError> {
-        let base_asset_id = self.interpreter_params.fee_params.base_asset_id;
+        let base_asset_id = self.interpreter_params.base_asset_id;
         let max_message_data_length = self.max_message_data_length();
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);

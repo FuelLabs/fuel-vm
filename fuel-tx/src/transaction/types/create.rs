@@ -227,12 +227,18 @@ impl FormatValidityChecks for Create {
             tx_params,
             predicate_params,
             contract_params,
-            fee_params,
             chain_id,
+            base_asset_id,
             ..
         } = consensus_params;
 
-        check_common_part(self, block_height, tx_params, predicate_params, fee_params)?;
+        check_common_part(
+            self,
+            block_height,
+            tx_params,
+            predicate_params,
+            base_asset_id,
+        )?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -314,9 +320,7 @@ impl FormatValidityChecks for Create {
                     Err(CheckError::TransactionCreateOutputVariable { index })
                 }
 
-                Output::Change { asset_id, .. }
-                    if asset_id != &fee_params.base_asset_id =>
-                {
+                Output::Change { asset_id, .. } if asset_id != base_asset_id => {
                     Err(CheckError::TransactionCreateOutputChangeNotBaseAsset { index })
                 }
 

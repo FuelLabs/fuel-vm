@@ -1,13 +1,15 @@
 use crate::{
     ConsensusParameters,
-    FeeParameters,
     Input,
     Output,
     Witness,
 };
 use core::hash::Hash;
 
-use fuel_types::BlockHeight;
+use fuel_types::{
+    AssetId,
+    BlockHeight,
+};
 
 #[cfg(feature = "std")]
 use crate::Transaction;
@@ -307,7 +309,7 @@ pub(crate) fn check_common_part<T>(
     block_height: BlockHeight,
     tx_params: &TxParameters,
     predicate_params: &PredicateParameters,
-    fee_params: &FeeParameters,
+    base_asset_id: &AssetId,
 ) -> Result<(), CheckError>
 where
     T: field::GasPrice
@@ -351,7 +353,7 @@ where
         Err(CheckError::NoSpendableInput)?
     }
 
-    tx.input_asset_ids_unique(&fee_params.base_asset_id)
+    tx.input_asset_ids_unique(base_asset_id)
         .try_for_each(|input_asset_id| {
             // check for duplicate change outputs
             if tx
@@ -362,8 +364,7 @@ where
                         Some(())
                     }
                     Output::Change { asset_id, .. }
-                        if asset_id != &fee_params.base_asset_id
-                            && input_asset_id == asset_id =>
+                        if asset_id != base_asset_id && input_asset_id == asset_id =>
                     {
                         Some(())
                     }
@@ -424,7 +425,7 @@ where
 
             if let Output::Change { asset_id, .. } = output {
                 if !tx
-                    .input_asset_ids(&fee_params.base_asset_id)
+                    .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
                 {
                     return Err(CheckError::TransactionOutputChangeAssetIdNotFound(
@@ -435,7 +436,7 @@ where
 
             if let Output::Coin { asset_id, .. } = output {
                 if !tx
-                    .input_asset_ids(&fee_params.base_asset_id)
+                    .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
                 {
                     return Err(CheckError::TransactionOutputCoinAssetIdNotFound(

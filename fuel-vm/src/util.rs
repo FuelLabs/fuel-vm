@@ -305,7 +305,7 @@ pub mod test_helpers {
         }
 
         pub fn base_asset_id(&mut self, base_asset_id: AssetId) -> &mut TestBuilder {
-            self.consensus_params.fee_params.base_asset_id = base_asset_id;
+            self.consensus_params.base_asset_id = base_asset_id;
             self
         }
 
@@ -317,6 +317,7 @@ pub mod test_helpers {
                 .with_predicate_params(*self.get_predicate_params());
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
+            self.builder.with_base_asset_id(*self.get_base_asset_id());
             self.builder.finalize_checked(self.block_height)
         }
 
@@ -338,6 +339,10 @@ pub mod test_helpers {
 
         pub fn get_fee_params(&self) -> &FeeParameters {
             self.consensus_params.fee_params()
+        }
+
+        pub fn get_base_asset_id(&self) -> &AssetId {
+            self.consensus_params.base_asset_id()
         }
 
         pub fn get_chain_id(&self) -> ChainId {

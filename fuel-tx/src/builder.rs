@@ -33,6 +33,7 @@ use crate::Signable;
 
 use fuel_crypto::SecretKey;
 use fuel_types::{
+    AssetId,
     BlockHeight,
     ChainId,
     Nonce,
@@ -273,6 +274,11 @@ impl<Tx> TransactionBuilder<Tx> {
 
     pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut Self {
         self.params.fee_params = fee_params;
+        self
+    }
+
+    pub fn with_base_asset_id(&mut self, base_asset_id: AssetId) -> &mut Self {
+        self.params.base_asset_id = base_asset_id;
         self
     }
 

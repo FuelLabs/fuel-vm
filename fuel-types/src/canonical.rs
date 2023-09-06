@@ -7,6 +7,7 @@
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use core::fmt;
 
 use core::mem::MaybeUninit;
 pub use fuel_derive::{
@@ -28,6 +29,27 @@ pub enum Error {
     AllocationLimit,
     /// Unknown error.
     Unknown(&'static str),
+}
+
+impl Error {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Error::BufferIsTooShort => "buffer is too short",
+            Error::UnknownDiscriminant => "unknown discriminant",
+            Error::InvalidPrefix => {
+                "prefix set with #[canonical(prefix = ...)] was invalid"
+            }
+            Error::AllocationLimit => "allocation too large",
+            Error::Unknown(str) => str,
+        }
+    }
+}
+
+impl fmt::Display for Error {
+    /// Shows a human-readable description of the `Error`.
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.as_str())
+    }
 }
 
 /// Allows writing of data.

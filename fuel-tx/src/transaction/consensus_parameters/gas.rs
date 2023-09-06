@@ -299,11 +299,10 @@ pub struct GasCostsValues {
     pub xori: Word,
 
     // Dependent
-    pub k256: DependentCost,
-    pub s256: DependentCost,
     pub call: DependentCost,
     pub ccp: DependentCost,
     pub csiz: DependentCost,
+    pub k256: DependentCost,
     pub ldc: DependentCost,
     pub logd: DependentCost,
     pub mcl: DependentCost,
@@ -313,9 +312,10 @@ pub struct GasCostsValues {
     pub meq: DependentCost,
     #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
     pub retd: DependentCost,
+    pub s256: DependentCost,
+    pub scwq: DependentCost,
     pub smo: DependentCost,
     pub srwq: DependentCost,
-    pub scwq: DependentCost,
     pub swwq: DependentCost,
 }
 
@@ -440,11 +440,10 @@ impl GasCostsValues {
             wqmm: 0,
             xor: 0,
             xori: 0,
-            k256: DependentCost::free(),
-            s256: DependentCost::free(),
             call: DependentCost::free(),
             ccp: DependentCost::free(),
             csiz: DependentCost::free(),
+            k256: DependentCost::free(),
             ldc: DependentCost::free(),
             logd: DependentCost::free(),
             mcl: DependentCost::free(),
@@ -453,9 +452,10 @@ impl GasCostsValues {
             mcpi: DependentCost::free(),
             meq: DependentCost::free(),
             retd: DependentCost::free(),
+            s256: DependentCost::free(),
+            scwq: DependentCost::free(),
             smo: DependentCost::free(),
             srwq: DependentCost::free(),
-            scwq: DependentCost::free(),
             swwq: DependentCost::free(),
         }
     }
@@ -552,11 +552,10 @@ impl GasCostsValues {
             wqmm: 1,
             xor: 1,
             xori: 1,
-            k256: DependentCost::unit(),
-            s256: DependentCost::unit(),
             call: DependentCost::unit(),
             ccp: DependentCost::unit(),
             csiz: DependentCost::unit(),
+            k256: DependentCost::unit(),
             ldc: DependentCost::unit(),
             logd: DependentCost::unit(),
             mcl: DependentCost::unit(),
@@ -565,9 +564,10 @@ impl GasCostsValues {
             mcpi: DependentCost::unit(),
             meq: DependentCost::unit(),
             retd: DependentCost::unit(),
+            s256: DependentCost::unit(),
+            scwq: DependentCost::unit(),
             smo: DependentCost::unit(),
             srwq: DependentCost::unit(),
-            scwq: DependentCost::unit(),
             swwq: DependentCost::unit(),
         }
     }

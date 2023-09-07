@@ -1,17 +1,13 @@
 //! Fuel cryptographic primitives.
-//!
-//! TODO: Primitives like Signature, SecretKey and PublicKey should be valid by
-//! construction
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 // Wrong clippy convention; check
 // https://rust-lang.github.io/api-guidelines/naming.html
-#![allow(clippy::wrong_self_convention)]
 #![deny(clippy::string_slice)]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
-// #![deny(unused_crate_dependencies)]
+#![deny(unused_crate_dependencies)]
 
 #[cfg(test)]
 // Satisfy unused_crate_dependencies lint for self-dependency enabling test features

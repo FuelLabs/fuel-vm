@@ -70,6 +70,8 @@ jobs:
             args: --target wasm32-unknown-unknown -p fuel-types --features typescript --crate-type=cdylib
           - command: rustc
             args: --target wasm32-unknown-unknown -p fuel-asm --features typescript --crate-type=cdylib
+          - command: bench
+            args: --workspace --no-run
           - command: make
             args: check
           - command: test

@@ -40,7 +40,6 @@ alloc = ["rand?/alloc", "secp256k1/alloc", "fuel-types/alloc"]
 random = ["fuel-types/random", "rand"]
 serde = ["dep:serde", "fuel-types/serde"]
 std = ["alloc", "coins-bip32", "secp256k1", "coins-bip39", "fuel-types/std", "lazy_static", "rand?/std_rng", "serde?/default"]
-wasm = []
 test-helpers = []
 
 [[bench]]

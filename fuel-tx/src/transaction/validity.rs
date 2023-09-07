@@ -309,6 +309,7 @@ pub(crate) fn check_common_part<T>(
     block_height: BlockHeight,
     tx_params: &TxParameters,
     predicate_params: &PredicateParameters,
+    base_asset_id: &AssetId,
 ) -> Result<(), CheckError>
 where
     T: field::GasPrice
@@ -352,30 +353,33 @@ where
         Err(CheckError::NoSpendableInput)?
     }
 
-    tx.input_asset_ids_unique().try_for_each(|input_asset_id| {
-        // check for duplicate change outputs
-        if tx
-            .outputs()
-            .iter()
-            .filter_map(|output| match output {
-                Output::Change { asset_id, .. } if input_asset_id == asset_id => Some(()),
-                Output::Change { asset_id, .. }
-                    if asset_id != &AssetId::default() && input_asset_id == asset_id =>
-                {
-                    Some(())
-                }
-                _ => None,
-            })
-            .count()
-            > 1
-        {
-            return Err(CheckError::TransactionOutputChangeAssetIdDuplicated(
-                *input_asset_id,
-            ))
-        }
+    tx.input_asset_ids_unique(base_asset_id)
+        .try_for_each(|input_asset_id| {
+            // check for duplicate change outputs
+            if tx
+                .outputs()
+                .iter()
+                .filter_map(|output| match output {
+                    Output::Change { asset_id, .. } if input_asset_id == asset_id => {
+                        Some(())
+                    }
+                    Output::Change { asset_id, .. }
+                        if asset_id != base_asset_id && input_asset_id == asset_id =>
+                    {
+                        Some(())
+                    }
+                    _ => None,
+                })
+                .count()
+                > 1
+            {
+                return Err(CheckError::TransactionOutputChangeAssetIdDuplicated(
+                    *input_asset_id,
+                ))
+            }
 
-        Ok(())
-    })?;
+            Ok(())
+        })?;
 
     // Check for duplicated input utxo id
     let duplicated_utxo_id = tx
@@ -421,7 +425,7 @@ where
 
             if let Output::Change { asset_id, .. } = output {
                 if !tx
-                    .input_asset_ids()
+                    .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
                 {
                     return Err(CheckError::TransactionOutputChangeAssetIdNotFound(
@@ -432,7 +436,7 @@ where
 
             if let Output::Coin { asset_id, .. } = output {
                 if !tx
-                    .input_asset_ids()
+                    .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
                 {
                     return Err(CheckError::TransactionOutputCoinAssetIdNotFound(

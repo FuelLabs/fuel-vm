@@ -7,6 +7,11 @@ use crate::{
 };
 
 use super::*;
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 use fuel_tx::Create;
 use test_case::test_case;
@@ -148,7 +153,7 @@ impl Default for Input {
         initial_balance: 29,
         ..Default::default()
     } => matches Ok(Output { external_balance: 9, internal_balance: 29, .. })
-    ; "coins sent succesfully from external context"
+    ; "coins sent successfully from external context"
 )]
 #[test_case(
     Input {
@@ -160,7 +165,7 @@ impl Default for Input {
         internal: true,
         ..Default::default()
     } => matches Ok(Output { external_balance: 29, internal_balance: 9, .. })
-    ; "coins sent succesfully from internal context"
+    ; "coins sent successfully from internal context"
 )]
 #[test_case(
     Input {
@@ -183,7 +188,7 @@ impl Default for Input {
         internal: true,
         ..Default::default()
     } => matches Ok(Output { external_balance: 20, internal_balance: 0, .. })
-    ; "spend all coins succesfully from internal context"
+    ; "spend all coins successfully from internal context"
 )]
 fn test_smo(
     Input {
@@ -197,7 +202,8 @@ fn test_smo(
         initial_balance,
     }: Input,
 ) -> Result<Output, RuntimeError> {
-    let asset = AssetId::zeroed();
+    let mut rng = StdRng::seed_from_u64(100);
+    let base_asset_id = rng.gen();
 
     let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
     for (offset, bytes) in mem {
@@ -209,15 +215,17 @@ fn test_smo(
     storage
         .merkle_contract_asset_id_balance_insert(
             &ContractId::default(),
-            &asset,
+            &base_asset_id,
             initial_balance,
         )
         .unwrap();
-    let mut balances = RuntimeBalances::try_from_iter([(asset, initial_balance)])
+    let mut balances = RuntimeBalances::try_from_iter([(base_asset_id, initial_balance)])
         .expect("Should be valid balance");
     let fp = 0;
     let mut pc = 0;
+
     let input = MessageOutputCtx {
+        base_asset_id,
         max_message_data_length,
         memory: &mut memory,
         tx_offset: 0,
@@ -242,8 +250,12 @@ fn test_smo(
 
     Ok(Output {
         receipts,
-        internal_balance: contract_balance(&storage, &ContractId::default(), &asset)
-            .unwrap(),
-        external_balance: balances.balance(&asset).unwrap(),
+        internal_balance: contract_balance(
+            &storage,
+            &ContractId::default(),
+            &base_asset_id,
+        )
+        .unwrap(),
+        external_balance: balances.balance(&base_asset_id).unwrap(),
     })
 }

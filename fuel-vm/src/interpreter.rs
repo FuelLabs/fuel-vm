@@ -130,6 +130,8 @@ pub struct InterpreterParams {
     pub chain_id: ChainId,
     /// Fee parameters
     pub fee_params: FeeParameters,
+    /// Base Asset ID
+    pub base_asset_id: AssetId,
 }
 
 impl Default for InterpreterParams {
@@ -142,6 +144,7 @@ impl Default for InterpreterParams {
             max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
             chain_id: ChainId::default(),
             fee_params: FeeParameters::default(),
+            base_asset_id: Default::default(),
         }
     }
 }
@@ -162,6 +165,7 @@ impl From<&ConsensusParameters> for InterpreterParams {
             max_message_data_length: value.predicate_params.max_message_data_length,
             chain_id: value.chain_id,
             fee_params: value.fee_params,
+            base_asset_id: value.base_asset_id,
         }
     }
 }
@@ -176,6 +180,7 @@ impl From<CheckPredicateParams> for InterpreterParams {
             max_message_data_length: params.max_message_data_length,
             chain_id: params.chain_id,
             fee_params: params.fee_params,
+            base_asset_id: params.base_asset_id,
         }
     }
 }
@@ -235,6 +240,11 @@ impl<S, Tx> Interpreter<S, Tx> {
     /// Get the Fee Parameters
     pub fn fee_params(&self) -> &FeeParameters {
         &self.interpreter_params.fee_params
+    }
+
+    /// Get the base Asset ID
+    pub fn base_asset_id(&self) -> &AssetId {
+        &self.interpreter_params.base_asset_id
     }
 
     /// Get contract_max_size value
@@ -379,6 +389,7 @@ pub trait ExecutableTransaction:
         initial_balances: &InitialBalances,
         balances: &I,
         fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
     ) -> Result<(), CheckError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
@@ -393,8 +404,8 @@ pub trait ExecutableTransaction:
             // Note: the initial balance deducts the gas limit from base asset
             Output::Change {
                 asset_id, amount, ..
-            } if revert && asset_id == &AssetId::BASE => initial_balances.non_retryable
-                [&AssetId::BASE]
+            } if revert && asset_id == base_asset_id => initial_balances.non_retryable
+                [base_asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
@@ -410,7 +421,7 @@ pub trait ExecutableTransaction:
             // The change for the base asset will be the available balance + unused gas
             Output::Change {
                 asset_id, amount, ..
-            } if asset_id == &AssetId::BASE => balances[asset_id]
+            } if asset_id == base_asset_id => balances[asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),

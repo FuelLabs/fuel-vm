@@ -66,7 +66,10 @@ use fuel_tx::{
     Receipt,
     ScriptExecutionResult,
 };
-use fuel_types::Word;
+use fuel_types::{
+    AssetId,
+    Word,
+};
 
 /// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]
@@ -415,6 +418,7 @@ where
         storage: &mut S,
         initial_balances: InitialBalances,
         fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
     ) -> Result<(), InterpreterError> {
         let remaining_gas = create
             .limit()
@@ -463,6 +467,7 @@ where
         Self::finalize_outputs(
             create,
             fee_params,
+            base_asset_id,
             false,
             remaining_gas,
             &initial_balances,
@@ -486,12 +491,14 @@ where
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
         // TODO: Remove `Create` from here
         let fee_params = *self.fee_params();
+        let base_asset_id = *self.base_asset_id();
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::deploy_inner(
                 create,
                 &mut self.storage,
                 self.initial_balances.clone(),
                 &fee_params,
+                &base_asset_id,
             )?;
             self.update_transaction_outputs()?;
             ProgramState::Return(1)
@@ -584,6 +591,7 @@ where
             Self::finalize_outputs(
                 &mut self.tx,
                 &fee_params,
+                &base_asset_id,
                 revert,
                 remaining_gas,
                 &self.initial_balances,
@@ -682,11 +690,13 @@ where
     pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
         let (mut create, metadata) = tx.into();
         let fee_params = *self.fee_params();
+        let base_asset_id = *self.base_asset_id();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,
             metadata.balances(),
             &fee_params,
+            &base_asset_id,
         )?;
         Ok(create)
     }

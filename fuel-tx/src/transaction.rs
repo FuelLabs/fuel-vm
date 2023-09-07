@@ -266,7 +266,10 @@ impl Transaction {
 
 pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     /// Returns the assets' ids used in the inputs in the order of inputs.
-    fn input_asset_ids(&self) -> IntoIter<&AssetId> {
+    fn input_asset_ids<'a>(
+        &'a self,
+        base_asset_id: &'a AssetId,
+    ) -> IntoIter<&'a AssetId> {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
@@ -275,7 +278,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 Input::MessageCoinSigned(_)
                 | Input::MessageCoinPredicate(_)
                 | Input::MessageDataPredicate(_)
-                | Input::MessageDataSigned(_) => Some(&AssetId::BASE),
+                | Input::MessageDataSigned(_) => Some(base_asset_id),
                 _ => None,
             })
             .collect_vec()
@@ -283,8 +286,11 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     }
 
     /// Returns unique assets' ids used in the inputs.
-    fn input_asset_ids_unique(&self) -> IntoIter<&AssetId> {
-        let asset_ids = self.input_asset_ids();
+    fn input_asset_ids_unique<'a>(
+        &'a self,
+        base_asset_id: &'a AssetId,
+    ) -> IntoIter<&'a AssetId> {
+        let asset_ids = self.input_asset_ids(base_asset_id);
 
         #[cfg(feature = "std")]
         let asset_ids = asset_ids.unique();

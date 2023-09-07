@@ -256,11 +256,12 @@ pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
 
 /// Reduces the unspent balance of the base asset
 pub(crate) fn base_asset_balance_sub(
+    base_asset_id: &AssetId,
     balances: &mut RuntimeBalances,
     memory: &mut [u8; MEM_SIZE],
     value: Word,
 ) -> Result<(), RuntimeError> {
-    external_asset_id_balance_sub(balances, memory, &AssetId::zeroed(), value)
+    external_asset_id_balance_sub(balances, memory, base_asset_id, value)
 }
 
 /// Reduces the unspent balance of a given asset ID

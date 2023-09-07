@@ -432,14 +432,17 @@ impl Input {
         }
     }
 
-    pub const fn asset_id(&self) -> Option<&AssetId> {
+    pub const fn asset_id<'a>(
+        &'a self,
+        base_asset_id: &'a AssetId,
+    ) -> Option<&'a AssetId> {
         match self {
             Input::CoinSigned(CoinSigned { asset_id, .. })
             | Input::CoinPredicate(CoinPredicate { asset_id, .. }) => Some(asset_id),
             Input::MessageCoinSigned(_)
             | Input::MessageCoinPredicate(_)
             | Input::MessageDataSigned(_)
-            | Input::MessageDataPredicate(_) => Some(&AssetId::BASE),
+            | Input::MessageDataPredicate(_) => Some(base_asset_id),
             Input::Contract(_) => None,
         }
     }

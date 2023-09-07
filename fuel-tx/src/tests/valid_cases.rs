@@ -37,6 +37,7 @@ pub fn test_params() -> ConsensusParameters {
         FEE_PARAMS,
         CHAIN_ID,
         Default::default(),
+        Default::default(),
     )
 }
 

@@ -16,6 +16,7 @@ use fuel_types::{
         Deserialize,
         SerializedSize,
     },
+    AssetId,
     ChainId,
 };
 use rand::{
@@ -87,7 +88,7 @@ fn common_parts_create_and_script<Tx: Buildable>(
             assert_eq!(owner, owner_p);
         }
 
-        if let Some(asset_id) = i.asset_id() {
+        if let Some(asset_id) = i.asset_id(&AssetId::BASE) {
             // Message doesn't store `AssetId` explicitly but works with base asset
             if let Some(offset) = i.repr().asset_id_offset() {
                 cases.asset_id = true;

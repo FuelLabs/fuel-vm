@@ -366,7 +366,6 @@ impl ContractId {
 }
 
 impl AssetId {
-    /// The base native asset of the Fuel protocol.
     pub const BASE: AssetId = AssetId::zeroed();
 }
 

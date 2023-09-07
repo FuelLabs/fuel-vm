@@ -13,9 +13,6 @@
 // Satisfy unused_crate_dependencies lint for self-dependency enabling test features
 use fuel_crypto as _;
 
-/// Required export to implement [`Keystore`].
-#[doc(no_inline)]
-pub use borrown;
 /// Required export for using mnemonic keygen on [`SecretKey::new_from_mnemonic`]
 #[cfg(feature = "std")]
 #[doc(no_inline)]

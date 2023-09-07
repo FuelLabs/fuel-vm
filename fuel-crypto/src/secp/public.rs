@@ -19,7 +19,7 @@ use fuel_types::{
 use k256::elliptic_curve::sec1::ToEncodedPoint;
 
 /// Asymmetric secp256k1 public key, i.e. verifying key, in uncompressed form.
-/// https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography
+/// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#ecdsa-public-key-cryptography>
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]

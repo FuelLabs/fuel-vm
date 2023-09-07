@@ -11,7 +11,6 @@ repository = { workspace = true }
 description = "Fuel cryptographic primitives."
 
 [dependencies]
-borrown = "0.1"
 coins-bip32 = { version = "0.8", default-features = false, optional = true }
 coins-bip39 = { version = "0.8", default-features = false, features = ["english"], optional = true }
 ecdsa = { version = "0.16", default-features = false }

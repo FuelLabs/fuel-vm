@@ -19,7 +19,6 @@ pub mod k1 {
 pub mod r1 {
     pub mod p256;
     pub use self::p256::*;
-
 }
 
 #[cfg(all(test, feature = "std"))]

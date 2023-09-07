@@ -1,19 +1,16 @@
 //! secp256r1 (P-256) functions
 
+#[cfg(feature = "test-helpers")]
+use crate::secp::signature_format::encode_signature;
 use crate::{
     message::Message,
-    secp::signature_format::{
-        decode_signature,
-        encode_signature,
-    },
+    secp::signature_format::decode_signature,
     Error,
 };
+#[cfg(feature = "test-helpers")]
 use ecdsa::RecoveryId;
 use fuel_types::Bytes64;
-use p256::ecdsa::{
-    Signature,
-    VerifyingKey,
-};
+use p256::ecdsa::VerifyingKey;
 
 /// Sign a prehashed message. With the given key.
 #[cfg(feature = "test-helpers")]
@@ -85,11 +82,8 @@ pub fn recover(signature: &Bytes64, message: &Message) -> Result<Bytes64, Error>
 
 #[cfg(test)]
 mod tests {
-    use crate::secp::signature;
-
     use super::*;
 
-    use ecdsa::SignatureEncoding;
     use p256::ecdsa::SigningKey;
     use rand::{
         rngs::StdRng,

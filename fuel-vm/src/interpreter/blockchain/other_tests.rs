@@ -2,7 +2,7 @@ use crate::{
     interpreter::memory::Memory,
     storage::MemoryStorage,
 };
-use std::iter;
+use core::iter;
 
 use super::*;
 use crate::interpreter::PanicContext;

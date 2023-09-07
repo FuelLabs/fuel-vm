@@ -20,10 +20,11 @@ use fuel_types::{
     Word,
 };
 
-use std::{
+use core::{
     ops,
     ops::Range,
 };
+use alloc::boxed::Box;
 
 pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
 

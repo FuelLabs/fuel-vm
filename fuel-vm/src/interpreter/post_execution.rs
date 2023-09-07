@@ -14,7 +14,6 @@ use fuel_types::{
     AssetId,
     Word,
 };
-use std::io;
 
 impl<S, T> Interpreter<S, T>
 where

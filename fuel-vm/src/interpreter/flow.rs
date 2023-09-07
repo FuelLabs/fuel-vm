@@ -72,7 +72,8 @@ use fuel_types::{
     ContractId,
     Word,
 };
-use std::cmp;
+use core::cmp;
+use alloc::vec::Vec;
 
 #[cfg(test)]
 mod jump_tests;

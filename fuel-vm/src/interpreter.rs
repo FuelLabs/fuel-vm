@@ -8,7 +8,8 @@ use crate::{
     context::Context,
     state::Debugger,
 };
-use std::{
+use alloc::vec::Vec;
+use core::{
     mem,
     ops::Index,
 };

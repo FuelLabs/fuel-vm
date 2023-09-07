@@ -52,7 +52,7 @@ use fuel_types::{
     ContractId,
 };
 
-use std::borrow::Cow;
+use alloc::borrow::Cow;
 
 #[cfg(test)]
 mod tests;

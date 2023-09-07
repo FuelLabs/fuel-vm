@@ -53,7 +53,7 @@ macro_rules! script_with_data_offset {
             };
             // evaluate script expression with zeroed data offset to get the script length
             let script_bytes: ::std::vec::Vec<u8> =
-                ::std::iter::IntoIterator::into_iter({ $script }).collect();
+                ::core::iter::IntoIterator::into_iter({ $script }).collect();
             // compute the script data offset within the VM memory given the script length
             {
                 use $crate::{
@@ -76,6 +76,7 @@ macro_rules! script_with_data_offset {
 }
 
 #[allow(missing_docs)]
+#[cfg(feature = "random")]
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {

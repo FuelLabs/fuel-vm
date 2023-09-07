@@ -1,5 +1,5 @@
 //! Types to help constrain inputs to functions to only what is used.
-use std::ops::{
+use core::ops::{
     Deref,
     DerefMut,
 };

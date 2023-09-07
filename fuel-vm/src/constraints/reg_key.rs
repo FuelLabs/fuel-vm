@@ -2,7 +2,7 @@
 //! the register index is valid.
 //!
 //! This module also provides utilities for mutably accessing multiple registers.
-use std::ops::{
+use core::ops::{
     Deref,
     DerefMut,
 };
@@ -284,7 +284,7 @@ impl<'r> ProgramRegisters<'r> {
         b: WriteRegKey,
     ) -> Option<(&mut Word, &mut Word)> {
         match a.cmp(&b) {
-            std::cmp::Ordering::Less => {
+            core::cmp::Ordering::Less => {
                 // Translate the `a` absolute register index to a program register index.
                 let a = a.translate();
                 // Split the array at the first register which is a.
@@ -300,8 +300,8 @@ impl<'r> ProgramRegisters<'r> {
                 Some((i, j))
             }
             // Cannot mutably borrow the same register twice.
-            std::cmp::Ordering::Equal => None,
-            std::cmp::Ordering::Greater => {
+            core::cmp::Ordering::Equal => None,
+            core::cmp::Ordering::Greater => {
                 // Translate the `b` absolute register index to a program register index.
                 let b = b.translate();
                 // Split the array at the first register which is b.

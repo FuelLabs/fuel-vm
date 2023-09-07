@@ -40,6 +40,7 @@ impl RuntimePredicate {
     }
 }
 
+#[cfg(feature = "random")]
 #[test]
 fn from_tx_works() {
     use fuel_asm::op;
@@ -52,7 +53,7 @@ fn from_tx_works() {
         SeedableRng,
     };
 
-    use std::iter;
+    use core::iter;
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 

@@ -29,7 +29,6 @@ use crate::{
     error::BugVariant::GlobalGasUnderflow,
     interpreter::CheckedMetadata,
 };
-use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
 where

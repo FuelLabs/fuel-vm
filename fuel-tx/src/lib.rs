@@ -100,6 +100,7 @@ pub use transaction::{
 
 #[cfg(feature = "std")]
 pub use transaction::Signable;
+#[cfg(feature = "alloc")]
 pub use transaction::UniqueIdentifier;
 
 #[cfg(feature = "alloc")]

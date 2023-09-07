@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+use alloc::{vec::Vec, vec};
+
 use crate::{
     checked_transaction::{
         Checked,

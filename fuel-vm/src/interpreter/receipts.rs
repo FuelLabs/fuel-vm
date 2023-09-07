@@ -1,5 +1,8 @@
-use core::ops::Index;
-use std::mem;
+use alloc::vec::Vec;
+use core::{
+    mem,
+    ops::Index,
+};
 
 use fuel_merkle::binary;
 use fuel_tx::Receipt;
@@ -124,7 +127,7 @@ mod tests {
     };
     use fuel_tx::Receipt;
     use fuel_types::canonical::SerializedSize;
-    use std::iter;
+    use core::iter;
 
     fn create_receipt() -> Receipt {
         Receipt::call(

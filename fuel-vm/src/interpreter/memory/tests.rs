@@ -9,6 +9,7 @@ use fuel_asm::op;
 use fuel_tx::ConsensusParameters;
 use test_case::test_case;
 
+#[cfg(feature = "random")]
 #[test]
 fn memcopy() {
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);

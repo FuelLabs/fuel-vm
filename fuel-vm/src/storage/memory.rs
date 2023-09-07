@@ -36,10 +36,10 @@ use fuel_types::{
 use itertools::Itertools;
 use tai64::Tai64;
 
-use std::{
+use alloc::{
     borrow::Cow,
     collections::BTreeMap,
-    io::Read,
+    vec::Vec,
 };
 
 use super::interpreter::ContractsAssetsStorage;
@@ -387,7 +387,7 @@ impl InterpreterStorage for MemoryStorage {
         let mut iter = self.memory.contract_state.range(start..end);
 
         let mut next_item = iter.next();
-        Ok(std::iter::successors(Some(**start_key), |n| {
+        Ok(core::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
             if add_one(&mut n) {
                 None
@@ -397,15 +397,15 @@ impl InterpreterStorage for MemoryStorage {
         })
         .map(|next_key: [u8; 32]| match next_item.take() {
             Some((k, v)) => match next_key.cmp(k.state_key()) {
-                std::cmp::Ordering::Less => {
+                core::cmp::Ordering::Less => {
                     next_item = Some((k, v));
                     None
                 }
-                std::cmp::Ordering::Equal => {
+                core::cmp::Ordering::Equal => {
                     next_item = iter.next();
                     Some(Cow::Borrowed(v))
                 }
-                std::cmp::Ordering::Greater => None,
+                core::cmp::Ordering::Greater => None,
             },
             None => None,
         })
@@ -420,7 +420,7 @@ impl InterpreterStorage for MemoryStorage {
         values: &[Bytes32],
     ) -> Result<Option<()>, Self::DataError> {
         let mut any_unset_key = false;
-        let values: Vec<_> = std::iter::successors(Some(**start_key), |n| {
+        let values: Vec<_> = core::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
             if add_one(&mut n) {
                 None
@@ -447,7 +447,7 @@ impl InterpreterStorage for MemoryStorage {
     ) -> Result<Option<()>, Self::DataError> {
         let mut all_set_key = true;
         let mut values: std::collections::HashSet<_> =
-            std::iter::successors(Some(**start_key), |n| {
+            core::iter::successors(Some(**start_key), |n| {
                 let mut n = *n;
                 if add_one(&mut n) {
                     None

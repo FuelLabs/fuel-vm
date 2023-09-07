@@ -1,4 +1,7 @@
-use std::borrow::Cow;
+use alloc::{
+    borrow::Cow,
+    vec::Vec,
+};
 
 use crate::{
     error::InterpreterError,

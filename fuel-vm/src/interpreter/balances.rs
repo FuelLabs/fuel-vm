@@ -16,13 +16,11 @@ use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
-use std::{
-    collections::{
-        BTreeMap,
-        HashMap,
-    },
-    ops::Index,
+use alloc::collections::{
+    hash_map::HashMap,
+    BTreeMap,
 };
+use core::ops::Index;
 
 use super::MemoryRange;
 

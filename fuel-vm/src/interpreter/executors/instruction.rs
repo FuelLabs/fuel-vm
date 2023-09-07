@@ -26,7 +26,7 @@ use fuel_asm::{
 };
 use fuel_types::Word;
 
-use std::ops::Div;
+use core::ops::Div;
 
 impl<S, Tx> Interpreter<S, Tx>
 where

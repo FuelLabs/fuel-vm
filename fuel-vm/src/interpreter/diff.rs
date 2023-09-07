@@ -4,16 +4,19 @@
 //! This module is experimental work in progress and currently only used in testing
 //! although it could potentially stabilize to be used in production.
 
-use std::{
-    any::Any,
+use alloc::{
+    vec::Vec,
     collections::{
         HashMap,
         HashSet,
     },
+    sync::Arc,
+};
+use core::{
     fmt::Debug,
+    any::Any,
     hash::Hash,
     ops::AddAssign,
-    sync::Arc,
 };
 
 use fuel_asm::Word;
@@ -196,7 +199,7 @@ fn capture_buffer_state<'iter, I, T>(
     change: fn(Delta<VecState<T>>) -> Change<Deltas>,
 ) -> impl Iterator<Item = Change<Deltas>> + 'iter
 where
-    T: 'static + std::cmp::PartialEq + Clone,
+    T: 'static + core::cmp::PartialEq + Clone,
     I: Iterator<Item = &'iter T> + 'iter,
 {
     a.enumerate().zip(b).filter_map(move |(a, b)| {
@@ -223,8 +226,8 @@ fn capture_map_state<'iter, K, V>(
     change: ChangeDeltaVariant<MapState<K, Option<V>>>,
 ) -> Vec<Change<Deltas>>
 where
-    K: 'static + std::cmp::PartialEq + Eq + Clone + Hash + Debug,
-    V: 'static + std::cmp::PartialEq + Clone + Debug,
+    K: 'static + core::cmp::PartialEq + Eq + Clone + Hash + Debug,
+    V: 'static + core::cmp::PartialEq + Clone + Debug,
 {
     let a_keys: HashSet<_> = a.keys().collect();
     let b_keys: HashSet<_> = b.keys().collect();
@@ -240,8 +243,8 @@ fn capture_map_state_inner<'iter, K, V>(
     b_keys: &'iter HashSet<&K>,
 ) -> impl Iterator<Item = Delta<MapState<K, Option<V>>>> + 'iter
 where
-    K: 'static + std::cmp::PartialEq + Eq + Clone + Hash + Debug,
-    V: 'static + std::cmp::PartialEq + Clone + Debug,
+    K: 'static + core::cmp::PartialEq + Eq + Clone + Hash + Debug,
+    V: 'static + core::cmp::PartialEq + Clone + Debug,
 {
     let a_diff = a_keys.difference(b_keys).map(|k| Delta {
         from: MapState {
@@ -287,7 +290,7 @@ fn capture_vec_state<'iter, I, T>(
     change: ChangeDeltaVariant<VecState<Option<T>>>,
 ) -> impl Iterator<Item = Change<Deltas>> + 'iter
 where
-    T: 'static + std::cmp::PartialEq + Clone,
+    T: 'static + core::cmp::PartialEq + Clone,
     I: Iterator<Item = &'iter T> + 'iter,
 {
     capture_vec_state_inner(a, b).map(move |(index, a, b)| {
@@ -302,13 +305,13 @@ fn capture_vec_state_inner<'iter, I, T>(
     b: I,
 ) -> impl Iterator<Item = (usize, Option<T>, Option<T>)> + 'iter
 where
-    T: 'static + std::cmp::PartialEq + Clone,
+    T: 'static + core::cmp::PartialEq + Clone,
     I: Iterator<Item = &'iter T> + 'iter,
 {
     a.map(Some)
-        .chain(std::iter::repeat(None))
+        .chain(core::iter::repeat(None))
         .enumerate()
-        .zip(b.map(Some).chain(std::iter::repeat(None)))
+        .zip(b.map(Some).chain(core::iter::repeat(None)))
         .take_while(|((_, a), b)| a.is_some() || b.is_some())
         .filter_map(|((index, a), b)| {
             b.map_or(true, |b| a.map_or(true, |a| a != b))
@@ -360,8 +363,8 @@ impl<S, Tx> Interpreter<S, Tx> {
                 .take_while(|((_, a), b)| a != b)
                 .map(|((_, a), b)| (*a, *b))
                 .unzip();
-            from.splice(..0, std::iter::once(s_from)).next();
-            to.splice(..0, std::iter::once(s_to)).next();
+            from.splice(..0, core::iter::once(s_from)).next();
+            to.splice(..0, core::iter::once(s_to)).next();
             diff.changes.push(Change::Memory(Delta {
                 from: Memory { start, bytes: from },
                 to: Memory { start, bytes: to },
@@ -422,7 +425,7 @@ impl<S, Tx> Interpreter<S, Tx> {
 }
 
 fn invert_vec<T: Clone>(vector: &mut Vec<T>, value: &VecState<Option<T>>) {
-    use std::cmp::Ordering;
+    use core::cmp::Ordering;
     match (&value, value.index.cmp(&vector.len())) {
         (
             VecState {

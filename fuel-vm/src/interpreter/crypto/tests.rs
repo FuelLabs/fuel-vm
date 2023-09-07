@@ -11,6 +11,7 @@ use crate::{
 
 use super::*;
 
+#[cfg(feature = "random")]
 #[test]
 fn test_recover_secp256k1() -> Result<(), RuntimeError> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();

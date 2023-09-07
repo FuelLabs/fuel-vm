@@ -23,7 +23,8 @@ use fuel_types::{
     AssetId,
     Word,
 };
-use std::collections::BTreeMap;
+
+use alloc::collections::BTreeMap;
 
 pub(crate) fn initial_free_balances<T>(
     transaction: &T,

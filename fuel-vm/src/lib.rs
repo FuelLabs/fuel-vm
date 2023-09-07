@@ -4,6 +4,9 @@
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 #![deny(clippy::string_slice)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
 
 pub mod arith;
 pub mod backtrace;

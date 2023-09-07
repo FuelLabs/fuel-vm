@@ -1098,7 +1098,7 @@ mod test {
                 random_bytes32(rng),
             ))
         };
-        let data = std::iter::from_fn(gen).take(1_000).collect::<Vec<_>>();
+        let data = core::iter::from_fn(gen).take(1_000).collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();
@@ -1128,7 +1128,7 @@ mod test {
                 random_bytes32(rng),
             ))
         };
-        let data = std::iter::from_fn(gen).take(0).collect::<Vec<_>>();
+        let data = core::iter::from_fn(gen).take(0).collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();
@@ -1158,7 +1158,7 @@ mod test {
                 random_bytes32(rng),
             ))
         };
-        let data = std::iter::from_fn(gen).take(1).collect::<Vec<_>>();
+        let data = core::iter::from_fn(gen).take(1).collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();

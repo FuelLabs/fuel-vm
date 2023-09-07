@@ -1,7 +1,5 @@
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-};
+use alloc::collections::HashMap;
+use core::fmt::Debug;
 
 use fuel_storage::{
     StorageRead,
@@ -234,7 +232,7 @@ fn mappable_delta_to_hashmap<'value, K, V>(
     state: &mut Delta<HashMap<K, &'value V>>,
     delta: &'value MappableDelta<K, V>,
 ) where
-    K: Copy + PartialEq + Eq + std::hash::Hash + 'static,
+    K: Copy + PartialEq + Eq + core::hash::Hash + 'static,
     V: Clone + 'static,
 {
     match delta {

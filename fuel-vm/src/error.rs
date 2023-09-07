@@ -8,11 +8,9 @@ use fuel_asm::{
 use fuel_tx::CheckError;
 use thiserror::Error;
 
-use std::{
+use core::{
     convert::Infallible as StdInfallible,
-    error::Error as StdError,
     fmt,
-    io,
 };
 
 /// Interpreter runtime error variants.

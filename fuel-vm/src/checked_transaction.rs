@@ -19,9 +19,12 @@ use fuel_types::{
     ChainId,
 };
 
-use core::borrow::Borrow;
+use alloc::boxed::Box;
+use core::{
+    borrow::Borrow,
+    future::Future,
+};
 use fuel_tx::ConsensusParameters;
-use std::future::Future;
 
 mod balances;
 pub mod builder;
@@ -607,6 +610,7 @@ impl IntoChecked for Transaction {
     }
 }
 
+#[cfg(feature = "random")]
 #[cfg(test)]
 mod tests {
     use super::*;

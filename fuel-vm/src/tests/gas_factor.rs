@@ -7,7 +7,7 @@ use fuel_tx::{
     FeeParameters,
 };
 use fuel_vm::interpreter::InterpreterParams;
-use std::iter;
+use core::iter;
 
 #[test]
 fn gas_factor_rounds_correctly() {

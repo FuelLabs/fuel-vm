@@ -28,14 +28,13 @@ use crate::storage::{
     ContractsRawCode,
     ContractsState,
 };
-use std::{
+use alloc::{
     borrow::Cow,
-    error::Error as StdError,
-    io,
-    ops::{
-        Deref,
-        DerefMut,
-    },
+    vec::Vec,
+};
+use core::ops::{
+    Deref,
+    DerefMut,
 };
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to

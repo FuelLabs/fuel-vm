@@ -1,15 +1,15 @@
+use num_enum::{
+    IntoPrimitive,
+    TryFromPrimitive,
+};
+
 use super::{
     consts::*,
     Input,
 };
 
-#[cfg(feature = "std")]
-use fuel_types::Word;
-
-#[cfg(feature = "std")]
-use std::io;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
+#[repr(u64)]
 pub enum InputRepr {
     Coin = 0x00,
     Contract = 0x01,
@@ -118,22 +118,5 @@ impl InputRepr {
 impl From<&Input> for InputRepr {
     fn from(input: &Input) -> Self {
         Self::from_input(input)
-    }
-}
-
-#[cfg(feature = "std")]
-impl TryFrom<Word> for InputRepr {
-    type Error = io::Error;
-
-    fn try_from(b: Word) -> Result<Self, Self::Error> {
-        match b {
-            0x00 => Ok(Self::Coin),
-            0x01 => Ok(Self::Contract),
-            0x02 => Ok(Self::Message),
-            id => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("The provided input identifier ({id}) is invalid!"),
-            )),
-        }
     }
 }

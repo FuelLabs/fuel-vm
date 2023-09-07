@@ -1,25 +1,14 @@
-use crate::{
-    receipt::sizes::{
-        CallSizesLayout,
-        LogDataSizesLayout,
-        LogSizesLayout,
-        MessageOutSizesLayout,
-        PanicSizesLayout,
-        ReturnDataSizesLayout,
-        ReturnSizesLayout,
-        RevertSizesLayout,
-        ScriptResultSizesLayout,
-        TransferOutSizesLayout,
-        TransferSizesLayout,
-    },
-    Output,
-};
+use crate::Output;
 use alloc::vec::Vec;
 use derivative::Derivative;
 use fuel_asm::PanicInstruction;
 use fuel_crypto::Hasher;
 use fuel_types::{
-    bytes::SizedBytes,
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSizeFixed,
+    },
     fmt_option_truncated_hex,
     Address,
     AssetId,
@@ -30,26 +19,15 @@ use fuel_types::{
     Word,
 };
 
-#[cfg(feature = "std")]
-mod receipt_std;
-
 mod receipt_repr;
 mod script_result;
-mod sizes;
 
-use receipt_repr::ReceiptRepr;
-
-use crate::{
-    input::message::compute_message_id,
-    receipt::sizes::{
-        BurnSizesLayout,
-        MintSizesLayout,
-    },
-};
+use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Deserialize, Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {
@@ -80,6 +58,7 @@ pub enum Receipt {
         is: Word,
         #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
 
@@ -89,6 +68,7 @@ pub enum Receipt {
         pc: Word,
         is: Word,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         contract_id: Option<ContractId>,
     },
 
@@ -120,6 +100,7 @@ pub enum Receipt {
         is: Word,
         #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
 
@@ -155,6 +136,7 @@ pub enum Receipt {
         digest: Bytes32,
         #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
     Mint {
@@ -719,24 +701,6 @@ impl Receipt {
             _ => None,
         }
     }
-
-    fn variant_len_without_data(variant: ReceiptRepr) -> usize {
-        match variant {
-            ReceiptRepr::Call => CallSizesLayout::LEN,
-            ReceiptRepr::Return => ReturnSizesLayout::LEN,
-            ReceiptRepr::ReturnData => ReturnDataSizesLayout::LEN,
-            ReceiptRepr::Panic => PanicSizesLayout::LEN,
-            ReceiptRepr::Revert => RevertSizesLayout::LEN,
-            ReceiptRepr::Log => LogSizesLayout::LEN,
-            ReceiptRepr::LogData => LogDataSizesLayout::LEN,
-            ReceiptRepr::Transfer => TransferSizesLayout::LEN,
-            ReceiptRepr::TransferOut => TransferOutSizesLayout::LEN,
-            ReceiptRepr::ScriptResult => ScriptResultSizesLayout::LEN,
-            ReceiptRepr::MessageOut => MessageOutSizesLayout::LEN,
-            ReceiptRepr::Mint => MintSizesLayout::LEN,
-            ReceiptRepr::Burn => BurnSizesLayout::LEN,
-        }
-    }
 }
 
 fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
@@ -747,12 +711,6 @@ fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
             None
         }
     })
-}
-
-impl SizedBytes for Receipt {
-    fn serialized_size(&self) -> usize {
-        Self::variant_len_without_data(ReceiptRepr::from(self))
-    }
 }
 
 #[cfg(test)]

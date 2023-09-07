@@ -12,6 +12,7 @@ use fuel_tx::{
     TransactionBuilder,
 };
 use fuel_types::{
+    canonical::SerializedSize,
     AssetId,
     BlockHeight,
     ChainId,
@@ -359,7 +360,7 @@ fn load_external_contract_code() {
 
     // Patch the code with correct jump address
     let transaction_end_addr =
-        tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
+        tx_deploy_loader.transaction().size() - Script::script_offset_static();
     *load_contract.last_mut().unwrap() =
         op::ji((transaction_end_addr / 4) as Immediate24);
 
@@ -502,8 +503,8 @@ fn ldc_reason_helper(
         .expect("failed to check tx");
 
         // Patch the code with correct jump address
-        let transaction_end_addr = tx_deploy_loader.transaction().serialized_size()
-            - Script::script_offset_static();
+        let transaction_end_addr =
+            tx_deploy_loader.transaction().size() - Script::script_offset_static();
         *load_contract.last_mut().unwrap() =
             op::ji((transaction_end_addr / 4) as Immediate24);
 

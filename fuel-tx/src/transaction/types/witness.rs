@@ -1,11 +1,5 @@
 use derivative::Derivative;
-use fuel_types::{
-    bytes::{
-        self,
-        WORD_SIZE,
-    },
-    fmt_truncated_hex,
-};
+use fuel_types::fmt_truncated_hex;
 
 use alloc::vec::Vec;
 
@@ -20,8 +14,6 @@ use fuel_crypto::{
     Message,
     Signature,
 };
-#[cfg(feature = "std")]
-use std::io;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -35,6 +27,7 @@ use rand::{
 #[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Witness {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     data: Vec<u8>,
@@ -117,32 +110,5 @@ impl Distribution<Witness> for Standard {
         rng.fill_bytes(data.as_mut_slice());
 
         data.into()
-    }
-}
-
-impl bytes::SizedBytes for Witness {
-    fn serialized_size(&self) -> usize {
-        WORD_SIZE + bytes::padded_len(self.data.as_slice())
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for Witness {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        bytes::store_bytes(buf, self.data.as_slice()).map(|(n, _)| n)
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for Witness {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        bytes::restore_bytes(buf).map(|(n, data, _)| {
-            self.data = data;
-            n
-        })
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }

@@ -2,11 +2,12 @@
 
 use super::*;
 use crate::TransactionBuilder;
-use fuel_types::bytes::SerializableVec;
+
+use fuel_types::canonical::SerializedSize;
 
 #[test]
 fn tx_with_signed_coin_snapshot() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::CoinSigned(CoinSigned {
             utxo_id: UtxoId::new([1u8; 32].into(), 2),
             owner: [2u8; 32].into(),
@@ -28,7 +29,7 @@ fn tx_with_signed_coin_snapshot() {
 
 #[test]
 fn tx_with_predicate_coin_snapshot() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::CoinPredicate(CoinPredicate {
             utxo_id: UtxoId::new([1u8; 32].into(), 2),
             owner: [2u8; 32].into(),
@@ -50,7 +51,7 @@ fn tx_with_predicate_coin_snapshot() {
 
 #[test]
 fn tx_with_contract_snapshot() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::Contract(Contract {
             utxo_id: UtxoId::new([1u8; 32].into(), 2),
             balance_root: [2u8; 32].into(),
@@ -67,7 +68,7 @@ fn tx_with_contract_snapshot() {
 
 #[test]
 fn tx_with_signed_message_coin() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinSigned(MessageCoinSigned {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
@@ -88,7 +89,7 @@ fn tx_with_signed_message_coin() {
 
 #[test]
 fn tx_with_predicate_message_coin() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinPredicate(MessageCoinPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
@@ -109,7 +110,7 @@ fn tx_with_predicate_message_coin() {
 
 #[test]
 fn tx_with_signed_message_data() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataSigned(MessageDataSigned {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
@@ -130,7 +131,7 @@ fn tx_with_signed_message_data() {
 
 #[test]
 fn tx_with_predicate_message_data() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataPredicate(MessageDataPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),

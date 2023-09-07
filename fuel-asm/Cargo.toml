@@ -13,6 +13,7 @@ description = "Atomic types of the FuelVM."
 [dependencies]
 arbitrary = { version = "1.1", features = ["derive"], optional = true }
 bitflags = "1.3"
+fuel-types = { workspace = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 strum = { version = "0.24", default-features = false, features = ["derive"] }
 wasm-bindgen = { version = "0.2.87", optional = true }
@@ -26,7 +27,7 @@ rstest = "0.16"
 [features]
 default = ["std"]
 typescript = ["wasm-bindgen", "wee_alloc"]
-std = ["serde?/default"]
+std = ["serde?/default", "fuel-types/std"]
 serde = ["dep:serde"]
 
 # docs.rs-specific configuration

@@ -9,8 +9,8 @@
 ///
 /// ```
 /// use fuel_asm::{op, RegId};
-/// use fuel_types::{Immediate18, Word};
-/// use fuel_vm::prelude::{Call, TxParameters, ContractId, Opcode, SerializableVec};
+/// use fuel_types::{Immediate18, Word, canonical::{Serialize, SerializedSize}};
+/// use fuel_vm::prelude::{Call, TxParameters, ContractId, Opcode};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
 ///
@@ -135,10 +135,9 @@ pub mod test_helpers {
         Witness,
     };
     use fuel_types::{
-        bytes::{
-            Deserializable,
-            SerializableVec,
-            SizedBytes,
+        canonical::{
+            Deserialize,
+            SerializedSize,
         },
         Address,
         AssetId,
@@ -305,6 +304,11 @@ pub mod test_helpers {
             self
         }
 
+        pub fn base_asset_id(&mut self, base_asset_id: AssetId) -> &mut TestBuilder {
+            self.consensus_params.base_asset_id = base_asset_id;
+            self
+        }
+
         pub fn build(&mut self) -> Checked<Script> {
             self.builder.with_tx_params(*self.get_tx_params());
             self.builder
@@ -313,6 +317,7 @@ pub mod test_helpers {
                 .with_predicate_params(*self.get_predicate_params());
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
+            self.builder.with_base_asset_id(*self.get_base_asset_id());
             self.builder.finalize_checked(self.block_height)
         }
 
@@ -334,6 +339,10 @@ pub mod test_helpers {
 
         pub fn get_fee_params(&self) -> &FeeParameters {
             self.consensus_params.fee_params()
+        }
+
+        pub fn get_base_asset_id(&self) -> &AssetId {
+            self.consensus_params.base_asset_id()
         }
 
         pub fn get_chain_id(&self) -> ChainId {
@@ -460,9 +469,9 @@ pub mod test_helpers {
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
             let tx_offset = self.get_tx_params().tx_offset();
-            let tx_mem = &interpreter.memory()
-                [tx_offset..(tx_offset + transaction.serialized_size())];
-            let deser_tx = Transaction::from_bytes(tx_mem).unwrap();
+            let mut tx_mem =
+                &interpreter.memory()[tx_offset..(tx_offset + transaction.size())];
+            let deser_tx = Transaction::decode(&mut tx_mem).unwrap();
 
             assert_eq!(deser_tx, transaction);
             if is_reverted {

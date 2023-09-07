@@ -9,6 +9,10 @@ use super::{
 use fuel_crypto::SecretKey;
 use fuel_tx::*;
 use fuel_tx_test_helpers::generate_bytes;
+use fuel_types::canonical::{
+    Deserialize,
+    SerializedSize,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -16,10 +20,7 @@ use rand::{
     SeedableRng,
 };
 
-use std::{
-    cmp,
-    io::Write,
-};
+use core::cmp;
 
 #[test]
 fn gas_limit() {
@@ -767,14 +768,11 @@ fn create() {
         .check(block_height, &test_params())
         .expect("Failed to validate the transaction");
 
-    let mut slot_data = [0u8; 64];
-    let mut slot = StorageSlot::default();
-
     let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
         .map(|i| {
-            slot_data[..8].copy_from_slice(&i.to_be_bytes());
-            let _ = slot.write(&slot_data).unwrap();
-            slot.clone()
+            let mut slot_data = StorageSlot::default().to_bytes();
+            slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
+            StorageSlot::from_bytes(&slot_data).unwrap()
         })
         .collect::<Vec<StorageSlot>>();
 

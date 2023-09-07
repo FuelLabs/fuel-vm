@@ -28,6 +28,7 @@ pub struct ConsensusParameters {
     pub fee_params: FeeParameters,
     pub chain_id: ChainId,
     pub gas_costs: GasCosts,
+    pub base_asset_id: AssetId,
 }
 
 impl Default for ConsensusParameters {
@@ -47,6 +48,7 @@ impl ConsensusParameters {
             fee_params: FeeParameters::DEFAULT,
             chain_id: ChainId::default(),
             gas_costs: GasCosts::default(),
+            base_asset_id: Default::default(),
         }
     }
 
@@ -60,6 +62,7 @@ impl ConsensusParameters {
             fee_params: FeeParameters::DEFAULT,
             chain_id,
             gas_costs: GasCosts::default(),
+            base_asset_id: Default::default(),
         }
     }
 
@@ -72,6 +75,7 @@ impl ConsensusParameters {
         fee_params: FeeParameters,
         chain_id: ChainId,
         gas_costs: GasCosts,
+        base_asset_id: AssetId,
     ) -> Self {
         Self {
             tx_params,
@@ -81,6 +85,7 @@ impl ConsensusParameters {
             fee_params,
             chain_id,
             gas_costs,
+            base_asset_id,
         }
     }
 
@@ -107,6 +112,10 @@ impl ConsensusParameters {
     /// Get the fee parameters
     pub fn fee_params(&self) -> &FeeParameters {
         &self.fee_params
+    }
+
+    pub fn base_asset_id(&self) -> &AssetId {
+        &self.base_asset_id
     }
 
     /// Get the chain ID

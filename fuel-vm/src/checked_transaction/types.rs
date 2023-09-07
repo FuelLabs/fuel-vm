@@ -34,11 +34,14 @@ impl core::ops::Deref for NonRetryableFreeBalances {
 /// More information about it in the specification:
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/tx-validity.md#sufficient-balance>
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub struct RetryableAmount(pub(crate) Word);
+pub struct RetryableAmount {
+    pub(crate) amount: Word,
+    pub(crate) base_asset_id: AssetId,
+}
 
 impl From<RetryableAmount> for Word {
     fn from(value: RetryableAmount) -> Self {
-        value.0
+        value.amount
     }
 }
 
@@ -46,7 +49,7 @@ impl core::ops::Deref for RetryableAmount {
     type Target = Word;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.amount
     }
 }
 
@@ -105,7 +108,11 @@ pub mod create {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, consensus_params.fee_params())?;
+            } = initial_free_balances(
+                &self,
+                consensus_params.fee_params(),
+                consensus_params.base_asset_id(),
+            )?;
             assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionCreateMessageData` above"
@@ -215,11 +222,18 @@ pub mod script {
                 non_retryable_balances,
                 retryable_balance,
                 fee,
-            } = initial_free_balances(&self, consensus_params.fee_params())?;
+            } = initial_free_balances(
+                &self,
+                consensus_params.fee_params(),
+                consensus_params.base_asset_id(),
+            )?;
 
             let metadata = CheckedMetadata {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
-                retryable_balance: RetryableAmount(retryable_balance),
+                retryable_balance: RetryableAmount {
+                    amount: retryable_balance,
+                    base_asset_id: consensus_params.base_asset_id,
+                },
                 block_height,
                 fee,
                 gas_used_by_predicates: 0,

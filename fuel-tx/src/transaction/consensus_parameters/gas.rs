@@ -1,23 +1,26 @@
 //! Tools for gas instrumentalization
 
-use alloc::sync::Arc;
 use core::ops::Deref;
+
+#[cfg(feature = "alloc")]
+use alloc::sync::Arc;
+
 use fuel_types::Word;
 
-#[allow(dead_code)]
 /// Default gas costs are generated from the
 /// `fuel-core` repo using the `collect` bin
 /// in the `fuel-core-benches` crate.
 /// The git sha is included in the file to
 /// show what version of `fuel-core` was used
 /// to generate the costs.
+#[allow(dead_code)]
 mod default_gas_costs;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// Gas unit cost that embeds a unit price and operations count.
 ///
 /// The operations count will be the argument of every variant except
 /// `Accumulated`, that will hold the total acumulated gas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GasUnit {
     /// Atomic operation.
     Atom(Word),
@@ -141,13 +144,15 @@ impl GasUnit {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 /// Gas costings for every op.
 /// The inner values are wrapped in an [`Arc`]
 /// so this is cheap to clone.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg(feature = "alloc")]
 pub struct GasCosts(Arc<GasCostsValues>);
 
 #[cfg(feature = "serde")]
+#[cfg(feature = "alloc")]
 impl<'de> serde::Deserialize<'de> for GasCosts {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -160,6 +165,7 @@ impl<'de> serde::Deserialize<'de> for GasCosts {
 }
 
 #[cfg(feature = "serde")]
+#[cfg(feature = "alloc")]
 impl serde::Serialize for GasCosts {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -169,6 +175,7 @@ impl serde::Serialize for GasCosts {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl GasCosts {
     /// Create new cost values wrapped in an [`Arc`].
     pub fn new(costs: GasCostsValues) -> Self {
@@ -176,6 +183,7 @@ impl GasCosts {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl Default for GasCosts {
     fn default() -> Self {
         Self(Arc::new(GasCostsValues::default()))
@@ -190,11 +198,11 @@ impl Default for GasCostsValues {
     }
 }
 
+/// Gas costs for every op.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default = "GasCostsValues::unit"))]
-/// Gas costs for every op.
 pub struct GasCostsValues {
     pub add: Word,
     pub addi: Word,
@@ -291,11 +299,10 @@ pub struct GasCostsValues {
     pub xori: Word,
 
     // Dependent
-    pub k256: DependentCost,
-    pub s256: DependentCost,
     pub call: DependentCost,
     pub ccp: DependentCost,
     pub csiz: DependentCost,
+    pub k256: DependentCost,
     pub ldc: DependentCost,
     pub logd: DependentCost,
     pub mcl: DependentCost,
@@ -305,19 +312,20 @@ pub struct GasCostsValues {
     pub meq: DependentCost,
     #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
     pub retd: DependentCost,
+    pub s256: DependentCost,
+    pub scwq: DependentCost,
     pub smo: DependentCost,
     pub srwq: DependentCost,
-    pub scwq: DependentCost,
     pub swwq: DependentCost,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Dependent cost is a cost that depends on the number of units.
 /// The cost starts at the base and grows by `dep_per_unit` for every unit.
 ///
 /// For example, if the base is 10 and the `dep_per_unit` is 2,
 /// then the cost for 0 units is 10, 1 unit is 12, 2 units is 14, etc.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DependentCost {
     /// The minimum that this operation can cost.
     pub base: Word,
@@ -326,6 +334,7 @@ pub struct DependentCost {
     pub dep_per_unit: Word,
 }
 
+#[cfg(feature = "alloc")]
 impl GasCosts {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
@@ -431,11 +440,10 @@ impl GasCostsValues {
             wqmm: 0,
             xor: 0,
             xori: 0,
-            k256: DependentCost::free(),
-            s256: DependentCost::free(),
             call: DependentCost::free(),
             ccp: DependentCost::free(),
             csiz: DependentCost::free(),
+            k256: DependentCost::free(),
             ldc: DependentCost::free(),
             logd: DependentCost::free(),
             mcl: DependentCost::free(),
@@ -444,9 +452,10 @@ impl GasCostsValues {
             mcpi: DependentCost::free(),
             meq: DependentCost::free(),
             retd: DependentCost::free(),
+            s256: DependentCost::free(),
+            scwq: DependentCost::free(),
             smo: DependentCost::free(),
             srwq: DependentCost::free(),
-            scwq: DependentCost::free(),
             swwq: DependentCost::free(),
         }
     }
@@ -543,11 +552,10 @@ impl GasCostsValues {
             wqmm: 1,
             xor: 1,
             xori: 1,
-            k256: DependentCost::unit(),
-            s256: DependentCost::unit(),
             call: DependentCost::unit(),
             ccp: DependentCost::unit(),
             csiz: DependentCost::unit(),
+            k256: DependentCost::unit(),
             ldc: DependentCost::unit(),
             logd: DependentCost::unit(),
             mcl: DependentCost::unit(),
@@ -556,9 +564,10 @@ impl GasCostsValues {
             mcpi: DependentCost::unit(),
             meq: DependentCost::unit(),
             retd: DependentCost::unit(),
+            s256: DependentCost::unit(),
+            scwq: DependentCost::unit(),
             smo: DependentCost::unit(),
             srwq: DependentCost::unit(),
-            scwq: DependentCost::unit(),
             swwq: DependentCost::unit(),
         }
     }
@@ -582,6 +591,7 @@ impl DependentCost {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl Deref for GasCosts {
     type Target = GasCostsValues;
 

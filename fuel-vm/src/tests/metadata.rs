@@ -25,6 +25,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     bytes,
+    canonical::SerializedSize,
     BlockHeight,
     ChainId,
 };
@@ -393,6 +394,8 @@ fn get_transaction_fields() {
 
     let receipts_root = tx.as_ref().receipts_root();
 
+    let base_asset_id = AssetId::BASE;
+
     #[rustfmt::skip]
     let cases = vec![
         inputs_bytes[0].clone(), // 0 - ScriptInputAtIndex
@@ -401,7 +404,7 @@ fn get_transaction_fields() {
         receipts_root.to_vec(), // 3 - ScriptReceiptsRoot
         inputs[0].utxo_id().unwrap().clone().to_bytes(), // 4- InputCoinTxId
         inputs[0].input_owner().unwrap().to_vec(), // 5 - InputCoinOwner
-        inputs[0].asset_id().unwrap().to_vec(), // 6 - InputCoinAssetId
+        inputs[0].asset_id(&base_asset_id).unwrap().to_vec(), // 6 - InputCoinAssetId
         predicate.clone(), // 7 - InputCoinPredicate
         predicate_data.clone(), // 8 - InputCoinPredicateData
         inputs[2].utxo_id().unwrap().clone().to_bytes(), // 9 - InputContractTxId

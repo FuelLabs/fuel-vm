@@ -31,7 +31,10 @@ use fuel_tx::{
     Script,
 };
 use fuel_types::{
-    bytes::SizedBytes,
+    canonical::{
+        Serialize,
+        SerializedSize,
+    },
     AssetId,
     BlockHeight,
     Bytes32,
@@ -99,11 +102,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
     idx: usize,
 ) -> Result<Option<MemoryRange>, RuntimeError> {
     absolute_output_offset(tx, tx_offset, idx)
-        .and_then(|offset| {
-            tx.outputs()
-                .get(idx)
-                .map(|output| (offset, output.serialized_size()))
-        })
+        .and_then(|offset| tx.outputs().get(idx).map(|output| (offset, output.size())))
         .map_or(Ok(None), |(offset, output_size)| {
             Ok(Some(MemoryRange::new(offset, output_size)?))
         })
@@ -117,10 +116,14 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
 ) -> Result<(), RuntimeError> {
     let mem_range = absolute_output_mem_range(tx, tx_offset, idx)?
         .ok_or(PanicReason::OutputNotFound)?;
-    let mem = mem_range.write(memory);
-
-    tx.output_to_mem(idx, mem)?;
-
+    let mut mem = mem_range.write(memory);
+    let output = tx
+        .outputs_mut()
+        .get_mut(idx)
+        .expect("Invalid output index; checked above");
+    output
+        .encode(&mut mem)
+        .expect("Unable to write output into given memory range");
     Ok(())
 }
 
@@ -253,11 +256,12 @@ pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
 
 /// Reduces the unspent balance of the base asset
 pub(crate) fn base_asset_balance_sub(
+    base_asset_id: &AssetId,
     balances: &mut RuntimeBalances,
     memory: &mut [u8; MEM_SIZE],
     value: Word,
 ) -> Result<(), RuntimeError> {
-    external_asset_id_balance_sub(balances, memory, &AssetId::zeroed(), value)
+    external_asset_id_balance_sub(balances, memory, base_asset_id, value)
 }
 
 /// Reduces the unspent balance of a given asset ID

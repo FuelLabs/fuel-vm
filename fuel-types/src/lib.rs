@@ -4,21 +4,24 @@
 #![warn(unsafe_code)]
 #![warn(missing_docs)]
 #![deny(unused_crate_dependencies)]
+// `fuel-derive` requires `fuel_types` import
+#![allow(unused_crate_dependencies)]
+extern crate self as fuel_types;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
 extern crate core;
 
+pub mod canonical;
+
 mod array_types;
 #[cfg(feature = "alloc")]
 mod fmt;
-mod layout;
 mod numeric_types;
 
 pub use array_types::*;
 #[cfg(feature = "alloc")]
 pub use fmt::*;
-pub use layout::*;
 pub use numeric_types::*;
 
 /// Word-aligned bytes serialization functions.

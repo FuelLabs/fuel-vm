@@ -28,6 +28,7 @@ use std::collections::BTreeMap;
 pub(crate) fn initial_free_balances<T>(
     transaction: &T,
     params: &FeeParameters,
+    base_asset_id: &AssetId,
 ) -> Result<AvailableBalances, CheckError>
 where
     T: Chargeable + field::Inputs + field::Outputs,
@@ -51,7 +52,7 @@ where
             // Sum message coin inputs
             Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
-                *non_retryable_balances.entry(AssetId::BASE).or_default() += amount;
+                *non_retryable_balances.entry(*base_asset_id).or_default() += amount;
             }
             // Sum data messages
             Input::MessageDataSigned(MessageDataSigned { amount, .. })
@@ -66,7 +67,7 @@ where
     let fee = TransactionFee::checked_from_tx(params, transaction)
         .ok_or(CheckError::ArithmeticOverflow)?;
 
-    let base_asset_balance = non_retryable_balances.entry(AssetId::BASE).or_default();
+    let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
 
     *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
         CheckError::InsufficientFeeAmount {

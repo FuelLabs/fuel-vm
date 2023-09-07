@@ -218,6 +218,8 @@ pub struct CheckPredicateParams {
     pub tx_offset: usize,
     /// Fee parameters
     pub fee_params: FeeParameters,
+    /// Base Asset ID
+    pub base_asset_id: AssetId,
 }
 
 impl Default for CheckPredicateParams {
@@ -244,6 +246,7 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
             max_message_data_length: value.predicate_params().max_message_data_length,
             tx_offset: value.tx_params().tx_offset(),
             fee_params: *(value.fee_params()),
+            base_asset_id: value.base_asset_id,
         }
     }
 }
@@ -631,6 +634,7 @@ mod tests {
             FeeParameters::default().with_gas_price_factor(factor),
             Default::default(),
             Default::default(),
+            Default::default(),
         )
     }
 
@@ -784,11 +788,12 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -813,11 +818,12 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -843,9 +849,10 @@ mod tests {
 
         let rng = &mut StdRng::seed_from_u64(seed);
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -870,9 +877,10 @@ mod tests {
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
+        let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_min_fee(&tx, &fee_params) {
+        if let Ok(valid) = is_valid_min_fee(&tx, &fee_params, &base_asset_id) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -1129,11 +1137,13 @@ mod tests {
     fn is_valid_max_fee<Tx>(
         tx: &Tx,
         fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
     ) -> Result<bool, CheckError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let available_balances = balances::initial_free_balances(tx, fee_params)?;
+        let available_balances =
+            balances::initial_free_balances(tx, fee_params, base_asset_id)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let bytes = (tx.metered_bytes_size() as u128)
             * fee_params.gas_per_byte as u128
@@ -1152,11 +1162,13 @@ mod tests {
     fn is_valid_min_fee<Tx>(
         tx: &Tx,
         fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
     ) -> Result<bool, CheckError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let available_balances = balances::initial_free_balances(tx, fee_params)?;
+        let available_balances =
+            balances::initial_free_balances(tx, fee_params, base_asset_id)?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
         let bytes = (tx.metered_bytes_size() as u128

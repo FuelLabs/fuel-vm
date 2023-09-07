@@ -13,7 +13,7 @@ use fuel_tx::{
     Input,
     Script,
 };
-use fuel_types::bytes::Deserializable;
+use fuel_types::canonical::Deserialize;
 use test_case::test_case;
 
 #[test_case(0, 32 => Ok(()); "Can read contract balance")]

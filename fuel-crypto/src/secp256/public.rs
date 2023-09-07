@@ -49,7 +49,6 @@ impl AsRef<[u8]> for PublicKey {
     }
 }
 
-// TODO: remove this, as it can be used to accidentally bypass validation
 impl AsMut<[u8]> for PublicKey {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()

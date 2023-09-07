@@ -53,9 +53,11 @@ pub fn sign<SK: Into<k256::SecretKey>>(secret: SK, message: &Message) -> [u8; 64
         .sign_prehash_recoverable(&**message)
         .expect("Infallible signature operation");
 
-    // Hack: see secp256k1 more more info
-    // TODO: clean up
-    // TODO: merge impl with secp256k1
+    // TODO: this is a hack to get the recovery id. The signature should be normalized
+    // before computing the recovery id, but k256 library doesn't support this, and
+    // instead always computes the recovery id from non-normalized signature.
+    // So instead the recovery id is determined by checking which variant matches
+    // the original public key.
 
     let recid1 = RecoveryId::new(false, false);
     let recid2 = RecoveryId::new(true, false);
@@ -102,13 +104,12 @@ pub fn verify(
     public_key: [u8; 64],
     message: &Message,
 ) -> Result<(), Error> {
-    // TODO: explain why hazmat is needed and why Message is prehash
     use ecdsa::signature::hazmat::PrehashVerifier;
 
     let vk = VerifyingKey::from_encoded_point(&EncodedPoint::from_untagged_bytes(
         &public_key.into(),
     ))
-    .expect("Invalid public key");
+    .map_err(|_| Error::InvalidPublicKey)?;
 
     let (sig, _) = decode_signature(signature);
     let sig =

@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.37.0]
+
 #### Breaking
 
 - [#573](https://github.com/FuelLabs/fuel-vm/pull/573): Added `base_asset_id` as a required field to `FeeParameters`. `base_asset_id` is used to supply the ID of the base asset. 

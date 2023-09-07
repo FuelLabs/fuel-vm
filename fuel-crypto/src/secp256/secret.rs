@@ -4,7 +4,6 @@ use core::{
     fmt,
     ops::Deref,
     str,
-    str::FromStr,
 };
 
 use zeroize::Zeroize;
@@ -38,14 +37,6 @@ pub struct SecretKey(Bytes32);
 impl SecretKey {
     /// Memory length of the type
     pub const LEN: usize = Bytes32::LEN;
-
-    /// Construct a `SecretKey` directly from its bytes.
-    ///
-    /// This constructor expects the given bytes to be a valid secret key. Validity is
-    /// unchecked.
-    fn from_bytes_unchecked(bytes: [u8; Self::LEN]) -> Self {
-        Self(bytes.into())
-    }
 }
 
 impl Deref for SecretKey {
@@ -143,6 +134,8 @@ impl SecretKey {
         phrase: &str,
         path: &str,
     ) -> Result<Self, Error> {
+        use core::str::FromStr;
+
         let mnemonic = Mnemonic::<W>::new_from_phrase(phrase)?;
         let path = DerivationPath::from_str(path)?;
         Self::new_from_mnemonic(path, mnemonic)
@@ -156,7 +149,7 @@ impl SecretKey {
         let derived_priv_key = m.derive_key(d, None)?;
         let key: &coins_bip32::prelude::SigningKey = derived_priv_key.as_ref();
         let bytes: [u8; Self::LEN] = key.to_bytes().into();
-        Ok(SecretKey::from_bytes_unchecked(bytes))
+        Ok(SecretKey(Bytes32::from(bytes)))
     }
 
     /// Return the curve representation of this secret.

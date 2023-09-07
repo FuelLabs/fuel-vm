@@ -9,8 +9,10 @@ use crate::{
         PublicKey,
     },
     Error,
-    SecretKey,
 };
+
+#[cfg(feature = "random")]
+use crate::SecretKey;
 
 use k256::{
     ecdsa::{

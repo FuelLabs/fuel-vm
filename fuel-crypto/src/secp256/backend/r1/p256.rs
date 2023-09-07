@@ -1,10 +1,10 @@
 //! secp256r1 (P-256) functions
 
 #[cfg(feature = "test-helpers")]
-use crate::secp::signature_format::encode_signature;
+use crate::secp256::signature_format::encode_signature;
 use crate::{
     message::Message,
-    secp::signature_format::decode_signature,
+    secp256::signature_format::decode_signature,
     Error,
 };
 #[cfg(feature = "test-helpers")]

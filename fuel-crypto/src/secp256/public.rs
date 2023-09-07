@@ -1,6 +1,6 @@
 use crate::{
     hasher::Hasher,
-    secp::SecretKey,
+    secp256::SecretKey,
     Error,
 };
 use core::{

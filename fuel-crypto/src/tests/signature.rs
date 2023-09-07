@@ -45,8 +45,8 @@ fn verify() {
         let secret = SecretKey::random(rng);
         let public = secret.public_key();
 
-        let pub1 = crate::secp::backend::k1::public_key(&secret);
-        let pub2 = crate::secp::backend::k1::public_key(&secret);
+        let pub1 = crate::secp256::backend::k1::public_key(&secret);
+        let pub2 = crate::secp256::backend::k1::public_key(&secret);
         assert_eq!(pub1, pub2);
 
         let signature = Signature::sign(&secret, &message);

@@ -10,7 +10,7 @@ use core::{
 use zeroize::Zeroize;
 
 use crate::{
-    secp::PublicKey,
+    secp256::PublicKey,
     Error,
 };
 
@@ -161,7 +161,7 @@ impl SecretKey {
 
     /// Return the curve representation of this secret.
     pub fn public_key(&self) -> PublicKey {
-        crate::secp::backend::k1::public_key(self)
+        crate::secp256::backend::k1::public_key(self)
     }
 }
 

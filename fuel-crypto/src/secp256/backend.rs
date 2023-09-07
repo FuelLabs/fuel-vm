@@ -31,7 +31,7 @@ mod tests {
 
     use crate::{
         message::Message,
-        secp::SecretKey,
+        secp256::SecretKey,
     };
 
     use super::k1::{

@@ -1,6 +1,6 @@
 use crate::{
     message::Message,
-    secp::{
+    secp256::{
         signature_format::{
             decode_signature,
             encode_signature,

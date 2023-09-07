@@ -33,16 +33,16 @@ mod error;
 mod hasher;
 mod message;
 mod mnemonic;
-mod secp;
+mod secp256;
 
 pub mod ed25519;
 
-pub use secp::backend::{
+pub use secp256::backend::{
     k1 as secp256k1,
     r1 as secp256r1,
 };
 
-pub use secp::{
+pub use secp256::{
     PublicKey,
     SecretKey,
     Signature,

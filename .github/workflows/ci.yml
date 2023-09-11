@@ -59,7 +59,7 @@ jobs:
           - command: check
             args: --all-targets --all-features
           - command: check
-            args: --target thumbv6m-none-eabi -p fuel-crypto --no-default-features
+            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-crypto -p fuel-storage -p fuel-merkle --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: check

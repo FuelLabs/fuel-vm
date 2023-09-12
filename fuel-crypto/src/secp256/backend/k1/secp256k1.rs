@@ -39,7 +39,7 @@ pub fn random_secret(rng: &mut (impl CryptoRng + RngCore)) -> SecretKey {
 }
 
 /// Derives the public key from a given secret key
-pub fn public_key<SK: Into<secp256k1::SecretKey>>(secret: SK) -> PublicKey {
+pub fn public_key(secret: &SecretKey) -> PublicKey {
     let sk: secp256k1::SecretKey = secret.into();
     let vk = secp256k1::PublicKey::from_secret_key(&CONTEXT, &sk);
     vk.into()
@@ -49,7 +49,7 @@ pub fn public_key<SK: Into<secp256k1::SecretKey>>(secret: SK) -> PublicKey {
 ///
 /// The compression scheme is described in
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md>
-pub fn sign<SK: Into<secp256k1::SecretKey>>(secret: SK, message: &Message) -> [u8; 64] {
+pub fn sign(secret: &SecretKey, message: &Message) -> [u8; 64] {
     let signature = CONTEXT.sign_ecdsa_recoverable(&message.into(), &secret.into());
     let (recovery_id, signature) = signature.serialize_compact();
 

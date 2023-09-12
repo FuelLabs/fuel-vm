@@ -35,7 +35,7 @@ pub fn random_secret(rng: &mut (impl CryptoRng + RngCore)) -> SecretKey {
 }
 
 /// Derives the public key from a given secret key
-pub fn public_key<SK: Into<k256::SecretKey>>(secret: SK) -> PublicKey {
+pub fn public_key(secret: &SecretKey) -> PublicKey {
     let sk: k256::SecretKey = secret.into();
     let sk: ecdsa::SigningKey<k256::Secp256k1> = sk.into();
     let vk = sk.verifying_key();
@@ -46,7 +46,7 @@ pub fn public_key<SK: Into<k256::SecretKey>>(secret: SK) -> PublicKey {
 ///
 /// The compression scheme is described in
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md>
-pub fn sign<SK: Into<k256::SecretKey>>(secret: SK, message: &Message) -> [u8; 64] {
+pub fn sign(secret: &SecretKey, message: &Message) -> [u8; 64] {
     let sk: k256::SecretKey = secret.into();
     let sk: ecdsa::SigningKey<k256::Secp256k1> = sk.into();
     let (signature, _recid) = sk

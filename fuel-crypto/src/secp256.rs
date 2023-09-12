@@ -1,4 +1,4 @@
-pub mod backend;
+pub(crate) mod backend;
 
 mod public;
 mod secret;

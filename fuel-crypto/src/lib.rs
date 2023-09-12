@@ -37,10 +37,7 @@ mod secp256;
 
 pub mod ed25519;
 
-pub use secp256::backend::{
-    k1 as secp256k1,
-    r1 as secp256r1,
-};
+pub use secp256::backend::r1 as secp256r1;
 
 pub use secp256::{
     PublicKey,

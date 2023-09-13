@@ -120,22 +120,6 @@ impl fmt::Display for PanicReason {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for PanicReason {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<PanicReason> for std::io::Error {
-    fn from(reason: PanicReason) -> Self {
-        use std::io;
-
-        io::Error::new(io::ErrorKind::Other, reason)
-    }
-}
-
 impl From<core::array::TryFromSliceError> for PanicReason {
     fn from(_: core::array::TryFromSliceError) -> Self {
         Self::MemoryOverflow

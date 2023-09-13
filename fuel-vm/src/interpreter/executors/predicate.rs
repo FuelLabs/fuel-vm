@@ -42,13 +42,17 @@ where
                     if r == 1 {
                         return Ok(ProgramState::Return(r))
                     } else {
-                        return Err(InterpreterError::PredicateFailure)
+                        return Err(InterpreterError::Panic(
+                            PanicReason::ContractInstructionNotAllowed,
+                        ))
                     }
                 }
 
                 // A predicate is not expected to return data
                 ExecuteState::ReturnData(_) => {
-                    return Err(InterpreterError::PredicateFailure)
+                    return Err(InterpreterError::Panic(
+                        PanicReason::ContractInstructionNotAllowed,
+                    ))
                 }
 
                 ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),

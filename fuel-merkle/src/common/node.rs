@@ -1,6 +1,9 @@
-use crate::common::{
-    Bytes32,
-    Bytes8,
+use crate::{
+    common::{
+        Bytes32,
+        Bytes8,
+    },
+    sparse::StorageNodeError,
 };
 
 use alloc::string::String;
@@ -29,14 +32,12 @@ pub trait Node {
 }
 
 pub trait ParentNode: Sized + Node {
-    type Error;
-
     fn left_child(&self) -> ChildResult<Self>;
     fn right_child(&self) -> ChildResult<Self>;
 }
 
 #[allow(type_alias_bounds)]
-pub type ChildResult<T: ParentNode> = Result<T, ChildError<T::Key, T::Error>>;
+pub type ChildResult<T: ParentNode> = Result<T, ChildError<T::Key, StorageNodeError>>;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]

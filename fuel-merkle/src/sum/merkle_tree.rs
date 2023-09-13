@@ -11,6 +11,7 @@ use crate::{
 
 use fuel_storage::{
     Mappable,
+    StorageError,
     StorageMutate,
 };
 
@@ -61,10 +62,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Node, OwnedValue = Node>,
-    StorageType: StorageMutate<TableType, Error = StorageError>,
+    StorageType: StorageMutate<TableType>,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {

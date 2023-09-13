@@ -2,6 +2,7 @@ use core::fmt::Debug;
 use hashbrown::HashMap;
 
 use fuel_storage::{
+    StorageError,
     StorageRead,
     StorageSize,
 };
@@ -292,17 +293,15 @@ where
     S: StorageInspect<Type>,
     S: InterpreterStorage,
 {
-    type Error = <S as StorageInspect<Type>>::Error;
-
     fn get(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<std::borrow::Cow<<Type as Mappable>::OwnedValue>>, Self::Error>
+    ) -> Result<Option<std::borrow::Cow<<Type as Mappable>::OwnedValue>>, StorageError>
     {
         <S as StorageInspect<Type>>::get(&self.0, key)
     }
 
-    fn contains_key(&self, key: &<Type as Mappable>::Key) -> Result<bool, Self::Error> {
+    fn contains_key(&self, key: &<Type as Mappable>::Key) -> Result<bool, StorageError> {
         <S as StorageInspect<Type>>::contains_key(&self.0, key)
     }
 }
@@ -315,7 +314,7 @@ where
     fn size_of_value(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<Option<usize>, StorageError> {
         <S as StorageSize<Type>>::size_of_value(&self.0, key)
     }
 }
@@ -329,14 +328,14 @@ where
         &self,
         key: &<Type as Mappable>::Key,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<Option<usize>, StorageError> {
         <S as StorageRead<Type>>::read(&self.0, key, buf)
     }
 
     fn read_alloc(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
+    ) -> Result<Option<Vec<u8>>, StorageError> {
         <S as StorageRead<Type>>::read_alloc(&self.0, key)
     }
 }
@@ -351,7 +350,7 @@ where
         &mut self,
         key: &<Type as Mappable>::Key,
         value: &<Type as Mappable>::Value,
-    ) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
+    ) -> Result<Option<<Type as Mappable>::OwnedValue>, StorageError> {
         let existing = <S as StorageMutate<Type>>::insert(&mut self.0, key, value)?;
         self.1.push(<Type as StorageType>::record_insert(
             key,
@@ -364,7 +363,7 @@ where
     fn remove(
         &mut self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
+    ) -> Result<Option<<Type as Mappable>::OwnedValue>, StorageError> {
         let existing = <S as StorageMutate<Type>>::remove(&mut self.0, key)?;
         if let Some(existing) = &existing {
             self.1
@@ -379,7 +378,7 @@ where
     S: InterpreterStorage,
     S: MerkleRootStorage<Key, Type>,
 {
-    fn root(&self, key: &Key) -> Result<fuel_storage::MerkleRoot, Self::Error> {
+    fn root(&self, key: &Key) -> Result<fuel_storage::MerkleRoot, StorageError> {
         <S as MerkleRootStorage<Key, Type>>::root(&self.0, key)
     }
 }
@@ -393,21 +392,19 @@ impl<S> InterpreterStorage for Record<S>
 where
     S: InterpreterStorage,
 {
-    type DataError = <S as InterpreterStorage>::DataError;
-
-    fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
+    fn block_height(&self) -> Result<BlockHeight, StorageError> {
         self.0.block_height()
     }
 
-    fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
+    fn timestamp(&self, height: BlockHeight) -> Result<Word, StorageError> {
         self.0.timestamp(height)
     }
 
-    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError> {
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, StorageError> {
         self.0.block_hash(block_height)
     }
 
-    fn coinbase(&self) -> Result<fuel_types::Address, Self::DataError> {
+    fn coinbase(&self) -> Result<fuel_types::Address, StorageError> {
         self.0.coinbase()
     }
 
@@ -416,7 +413,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<std::borrow::Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<std::borrow::Cow<Bytes32>>>, StorageError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
 
@@ -425,7 +422,7 @@ where
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<Option<()>, StorageError> {
         self.0
             .merkle_contract_state_insert_range(contract, start_key, values)
     }
@@ -435,7 +432,7 @@ where
         contract: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<Option<()>, StorageError> {
         self.0
             .merkle_contract_state_remove_range(contract, start_key, range)
     }

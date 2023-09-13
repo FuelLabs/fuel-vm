@@ -15,8 +15,6 @@ use crate::{
     context::Context,
     error::{
         Bug,
-        BugId,
-        BugVariant,
         InterpreterError,
         PredicateVerificationFailed,
     },
@@ -28,6 +26,7 @@ use crate::{
         RuntimeBalances,
     },
     predicate::RuntimePredicate,
+    prelude::BugVariant,
     state::{
         ExecuteState,
         ProgramState,
@@ -42,7 +41,6 @@ use crate::{
 
 use crate::{
     checked_transaction::CheckPredicateParams,
-    error::BugVariant::GlobalGasUnderflow,
     interpreter::InterpreterParams,
 };
 use fuel_asm::{
@@ -337,7 +335,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let gas_used = available_gas
             .checked_sub(vm.remaining_gas())
-            .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
@@ -545,7 +543,7 @@ where
                 .transaction()
                 .limit()
                 .checked_sub(self.remaining_gas())
-                .ok_or_else(|| Bug::new(BugId::ID002, BugVariant::GlobalGasUnderflow))?;
+                .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
             // Catch VM panic and don't propagate, generating a receipt
             let (status, program) = match program {

@@ -112,7 +112,7 @@ where
 pub trait VmStateCapture {
     /// The actual type is defined by the implementations of
     /// the Capture trait.
-    type State<S: std::fmt::Debug + Clone>: std::fmt::Debug + Clone;
+    type State<S: core::fmt::Debug + Clone>: core::fmt::Debug + Clone;
 }
 
 #[derive(Debug, Clone)]
@@ -122,7 +122,7 @@ pub trait VmStateCapture {
 pub struct Deltas;
 
 impl VmStateCapture for Deltas {
-    type State<S: std::fmt::Debug + Clone> = Delta<S>;
+    type State<S: core::fmt::Debug + Clone> = Delta<S>;
 }
 
 #[derive(Debug, Clone)]
@@ -140,7 +140,7 @@ pub struct Delta<S> {
 pub struct InitialVmState;
 
 impl VmStateCapture for InitialVmState {
-    type State<S: std::fmt::Debug + Clone> = Previous<S>;
+    type State<S: core::fmt::Debug + Clone> = Previous<S>;
 }
 #[derive(Debug, Clone)]
 /// The State type when capturing the initial state of the VM.
@@ -178,7 +178,7 @@ struct Memory {
 }
 
 impl Debug for Memory {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
             f.debug_struct("Memory")
                 .field("start", &self.start)
@@ -226,7 +226,7 @@ fn capture_map_state<'iter, K, V>(
     change: ChangeDeltaVariant<MapState<K, Option<V>>>,
 ) -> Vec<Change<Deltas>>
 where
-    K: 'static + core::cmp::PartialEq + Eq + Clone + Hash + Debug,
+    K: 'static + PartialEq + Eq + Clone + Hash + Debug,
     V: 'static + core::cmp::PartialEq + Clone + Debug,
 {
     let a_keys: HashSet<_> = a.keys().collect();
@@ -243,19 +243,13 @@ fn capture_map_state_inner<'iter, K, V>(
     b_keys: &'iter HashSet<&K>,
 ) -> impl Iterator<Item = Delta<MapState<K, Option<V>>>> + 'iter
 where
-    K: 'static
-        + core::cmp::PartialEq
-        + Eq
-        + Clone
-        + Hash
-        + Debug
-        + for<'a> core::borrow::Borrow<&'a K>,
+    K: 'static + PartialEq + Eq + Clone + Hash + Debug,
     V: 'static + core::cmp::PartialEq + Clone + Debug,
 {
     let a_diff = a_keys.difference(b_keys).map(|k| Delta {
         from: MapState {
             key: (*k).clone(),
-            value: Some(a[k].clone()),
+            value: Some(a[*k].clone()),
         },
         to: MapState {
             key: (*k).clone(),
@@ -269,12 +263,12 @@ where
         },
         to: MapState {
             key: (*k).clone(),
-            value: Some(b[k].clone()),
+            value: Some(b[*k].clone()),
         },
     });
     let intersection = a_keys.intersection(b_keys).filter_map(|k| {
-        let value_a = &a[k];
-        let value_b = &b[k];
+        let value_a = &a[*k];
+        let value_b = &b[*k];
         (value_a != value_b).then(|| Delta {
             from: MapState {
                 key: (*k).clone(),

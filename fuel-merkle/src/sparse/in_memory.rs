@@ -18,6 +18,7 @@ use alloc::{
     borrow::Cow,
     vec::Vec,
 };
+use fuel_storage::StorageError;
 
 /// The table of the Sparse Merkle tree's nodes. [`MerkleTree`] works with it as a sparse
 /// merkle tree, where the storage key is `Bytes32` and the value is the
@@ -82,13 +83,11 @@ impl MerkleTree {
         struct EmptyStorage;
 
         impl StorageInspect<NodesTable> for EmptyStorage {
-            type Error = core::convert::Infallible;
-
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, StorageError> {
                 Ok(None)
             }
 
-            fn contains_key(&self, _: &Bytes32) -> Result<bool, Self::Error> {
+            fn contains_key(&self, _: &Bytes32) -> Result<bool, StorageError> {
                 Ok(false)
             }
         }
@@ -98,11 +97,11 @@ impl MerkleTree {
                 &mut self,
                 _: &Bytes32,
                 _: &Primitive,
-            ) -> Result<Option<Primitive>, Self::Error> {
+            ) -> Result<Option<Primitive>, StorageError> {
                 Ok(None)
             }
 
-            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, StorageError> {
                 Ok(None)
             }
         }
@@ -131,13 +130,11 @@ impl MerkleTree {
         }
 
         impl StorageInspect<NodesTable> for VectorStorage {
-            type Error = core::convert::Infallible;
-
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, StorageError> {
                 unimplemented!("Read operation is not supported")
             }
 
-            fn contains_key(&self, _: &Bytes32) -> Result<bool, Self::Error> {
+            fn contains_key(&self, _: &Bytes32) -> Result<bool, StorageError> {
                 unimplemented!("Read operation is not supported")
             }
         }
@@ -147,12 +144,12 @@ impl MerkleTree {
                 &mut self,
                 key: &Bytes32,
                 value: &Primitive,
-            ) -> Result<Option<Primitive>, Self::Error> {
+            ) -> Result<Option<Primitive>, StorageError> {
                 self.storage.push((*key, *value));
                 Ok(None)
             }
 
-            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, StorageError> {
                 unimplemented!("Remove operation is not supported")
             }
         }

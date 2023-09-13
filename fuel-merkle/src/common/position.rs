@@ -7,7 +7,6 @@ use crate::common::{
     Bytes8,
     PositionPath,
 };
-use core::convert::Infallible;
 
 /// # Position
 ///
@@ -273,8 +272,6 @@ impl Node for Position {
 }
 
 impl ParentNode for Position {
-    type Error = Infallible;
-
     fn left_child(&self) -> ChildResult<Self> {
         Ok(Position::left_child(*self))
     }

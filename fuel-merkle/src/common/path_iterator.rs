@@ -211,7 +211,6 @@ mod test {
         Bytes8,
     };
     use alloc::vec::Vec;
-    use core::convert::Infallible;
 
     #[derive(Debug, Clone, PartialEq)]
     struct TestNode {
@@ -273,8 +272,6 @@ mod test {
     }
 
     impl ParentNode for TestNode {
-        type Error = Infallible;
-
         fn left_child(&self) -> ChildResult<Self> {
             Ok(TestNode::child(self, -1))
         }

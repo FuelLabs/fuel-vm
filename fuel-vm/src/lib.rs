@@ -119,9 +119,7 @@ pub mod prelude {
         context::Context,
         error::{
             Bug,
-            BugId,
             BugVariant,
-            Infallible,
             InterpreterError,
             RuntimeError,
         },

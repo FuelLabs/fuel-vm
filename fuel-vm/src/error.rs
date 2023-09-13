@@ -5,13 +5,11 @@ use fuel_asm::{
     PanicReason,
     RawInstruction,
 };
+use fuel_storage::StorageError;
 use fuel_tx::CheckError;
 use thiserror::Error;
 
-use core::{
-    convert::Infallible as StdInfallible,
-    fmt,
-};
+use core::fmt;
 
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
@@ -32,15 +30,15 @@ pub enum InterpreterError {
     /// state transitions.
     #[error("Execution error")]
     NoTransactionInitialized,
-    // /// I/O and OS related errors.
-    // #[error("Unrecoverable error: {0}")]
-    // Io(#[from] io::Error),
     #[error("Execution error")]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
-    /// VM panics, and I/O and OS related errors during VM execution.
-    #[error("Runtime error: {0}")]
-    RuntimeError(RuntimeError),
+    /// Storage I/O error
+    #[error("Storage error: {0}")]
+    Storage(StorageError),
+    /// Encountered a bug
+    #[error("Bug: {0}")]
+    Bug(Bug),
 }
 
 impl InterpreterError {
@@ -85,8 +83,21 @@ impl From<RuntimeError> for InterpreterError {
     fn from(error: RuntimeError) -> Self {
         match error {
             RuntimeError::Recoverable(e) => Self::Panic(e),
-            RuntimeError::Unrecoverable(_) => todo!(), // TODO
+            RuntimeError::Unrecoverable(e) => match e {
+                Unrecoverable::Bug(bug) => Self::Bug(bug),
+                Unrecoverable::PredicateFailure => {
+                    Self::CheckError(CheckError::PredicateVerificationFailed)
+                }
+                Unrecoverable::Storage(err) => Self::Storage(err),
+            },
         }
+    }
+}
+
+impl From<StorageError> for InterpreterError {
+    fn from(error: StorageError) -> Self {
+        let error: RuntimeError = error.into();
+        error.into()
     }
 }
 
@@ -97,8 +108,7 @@ impl PartialEq for InterpreterError {
             (Self::Panic(s), Self::Panic(o)) => s == o,
             (Self::CheckError(s), Self::CheckError(o)) => s == o,
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
-            (Self::RuntimeError(s), Self::RuntimeError(o)) => todo!(), // TODO
-
+            (Self::Storage(a), Self::Storage(b)) => a == b,
             (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
 
             _ => false,
@@ -112,18 +122,30 @@ pub enum Unrecoverable {
     /// Invalid interpreter state reached unexpectedly, this is a bug
     Bug(Bug),
     /// Predicate verification failed
-    PredicateFailure,
+    PredicateFailure, // TODO: conserve the inner error
+    /// Storage io error
+    Storage(StorageError),
 }
 
 impl fmt::Display for Unrecoverable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!();
+        match self {
+            Unrecoverable::Bug(bug) => write!(f, "{:#?}", bug),
+            Unrecoverable::PredicateFailure => write!(f, "Predicate verification failed"),
+            Unrecoverable::Storage(err) => write!(f, "{:#?}", err),
+        }
     }
 }
 
 impl From<Bug> for Unrecoverable {
     fn from(bug: Bug) -> Self {
         Self::Bug(bug)
+    }
+}
+
+impl From<StorageError> for Unrecoverable {
+    fn from(err: StorageError) -> Self {
+        Self::Storage(err)
     }
 }
 
@@ -138,6 +160,7 @@ pub enum RuntimeError {
 }
 
 impl RuntimeError {
+    /// Predicate verification failed while running it
     pub const INVALID_PREDICATE: Self =
         Self::Unrecoverable(Unrecoverable::PredicateFailure);
 
@@ -149,11 +172,6 @@ impl RuntimeError {
     /// Flag whether the error must halt the execution.
     pub const fn must_halt(&self) -> bool {
         matches!(self, Self::Unrecoverable(_))
-    }
-
-    /// Unexpected behavior occurred
-    pub fn unexpected_behavior<E>(error: E) -> Self {
-        todo!(); // TODO
     }
 }
 
@@ -182,40 +200,10 @@ impl From<PanicReason> for RuntimeError {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-/// Infallible implementation that converts into [`io::Error`].
-pub struct Infallible(StdInfallible);
-
-impl fmt::Display for Infallible {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl<E> From<E> for Infallible
-where
-    E: Into<StdInfallible>,
-{
-    fn from(e: E) -> Infallible {
-        Self(e.into())
-    }
-}
-
-impl From<Infallible> for InterpreterError {
-    fn from(_e: Infallible) -> InterpreterError {
-        unreachable!()
-    }
-}
-
-impl From<Infallible> for RuntimeError {
-    fn from(_e: Infallible) -> RuntimeError {
-        unreachable!()
-    }
-}
-
-impl From<Infallible> for PanicReason {
-    fn from(_e: Infallible) -> PanicReason {
-        unreachable!()
+impl From<StorageError> for RuntimeError {
+    fn from(err: StorageError) -> Self {
+        let err: Unrecoverable = err.into();
+        Self::Unrecoverable(err)
     }
 }
 
@@ -255,9 +243,9 @@ pub enum PredicateVerificationFailed {
     /// The cumulative gas overflowed the u64 accumulator
     #[error("Cumulative gas computation overflowed the u64 accumulator")]
     GasOverflow,
-    /// TODO
-    #[error("TODO")] // TODO
-    RuntimeError,
+    /// Predicate verification failed since it attempted to access storage
+    #[error("Predicate verification failed since it attempted to access storage")]
+    Storage,
 }
 
 impl From<PredicateVerificationFailed> for CheckError {
@@ -275,123 +263,109 @@ impl From<InterpreterError> for PredicateVerificationFailed {
             error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
                 PredicateVerificationFailed::OutOfGas
             }
-            InterpreterError::RuntimeError(e) => {
-                PredicateVerificationFailed::RuntimeError
-            }
+            InterpreterError::Storage(_) => PredicateVerificationFailed::Storage,
             _ => PredicateVerificationFailed::False,
         }
     }
 }
 
-/// Unique bug identifier
-#[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "strum", derive(strum::EnumVariantNames))]
-pub enum BugId {
-    // Not used
-    ID001,
-    ID002,
-    ID003,
-    ID004,
-    // Not used
-    ID005,
-    // Not used
-    ID006,
-    ID007,
-    ID008,
-}
-
 /// Traceable bug variants
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumMessage)]
 pub enum BugVariant {
     /// Context gas increase has overflow
+    #[strum(
+        message = "The context gas cannot overflow since it was created by a valid transaction and the total gas does not increase - hence, it always fits a word."
+    )]
     ContextGasOverflow,
 
     /// Context gas increase has underflow
+    #[strum(
+        message = "The context gas cannot underflow since any script should halt upon gas exhaustion."
+    )]
     ContextGasUnderflow,
 
     /// Global gas subtraction has underflow
+    #[strum(
+        message = "The gas consumption cannot exceed the gas context since it is capped by the transaction gas limit."
+    )]
     GlobalGasUnderflow,
 
+    /// The global gas is less than the context gas.
+    #[strum(message = "The global gas cannot ever be less than the context gas. ")]
+    GlobalGasLessThanContext,
+
     /// The stack point has overflow
+    #[strum(message = "The stack pointer cannot overflow under checked operations.")]
     StackPointerOverflow,
 
-    /// The global gas is less than the context gas.
-    GlobalGasLessThanContext,
+    /// Code size of a contract doesn't fit into a Word. This is prevented by tx size
+    /// limit.
+    #[strum(message = "Contract size doesn't fit into a word.")]
+    CodeSizeOverflow,
+
+    /// Refund cannot be computed in the current vm state.
+    #[strum(message = "Refund cannot be computed in the current vm state.")]
+    UncomputableRefund,
 }
 
 impl fmt::Display for BugVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ContextGasOverflow => write!(
-                f,
-                r#"The context gas cannot overflow since it was created by a valid transaction and the total gas does not increase - hence, it always fits a word.
-
-                This overflow means the registers are corrupted."#
-            ),
-
-            Self::ContextGasUnderflow => write!(
-                f,
-                r#"The context gas cannot underflow since any script should halt upon gas exhaustion.
-
-                This underflow means the registers are corrupted."#
-            ),
-
-            Self::GlobalGasUnderflow => write!(
-                f,
-                r#"The gas consumption cannot exceed the gas context since it is capped by the transaction gas limit.
-
-                This underflow means the registers are corrupted."#
-            ),
-
-            Self::StackPointerOverflow => write!(
-                f,
-                r#"The stack pointer cannot overflow under checked operations.
-
-                This overflow means the registers are corrupted."#
-            ),
-
-            Self::GlobalGasLessThanContext => write!(
-                f,
-                r#"The global gas cannot ever be less than the context gas. 
-
-                This means the registers are corrupted."#
-            ),
+        use strum::EnumMessage;
+        if let Some(msg) = self.get_message() {
+            write!(f, "{}", msg)
+        } else {
+            write!(f, "{:?}", self)
         }
     }
 }
 
-/// Bug information with backtrace data
+/// VM encountered unexpected state. This is a bug.
+/// The execution must terminate since the VM is in an invalid state.
+///
+/// The bug it self is identified by the caller location.
 #[derive(Debug, Clone)]
 pub struct Bug {
-    id: BugId,
+    /// Source code location of the bug, in `path/to/file.rs:line:column` notation
+    location: String,
+
+    /// Type of bug
     variant: BugVariant,
 
+    /// Additional error message for the bug, if it's caused by a runtime error
+    inner_message: Option<String>,
+
+    /// Optionally include a backtrace for the instruction triggering this bug.
+    /// This is only available when the `backtrace` feature is enabled.
     #[cfg(feature = "backtrace")]
     bt: backtrace::Backtrace,
 }
 
-impl PartialEq for Bug {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.variant == other.variant
+impl Bug {
+    /// Construct a new bug with the specified variant, using caller location for
+    /// idenitfying the bug.
+    #[track_caller]
+    pub fn new(variant: BugVariant) -> Self {
+        let caller = core::panic::Location::caller();
+        let location = format!("{}:{}:{}", caller.file(), caller.line(), caller.column());
+        Self {
+            location,
+            variant,
+            inner_message: None,
+            #[cfg(feature = "backtrace")]
+            bt: backtrace::Backtrace::new(),
+        }
+    }
+
+    /// Set an additional error message.
+    pub fn with_message<E: ToString>(mut self, error: E) -> Self {
+        self.inner_message = Some(error.to_string());
+        self
     }
 }
 
-impl Bug {
-    #[cfg(not(feature = "backtrace"))]
-    /// Report a bug without backtrace data
-    pub const fn new(id: BugId, variant: BugVariant) -> Self {
-        Self { id, variant }
-    }
-
-    /// Unique bug identifier per location
-    pub const fn id(&self) -> BugId {
-        self.id
-    }
-
-    /// Class variant of the bug
-    pub const fn variant(&self) -> BugVariant {
-        self.variant
+impl PartialEq for Bug {
+    fn eq(&self, other: &Self) -> bool {
+        self.location == other.location
     }
 }
 
@@ -399,26 +373,10 @@ impl Bug {
 mod bt {
     use super::*;
     use backtrace::Backtrace;
-    use core::ops::Deref;
 
     impl Bug {
-        /// Report a bug with backtrace data
-        pub fn new(id: BugId, variant: BugVariant) -> Self {
-            let bt = Backtrace::new();
-
-            Self { id, variant, bt }
-        }
-
         /// Backtrace data
         pub const fn bt(&self) -> &Backtrace {
-            &self.bt
-        }
-    }
-
-    impl Deref for Bug {
-        type Target = Backtrace;
-
-        fn deref(&self) -> &Self::Target {
             &self.bt
         }
     }
@@ -426,13 +384,46 @@ mod bt {
 
 impl fmt::Display for Bug {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let issue_title =
+            format!("Bug%20report: {:?} in {}", self.variant, self.location);
+
+        let issue_body = format!(
+            "Error: {:?} {}\nLocation: {}\nVersion: {} {}\n",
+            self.variant,
+            self.inner_message
+                .as_ref()
+                .map(|msg| format!("({msg})"))
+                .unwrap_or_default(),
+            self.location,
+            env!("CARGO_PKG_NAME"),
+            env!("CARGO_PKG_VERSION")
+        );
+
         write!(
             f,
-            "This is a bug [{:?}]! Please, report this incident as an issue in fuel-vm repository\n\n",
-            self.id()
+            concat!(
+                "Encountered a bug! Please report this using the following link: ",
+                "https://github.com/FuelLabs/fuel-vm/issues/new",
+                "?title={}",
+                "&body={}",
+                "\n\n",
+                "{:?} error in {}: {} {}\n",
+            ),
+            url_escape::encode_fragment(&issue_title),
+            url_escape::encode_fragment(&issue_body),
+            self.variant,
+            self.location,
+            self.variant,
+            self.inner_message
+                .as_ref()
+                .map(|msg| format!("({msg})"))
+                .unwrap_or_default(),
         )?;
 
-        write!(f, "{}", self.variant())?;
+        #[cfg(feature = "backtrace")]
+        {
+            write!(f, "\nBacktrace:\n{:?}\n", self.bt)?;
+        }
 
         Ok(())
     }
@@ -448,5 +439,20 @@ impl From<Bug> for PredicateVerificationFailed {
     fn from(bug: Bug) -> Self {
         let e: InterpreterError = bug.into();
         e.into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bug_report_message() {
+        let bug = Bug::new(BugVariant::ContextGasOverflow).with_message("Test message");
+        let text = format!("{}", bug);
+        assert!(text.contains(file!()));
+        assert!(text.contains("https://github.com/FuelLabs/fuel-vm/issues/new"));
+        assert!(text.contains("ContextGasOverflow"));
+        assert!(text.contains("Test message"));
     }
 }

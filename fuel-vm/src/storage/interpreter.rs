@@ -3,6 +3,7 @@
 use fuel_storage::{
     MerkleRootStorage,
     StorageAsRef,
+    StorageError,
     StorageInspect,
     StorageMutate,
     StorageRead,
@@ -22,46 +23,34 @@ use fuel_types::{
     Word,
 };
 
-use crate::{
-    prelude::{
-        InterpreterError,
-        RuntimeError,
-    },
-    storage::{
-        ContractsAssets,
-        ContractsInfo,
-        ContractsRawCode,
-        ContractsState,
-    },
+use crate::storage::{
+    ContractsAssets,
+    ContractsInfo,
+    ContractsRawCode,
+    ContractsState,
 };
 use alloc::{
     borrow::Cow,
     vec::Vec,
 };
-use core::{
-    fmt,
-    ops::{
-        Deref,
-        DerefMut,
-    },
+use core::ops::{
+    Deref,
+    DerefMut,
 };
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    StorageMutate<ContractsRawCode, Error = Self::DataError>
-    + StorageSize<ContractsRawCode, Error = Self::DataError>
-    + StorageRead<ContractsRawCode, Error = Self::DataError>
-    + StorageMutate<ContractsInfo, Error = Self::DataError>
-    + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
-    + ContractsAssetsStorage<Error = Self::DataError>
+    StorageMutate<ContractsRawCode>
+    + StorageSize<ContractsRawCode>
+    + StorageRead<ContractsRawCode>
+    + StorageMutate<ContractsInfo>
+    + MerkleRootStorage<ContractId, ContractsState>
+    + ContractsAssetsStorage
 {
-    /// Error implementation for reasons unspecified in the protocol.
-    type DataError: Into<RuntimeError> + fmt::Debug; // TODO
-
     /// Provide the current block height in which the transactions should be
     /// executed.
-    fn block_height(&self) -> Result<BlockHeight, Self::DataError>;
+    fn block_height(&self) -> Result<BlockHeight, StorageError>;
 
     /// Return the timestamp of a given block
     ///
@@ -69,13 +58,13 @@ pub trait InterpreterStorage:
     /// is passed - under the assumption that the block height is consistent, the
     /// storage should necessarily have the timestamp for the block, unless some I/O
     /// error prevents it from fetching it.
-    fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError>;
+    fn timestamp(&self, height: BlockHeight) -> Result<Word, StorageError>;
 
     /// Provide the block hash from a given height.
-    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError>;
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, StorageError>;
 
     /// Provide the coinbase address for the VM instructions implementation.
-    fn coinbase(&self) -> Result<Address, Self::DataError>;
+    fn coinbase(&self) -> Result<Address, StorageError>;
 
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
@@ -85,7 +74,7 @@ pub trait InterpreterStorage:
         contract: &Contract,
         root: &Bytes32,
         id: &ContractId,
-    ) -> Result<(), Self::DataError> {
+    ) -> Result<(), StorageError> {
         self.storage_contract_insert(id, contract)?;
         self.storage_contract_root_insert(id, salt, root)?;
 
@@ -101,7 +90,7 @@ pub trait InterpreterStorage:
     fn storage_contract(
         &self,
         id: &ContractId,
-    ) -> Result<Option<Cow<'_, Contract>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, Contract>>, StorageError> {
         StorageInspect::<ContractsRawCode>::get(self, id)
     }
 
@@ -110,7 +99,7 @@ pub trait InterpreterStorage:
     fn storage_contract_size(
         &self,
         id: &ContractId,
-    ) -> Result<Option<usize>, Self::DataError> {
+    ) -> Result<Option<usize>, StorageError> {
         StorageSize::<ContractsRawCode>::size_of_value(self, id)
     }
 
@@ -119,7 +108,7 @@ pub trait InterpreterStorage:
         &self,
         id: &ContractId,
         writer: &mut [u8],
-    ) -> Result<Option<Word>, Self::DataError> {
+    ) -> Result<Option<Word>, StorageError> {
         Ok(StorageRead::<ContractsRawCode>::read(self, id, writer)?.map(|r| r as Word))
     }
 
@@ -130,12 +119,12 @@ pub trait InterpreterStorage:
         &mut self,
         id: &ContractId,
         contract: &Contract,
-    ) -> Result<Option<Contract>, Self::DataError> {
+    ) -> Result<Option<Contract>, StorageError> {
         StorageMutate::<ContractsRawCode>::insert(self, id, contract.as_ref())
     }
 
     /// Check if a provided contract exists in the chain.
-    fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, Self::DataError> {
+    fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, StorageError> {
         self.storage::<ContractsRawCode>().contains_key(id)
     }
 
@@ -144,7 +133,7 @@ pub trait InterpreterStorage:
     fn storage_contract_root(
         &self,
         id: &ContractId,
-    ) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, StorageError> {
         StorageInspect::<ContractsInfo>::get(self, id)
     }
 
@@ -154,7 +143,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         salt: &Salt,
         root: &Bytes32,
-    ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
+    ) -> Result<Option<(Salt, Bytes32)>, StorageError> {
         StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
     }
 
@@ -163,7 +152,7 @@ pub trait InterpreterStorage:
         &self,
         id: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, Bytes32>>, StorageError> {
         StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
@@ -173,7 +162,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
         value: &Bytes32,
-    ) -> Result<Option<Bytes32>, Self::DataError> {
+    ) -> Result<Option<Bytes32>, StorageError> {
         StorageMutate::<ContractsState>::insert(self, &(contract, key).into(), value)
     }
 
@@ -182,7 +171,7 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Bytes32>, Self::DataError> {
+    ) -> Result<Option<Bytes32>, StorageError> {
         StorageMutate::<ContractsState>::remove(self, &(contract, key).into())
     }
 
@@ -194,7 +183,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError>;
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, StorageError>;
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns None if any of the keys in the range were previously unset.
@@ -203,7 +192,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError>;
+    ) -> Result<Option<()>, StorageError>;
 
     /// Remove a range of key-values from contract storage.
     /// Returns None if any of the keys in the range were already unset.
@@ -212,7 +201,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Option<()>, Self::DataError>;
+    ) -> Result<Option<()>, StorageError>;
 }
 
 /// Storage operations for contract assets.
@@ -222,7 +211,7 @@ pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets>
         &self,
         id: &ContractId,
         asset_id: &AssetId,
-    ) -> Result<Option<Word>, Self::Error> {
+    ) -> Result<Option<Word>, StorageError> {
         let balance = self
             .storage::<ContractsAssets>()
             .get(&(id, asset_id).into())?
@@ -237,7 +226,7 @@ pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets>
         contract: &ContractId,
         asset_id: &AssetId,
         value: Word,
-    ) -> Result<Option<Word>, Self::Error> {
+    ) -> Result<Option<Word>, StorageError> {
         StorageMutate::<ContractsAssets>::insert(
             self,
             &(contract, asset_id).into(),
@@ -252,28 +241,26 @@ impl<S> InterpreterStorage for &mut S
 where
     S: InterpreterStorage,
 {
-    type DataError = S::DataError;
-
-    fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
+    fn block_height(&self) -> Result<BlockHeight, StorageError> {
         <S as InterpreterStorage>::block_height(self.deref())
     }
 
-    fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
+    fn timestamp(&self, height: BlockHeight) -> Result<Word, StorageError> {
         <S as InterpreterStorage>::timestamp(self.deref(), height)
     }
 
-    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError> {
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, StorageError> {
         <S as InterpreterStorage>::block_hash(self.deref(), block_height)
     }
 
-    fn coinbase(&self) -> Result<Address, Self::DataError> {
+    fn coinbase(&self) -> Result<Address, StorageError> {
         <S as InterpreterStorage>::coinbase(self.deref())
     }
 
     fn storage_contract_size(
         &self,
         id: &ContractId,
-    ) -> Result<Option<usize>, Self::DataError> {
+    ) -> Result<Option<usize>, StorageError> {
         <S as InterpreterStorage>::storage_contract_size(self.deref(), id)
     }
 
@@ -281,7 +268,7 @@ where
         &self,
         id: &ContractId,
         writer: &mut [u8],
-    ) -> Result<Option<Word>, Self::DataError> {
+    ) -> Result<Option<Word>, StorageError> {
         <S as InterpreterStorage>::read_contract(self.deref(), id, writer)
     }
 
@@ -290,7 +277,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, StorageError> {
         <S as InterpreterStorage>::merkle_contract_state_range(
             self.deref(),
             id,
@@ -304,7 +291,7 @@ where
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<Option<()>, StorageError> {
         <S as InterpreterStorage>::merkle_contract_state_insert_range(
             self.deref_mut(),
             contract,
@@ -318,7 +305,7 @@ where
         contract: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<Option<()>, StorageError> {
         <S as InterpreterStorage>::merkle_contract_state_remove_range(
             self.deref_mut(),
             contract,

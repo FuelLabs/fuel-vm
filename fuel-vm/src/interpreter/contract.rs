@@ -25,9 +25,7 @@ use crate::{
         InputContracts,
         PanicContext,
     },
-    prelude::InterpreterError,
     storage::{
-        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
@@ -38,10 +36,7 @@ use fuel_asm::{
     RegisterId,
     Word,
 };
-use fuel_storage::{
-    StorageInspect,
-    StorageSize,
-};
+use fuel_storage::StorageSize;
 use fuel_tx::{
     Contract,
     Output,
@@ -136,7 +131,7 @@ where
         &self,
         contract: &ContractId,
     ) -> Result<bool, RuntimeError> {
-        self.storage.storage_contract_exists(contract)
+        Ok(self.storage.storage_contract_exists(contract)?)
     }
 }
 
@@ -169,7 +164,6 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
     where
         I: Iterator<Item = &'vm ContractId>,
         S: ContractsAssetsStorage,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
     {
         let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new(b)?;
         let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(c)?;
@@ -215,7 +209,6 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
     {
         let amount = transfer_amount;
         let destination =
@@ -287,7 +280,6 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
     {
         let out_idx = output_index as usize;
         let to = Address::from(read_bytes(self.memory, recipient_offset)?);
@@ -350,7 +342,6 @@ pub(crate) fn contract_size<S>(
 ) -> Result<Word, RuntimeError>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<RuntimeError>,
 {
     Ok(storage
         .size_of_value(contract)?
@@ -364,7 +355,6 @@ pub(crate) fn balance<S>(
 ) -> Result<Word, RuntimeError>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
 {
     Ok(storage
         .merkle_contract_asset_id_balance(contract, asset_id)?
@@ -380,7 +370,6 @@ pub(crate) fn balance_increase<S>(
 ) -> Result<Word, RuntimeError>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
 {
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
@@ -399,7 +388,6 @@ pub(crate) fn balance_decrease<S>(
 ) -> Result<Word, RuntimeError>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
 {
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance

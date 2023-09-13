@@ -1,3 +1,5 @@
+use fuel_storage::StorageError;
+
 use crate::{
     common::{
         error::DeserializeError,
@@ -330,7 +332,7 @@ impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageTyp
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum StorageNodeError<StorageError> {
+pub enum StorageNodeError {
     #[cfg_attr(feature = "std", error(transparent))]
     StorageError(StorageError),
     #[cfg_attr(feature = "std", error(transparent))]
@@ -342,8 +344,6 @@ where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
-    type Error = StorageNodeError<StorageType::Error>;
-
     fn left_child(&self) -> ChildResult<Self> {
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf)

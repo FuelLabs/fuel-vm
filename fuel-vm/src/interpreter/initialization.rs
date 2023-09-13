@@ -13,7 +13,6 @@ use crate::{
     context::Context,
     error::{
         Bug,
-        BugId,
         InterpreterError,
     },
     prelude::RuntimeError,
@@ -88,13 +87,13 @@ where
         context: Context,
         mut tx: Tx,
         gas_limit: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), InterpreterError> {
         self.context = context;
         tx.prepare_init_predicate();
 
         let initial_balances: InitialBalances = Default::default();
         let runtime_balances = initial_balances.clone().try_into()?;
-        self.init_inner(tx, initial_balances, runtime_balances, gas_limit)
+        Ok(self.init_inner(tx, initial_balances, runtime_balances, gas_limit)?)
     }
 }
 
@@ -119,7 +118,7 @@ where
         let gas_limit = tx
             .limit()
             .checked_sub(gas_used_by_predicates)
-            .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
+            .ok_or_else(|| Bug::new(GlobalGasUnderflow))?;
 
         let initial_balances = metadata.balances();
         let runtime_balances = initial_balances.try_into()?;

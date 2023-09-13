@@ -46,22 +46,15 @@ use crate::{
         receipts::ReceiptsCtx,
         InputContracts,
     },
-    prelude::{
-        InterpreterError,
-        Profiler,
-    },
+    prelude::Profiler,
     storage::{
-        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
     },
 };
 use fuel_asm::PanicReason;
-use fuel_storage::{
-    StorageInspect,
-    StorageSize,
-};
+use fuel_storage::StorageSize;
 use fuel_tx::{
     ContractIdExt,
     DependentCost,
@@ -555,7 +548,6 @@ struct BurnCtx<'vm, S> {
 impl<'vm, S> BurnCtx<'vm, S>
 where
     S: ContractsAssetsStorage,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<RuntimeError>,
 {
     pub(crate) fn burn(self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let range = internal_contract_bounds(self.context, self.fp)?;
@@ -598,7 +590,6 @@ struct MintCtx<'vm, S> {
 impl<'vm, S> MintCtx<'vm, S>
 where
     S: ContractsAssetsStorage,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<RuntimeError>,
 {
     pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let range = internal_contract_bounds(self.context, self.fp)?;
@@ -688,7 +679,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     let height = u32::try_from(b)
         .map_err(|_| PanicReason::ArithmeticOverflow)?
         .into();
-    let hash = storage.block_hash(height).map_err(|e| e.into())?;
+    let hash = storage.block_hash(height)?;
 
     try_mem_write(a, hash.as_ref(), owner, memory)?;
 
@@ -775,7 +766,6 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
     ) -> Result<(), RuntimeError>
     where
         S: StorageSize<ContractsRawCode>,
-        <S as StorageInspect<ContractsRawCode>>::Error: Into<RuntimeError>,
     {
         let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
 
@@ -882,14 +872,13 @@ pub(crate) fn timestamp(
         .then_some(())
         .ok_or(PanicReason::TransactionValidity)?;
 
-    *result = storage.timestamp(b).map_err(|e| e.into())?;
+    *result = storage.timestamp(b)?;
 
     inc_pc(pc)
 }
 struct MessageOutputCtx<'vm, Tx, S>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
@@ -915,7 +904,6 @@ where
 impl<Tx, S> MessageOutputCtx<'_, Tx, S>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
 {
     pub(crate) fn message_output(self) -> Result<(), RuntimeError>
     where

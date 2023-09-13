@@ -29,10 +29,11 @@ use core::{
     iter,
     marker::PhantomData,
 };
+use fuel_storage::StorageError;
 
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum MerkleTreeError<StorageError> {
+pub enum MerkleTreeError {
     #[cfg_attr(
         feature = "std",
         error("cannot load node with key {}; the key is not found in storage", hex::encode(.0))
@@ -46,11 +47,11 @@ pub enum MerkleTreeError<StorageError> {
     DeserializeError(DeserializeError),
 
     #[cfg_attr(feature = "std", error(transparent))]
-    ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
+    ChildError(ChildError<Bytes32, StorageNodeError>),
 }
 
-impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
-    fn from(err: StorageError) -> MerkleTreeError<StorageError> {
+impl From<StorageError> for MerkleTreeError {
+    fn from(err: StorageError) -> MerkleTreeError {
         MerkleTreeError::StorageError(err)
     }
 }
@@ -139,10 +140,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageInspect<TableType, Error = StorageError>,
+    StorageType: StorageInspect<TableType>,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -152,10 +153,7 @@ where
         }
     }
 
-    pub fn load(
-        storage: StorageType,
-        root: &Bytes32,
-    ) -> Result<Self, MerkleTreeError<StorageError>> {
+    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, MerkleTreeError> {
         if root == Self::empty_root() {
             let tree = Self::new(storage);
             Ok(tree)
@@ -180,7 +178,7 @@ where
     fn path_set(
         &self,
         leaf_key: Bytes32,
-    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
         let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
@@ -191,7 +189,7 @@ where
                     side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
                 ))
             })
-            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
+            .collect::<Result<Vec<_>, MerkleTreeError>>()?
             .into_iter()
             .unzip();
         path_nodes.reverse();
@@ -203,10 +201,10 @@ where
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageMutate<TableType, Error = StorageError>,
+    StorageType: StorageMutate<TableType>,
 {
     /// Build a sparse Merkle tree from a set of key-value pairs. This is
     /// equivalent to creating an empty sparse Merkle tree and sequentially
@@ -357,7 +355,7 @@ where
         &mut self,
         key: MerkleTreeKey,
         data: &[u8],
-    ) -> Result<(), MerkleTreeError<StorageError>> {
+    ) -> Result<(), MerkleTreeError> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
             // given key.
@@ -384,10 +382,7 @@ where
         Ok(())
     }
 
-    pub fn delete(
-        &mut self,
-        key: MerkleTreeKey,
-    ) -> Result<(), MerkleTreeError<StorageError>> {
+    pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), MerkleTreeError> {
         if self.root() == *Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.

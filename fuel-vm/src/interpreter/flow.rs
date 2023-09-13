@@ -40,10 +40,12 @@ use crate::{
         InputContracts,
         PanicContext,
     },
-    prelude::InterpreterError,
+    prelude::{
+        Bug,
+        BugVariant,
+    },
     profiler::Profiler,
     storage::{
-        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
@@ -58,7 +60,6 @@ use fuel_asm::{
 };
 use fuel_storage::{
     StorageAsRef,
-    StorageInspect,
     StorageRead,
     StorageSize,
 };
@@ -203,8 +204,9 @@ impl RetCtx<'_> {
             let registers = &mut self.registers;
             let context = &mut self.context;
 
-            registers[RegId::CGAS] =
-                arith::add_word(registers[RegId::CGAS], frame.context_gas())?;
+            registers[RegId::CGAS] = registers[RegId::CGAS]
+                .checked_add(frame.context_gas())
+                .ok_or_else(|| Bug::new(BugVariant::ContextGasOverflow))?;
 
             let cgas = registers[RegId::CGAS];
             let ggas = registers[RegId::GGAS];
@@ -497,8 +499,6 @@ where
             + ContractsAssetsStorage
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
-        <S as StorageInspect<ContractsRawCode>>::Error: Into<RuntimeError>,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<RuntimeError>,
     {
         let call = self.memory.call_params.try_from(self.memory.memory)?;
         let asset_id = self.memory.asset_id.try_from(self.memory.memory)?;
@@ -557,14 +557,17 @@ where
         );
 
         // subtract gas
-        *self.registers.system_registers.cgas =
-            arith::sub_word(*self.registers.system_registers.cgas, forward_gas_amount)?;
+        *self.registers.system_registers.cgas = (*self.registers.system_registers.cgas)
+            .checked_sub(forward_gas_amount)
+            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
 
         *frame.context_gas_mut() = *self.registers.system_registers.cgas;
         *frame.global_gas_mut() = *self.registers.system_registers.ggas;
 
         let frame_bytes = frame.to_bytes();
-        let len = arith::add_word(frame_bytes.len() as Word, frame.total_code_size())?;
+        let len = (frame_bytes.len() as Word)
+            .checked_add(frame.total_code_size())
+            .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
         if len > *self.registers.system_registers.hp
             || *self.registers.system_registers.sp
@@ -640,7 +643,6 @@ fn write_call_to_memory<S>(
 ) -> Result<Word, RuntimeError>
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<RuntimeError>,
 {
     let mut code_frame_range = code_mem_range.clone();
     // Addition is safe because code size + padding is always less than len
@@ -678,7 +680,6 @@ fn call_frame<S>(
 ) -> Result<CallFrame, RuntimeError>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<InterpreterError>,
 {
     let (to, a, b) = call.into_inner();
 

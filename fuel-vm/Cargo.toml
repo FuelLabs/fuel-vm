@@ -24,6 +24,7 @@ fuel-merkle = { workspace = true, default-features = false }
 fuel-storage = { workspace = true }
 fuel-tx = { workspace = true, default-features = false }
 fuel-types = { workspace = true, default-features = false  }
+hashbrown = "0.14"
 itertools = { version = "0.10", default-features = false }
 paste = "1.0"
 primitive-types = { version = "0.12", default-features = false }
@@ -31,10 +32,11 @@ rand = { version = "0.8", optional = true }
 serde = { version = "1.0", features = ["derive", "rc"], optional = true }
 sha3 = { version = "0.10", default-features = false }
 static_assertions = "1.1"
-strum = { version = "0.24", features = ["derive"], optional = true }
+strum = { version = "0.24", features = ["derive"] }
 tai64 = { version = "4.0", default-features = false }
 thiserror = { version = "1.0", optional = true }
-hashbrown = "0.14"
+url-escape = { version = "0.1", default-features = false}
+
 
 [dev-dependencies]
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
@@ -55,10 +57,9 @@ tokio-rayon = "2.1.0"
 
 [features]
 default = ["std"]
-std = ["alloc", "fuel-tx/builder", "fuel-types/std", "fuel-asm/std", "fuel-tx/std", "itertools/use_std", "thiserror"]
+std = ["alloc", "fuel-storage/std",  "fuel-tx/builder", "fuel-types/std", "fuel-asm/std", "fuel-tx/std", "itertools/use_std", "thiserror"]
 alloc = ["fuel-tx/alloc"]
 arbitrary = ["fuel-asm/arbitrary"]
-optimized = []
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this

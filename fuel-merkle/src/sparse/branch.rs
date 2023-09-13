@@ -10,6 +10,7 @@ use crate::{
 };
 use fuel_storage::{
     Mappable,
+    StorageError,
     StorageMutate,
 };
 
@@ -33,7 +34,7 @@ pub(crate) fn merge_branches<Storage, Table>(
     storage: &mut Storage,
     mut left_branch: Branch,
     mut right_branch: Branch,
-) -> Result<Branch, Storage::Error>
+) -> Result<Branch, StorageError>
 where
     Storage: StorageMutate<Table>,
     Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,

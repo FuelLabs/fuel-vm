@@ -8,6 +8,7 @@ use crate::{
 };
 
 use alloc::borrow::Cow;
+use fuel_storage::StorageError;
 use hashbrown::HashMap;
 
 #[derive(Debug, Clone)]
@@ -44,15 +45,16 @@ where
     Type::Key: Eq + core::hash::Hash,
     Type::OwnedKey: Eq + core::hash::Hash + core::borrow::Borrow<Type::Key>,
 {
-    type Error = core::convert::Infallible;
-
-    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error> {
+    fn get(
+        &self,
+        key: &Type::Key,
+    ) -> Result<Option<Cow<Type::OwnedValue>>, StorageError> {
         let result = self.map.get(key);
         let value = result.map(Cow::Borrowed);
         Ok(value)
     }
 
-    fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {
+    fn contains_key(&self, key: &Type::Key) -> Result<bool, StorageError> {
         let contains = self.map.contains_key(key);
         Ok(contains)
     }
@@ -68,7 +70,7 @@ where
         &mut self,
         key: &Type::Key,
         value: &Type::Value,
-    ) -> Result<Option<Type::OwnedValue>, Self::Error> {
+    ) -> Result<Option<Type::OwnedValue>, StorageError> {
         let previous = self.map.remove(key);
 
         self.map
@@ -79,7 +81,7 @@ where
     fn remove(
         &mut self,
         key: &Type::Key,
-    ) -> Result<Option<Type::OwnedValue>, Self::Error> {
+    ) -> Result<Option<Type::OwnedValue>, StorageError> {
         let value = self.map.remove(key);
         Ok(value)
     }

@@ -1,11 +1,9 @@
 use super::Interpreter;
 use crate::{
-    arith,
     constraints::reg_key::*,
     error::RuntimeError,
     prelude::{
         Bug,
-        BugId,
         BugVariant,
     },
     profiler::Profiler,
@@ -117,15 +115,21 @@ fn gas_charge_inner(
     gas: Word,
 ) -> Result<(), RuntimeError> {
     if *cgas > *ggas {
-        Err(Bug::new(BugId::ID008, BugVariant::GlobalGasLessThanContext).into())
+        Err(Bug::new(BugVariant::GlobalGasLessThanContext).into())
     } else if gas > *cgas {
-        *ggas = arith::sub_word(*ggas, *cgas)?;
+        *ggas = (*ggas)
+            .checked_sub(*cgas)
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
         *cgas = 0;
 
         Err(PanicReason::OutOfGas.into())
     } else {
-        *cgas = arith::sub_word(*cgas, gas)?;
-        *ggas = arith::sub_word(*ggas, gas)?;
+        *cgas = (*cgas)
+            .checked_sub(gas)
+            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
+        *ggas = (*ggas)
+            .checked_sub(gas)
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
         Ok(())
     }

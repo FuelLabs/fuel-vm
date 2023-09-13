@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+#### Breaking
+
+- [#582](https://github.com/FuelLabs/fuel-vm/pull/582): Make `fuel-vm` and `fuel-tx` crates compatible with `no_std` + `alloc`. This includes reworking all error handling that used `std::io::Error`, replacing some `std::collection::{HashMap, HashSet}` with `hashbrown::{HashMap, HashSet}` and many changes to feature-gating of APIs.
+
 ## [Version 0.37.0]
 
 #### Breaking

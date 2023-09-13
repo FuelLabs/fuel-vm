@@ -426,7 +426,7 @@ where
         let remaining_gas = create
             .limit()
             .checked_sub(create.gas_used_by_predicates())
-            .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
+            .ok_or(InterpreterError::Panic(PanicReason::OutOfGas))?;
 
         let metadata = create.metadata().as_ref();
         debug_assert!(

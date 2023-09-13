@@ -160,7 +160,7 @@ where
         } else {
             let primitive = storage
                 .get(root)?
-                .ok_or_else(|| MerkleTreeError::LoadError(*root))?
+                .ok_or(MerkleTreeError::LoadError(*root))?
                 .into_owned();
             let tree = Self {
                 root_node: primitive

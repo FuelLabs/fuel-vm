@@ -343,7 +343,7 @@ impl JumpArgs {
             JumpMode::RelativeForwards => pc.saturating_add(offset_bytes),
             JumpMode::RelativeBackwards => pc
                 .checked_sub(offset_bytes)
-                .ok_or_else(|| RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
+                .ok_or(RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
         };
 
         if target_addr >= VM_MAX_RAM {

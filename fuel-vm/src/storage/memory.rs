@@ -203,10 +203,10 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
         key: &ContractId,
         buf: &mut [u8],
     ) -> Result<Option<usize>, StorageError> {
-        Ok(self.memory.contracts.get(key).and_then(|c| {
+        Ok(self.memory.contracts.get(key).map(|c| {
             let len = buf.len().min(c.as_ref().len());
             buf.copy_from_slice(&c.as_ref()[..len]);
-            Some(buf.len())
+            buf.len()
         }))
     }
 

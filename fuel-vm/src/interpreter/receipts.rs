@@ -129,15 +129,7 @@ mod tests {
     use fuel_tx::Receipt;
     use fuel_types::canonical::SerializedSize;
 
-    use alloc::{
-        boxed::Box,
-        string::{
-            String,
-            ToString,
-        },
-        vec,
-        vec::Vec,
-    };
+    use alloc::vec::Vec;
 
     fn create_receipt() -> Receipt {
         Receipt::call(

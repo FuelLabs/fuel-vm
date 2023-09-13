@@ -1,16 +1,5 @@
 //! Crypto implementations for the instructions
 
-use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
-    vec,
-    vec::Vec,
-};
-use hashbrown::HashMap;
-
 use fuel_merkle::binary::in_memory::MerkleTree;
 use fuel_types::Bytes32;
 
@@ -33,6 +22,11 @@ fn ephemeral_merkle_root_returns_the_expected_root() {
         rngs::StdRng,
         Rng,
         SeedableRng,
+    };
+
+    use alloc::{
+        vec,
+        vec::Vec,
     };
 
     use crate::prelude::*;

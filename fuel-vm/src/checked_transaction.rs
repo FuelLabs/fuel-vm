@@ -21,7 +21,6 @@ use fuel_types::{
 
 use alloc::{
     boxed::Box,
-    vec,
     vec::Vec,
 };
 use core::{
@@ -619,6 +618,7 @@ impl IntoChecked for Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
     use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{

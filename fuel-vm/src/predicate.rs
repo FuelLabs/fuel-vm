@@ -1,15 +1,5 @@
 //! Predicate representations with required data to be executed during VM runtime
 
-use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
-    vec,
-    vec::Vec,
-};
-
 use crate::interpreter::MemoryRange;
 
 use fuel_tx::field;
@@ -53,6 +43,10 @@ impl RuntimePredicate {
 #[cfg(feature = "random")]
 #[test]
 fn from_tx_works() {
+    use alloc::{
+        vec,
+        vec::Vec,
+    };
     use fuel_asm::op;
     use fuel_tx::TransactionBuilder;
     use fuel_types::bytes;

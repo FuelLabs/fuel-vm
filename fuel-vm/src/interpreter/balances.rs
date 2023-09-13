@@ -20,16 +20,6 @@ use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
-use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
-    vec,
-    vec::Vec,
-};
-
 use super::MemoryRange;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -223,6 +213,7 @@ impl PartialEq for RuntimeBalances {
 #[test]
 fn writes_to_memory_correctly() {
     use crate::prelude::*;
+    use alloc::vec;
     use rand::{
         rngs::StdRng,
         Rng,
@@ -270,6 +261,7 @@ fn writes_to_memory_correctly() {
 #[test]
 fn try_from_iter_wont_overflow() {
     use crate::prelude::*;
+    use alloc::vec;
     use rand::{
         rngs::StdRng,
         Rng,
@@ -320,6 +312,7 @@ fn try_from_iter_wont_overflow() {
 #[test]
 fn checked_add_and_sub_works() {
     use crate::prelude::*;
+    use alloc::vec;
     use rand::{
         rngs::StdRng,
         Rng,

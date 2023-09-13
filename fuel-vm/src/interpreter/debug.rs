@@ -1,13 +1,8 @@
+#[cfg(test)]
 use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
     vec,
     vec::Vec,
 };
-use hashbrown::HashMap;
 
 use super::Interpreter;
 use crate::prelude::*;
@@ -130,6 +125,7 @@ fn breakpoint_script() {
 
 #[test]
 fn single_stepping() {
+    use alloc::vec;
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 

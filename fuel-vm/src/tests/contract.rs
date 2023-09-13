@@ -4,11 +4,6 @@ use crate::{
     util::test_helpers::TestBuilder,
 };
 use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
     vec,
     vec::Vec,
 };
@@ -21,7 +16,6 @@ use fuel_tx::{
     Witness,
 };
 use fuel_types::canonical::SerializedSize;
-use hashbrown::HashMap;
 use rand::{
     rngs::StdRng,
     Rng,

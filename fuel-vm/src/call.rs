@@ -1,16 +1,5 @@
 //! Inter-contract call supporting structures
 
-use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
-    vec,
-    vec::Vec,
-};
-use hashbrown::HashMap;
-
 use fuel_asm::{
     PanicReason,
     RegId,
@@ -222,7 +211,7 @@ impl TryFrom<&[u8]> for Call {
 }
 
 #[cfg(test)]
-impl From<Call> for Vec<u8> {
+impl From<Call> for alloc::vec::Vec<u8> {
     fn from(call: Call) -> Self {
         use fuel_types::canonical::SerializedSize;
         call.to_bytes()
@@ -230,7 +219,7 @@ impl From<Call> for Vec<u8> {
 }
 
 #[cfg(test)]
-impl From<CallFrame> for Vec<u8> {
+impl From<CallFrame> for alloc::vec::Vec<u8> {
     fn from(call: CallFrame) -> Self {
         use fuel_types::canonical::SerializedSize;
         call.to_bytes()

@@ -1,15 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
     vec,
     vec::Vec,
 };
-use hashbrown::HashMap;
 
 use crate::storage::{
     ContractsState,

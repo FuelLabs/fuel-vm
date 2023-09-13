@@ -1,13 +1,4 @@
-use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
-    vec,
-    vec::Vec,
-};
-use hashbrown::HashMap;
+use alloc::vec;
 
 use fuel_asm::{
     op,
@@ -40,11 +31,12 @@ use sha3::{
 };
 
 use crate::{
-    checked_transaction::CheckPredicateParams,
     prelude::*,
     util::test_helpers::check_expected_reason_for_instructions,
 };
 
+#[cfg(feature = "std")]
+use crate::checked_transaction::CheckPredicateParams;
 #[cfg(feature = "std")]
 use crate::tests::predicate::TokioWithRayon;
 

@@ -1,13 +1,7 @@
 use alloc::{
-    boxed::Box,
-    string::{
-        String,
-        ToString,
-    },
     vec,
     vec::Vec,
 };
-use hashbrown::HashMap;
 
 use super::test_helpers;
 use fuel_asm::*;

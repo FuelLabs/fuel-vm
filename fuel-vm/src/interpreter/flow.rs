@@ -48,6 +48,8 @@ use crate::{
         InterpreterStorage,
     },
 };
+use alloc::vec::Vec;
+use core::cmp;
 use fuel_asm::{
     Instruction,
     PanicInstruction,
@@ -72,8 +74,6 @@ use fuel_types::{
     ContractId,
     Word,
 };
-use core::cmp;
-use alloc::vec::Vec;
 
 #[cfg(test)]
 mod jump_tests;

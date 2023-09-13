@@ -9,9 +9,9 @@
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 
-#[cfg(test)]
 // Satisfy unused_crate_dependencies lint for self-dependency enabling test features
-use fuel_crypto as _;
+// #[cfg(test)]
+// use fuel_crypto as _;
 
 /// Required export for using mnemonic keygen on [`SecretKey::new_from_mnemonic`]
 #[cfg(feature = "std")]

@@ -44,10 +44,11 @@ where
         Tx: ExecutableTransaction,
     {
         tx.update_outputs(revert, remaining_gas, initial_balances, balances, fee_params, base_asset_id)
-            .map_err(|e| io::Error::new(
-                io::ErrorKind::Other,
+            .map_err(|e| RuntimeError::unexpected_behavior(
+
                 format!("a valid VM execution shouldn't result in a state where it can't compute its refund. This is a bug! {e}")
-            ))?;
+            )
+            )?;
 
         Ok(())
     }

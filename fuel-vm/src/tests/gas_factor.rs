@@ -1,13 +1,13 @@
 use fuel_asm::op;
 use fuel_vm::prelude::*;
 
+use core::iter;
 use fuel_tx::{
     field::Outputs,
     ConsensusParameters,
     FeeParameters,
 };
 use fuel_vm::interpreter::InterpreterParams;
-use core::iter;
 
 #[test]
 fn gas_factor_rounds_correctly() {

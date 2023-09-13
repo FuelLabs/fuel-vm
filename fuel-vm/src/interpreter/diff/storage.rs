@@ -1,5 +1,5 @@
-use alloc::collections::HashMap;
 use core::fmt::Debug;
+use hashbrown::HashMap;
 
 use fuel_storage::{
     StorageRead,

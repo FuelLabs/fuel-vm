@@ -22,11 +22,14 @@ use fuel_types::{
     Word,
 };
 
-use crate::storage::{
-    ContractsAssets,
-    ContractsInfo,
-    ContractsRawCode,
-    ContractsState,
+use crate::{
+    prelude::InterpreterError,
+    storage::{
+        ContractsAssets,
+        ContractsInfo,
+        ContractsRawCode,
+        ContractsState,
+    },
 };
 use alloc::{
     borrow::Cow,
@@ -48,7 +51,7 @@ pub trait InterpreterStorage:
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
-    type DataError: StdError + Into<io::Error>;
+    type DataError: Into<InterpreterError>; // TODO
 
     /// Provide the current block height in which the transactions should be
     /// executed.

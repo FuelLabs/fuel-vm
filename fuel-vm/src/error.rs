@@ -35,13 +35,15 @@ pub enum InterpreterError {
     /// state transitions.
     #[error("Execution error")]
     NoTransactionInitialized,
-    /// I/O and OS related errors.
-    #[error("Unrecoverable error: {0}")]
-    Io(#[from] io::Error),
-
+    // /// I/O and OS related errors.
+    // #[error("Unrecoverable error: {0}")]
+    // Io(#[from] io::Error),
     #[error("Execution error")]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
+    /// I/O and OS related errors.
+    #[error("Runtime error: {0}")]
+    RuntimeError(RuntimeError),
 }
 
 impl InterpreterError {
@@ -80,28 +82,14 @@ impl InterpreterError {
             _ => None,
         }
     }
-
-    /// Produces a `halt` error from `io`.
-    pub fn from_io<E>(e: E) -> Self
-    where
-        E: Into<io::Error>,
-    {
-        Self::Io(e.into())
-    }
 }
 
 impl From<RuntimeError> for InterpreterError {
     fn from(error: RuntimeError) -> Self {
         match error {
             RuntimeError::Recoverable(e) => Self::Panic(e),
-            RuntimeError::Halt(e) => Self::Io(e),
+            RuntimeError::Halt => todo!(), // TODO
         }
-    }
-}
-
-impl From<InterpreterError> for io::Error {
-    fn from(e: InterpreterError) -> Self {
-        io::Error::new(io::ErrorKind::Other, e)
     }
 }
 
@@ -113,7 +101,7 @@ impl PartialEq for InterpreterError {
             (Self::CheckError(s), Self::CheckError(o)) => s == o,
             (Self::PredicateFailure, Self::PredicateFailure) => true,
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
-            (Self::Io(s), Self::Io(o)) => s.kind() == o.kind(),
+            (Self::RuntimeError(s), Self::RuntimeError(o)) => todo!(), // TODO
 
             (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
 
@@ -122,7 +110,8 @@ impl PartialEq for InterpreterError {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 pub enum RuntimeError {
@@ -130,8 +119,7 @@ pub enum RuntimeError {
     #[error(transparent)]
     Recoverable(#[from] PanicReason),
     /// Unspecified error that should halt the execution.
-    #[error(transparent)]
-    Halt(#[from] io::Error), // TODO: a more generic error type
+    Halt, // TODO
 }
 
 impl RuntimeError {
@@ -142,23 +130,13 @@ impl RuntimeError {
 
     /// Flag whether the error must halt the execution.
     pub const fn must_halt(&self) -> bool {
-        matches!(self, Self::Halt(_))
-    }
-
-    /// Produces a `halt` error from `io`.
-    pub fn from_io<E>(e: E) -> Self
-    where
-        E: Into<io::Error>,
-    {
-        Self::Halt(e.into())
+        matches!(self, Self::Halt)
     }
 
     /// Unexpected behavior occurred
-    pub fn unexpected_behavior<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn StdError + Send + Sync>>,
-    {
-        Self::Halt(io::Error::new(io::ErrorKind::Other, error))
+    pub fn unexpected_behavior<E>(error: E) -> Self {
+        todo!();
+        Self::Halt // TODO: contents
     }
 }
 
@@ -166,8 +144,17 @@ impl PartialEq for RuntimeError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (RuntimeError::Recoverable(s), RuntimeError::Recoverable(o)) => s == o,
-            (RuntimeError::Halt(s), RuntimeError::Halt(o)) => s.kind() == o.kind(),
+            (RuntimeError::Halt, RuntimeError::Halt) => todo!(), // TODO
             _ => false,
+        }
+    }
+}
+
+impl fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Recoverable(reason) => write!(f, "Recoverable error: {}", reason),
+            Self::Halt => write!(f, "Unrecoverable error"),
         }
     }
 }
@@ -179,12 +166,6 @@ pub struct Infallible(StdInfallible);
 impl fmt::Display for Infallible {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-impl StdError for Infallible {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        Some(&self.0)
     }
 }
 
@@ -211,12 +192,6 @@ impl From<Infallible> for RuntimeError {
 
 impl From<Infallible> for PanicReason {
     fn from(_e: Infallible) -> PanicReason {
-        unreachable!()
-    }
-}
-
-impl From<Infallible> for io::Error {
-    fn from(_e: Infallible) -> io::Error {
         unreachable!()
     }
 }
@@ -251,9 +226,9 @@ pub enum PredicateVerificationFailed {
     /// The cumulative gas overflowed the u64 accumulator
     #[error("Cumulative gas computation overflowed the u64 accumulator")]
     GasOverflow,
-    /// An unexpected error occurred.
-    #[error(transparent)]
-    Io(#[from] io::Error),
+    /// TODO
+    #[error("TODO")] // TODO
+    RuntimeError,
 }
 
 impl From<PredicateVerificationFailed> for CheckError {
@@ -271,7 +246,9 @@ impl From<InterpreterError> for PredicateVerificationFailed {
             error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
                 PredicateVerificationFailed::OutOfGas
             }
-            InterpreterError::Io(e) => PredicateVerificationFailed::Io(e),
+            InterpreterError::RuntimeError(e) => {
+                PredicateVerificationFailed::RuntimeError
+            }
             _ => PredicateVerificationFailed::False,
         }
     }
@@ -423,14 +400,6 @@ impl fmt::Display for Bug {
         write!(f, "{}", self.variant())?;
 
         Ok(())
-    }
-}
-
-impl StdError for Bug {}
-
-impl From<Bug> for RuntimeError {
-    fn from(bug: Bug) -> Self {
-        Self::Halt(io::Error::new(io::ErrorKind::Other, bug))
     }
 }
 

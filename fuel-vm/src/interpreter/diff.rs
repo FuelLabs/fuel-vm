@@ -5,18 +5,18 @@
 //! although it could potentially stabilize to be used in production.
 
 use alloc::{
-    vec::Vec,
-    collections::{
-        HashMap,
-        HashSet,
-    },
     sync::Arc,
+    vec::Vec,
 };
 use core::{
-    fmt::Debug,
     any::Any,
+    fmt::Debug,
     hash::Hash,
     ops::AddAssign,
+};
+use hashbrown::{
+    HashMap,
+    HashSet,
 };
 
 use fuel_asm::Word;
@@ -243,7 +243,13 @@ fn capture_map_state_inner<'iter, K, V>(
     b_keys: &'iter HashSet<&K>,
 ) -> impl Iterator<Item = Delta<MapState<K, Option<V>>>> + 'iter
 where
-    K: 'static + core::cmp::PartialEq + Eq + Clone + Hash + Debug,
+    K: 'static
+        + core::cmp::PartialEq
+        + Eq
+        + Clone
+        + Hash
+        + Debug
+        + for<'a> core::borrow::Borrow<&'a K>,
     V: 'static + core::cmp::PartialEq + Clone + Debug,
 {
     let a_diff = a_keys.difference(b_keys).map(|k| Delta {

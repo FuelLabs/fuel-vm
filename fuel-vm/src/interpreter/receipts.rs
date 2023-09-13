@@ -125,9 +125,9 @@ mod tests {
         crypto::ephemeral_merkle_root,
         interpreter::receipts::ReceiptsCtx,
     };
+    use core::iter;
     use fuel_tx::Receipt;
     use fuel_types::canonical::SerializedSize;
-    use core::iter;
 
     fn create_receipt() -> Receipt {
         Receipt::call(

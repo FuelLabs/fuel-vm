@@ -16,11 +16,9 @@ use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
-use alloc::collections::{
-    hash_map::HashMap,
-    BTreeMap,
-};
+use alloc::collections::BTreeMap;
 use core::ops::Index;
+use hashbrown::HashMap;
 
 use super::MemoryRange;
 

@@ -58,21 +58,18 @@ where
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;
 
-        self.push_stack(self.transaction().id(&self.chain_id()).as_ref())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.push_stack(self.transaction().id(&self.chain_id()).as_ref())?;
 
         runtime_balances.to_vm(self);
 
         let tx_size = self.transaction().size() as Word;
         self.set_gas(gas_limit);
 
-        self.push_stack(&tx_size.to_be_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.push_stack(&tx_size.to_be_bytes())?;
 
         let tx_bytes = self.tx.to_bytes();
 
-        self.push_stack(tx_bytes.as_slice())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.push_stack(tx_bytes.as_slice())?;
 
         self.registers[RegId::SP] = self.registers[RegId::SSP];
 

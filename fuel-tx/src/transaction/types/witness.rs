@@ -3,13 +3,11 @@ use fuel_types::fmt_truncated_hex;
 
 use alloc::vec::Vec;
 
-#[cfg(feature = "std")]
 use crate::{
     CheckError,
     Input,
     TxId,
 };
-#[cfg(feature = "std")]
 use fuel_crypto::{
     Message,
     Signature,
@@ -47,7 +45,6 @@ impl Witness {
     }
 
     /// ECRecover an address from a witness
-    #[cfg(feature = "std")]
     pub fn recover_witness(
         &self,
         txhash: &TxId,

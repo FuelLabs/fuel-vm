@@ -808,7 +808,6 @@ impl Input {
         (*hasher.digest()).into()
     }
 
-    #[cfg(feature = "std")]
     pub fn is_predicate_owner_valid<P>(
         owner: &Address,
         predicate: P,

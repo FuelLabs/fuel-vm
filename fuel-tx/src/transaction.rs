@@ -59,7 +59,6 @@ use crate::input::coin::{
 };
 use input::*;
 
-#[cfg(feature = "std")]
 use crate::input::{
     contract::Contract,
     message::{
@@ -303,7 +302,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Returns ids of all `Input::Contract` that are present in the inputs.
     // TODO: Return `Vec<input::Contract>` instead
-    #[cfg(feature = "std")]
     fn input_contracts(&self) -> IntoIter<&fuel_types::ContractId> {
         self.inputs()
             .iter()
@@ -311,7 +309,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
                 _ => None,
             })
-            .unique()
+            .dedup()
             .collect_vec()
             .into_iter()
     }
@@ -411,7 +409,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     ///
     /// note: Fields dependent on storage/state such as balance and state roots, or tx
     /// pointers, should already set by the client beforehand.
-    #[cfg(feature = "std")]
     fn prepare_init_script(&mut self) -> &mut Self {
         self.outputs_mut()
             .iter_mut()

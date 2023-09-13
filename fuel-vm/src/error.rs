@@ -7,37 +7,47 @@ use fuel_asm::{
 };
 use fuel_storage::StorageError;
 use fuel_tx::CheckError;
+
+#[cfg(feature = "std")]
 use thiserror::Error;
 
+use alloc::{
+    format,
+    string::{
+        String,
+        ToString,
+    },
+};
 use core::fmt;
 
 /// Interpreter runtime error variants.
-#[derive(Debug, Error)]
+#[cfg_attr(feature = "std", derive(Error))]
+#[derive(Debug)]
 pub enum InterpreterError {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
-    #[error("Execution error: {0:?}")]
+    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
     PanicInstruction(PanicInstruction),
     /// The VM execution resulted in a well-formed panic. This panic wasn't
     /// caused by an instruction contained in the transaction or a called
     /// contract.
-    #[error("Execution error: {0:?}")]
+    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
     Panic(PanicReason),
     /// The provided transaction isn't valid.
-    #[error("Failed to check the transaction: {0}")]
-    CheckError(#[from] CheckError),
+    #[cfg_attr(feature = "std", error("Failed to check the transaction: {0}"))]
+    CheckError(CheckError),
     /// No transaction was initialized in the interpreter. It cannot provide
     /// state transitions.
-    #[error("Execution error")]
+    #[cfg_attr(feature = "std", error("Execution error"))]
     NoTransactionInitialized,
-    #[error("Execution error")]
+    #[cfg_attr(feature = "std", error("Execution error"))]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
     /// Storage I/O error
-    #[error("Storage error: {0}")]
+    #[cfg_attr(feature = "std", error("Storage error: {0}"))]
     Storage(StorageError),
     /// Encountered a bug
-    #[error("Bug: {0}")]
+    #[cfg_attr(feature = "std", error("Bug: {0}"))]
     Bug(Bug),
 }
 
@@ -91,6 +101,12 @@ impl From<RuntimeError> for InterpreterError {
                 Unrecoverable::Storage(err) => Self::Storage(err),
             },
         }
+    }
+}
+
+impl From<CheckError> for InterpreterError {
+    fn from(error: CheckError) -> Self {
+        Self::CheckError(error)
     }
 }
 
@@ -149,9 +165,9 @@ impl From<StorageError> for Unrecoverable {
     }
 }
 
-#[derive(Debug)]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
+#[derive(Debug)]
 pub enum RuntimeError {
     /// Specified error with well-formed fallback strategy, i.e. vm panics.
     Recoverable(PanicReason),
@@ -220,31 +236,50 @@ impl From<Bug> for RuntimeError {
 }
 
 /// Predicates checking failed
-#[derive(Debug, Error)]
+#[cfg_attr(feature = "std", derive(Error))]
+#[derive(Debug)]
 pub enum PredicateVerificationFailed {
     /// The predicate did not use the amount of gas provided
-    #[error("Predicate used less than the required amount of gas")]
+    #[cfg_attr(
+        feature = "std",
+        error("Predicate used less than the required amount of gas")
+    )]
     GasMismatch,
     /// The transaction doesn't contain enough gas to evaluate the predicate
-    #[error("Insufficient gas available for single predicate")]
+    #[cfg_attr(
+        feature = "std",
+        error("Insufficient gas available for single predicate")
+    )]
     OutOfGas,
     /// The predicate owner does not correspond to the predicate code
-    #[error("Predicate owner invalid, doesn't match code root")]
+    #[cfg_attr(
+        feature = "std",
+        error("Predicate owner invalid, doesn't match code root")
+    )]
     InvalidOwner,
     /// The predicate wasn't successfully evaluated to true
-    #[error("Predicate failed to evaluate")]
+    #[cfg_attr(feature = "std", error("Predicate failed to evaluate"))]
     False,
     /// The predicate gas used was not specified before execution
-    #[error("Predicate failed to evaluate")]
+    #[cfg_attr(feature = "std", error("Predicate failed to evaluate"))]
     GasNotSpecified,
     /// The transaction doesn't contain enough gas to evaluate all predicates
-    #[error("Insufficient gas available for all predicates")]
+    #[cfg_attr(
+        feature = "std",
+        error("Insufficient gas available for all predicates")
+    )]
     CumulativePredicateGasExceededTxGasLimit,
     /// The cumulative gas overflowed the u64 accumulator
-    #[error("Cumulative gas computation overflowed the u64 accumulator")]
+    #[cfg_attr(
+        feature = "std",
+        error("Cumulative gas computation overflowed the u64 accumulator")
+    )]
     GasOverflow,
     /// Predicate verification failed since it attempted to access storage
-    #[error("Predicate verification failed since it attempted to access storage")]
+    #[cfg_attr(
+        feature = "std",
+        error("Predicate verification failed since it attempted to access storage")
+    )]
     Storage,
 }
 
@@ -389,8 +424,7 @@ impl fmt::Display for Bug {
             NON_ALPHANUMERIC,
         };
 
-        let issue_title =
-            format!("Bug report: {:?} in {}", self.variant, self.location);
+        let issue_title = format!("Bug report: {:?} in {}", self.variant, self.location);
 
         let issue_body = format!(
             "Error: {:?} {}\nLocation: {}\nVersion: {} {}\n",

@@ -296,7 +296,7 @@ where
     fn get(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<std::borrow::Cow<<Type as Mappable>::OwnedValue>>, StorageError>
+    ) -> Result<Option<alloc::borrow::Cow<<Type as Mappable>::OwnedValue>>, StorageError>
     {
         <S as StorageInspect<Type>>::get(&self.0, key)
     }
@@ -413,7 +413,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<std::borrow::Cow<Bytes32>>>, StorageError> {
+    ) -> Result<Vec<Option<alloc::borrow::Cow<Bytes32>>>, StorageError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
 

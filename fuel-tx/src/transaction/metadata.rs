@@ -4,10 +4,9 @@ use fuel_types::{
     ChainId,
 };
 
-use crate::CheckError;
-#[cfg(feature = "std")]
 use crate::{
     field,
+    CheckError,
     UniqueIdentifier,
 };
 
@@ -54,7 +53,6 @@ pub(crate) struct CommonMetadata {
     pub witnesses_offset_at: Vec<usize>,
 }
 
-#[cfg(feature = "std")]
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self

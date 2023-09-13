@@ -8,7 +8,10 @@ use crate::{
     context::Context,
     state::Debugger,
 };
-use alloc::vec::Vec;
+use alloc::{
+    borrow::ToOwned,
+    vec::Vec,
+};
 use core::{
     mem,
     ops::Index,

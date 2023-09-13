@@ -907,7 +907,13 @@ fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 
     // Use floating point operation to get an approximation for the starting point.
     // This is at most off by one in either direction.
-    let guess = (target as f64).powf((nth_root as f64).recip()) as u64;
+
+    #[cfg(feature = "std")]
+    let powf = f64::powf;
+    #[cfg(not(feature = "std"))]
+    let powf = libm::pow;
+
+    let guess = powf(target as f64, (nth_root as f64).recip()) as u64;
 
     debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
 

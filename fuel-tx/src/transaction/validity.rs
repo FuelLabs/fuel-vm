@@ -11,19 +11,16 @@ use fuel_types::{
     BlockHeight,
 };
 
-#[cfg(feature = "std")]
 use crate::Transaction;
 
-#[cfg(feature = "std")]
 use fuel_types::{
     Address,
     Bytes32,
     ChainId,
 };
 
+use hashbrown::HashMap;
 use itertools::Itertools;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
 
 mod error;
 
@@ -69,7 +66,6 @@ impl Input {
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     pub fn check_signature(
         &self,
         index: usize,
@@ -261,7 +257,6 @@ pub trait FormatValidityChecks {
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     /// Validates that all required signatures are set in the transaction and that they
     /// are valid.
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError>;
@@ -275,7 +270,6 @@ pub trait FormatValidityChecks {
     ) -> Result<(), CheckError>;
 }
 
-#[cfg(feature = "std")]
 impl FormatValidityChecks for Transaction {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         match self {

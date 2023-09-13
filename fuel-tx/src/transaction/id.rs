@@ -1,4 +1,3 @@
-#[cfg(feature = "std")]
 use crate::{
     field,
     input::{
@@ -11,7 +10,6 @@ use crate::{
     Input,
     Transaction,
 };
-#[cfg(feature = "std")]
 use fuel_crypto::{
     Message,
     PublicKey,
@@ -33,7 +31,6 @@ pub trait UniqueIdentifier {
     fn cached_id(&self) -> Option<Bytes32>;
 }
 
-#[cfg(feature = "std")]
 impl UniqueIdentifier for Transaction {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         match self {

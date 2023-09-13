@@ -2,7 +2,10 @@
 //!
 //! As of the moment, doesn't support predicates.
 
-use alloc::vec::Vec;
+use alloc::{
+    borrow::ToOwned,
+    vec::Vec,
+};
 
 use crate::{
     call::CallFrame,

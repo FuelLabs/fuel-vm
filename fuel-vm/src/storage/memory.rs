@@ -436,7 +436,7 @@ impl InterpreterStorage for MemoryStorage {
         range: Word,
     ) -> Result<Option<()>, StorageError> {
         let mut all_set_key = true;
-        let mut values: std::collections::HashSet<_> =
+        let mut values: hashbrown::HashSet<_> =
             core::iter::successors(Some(**start_key), |n| {
                 let mut n = *n;
                 if add_one(&mut n) {

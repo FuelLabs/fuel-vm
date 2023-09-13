@@ -19,7 +19,10 @@ use fuel_types::{
     ChainId,
 };
 
-use alloc::boxed::Box;
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
 use core::{
     borrow::Borrow,
     future::Future,

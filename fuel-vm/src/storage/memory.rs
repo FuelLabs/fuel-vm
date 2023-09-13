@@ -1,3 +1,14 @@
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use crate::{
     crypto,
     storage::{
@@ -39,7 +50,6 @@ use tai64::Tai64;
 use alloc::{
     borrow::Cow,
     collections::BTreeMap,
-    vec::Vec,
 };
 
 use super::interpreter::ContractsAssetsStorage;

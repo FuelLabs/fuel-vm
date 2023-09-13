@@ -1,3 +1,14 @@
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;

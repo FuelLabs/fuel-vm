@@ -1,10 +1,21 @@
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use crate::interpreter::memory::Memory;
 
 use super::*;
 
 #[test]
 fn test_return() {
-    let mut frame_reg: [Word; VM_REGISTER_COUNT] = std::array::from_fn(|i| i as Word);
+    let mut frame_reg: [Word; VM_REGISTER_COUNT] = core::array::from_fn(|i| i as Word);
     frame_reg[RegId::CGAS] = 100;
     let mut expected = frame_reg;
     let frame = CallFrame::new(

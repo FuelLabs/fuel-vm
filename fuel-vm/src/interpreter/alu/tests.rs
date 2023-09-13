@@ -1,6 +1,17 @@
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use super::*;
+use core::ops::Div;
 use fuel_asm::Imm12;
-use std::ops::Div;
 use test_case::test_case;
 
 #[derive(Debug, PartialEq, Eq)]

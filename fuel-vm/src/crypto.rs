@@ -1,5 +1,16 @@
 //! Crypto implementations for the instructions
 
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use fuel_merkle::binary::in_memory::MerkleTree;
 use fuel_types::Bytes32;
 

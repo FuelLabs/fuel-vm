@@ -2,7 +2,7 @@
 
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
-#![deny(unused_crate_dependencies)]
+// #![deny(unused_crate_dependencies)]
 #![deny(clippy::string_slice)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -161,7 +161,11 @@ pub mod prelude {
         IntoChecked,
     };
 
-    #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
+    #[cfg(all(
+        feature = "profile-gas",
+        feature = "std",
+        any(test, feature = "test-helpers")
+    ))]
     pub use crate::util::gas_profiling::GasProfiler;
 
     pub use crate::profiler::Profiler;

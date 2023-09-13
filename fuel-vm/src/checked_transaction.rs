@@ -21,12 +21,14 @@ use fuel_types::{
 
 use alloc::{
     boxed::Box,
+    vec,
     vec::Vec,
 };
 use core::{
     borrow::Borrow,
     future::Future,
 };
+
 use fuel_tx::ConsensusParameters;
 
 mod balances;

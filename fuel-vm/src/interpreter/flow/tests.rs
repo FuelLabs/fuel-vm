@@ -1,3 +1,14 @@
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use crate::{
     interpreter::memory::Memory,
     storage::MemoryStorage,
@@ -84,8 +95,8 @@ struct Output {
     script: Option<Script>,
 }
 
-impl std::fmt::Debug for Output {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Output {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Output")
             .field("reg", &self.reg)
             .field("memory", &"[..]")

@@ -17,7 +17,10 @@ use crate::{
     storage::MemoryStorage,
 };
 
-use alloc::vec;
+use alloc::{
+    boxed::Box,
+    vec,
+};
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::ProfileReceiver;

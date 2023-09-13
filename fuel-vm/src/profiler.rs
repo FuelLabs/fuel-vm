@@ -1,9 +1,16 @@
 //! Profiler, can be used to export profiling data from VM runs
 
-use std::{
-    collections::HashMap,
-    fmt,
+use alloc::{
+    boxed::Box,
+    format,
+    string::{
+        String,
+        ToString,
+    },
+    vec::Vec,
 };
+use core::fmt;
+use hashbrown::HashMap;
 
 use dyn_clone::DynClone;
 
@@ -42,7 +49,7 @@ impl<'de> serde::de::Visitor<'de> for InstructionLocationVisitor {
     where
         E: serde::de::Error,
     {
-        use std::str::FromStr;
+        use core::str::FromStr;
 
         Ok(if let Some((l, r)) = value.split_once(':') {
             let context = Some(ContractId::from_str(l).map_err(|_| {
@@ -109,9 +116,7 @@ impl fmt::Display for InstructionLocation {
 type PerLocation<T> = HashMap<InstructionLocation, T>;
 
 /// Iterates through location (key, value) pairs
-pub struct PerLocationIter<'a, T>(
-    std::collections::hash_map::Iter<'a, InstructionLocation, T>,
-);
+pub struct PerLocationIter<'a, T>(hashbrown::hash_map::Iter<'a, InstructionLocation, T>);
 impl<'a, T> Iterator for PerLocationIter<'a, T> {
     type Item = (&'a InstructionLocation, &'a T);
 
@@ -121,9 +126,7 @@ impl<'a, T> Iterator for PerLocationIter<'a, T> {
 }
 
 /// Iterates through location keys
-pub struct PerLocationKeys<'a, T>(
-    std::collections::hash_map::Keys<'a, InstructionLocation, T>,
-);
+pub struct PerLocationKeys<'a, T>(hashbrown::hash_map::Keys<'a, InstructionLocation, T>);
 impl<'a, T> Iterator for PerLocationKeys<'a, T> {
     type Item = &'a InstructionLocation;
 
@@ -134,7 +137,7 @@ impl<'a, T> Iterator for PerLocationKeys<'a, T> {
 
 /// Iterates through location values
 pub struct PerLocationValues<'a, T>(
-    std::collections::hash_map::Values<'a, InstructionLocation, T>,
+    hashbrown::hash_map::Values<'a, InstructionLocation, T>,
 );
 impl<'a, T> Iterator for PerLocationValues<'a, T> {
     type Item = &'a T;
@@ -161,11 +164,13 @@ dyn_clone::clone_trait_object!(ProfileReceiver);
 pub struct StderrReceiver;
 
 impl ProfileReceiver for StderrReceiver {
+    #[cfg_attr(not(feature = "std"), allow(unused_variables))]
     fn on_transaction(
         &mut self,
         state: &Result<ProgramState, InterpreterError>,
         data: &ProfilingData,
     ) {
+        #[cfg(feature = "std")]
         eprintln!("PROFILER: {state:?} {data:?}");
     }
 }

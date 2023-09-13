@@ -52,7 +52,7 @@ macro_rules! script_with_data_offset {
                 0 as Immediate18
             };
             // evaluate script expression with zeroed data offset to get the script length
-            let script_bytes: ::std::vec::Vec<u8> =
+            let script_bytes: ::alloc::vec::Vec<u8> =
                 ::core::iter::IntoIterator::into_iter({ $script }).collect();
             // compute the script data offset within the VM memory given the script length
             {
@@ -80,6 +80,11 @@ macro_rules! script_with_data_offset {
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
+    use alloc::{
+        vec,
+        vec::Vec,
+    };
+
     use crate::{
         checked_transaction::{
             builder::TransactionBuilderExt,
@@ -687,7 +692,11 @@ pub mod test_helpers {
 }
 
 #[allow(missing_docs)]
-#[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
+#[cfg(all(
+    feature = "profile-gas",
+    feature = "std",
+    any(test, feature = "test-helpers")
+))]
 /// Gas testing utilities
 pub mod gas_profiling {
     use crate::prelude::*;

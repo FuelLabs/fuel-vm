@@ -1,3 +1,14 @@
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use fuel_vm::{
     consts::*,
     prelude::*,
@@ -8,6 +19,7 @@ use rand::{
     SeedableRng,
 };
 
+use core::fmt;
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -15,7 +27,6 @@ use fuel_types::{
     },
     Word,
 };
-use std::fmt;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where

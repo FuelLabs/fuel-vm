@@ -20,6 +20,16 @@ use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+
 use super::MemoryRange;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

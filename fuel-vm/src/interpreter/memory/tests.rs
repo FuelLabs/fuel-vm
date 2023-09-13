@@ -1,4 +1,14 @@
-use std::ops::Range;
+use alloc::{
+    boxed::Box,
+    string::{
+        String,
+        ToString,
+    },
+    vec,
+    vec::Vec,
+};
+use core::ops::Range;
+use hashbrown::HashMap;
 
 use super::*;
 use crate::{

@@ -49,7 +49,6 @@ use crate::{
 pub use error::CheckError;
 
 impl Input {
-    #[cfg(feature = "std")]
     pub fn check(
         &self,
         index: usize,
@@ -243,7 +242,6 @@ impl Output {
 /// such as spendable input balances or remaining gas. Primarily involves validating that
 /// transaction fields are correctly formatted and signed.
 pub trait FormatValidityChecks {
-    #[cfg(feature = "std")]
     /// Performs all stateless transaction validity checks. This includes the validity
     /// of fields according to rules in the specification and validity of signatures.
     fn check(

@@ -285,22 +285,8 @@ impl FormatValidityChecks for Create {
             if let Some(metadata) = &self.metadata {
                 (metadata.state_root, metadata.contract_id)
             } else {
-                #[cfg(feature = "std")]
-                {
-                    let metadata = CreateMetadata::compute(self, chain_id)?;
-                    (metadata.state_root, metadata.contract_id)
-                }
-
-                #[cfg(not(feature = "std"))]
-                {
-                    let salt = self.salt();
-                    let storage_slots = self.storage_slots();
-                    let contract = Contract::try_from(self)?;
-                    let contract_root = contract.root();
-                    let state_root = Contract::initial_state_root(storage_slots.iter());
-                    let contract_id = contract.id(salt, &contract_root, &state_root);
-                    (state_root, contract_id)
-                }
+                let metadata = CreateMetadata::compute(self, chain_id)?;
+                (metadata.state_root, metadata.contract_id)
             };
 
         let mut contract_created = false;

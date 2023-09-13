@@ -40,6 +40,7 @@ where
 
 #[cfg(feature = "std")]
 mod use_std {
+    use core::marker::PhantomData;
     use fuel_crypto::SecretKey;
     use fuel_tx::{
         field,
@@ -65,7 +66,6 @@ mod use_std {
         Rng,
         SeedableRng,
     };
-    use std::marker::PhantomData;
 
     use crate::{
         generate_bytes,

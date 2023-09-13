@@ -21,7 +21,6 @@ pub trait Cacheable {
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError>;
 }
 
-#[cfg(feature = "std")]
 impl Cacheable for super::Transaction {
     fn is_computed(&self) -> bool {
         match self {

@@ -205,11 +205,11 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
         key: &ContractId,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self
-            .memory
-            .contracts
-            .get(key)
-            .and_then(|c| c.as_ref().read(buf).ok()))
+        Ok(self.memory.contracts.get(key).and_then(|c| {
+            let len = buf.len().min(c.as_ref().len());
+            buf.copy_from_slice(&c.as_ref()[..len]);
+            Some(buf.len())
+        }))
     }
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {

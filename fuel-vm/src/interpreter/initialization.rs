@@ -16,6 +16,7 @@ use crate::{
         BugId,
         InterpreterError,
     },
+    prelude::RuntimeError,
     storage::InterpreterStorage,
 };
 
@@ -41,7 +42,7 @@ where
         initial_balances: InitialBalances,
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), RuntimeError> {
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
@@ -87,7 +88,7 @@ where
         context: Context,
         mut tx: Tx,
         gas_limit: Word,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), RuntimeError> {
         self.context = context;
         tx.prepare_init_predicate();
 
@@ -108,10 +109,7 @@ where
     ///
     /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(&mut self, checked: Checked<Tx>) -> Result<(), InterpreterError> {
-        let block_height = self
-            .storage
-            .block_height()
-            .map_err(InterpreterError::from_io)?;
+        let block_height = self.storage.block_height()?;
 
         self.context = Context::Script { block_height };
 
@@ -125,6 +123,6 @@ where
 
         let initial_balances = metadata.balances();
         let runtime_balances = initial_balances.try_into()?;
-        self.init_inner(tx, metadata.balances(), runtime_balances, gas_limit)
+        Ok(self.init_inner(tx, metadata.balances(), runtime_balances, gas_limit)?)
     }
 }

@@ -40,6 +40,7 @@ use crate::{
         InputContracts,
         PanicContext,
     },
+    prelude::InterpreterError,
     profiler::Profiler,
     storage::{
         ContractsAssets,
@@ -496,8 +497,8 @@ where
             + ContractsAssetsStorage
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
-        <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+        <S as StorageInspect<ContractsRawCode>>::Error: Into<RuntimeError>,
+        <S as StorageInspect<ContractsAssets>>::Error: Into<RuntimeError>,
     {
         let call = self.memory.call_params.try_from(self.memory.memory)?;
         let asset_id = self.memory.asset_id.try_from(self.memory.memory)?;
@@ -639,7 +640,7 @@ fn write_call_to_memory<S>(
 ) -> Result<Word, RuntimeError>
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
+    <S as StorageInspect<ContractsRawCode>>::Error: Into<RuntimeError>,
 {
     let mut code_frame_range = code_mem_range.clone();
     // Addition is safe because code size + padding is always less than len
@@ -654,8 +655,7 @@ where
     code_range.shrink_end(frame.code_size_padding() as usize);
     let bytes_read = storage
         .storage::<ContractsRawCode>()
-        .read(frame.to(), code_range.write(memory))
-        .map_err(RuntimeError::from_io)?
+        .read(frame.to(), code_range.write(memory))?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read as Word != frame.code_size() {
         return Err(PanicReason::ContractMismatch.into())
@@ -678,7 +678,7 @@ fn call_frame<S>(
 ) -> Result<CallFrame, RuntimeError>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
+    <S as StorageInspect<ContractsRawCode>>::Error: Into<InterpreterError>,
 {
     let (to, a, b) = call.into_inner();
 

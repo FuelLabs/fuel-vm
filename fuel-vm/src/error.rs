@@ -28,9 +28,6 @@ pub enum InterpreterError {
     /// The provided transaction isn't valid.
     #[error("Failed to check the transaction: {0}")]
     CheckError(#[from] CheckError),
-    /// The predicate verification failed.
-    #[error("Execution error")]
-    PredicateFailure,
     /// No transaction was initialized in the interpreter. It cannot provide
     /// state transitions.
     #[error("Execution error")]
@@ -41,7 +38,7 @@ pub enum InterpreterError {
     #[error("Execution error")]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
-    /// I/O and OS related errors.
+    /// VM panics, and I/O and OS related errors during VM execution.
     #[error("Runtime error: {0}")]
     RuntimeError(RuntimeError),
 }
@@ -88,7 +85,7 @@ impl From<RuntimeError> for InterpreterError {
     fn from(error: RuntimeError) -> Self {
         match error {
             RuntimeError::Recoverable(e) => Self::Panic(e),
-            RuntimeError::Halt => todo!(), // TODO
+            RuntimeError::Unrecoverable(_) => todo!(), // TODO
         }
     }
 }
@@ -99,7 +96,6 @@ impl PartialEq for InterpreterError {
             (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
             (Self::Panic(s), Self::Panic(o)) => s == o,
             (Self::CheckError(s), Self::CheckError(o)) => s == o,
-            (Self::PredicateFailure, Self::PredicateFailure) => true,
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
             (Self::RuntimeError(s), Self::RuntimeError(o)) => todo!(), // TODO
 
@@ -110,19 +106,41 @@ impl PartialEq for InterpreterError {
     }
 }
 
+#[derive(Debug, PartialEq)]
+/// Unrecoverable error
+pub enum Unrecoverable {
+    /// Invalid interpreter state reached unexpectedly, this is a bug
+    Bug(Bug),
+    /// Predicate verification failed
+    PredicateFailure,
+}
+
+impl fmt::Display for Unrecoverable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        todo!();
+    }
+}
+
+impl From<Bug> for Unrecoverable {
+    fn from(bug: Bug) -> Self {
+        Self::Bug(bug)
+    }
+}
+
 #[derive(Debug)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 pub enum RuntimeError {
-    /// Specified error with well-formed fallback strategy.
-    #[error(transparent)]
-    Recoverable(#[from] PanicReason),
-    /// Unspecified error that should halt the execution.
-    Halt, // TODO
+    /// Specified error with well-formed fallback strategy, i.e. vm panics.
+    Recoverable(PanicReason),
+    /// Unspecified error that should halt the execution, i.e. IO errors.
+    Unrecoverable(Unrecoverable),
 }
 
 impl RuntimeError {
+    pub const INVALID_PREDICATE: Self =
+        Self::Unrecoverable(Unrecoverable::PredicateFailure);
+
     /// Flag whether the error is recoverable.
     pub const fn is_recoverable(&self) -> bool {
         matches!(self, Self::Recoverable(_))
@@ -130,21 +148,20 @@ impl RuntimeError {
 
     /// Flag whether the error must halt the execution.
     pub const fn must_halt(&self) -> bool {
-        matches!(self, Self::Halt)
+        matches!(self, Self::Unrecoverable(_))
     }
 
     /// Unexpected behavior occurred
     pub fn unexpected_behavior<E>(error: E) -> Self {
-        todo!();
-        Self::Halt // TODO: contents
+        todo!(); // TODO
     }
 }
 
 impl PartialEq for RuntimeError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (RuntimeError::Recoverable(s), RuntimeError::Recoverable(o)) => s == o,
-            (RuntimeError::Halt, RuntimeError::Halt) => todo!(), // TODO
+            (RuntimeError::Recoverable(a), RuntimeError::Recoverable(b)) => a == b,
+            (RuntimeError::Unrecoverable(a), RuntimeError::Unrecoverable(b)) => a == b,
             _ => false,
         }
     }
@@ -154,8 +171,14 @@ impl fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Recoverable(reason) => write!(f, "Recoverable error: {}", reason),
-            Self::Halt => write!(f, "Unrecoverable error"),
+            Self::Unrecoverable(err) => write!(f, "Unrecoverable error: {}", err),
         }
+    }
+}
+
+impl From<PanicReason> for RuntimeError {
+    fn from(value: PanicReason) -> Self {
+        Self::Recoverable(value)
     }
 }
 
@@ -199,6 +222,12 @@ impl From<Infallible> for PanicReason {
 impl From<core::array::TryFromSliceError> for RuntimeError {
     fn from(value: core::array::TryFromSliceError) -> Self {
         Self::Recoverable(value.into())
+    }
+}
+
+impl From<Bug> for RuntimeError {
+    fn from(bug: Bug) -> Self {
+        Self::Unrecoverable(bug.into())
     }
 }
 
@@ -340,6 +369,12 @@ pub struct Bug {
 
     #[cfg(feature = "backtrace")]
     bt: backtrace::Backtrace,
+}
+
+impl PartialEq for Bug {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.variant == other.variant
+    }
 }
 
 impl Bug {

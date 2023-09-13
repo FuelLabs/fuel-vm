@@ -457,18 +457,13 @@ where
         };
 
         // Prevent redeployment of contracts
-        if storage
-            .storage_contract_exists(&id)
-            .map_err(InterpreterError::from_io)?
-        {
+        if storage.storage_contract_exists(&id)? {
             return Err(InterpreterError::Panic(
                 PanicReason::ContractIdAlreadyDeployed,
             ))
         }
 
-        storage
-            .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
-            .map_err(InterpreterError::from_io)?;
+        storage.deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)?;
         Self::finalize_outputs(
             create,
             fee_params,

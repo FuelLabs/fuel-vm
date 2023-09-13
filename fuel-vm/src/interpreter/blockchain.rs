@@ -46,7 +46,10 @@ use crate::{
         receipts::ReceiptsCtx,
         InputContracts,
     },
-    prelude::Profiler,
+    prelude::{
+        InterpreterError,
+        Profiler,
+    },
     storage::{
         ContractsAssets,
         ContractsAssetsStorage,
@@ -552,7 +555,7 @@ struct BurnCtx<'vm, S> {
 impl<'vm, S> BurnCtx<'vm, S>
 where
     S: ContractsAssetsStorage,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<RuntimeError>,
 {
     pub(crate) fn burn(self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let range = internal_contract_bounds(self.context, self.fp)?;
@@ -569,9 +572,11 @@ where
             .checked_sub(a)
             .ok_or(PanicReason::NotEnoughBalance)?;
 
-        self.storage
-            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
-            .map_err(RuntimeError::from_io)?;
+        self.storage.merkle_contract_asset_id_balance_insert(
+            contract_id,
+            &asset_id,
+            balance,
+        )?;
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
 
@@ -593,7 +598,7 @@ struct MintCtx<'vm, S> {
 impl<'vm, S> MintCtx<'vm, S>
 where
     S: ContractsAssetsStorage,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<RuntimeError>,
 {
     pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let range = internal_contract_bounds(self.context, self.fp)?;
@@ -608,9 +613,11 @@ where
         let balance = balance(self.storage, contract_id, &asset_id)?;
         let balance = checked_add_word(balance, a)?;
 
-        self.storage
-            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
-            .map_err(RuntimeError::from_io)?;
+        self.storage.merkle_contract_asset_id_balance_insert(
+            contract_id,
+            &asset_id,
+            balance,
+        )?;
 
         let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
 
@@ -709,7 +716,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     pc: RegMut<PC>,
     a: Word,
 ) -> Result<(), RuntimeError> {
-    let coinbase = storage.coinbase().map_err(RuntimeError::from_io)?;
+    let coinbase = storage.coinbase()?;
     try_mem_write(a, coinbase.as_ref(), owner, memory)?;
     inc_pc(pc)
 }
@@ -738,8 +745,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
             .storage
             .storage_contract_root(contract_id)
             .transpose()
-            .ok_or(PanicReason::ContractNotFound)?
-            .map_err(RuntimeError::from_io)?
+            .ok_or(PanicReason::ContractNotFound)??
             .into_owned();
 
         try_mem_write(a, root.as_ref(), self.owner, self.memory)?;
@@ -769,7 +775,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
     ) -> Result<(), RuntimeError>
     where
         S: StorageSize<ContractsRawCode>,
-        <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
+        <S as StorageInspect<ContractsRawCode>>::Error: Into<RuntimeError>,
     {
         let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
 
@@ -817,16 +823,13 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
 
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let value = storage
-        .merkle_contract_state(contract, key)
-        .map_err(RuntimeError::from_io)?
-        .map(|bytes| {
-            Word::from_be_bytes(
-                bytes[..8]
-                    .try_into()
-                    .expect("8 bytes can be converted to a Word"),
-            )
-        });
+    let value = storage.merkle_contract_state(contract, key)?.map(|bytes| {
+        Word::from_be_bytes(
+            bytes[..8]
+                .try_into()
+                .expect("8 bytes can be converted to a Word"),
+        )
+    });
 
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;
@@ -858,9 +861,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
 
     value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
-    let result = storage
-        .merkle_contract_state_insert(contract, key, &value)
-        .map_err(RuntimeError::from_io)?;
+    let result = storage.merkle_contract_state_insert(contract, key, &value)?;
 
     *exists = result.is_some() as Word;
 
@@ -888,7 +889,7 @@ pub(crate) fn timestamp(
 struct MessageOutputCtx<'vm, Tx, S>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
@@ -914,7 +915,7 @@ where
 impl<Tx, S> MessageOutputCtx<'_, Tx, S>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
+    <S as StorageInspect<ContractsAssets>>::Error: Into<InterpreterError>,
 {
     pub(crate) fn message_output(self) -> Result<(), RuntimeError>
     where
@@ -1022,8 +1023,7 @@ fn state_read_qword(
 
     let mut all_set = true;
     let result: Vec<u8> = storage
-        .merkle_contract_state_range(contract_id, origin_key, input.num_slots)
-        .map_err(RuntimeError::from_io)?
+        .merkle_contract_state_range(contract_id, origin_key, input.num_slots)?
         .into_iter()
         .flat_map(|bytes| match bytes {
             Some(bytes) => **bytes,
@@ -1090,8 +1090,7 @@ fn state_write_qword(
         .collect();
 
     let any_none = storage
-        .merkle_contract_state_insert_range(contract_id, destination_key, &values)
-        .map_err(RuntimeError::from_io)?
+        .merkle_contract_state_insert_range(contract_id, destination_key, &values)?
         .is_some();
     *result_register = any_none as Word;
 
@@ -1135,8 +1134,7 @@ fn state_clear_qword(
         Bytes32::from_bytes_ref(input.start_storage_key_memory_range.read(memory));
 
     let all_previously_set = storage
-        .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)
-        .map_err(RuntimeError::from_io)?
+        .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)?
         .is_some();
 
     *result_register = all_previously_set as Word;

@@ -23,7 +23,10 @@ use fuel_types::{
 };
 
 use crate::{
-    prelude::InterpreterError,
+    prelude::{
+        InterpreterError,
+        RuntimeError,
+    },
     storage::{
         ContractsAssets,
         ContractsInfo,
@@ -35,9 +38,12 @@ use alloc::{
     borrow::Cow,
     vec::Vec,
 };
-use core::ops::{
-    Deref,
-    DerefMut,
+use core::{
+    fmt,
+    ops::{
+        Deref,
+        DerefMut,
+    },
 };
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
@@ -51,7 +57,7 @@ pub trait InterpreterStorage:
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
-    type DataError: Into<InterpreterError>; // TODO
+    type DataError: Into<RuntimeError> + fmt::Debug; // TODO
 
     /// Provide the current block height in which the transactions should be
     /// executed.

@@ -3,6 +3,7 @@ use crate::{
     prelude::{
         ExecutableTransaction,
         Interpreter,
+        RuntimeError,
     },
     state::{
         ExecuteState,
@@ -24,7 +25,7 @@ where
         let range = self
             .context
             .predicate()
-            .ok_or(InterpreterError::PredicateFailure)?
+            .ok_or(RuntimeError::INVALID_PREDICATE)?
             .program()
             .words();
 

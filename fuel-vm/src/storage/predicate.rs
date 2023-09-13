@@ -5,6 +5,7 @@ use alloc::{
 
 use crate::{
     error::InterpreterError,
+    prelude::RuntimeError,
     storage::InterpreterStorage,
 };
 
@@ -40,17 +41,17 @@ use super::{
 pub struct PredicateStorage;
 
 impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
-    type Error = InterpreterError;
+    type Error = RuntimeError;
 
     fn get(
         &self,
         _key: &Type::Key,
-    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
-    fn contains_key(&self, _key: &Type::Key) -> Result<bool, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn contains_key(&self, _key: &Type::Key) -> Result<bool, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 }
 
@@ -59,24 +60,21 @@ impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
         &mut self,
         _key: &Type::Key,
         _value: &Type::Value,
-    ) -> Result<Option<Type::OwnedValue>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<Type::OwnedValue>, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
     fn remove(
         &mut self,
         _key: &Type::Key,
-    ) -> Result<Option<Type::OwnedValue>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<Type::OwnedValue>, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 }
 
 impl StorageSize<ContractsRawCode> for PredicateStorage {
-    fn size_of_value(
-        &self,
-        _key: &ContractId,
-    ) -> Result<Option<usize>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn size_of_value(&self, _key: &ContractId) -> Result<Option<usize>, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 }
 
@@ -86,45 +84,42 @@ impl StorageRead<ContractsRawCode> for PredicateStorage {
         _key: &<ContractsRawCode as Mappable>::Key,
         _buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Err(InterpreterError::PredicateFailure)
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
     fn read_alloc(
         &self,
         _key: &<ContractsRawCode as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
-        Err(InterpreterError::PredicateFailure)
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 }
 
 impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
-    fn root(&self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn root(&self, _parent: &Key) -> Result<MerkleRoot, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 }
 
 impl ContractsAssetsStorage for PredicateStorage {}
 
 impl InterpreterStorage for PredicateStorage {
-    type DataError = InterpreterError;
+    type DataError = RuntimeError;
 
-    fn block_height(&self) -> Result<BlockHeight, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn block_height(&self) -> Result<BlockHeight, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
     fn timestamp(&self, _height: BlockHeight) -> Result<Word, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
-    fn block_hash(
-        &self,
-        _block_height: BlockHeight,
-    ) -> Result<Bytes32, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn block_hash(&self, _block_height: BlockHeight) -> Result<Bytes32, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
-    fn coinbase(&self) -> Result<Address, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn coinbase(&self) -> Result<Address, RuntimeError> {
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
     fn merkle_contract_state_range(
@@ -133,7 +128,7 @@ impl InterpreterStorage for PredicateStorage {
         _start_key: &Bytes32,
         _range: Word,
     ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
     fn merkle_contract_state_insert_range(
@@ -142,7 +137,7 @@ impl InterpreterStorage for PredicateStorage {
         _start_key: &Bytes32,
         _values: &[Bytes32],
     ) -> Result<Option<()>, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 
     fn merkle_contract_state_remove_range(
@@ -151,6 +146,6 @@ impl InterpreterStorage for PredicateStorage {
         _start_key: &Bytes32,
         _range: Word,
     ) -> Result<Option<()>, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+        Err(RuntimeError::INVALID_PREDICATE)
     }
 }

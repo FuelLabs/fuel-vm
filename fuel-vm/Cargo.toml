@@ -23,7 +23,7 @@ fuel-crypto = { workspace = true, default-features = false }
 fuel-merkle = { workspace = true, default-features = false }
 fuel-storage = { workspace = true }
 fuel-tx = { workspace = true, default-features = false }
-fuel-types = { workspace = true, default-features = false  }
+fuel-types = { workspace = true, default-features = false }
 hashbrown = "0.14"
 itertools = { version = "0.10", default-features = false }
 libm = "0.2"
@@ -34,7 +34,7 @@ rand = { version = "0.8", optional = true }
 serde = { version = "1.0", features = ["derive", "rc"], optional = true }
 sha3 = { version = "0.10", default-features = false }
 static_assertions = "1.1"
-strum = { version = "0.24", features = ["derive"], default-features = false  }
+strum = { version = "0.24", features = ["derive"], default-features = false }
 tai64 = { version = "4.0", default-features = false }
 thiserror = { version = "1.0", optional = true }
 
@@ -58,7 +58,7 @@ tokio-rayon = "2.1.0"
 [features]
 default = ["std"]
 std = ["alloc", "fuel-storage/std", "fuel-types/std", "fuel-asm/std", "fuel-tx/std", "itertools/use_std", "thiserror"]
-alloc = ["fuel-tx/alloc",  "fuel-tx/builder"]
+alloc = ["fuel-tx/alloc", "fuel-tx/builder"]
 arbitrary = ["fuel-asm/arbitrary"]
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]

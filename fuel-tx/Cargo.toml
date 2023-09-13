@@ -18,8 +18,8 @@ fuel-merkle = { workspace = true, default-features = false, optional = true }
 fuel-types = { workspace = true, default-features = false }
 hashbrown = { version = "0.14", optional = true }
 itertools = { version = "0.10", default-features = false, optional = true }
-num_enum = { version = "0.7", default-features = false, optional = true }
 num-integer = { version = "0.1", default-features = false, optional = true }
+num_enum = { version = "0.7", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }

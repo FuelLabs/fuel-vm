@@ -11,7 +11,6 @@ use crate::{
     Error,
 };
 
-#[cfg(feature = "random")]
 use crate::SecretKey;
 
 use k256::{

@@ -19,7 +19,6 @@ use secp256k1::{
     Secp256k1,
 };
 
-#[cfg(feature = "random")]
 use crate::SecretKey;
 
 #[cfg(feature = "random")]

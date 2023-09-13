@@ -384,8 +384,13 @@ mod bt {
 
 impl fmt::Display for Bug {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use percent_encoding::{
+            utf8_percent_encode,
+            NON_ALPHANUMERIC,
+        };
+
         let issue_title =
-            format!("Bug%20report: {:?} in {}", self.variant, self.location);
+            format!("Bug report: {:?} in {}", self.variant, self.location);
 
         let issue_body = format!(
             "Error: {:?} {}\nLocation: {}\nVersion: {} {}\n",
@@ -409,8 +414,8 @@ impl fmt::Display for Bug {
                 "\n\n",
                 "{:?} error in {}: {} {}\n",
             ),
-            url_escape::encode_fragment(&issue_title),
-            url_escape::encode_fragment(&issue_body),
+            utf8_percent_encode(&issue_title, NON_ALPHANUMERIC),
+            utf8_percent_encode(&issue_body, NON_ALPHANUMERIC),
             self.variant,
             self.location,
             self.variant,

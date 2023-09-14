@@ -119,8 +119,10 @@ pub fn verify(
     Ok(())
 }
 
-#[cfg(all(test, feature = "std"))]
+#[cfg(test)]
 mod tests {
+    use fuel_types::Bytes32;
+    #[cfg(feature = "std")]
     use rand::{
         rngs::StdRng,
         Rng,
@@ -129,6 +131,7 @@ mod tests {
 
     use super::*;
 
+    #[cfg(feature = "std")]
     #[test]
     fn full() {
         let rng = &mut StdRng::seed_from_u64(1234);
@@ -137,6 +140,25 @@ mod tests {
         let public = public_key(&secret);
 
         let message = Message::new(rng.gen::<[u8; 10]>());
+
+        let signature = sign(&secret, &message);
+        verify(signature, *public, &message).expect("Verification failed");
+        let recovered = recover(signature, &message).expect("Recovery failed");
+
+        assert_eq!(public, recovered);
+    }
+
+    #[test]
+    fn no_std() {
+        let raw_secret: [u8; 32] = [
+            0x99, 0xe8, 0x7b, 0xe, 0x91, 0x58, 0x53, 0x1e, 0xee, 0xb5, 0x3, 0xff, 0x15,
+            0x26, 0x6e, 0x2b, 0x23, 0xc2, 0xa2, 0x50, 0x7b, 0x13, 0x8c, 0x9d, 0x1b, 0x1f,
+            0x2a, 0xb4, 0x58, 0xdf, 0x2d, 0x6,
+        ];
+        let secret = SecretKey::try_from(Bytes32::from(raw_secret)).unwrap();
+        let public = public_key(&secret);
+
+        let message = Message::new(b"Every secret creates a potential failure point.");
 
         let signature = sign(&secret, &message);
         verify(signature, *public, &message).expect("Verification failed");

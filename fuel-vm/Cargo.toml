@@ -54,7 +54,7 @@ tokio-rayon = "2.1.0"
 
 [features]
 default = ["std"]
-std = []
+std = ["fuel-crypto/std"]
 arbitrary = ["fuel-asm/arbitrary"]
 optimized = []
 profile-gas = ["profile-any"]

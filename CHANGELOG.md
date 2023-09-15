@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#578](https://github.com/FuelLabs/fuel-vm/pull/578): Support `no_std` environments for `fuel-crypto`, falling back to a pure-Rust crypto implementation.
 - [#582](https://github.com/FuelLabs/fuel-vm/pull/582): Make `fuel-vm` and `fuel-tx` crates compatible with `no_std` + `alloc`. This includes reworking all error handling that used `std::io::Error`, replacing some `std::collection::{HashMap, HashSet}` with `hashbrown::{HashMap, HashSet}` and many changes to feature-gating of APIs.
 
 ## [Version 0.37.0]
@@ -20,7 +21,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     These opcodes charged inadequately low costs in comparison to the amount of work.
     This change should make all transactions that used these opcodes much more expensive than before.
 - [#533](https://github.com/FuelLabs/fuel-vm/pull/533): Use custom serialization for fuel-types to allow no_std compilation.
-- [#578](https://github.com/FuelLabs/fuel-vm/pull/578): Support `no_std` environments for `fuel-crypto`, falling back to a pure-Rust crypto implementation.
 
 ## [Version 0.36.1]
 

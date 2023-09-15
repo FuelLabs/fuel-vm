@@ -30,7 +30,7 @@ zeroize = { version = "1.5", features = ["derive"] }
 [dev-dependencies]
 bincode = { workspace = true }
 criterion = "0.4"
-fuel-crypto = { path = ".", features = ["random", "test-helpers"] }
+# fuel-crypto = { path = ".", features = ["random", "test-helpers"] }
 sha2 = "0.10"
 
 [features]

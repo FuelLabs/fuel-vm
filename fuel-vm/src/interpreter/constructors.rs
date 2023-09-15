@@ -17,10 +17,7 @@ use crate::{
     storage::MemoryStorage,
 };
 
-use alloc::{
-    boxed::Box,
-    vec,
-};
+use alloc::vec;
 
 #[cfg(feature = "profile-any")]
 use crate::profiler::ProfileReceiver;
@@ -62,6 +59,8 @@ where
     where
         P: ProfileReceiver + Send + Sync + 'static,
     {
+        #[cfg(not(feature = "std"))]
+        use alloc::boxed::Box;
         self.profiler.set_receiver(Box::new(receiver));
         self
     }

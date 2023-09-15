@@ -48,15 +48,12 @@ mod tests {
             let secret = SecretKey::random(rng);
             let message = Message::new(&vec![rng.gen(); case]);
 
-            let secret_k = ::k256::SecretKey::from_bytes(&(*secret).into()).unwrap();
-            let secret_s = ::secp256k1::SecretKey::from_slice(secret.as_ref()).unwrap();
-
-            let public_k = k256::public_key(secret_k.clone());
-            let public_s = secp256k1::public_key(secret_s);
+            let public_k = k256::public_key(&secret);
+            let public_s = secp256k1::public_key(&secret);
             assert_eq!(public_k, public_s);
 
-            let signed_k = k256::sign(secret_k, &message);
-            let signed_s = secp256k1::sign(secret_s, &message);
+            let signed_k = k256::sign(&secret, &message);
+            let signed_s = secp256k1::sign(&secret, &message);
             assert_eq!(signed_k, signed_s);
 
             k256::verify(signed_k, *public_k, &message).expect("Failed to verify (k256)");

@@ -57,7 +57,7 @@ tokio-rayon = "2.1.0"
 
 [features]
 default = ["std"]
-std = ["alloc", "fuel-storage/std", "fuel-types/std", "fuel-asm/std", "fuel-tx/std", "itertools/use_std", "thiserror"]
+std = ["alloc", "fuel-crypto/std", "fuel-storage/std", "fuel-types/std", "fuel-asm/std", "fuel-tx/std", "itertools/use_std", "thiserror"]
 alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-tx/builder"]
 arbitrary = ["fuel-asm/arbitrary"]
 profile-gas = ["profile-any"]

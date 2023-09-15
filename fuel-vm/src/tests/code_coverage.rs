@@ -46,7 +46,7 @@ fn code_coverage() {
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
         .add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(rng),
             rng.gen(),
             1,
             Default::default(),

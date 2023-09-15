@@ -7,8 +7,8 @@ use fuel_types::{
 };
 
 use crate::{
+    message::Message,
     Error,
-    Message,
 };
 
 /// Verify a signature against a message digest and a public key.

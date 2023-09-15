@@ -712,9 +712,9 @@ mod tests {
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
+            .add_unsigned_message_input(SecretKey::random(rng), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
             // Add empty base coin
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
             .finalize();
 
         let err = tx
@@ -752,7 +752,7 @@ mod tests {
                 vec![0xbb; 10],
             ))
             // Add empty base coin
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
             .finalize();
 
         let err = tx
@@ -1196,7 +1196,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_coin_input(
-                rng.gen(),
+                SecretKey::random(rng),
                 rng.gen(),
                 input_amount,
                 asset,
@@ -1256,7 +1256,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(
-                rng.gen(),
+                SecretKey::random(rng),
                 rng.gen(),
                 rng.gen(),
                 input_amount,
@@ -1296,7 +1296,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_coin_input(
-                rng.gen(),
+                SecretKey::random(rng),
                 rng.gen(),
                 input_amount,
                 AssetId::default(),

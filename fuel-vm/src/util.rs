@@ -258,7 +258,7 @@ pub mod test_helpers {
             amount: Word,
         ) -> &mut TestBuilder {
             self.builder.add_unsigned_coin_input(
-                self.rng.gen(),
+                fuel_crypto::SecretKey::random(&mut self.rng),
                 self.rng.gen(),
                 amount,
                 asset_id,

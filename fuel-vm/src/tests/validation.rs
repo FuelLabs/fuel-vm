@@ -19,7 +19,7 @@ fn transaction_can_be_executed_after_maturity() {
         Default::default(),
     )
     .add_unsigned_coin_input(
-        rng.gen(),
+        SecretKey::random(rng),
         rng.gen(),
         1,
         Default::default(),

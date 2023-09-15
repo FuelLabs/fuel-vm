@@ -20,6 +20,7 @@ use fuel_types::{
 use itertools::Itertools;
 use rand::{
     rngs::StdRng,
+    CryptoRng,
     Rng,
     SeedableRng,
 };
@@ -1404,7 +1405,7 @@ fn smo_instruction_works() {
         gas_price: Word,
     ) -> bool
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         let mut client = MemoryClient::default();
         let fee_params = FeeParameters::default();

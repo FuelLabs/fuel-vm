@@ -98,14 +98,9 @@ fn signatures(c: &mut Criterion) {
     };
 
     // k256
-    let (k2_key, k2_verifying, k2_digest, k2_signature, k2_recoverable) = {
+    let (k2_key, k2_verifying, k2_digest, k2_signature, k2_recovery_id) = {
         use k256::ecdsa::{
-            recoverable::Signature as Recoverable,
-            signature::{
-                DigestSigner,
-                DigestVerifier,
-            },
-            Signature,
+            signature::DigestVerifier,
             SigningKey,
             VerifyingKey,
         };
@@ -121,23 +116,24 @@ fn signatures(c: &mut Criterion) {
             0x68, 0x2e, 0xde, 0x02, 0xc9, 0x1d, 0x61, 0xa9, 0x89, 0xd0, 0xb4, 0x39, 0x16,
             0x25, 0xec, 0x80, 0x93, 0xfb, 0xa1,
         ];
-        let key = SigningKey::from_bytes(&key).expect("failed to create key");
+        let key = SigningKey::from_bytes((&key).into()).expect("failed to create key");
         let verifying = VerifyingKey::from(key.clone());
 
-        let signature: Signature = key.sign_digest(digest.clone());
-        let recoverable: Recoverable = key.sign_digest(digest.clone());
+        let (signature, recovery_id) = key
+            .sign_digest_recoverable(digest.clone())
+            .expect("Failed to sign");
 
         verifying
             .verify_digest(digest.clone(), &signature)
             .expect("failed to verify");
 
-        let x = recoverable
-            .recover_verifying_key_from_digest(digest.clone())
-            .expect("failed to recover");
+        let recovered =
+            VerifyingKey::recover_from_digest(digest.clone(), &signature, recovery_id)
+                .expect("failed to recover");
 
-        assert_eq!(x, verifying);
+        assert_eq!(recovered, verifying);
 
-        (key, verifying, digest, signature, recoverable)
+        (key, verifying, digest, signature, recovery_id)
     };
 
     let mut group_sign = c.benchmark_group("sign");
@@ -251,10 +247,14 @@ fn signatures(c: &mut Criterion) {
 
     group_recover.bench_with_input(
         "k256",
-        &(k2_recoverable, k2_digest),
-        |b, (recoverable, digest)| {
+        &(k2_signature, k2_recovery_id, k2_digest),
+        |b, (signature, recovery_id, digest)| {
             b.iter(|| {
-                recoverable.recover_verifying_key_from_digest(black_box(digest.clone()))
+                k256::ecdsa::VerifyingKey::recover_from_digest(
+                    digest.clone(),
+                    signature,
+                    *recovery_id,
+                )
             })
         },
     );

@@ -360,6 +360,7 @@ pub mod test_helpers {
             self.consensus_params.gas_costs()
         }
 
+        #[cfg(feature = "alloc")]
         pub fn build_get_balance_tx(
             contract_id: &ContractId,
             asset_id: &AssetId,
@@ -548,6 +549,7 @@ pub mod test_helpers {
             find_change(outputs, find_asset_id)
         }
 
+        #[cfg(feature = "alloc")]
         pub fn get_contract_balance(
             &mut self,
             contract_id: &ContractId,

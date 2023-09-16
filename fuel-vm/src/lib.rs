@@ -33,6 +33,7 @@ pub mod util;
 pub mod profiler;
 
 #[cfg(test)]
+#[cfg(feature = "alloc")]
 mod tests;
 
 #[cfg(not(feature = "profile-any"))]

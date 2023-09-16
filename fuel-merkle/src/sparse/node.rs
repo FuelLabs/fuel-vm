@@ -330,7 +330,7 @@ impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageTyp
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum StorageNodeError {
     #[cfg_attr(feature = "std", error(transparent))]

@@ -2,6 +2,7 @@
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 
+mod error;
 mod impls;
 
 extern crate alloc;
@@ -13,6 +14,8 @@ use alloc::{
     },
     vec::Vec,
 };
+
+pub use error::StorageError;
 
 /// Merkle root alias type
 pub type MerkleRoot = [u8; 32];
@@ -288,17 +291,3 @@ pub trait StorageAsMut {
 }
 
 impl<T> StorageAsMut for T {}
-
-/// Wraps around possible errors that can occur during storage operations.
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum StorageError {
-    /// Storage is unavailable in predicate context
-    Unavailable,
-}
-
-impl core::fmt::Display for StorageError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Storage error")
-    }
-}

@@ -103,7 +103,7 @@ fn code_coverage() {
 
     assert_eq!(items.len(), expect.len());
 
-    for (item, expect) in items.into_iter().zip(expect.into_iter()) {
+    for (item, expect) in items.into_iter().zip(expect) {
         assert_eq!(
             *item,
             InstructionLocation::new(None, expect * HALF_WORD_SIZE)

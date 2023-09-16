@@ -1,9 +1,9 @@
 use crate::{
     error::InterpreterError,
     prelude::{
+        CheckError,
         ExecutableTransaction,
         Interpreter,
-        RuntimeError,
     },
     state::{
         ExecuteState,
@@ -25,7 +25,9 @@ where
         let range = self
             .context
             .predicate()
-            .ok_or(RuntimeError::INVALID_PREDICATE)?
+            .ok_or(InterpreterError::CheckError(
+                CheckError::PredicateVerificationFailed,
+            ))?
             .program()
             .words();
 

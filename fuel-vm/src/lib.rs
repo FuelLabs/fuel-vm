@@ -6,7 +6,8 @@
 #![deny(clippy::string_slice)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
-extern crate alloc;
+#[doc(hidden)] // Needed by some of the exported macros
+pub extern crate alloc;
 
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
@@ -90,6 +91,7 @@ pub mod prelude {
         MerkleRootStorage,
         StorageAsMut,
         StorageAsRef,
+        StorageError,
         StorageInspect,
         StorageMutate,
     };

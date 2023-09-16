@@ -1078,6 +1078,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn basic_check_marks_basic_flag() {
         let block_height = 1.into();

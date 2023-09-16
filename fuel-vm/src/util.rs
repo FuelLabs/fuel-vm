@@ -42,6 +42,7 @@
 ///     TxParameters::DEFAULT.tx_offset()
 /// );
 /// ```
+#[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! script_with_data_offset {
     ($offset:ident, $script:expr, $tx_offset:expr) => {{
@@ -52,7 +53,7 @@ macro_rules! script_with_data_offset {
                 0 as Immediate18
             };
             // evaluate script expression with zeroed data offset to get the script length
-            let script_bytes: ::alloc::vec::Vec<u8> =
+            let script_bytes: $crate::alloc::vec::Vec<u8> =
                 ::core::iter::IntoIterator::into_iter({ $script }).collect();
             // compute the script data offset within the VM memory given the script length
             {

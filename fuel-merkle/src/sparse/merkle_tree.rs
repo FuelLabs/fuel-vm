@@ -31,7 +31,7 @@ use core::{
 };
 use fuel_storage::StorageError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
 pub enum MerkleTreeError {
     #[cfg_attr(

@@ -95,9 +95,6 @@ impl From<RuntimeError> for InterpreterError {
             RuntimeError::Recoverable(e) => Self::Panic(e),
             RuntimeError::Unrecoverable(e) => match e {
                 Unrecoverable::Bug(bug) => Self::Bug(bug),
-                Unrecoverable::PredicateFailure => {
-                    Self::CheckError(CheckError::PredicateVerificationFailed)
-                }
                 Unrecoverable::Storage(err) => Self::Storage(err),
             },
         }
@@ -137,8 +134,6 @@ impl PartialEq for InterpreterError {
 pub enum Unrecoverable {
     /// Invalid interpreter state reached unexpectedly, this is a bug
     Bug(Bug),
-    /// Predicate verification failed
-    PredicateFailure, // TODO: conserve the inner error
     /// Storage io error
     Storage(StorageError),
 }
@@ -147,7 +142,6 @@ impl fmt::Display for Unrecoverable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Unrecoverable::Bug(bug) => write!(f, "{:#?}", bug),
-            Unrecoverable::PredicateFailure => write!(f, "Predicate verification failed"),
             Unrecoverable::Storage(err) => write!(f, "{:#?}", err),
         }
     }
@@ -176,10 +170,6 @@ pub enum RuntimeError {
 }
 
 impl RuntimeError {
-    /// Predicate verification failed while running it
-    pub const INVALID_PREDICATE: Self =
-        Self::Unrecoverable(Unrecoverable::PredicateFailure);
-
     /// Flag whether the error is recoverable.
     pub const fn is_recoverable(&self) -> bool {
         matches!(self, Self::Recoverable(_))

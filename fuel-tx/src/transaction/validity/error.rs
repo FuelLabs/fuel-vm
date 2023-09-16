@@ -9,6 +9,7 @@ use fuel_types::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
 #[non_exhaustive]
 pub enum CheckError {
     /// Transaction doesn't have spendable input message or coin.

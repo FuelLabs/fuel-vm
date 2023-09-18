@@ -230,3 +230,17 @@ fn test_key_types_hex_serialization() {
     let bytes64_to_string = serde_json::to_string(&bytes64).expect("Failed to serialize Bytes64");
     assert_eq!(format!("\"{bytes64}\""), bytes64_to_string);
 }
+
+#[test]
+fn test_asset_id_methods() {
+    let asset_id = AssetId::new(ContractId::zeroed(), [0; 32].into());
+    
+    // The below bytes were obtained from running the AssetId::new(ZERO_B256, ZERO_B256) function in Sway.
+    let expected_bytes = [245, 165, 253, 66, 209, 106, 32, 48, 39, 152, 239, 110, 211, 9, 151, 155, 67, 0, 61, 35, 32, 217, 240, 232, 234, 152, 49, 169, 39, 89, 251, 75];
+
+    assert_eq!(*asset_id, expected_bytes);
+
+    let asset_id = AssetId::default_for_contract(ContractId::zeroed());
+    
+    assert_eq!(*asset_id, expected_bytes);
+}

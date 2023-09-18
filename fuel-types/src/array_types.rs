@@ -6,6 +6,7 @@ use core::borrow::BorrowMut;
 use core::convert::TryFrom;
 use core::ops::{Deref, DerefMut};
 use core::{fmt, str};
+use sha2::{Digest, Sha256};
 
 #[cfg(feature = "random")]
 use rand::{
@@ -16,13 +17,14 @@ use rand::{
 use crate::hex_val;
 
 macro_rules! key {
-    ($i:ident, $s:expr) => {
+    ($i:ident, $s:expr, $new_func:tt) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// FuelVM atomic array type.
         #[repr(transparent)]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
+        key_new_method!($i, $s, $new_func);
 
         #[cfg(feature = "random")]
         impl Distribution<$i> for Standard {
@@ -41,6 +43,7 @@ macro_rules! key_with_big_array {
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
+        key_new_method!($i, $s, true);
 
         impl Default for $i {
             fn default() -> $i {
@@ -61,16 +64,25 @@ macro_rules! key_with_big_array {
     };
 }
 
+macro_rules! key_new_method {
+    ($i:ident, $s:expr, true) => {
+        impl $i {
+            /// Bytes constructor.
+            pub const fn new(bytes: [u8; $s]) -> Self {
+                Self(bytes)
+            }
+        }
+    };
+    ($i:ident, $s:expr, false) => {
+        // No method for false
+    };
+}
+
 macro_rules! key_methods {
     ($i:ident, $s:expr) => {
         impl $i {
             /// Memory length of the type
             pub const LEN: usize = $s;
-
-            /// Bytes constructor.
-            pub const fn new(bytes: [u8; $s]) -> Self {
-                Self(bytes)
-            }
 
             /// Zeroes bytes constructor.
             pub const fn zeroed() -> $i {
@@ -284,16 +296,17 @@ macro_rules! key_methods {
     };
 }
 
-key!(Address, 32);
-key!(AssetId, 32);
-key!(ContractId, 32);
-key!(Bytes4, 4);
-key!(Bytes8, 8);
-key!(Bytes20, 20);
-key!(Bytes32, 32);
-key!(Nonce, 32);
-key!(MessageId, 32);
-key!(Salt, 32);
+key!(Address, 32, true);
+key!(AssetId, 32, false);
+key!(ContractId, 32, true);
+key!(Bytes4, 4, true);
+key!(Bytes8, 8, true);
+key!(Bytes20, 20, true);
+key!(Bytes32, 32, true);
+key!(Nonce, 32, true);
+key!(MessageId, 32, true);
+key!(Salt, 32, true);
+key!(SubId, 32, true);
 
 key_with_big_array!(Bytes64, 64);
 
@@ -307,17 +320,39 @@ impl ContractId {
 impl AssetId {
     /// The base native asset of the Fuel protocol.
     pub const BASE: AssetId = AssetId::zeroed();
-}
 
-impl From<ContractId> for AssetId {
-    fn from(contract_id: ContractId) -> Self {
-        AssetId::new(*contract_id)
+    /// Creates a new AssetId from a ContractId and SubId.
+    ///
+    /// ### Arguments
+    ///
+    /// * `contract_id` - The ContractId of the contract that created the asset.
+    /// * `sub_id` - The SubId of the asset.
+    pub fn new<T: Into<ContractId>>(contract_id: T, sub_id: SubId) -> Self {
+        let contract_id = contract_id.into();
+        let mut hasher = Sha256::new();
+        hasher.update(&contract_id);
+        hasher.update(&sub_id);
+        let mut bytes = [0u8; 32];
+        bytes.copy_from_slice(&hasher.finalize());
+        Self::from(bytes)
     }
-}
 
-impl From<AssetId> for ContractId {
-    fn from(asset_id: AssetId) -> Self {
-        ContractId::new(*asset_id)
+    /// Creates a new AssetId from a ContractId and the zero SubId. Generally used as the default asset of that contract.
+    /// 
+    /// ### Arguments
+    ///
+    /// * `contract_id` - The ContractId of the contract that created the asset.
+    pub fn default_for_contract<T: Into<ContractId>>(contract_id: T) -> Self {
+        Self::new(contract_id, SubId::zeroed())
+    }
+
+    /// The base_asset_id represents the base asset of a chain.
+    ///
+    /// ### Additional Information
+    ///
+    /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 AssetId.
+    pub fn base_asset_id() -> Self {
+        Self::BASE
     }
 }
 

@@ -95,7 +95,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: "thumbv6m-none-eabi,wasm32-unknown-unknown"
+          targets: "thumbv6m-none-eabi,riscv32imac-unknown-none-elf,wasm32-unknown-unknown"
           components: "clippy"
       - name: Install Cargo Make
         uses: davidB/rust-cargo-make@v1

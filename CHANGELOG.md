@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+#### Breaking
+
+- [#585](https://github.com/FuelLabs/fuel-vm/pull/585): removes the From and Into methods between ContractId and AssetId, and instead adds new `new` and `default_for_contract` methods that match the `new` and `default` methods from the Sway std lib type.
+
 ## [Version 0.37.0]
 
 #### Breaking

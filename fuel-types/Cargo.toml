@@ -15,7 +15,7 @@ fuel-derive = { workspace = true }
 hex = { version = "0.4", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }
-sha2 = "0.10"
+sha2 = { version = "0.10", default-features = false }
 wasm-bindgen = { version = "0.2.87", optional = true }
 
 [dev-dependencies]

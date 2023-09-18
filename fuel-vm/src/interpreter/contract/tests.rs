@@ -74,7 +74,7 @@ fn test_transfer(
 ) -> Result<(), RuntimeError> {
     // Given
 
-    const ASSET_ID: AssetId = AssetId::from([2u8; AssetId::LEN]);
+    const ASSET_ID: AssetId = AssetId::new_from_bytes([2u8; AssetId::LEN]);
     const RECIPIENT_CONTRACT_ID: ContractId = ContractId::new([3u8; ContractId::LEN]);
     const SOURCE_CONTRACT_ID: ContractId = ContractId::new([5u8; ContractId::LEN]);
 
@@ -209,7 +209,7 @@ fn test_transfer_output(
 ) -> Result<(), RuntimeError> {
     // Given
 
-    const ASSET_ID: AssetId = AssetId::from([2u8; AssetId::LEN]);
+    const ASSET_ID: AssetId = AssetId::new_from_bytes([2u8; AssetId::LEN]);
     const SOURCE_CONTRACT_ID: ContractId = ContractId::new([3u8; ContractId::LEN]);
     const RECIPIENT_ADDRESS: Address = Address::new([4u8; Address::LEN]);
 

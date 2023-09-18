@@ -98,7 +98,12 @@ macro_rules! key_new_method {
         }
     };
     ($i:ident, $s:expr,false) => {
-        // No method for false
+        impl $i {
+            /// Bytes constructor
+            pub const fn new_from_bytes(bytes: [u8; $s]) -> Self {
+                Self(bytes)
+            }
+        }
     };
 }
 

@@ -117,12 +117,9 @@ pub trait ContractIdExt {
 
 impl ContractIdExt for ContractId {
     fn asset_id(&self, sub_id: &Bytes32) -> AssetId {
-        let hasher = fuel_crypto::Hasher::default();
         AssetId::new(
-            *hasher
-                .chain(self.as_slice())
-                .chain(sub_id.as_slice())
-                .finalize(),
+            *self,
+            fuel_types::SubId::from(**sub_id),
         )
     }
 }

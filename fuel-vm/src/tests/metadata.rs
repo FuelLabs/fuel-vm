@@ -1,15 +1,44 @@
-use fuel_asm::{op, GMArgs, GTFArgs, RegId};
+use crate::{
+    consts::*,
+    interpreter::InterpreterParams,
+};
+use fuel_asm::{
+    op,
+    GMArgs,
+    GTFArgs,
+    RegId,
+};
 use fuel_crypto::Hasher;
 use fuel_tx::{
-    field::{Inputs, Outputs, ReceiptsRoot, Script as ScriptField, Witnesses},
-    Finalizable, Receipt, Script, TransactionBuilder,
+    field::{
+        Inputs,
+        Outputs,
+        ReceiptsRoot,
+        Script as ScriptField,
+        Witnesses,
+    },
+    ConsensusParameters,
+    Finalizable,
+    Receipt,
+    Script,
+    TransactionBuilder,
 };
-use fuel_types::{bytes, BlockHeight};
-use fuel_vm::consts::*;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use fuel_types::{
+    bytes,
+    canonical::SerializedSize,
+    BlockHeight,
+    ChainId,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
-use fuel_vm::prelude::*;
-
+use crate::prelude::{
+    GasCosts,
+    *,
+};
 #[test]
 fn metadata() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -20,8 +49,8 @@ fn metadata() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
+
+    let consensus_params = ConsensusParameters::standard();
 
     #[rustfmt::skip]
     let routine_metadata_is_caller_external = vec![
@@ -43,26 +72,22 @@ fn metadata() {
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract_metadata = contract.id(&salt, &contract_root, &state_root);
-
     let output = Output::contract_created(contract_metadata, state_root);
 
-    let bytecode_witness = 0;
-    let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, &gas_costs)
-    .expect("failed to check tx");
+    let tx = TransactionBuilder::create(program, salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .add_output(output)
+        .finalize()
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx");
+
+    let interpreter_params = InterpreterParams::from(&consensus_params);
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
+    assert!(Transactor::new(&mut storage, interpreter_params.clone())
         .transact(tx)
         .is_success());
 
@@ -74,16 +99,23 @@ fn metadata() {
         op::move_(0x10, RegId::HP),
     ];
 
-    contract_metadata.as_ref().iter().enumerate().for_each(|(i, b)| {
-        routine_call_metadata_contract.push(op::movi(0x11, *b as Immediate18));
-        routine_call_metadata_contract.push(op::sb(0x10, 0x11, i as Immediate12));
-    });
+    contract_metadata
+        .as_ref()
+        .iter()
+        .enumerate()
+        .for_each(|(i, b)| {
+            routine_call_metadata_contract.push(op::movi(0x11, *b as Immediate18));
+            routine_call_metadata_contract.push(op::sb(0x10, 0x11, i as Immediate12));
+        });
 
     routine_call_metadata_contract.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
     routine_call_metadata_contract.push(op::ret(RegId::ONE));
 
     let salt: Salt = rng.gen();
-    let program: Witness = routine_call_metadata_contract.into_iter().collect::<Vec<u8>>().into();
+    let program: Witness = routine_call_metadata_contract
+        .into_iter()
+        .collect::<Vec<u8>>()
+        .into();
 
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
@@ -92,23 +124,17 @@ fn metadata() {
 
     let output = Output::contract_created(contract_call, state_root);
 
-    let bytecode_witness = 0;
-    let tx = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, &gas_costs)
-    .expect("failed to check tx");
+    let tx = TransactionBuilder::create(program, salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .add_output(output)
+        .finalize()
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx");
 
-    // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, Default::default(), gas_costs.clone())
+    assert!(Transactor::new(&mut storage, interpreter_params.clone())
         .transact(tx)
         .is_success());
 
@@ -139,22 +165,36 @@ fn metadata() {
         op::move_(0x10, RegId::HP),
     ];
 
-    contract_call.as_ref().iter().enumerate().for_each(|(i, b)| {
-        script.push(op::movi(0x11, *b as Immediate18));
-        script.push(op::sb(0x10, 0x11, i as Immediate12));
-    });
+    contract_call
+        .as_ref()
+        .iter()
+        .enumerate()
+        .for_each(|(i, b)| {
+            script.push(op::movi(0x11, *b as Immediate18));
+            script.push(op::sb(0x10, 0x11, i as Immediate12));
+        });
 
     script.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
     script.push(op::ret(RegId::ONE));
 
-    #[allow(clippy::iter_cloned_collect)] // collection is also perfomring a type conversion
+    #[allow(clippy::iter_cloned_collect)]
+    // collection is also perfomring a type conversion
     let script = script.iter().copied().collect::<Vec<u8>>();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], inputs, outputs, vec![])
-        .into_checked(height, &params, &gas_costs)
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_input(inputs[0].clone())
+        .add_input(inputs[1].clone())
+        .add_output(outputs[0])
+        .add_output(outputs[1])
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(&mut storage, Default::default(), gas_costs)
+    let receipts = Transactor::new(&mut storage, interpreter_params)
         .transact(tx)
         .receipts()
         .expect("Failed to transact")
@@ -171,7 +211,9 @@ fn metadata() {
     assert_eq!(0, ra);
 
     let contract_call = Hasher::hash(contract_call.as_ref());
-    let digest = receipts[4].digest().expect("GetCaller should return contract Id");
+    let digest = receipts[4]
+        .digest()
+        .expect("GetCaller should return contract Id");
     assert_eq!(&contract_call, digest);
 }
 
@@ -180,13 +222,15 @@ fn get_metadata_chain_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_limit = 1_000_000;
     let height = BlockHeight::default();
-    let params = ConsensusParameters {
-        chain_id: rng.gen(),
+
+    let chain_id: ChainId = rng.gen();
+
+    let interpreter_params = InterpreterParams {
+        chain_id,
         ..Default::default()
     };
-    let gas_costs = GasCosts::default();
 
-    let mut client = MemoryClient::new(Default::default(), params, gas_costs.clone());
+    let mut client = MemoryClient::new(Default::default(), interpreter_params);
 
     #[rustfmt::skip]
         let get_chain_id = vec![
@@ -194,16 +238,20 @@ fn get_metadata_chain_id() {
         op::ret(0x10),
     ];
 
+    let consensus_params = ConsensusParameters::standard_with_id(chain_id);
+
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .gas_limit(gas_limit)
+        .with_chain_id(chain_id)
+        .add_random_fee_input()
         .finalize()
-        .into_checked(height, &params, &gas_costs)
+        .into_checked(height, &consensus_params)
         .unwrap();
 
     let receipts = client.transact(script);
 
     if let Receipt::Return { val, .. } = receipts[0].clone() {
-        assert_eq!(val, params.chain_id);
+        assert_eq!(val, *chain_id);
     } else {
         panic!("expected return receipt, instead of {:?}", receipts[0])
     }
@@ -212,28 +260,30 @@ fn get_metadata_chain_id() {
 #[test]
 fn get_transaction_fields() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_costs = GasCosts::free();
 
     let mut client = MemoryClient::default();
 
     let gas_price = 1;
-    let gas_limit = 1_000_000;
+    let gas_limit = 100_000_000;
     let maturity = 50.into();
     let height = 122.into();
     let input = 10_000_000;
 
-    let params = ConsensusParameters::default();
+    let tx_params = TxParameters::default();
 
     let contract: Witness = vec![op::ret(0x01)].into_iter().collect::<Vec<u8>>().into();
     let salt = rng.gen();
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
     let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id = Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+    let contract_id =
+        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
-        .with_params(params)
-        .finalize_checked(height, client.gas_costs());
+        .add_random_fee_input()
+        .finalize_checked(height);
 
     client.deploy(tx);
 
@@ -242,7 +292,7 @@ fn get_transaction_fields() {
 
     rng.fill(predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&predicate, &ConsensusParameters::DEFAULT);
+    let owner = Input::predicate_owner(&predicate, &ChainId::default());
     let input_coin_predicate = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -250,6 +300,7 @@ fn get_transaction_fields() {
         rng.gen(),
         rng.gen(),
         100.into(),
+        0,
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -267,12 +318,13 @@ fn get_transaction_fields() {
     rng.fill(m_data.as_mut_slice());
     rng.fill(m_predicate_data.as_mut_slice());
 
-    let owner = Input::predicate_owner(&m_predicate, &params);
+    let owner = Input::predicate_owner(&m_predicate, &ChainId::default());
     let message_predicate = Input::message_data_predicate(
         rng.gen(),
         owner,
         7_500,
         rng.gen(),
+        0,
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
@@ -284,9 +336,17 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .prepare_script(true)
         .maturity(maturity)
+        .with_gas_costs(gas_costs)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), input, AssetId::zeroed(), rng.gen(), maturity)
+        .add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            input,
+            AssetId::zeroed(),
+            rng.gen(),
+            maturity,
+        )
         .add_input(input_coin_predicate)
         .add_input(Input::contract(
             rng.gen(),
@@ -296,24 +356,45 @@ fn get_transaction_fields() {
             contract_id,
         ))
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
-        .add_output(Output::contract(contract_input_index, rng.gen(), state_root))
+        .add_output(Output::contract(
+            contract_input_index,
+            rng.gen(),
+            state_root,
+        ))
         .add_witness(Witness::from(b"some-data".to_vec()))
-        .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), message_amount, message_data.clone())
+        .add_unsigned_message_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            rng.gen(),
+            message_amount,
+            message_data.clone(),
+        )
         .add_input(message_predicate)
-        .add_unsigned_coin_input(rng.gen(), rng.gen(), asset_amt, asset, rng.gen(), maturity)
+        .add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            asset_amt,
+            asset,
+            rng.gen(),
+            maturity,
+        )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .with_params(params)
-        .finalize_checked(height, client.gas_costs());
+        .finalize_checked(height);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
     let witnesses = tx.as_ref().witnesses();
 
-    let inputs_bytes: Vec<Vec<u8>> = inputs.iter().map(|i| i.clone().to_bytes()).collect();
-    let outputs_bytes: Vec<Vec<u8>> = outputs.iter().map(|o| o.clone().to_bytes()).collect();
-    let witnesses_bytes: Vec<Vec<u8>> = witnesses.iter().map(|w| w.clone().to_bytes()).collect();
+    let inputs_bytes: Vec<Vec<u8>> =
+        inputs.iter().map(|i| i.clone().to_bytes()).collect();
+    let outputs_bytes: Vec<Vec<u8>> =
+        outputs.iter().map(|o| o.clone().to_bytes()).collect();
+    let witnesses_bytes: Vec<Vec<u8>> =
+        witnesses.iter().map(|w| w.clone().to_bytes()).collect();
 
     let receipts_root = tx.as_ref().receipts_root();
+
+    let base_asset_id = AssetId::BASE;
 
     #[rustfmt::skip]
     let cases = vec![
@@ -323,7 +404,7 @@ fn get_transaction_fields() {
         receipts_root.to_vec(), // 3 - ScriptReceiptsRoot
         inputs[0].utxo_id().unwrap().clone().to_bytes(), // 4- InputCoinTxId
         inputs[0].input_owner().unwrap().to_vec(), // 5 - InputCoinOwner
-        inputs[0].asset_id().unwrap().to_vec(), // 6 - InputCoinAssetId
+        inputs[0].asset_id(&base_asset_id).unwrap().to_vec(), // 6 - InputCoinAssetId
         predicate.clone(), // 7 - InputCoinPredicate
         predicate_data.clone(), // 8 - InputCoinPredicateData
         inputs[2].utxo_id().unwrap().clone().to_bytes(), // 9 - InputContractTxId
@@ -347,8 +428,9 @@ fn get_transaction_fields() {
 
     // hardcoded metadata of script len so it can be checked at runtime
     let script_reserved_words = 300 * WORD_SIZE;
-    let script_offset = params.tx_offset() + Script::script_offset_static();
-    let script_data_offset = script_offset + bytes::padded_len_usize(script_reserved_words);
+    let script_offset = tx_params.tx_offset() + Script::script_offset_static();
+    let script_data_offset =
+        script_offset + bytes::padded_len_usize(script_reserved_words);
     let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
 
     // Maybe use predicates to check create context?
@@ -546,6 +628,13 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
+        op::movi(0x19, 0x01),
+        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateGasUsed),
+        op::movi(0x11, 0 as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxId),
         op::movi(0x11, cases[9].len() as Immediate18),
@@ -650,6 +739,13 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateData),
         op::movi(0x11, cases[18].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x04),
+        op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateGasUsed),
+        op::movi(0x11, 0 as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
@@ -761,11 +857,12 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
-        .with_params(params)
         .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);
-    let success = receipts.iter().any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
     assert!(success);
 }

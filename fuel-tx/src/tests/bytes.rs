@@ -1,79 +1,62 @@
-use fuel_asm::op;
+use fuel_asm::{
+    op,
+    PanicInstruction,
+    PanicReason,
+};
 use fuel_tx::*;
-use fuel_tx_test_helpers::{generate_bytes, generate_nonempty_padded_bytes};
-use fuel_types::{bytes, Immediate24};
-use rand::rngs::StdRng;
-use rand::{Rng, RngCore, SeedableRng};
+use fuel_tx_test_helpers::{
+    generate_bytes,
+    generate_nonempty_padded_bytes,
+};
+use fuel_types::{
+    bytes,
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSize,
+    },
+    Immediate24,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    RngCore,
+    SeedableRng,
+};
 
-use fuel_tx::field::{Inputs, Script, ScriptData};
+use crate::TxParameters;
+use fuel_tx::field::{
+    Inputs,
+    Script,
+    ScriptData,
+};
 use std::fmt;
-use std::io::{self, Read, Write};
+use strum::IntoEnumIterator;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
-    T: Read
-        + Write
+    T: Serialize
+        + Deserialize
         + fmt::Debug
         + Clone
         + PartialEq
-        + bytes::SizedBytes
-        + bytes::SerializableVec
-        + bytes::Deserializable
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>,
 {
-    let mut buffer;
-
     for data in data.iter() {
         let d_s = bincode::serialize(&data).expect("Failed to serialize data");
-        // Safety: bincode/serde fails to understand the elision so this is a cheap way to convince it
-        let d_s: T = bincode::deserialize(d_s.as_slice()).expect("Failed to deserialize data");
+        // Safety: bincode/serde fails to understand the elision so this is a cheap way to
+        // convince it
+        let d_s: T =
+            bincode::deserialize(d_s.as_slice()).expect("Failed to deserialize data");
 
         assert_eq!(&d_s, data);
 
-        let mut d = data.clone();
+        let mut d_bytes = Vec::new();
+        data.clone().encode(&mut d_bytes).expect("Failed to encode");
+        let d_p = T::decode(&mut &d_bytes[..]).expect("Failed to deserialize T");
 
-        let d_bytes = data.clone().to_bytes();
-        let d_p = T::from_bytes(d_bytes.as_slice()).expect("Failed to deserialize T");
-
-        assert_eq!(d, d_p);
-
-        let mut d_p = data.clone();
-
-        buffer = vec![0u8; 2048];
-        let read_size = d.read(buffer.as_mut_slice()).expect("Failed to read");
-        let write_size = d_p.write(buffer.as_slice()).expect("Failed to write");
-
-        // Simple RW assertion
-        assert_eq!(d, d_p);
-        assert_eq!(read_size, write_size);
-
-        buffer = vec![0u8; read_size];
-
-        // Minimum size buffer assertion
-        let _ = d.read(buffer.as_mut_slice()).expect("Failed to read");
-        let _ = d_p.write(buffer.as_slice()).expect("Failed to write");
-        assert_eq!(d, d_p);
-        assert_eq!(d_bytes.as_slice(), buffer.as_slice());
-
-        // No panic assertion
-        loop {
-            buffer.pop();
-
-            let err = d
-                .read(buffer.as_mut_slice())
-                .expect_err("Insufficient buffer should fail!");
-            assert_eq!(io::ErrorKind::UnexpectedEof, err.kind());
-
-            let err = d_p
-                .write(buffer.as_slice())
-                .expect_err("Insufficient buffer should fail!");
-            assert_eq!(io::ErrorKind::UnexpectedEof, err.kind());
-
-            if buffer.is_empty() {
-                break;
-            }
-        }
+        assert_eq!(*data, d_p);
     }
 }
 
@@ -106,6 +89,7 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
@@ -123,12 +107,14 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             generate_bytes(rng),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
         Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Input::message_coin_predicate(
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -156,7 +142,7 @@ fn output() {
 fn receipt() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    assert_encoding_correct(&[
+    let mut receipts = vec![
         Receipt::call(
             rng.gen(),
             rng.gen(),
@@ -173,9 +159,8 @@ fn receipt() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             vec![rng.gen(), rng.gen()],
-            rng.gen(),
-            rng.gen(),
         ),
         Receipt::revert(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Receipt::log(
@@ -193,279 +178,28 @@ fn receipt() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
             vec![rng.gen(), rng.gen()],
+        ),
+        Receipt::transfer(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
         ),
-        Receipt::transfer(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-        Receipt::transfer_out(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(PanicReason::Success, op::noop().into()),
+        Receipt::transfer_out(
             rng.gen(),
             rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(PanicReason::Revert, op::ji(rng.gen::<Immediate24>() & 0xffffff).into()),
             rng.gen(),
             rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::OutOfGas,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
             rng.gen(),
             rng.gen(),
         ),
         Receipt::panic(
             rng.gen(),
-            InstructionResult::error(
-                PanicReason::TransactionValidity,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::MemoryOverflow,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ArithmeticOverflow,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ContractNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::MemoryOwnership,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::NotEnoughBalance,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ExpectedInternalContext,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::AssetIdNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::InputNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::OutputNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::WitnessNotFound,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::TransactionMaturity,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::InvalidMetadataIdentifier,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::MalformedCallStructure,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ReservedRegisterNotWritable,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ErrorFlag,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::InvalidImmediateValue,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ExpectedCoinInput,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::MaxMemoryAccess,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::MemoryWriteOverlap,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ContractNotInInputs,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::InternalBalanceOverflow,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ContractMaxSize,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ExpectedUnallocatedStack,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::TransferAmountCannotBeZero,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ExpectedOutputVariable,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
-                PanicReason::ExpectedParentInternalContext,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ),
-        Receipt::panic(
-            rng.gen(),
-            InstructionResult::error(
+            PanicInstruction::error(
                 PanicReason::ContractNotInInputs,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
@@ -476,9 +210,35 @@ fn receipt() {
         Receipt::script_result(ScriptExecutionResult::Success, rng.gen()),
         Receipt::script_result(ScriptExecutionResult::Panic, rng.gen()),
         Receipt::script_result(ScriptExecutionResult::Revert, rng.gen()),
-        Receipt::script_result(ScriptExecutionResult::GenericFailure(rng.gen()), rng.gen()),
-        Receipt::message_out(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), vec![rng.gen()]),
-    ]);
+        Receipt::script_result(
+            ScriptExecutionResult::GenericFailure(rng.gen()),
+            rng.gen(),
+        ),
+        Receipt::message_out(
+            &rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            vec![rng.gen()],
+        ),
+        Receipt::mint(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Receipt::burn(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+    ];
+
+    for panic_reason in PanicReason::iter() {
+        receipts.push(Receipt::panic(
+            rng.gen(),
+            PanicInstruction::error(
+                panic_reason,
+                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
+            ),
+            rng.gen(),
+            rng.gen(),
+        ));
+    }
+
+    assert_encoding_correct(&receipts);
 }
 
 #[test]
@@ -565,7 +325,7 @@ fn transaction() {
     assert_encoding_correct(&[
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -576,7 +336,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -587,7 +347,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -598,7 +358,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -609,7 +369,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -620,7 +380,7 @@ fn transaction() {
         ),
         Transaction::create(
             rng.next_u64(),
-            ConsensusParameters::DEFAULT.max_gas_per_tx,
+            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -650,10 +410,17 @@ fn create_input_data_offset() {
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
 
-    let storage_slots: Vec<Vec<StorageSlot>> = vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
+    let storage_slots: Vec<Vec<StorageSlot>> =
+        vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
-        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())],
+        vec![Input::contract(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        )],
         vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()); 2],
     ];
     let outputs: Vec<Vec<Output>> = vec![
@@ -669,6 +436,7 @@ fn create_input_data_offset() {
 
     let predicate = generate_nonempty_padded_bytes(rng);
     let predicate_data = generate_bytes(rng);
+    let predicate_gas_used: u64 = rng.gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
@@ -679,6 +447,7 @@ fn create_input_data_offset() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate_gas_used,
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -689,12 +458,12 @@ fn create_input_data_offset() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate_gas_used,
         data,
         predicate.clone(),
         predicate_data,
     );
 
-    let mut buffer = vec![0u8; 4096];
     for storage_slot in storage_slots.iter() {
         for inputs in inputs.iter() {
             for outputs in outputs.iter() {
@@ -707,7 +476,7 @@ fn create_input_data_offset() {
                     let input_message_idx = inputs.len();
                     inputs.push(input_message.clone());
 
-                    let mut tx = Transaction::create(
+                    let tx = Transaction::create(
                         gas_price,
                         gas_limit,
                         maturity,
@@ -719,33 +488,39 @@ fn create_input_data_offset() {
                         witnesses.clone(),
                     );
 
-                    let mut tx_p = tx.clone();
-                    tx_p.precompute(&ConsensusParameters::DEFAULT);
+                    let tx_p = tx.clone();
 
-                    buffer.iter_mut().for_each(|b| *b = 0x00);
-                    let _ = tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
+                    let bytes = tx.to_bytes();
 
                     let (offset, len) = tx
                         .inputs_predicate_offset_at(input_coin_idx)
                         .expect("Failed to fetch offset");
 
-                    let (offset_p, _) = tx_p
-                        .inputs_predicate_offset_at(input_coin_idx)
-                        .expect("Failed to fetch offset from tx with precomputed metadata!");
+                    let (offset_p, _) =
+                        tx_p.inputs_predicate_offset_at(input_coin_idx).expect(
+                            "Failed to fetch offset from tx with precomputed metadata!",
+                        );
 
                     assert_eq!(offset, offset_p);
-                    assert_eq!(predicate.as_slice(), &buffer[offset..offset + len][..predicate.len()]);
+                    assert_eq!(
+                        predicate.as_slice(),
+                        &bytes[offset..offset + len][..predicate.len()]
+                    );
 
                     let (offset, len) = tx
                         .inputs_predicate_offset_at(input_message_idx)
                         .expect("Failed to fetch offset");
 
-                    let (offset_p, _) = tx_p
-                        .inputs_predicate_offset_at(input_message_idx)
-                        .expect("Failed to fetch offset from tx with precomputed metadata!");
+                    let (offset_p, _) =
+                        tx_p.inputs_predicate_offset_at(input_message_idx).expect(
+                            "Failed to fetch offset from tx with precomputed metadata!",
+                        );
 
                     assert_eq!(offset, offset_p);
-                    assert_eq!(predicate.as_slice(), &buffer[offset..offset + len][..predicate.len()]);
+                    assert_eq!(
+                        predicate.as_slice(),
+                        &bytes[offset..offset + len][..predicate.len()]
+                    );
                 }
             }
         }
@@ -765,7 +540,13 @@ fn script_input_coin_data_offset() {
 
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
-        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())],
+        vec![Input::contract(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        )],
         vec![
             Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
             Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
@@ -790,6 +571,7 @@ fn script_input_coin_data_offset() {
     }
 
     let predicate_data = generate_bytes(rng);
+    let predicate_gas_used = rng.gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
@@ -800,11 +582,11 @@ fn script_input_coin_data_offset() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        predicate_gas_used,
         predicate.clone(),
         predicate_data,
     );
 
-    let mut buffer = vec![0u8; 4096];
     for script in script.iter() {
         for script_data in script_data.iter() {
             for inputs in inputs.iter() {
@@ -814,7 +596,7 @@ fn script_input_coin_data_offset() {
                         let offset = inputs.len();
                         inputs.push(input_coin.clone());
 
-                        let mut tx = Transaction::script(
+                        let tx = Transaction::script(
                             gas_price,
                             gas_limit,
                             maturity,
@@ -826,14 +608,16 @@ fn script_input_coin_data_offset() {
                         );
 
                         let mut tx_p = tx.clone();
-                        tx_p.precompute(&ConsensusParameters::DEFAULT);
+                        tx_p.precompute(&Default::default())
+                            .expect("Should be able to calculate cache");
 
-                        buffer.iter_mut().for_each(|b| *b = 0x00);
-
-                        let _ = tx.read(buffer.as_mut_slice()).expect("Failed to serialize input");
+                        let bytes = tx.to_bytes();
 
                         let script_offset = tx.script_offset();
-                        assert_eq!(script.as_slice(), &buffer[script_offset..script_offset + script.len()]);
+                        assert_eq!(
+                            script.as_slice(),
+                            &bytes[script_offset..script_offset + script.len()]
+                        );
 
                         let script_data_offset = tx.script_data_offset();
 
@@ -842,15 +626,21 @@ fn script_input_coin_data_offset() {
                         assert_eq!(script_data_offset, script_data_offset_p);
                         assert_eq!(
                             script_data.as_slice(),
-                            &buffer[script_data_offset..script_data_offset + script_data.len()]
+                            &bytes[script_data_offset
+                                ..script_data_offset + script_data.len()]
                         );
 
-                        let (offset, len) = tx.inputs_predicate_offset_at(offset).expect("Failed to fetch offset");
+                        let (offset, len) = tx
+                            .inputs_predicate_offset_at(offset)
+                            .expect("Failed to fetch offset");
 
                         assert_ne!(bytes::padded_len(&predicate), predicate.len());
                         assert_eq!(bytes::padded_len(&predicate), len);
 
-                        assert_eq!(predicate.as_slice(), &buffer[offset..offset + predicate.len()]);
+                        assert_eq!(
+                            predicate.as_slice(),
+                            &bytes[offset..offset + predicate.len()]
+                        );
                     }
                 }
             }

@@ -1,14 +1,32 @@
 //! State machine of the interpreter.
 
-use crate::checked_transaction::{Checked, IntoChecked};
-use crate::error::InterpreterError;
-use crate::gas::GasCosts;
-use crate::interpreter::{CheckedMetadata, ExecutableTransaction, Interpreter};
-use crate::state::{StateTransition, StateTransitionRef};
-use crate::storage::InterpreterStorage;
-use crate::{backtrace::Backtrace, state::ProgramState};
+use crate::{
+    backtrace::Backtrace,
+    checked_transaction::{
+        Checked,
+        IntoChecked,
+    },
+    error::InterpreterError,
+    interpreter::{
+        CheckedMetadata,
+        ExecutableTransaction,
+        Interpreter,
+    },
+    state::{
+        ProgramState,
+        StateTransition,
+        StateTransitionRef,
+    },
+    storage::InterpreterStorage,
+};
 
-use fuel_tx::{ConsensusParameters, Create, Receipt, Script};
+use crate::interpreter::InterpreterParams;
+use fuel_tx::{
+    Create,
+    GasCosts,
+    Receipt,
+    Script,
+};
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -29,8 +47,8 @@ where
     Tx: ExecutableTransaction,
 {
     /// Transactor constructor
-    pub fn new(storage: S, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
-        Interpreter::with_storage(storage, params, gas_costs).into()
+    pub fn new(storage: S, interpreter_params: InterpreterParams) -> Self {
+        Interpreter::with_storage(storage, interpreter_params).into()
     }
 
     /// State transition representation after the execution of a transaction.
@@ -38,8 +56,13 @@ where
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
     /// transaction was executed.
     pub fn state_transition(&'a self) -> Option<StateTransitionRef<'a, Tx>> {
-        self.program_state
-            .map(|state| StateTransitionRef::new(state, self.interpreter.transaction(), self.interpreter.receipts()))
+        self.program_state.map(|state| {
+            StateTransitionRef::new(
+                state,
+                self.interpreter.transaction(),
+                self.interpreter.receipts(),
+            )
+        })
     }
 
     /// State transition representation after the execution of a transaction.
@@ -69,12 +92,13 @@ where
 
     /// Returns true if last transaction execution was successful
     pub const fn is_success(&self) -> bool {
-        self.program_state.is_some()
+        !self.is_reverted()
     }
 
     /// Returns true if last transaction execution was erroneous
-    pub const fn is_error(&self) -> bool {
+    pub const fn is_reverted(&self) -> bool {
         self.error.is_some()
+            || matches!(self.program_state, Some(ProgramState::Revert(_)))
     }
 
     /// Result representation of the last executed transaction.
@@ -93,17 +117,9 @@ where
         }
     }
 
-    /// Convert this transaction into the underlying VM instance.
-    ///
-    /// This isn't a two-way operation since if you convert this instance into
-    /// the raw VM, then you lose the transactor state.
-    pub fn interpreter(self) -> Interpreter<S, Tx> {
-        self.into()
-    }
-
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.interpreter.params()
+    /// Gets the interpreter.
+    pub fn interpreter(&self) -> &Interpreter<S, Tx> {
+        &self.interpreter
     }
 
     /// Gas costs of opcodes
@@ -112,7 +128,7 @@ where
     }
 
     /// Tx memory offset
-    pub const fn tx_offset(&self) -> usize {
+    pub fn tx_offset(&self) -> usize {
         self.interpreter.tx_offset()
     }
 }
@@ -123,7 +139,9 @@ impl<S> Transactor<S, Script> {
     /// Follows the same criteria as [`Self::state_transition`] to return
     /// `None`.
     pub fn receipts(&self) -> Option<&[Receipt]> {
-        self.program_state.is_some().then(|| self.interpreter.receipts())
+        self.program_state
+            .is_some()
+            .then(|| self.interpreter.receipts())
     }
 
     /// Generate a backtrace when at least one receipt of `ScriptResult` was
@@ -141,7 +159,10 @@ where
     S: InterpreterStorage,
 {
     /// Deploys `Create` checked transactions.
-    pub fn deploy(&mut self, checked: Checked<Create>) -> Result<Create, InterpreterError> {
+    pub fn deploy(
+        &mut self,
+        checked: Checked<Create>,
+    ) -> Result<Create, InterpreterError> {
         self.interpreter.deploy(checked)
     }
 }
@@ -227,6 +248,6 @@ where
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {
-        Self::new(Default::default(), Default::default(), Default::default())
+        Self::new(S::default(), InterpreterParams::default())
     }
 }

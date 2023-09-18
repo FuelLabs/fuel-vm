@@ -2,8 +2,7 @@
 
 use crate::interpreter::MemoryRange;
 
-use fuel_asm::Word;
-use fuel_tx::{field, ConsensusParameters};
+use fuel_tx::field;
 
 /// Runtime representation of a predicate
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -27,14 +26,17 @@ impl RuntimePredicate {
     /// Create a new runtime predicate from a transaction, given the input index
     ///
     /// Return `None` if the tx input doesn't map to an input with a predicate
-    pub fn from_tx<T>(params: &ConsensusParameters, tx: &T, idx: usize) -> Option<Self>
+    pub fn from_tx<T>(tx: &T, tx_offset: usize, idx: usize) -> Option<Self>
     where
         T: field::Inputs,
     {
-        tx.inputs_predicate_offset_at(idx)
-            .map(|(ofs, len)| (ofs as Word + params.tx_offset() as Word, len as Word))
-            .map(|(ofs, len)| MemoryRange::new(ofs, len))
-            .map(|program| Self { program, idx })
+        let (ofs, len) = tx.inputs_predicate_offset_at(idx)?;
+        let addr = ofs.saturating_add(tx_offset);
+        let range = MemoryRange::new(addr, len).expect("Invalid memory range");
+        Some(Self {
+            program: range,
+            idx,
+        })
     }
 }
 
@@ -44,14 +46,16 @@ fn from_tx_works() {
     use fuel_tx::TransactionBuilder;
     use fuel_types::bytes;
     use fuel_vm::prelude::*;
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
+    use rand::{
+        rngs::StdRng,
+        Rng,
+        SeedableRng,
+    };
 
     use std::iter;
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let params = ConsensusParameters::default();
     let height = 1.into();
 
     #[rustfmt::skip]
@@ -71,11 +75,13 @@ fn from_tx_works() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate.clone(),
         predicate_data.clone(),
     );
 
     let b = Input::message_coin_predicate(
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -89,6 +95,7 @@ fn from_tx_works() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         vec![0xff; 10],
         predicate.clone(),
         predicate_data,
@@ -98,36 +105,49 @@ fn from_tx_works() {
 
     for i in inputs {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .with_params(params)
             .add_input(i)
+            .add_random_fee_input()
             .finalize_checked_basic(height);
 
         // assert invalid idx wont panic
         let idx = 1;
-        let runtime = RuntimePredicate::from_tx(&params, tx.as_ref(), idx);
+        let tx_offset = TxParameters::DEFAULT.tx_offset();
+        let runtime = RuntimePredicate::from_tx(tx.as_ref(), tx_offset, idx);
 
         assert!(runtime.is_none());
 
         // fetch the input predicate
         let idx = 0;
-        let runtime =
-            RuntimePredicate::from_tx(&params, tx.as_ref(), idx).expect("failed to generate predicate from valid tx");
+        let runtime = RuntimePredicate::from_tx(tx.as_ref(), tx_offset, idx)
+            .expect("failed to generate predicate from valid tx");
 
         assert_eq!(idx, runtime.idx());
 
         let mut interpreter = Interpreter::without_storage();
 
-        assert!(interpreter.init_predicate(tx));
+        assert!(interpreter
+            .init_predicate(
+                fuel_vm::context::Context::PredicateVerification {
+                    program: Default::default()
+                },
+                tx.transaction().clone(),
+                tx.transaction().limit()
+            )
+            .is_ok());
 
         let pad = bytes::padded_len(&predicate) - predicate.len();
 
         // assert we are testing an edge case
         assert_ne!(0, pad);
 
-        let padded_predicate: Vec<u8> = predicate.iter().copied().chain(iter::repeat(0u8).take(pad)).collect();
+        let padded_predicate: Vec<u8> = predicate
+            .iter()
+            .copied()
+            .chain(iter::repeat(0u8).take(pad))
+            .collect();
 
         let program = runtime.program();
-        let program = &interpreter.memory()[program.start() as usize..program.end() as usize];
+        let program = &interpreter.memory()[program.usizes()];
 
         // assert the program in the vm memory is the same of the input
         assert_eq!(program, &padded_predicate);

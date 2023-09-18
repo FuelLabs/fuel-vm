@@ -5,7 +5,7 @@
 [![docs](https://docs.rs/fuel-crypto/badge.svg)](https://docs.rs/fuel-crypto/)
 [![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
 
-Fuel cryptographic primitives.
+Fuel cryptographic primitives defined by the [specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md).
 
 ## Compile features
 

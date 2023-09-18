@@ -1,19 +1,56 @@
-use super::internal::{
-    append_receipt, external_asset_id_balance_sub, inc_pc, internal_contract, set_variable_output, AppendReceipt,
+use super::{
+    internal::{
+        append_receipt,
+        external_asset_id_balance_sub,
+        inc_pc,
+        internal_contract,
+        set_variable_output,
+        AppendReceipt,
+    },
+    memory::read_bytes,
+    ExecutableTransaction,
+    Interpreter,
+    RuntimeBalances,
 };
-use super::{ExecutableTransaction, Interpreter, RuntimeBalances};
-use crate::constraints::{reg_key::*, CheckedMemConstLen};
-use crate::context::Context;
-use crate::error::RuntimeError;
-use crate::interpreter::receipts::ReceiptsCtx;
-use crate::interpreter::PanicContext;
-use crate::storage::{ContractsAssets, ContractsAssetsStorage, InterpreterStorage};
-use crate::{consts::*, storage::ContractsRawCode};
-
-use fuel_asm::{PanicReason, RegisterId, Word};
-use fuel_storage::{StorageInspect, StorageSize};
-use fuel_tx::{Contract, Output, Receipt};
-use fuel_types::{Address, AssetId, ContractId};
+use crate::{
+    constraints::{
+        reg_key::*,
+        CheckedMemConstLen,
+    },
+    consts::*,
+    context::Context,
+    error::RuntimeError,
+    interpreter::{
+        receipts::ReceiptsCtx,
+        InputContracts,
+        PanicContext,
+    },
+    storage::{
+        ContractsAssets,
+        ContractsAssetsStorage,
+        ContractsRawCode,
+        InterpreterStorage,
+    },
+};
+use fuel_asm::{
+    PanicReason,
+    RegisterId,
+    Word,
+};
+use fuel_storage::{
+    StorageInspect,
+    StorageSize,
+};
+use fuel_tx::{
+    Contract,
+    Output,
+    Receipt,
+};
+use fuel_types::{
+    Address,
+    AssetId,
+    ContractId,
+};
 
 use std::borrow::Cow;
 
@@ -25,21 +62,35 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn contract_balance(&mut self, ra: RegisterId, b: Word, c: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn contract_balance(
+        &mut self,
+        ra: RegisterId,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = ContractBalanceCtx {
             storage: &self.storage,
             memory: &mut self.memory,
             pc,
-            panic_context: &mut self.panic_context,
-            input_contracts: self.tx.input_contracts(),
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
         };
         input.contract_balance(result, b, c)
     }
 
-    pub(crate) fn transfer(&mut self, a: Word, b: Word, c: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
+    pub(crate) fn transfer(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
+        let (SystemRegisters { fp, is, pc, .. }, _) =
+            split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
             memory: &mut self.memory,
@@ -47,7 +98,7 @@ where
             balances: &mut self.balances,
             receipts: &mut self.receipts,
             tx: &mut self.tx,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
@@ -55,8 +106,16 @@ where
         input.transfer(&mut self.panic_context, a, b, c)
     }
 
-    pub(crate) fn transfer_output(&mut self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError> {
-        let (SystemRegisters { fp, is, pc, .. }, _) = split_registers(&mut self.registers);
+    pub(crate) fn transfer_output(
+        &mut self,
+        a: Word,
+        b: Word,
+        c: Word,
+        d: Word,
+    ) -> Result<(), RuntimeError> {
+        let tx_offset = self.tx_offset();
+        let (SystemRegisters { fp, is, pc, .. }, _) =
+            split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
             memory: &mut self.memory,
@@ -64,7 +123,7 @@ where
             balances: &mut self.balances,
             receipts: &mut self.receipts,
             tx: &mut self.tx,
-            tx_offset: self.params.tx_offset(),
+            tx_offset,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
@@ -72,14 +131,20 @@ where
         input.transfer_output(a, b, c, d)
     }
 
-    pub(crate) fn check_contract_exists(&self, contract: &ContractId) -> Result<bool, RuntimeError> {
+    pub(crate) fn check_contract_exists(
+        &self,
+        contract: &ContractId,
+    ) -> Result<bool, RuntimeError> {
         self.storage
             .storage_contract_exists(contract)
             .map_err(RuntimeError::from_io)
     }
 }
 
-pub(crate) fn contract<'s, S>(storage: &'s S, contract: &ContractId) -> Result<Cow<'s, Contract>, RuntimeError>
+pub(crate) fn contract<'s, S>(
+    storage: &'s S,
+    contract: &ContractId,
+) -> Result<Cow<'s, Contract>, RuntimeError>
 where
     S: InterpreterStorage,
 {
@@ -93,29 +158,28 @@ struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],
     pc: RegMut<'vm, PC>,
-    input_contracts: I,
-    panic_context: &'vm mut PanicContext,
+    input_contracts: InputContracts<'vm, I>,
 }
 
 impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
-    pub(crate) fn contract_balance(mut self, result: &mut Word, b: Word, c: Word) -> Result<(), RuntimeError>
+    pub(crate) fn contract_balance(
+        mut self,
+        result: &mut Word,
+        b: Word,
+        c: Word,
+    ) -> Result<(), RuntimeError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        //if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new_with_constraint(b, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
-        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new_with_constraint(c, 0..MIN_VM_MAX_RAM_USIZE_MAX)?;
+        let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new(b)?;
+        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(c)?;
 
         let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
         let contract = ContractId::from_bytes_ref(contract.read(self.memory));
 
-        if !self.input_contracts.any(|input| contract == input) {
-            *self.panic_context = PanicContext::ContractId(*contract);
-            return Err(PanicReason::ContractNotInInputs.into());
-        }
+        self.input_contracts.check(contract)?;
 
         let balance = balance(self.storage, contract, asset_id)?;
 
@@ -136,49 +200,39 @@ struct TransferCtx<'vm, S, Tx> {
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
 }
+
 impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
+    /// In Fuel specs:
+    /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
+    /// $rA -> recipient_contract_id_offset
+    /// $rB -> transfer_amount
+    /// $rC -> asset_id_offset
     pub(crate) fn transfer(
         self,
         panic_context: &mut PanicContext,
-        a: Word,
-        b: Word,
-        c: Word,
+        recipient_contract_id_offset: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
     ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        let cx = c
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        //if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || cx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-
-        let amount = b;
+        let amount = transfer_amount;
         let destination =
-            ContractId::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
-        let asset_id =
-            AssetId::try_from(&self.memory[c as usize..cx as usize]).expect("Unreachable! Checked memory range");
+            ContractId::from(read_bytes(self.memory, recipient_contract_id_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
 
-        if !self.tx.input_contracts().any(|contract| &destination == contract) {
-            *panic_context = PanicContext::ContractId(destination);
-            return Err(PanicReason::ContractNotInInputs.into());
-        }
+        InputContracts::new(self.tx.input_contracts(), panic_context)
+            .check(&destination)?;
 
         if amount == 0 {
-            return Err(PanicReason::NotEnoughBalance.into());
+            return Err(PanicReason::TransferZeroCoins.into())
         }
 
-        let internal_context = match internal_contract(self.context, self.fp, self.memory) {
+        let internal_context = match internal_contract(self.context, self.fp, self.memory)
+        {
             // optimistically attempt to load the internal contract id
             Ok(source_contract) => Some(*source_contract),
             // revert to external context if no internal contract is set
@@ -219,33 +273,35 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         inc_pc(self.pc)
     }
 
-    pub(crate) fn transfer_output(self, a: Word, b: Word, c: Word, d: Word) -> Result<(), RuntimeError>
+    /// In Fuel specs:
+    /// Transfer $rC coins with asset ID at $rD to address at $rA, with output $rB.
+    /// $rA -> recipient_offset
+    /// $rB -> output_index
+    /// $rC -> transfer_amount
+    /// $rD -> asset_id_offset
+    pub(crate) fn transfer_output(
+        self,
+        recipient_offset: Word,
+        output_index: Word,
+        transfer_amount: Word,
+        asset_id_offset: Word,
+    ) -> Result<(), RuntimeError>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
-        let ax = a
-            .checked_add(ContractId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
+        let out_idx = output_index as usize;
+        let to = Address::from(read_bytes(self.memory, recipient_offset)?);
+        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
+        let amount = transfer_amount;
 
-        let dx = d
-            .checked_add(AssetId::LEN as Word)
-            .ok_or(PanicReason::ArithmeticOverflow)?;
-
-        //if above usize::MAX then it cannot be safely cast to usize,
-        // check the tighter bound between VM_MAX_RAM and usize::MAX
-        if ax > MIN_VM_MAX_RAM_USIZE_MAX || dx > MIN_VM_MAX_RAM_USIZE_MAX {
-            return Err(PanicReason::MemoryOverflow.into());
+        if amount == 0 {
+            return Err(PanicReason::TransferZeroCoins.into())
         }
 
-        let out_idx = b as usize;
-        let to = Address::try_from(&self.memory[a as usize..ax as usize]).expect("Unreachable! Checked memory range");
-        let asset_id =
-            AssetId::try_from(&self.memory[d as usize..dx as usize]).expect("Unreachable! Checked memory range");
-        let amount = c;
-
-        let internal_context = match internal_contract(self.context, self.fp, self.memory) {
+        let internal_context = match internal_contract(self.context, self.fp, self.memory)
+        {
             // optimistically attempt to load the internal contract id
             Ok(source_contract) => Some(*source_contract),
             // revert to external context if no internal contract is set
@@ -290,7 +346,10 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     }
 }
 
-pub(crate) fn contract_size<S>(storage: &S, contract: &ContractId) -> Result<Word, RuntimeError>
+pub(crate) fn contract_size<S>(
+    storage: &S,
+    contract: &ContractId,
+) -> Result<Word, RuntimeError>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
     <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
@@ -301,7 +360,11 @@ where
         .ok_or(PanicReason::ContractNotFound)? as Word)
 }
 
-pub(crate) fn balance<S>(storage: &S, contract: &ContractId, asset_id: &AssetId) -> Result<Word, RuntimeError>
+pub(crate) fn balance<S>(
+    storage: &S,
+    contract: &ContractId,
+    asset_id: &AssetId,
+) -> Result<Word, RuntimeError>
 where
     S: ContractsAssetsStorage + ?Sized,
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
@@ -324,7 +387,9 @@ where
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
     let balance = balance(storage, contract, asset_id)?;
-    let balance = balance.checked_add(amount).ok_or(PanicReason::ArithmeticOverflow)?;
+    let balance = balance
+        .checked_add(amount)
+        .ok_or(PanicReason::ArithmeticOverflow)?;
     storage
         .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::from_io)?;
@@ -343,7 +408,9 @@ where
     <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
     let balance = balance(storage, contract, asset_id)?;
-    let balance = balance.checked_sub(amount).ok_or(PanicReason::NotEnoughBalance)?;
+    let balance = balance
+        .checked_sub(amount)
+        .ok_or(PanicReason::NotEnoughBalance)?;
     storage
         .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::from_io)?;

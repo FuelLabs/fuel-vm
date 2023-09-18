@@ -1,4 +1,7 @@
-use fuel_vm::profiler::{InstructionLocation, ProfilingData};
+use fuel_vm::profiler::{
+    InstructionLocation,
+    ProfilingData,
+};
 
 #[test]
 fn test_profile_serde() {

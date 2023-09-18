@@ -1,37 +1,52 @@
 use super::Interpreter;
-use crate::arith;
-use crate::constraints::reg_key::*;
-use crate::error::RuntimeError;
-use crate::gas::DependentCost;
-use crate::prelude::Bug;
-use crate::prelude::BugId;
-use crate::prelude::BugVariant;
-use crate::profiler::Profiler;
+use crate::{
+    arith,
+    constraints::reg_key::*,
+    error::RuntimeError,
+    prelude::{
+        Bug,
+        BugId,
+        BugVariant,
+    },
+    profiler::Profiler,
+};
 
-use fuel_asm::PanicReason;
-use fuel_asm::RegId;
-use fuel_types::ContractId;
-use fuel_types::Word;
+use fuel_asm::{
+    PanicReason,
+    RegId,
+};
+use fuel_tx::DependentCost;
+use fuel_types::{
+    ContractId,
+    Word,
+};
 
 #[cfg(test)]
 mod tests;
 
 impl<S, Tx> Interpreter<S, Tx> {
+    /// Global remaining gas amount
     pub(crate) fn remaining_gas(&self) -> Word {
         self.registers[RegId::GGAS]
     }
 
-    /// Sets the remaining amout of gas to both CGAS and GGAS.
+    /// Sets the amount of gas available for execution to both CGAS and GGAS.
     /// Only useful in contexts where CGAS and GGAS are the same,
     /// i.e. predicates and testing.
-    pub(crate) fn set_remaining_gas(&mut self, gas: Word) {
+    pub(crate) fn set_gas(&mut self, gas: Word) {
         self.registers[RegId::GGAS] = gas;
         self.registers[RegId::CGAS] = gas;
     }
 
-    pub(crate) fn dependent_gas_charge(&mut self, gas_cost: DependentCost, arg: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn dependent_gas_charge(
+        &mut self,
+        gas_cost: DependentCost,
+        arg: Word,
+    ) -> Result<(), RuntimeError> {
         let current_contract = self.contract_id();
-        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
+        let SystemRegisters {
+            pc, ggas, cgas, is, ..
+        } = split_registers(&mut self.registers).0;
         let profiler = ProfileGas {
             pc: pc.as_ref(),
             is: is.as_ref(),
@@ -41,9 +56,12 @@ impl<S, Tx> Interpreter<S, Tx> {
         dependent_gas_charge(cgas, ggas, profiler, gas_cost, arg)
     }
 
+    /// Do a gas charge with the given amount, panicing when running out of gas.
     pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
         let current_contract = self.contract_id();
-        let SystemRegisters { pc, ggas, cgas, is, .. } = split_registers(&mut self.registers).0;
+        let SystemRegisters {
+            pc, ggas, cgas, is, ..
+        } = split_registers(&mut self.registers).0;
 
         let profiler = ProfileGas {
             pc: pc.as_ref(),
@@ -77,7 +95,9 @@ fn dependent_gas_charge_inner(
     gas_cost: DependentCost,
     arg: Word,
 ) -> Result<Word, RuntimeError> {
-    let cost = gas_cost.base.saturating_add(arg.saturating_div(gas_cost.dep_per_unit));
+    let cost = gas_cost
+        .base
+        .saturating_add(arg.saturating_div(gas_cost.dep_per_unit));
     gas_charge_inner(cgas, ggas, cost).map(|_| cost)
 }
 
@@ -91,7 +111,11 @@ pub(crate) fn gas_charge(
     gas_charge_inner(cgas, ggas, gas)
 }
 
-fn gas_charge_inner(mut cgas: RegMut<CGAS>, mut ggas: RegMut<GGAS>, gas: Word) -> Result<(), RuntimeError> {
+fn gas_charge_inner(
+    mut cgas: RegMut<CGAS>,
+    mut ggas: RegMut<GGAS>,
+    gas: Word,
+) -> Result<(), RuntimeError> {
     if *cgas > *ggas {
         Err(Bug::new(BugId::ID008, BugVariant::GlobalGasLessThanContext).into())
     } else if gas > *cgas {
@@ -120,14 +144,16 @@ impl<'a> ProfileGas<'a> {
     pub(crate) fn profile(&mut self, cgas: Reg<CGAS>, gas: Word) {
         #[cfg(feature = "profile-coverage")]
         {
-            let location = super::current_location(self.current_contract, self.pc, self.is);
+            let location =
+                super::current_location(self.current_contract, self.pc, self.is);
             self.profiler.set_coverage(location);
         }
 
         #[cfg(feature = "profile-gas")]
         {
             let gas_use = gas.min(*cgas);
-            let location = super::current_location(self.current_contract, self.pc, self.is);
+            let location =
+                super::current_location(self.current_contract, self.pc, self.is);
             self.profiler.add_gas(location, gas_use);
         }
     }

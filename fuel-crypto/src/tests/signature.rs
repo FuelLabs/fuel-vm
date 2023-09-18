@@ -1,7 +1,18 @@
-use fuel_crypto::{Error, Message, PublicKey, SecretKey, Signature};
-use rand::rngs::StdRng;
-use rand::SeedableRng;
+use crate::{
+    Error,
+    Message,
+    PublicKey,
+    SecretKey,
+    Signature,
+};
 
+#[cfg(feature = "std")]
+use rand::{
+    rngs::StdRng,
+    SeedableRng,
+};
+
+#[cfg(feature = "std")]
 #[test]
 fn recover() {
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -21,6 +32,7 @@ fn recover() {
     }
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn verify() {
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -33,9 +45,15 @@ fn verify() {
         let secret = SecretKey::random(rng);
         let public = secret.public_key();
 
+        let pub1 = crate::secp256::backend::k1::public_key(&secret);
+        let pub2 = crate::secp256::backend::k1::public_key(&secret);
+        assert_eq!(pub1, pub2);
+
         let signature = Signature::sign(&secret, &message);
 
-        signature.verify(&public, &message).expect("Failed to verify signature");
+        signature
+            .verify(&public, &message)
+            .expect("Failed to verify signature");
     }
 }
 

@@ -1,9 +1,14 @@
-use fuel_asm::op;
-use fuel_asm::RegId;
+use fuel_asm::{
+    op,
+    RegId,
+};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 #[test]
 fn profile_gas() {
@@ -13,7 +18,6 @@ fn profile_gas() {
     let gas_limit = 1_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     // Deploy contract with loops
     let reg_a = 0x20;
@@ -28,20 +32,20 @@ fn profile_gas() {
             op::ret(RegId::ONE),
         ];
 
-        let tx_deploy = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
-            .add_unsigned_coin_input(
-                rng.gen(),
-                rng.gen(),
-                1,
-                Default::default(),
-                rng.gen(),
-                Default::default(),
-            )
-            .gas_limit(gas_limit)
-            .gas_price(gas_price)
-            .maturity(maturity)
-            .with_params(params)
-            .finalize_checked(height, &GasCosts::default());
+        let tx_deploy =
+            TransactionBuilder::script(script_code.into_iter().collect(), vec![])
+                .add_unsigned_coin_input(
+                    SecretKey::random(rng),
+                    rng.gen(),
+                    1,
+                    Default::default(),
+                    rng.gen(),
+                    Default::default(),
+                )
+                .gas_limit(gas_limit)
+                .gas_price(gas_price)
+                .maturity(maturity)
+                .finalize_checked(height);
 
         let output = GasProfiler::default();
 

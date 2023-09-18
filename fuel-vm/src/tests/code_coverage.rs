@@ -1,12 +1,26 @@
-use fuel_asm::{op, RegId};
-use fuel_tx::{ScriptExecutionResult, TransactionBuilder};
+use fuel_asm::{
+    op,
+    RegId,
+};
+use fuel_tx::{
+    ScriptExecutionResult,
+    TransactionBuilder,
+};
 
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_vm::{
+    consts::*,
+    prelude::*,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    Arc,
+    Mutex,
+};
 
 const HALF_WORD_SIZE: u64 = (WORD_SIZE as u64) / 2;
 
@@ -18,7 +32,6 @@ fn code_coverage() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     // Deploy contract with loops
     let reg_a = 0x20;
@@ -33,7 +46,7 @@ fn code_coverage() {
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
         .add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(rng),
             rng.gen(),
             1,
             Default::default(),
@@ -43,8 +56,7 @@ fn code_coverage() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
-        .finalize_checked(height, &GasCosts::default());
+        .finalize_checked(height);
 
     #[derive(Clone, Default)]
     struct ProfilingOutput {
@@ -52,7 +64,11 @@ fn code_coverage() {
     }
 
     impl ProfileReceiver for ProfilingOutput {
-        fn on_transaction(&mut self, _state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
+        fn on_transaction(
+            &mut self,
+            _state: &Result<ProgramState, InterpreterError>,
+            data: &ProfilingData,
+        ) {
             let mut guard = self.data.lock().unwrap();
             *guard = Some(data.clone());
         }
@@ -86,6 +102,9 @@ fn code_coverage() {
     assert_eq!(items.len(), expect.len());
 
     for (item, expect) in items.into_iter().zip(expect.into_iter()) {
-        assert_eq!(*item, InstructionLocation::new(None, expect * HALF_WORD_SIZE));
+        assert_eq!(
+            *item,
+            InstructionLocation::new(None, expect * HALF_WORD_SIZE)
+        );
     }
 }

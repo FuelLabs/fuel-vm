@@ -1,8 +1,19 @@
-use super::super::{internal::inc_pc, is_wrapping, ExecutableTransaction, Interpreter};
-use crate::{constraints::reg_key::*, error::RuntimeError};
+use super::super::{
+    internal::inc_pc,
+    is_wrapping,
+    ExecutableTransaction,
+    Interpreter,
+};
+use crate::{
+    constraints::reg_key::*,
+    error::RuntimeError,
+};
 
 use fuel_asm::PanicReason;
-use fuel_types::{RegisterId, Word};
+use fuel_types::{
+    RegisterId,
+    Word,
+};
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -31,7 +42,7 @@ where
         let (result, overflow) = muldiv(lhs, rhs, divider);
 
         if overflow != 0 && !is_wrapping(flag.into()) {
-            return Err(PanicReason::ArithmeticOverflow.into());
+            return Err(PanicReason::ArithmeticOverflow.into())
         }
 
         *of = overflow;

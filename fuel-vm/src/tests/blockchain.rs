@@ -1,38 +1,63 @@
 use fuel_asm::RegId;
-use fuel_crypto::{Hasher, SecretKey};
-use fuel_tx::{field::Outputs, Input, Output, Receipt, TransactionBuilder};
-use fuel_types::{bytes, AssetId, BlockHeight};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
-
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
-
-use fuel_asm::PanicReason::ErrorFlag;
-use fuel_asm::{
-    op, Instruction,
-    PanicReason::{ArithmeticOverflow, ContractNotInInputs, ExpectedUnallocatedStack, MemoryOverflow, MemoryOwnership},
+use fuel_crypto::{
+    Hasher,
+    SecretKey,
 };
-use fuel_tx::field::Script as ScriptField;
+use fuel_tx::{
+    field::Outputs,
+    Finalizable,
+    Input,
+    Output,
+    Receipt,
+    TransactionBuilder,
+};
+use fuel_types::{
+    canonical::SerializedSize,
+    AssetId,
+    BlockHeight,
+    ChainId,
+};
+use itertools::Itertools;
+use rand::{
+    rngs::StdRng,
+    CryptoRng,
+    Rng,
+    SeedableRng,
+};
+
+use crate::{
+    consts::*,
+    prelude::*,
+};
+
+use crate::interpreter::InterpreterParams;
+
+use crate::script_with_data_offset;
+use fuel_asm::{
+    op,
+    Instruction,
+    PanicReason::{
+        ContractNotInInputs,
+        ErrorFlag,
+        ExpectedUnallocatedStack,
+        MemoryOverflow,
+    },
+};
+use fuel_tx::{
+    field::Script as ScriptField,
+    ConsensusParameters,
+};
 use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
 const SET_STATUS_REG: u8 = 0x39;
-// log2(VM_MAX_MEM) - used to set a pointer to the memory boundary via SHL: 1<<log2(VM_MAX_MEM)
+// log2(VM_MAX_MEM) - used to set a pointer to the memory boundary via SHL:
+// 1<<log2(VM_MAX_MEM)
 const MAX_MEM_SHL: Immediate12 = 26 as Immediate12;
 
 #[test]
 fn state_read_write() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let mut client = MemoryClient::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-
-    let salt: Salt = rng.gen();
 
     // Create a program with two main routines
     //
@@ -107,63 +132,25 @@ fn state_read_write() {
         op::ret(RegId::ZERO),
     ];
 
-    let program: Witness = function_selector
+    let program = function_selector
         .into_iter()
-        .chain(call_arguments_parser.into_iter())
-        .chain(routine_add_word_to_state.into_iter())
-        .chain(routine_unpack_and_xor_limbs_into_state.into_iter())
-        .chain(invalid_call.into_iter())
-        .collect::<Vec<u8>>()
-        .into();
+        .chain(call_arguments_parser)
+        .chain(routine_add_word_to_state)
+        .chain(routine_unpack_and_xor_limbs_into_state)
+        .chain(invalid_call)
+        .collect_vec();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
-    let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root, &state_root);
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
 
-    let output = Output::contract_created(contract, state_root);
-
-    let bytecode_witness = 0;
-    let tx_deploy = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
-    let output = Output::contract(0, rng.gen(), rng.gen());
-
-    // The script needs to locate the data offset at runtime. Hence, we need to know
-    // upfront the serialized size of the script so we can set the registers
-    // accordingly.
-    //
-    // This variable is created to assert we have correct script size in the
-    // instructions.
-    let script_len = 16;
-
-    // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = client.tx_offset() + Script::script_offset_static() + script_len;
-    let script_data_offset = script_data_offset as Immediate18;
-
-    let script = vec![
-        op::movi(0x10, script_data_offset),
-        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-        op::ret(RegId::ONE),
-    ]
-    .into_iter()
-    .collect::<Vec<u8>>();
-
-    // Assert the offsets are set correctly
-    let offset = client.tx_offset() + Script::script_offset_static() + bytes::padded_len(script.as_slice());
-    assert_eq!(script_data_offset, offset as Immediate18);
+    let (script, script_data_offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
 
     let mut script_data = vec![];
 
@@ -179,34 +166,30 @@ fn state_read_write() {
     let val: Word = 150;
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
-    script_data.extend(contract.as_ref());
+    script_data.extend(contract_id.as_ref());
     script_data.extend(routine.to_be_bytes());
     script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
     script_data.extend(val.to_be_bytes());
 
-    let tx_add_word = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script.clone(),
-        script_data,
-        vec![input.clone()],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
     // Assert the initial state of `key` is empty
-    let state = client.as_ref().contract_state(&contract, &key);
+    let state = test_context
+        .get_storage()
+        .contract_state(&contract_id, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.deploy(tx_deploy);
-    client.transact(tx_add_word);
+    let result = test_context
+        .start_script(script.clone(), script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
 
-    let receipts = client.receipts().expect("The transaction was executed");
-    let state = client.as_ref().contract_state(&contract, &key);
+    let receipts = result.receipts();
+    let state = test_context
+        .get_storage()
+        .contract_state(&contract_id, &key);
 
     // Assert the state of `key` is mutated to `val`
     assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
@@ -229,29 +212,21 @@ fn state_read_write() {
     let val: Word = (a << 48) | (b << 32) | (c << 16) | d;
 
     // Script data containing the call arguments (contract, a, b) and (key, value)
-    script_data.extend(contract.as_ref());
+    script_data.extend(contract_id.as_ref());
     script_data.extend(routine.to_be_bytes());
     script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
     script_data.extend(val.to_be_bytes());
 
-    let tx_unpack_xor = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
 
-    // Mutate the state
-    client.transact(tx_unpack_xor);
-
-    let receipts = client.receipts().expect("Expected receipts");
+    let receipts = result.receipts();
 
     // Expect the arguments to be received correctly by the VM
     assert_eq!(receipts[1].ra().expect("Register value expected"), val);
@@ -281,7 +256,9 @@ fn state_read_write() {
 
     // Assert the state is correct
     let bytes = Bytes32::from(bytes);
-    let state = client.as_ref().contract_state(&contract, &key);
+    let state = test_context
+        .get_storage()
+        .contract_state(&contract_id, &key);
     assert_eq!(bytes, state.into_owned());
 }
 
@@ -296,7 +273,6 @@ fn load_external_contract_code() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     // Start by creating and deploying a new example contract
     let contract_code = vec![
@@ -316,19 +292,17 @@ fn load_external_contract_code() {
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let tx_create_target = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        0,
-        salt,
-        vec![],
-        vec![],
-        vec![output0],
-        vec![program.clone()],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let consensus_params = ConsensusParameters::standard();
+
+    let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .add_output(output0)
+        .finalize()
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx");
 
     client.deploy(tx_create_target);
 
@@ -356,48 +330,51 @@ fn load_external_contract_code() {
     }
 
     load_contract.extend([
-        op::move_(reg_a, RegId::HP),                      // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b),                     // r[b] := 0
-        op::ori(reg_b, reg_b, 12),                        // r[b] += 12 (will be padded to 16)
-        op::ldc(reg_a, RegId::ZERO, reg_b),               // Load first two words from the contract
-        op::move_(reg_a, RegId::SSP),                     // r[b] := $ssp
-        op::subi(reg_a, reg_a, 8 * 2),                    // r[a] -= 16 (start of the loaded code)
-        op::xor(reg_b, reg_b, reg_b),                     // r[b] := 0
-        op::addi(reg_b, reg_b, 16),                       // r[b] += 16 (length of the loaded code)
+        op::move_(reg_a, RegId::HP),  // r[a] := $hp
+        op::xor(reg_b, reg_b, reg_b), // r[b] := 0
+        op::ori(reg_b, reg_b, 12),    /* r[b] += 12 (will be
+                                       * padded to 16) */
+        op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
+        op::move_(reg_a, RegId::SSP),       // r[b] := $ssp
+        op::subi(reg_a, reg_a, 8 * 2),      // r[a] -= 16 (start of the loaded code)
+        op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
+        op::addi(reg_b, reg_b, 16),         // r[b] += 16 (length of the loaded code)
         op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), // Log digest of the loaded code
-        op::noop(),                                       // Patched to the jump later
+        op::noop(),                         // Patched to the jump later
     ]);
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
+    let tx_deploy_loader = TransactionBuilder::script(
         #[allow(clippy::iter_cloned_collect)]
         load_contract.iter().copied().collect(),
         vec![],
-        vec![input0.clone()],
-        vec![output1],
-        vec![],
     )
-    .into_checked(height, &params, client.gas_costs())
+    .gas_price(gas_price)
+    .gas_limit(gas_limit)
+    .maturity(maturity)
+    .add_input(input0.clone())
+    .add_random_fee_input()
+    .add_output(output1)
+    .finalize()
+    .into_checked(height, &consensus_params)
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
-    let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
-    *load_contract.last_mut().unwrap() = op::ji((transaction_end_addr / 4) as Immediate24);
+    let transaction_end_addr =
+        tx_deploy_loader.transaction().size() - Script::script_offset_static();
+    *load_contract.last_mut().unwrap() =
+        op::ji((transaction_end_addr / 4) as Immediate24);
 
-    let tx_deploy_loader = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        load_contract.into_iter().collect(),
-        vec![],
-        vec![input0],
-        vec![output1],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let tx_deploy_loader =
+        TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_input(input0)
+            .add_random_fee_input()
+            .add_output(output1)
+            .finalize()
+            .into_checked(height, &consensus_params)
+            .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
 
@@ -416,17 +393,30 @@ fn load_external_contract_code() {
     }
 }
 
-fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should_patch_jump: bool) {
+fn ldc_reason_helper(
+    cmd: Vec<Instruction>,
+    expected_reason: PanicReason,
+    should_patch_jump: bool,
+) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
-    let mut client = MemoryClient::new(MemoryStorage::default(), Default::default(), GasCosts::free());
+    // make gas costs free
+    let gas_costs = GasCosts::free();
+
+    let consensus_params = ConsensusParameters {
+        gas_costs,
+        ..Default::default()
+    };
+
+    let interpreter_params = InterpreterParams::from(&consensus_params);
+
+    let mut client = MemoryClient::new(MemoryStorage::default(), interpreter_params);
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     // Start by creating and deploying a new example contract
     let contract_code = vec![
@@ -446,23 +436,19 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
     let output0 = Output::contract_created(contract_id, state_root);
     let output1 = Output::contract(0, rng.gen(), rng.gen());
 
-    let tx_create_target = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        0,
-        salt,
-        vec![],
-        vec![],
-        vec![output0],
-        vec![program],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
+    let tx_create_target = TransactionBuilder::create(program, salt, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .add_output(output0)
+        .finalize()
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx");
 
     client.deploy(tx_create_target);
 
-    //test ssp != sp for LDC
+    // test ssp != sp for LDC
     let mut load_contract: Vec<Instruction>;
 
     let mut tx_deploy_loader;
@@ -470,18 +456,15 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
     if !should_patch_jump {
         load_contract = cmd;
 
-        tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            load_contract.into_iter().collect(),
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-        )
-        .into_checked(height, &params, client.gas_costs())
-        .expect("failed to check tx");
+        tx_deploy_loader =
+            TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
+                .gas_price(gas_price)
+                .gas_limit(gas_limit)
+                .maturity(maturity)
+                .add_random_fee_input()
+                .finalize()
+                .into_checked(height, &consensus_params)
+                .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
         let count = ContractId::LEN as Immediate12;
@@ -505,35 +488,37 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
 
         load_contract.extend(cmd);
 
-        tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
+        tx_deploy_loader = TransactionBuilder::script(
             load_contract.clone().into_iter().collect(),
             vec![],
-            vec![input0.clone()],
-            vec![output1],
-            vec![],
         )
-        .into_checked(height, &params, client.gas_costs())
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_input(input0.clone())
+        .add_random_fee_input()
+        .add_output(output1)
+        .finalize()
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
         // Patch the code with correct jump address
-        let transaction_end_addr = tx_deploy_loader.transaction().serialized_size() - Script::script_offset_static();
-        *load_contract.last_mut().unwrap() = op::ji((transaction_end_addr / 4) as Immediate24);
+        let transaction_end_addr =
+            tx_deploy_loader.transaction().size() - Script::script_offset_static();
+        *load_contract.last_mut().unwrap() =
+            op::ji((transaction_end_addr / 4) as Immediate24);
 
-        tx_deploy_loader = Transaction::script(
-            gas_price,
-            gas_limit,
-            maturity,
-            load_contract.into_iter().collect(),
-            vec![],
-            vec![input0],
-            vec![output1],
-            vec![],
-        )
-        .into_checked(height, &params, client.gas_costs())
-        .expect("failed to check tx");
+        tx_deploy_loader =
+            TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
+                .gas_price(gas_price)
+                .gas_limit(gas_limit)
+                .maturity(maturity)
+                .add_input(input0)
+                .add_random_fee_input()
+                .add_output(output1)
+                .finalize()
+                .into_checked(height, &consensus_params)
+                .expect("failed to check tx");
     }
 
     let receipts = client.transact(tx_deploy_loader);
@@ -556,16 +541,17 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason, should
             assert_ne!(actual_contract_id, &Some(contract_id));
         };
     } else {
-        panic!("Script should have panicked");
+        panic!("Script should have panicked before logging");
     }
 }
 
 #[test]
 fn ldc_ssp_not_sp() {
-    //test ssp != sp for LDC
+    // test ssp != sp for LDC
     let load_contract = vec![
-        op::cfei(0x1),                                  // sp += 1
-        op::ldc(RegId::ZERO, RegId::ZERO, RegId::ZERO), // Load first two words from the contract
+        op::cfei(0x1), // sp += 1
+        op::ldc(RegId::ZERO, RegId::ZERO, RegId::ZERO), /* Load first two words from
+                        * the contract */
     ];
 
     ldc_reason_helper(load_contract, ExpectedUnallocatedStack, false);
@@ -576,10 +562,11 @@ fn ldc_mem_offset_above_reg_hp() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
 
-    //test memory offset above reg_hp value
+    // test memory offset above reg_hp value
     let load_contract = vec![
-        op::move_(reg_a, RegId::HP),              // r[a] := $hp
-        op::ldc(RegId::ZERO, RegId::ZERO, reg_a), // Load first two words from the contract
+        op::move_(reg_a, RegId::HP), // r[a] := $hp
+        op::ldc(RegId::ZERO, RegId::ZERO, reg_a), /* Load first two words from the
+                                      * contract */
     ];
 
     ldc_reason_helper(load_contract, MemoryOverflow, false);
@@ -608,7 +595,7 @@ fn ldc_contract_not_in_inputs() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
-    //contract not in inputs
+    // contract not in inputs
     let load_contract = vec![
         op::xor(reg_a, reg_a, reg_a),       // r[b] := 0
         op::addi(reg_a, reg_a, 1),          // r[a] += 1
@@ -621,25 +608,170 @@ fn ldc_contract_not_in_inputs() {
 }
 
 #[test]
-fn ldc_contract_offset_over_length() {
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-    let reg_b = 0x21;
+fn load_contract_code_out_of_contract_offset_over_length() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
 
-    let load_contract = vec![
-        op::move_(reg_a, RegId::HP),                      // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b),                     // r[b] := 0
-        op::ori(reg_b, reg_b, 12),                        // r[b] += 12 (will be padded to 16)
-        op::ldc(reg_a, reg_a, reg_b),                     // Load first two words from the contract
-        op::move_(reg_a, RegId::SSP),                     // r[b] := $ssp
-        op::subi(reg_a, reg_a, 8 * 2),                    // r[a] -= 16 (start of the loaded code)
-        op::xor(reg_b, reg_b, reg_b),                     // r[b] := 0
-        op::ori(reg_b, reg_b, 16),                        // r[b] += 16 (length of the loaded code)
-        op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), // Log digest of the loaded code
-        op::noop(),                                       // Patched to the jump later
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
     ];
 
-    ldc_reason_helper(load_contract, MemoryOverflow, true);
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let contract_size = program.len();
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x12, (contract_size + 1) as Immediate18),
+            op::movi(0x13, contract_size as Immediate18),
+            op::ldc(0x11, 0x12, 0x13),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, RegId::SP, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend(program.as_slice());
+
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(0, ret.val().expect("Return value"));
+}
+
+#[test]
+fn code_copy_shorter_zero_padding() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
+    ];
+
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let contract_size = program.len();
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, 2048),
+            op::aloc(0x10),
+            op::addi(0x10, RegId::HP, contract_size as Immediate12),
+            op::movi(0x10, 1234),
+            op::addi(0x10, RegId::HP, (contract_size + 1) as Immediate12),
+            op::movi(0x10, 1234),
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x13, (contract_size + 2) as Immediate18),
+            op::ccp(RegId::HP, 0x11, RegId::ZERO, 0x13),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, RegId::HP, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend(program.as_slice());
+    script_data.extend(vec![0; 2]);
+
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(1, ret.val().expect("A constant `1` was returned."));
+}
+
+#[test]
+fn code_copy_out_of_contract_offset_over_length() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
+    ];
+
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let contract_size = program.len();
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, 2048),
+            op::aloc(0x10),
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x12, (contract_size + 1) as Immediate18),
+            op::movi(0x13, contract_size as Immediate18),
+            op::ccp(RegId::HP, 0x11, 0x12, 0x13),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, RegId::HP, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend(vec![0; contract_size].as_slice());
+
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(1, ret.val().expect("Return value"));
 }
 
 #[test]
@@ -647,7 +779,7 @@ fn code_copy_a_gt_vmmax_sub_d() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
 
-    //test memory offset above reg_hp value
+    // test memory offset above reg_hp value
     let code_copy = vec![
         op::xor(reg_a, reg_a, reg_a),
         op::ori(reg_a, reg_a, 1),
@@ -662,7 +794,7 @@ fn code_copy_a_gt_vmmax_sub_d() {
 #[test]
 fn code_copy_b_plus_32_overflow() {
     let reg_a = 0x20;
-    //test overflow add
+    // test overflow add
     let code_copy = vec![
         op::xor(reg_a, reg_a, reg_a),
         op::not(reg_a, reg_a),
@@ -675,7 +807,7 @@ fn code_copy_b_plus_32_overflow() {
 #[test]
 fn code_copy_b_gt_vm_max_ram() {
     let reg_a = 0x20;
-    //test overflow add
+    // test overflow add
     let code_copy = vec![
         op::xor(reg_a, reg_a, reg_a),
         op::ori(reg_a, reg_a, 1),
@@ -690,7 +822,7 @@ fn code_copy_b_gt_vm_max_ram() {
 #[test]
 fn code_copy_c_gt_vm_max_ram() {
     let reg_a = 0x20;
-    //test overflow add
+    // test overflow add
     let code_copy = vec![
         op::xor(reg_a, reg_a, reg_a),
         op::ori(reg_a, reg_a, 1),
@@ -714,7 +846,7 @@ fn code_root_a_plus_32_overflow() {
         op::croo(reg_a, RegId::ZERO),
     ];
 
-    check_expected_reason_for_instructions(code_root, ArithmeticOverflow);
+    check_expected_reason_for_instructions(code_root, MemoryOverflow);
 }
 
 #[test]
@@ -931,69 +1063,24 @@ fn swwq_sets_status_with_range() {
     check_receipts_for_program_call(program, vec![0, 1, 0, 0]);
 }
 
-fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: Vec<Word>) -> bool {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let mut client = MemoryClient::default();
-
-    let gas_price = 0;
+fn check_receipts_for_program_call(
+    program: Vec<Instruction>,
+    expected_values: Vec<Word>,
+) -> bool {
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
 
-    let salt: Salt = rng.gen();
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
 
-    let program: Witness = program.into_iter().collect::<Vec<u8>>().into();
-
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
-    let state_root = Contract::default_state_root();
-    let contract = contract.id(&salt, &contract_root, &state_root);
-
-    let output = Output::contract_created(contract, state_root);
-
-    let bytecode_witness = 0;
-    let tx_deploy = Transaction::create(
-        gas_price,
-        gas_limit,
-        maturity,
-        bytecode_witness,
-        salt,
-        vec![],
-        vec![],
-        vec![output],
-        vec![program],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
-    let input = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract);
-    let output = Output::contract(0, rng.gen(), rng.gen());
-
-    // The script needs to locate the data offset at runtime. Hence, we need to know
-    // upfront the serialized size of the script so we can set the registers
-    // accordingly.
-    //
-    // This variable is created to assert we have correct script size in the
-    // instructions.
-    let script_len = 16;
-
-    // Based on the defined script length, we set the appropriate data offset
-    let script_data_offset = client.tx_offset() + Script::script_offset_static() + script_len;
-    let script_data_offset = script_data_offset as Immediate18;
-
-    let script = vec![
-        op::movi(0x10, script_data_offset),
-        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-        op::ret(RegId::ONE),
-    ]
-    .into_iter()
-    .collect::<Vec<u8>>();
-
-    // Assert the offsets are set correctly
-    let offset = client.tx_offset() + Script::script_offset_static() + bytes::padded_len(script.as_slice());
-    assert_eq!(script_data_offset, offset as Immediate18);
+    let (script, script_data_offset) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
 
     let mut script_data = vec![];
 
@@ -1008,40 +1095,46 @@ fn check_receipts_for_program_call(program: Vec<Instruction>, expected_values: V
     let key = Hasher::hash(b"some key");
     let val: Word = 150;
 
-    // Script data containing the call arguments (contract, a, b) and (key, value)
-    script_data.extend(contract.as_ref());
+    // Script data containing the call arguments (contract_id, a, b) and (key, value)
+    script_data.extend(contract_id.as_ref());
     script_data.extend(routine.to_be_bytes());
     script_data.extend(call_data_offset.to_be_bytes());
     script_data.extend(key.as_ref());
     script_data.extend(val.to_be_bytes());
 
-    let tx_add_word = Transaction::script(
-        gas_price,
-        gas_limit,
-        maturity,
-        script,
-        script_data,
-        vec![input],
-        vec![output],
-        vec![],
-    )
-    .into_checked(height, &params, client.gas_costs())
-    .expect("failed to check tx");
-
     // Assert the initial state of `key` is empty
-    let state = client.as_ref().contract_state(&contract, &key);
+    let state = test_context
+        .get_storage()
+        .contract_state(&contract_id, &key);
     assert_eq!(Bytes32::default(), state.into_owned());
 
-    client.deploy(tx_deploy);
-    client.transact(tx_add_word);
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
 
-    let receipts = client.receipts().expect("The transaction was executed");
+    let receipts = result.receipts();
 
     // Expect the correct receipt
-    assert_eq!(receipts[1].ra().expect("Register value expected"), expected_values[0]);
-    assert_eq!(receipts[1].rb().expect("Register value expected"), expected_values[1]);
-    assert_eq!(receipts[1].rc().expect("Register value expected"), expected_values[2]);
-    assert_eq!(receipts[1].rd().expect("Register value expected"), expected_values[3]);
+    assert_eq!(
+        receipts[1].ra().expect("Register value expected"),
+        expected_values[0]
+    );
+    assert_eq!(
+        receipts[1].rb().expect("Register value expected"),
+        expected_values[1]
+    );
+    assert_eq!(
+        receipts[1].rc().expect("Register value expected"),
+        expected_values[2]
+    );
+    assert_eq!(
+        receipts[1].rd().expect("Register value expected"),
+        expected_values[3]
+    );
 
     true
 }
@@ -1092,7 +1185,7 @@ fn state_r_qword_a_plus_32_over() {
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOwnership);
+    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
 }
 
 #[test]
@@ -1127,7 +1220,7 @@ fn state_r_qword_a_over_max_ram() {
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_read_qword, MemoryOwnership);
+    check_expected_reason_for_instructions(state_read_qword, MemoryOverflow);
 }
 
 #[test]
@@ -1212,7 +1305,7 @@ fn state_w_qword_b_plus_32_over() {
         op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(state_write_qword, ArithmeticOverflow);
+    check_expected_reason_for_instructions(state_write_qword, MemoryOverflow);
 }
 
 #[test]
@@ -1274,10 +1367,10 @@ fn message_output_a_b_over() {
 
     // cover contract_id_end beyond max ram
     let message_output = vec![
-        op::xor(reg_a, reg_a, reg_a), //r[a] = 0
-        op::xor(reg_b, reg_b, reg_b), //r[b] = 0
-        op::not(reg_a, reg_a),        //r[a] = MAX
-        op::addi(reg_b, reg_b, 1),    //r[b] = 1
+        op::xor(reg_a, reg_a, reg_a), // r[a] = 0
+        op::xor(reg_b, reg_b, reg_b), // r[b] = 0
+        op::not(reg_a, reg_a),        // r[a] = MAX
+        op::addi(reg_b, reg_b, 1),    // r[b] = 1
         op::smo(reg_a, reg_b, RegId::ZERO, RegId::ZERO),
     ];
 
@@ -1305,17 +1398,21 @@ fn message_output_a_b_gt_max_mem() {
 
 #[test]
 fn smo_instruction_works() {
-    fn execute_test<R>(rng: &mut R, inputs: Vec<(u64, Vec<u8>)>, message_output_amount: Word, gas_price: Word) -> bool
+    fn execute_test<R>(
+        rng: &mut R,
+        inputs: Vec<(u64, Vec<u8>)>,
+        message_output_amount: Word,
+        gas_price: Word,
+    ) -> bool
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         let mut client = MemoryClient::default();
+        let fee_params = FeeParameters::default();
 
         let gas_limit = 1_000_000;
         let maturity = Default::default();
         let block_height = Default::default();
-
-        let params = client.params();
 
         let secret = SecretKey::random(rng);
         let sender = rng.gen();
@@ -1342,7 +1439,9 @@ fn smo_instruction_works() {
         let script_data = vec![];
 
         let mut tx = TransactionBuilder::script(script, script_data);
-        tx.gas_price(gas_price).gas_limit(gas_limit).maturity(maturity);
+        tx.gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity);
         // add inputs
         for (amount, data) in inputs {
             tx.add_unsigned_message_input(secret, sender, rng.gen(), amount, data);
@@ -1353,13 +1452,14 @@ fn smo_instruction_works() {
                 amount: 0,
                 asset_id: Default::default(),
             })
-            .with_params(*params)
-            .finalize_checked(block_height, client.gas_costs());
+            .add_random_fee_input()
+            .finalize_checked(block_height);
 
-        let non_retryable_free_balance = tx.metadata().non_retryable_balances[&AssetId::BASE];
+        let non_retryable_free_balance =
+            tx.metadata().non_retryable_balances[&AssetId::BASE];
         let retryable_balance: u64 = tx.metadata().retryable_balance.into();
 
-        let txid = tx.transaction().id(params);
+        let txid = tx.transaction().id(&ChainId::default());
         let receipts = client.transact(tx);
 
         let success = receipts.iter().any(|r| {
@@ -1386,16 +1486,19 @@ fn smo_instruction_works() {
         if let Some((recipient, transferred, data)) = message_receipt {
             assert_eq!(txid.as_ref(), recipient.as_ref());
             assert_eq!(message_output_amount, transferred);
-            assert_eq!(data, msg_data);
+            assert_eq!(data.unwrap(), msg_data);
         }
         // get gas used from script result
-        let gas_used = if let Receipt::ScriptResult { gas_used, .. } = state.receipts().last().unwrap() {
+        let gas_used = if let Receipt::ScriptResult { gas_used, .. } =
+            state.receipts().last().unwrap()
+        {
             gas_used
         } else {
             panic!("expected script result")
         };
         // get refunded fee amount
-        let refund_amount = TransactionFee::gas_refund_value(client.params(), *gas_used, gas_price).unwrap();
+        let refund_amount =
+            TransactionFee::gas_refund_value(&fee_params, *gas_used, gas_price).unwrap();
 
         // check that refundable balances aren't converted into change on failed txs
         if !success {
@@ -1424,10 +1527,20 @@ fn smo_instruction_works() {
     assert!(!execute_test(rng, vec![(10, vec![0xfa; 15])], 11, 0));
 
     // check that retryable balance isn't refunded on revert
-    assert!(!execute_test(rng, vec![(10, vec![0xfa; 15]), (1000, vec![])], 1011, 1));
+    assert!(!execute_test(
+        rng,
+        vec![(10, vec![0xfa; 15]), (1000, vec![])],
+        1011,
+        1
+    ));
 
     // check that retryable balance is refunded to user
-    assert!(execute_test(rng, vec![(10, vec![0xfa; 15]), (1000, vec![])], 50, 1));
+    assert!(execute_test(
+        rng,
+        vec![(10, vec![0xfa; 15]), (1000, vec![])],
+        50,
+        1
+    ));
 }
 
 #[test]
@@ -1438,8 +1551,6 @@ fn timestamp_works() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let block_height = Default::default();
-
-    let params = *client.params();
 
     // TODO consider using quickcheck after PR lands
     // https://github.com/FuelLabs/fuel-vm/pull/187
@@ -1478,8 +1589,8 @@ fn timestamp_works() {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .maturity(maturity)
-            .with_params(params)
-            .finalize_checked(block_height, client.gas_costs());
+            .add_random_fee_input()
+            .finalize_checked(block_height);
 
         let receipts = client.transact(tx);
         let result = receipts.iter().any(|r| {
@@ -1518,8 +1629,6 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
 
-    let params = *client.params();
-
     client.as_mut().set_block_height(current_height);
 
     #[rustfmt::skip]
@@ -1536,8 +1645,8 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
-        .finalize_checked(current_height, client.gas_costs());
+        .add_random_fee_input()
+        .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
     let Some(Receipt::Log { ra, .. }) = receipts.first() else {
@@ -1550,7 +1659,10 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
 }
 
 #[rstest::rstest]
-fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0, 1, 2, 10, 100)] test_height: u32) {
+fn block_hash_works(
+    #[values(0, 1, 2, 10, 100)] current_height: u32,
+    #[values(0, 1, 2, 10, 100)] test_height: u32,
+) {
     let current_height: BlockHeight = current_height.into();
     let test_height: BlockHeight = test_height.into();
 
@@ -1559,8 +1671,6 @@ fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0,
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
-
-    let params = *client.params();
 
     client.as_mut().set_block_height(current_height);
 
@@ -1586,15 +1696,15 @@ fn block_hash_works(#[values(0, 1, 2, 10, 100)] current_height: u32, #[values(0,
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
-        .finalize_checked(current_height, client.gas_costs());
+        .add_random_fee_input()
+        .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
         panic!("expected log receipt");
     };
 
-    assert_eq!(data, &*expected);
+    assert_eq!(data.as_ref().unwrap(), &*expected);
 }
 
 #[rstest::rstest]
@@ -1605,9 +1715,10 @@ fn coinbase_works() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
 
-    let params = *client.params();
-
-    let expected = client.as_ref().coinbase().expect("failed to calculate block hash");
+    let expected = client
+        .as_ref()
+        .coinbase()
+        .expect("failed to calculate block hash");
 
     #[rustfmt::skip]
     let script = vec![
@@ -1625,13 +1736,13 @@ fn coinbase_works() {
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .maturity(maturity)
-        .with_params(params)
-        .finalize_checked(10.into(), client.gas_costs());
+        .add_random_fee_input()
+        .finalize_checked(10.into());
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
         panic!("expected log receipt");
     };
 
-    assert_eq!(data, &*expected);
+    assert_eq!(data.as_ref().unwrap(), &*expected);
 }

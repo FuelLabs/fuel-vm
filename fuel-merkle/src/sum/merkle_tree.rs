@@ -1,11 +1,19 @@
 use crate::{
-    common::{Bytes32, Subtree},
-    sum::{empty_sum, Node},
+    common::{
+        Bytes32,
+        Subtree,
+    },
+    sum::{
+        empty_sum,
+        Node,
+    },
 };
 
-use fuel_storage::{Mappable, StorageMutate};
+use fuel_storage::{
+    Mappable,
+    StorageMutate,
+};
 
-use alloc::boxed::Box;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone)]
@@ -15,19 +23,21 @@ pub enum MerkleTreeError {
     InvalidProofIndex(u64),
 }
 
-/// The Binary Merkle Sum Tree is an extension to the existing Binary [`MerkleTree`](crate::binary::MerkleTree).
-/// A node (leaf or internal node) in the tree is defined as having:
+/// The Binary Merkle Sum Tree is an extension to the existing Binary
+/// [`MerkleTree`](crate::binary::MerkleTree). A node (leaf or internal node) in the tree
+/// is defined as having:
 /// - a fee (u64, 8 bytes)
 /// - a digest (array of bytes)
 ///
-/// Therefore, a node's data is now a data pair formed by `(fee, digest)`. The data pair of a node
-/// with two or more leaves is defined as:
+/// Therefore, a node's data is now a data pair formed by `(fee, digest)`. The data pair
+/// of a node with two or more leaves is defined as:
 ///
-/// (left.fee + right.fee, hash(0x01 ++ left.fee ++ left.digest ++ right.fee ++ right.digest))
+/// (left.fee + right.fee, hash(0x01 ++ left.fee ++ left.digest ++ right.fee ++
+/// right.digest))
 ///
 /// This is in contrast to the Binary Merkle Tree node, where a node has only a digest.
 ///
-/// See the [specification](https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/cryptographic_primitives.md#merkle-trees)
+/// See the [specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md#merkle-trees)
 /// for more details.
 ///
 /// **Details**
@@ -37,10 +47,11 @@ pub enum MerkleTreeError {
 /// fee: a.fee + b.fee
 /// data: node_sum(a.fee, a.data, b.fee, b.data)
 ///
-/// where `node_sum` is defined as the hash function described in the data pair description above.
+/// where `node_sum` is defined as the hash function described in the data pair
+/// description above.
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
-    head: Option<Box<Subtree<Node>>>,
+    head: Option<Subtree<Node>>,
     phantom_table: PhantomData<TableType>,
 }
 
@@ -78,14 +89,13 @@ where
         self.storage.insert(node.hash(), &node)?;
 
         let next = self.head.take();
-        let head = Box::new(Subtree::<Node>::new(node, next));
+        let head = Subtree::<Node>::new(node, next);
         self.head = Some(head);
         self.join_all_subtrees()?;
 
         Ok(())
     }
 
-    //
     // PRIVATE
     //
 
@@ -109,8 +119,10 @@ where
     fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
         loop {
             let current = self.head.as_ref().unwrap();
-            if !(current.next().is_some() && current.node().height() == current.next_node().unwrap().height()) {
-                break;
+            if !(current.next().is_some()
+                && current.node().height() == current.next_node().unwrap().height())
+            {
+                break
             }
 
             // Merge the two front nodes of the list into a single node
@@ -129,7 +141,7 @@ where
         &mut self,
         lhs: &mut Subtree<Node>,
         rhs: &mut Subtree<Node>,
-    ) -> Result<Box<Subtree<Node>>, StorageError> {
+    ) -> Result<Subtree<Node>, StorageError> {
         let height = lhs.node().height() + 1;
         let joined_node = Node::create_node(
             height,
@@ -142,15 +154,23 @@ where
 
         let joined_head = Subtree::new(joined_node, lhs.take_next());
 
-        Ok(Box::new(joined_head))
+        Ok(joined_head)
     }
 }
 
 #[cfg(test)]
 mod test {
     use crate::{
-        common::{Bytes32, StorageMap},
-        sum::{leaf_sum, node_sum, MerkleTree, Node},
+        common::{
+            Bytes32,
+            StorageMap,
+        },
+        sum::{
+            leaf_sum,
+            node_sum,
+            MerkleTree,
+            Node,
+        },
     };
     use fuel_merkle_test_helpers::TEST_DATA;
     use fuel_storage::Mappable;
@@ -160,8 +180,8 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = Bytes32;
-        type Value = Self::OwnedValue;
         type OwnedValue = Node;
+        type Value = Self::OwnedValue;
     }
 
     const FEE: u64 = 100;

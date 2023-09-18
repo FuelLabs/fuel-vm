@@ -1,4 +1,8 @@
-use fuel_asm::{op, Instruction};
+use fuel_asm::{
+    op,
+    Instruction,
+};
+use fuel_tx::ConsensusParameters;
 use fuel_vm::prelude::*;
 
 /// Set a register `r` to a Word-sized number value using left-shifts
@@ -17,8 +21,16 @@ pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
 pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
-    let tx = Transaction::script(0, 1_000_000, Default::default(), script, vec![], vec![], vec![], vec![])
-        .into_checked(Default::default(), &ConsensusParameters::DEFAULT, client.gas_costs())
+
+    let consensus_params = ConsensusParameters::standard();
+
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_price(0)
+        .gas_limit(1_000_000)
+        .maturity(Default::default())
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()
@@ -48,7 +60,11 @@ pub fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
     let n = receipts.len();
     assert!(n >= 2, "Invalid receipts len");
     if let Receipt::Panic { reason: pr, .. } = receipts.get(n - 2).unwrap() {
-        assert_eq!(*pr.reason(), reason, "Panic reason differs for the expected reason");
+        assert_eq!(
+            *pr.reason(),
+            reason,
+            "Panic reason differs for the expected reason"
+        );
     } else {
         unreachable!("No script receipt for a paniced tx");
     }

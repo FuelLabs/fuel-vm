@@ -1,4 +1,4 @@
-use fuel_crypto::*;
+use crate::*;
 
 #[test]
 fn digest() {
@@ -33,7 +33,10 @@ fn digest() {
 
     assert_eq!(digest, d);
 
-    let d = input.iter().fold(Hasher::default(), |h, i| h.chain(i)).finalize();
+    let d = input
+        .iter()
+        .fold(Hasher::default(), |h, i| h.chain(i))
+        .finalize();
 
     assert_eq!(digest, d);
 

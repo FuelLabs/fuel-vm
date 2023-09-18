@@ -6,7 +6,7 @@ use super::*;
 
 #[test]
 fn test_metadata() {
-    let context = Context::Predicate {
+    let context = Context::PredicateVerification {
         program: Default::default(),
     };
     let frames = vec![];
@@ -15,11 +15,11 @@ fn test_metadata() {
     let imm = 0x03;
     metadata(
         &context,
-        &ConsensusParameters::DEFAULT,
         &frames,
         RegMut::new(&mut pc),
         &mut result,
         imm,
+        ChainId::default(),
     )
     .unwrap();
     assert_eq!(pc, 8);
@@ -42,7 +42,8 @@ fn test_get_transaction_field() {
     assert_eq!(result, 0);
 }
 
-#[test_case(Context::Predicate { program: Default::default() }, 2 => (); "can fetch inside predicate")]
+#[test_case(Context::PredicateEstimation { program: Default::default() }, 2 => (); "can fetch inside predicate estimation")]
+#[test_case(Context::PredicateVerification { program: Default::default() }, 2 => (); "can fetch inside predicate verification")]
 #[test_case(Context::Script { block_height: BlockHeight::default() }, 3 => (); "can fetch inside script")]
 #[test_case(Context::Call { block_height: BlockHeight::default() }, 4 => (); "can fetch inside call")]
 fn get_chain_id(context: Context, chain_id: u64) {
@@ -50,13 +51,19 @@ fn get_chain_id(context: Context, chain_id: u64) {
     let mut pc = 4;
     let mut result = 1;
     let imm = GMArgs::GetChainId as Immediate18;
-    let mut params = ConsensusParameters::DEFAULT;
-    params.chain_id = chain_id;
 
     if context.is_internal() {
         frames.push(CallFrame::default());
     }
-    metadata(&context, &params, &frames, RegMut::new(&mut pc), &mut result, imm).unwrap();
+    metadata(
+        &context,
+        &frames,
+        RegMut::new(&mut pc),
+        &mut result,
+        imm,
+        chain_id.into(),
+    )
+    .unwrap();
 
     assert_eq!(result, chain_id);
 }

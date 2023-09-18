@@ -1,14 +1,23 @@
 use core::fmt;
 
 use crate::UtxoId;
-use fuel_types::{AssetId, ContractId, MessageId};
+use fuel_types::{
+    AssetId,
+    ContractId,
+    MessageId,
+};
 #[cfg(feature = "std")]
-use std::{error, io};
+use std::{
+    error,
+    io,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum CheckError {
+    /// Transaction doesn't have spendable input message or coin.
+    NoSpendableInput,
     InputWitnessIndexBounds {
         index: usize,
     },
@@ -61,6 +70,9 @@ pub enum CheckError {
     TransactionCreateOutputChangeNotBaseAsset {
         index: usize,
     },
+    TransactionCreateOutputContractCreatedDoesntMatch {
+        index: usize,
+    },
     TransactionCreateOutputContractCreatedMultiple {
         index: usize,
     },
@@ -86,19 +98,19 @@ pub enum CheckError {
     TransactionOutputCoinAssetIdDuplicated(AssetId),
     TransactionOutputChangeAssetIdDuplicated(AssetId),
     TransactionOutputChangeAssetIdNotFound(AssetId),
-    /// This error happens when a transaction attempts to create a coin output for an asset type
-    /// that doesn't exist in the coin inputs.
+    /// This error happens when a transaction attempts to create a coin output for an
+    /// asset type that doesn't exist in the coin inputs.
     TransactionOutputCoinAssetIdNotFound(AssetId),
-    /// The transaction doesn't provide enough input amount of the native chain asset to cover
-    /// all potential execution fees
+    /// The transaction doesn't provide enough input amount of the native chain asset to
+    /// cover all potential execution fees
     InsufficientFeeAmount {
         /// The expected amount of fees required to cover the transaction
         expected: u64,
         /// The fee amount actually provided for spending
         provided: u64,
     },
-    /// The transaction doesn't provide enough input amount of the given asset to cover the
-    /// amounts used in the outputs.
+    /// The transaction doesn't provide enough input amount of the given asset to cover
+    /// the amounts used in the outputs.
     InsufficientInputAmount {
         /// The asset id being spent
         asset: AssetId,

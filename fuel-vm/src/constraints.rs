@@ -1,41 +1,42 @@
 //! Types to help constrain inputs to functions to only what is used.
-use std::ops::Deref;
-use std::ops::DerefMut;
+use std::ops::{
+    Deref,
+    DerefMut,
+};
 
-use fuel_asm::PanicReason;
 use fuel_asm::Word;
 use fuel_types::ContractId;
 
-use crate::consts::MEM_SIZE;
-use crate::consts::VM_MAX_RAM;
-use crate::prelude::Bug;
-use crate::prelude::BugId;
-use crate::prelude::BugVariant;
-use crate::prelude::RuntimeError;
+#[cfg(test)]
+use fuel_types::canonical::Deserialize;
+
+use crate::{
+    consts::MEM_SIZE,
+    prelude::{
+        MemoryRange,
+        RuntimeError,
+    },
+};
 
 pub mod reg_key;
 
 /// A range of memory that has been checked that it fits into the VM memory.
 #[derive(Clone)]
-pub struct CheckedMemRange(core::ops::Range<usize>);
-
-/// A range of memory that has been checked that it fits into the VM memory.
-#[derive(Clone)]
-// TODO: Replace `LEN` constant with a generic object that implements some trait that knows
-//  the static size of the generic.
-pub struct CheckedMemConstLen<const LEN: usize>(CheckedMemRange);
+// TODO: Replace `LEN` constant with a generic object that implements some trait that
+// knows  the static size of the generic.
+pub struct CheckedMemConstLen<const LEN: usize>(MemoryRange);
 
 /// A range of memory that has been checked that it fits into the VM memory.
 /// This range can be used to read a value of type `T` from memory.
 #[derive(Clone)]
 // TODO: Merge this type with `CheckedMemConstLen`.
-pub struct CheckedMemValue<T>(CheckedMemRange, core::marker::PhantomData<T>);
+pub struct CheckedMemValue<T>(MemoryRange, core::marker::PhantomData<T>);
 
 impl<T> CheckedMemValue<T> {
     /// Create a new const sized memory range.
     pub fn new<const SIZE: usize>(address: Word) -> Result<Self, RuntimeError> {
         Ok(Self(
-            CheckedMemRange::new_const::<SIZE>(address)?,
+            MemoryRange::new_const::<_, SIZE>(address)?,
             core::marker::PhantomData,
         ))
     }
@@ -46,69 +47,7 @@ impl<T> CheckedMemValue<T> {
         T: for<'a> TryFrom<&'a [u8]>,
         RuntimeError: for<'a> From<<T as TryFrom<&'a [u8]>>::Error>,
     {
-        Ok(T::try_from(&memory[self.0 .0])?)
-    }
-
-    /// The start of the range.
-    pub fn start(&self) -> usize {
-        self.0.start()
-    }
-
-    /// The end of the range.
-    pub fn end(&self) -> usize {
-        self.0.end()
-    }
-
-    #[cfg(test)]
-    /// Inspect a value of type `T` from memory.
-    pub fn inspect(self, memory: &[u8; MEM_SIZE]) -> T
-    where
-        T: std::io::Write + Default,
-    {
-        let mut t = T::default();
-        t.write_all(&memory[self.0 .0]).unwrap();
-        t
-    }
-}
-
-impl CheckedMemRange {
-    const DEFAULT_CONSTRAINT: core::ops::Range<Word> = 0..VM_MAX_RAM;
-
-    /// Create a new const sized memory range.
-    pub fn new_const<const SIZE: usize>(address: Word) -> Result<Self, RuntimeError> {
-        Self::new(address, SIZE)
-    }
-
-    /// Create a new memory range.
-    pub fn new(address: Word, size: usize) -> Result<Self, RuntimeError> {
-        Self::new_inner(address as usize, size, Self::DEFAULT_CONSTRAINT)
-    }
-
-    /// Create a new memory range with a custom constraint.
-    /// The min of the constraints end and `VM_MAX_RAM` will be used.
-    pub fn new_with_constraint(
-        address: Word,
-        size: usize,
-        constraint: core::ops::Range<Word>,
-    ) -> Result<Self, RuntimeError> {
-        if constraint.end > VM_MAX_RAM {
-            return Err(Bug::new(BugId::ID009, BugVariant::InvalidMemoryConstraint).into());
-        }
-        Self::new_inner(address as usize, size, constraint)
-    }
-
-    /// Create a new memory range, checks that the range fits into the constraint.
-    fn new_inner(address: usize, size: usize, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
-        if size == 0 {
-            return Ok(Self(address..address));
-        }
-
-        let (end, of) = address.overflowing_add(size);
-        let range = address..end;
-        if of || !constraint.contains(&((range.end - 1) as Word)) {
-            return Err(PanicReason::MemoryOverflow.into());
-        }
-        Ok(Self(range))
+        Ok(T::try_from(&memory[self.0.usizes()])?)
     }
 
     /// The start of the range.
@@ -121,54 +60,35 @@ impl CheckedMemRange {
         self.0.end
     }
 
-    /// This function is safe because it is only used to shrink the range
-    /// and worst case the range will be empty.
-    pub fn shrink_end(&mut self, by: usize) {
-        self.0 = self.0.start..self.0.end.saturating_sub(by);
-    }
-
-    /// This function is safe because it is only used to grow the range
-    /// and worst case the range will be empty.
-    pub fn grow_start(&mut self, by: usize) {
-        self.0 = self.0.start.saturating_add(by)..self.0.end;
-    }
-
-    /// Get the memory slice for this range.
-    pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8] {
-        &memory[self.0]
-    }
-
-    /// Get the mutable memory slice for this range.
-    pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8] {
-        &mut memory[self.0]
+    #[cfg(test)]
+    /// Inspect a value of type `T` from memory.
+    pub fn inspect(self, memory: &[u8; MEM_SIZE]) -> T
+    where
+        T: Deserialize,
+    {
+        T::from_bytes(&memory[self.0.usizes()])
+            .expect("Inspect failed; invalid value for type")
     }
 }
 
 impl<const LEN: usize> CheckedMemConstLen<LEN> {
     /// Create a new const sized memory range.
     pub fn new(address: Word) -> Result<Self, RuntimeError> {
-        Ok(Self(CheckedMemRange::new_const::<LEN>(address)?))
-    }
-
-    /// Create a new memory range with a custom constraint.
-    /// Panics if constraints end > `VM_MAX_RAM`.
-    pub fn new_with_constraint(address: Word, constraint: core::ops::Range<Word>) -> Result<Self, RuntimeError> {
-        assert!(constraint.end <= VM_MAX_RAM, "Constraint end must be <= VM_MAX_RAM.");
-        Ok(Self(CheckedMemRange::new_inner(address as usize, LEN, constraint)?))
+        Ok(Self(MemoryRange::new_const::<_, LEN>(address)?))
     }
 
     /// Get the memory slice for this range.
     pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8; LEN] {
-        (&memory[self.0 .0])
-            .try_into()
-            .expect("This is always correct as the address and LEN are checked on construction.")
+        (&memory[self.0.usizes()]).try_into().expect(
+            "This is always correct as the address and LEN are checked on construction.",
+        )
     }
 
     /// Get the mutable memory slice for this range.
     pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8; LEN] {
-        (&mut memory[self.0 .0])
-            .try_into()
-            .expect("This is always correct as the address and LEN are checked on construction.")
+        (&mut memory[self.0.usizes()]).try_into().expect(
+            "This is always correct as the address and LEN are checked on construction.",
+        )
     }
 }
 
@@ -182,7 +102,7 @@ pub struct InstructionLocation {
 }
 
 impl<const LEN: usize> Deref for CheckedMemConstLen<LEN> {
-    type Target = CheckedMemRange;
+    type Target = MemoryRange;
 
     fn deref(&self) -> &Self::Target {
         &self.0

@@ -2,13 +2,22 @@
 //!
 //! As of the moment, doesn't support predicates.
 
-use crate::call::CallFrame;
-use crate::consts::*;
-use crate::interpreter::{InitialBalances, Interpreter};
+use crate::{
+    call::CallFrame,
+    consts::*,
+    interpreter::{
+        InitialBalances,
+        Interpreter,
+    },
+};
 use derivative::Derivative;
 
 use fuel_tx::ScriptExecutionResult;
-use fuel_types::{fmt_truncated_hex, ContractId, Word};
+use fuel_types::{
+    fmt_truncated_hex,
+    ContractId,
+    Word,
+};
 
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -27,7 +36,10 @@ impl Backtrace {
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<S, Tx>(vm: &Interpreter<S, Tx>, result: ScriptExecutionResult) -> Self {
+    pub fn from_vm_error<S, Tx>(
+        vm: &Interpreter<S, Tx>,
+        result: ScriptExecutionResult,
+    ) -> Self {
         let call_stack = vm.call_stack().to_owned();
         let contract = vm.internal_contract_or_default();
         let memory = vm.memory().to_owned();
@@ -96,6 +108,13 @@ impl Backtrace {
             initial_balances,
         } = self;
 
-        (call_stack, contract, registers, memory, result, initial_balances)
+        (
+            call_stack,
+            contract,
+            registers,
+            memory,
+            result,
+            initial_balances,
+        )
     }
 }

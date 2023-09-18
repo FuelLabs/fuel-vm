@@ -1,12 +1,23 @@
+use fuel_asm::PanicReason;
 use test_case::test_case;
 
-use fuel_asm::op;
-use fuel_asm::RegId;
+use fuel_asm::{
+    op,
+    RegId,
+};
 use fuel_tx::Receipt;
-use fuel_vm::consts::VM_MAX_RAM;
-use fuel_vm::prelude::*;
+use fuel_vm::{
+    consts::VM_MAX_RAM,
+    interpreter::InterpreterParams,
+    prelude::*,
+};
 
-use super::test_helpers::set_full_word;
+use super::test_helpers::{
+    assert_panics,
+    run_script,
+    set_full_word,
+};
+use fuel_tx::ConsensusParameters;
 
 fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
@@ -15,16 +26,23 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
+
+    let consensus_params = ConsensusParameters::standard();
 
     let script = program.into_iter().collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let mut vm = Transactor::new(storage, Default::default(), Default::default());
+    let interpreter_params = InterpreterParams::from(&consensus_params);
+
+    let mut vm = Transactor::new(storage, interpreter_params);
     vm.transact(tx);
     vm
 }
@@ -116,26 +134,15 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
         op::movi(0x10, (init_bytes - offset).try_into().unwrap()),
         op::sub(0x10, 0x10, RegId::SP),
         op::aloc(0x10),
-        op::cfei((if cause_error { offset } else { offset - 1 }).try_into().unwrap()),
+        op::cfei(
+            (if cause_error { offset } else { offset - 1 })
+                .try_into()
+                .unwrap(),
+        ),
         op::ret(RegId::ONE),
     ]);
 
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
-
-    let script = ops.into_iter().collect();
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
-
-    let mut vm = Transactor::new(storage, Default::default(), Default::default());
-    vm.transact(tx);
+    let vm = setup(ops);
 
     let mut receipts = vm.receipts().unwrap().to_vec();
 
@@ -175,22 +182,7 @@ fn dynamic_call_frame_ops() {
         op::ret(RegId::SP),
     ];
 
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
-
-    let script = ops.into_iter().collect();
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
-
-    let mut vm = Transactor::new(storage, Default::default(), Default::default());
-    vm.transact(tx);
+    let vm = setup(ops);
 
     let receipts = vm.receipts().unwrap().to_vec();
     // gather values of sp from the test
@@ -219,13 +211,27 @@ fn dynamic_call_frame_ops() {
     );
 }
 
+#[test]
+fn dynamic_call_frame_ops_bug_missing_ssp_check() {
+    let ops = vec![
+        op::cfs(RegId::SP),
+        op::slli(0x10, RegId::ONE, 26),
+        op::aloc(0x10),
+        op::sw(RegId::ZERO, 0x10, 0),
+        op::ret(RegId::ONE),
+    ];
+    let receipts = run_script(ops);
+    assert_panics(&receipts, PanicReason::MemoryOverflow);
+}
+
 #[rstest::rstest]
 fn test_mcl_and_mcli(
     #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
     #[values(true, false)] half: bool, // Clear only first count/2 bytes
     #[values(true, false)] mcli: bool, // Test mcli instead of mcl
 ) {
-    // Allocate count + 1 bytes of memory, so we can check that the last byte is not cleared
+    // Allocate count + 1 bytes of memory, so we can check that the last byte is not
+    // cleared
     let mut ops = vec![op::movi(0x10, count + 1), op::aloc(0x10), op::movi(0x11, 1)];
     // Fill with ones
     for i in 0..(count + 1) {
@@ -254,6 +260,7 @@ fn test_mcl_and_mcli(
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
+        let data = data.as_ref().unwrap();
         let c = count as usize;
         assert_eq!(data.len(), c + 1);
         if half {
@@ -273,7 +280,8 @@ fn test_mcp_and_mcpi(
     #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
     #[values(true, false)] mcpi: bool, // Test mcpi instead of mcp
 ) {
-    // Allocate (count + 1) * 2 bytes of memory, so we can check that the last byte is not copied
+    // Allocate (count + 1) * 2 bytes of memory, so we can check that the last byte is not
+    // copied
     let mut ops = vec![
         op::movi(0x10, (count + 1) * 2),
         op::aloc(0x10),
@@ -282,7 +290,11 @@ fn test_mcp_and_mcpi(
     ];
     // Fill count + 1 bytes with ones, and the next count + 1 bytes with twos
     for i in 0..(count + 1) * 2 {
-        ops.push(op::sb(RegId::HP, if i < count + 1 { 0x11 } else { 0x12 }, i as u16));
+        ops.push(op::sb(
+            RegId::HP,
+            if i < count + 1 { 0x11 } else { 0x12 },
+            i as u16,
+        ));
     }
     // Compute dst address
     ops.push(op::addi(0x11, RegId::HP, (count + 1) as u16));
@@ -302,6 +314,7 @@ fn test_mcp_and_mcpi(
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
+        let data = data.as_ref().unwrap();
         let c = count as usize;
         assert_eq!(data.len(), (c + 1) * 2);
         let mut expected = vec![1u8; c * 2 + 1];
@@ -357,7 +370,7 @@ fn test_meq(
     if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
         if count == 0 {
             assert_eq!(*ra, 1); // Empty ranges always equal
-            return;
+            return
         }
         match pattern {
             "equal" => {

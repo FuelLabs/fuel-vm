@@ -1,25 +1,28 @@
 use crate::TxId;
 
-use fuel_types::bytes::{SizedBytes, WORD_SIZE};
-use fuel_types::{mem_layout, Bytes32, MemLayout, MemLocType};
+use fuel_types::{
+    canonical::SerializedSizeFixed,
+    Bytes32,
+};
 
-use core::{fmt, str};
-
-#[cfg(feature = "std")]
-use fuel_types::bytes;
-
-#[cfg(feature = "std")]
-use std::io;
+use core::{
+    fmt,
+    str,
+};
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct UtxoId {
     /// transaction id
     tx_id: TxId,
@@ -27,16 +30,14 @@ pub struct UtxoId {
     output_index: u8,
 }
 
-mem_layout!(UtxoIdLayout for UtxoId
-    tx_id: TxId = {TxId::LEN},
-    output_index: u8 = WORD_SIZE
-);
-
 impl UtxoId {
-    pub const LEN: usize = <Self as MemLayout>::LEN;
+    pub const LEN: usize = Self::SIZE_STATIC;
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
-        Self { tx_id, output_index }
+        Self {
+            tx_id,
+            output_index,
+        }
     }
 
     pub const fn tx_id(&self) -> &TxId {
@@ -84,65 +85,29 @@ impl fmt::UpperHex for UtxoId {
 impl str::FromStr for UtxoId {
     type Err = &'static str;
 
+    /// UtxoId is encoded as hex string with optional 0x prefix, where
+    /// the last two characters are the output index and the part
+    /// optionally preceeding it is the transaction id.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const ERR: &str = "Invalid encoded byte";
         let s = s.trim_start_matches("0x");
-        let utxo_id = if s.is_empty() {
+
+        Ok(if s.is_empty() {
             UtxoId::new(Bytes32::default(), 0)
-        } else if s.len() > 2 {
-            UtxoId::new(
-                Bytes32::from_str(&s[..s.len() - 2])?,
-                u8::from_str_radix(&s[s.len() - 2..], 16).map_err(|_| ERR)?,
-            )
-        } else {
+        } else if s.len() <= 2 {
             UtxoId::new(TxId::default(), u8::from_str_radix(s, 16).map_err(|_| ERR)?)
-        };
-        Ok(utxo_id)
-    }
-}
+        } else {
+            let i = s.len() - 2;
+            if !s.is_char_boundary(i) {
+                return Err(ERR)
+            }
+            let (tx_id, output_index) = s.split_at(i);
 
-impl SizedBytes for UtxoId {
-    fn serialized_size(&self) -> usize {
-        Self::LEN
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Write for UtxoId {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        const LEN: usize = UtxoId::LEN;
-        let buf: &[_; LEN] = buf
-            .get(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        let tx_id = bytes::restore_at(buf, Self::layout(Self::LAYOUT.tx_id));
-        let output_index = bytes::restore_u8_at(buf, Self::layout(Self::LAYOUT.output_index));
-
-        self.tx_id = tx_id.into();
-        self.output_index = output_index;
-
-        Ok(Self::LEN)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-#[cfg(feature = "std")]
-impl io::Read for UtxoId {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        const LEN: usize = UtxoId::LEN;
-        let buf: &mut [_; LEN] = buf
-            .get_mut(..LEN)
-            .and_then(|slice| slice.try_into().ok())
-            .ok_or(bytes::eof())?;
-
-        bytes::store_at(buf, Self::layout(Self::LAYOUT.tx_id), &self.tx_id);
-        bytes::store_number_at(buf, Self::layout(Self::LAYOUT.output_index), self.output_index);
-
-        Ok(Self::LEN)
+            UtxoId::new(
+                Bytes32::from_str(tx_id)?,
+                u8::from_str_radix(output_index, 16).map_err(|_| ERR)?,
+            )
+        })
     }
 }
 
@@ -174,11 +139,20 @@ mod tests {
 
     #[test]
     fn from_str_utxo_id() -> Result<(), &'static str> {
-        let utxo_id = UtxoId::from_str("0x0c0000000000000000000000000000000000000000000000000000000000000b1a")?;
+        let utxo_id = UtxoId::from_str(
+            "0x0c0000000000000000000000000000000000000000000000000000000000000b1a",
+        )?;
 
         assert_eq!(utxo_id.output_index, 26);
         assert_eq!(utxo_id.tx_id[31], 11);
         assert_eq!(utxo_id.tx_id[0], 12);
         Ok(())
+    }
+
+    /// See https://github.com/FuelLabs/fuel-vm/issues/521
+    #[test]
+    fn from_str_utxo_id_multibyte_bug() {
+        UtxoId::from_str("0x00😎").expect_err("Should fail on incorrect input");
+        UtxoId::from_str("0x000😎").expect_err("Should fail on incorrect input");
     }
 }

@@ -3,7 +3,10 @@
 extern crate alloc;
 
 use fuel_types::bytes;
-use rand::Rng;
+use rand::{
+    CryptoRng,
+    Rng,
+};
 
 #[cfg(feature = "std")]
 pub use use_std::*;
@@ -12,7 +15,7 @@ use alloc::vec::Vec;
 
 pub fn generate_nonempty_padded_bytes<R>(rng: &mut R) -> Vec<u8>
 where
-    R: Rng,
+    R: Rng + CryptoRng,
 {
     let len = rng.gen_range(1..512);
     let len = bytes::padded_len_usize(len);
@@ -25,7 +28,7 @@ where
 
 pub fn generate_bytes<R>(rng: &mut R) -> Vec<u8>
 where
-    R: Rng,
+    R: Rng + CryptoRng,
 {
     let len = rng.gen_range(1..512);
 
@@ -39,19 +42,39 @@ where
 mod use_std {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
-        field, Buildable, Contract, Create, Finalizable, Input, Mint, Output, Script, Transaction, TransactionBuilder,
+        field,
+        Buildable,
+        Contract,
+        Create,
+        Finalizable,
+        Input,
+        Mint,
+        Output,
+        Script,
+        Transaction,
+        TransactionBuilder,
     };
-    use fuel_types::bytes::Deserializable;
-    use rand::distributions::{Distribution, Uniform};
-    use rand::rngs::StdRng;
-    use rand::{Rng, SeedableRng};
+    use fuel_types::canonical::Deserialize;
+    use rand::{
+        distributions::{
+            Distribution,
+            Uniform,
+        },
+        rngs::StdRng,
+        CryptoRng,
+        Rng,
+        SeedableRng,
+    };
     use std::marker::PhantomData;
 
-    use crate::{generate_bytes, generate_nonempty_padded_bytes};
+    use crate::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    };
 
     pub struct TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         rng: R,
         input_sampler: Uniform<usize>,
@@ -61,7 +84,7 @@ mod use_std {
 
     impl<R, Tx> From<R> for TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         fn from(rng: R) -> Self {
             use strum::EnumCount;
@@ -72,8 +95,9 @@ mod use_std {
             //
             // When and if a new variant is added, this implementation enforces it will be
             // listed here.
+            let empty: [u8; 0] = [];
             debug_assert!({
-                Input::from_bytes(&[])
+                Input::decode(&mut &empty[..])
                     .map(|i| match i {
                         Input::CoinSigned(_) => (),
                         Input::CoinPredicate(_) => (),
@@ -85,7 +109,7 @@ mod use_std {
                     })
                     .unwrap_or(());
 
-                Output::from_bytes(&[])
+                Output::decode(&mut &empty[..])
                     .map(|o| match o {
                         Output::Coin { .. } => (),
                         Output::Contract { .. } => (),
@@ -95,7 +119,7 @@ mod use_std {
                     })
                     .unwrap_or(());
 
-                Transaction::from_bytes(&[])
+                Transaction::decode(&mut &empty[..])
                     .map(|t| match t {
                         Transaction::Script(_) => (),
                         Transaction::Create(_) => (),
@@ -123,7 +147,7 @@ mod use_std {
 
     impl<R, Tx> TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
         Tx: field::Outputs,
     {
         fn fill_outputs(&mut self, builder: &mut TransactionBuilder<Tx>) {
@@ -148,10 +172,13 @@ mod use_std {
 
     impl<R, Tx> TransactionFactory<R, Tx>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
         Tx: Buildable,
     {
-        fn fill_transaction(&mut self, builder: &mut TransactionBuilder<Tx>) -> Vec<SecretKey> {
+        fn fill_transaction(
+            &mut self,
+            builder: &mut TransactionBuilder<Tx>,
+        ) -> Vec<SecretKey> {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);
             let mut input_message_keys = Vec::with_capacity(10);
@@ -178,6 +205,7 @@ mod use_std {
                         let input = Input::coin_predicate(
                             self.rng.gen(),
                             owner,
+                            self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
@@ -216,6 +244,7 @@ mod use_std {
                             recipient,
                             self.rng.gen(),
                             self.rng.gen(),
+                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -236,6 +265,7 @@ mod use_std {
                         let input = Input::message_data_predicate(
                             self.rng.gen(),
                             recipient,
+                            self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
                             generate_bytes(&mut self.rng),
@@ -263,7 +293,13 @@ mod use_std {
 
             input_message_keys.iter().for_each(|(t, k)| match t {
                 MessageType::MessageCoin => {
-                    builder.add_unsigned_message_input(*k, self.rng.gen(), self.rng.gen(), self.rng.gen(), vec![]);
+                    builder.add_unsigned_message_input(
+                        *k,
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        vec![],
+                    );
                 }
                 MessageType::MessageData => {
                     builder.add_unsigned_message_input(
@@ -293,7 +329,7 @@ mod use_std {
 
     impl<R> TransactionFactory<R, Create>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Create {
             self.transaction_with_keys().0
@@ -314,15 +350,17 @@ mod use_std {
 
     impl<R> TransactionFactory<R, Script>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Script {
             self.transaction_with_keys().0
         }
 
         pub fn transaction_with_keys(&mut self) -> (Script, Vec<SecretKey>) {
-            let mut builder =
-                TransactionBuilder::<Script>::script(generate_bytes(&mut self.rng), generate_bytes(&mut self.rng));
+            let mut builder = TransactionBuilder::<Script>::script(
+                generate_bytes(&mut self.rng),
+                generate_bytes(&mut self.rng),
+            );
 
             let keys = self.fill_transaction(&mut builder);
             (builder.finalize(), keys)
@@ -331,10 +369,11 @@ mod use_std {
 
     impl<R> TransactionFactory<R, Mint>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Mint {
-            let mut builder = TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
+            let mut builder =
+                TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
 
             self.fill_outputs(&mut builder);
             builder.finalize()
@@ -343,7 +382,7 @@ mod use_std {
 
     impl<R> Iterator for TransactionFactory<R, Create>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         type Item = (Create, Vec<SecretKey>);
 
@@ -354,7 +393,7 @@ mod use_std {
 
     impl<R> Iterator for TransactionFactory<R, Script>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         type Item = (Script, Vec<SecretKey>);
 
@@ -365,7 +404,7 @@ mod use_std {
 
     impl<R> Iterator for TransactionFactory<R, Mint>
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         type Item = Mint;
 

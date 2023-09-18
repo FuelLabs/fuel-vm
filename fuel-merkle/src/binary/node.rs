@@ -1,6 +1,12 @@
 use crate::{
-    binary::{leaf_sum, node_sum},
-    common::{Bytes32, Position},
+    binary::{
+        leaf_sum,
+        node_sum,
+    },
+    common::{
+        Bytes32,
+        Position,
+    },
 };
 
 use core::fmt::Debug;
@@ -38,6 +44,10 @@ impl Node {
 
     pub fn hash(&self) -> &Bytes32 {
         &self.hash
+    }
+
+    pub fn height(&self) -> u32 {
+        self.position().height()
     }
 }
 

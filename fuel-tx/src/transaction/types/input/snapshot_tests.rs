@@ -2,11 +2,12 @@
 
 use super::*;
 use crate::TransactionBuilder;
-use fuel_types::bytes::SerializableVec;
+
+use fuel_types::canonical::SerializedSize;
 
 #[test]
 fn tx_with_signed_coin_snapshot() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::CoinSigned(CoinSigned {
             utxo_id: UtxoId::new([1u8; 32].into(), 2),
             owner: [2u8; 32].into(),
@@ -15,6 +16,7 @@ fn tx_with_signed_coin_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: 4,
             maturity: 2.into(),
+            predicate_gas_used: (),
             predicate: (),
             predicate_data: (),
         }))
@@ -27,7 +29,7 @@ fn tx_with_signed_coin_snapshot() {
 
 #[test]
 fn tx_with_predicate_coin_snapshot() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::CoinPredicate(CoinPredicate {
             utxo_id: UtxoId::new([1u8; 32].into(), 2),
             owner: [2u8; 32].into(),
@@ -36,6 +38,7 @@ fn tx_with_predicate_coin_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: (),
             maturity: 2.into(),
+            predicate_gas_used: 100_000,
             predicate: vec![3u8; 10],
             predicate_data: vec![4u8; 12],
         }))
@@ -48,7 +51,7 @@ fn tx_with_predicate_coin_snapshot() {
 
 #[test]
 fn tx_with_contract_snapshot() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::Contract(Contract {
             utxo_id: UtxoId::new([1u8; 32].into(), 2),
             balance_root: [2u8; 32].into(),
@@ -65,13 +68,14 @@ fn tx_with_contract_snapshot() {
 
 #[test]
 fn tx_with_signed_message_coin() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinSigned(MessageCoinSigned {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: 6,
+            predicate_gas_used: (),
             data: (),
             predicate: (),
             predicate_data: (),
@@ -85,13 +89,14 @@ fn tx_with_signed_message_coin() {
 
 #[test]
 fn tx_with_predicate_message_coin() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinPredicate(MessageCoinPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: (),
+            predicate_gas_used: 100_000,
             data: (),
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
@@ -105,13 +110,14 @@ fn tx_with_predicate_message_coin() {
 
 #[test]
 fn tx_with_signed_message_data() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataSigned(MessageDataSigned {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: 6,
+            predicate_gas_used: (),
             data: vec![7u8; 10],
             predicate: (),
             predicate_data: (),
@@ -125,13 +131,14 @@ fn tx_with_signed_message_data() {
 
 #[test]
 fn tx_with_predicate_message_data() {
-    let mut tx = TransactionBuilder::script(vec![], vec![])
+    let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataPredicate(MessageDataPredicate {
             sender: [2u8; 32].into(),
             recipient: [3u8; 32].into(),
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: (),
+            predicate_gas_used: 100_000,
             data: vec![6u8; 10],
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],

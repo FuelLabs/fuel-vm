@@ -11,20 +11,25 @@ repository = { workspace = true }
 description = "Atomic types of the FuelVM."
 
 [dependencies]
+fuel-derive = { workspace = true }
 hex = { version = "0.4", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }
 sha2 = "0.10"
+wasm-bindgen = { version = "0.2.87", optional = true }
 
 [dev-dependencies]
 bincode = { workspace = true }
 criterion = "0.4"
 fuel-types = { path = ".", features = ["random", "serde"] }
+num_enum = { version = "0.7" }
+postcard = { version = "1.0", features = ["use-std"] }
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 serde_json = "1.0"
 
 [features]
 default = ["std", "serde?/default"]
+typescript = ["wasm-bindgen"]
 alloc = ["hex/alloc"]
 random = ["rand"]
 serde = ["dep:serde", "alloc"]

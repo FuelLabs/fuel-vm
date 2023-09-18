@@ -1,7 +1,18 @@
 use super::*;
-use crate::checked_transaction::IntoChecked;
+use crate::{
+    checked_transaction::IntoChecked,
+    interpreter::InterpreterParams,
+    prelude::{
+        FeeParameters,
+        MemoryStorage,
+    },
+};
 use fuel_asm::PanicReason;
-use fuel_tx::{ConsensusParameters, Transaction};
+use fuel_tx::{
+    ConsensusParameters,
+    Finalizable,
+    TransactionBuilder,
+};
 use quickcheck::TestResult;
 use quickcheck_macros::quickcheck;
 
@@ -14,45 +25,54 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     };
     let opcode = random_instruction.opcode();
 
-    // ignore if rA/rB isn't set to writeable register and the opcode should write to that register
+    // ignore if rA/rB isn't set to writeable register and the opcode should write to that
+    // register
     let [ra, rb, _, _] = random_instruction.reg_ids();
     match (ra, rb) {
-        (Some(r), _) if writes_to_ra(opcode) && r >= RegId::WRITABLE => return TestResult::discard(),
-        (_, Some(r)) if writes_to_rb(opcode) && r >= RegId::WRITABLE => return TestResult::discard(),
+        (Some(r), _) if writes_to_ra(opcode) && r >= RegId::WRITABLE => {
+            return TestResult::discard()
+        }
+        (_, Some(r)) if writes_to_rb(opcode) && r >= RegId::WRITABLE => {
+            return TestResult::discard()
+        }
         _ => (),
     }
 
-    let mut vm = Interpreter::with_memory_storage();
+    let fee_params = FeeParameters::default().with_gas_price_factor(1);
+    let consensus_params = ConsensusParameters {
+        fee_params,
+        ..Default::default()
+    };
 
-    let params = ConsensusParameters::default();
+    let mut vm = Interpreter::with_storage(
+        MemoryStorage::default(),
+        InterpreterParams::from(&consensus_params),
+    );
+
     let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = Default::default();
-    let tx = Transaction::script(
-        0,
-        params.max_gas_per_tx,
-        Default::default(),
-        script,
-        vec![],
-        vec![],
-        vec![],
-        vec![],
-    );
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_limit(consensus_params.tx_params.max_gas_per_tx)
+        .add_random_fee_input()
+        .finalize();
+
     let tx = tx
-        .into_checked(block_height, &params, vm.gas_costs())
+        .into_checked(block_height, &consensus_params)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");
     let res = vm.instruction(raw_random_instruction);
 
     if writes_to_ra(opcode) || writes_to_rb(opcode) {
-        // if this opcode writes to $rA or $rB, expect an error since we're attempting to use a reserved register
-        // This assumes that writeable register is validated before other properties of the instruction.
+        // if this opcode writes to $rA or $rB, expect an error since we're attempting to
+        // use a reserved register This assumes that writeable register is
+        // validated before other properties of the instruction.
         match res.as_ref().map_err(|e| e.panic_reason()) {
             // expected failure
             Err(Some(PanicReason::ReservedRegisterNotWritable)) => {}
             // Some opcodes may run out of gas if they access too much data.
-            // Simply discard these results as an alternative to structural fuzzing that avoids
-            // out of gas errors.
+            // Simply discard these results as an alternative to structural fuzzing that
+            // avoids out of gas errors.
             Err(Some(PanicReason::OutOfGas)) => return TestResult::discard(),
             // Some opcodes parse the immediate value as a part of the instruction itself,
             // and thus fail before the destination register writability check occurs.
@@ -61,15 +81,16 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",
                     (opcode, &res)
-                ));
+                ))
             }
         }
     } else if matches!(
         res,
         Err(InterpreterError::PanicInstruction(r)) if r.reason() == &ReservedRegisterNotWritable
     ) {
-        // throw err if a ReservedRegisterNotWritable err was detected outside our writes_to_ra/b check
-        // This would likely happen if the opcode wasn't properly marked as true in `writes_to_ra/b`
+        // throw err if a ReservedRegisterNotWritable err was detected outside our
+        // writes_to_ra/b check This would likely happen if the opcode wasn't
+        // properly marked as true in `writes_to_ra/b`
         return TestResult::error(format!(
             "unexpected ReservedRegisterNotWritable, test configuration may be faulty {:?}",
             (opcode, &res)
@@ -82,10 +103,10 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     // erroneous register access. This is not a comprehensive set of all possible
     // writeable violations but more can be added.
     if vm.registers[RegId::ZERO] != 0 {
-        return TestResult::error("reserved register was modified!");
+        return TestResult::error("reserved register was modified!")
     }
     if vm.registers[RegId::ONE] != 1 {
-        return TestResult::error("reserved register was modified!");
+        return TestResult::error("reserved register was modified!")
     }
 
     TestResult::passed()
@@ -117,6 +138,10 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::NOT => true,
         Opcode::OR => true,
         Opcode::ORI => true,
+        Opcode::POPH => false,
+        Opcode::POPL => false,
+        Opcode::PSHH => false,
+        Opcode::PSHL => false,
         Opcode::SLL => true,
         Opcode::SLLI => true,
         Opcode::SRL => true,
@@ -186,7 +211,9 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::SWWQ => false,
         Opcode::TR => false,
         Opcode::TRO => false,
-        Opcode::ECR => false,
+        Opcode::ECK1 => false,
+        Opcode::ECR1 => false,
+        Opcode::ED19 => false,
         Opcode::K256 => false,
         Opcode::S256 => false,
         Opcode::NOOP => false,
@@ -225,6 +252,10 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::NOT => false,
         Opcode::OR => false,
         Opcode::ORI => false,
+        Opcode::POPH => false,
+        Opcode::POPL => false,
+        Opcode::PSHH => false,
+        Opcode::PSHL => false,
         Opcode::SLL => false,
         Opcode::SLLI => false,
         Opcode::SRL => false,
@@ -294,7 +325,9 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::SWWQ => true,
         Opcode::TR => false,
         Opcode::TRO => false,
-        Opcode::ECR => false,
+        Opcode::ECK1 => false,
+        Opcode::ECR1 => false,
+        Opcode::ED19 => false,
         Opcode::K256 => false,
         Opcode::S256 => false,
         Opcode::NOOP => false,

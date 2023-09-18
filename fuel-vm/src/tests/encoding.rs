@@ -1,53 +1,46 @@
-use fuel_vm::consts::*;
-use fuel_vm::prelude::*;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use fuel_vm::{
+    consts::*,
+    prelude::*,
+};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
+use fuel_types::{
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
+    Word,
+};
 use std::fmt;
-use std::io::{self, Read, Write};
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
-    T: Read + Write + fmt::Debug + Clone + PartialEq,
+    T: Serialize + Deserialize + fmt::Debug + Clone + PartialEq,
 {
     let mut buffer;
 
     for data in data.iter() {
-        let mut d = data.clone();
-        let mut d_p = data.clone();
-
         buffer = vec![0u8; 1024];
-        let read_size = d.read(buffer.as_mut_slice()).expect("Failed to read");
-        let write_size = d_p.write(buffer.as_slice()).expect("Failed to write");
 
-        // Simple RW assertion
-        assert_eq!(d, d_p);
-        assert_eq!(read_size, write_size);
+        data.encode(&mut &mut buffer[..]).expect("Failed to encode");
+        T::decode(&mut &buffer[..]).expect("Failed to decode");
 
-        buffer = vec![0u8; read_size];
+        let counted_bytes = {
+            let mut v = Vec::new();
+            data.encode(&mut v).expect("Failed to encode");
+            v.len()
+        };
 
-        // Minimum size buffer assertion
-        let _ = d.read(buffer.as_mut_slice()).expect("Failed to read");
-        let _ = d_p.write(buffer.as_slice()).expect("Failed to write");
-        assert_eq!(d, d_p);
-
-        // No panic assertion
-        loop {
-            buffer.pop();
-
-            let err = d
-                .read(buffer.as_mut_slice())
-                .expect_err("Insufficient buffer should fail!");
-            assert_eq!(io::ErrorKind::UnexpectedEof, err.kind());
-
-            let err = d_p
-                .write(buffer.as_slice())
-                .expect_err("Insufficient buffer should fail!");
-            assert_eq!(io::ErrorKind::UnexpectedEof, err.kind());
-
-            if buffer.is_empty() {
-                break;
-            }
+        // Test that insufficine buffer size fails and that partial decoding fails
+        buffer.truncate(counted_bytes);
+        while buffer.pop().is_some() {
+            data.encode(&mut buffer.as_mut_slice())
+                .expect_err("Encoding should fail");
+            T::decode(&mut &buffer[..]).expect_err("Decoding should fail");
         }
     }
 }
@@ -109,6 +102,7 @@ fn input() {
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
             (u32::MAX >> 1).into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 23],
         ),
@@ -119,15 +113,23 @@ fn input() {
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
             (u32::MAX >> 1).into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![],
         ),
-        Input::message_coin_signed([0xaa; 32].into(), [0xbb; 32].into(), Word::MAX, [0xcc; 32].into(), 0xff),
+        Input::message_coin_signed(
+            [0xaa; 32].into(),
+            [0xbb; 32].into(),
+            Word::MAX,
+            [0xcc; 32].into(),
+            0xff,
+        ),
         Input::message_coin_predicate(
             [0xaa; 32].into(),
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xee; 50],
             vec![0xff; 23],
         ),
@@ -136,6 +138,7 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xee; 50],
             vec![],
         ),
@@ -152,6 +155,7 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 50],
             vec![0xff; 23],
@@ -161,6 +165,7 @@ fn input() {
             [0xbb; 32].into(),
             Word::MAX,
             [0xcc; 32].into(),
+            Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 50],
             vec![],

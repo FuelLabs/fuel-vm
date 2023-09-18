@@ -1,12 +1,20 @@
 //! In-memory client implementation
 
-use crate::checked_transaction::Checked;
-use crate::state::StateTransitionRef;
-use crate::storage::MemoryStorage;
-use crate::transactor::Transactor;
-use crate::{backtrace::Backtrace, gas::GasCosts};
+use crate::{
+    backtrace::Backtrace,
+    checked_transaction::Checked,
+    state::StateTransitionRef,
+    storage::MemoryStorage,
+    transactor::Transactor,
+};
 
-use fuel_tx::{ConsensusParameters, Create, Receipt, Script};
+use crate::interpreter::InterpreterParams;
+use fuel_tx::{
+    Create,
+    GasCosts,
+    Receipt,
+    Script,
+};
 
 #[derive(Default, Debug)]
 /// Client implementation with in-memory storage backend.
@@ -28,9 +36,9 @@ impl AsMut<MemoryStorage> for MemoryClient {
 
 impl MemoryClient {
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn new(storage: MemoryStorage, params: ConsensusParameters, gas_costs: GasCosts) -> Self {
+    pub fn new(storage: MemoryStorage, interpreter_params: InterpreterParams) -> Self {
         Self {
-            transactor: Transactor::new(storage, params, gas_costs),
+            transactor: Transactor::new(storage, interpreter_params),
         }
     }
 
@@ -91,13 +99,8 @@ impl MemoryClient {
         self.as_mut().persist();
     }
 
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        self.transactor.params()
-    }
-
     /// Tx memory offset
-    pub const fn tx_offset(&self) -> usize {
+    pub fn tx_offset(&self) -> usize {
         self.transactor.tx_offset()
     }
 
@@ -109,7 +112,7 @@ impl MemoryClient {
 
 impl From<MemoryStorage> for MemoryClient {
     fn from(s: MemoryStorage) -> Self {
-        Self::new(s, Default::default(), Default::default())
+        Self::new(s, InterpreterParams::default())
     }
 }
 

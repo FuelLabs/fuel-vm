@@ -1,44 +1,68 @@
-use fuel_asm::{op, RegId};
-use fuel_vm::util::test_helpers::find_change;
-use fuel_vm::{
-    prelude::{field::Outputs, *},
+use crate::{
+    prelude::{
+        field::Outputs,
+        *,
+    },
     script_with_data_offset,
-    util::test_helpers::TestBuilder,
+    util::test_helpers::{
+        find_change,
+        TestBuilder,
+    },
 };
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use fuel_asm::{
+    op,
+    RegId,
+};
+use fuel_tx::{
+    ConsensusParameters,
+    Witness,
+};
+use fuel_types::canonical::SerializedSize;
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 /// Testing of post-execution output handling
 
 #[test]
 fn full_change_with_no_fees() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let gas_price = 0;
+    let base_asset_id: AssetId = rng.gen();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
-        .coin_input(AssetId::default(), input_amount)
-        .change_output(AssetId::default())
-        .execute_get_change(AssetId::default());
+        .coin_input(base_asset_id, input_amount)
+        .change_output(base_asset_id)
+        .execute_get_change(base_asset_id);
 
     assert_eq!(change, input_amount);
 }
 
 #[test]
 fn used_gas_is_deducted_from_base_asset_change() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let base_asset_id = rng.gen();
     let input_amount = 1000;
     let gas_price = 1;
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
-        .coin_input(AssetId::default(), input_amount)
-        .change_output(AssetId::default())
-        .execute_get_change(AssetId::default());
+        .base_asset_id(base_asset_id)
+        .coin_input(base_asset_id, input_amount)
+        .change_output(base_asset_id)
+        .execute_get_change(base_asset_id);
 
     assert!(change < input_amount);
 }
 
 #[test]
 fn used_gas_is_deducted_from_base_asset_change_on_revert() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let base_asset_id = rng.gen();
     let input_amount = 1000;
     let gas_price = 1;
 
@@ -55,19 +79,21 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
             vec![],
         )
         .gas_price(gas_price)
-        .coin_input(AssetId::default(), input_amount)
-        .change_output(AssetId::default())
-        .execute_get_change(AssetId::default());
+        .base_asset_id(base_asset_id)
+        .coin_input(base_asset_id, input_amount)
+        .change_output(base_asset_id)
+        .execute_get_change(base_asset_id);
 
     assert!(change < input_amount);
 }
 
 #[test]
 fn correct_change_is_provided_for_coin_outputs_script() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let gas_price = 0;
     let spend_amount = 600;
-    let asset_id = AssetId::default();
+    let asset_id: AssetId = rng.gen();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -85,7 +111,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let input_amount = 1000;
     let gas_price = 0;
     let spend_amount = 600;
-    let asset_id = AssetId::BASE;
+    let base_asset_id: AssetId = rng.gen();
 
     #[rustfmt::skip]
     let invalid_instruction_bytecode = vec![0u8; 4];
@@ -101,6 +127,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let output = Output::contract_created(contract_undefined, state_root);
 
     let mut context = TestBuilder::new(2322u64);
+    let context = context.base_asset_id(base_asset_id);
     let bytecode_witness = 0;
     let mut create = Transaction::create(
         gas_price,
@@ -112,42 +139,57 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         vec![],
         vec![
             output,
-            Output::change(rng.gen(), 0, asset_id),
-            Output::coin(rng.gen(), spend_amount, asset_id),
+            Output::change(rng.gen(), 0, base_asset_id),
+            Output::coin(rng.gen(), spend_amount, base_asset_id),
         ],
-        vec![program],
+        vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
         rng.gen(),
         &Default::default(),
         input_amount,
-        asset_id,
+        base_asset_id,
         rng.gen(),
         Default::default(),
+        1,
+    );
+
+    let consensus_params = ConsensusParameters::new(
+        *context.get_tx_params(),
+        *context.get_predicate_params(),
+        *context.get_script_params(),
+        *context.get_contract_params(),
+        *context.get_fee_params(),
+        context.get_chain_id(),
+        context.get_gas_costs().to_owned(),
+        *context.get_base_asset_id(),
     );
     let create = create
-        .into_checked_basic(context.get_block_height(), context.get_params())
+        .into_checked_basic(context.get_block_height(), &consensus_params)
         .expect("failed to generate checked tx");
 
-    let state = context.execute_tx(create).expect("Create should be executed");
-    let change = find_change(state.tx().outputs().to_vec(), AssetId::BASE);
+    let state = context.deploy(create).expect("Create should be executed");
+    let change = find_change(state.tx().outputs().to_vec(), base_asset_id);
 
     assert_eq!(change, input_amount - spend_amount);
 }
 
 #[test]
 fn change_is_reduced_by_external_transfer() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let transfer_amount: Word = 400;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let asset_id = AssetId::default();
+    let asset_id: AssetId = rng.gen();
 
     // simple dummy contract for transferring value to
     let contract_code = vec![op::ret(RegId::ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
-    let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
+    let contract_id = test_context
+        .setup_contract(contract_code, None, None)
+        .contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -159,11 +201,12 @@ fn change_is_reduced_by_external_transfer() {
             op::movi(0x11, transfer_amount as Immediate18),
             // set reg 0x12 to asset id
             op::movi(0x12, (data_offset + 32) as Immediate18),
-            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
+            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset
+            // id at 0x12
             op::tr(0x10, 0x11, 0x12),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data = [contract_id.as_ref(), asset_id.as_ref()]
@@ -188,19 +231,22 @@ fn change_is_reduced_by_external_transfer() {
 
 #[test]
 fn change_is_not_reduced_by_external_transfer_on_revert() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     // attempt overspend to cause a revert
     let transfer_amount: Word = input_amount + 100;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let asset_id = AssetId::default();
+    let asset_id: AssetId = rng.gen();
 
     // setup state for test
     // simple dummy contract for transferring value to
     let contract_code = vec![op::ret(RegId::ONE)];
 
     let mut test_context = TestBuilder::new(2322u64);
-    let contract_id = test_context.setup_contract(contract_code, None, None).contract_id;
+    let contract_id = test_context
+        .setup_contract(contract_code, None, None)
+        .contract_id;
 
     // setup script for transfer
     let (script, _) = script_with_data_offset!(
@@ -212,11 +258,12 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
             op::movi(0x11, transfer_amount as Immediate18),
             // set reg 0x12 to asset id
             op::movi(0x12, data_offset + 32),
-            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset id at 0x12
+            // transfer to contract ID at 0x10, the amount of coins at 0x11, of the asset
+            // id at 0x12
             op::tr(0x10, 0x11, 0x12),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data = [contract_id.as_ref(), asset_id.as_ref()]
@@ -240,6 +287,117 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
 }
 
 #[test]
+fn zero_amount_transfer_reverts() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let asset_id: AssetId = rng.gen();
+
+    // setup state for test
+    // simple dummy contract for transferring value to
+    let contract_code = vec![op::ret(RegId::ONE)];
+
+    let mut test_context = TestBuilder::new(2322u64);
+    let contract_id = test_context
+        .setup_contract(contract_code, None, None)
+        .contract_id;
+
+    // setup script for transfer
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // set reg 0x10 to contract id
+            op::movi(0x10, data_offset),
+            // set reg 0x12 to asset id
+            op::movi(0x11, data_offset + ContractId::LEN as u32),
+            // transfer to contract id at 0x10, amount of coins is zero, asset id at 0x11
+            op::tr(0x10, RegId::ZERO, 0x11),
+            op::ret(RegId::ONE),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
+
+    let script_data = [contract_id.as_ref(), asset_id.as_ref()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
+
+    // execute and get receipts
+    let result = test_context
+        .start_script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .coin_input(asset_id, 0)
+        .contract_input(contract_id)
+        .change_output(asset_id)
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+
+    if let Some(Receipt::Panic { reason, .. }) = receipts.first() {
+        assert_eq!(reason.reason(), &PanicReason::TransferZeroCoins);
+    } else {
+        panic!("Expected a panic receipt");
+    }
+}
+
+#[test]
+fn zero_amount_transfer_out_reverts() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // the initial external (coin) balance
+    let external_balance = 1_000_000;
+    // the amount to transfer out from external balance
+    let gas_price = 0;
+    let gas_limit = 1_000_000;
+    let asset_id: AssetId = rng.gen();
+    let owner: Address = rng.gen();
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            // load amount of coins to 0x10
+            op::movi(0x10, data_offset),
+            op::lw(0x10, 0x10, 0),
+            // load asset id to 0x11
+            op::movi(0x11, data_offset),
+            // load address to 0x12
+            op::movi(0x12, data_offset + 32),
+            // call contract without any tokens to transfer in or out
+            op::tro(0x12, RegId::ZERO, RegId::ZERO, 0x11),
+            op::ret(RegId::ONE),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let script_data: Vec<u8> = [asset_id.as_ref(), owner.as_ref()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
+
+    // execute and get receipts
+    let result = TestBuilder::new(2322u64)
+        .start_script(script, script_data)
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .coin_input(asset_id, external_balance)
+        .variable_output(asset_id)
+        .change_output(asset_id)
+        .execute();
+
+    let receipts = result.receipts();
+
+    if let Some(Receipt::Panic { reason, .. }) = receipts.first() {
+        assert_eq!(reason.reason(), &PanicReason::TransferZeroCoins);
+    } else {
+        panic!("Expected a panic receipt");
+    }
+}
+
+#[test]
 fn variable_output_set_by_external_transfer_out() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -249,10 +407,8 @@ fn variable_output_set_by_external_transfer_out() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let asset_id = AssetId::default();
+    let asset_id: AssetId = rng.gen();
     let owner: Address = rng.gen();
-
-    let params = ConsensusParameters::default();
 
     let (script, _) = script_with_data_offset!(
         data_offset,
@@ -270,7 +426,7 @@ fn variable_output_set_by_external_transfer_out() {
             op::tro(0x12, 0x13, 0x10, 0x11),
             op::ret(RegId::ONE),
         ],
-        params.tx_offset()
+        TxParameters::DEFAULT.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -286,7 +442,6 @@ fn variable_output_set_by_external_transfer_out() {
     // create and run the tx
     let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
-        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .coin_input(asset_id, external_balance)
@@ -310,7 +465,9 @@ fn variable_output_set_by_external_transfer_out() {
             && asset_id == asset_id
     ));
 
-    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -324,10 +481,9 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let asset_id = AssetId::default();
+    let asset_id: AssetId = rng.gen();
     let owner: Address = rng.gen();
-
-    let params = ConsensusParameters::default();
+    let tx_params = TxParameters::default();
 
     let (script, _) = script_with_data_offset!(
         data_offset,
@@ -345,7 +501,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
             op::tro(0x12, 0x13, 0x10, 0x11),
             op::ret(RegId::ONE),
         ],
-        params.tx_offset()
+        tx_params.tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -361,7 +517,6 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     // create and run the tx
     let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
-        .params(params)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
         .coin_input(asset_id, external_balance)
@@ -371,8 +526,6 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
 
     let outputs = result.tx().outputs();
     let receipts = result.receipts();
-
-    println!("{receipts:?}");
 
     assert!(matches!(
         outputs[0], Output::Variable { amount, .. } if amount == 0
@@ -386,7 +539,9 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     ));
 
     // TransferOut receipt should not be present
-    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(!receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -399,7 +554,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let asset_id = AssetId::default();
+    let asset_id: AssetId = rng.gen();
     let owner: Address = rng.gen();
 
     // setup state for test
@@ -429,11 +584,12 @@ fn variable_output_set_by_internal_contract_transfer_out() {
             op::movi(0x10, (data_offset + 64) as Immediate18),
             // set reg 0x11 to transfer amount
             op::move_(0x11, RegId::CGAS),
-            // call contract without any tokens to transfer in (3rd arg arbitrary when 2nd is zero)
+            // call contract without any tokens to transfer in (3rd arg arbitrary when
+            // 2nd is zero)
             op::call(0x10, RegId::ZERO, RegId::ZERO, 0x11),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -453,6 +609,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
+        .fee_input()
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
@@ -464,7 +621,9 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let output = Output::variable(owner, transfer_amount, asset_id);
 
     assert_eq!(output, outputs[0]);
-    assert!(receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }
 
 #[test]
@@ -477,7 +636,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     let transfer_amount: Word = 600;
     let gas_price = 0;
     let gas_limit = 1_000_000;
-    let asset_id = AssetId::default();
+    let asset_id: AssetId = rng.gen();
     let owner: Address = rng.gen();
 
     // setup state for test
@@ -510,7 +669,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let script_data: Vec<u8> = [
@@ -530,6 +689,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
         .start_script(script, script_data)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
+        .fee_input()
         .contract_input(contract_id)
         .variable_output(asset_id)
         .contract_output(&contract_id)
@@ -543,5 +703,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     ));
 
     // TransferOut receipt should not be present
-    assert!(!receipts.iter().any(|r| matches!(r, Receipt::TransferOut { .. })));
+    assert!(!receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::TransferOut { .. })));
 }

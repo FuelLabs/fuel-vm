@@ -47,14 +47,12 @@ where
 #[test]
 fn breakpoint_script() {
     use fuel_asm::op;
+    use fuel_tx::ConsensusParameters;
 
     let mut vm = Interpreter::with_memory_storage();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     let script = [
         op::addi(0x10, RegId::ZERO, 8),
@@ -67,8 +65,13 @@ fn breakpoint_script() {
     .into_iter()
     .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, vm.gas_costs())
+    let consensus_params = ConsensusParameters::standard();
+
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_limit(gas_limit)
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -97,29 +100,32 @@ fn breakpoint_script() {
         .map(ProgramState::from)
         .expect("Failed to execute script!");
 
-    suite.into_iter().fold(state, |state, (breakpoint, registers)| {
-        let debug = state.debug_ref().expect("Expected breakpoint");
-        let b = debug.breakpoint().expect("State without expected breakpoint");
+    suite
+        .into_iter()
+        .fold(state, |state, (breakpoint, registers)| {
+            let debug = state.debug_ref().expect("Expected breakpoint");
+            let b = debug
+                .breakpoint()
+                .expect("State without expected breakpoint");
 
-        assert_eq!(&breakpoint, b);
-        registers.into_iter().for_each(|(r, w)| {
-            assert_eq!(w, vm.registers()[r]);
+            assert_eq!(&breakpoint, b);
+            registers.into_iter().for_each(|(r, w)| {
+                assert_eq!(w, vm.registers()[r]);
+            });
+
+            vm.resume().expect("Failed to resume")
         });
-
-        vm.resume().expect("Failed to resume")
-    });
 }
 
 #[test]
 fn single_stepping() {
     use fuel_asm::op;
+    use fuel_tx::ConsensusParameters;
+
     let mut vm = Interpreter::with_memory_storage();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::default();
 
     // Repeats the middle two instructions five times
     let script = [
@@ -131,8 +137,13 @@ fn single_stepping() {
     .into_iter()
     .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, vm.gas_costs())
+    let consensus_params = ConsensusParameters::standard();
+
+    let tx = TransactionBuilder::script(script, vec![])
+        .gas_limit(gas_limit)
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);
@@ -145,7 +156,9 @@ fn single_stepping() {
     let mut stops = Vec::new();
 
     while let Some(debug) = state.debug_ref() {
-        let b = debug.breakpoint().expect("State without expected breakpoint");
+        let b = debug
+            .breakpoint()
+            .expect("State without expected breakpoint");
 
         stops.push(b.pc());
 

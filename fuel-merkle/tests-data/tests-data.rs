@@ -1,6 +1,8 @@
-use std::error::Error;
-use std::fs::File;
-use std::path::Path;
+use std::{
+    error::Error,
+    fs::File,
+    path::Path,
+};
 
 use fuel_merkle_test_helpers::data::sparse::Test;
 

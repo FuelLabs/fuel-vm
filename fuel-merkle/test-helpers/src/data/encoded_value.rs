@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use serde::{
+    Deserialize,
+    Serialize,
+};
 
 use crate::data::TestError;
 
@@ -36,8 +39,12 @@ impl EncodedValue {
 
     pub fn into_bytes(self) -> Result<Vec<u8>, TestError> {
         match self.encoding {
-            Encoding::Base64 => base64::decode(self.value).map_err(|_| TestError::DecodingError),
-            Encoding::Hex => hex::decode(self.value).map_err(|_| TestError::DecodingError),
+            Encoding::Base64 => {
+                base64::decode(self.value).map_err(|_| TestError::DecodingError)
+            }
+            Encoding::Hex => {
+                hex::decode(self.value).map_err(|_| TestError::DecodingError)
+            }
             Encoding::Utf8 => Ok(self.value.into_bytes()),
         }
     }

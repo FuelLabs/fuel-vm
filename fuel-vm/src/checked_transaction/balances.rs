@@ -1,17 +1,34 @@
 use fuel_tx::{
     field,
     input::{
-        coin::{CoinPredicate, CoinSigned},
-        message::{MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate, MessageDataSigned},
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
+        message::{
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
+            MessageDataSigned,
+        },
     },
-    Chargeable, CheckError, ConsensusParameters, Input, Output, TransactionFee,
+    Chargeable,
+    CheckError,
+    FeeParameters,
+    Input,
+    Output,
+    TransactionFee,
 };
-use fuel_types::{AssetId, Word};
+use fuel_types::{
+    AssetId,
+    Word,
+};
 use std::collections::BTreeMap;
 
 pub(crate) fn initial_free_balances<T>(
     transaction: &T,
-    params: &ConsensusParameters,
+    params: &FeeParameters,
+    base_asset_id: &AssetId,
 ) -> Result<AvailableBalances, CheckError>
 where
     T: Chargeable + field::Inputs + field::Outputs,
@@ -24,14 +41,18 @@ where
     for input in transaction.inputs().iter() {
         match input {
             // Sum coin inputs
-            Input::CoinPredicate(CoinPredicate { asset_id, amount, .. })
-            | Input::CoinSigned(CoinSigned { asset_id, amount, .. }) => {
+            Input::CoinPredicate(CoinPredicate {
+                asset_id, amount, ..
+            })
+            | Input::CoinSigned(CoinSigned {
+                asset_id, amount, ..
+            }) => {
                 *non_retryable_balances.entry(*asset_id).or_default() += amount;
             }
             // Sum message coin inputs
             Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
-                *non_retryable_balances.entry(AssetId::BASE).or_default() += amount;
+                *non_retryable_balances.entry(*base_asset_id).or_default() += amount;
             }
             // Sum data messages
             Input::MessageDataSigned(MessageDataSigned { amount, .. })
@@ -43,32 +64,41 @@ where
     }
 
     // Deduct fee from base asset
-    let fee = TransactionFee::checked_from_tx(params, transaction).ok_or(CheckError::ArithmeticOverflow)?;
+    let fee = TransactionFee::checked_from_tx(params, transaction)
+        .ok_or(CheckError::ArithmeticOverflow)?;
 
-    let base_asset_balance = non_retryable_balances.entry(AssetId::BASE).or_default();
+    let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
 
-    *base_asset_balance = fee
-        .checked_deduct_total(*base_asset_balance)
-        .ok_or(CheckError::InsufficientFeeAmount {
-            expected: fee.total(),
+    *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
+        CheckError::InsufficientFeeAmount {
+            expected: fee.max_fee(),
             provided: *base_asset_balance,
-        })?;
+        },
+    )?;
 
     // reduce free balances by coin outputs
-    for (asset_id, amount) in transaction.outputs().iter().filter_map(|output| match output {
-        Output::Coin { asset_id, amount, .. } => Some((asset_id, amount)),
-        _ => None,
-    }) {
+    for (asset_id, amount) in
+        transaction
+            .outputs()
+            .iter()
+            .filter_map(|output| match output {
+                Output::Coin {
+                    asset_id, amount, ..
+                } => Some((asset_id, amount)),
+                _ => None,
+            })
+    {
         let balance = non_retryable_balances
             .get_mut(asset_id)
             .ok_or(CheckError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
-        *balance = balance
-            .checked_sub(*amount)
-            .ok_or(CheckError::InsufficientInputAmount {
-                asset: *asset_id,
-                expected: *amount,
-                provided: *balance,
-            })?;
+        *balance =
+            balance
+                .checked_sub(*amount)
+                .ok_or(CheckError::InsufficientInputAmount {
+                    asset: *asset_id,
+                    expected: *amount,
+                    provided: *balance,
+                })?;
     }
 
     Ok(AvailableBalances {

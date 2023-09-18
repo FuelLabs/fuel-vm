@@ -1,47 +1,49 @@
-use crate::binary::{leaf_sum, node_sum};
-use crate::common::Bytes32;
-use crate::common::ProofSet;
+use crate::{
+    binary::{
+        leaf_sum,
+        node_sum,
+    },
+    common::{
+        Bytes32,
+        ProofSet,
+    },
+};
 
 pub fn verify<T: AsRef<[u8]>>(
     root: &Bytes32,
-    digest: T,
+    data: &T,
     proof_set: &ProofSet,
     proof_index: u64,
     num_leaves: u64,
 ) -> bool {
+    let mut sum = leaf_sum(data.as_ref());
+
     if proof_index >= num_leaves {
-        return false;
+        return false
     }
 
     if proof_set.is_empty() {
-        return false;
+        return if num_leaves == 1 { *root == sum } else { false }
     }
 
-    let mut height = 0usize;
-    let mut sum = proof_set[height];
-    height += 1;
-
-    let digest = leaf_sum(digest.as_ref());
-    if digest != sum {
-        return false;
-    }
-
+    let mut height = 1usize;
     let mut stable_end = proof_index;
 
     loop {
         let subtree_start_index = proof_index / (1 << height) * (1 << height);
         let subtree_end_index = subtree_start_index + (1 << height) - 1;
+
         if subtree_end_index >= num_leaves {
-            break;
+            break
         }
 
         stable_end = subtree_end_index;
 
-        if proof_set.len() <= height {
-            return false;
+        if proof_set.len() < height {
+            return false
         }
 
-        let proof_data = proof_set[height];
+        let proof_data = proof_set[height - 1];
         if proof_index - subtree_start_index < 1 << (height - 1) {
             sum = node_sum(&sum, &proof_data);
         } else {
@@ -52,16 +54,16 @@ pub fn verify<T: AsRef<[u8]>>(
     }
 
     if stable_end != num_leaves - 1 {
-        if proof_set.len() <= height {
-            return false;
+        if proof_set.len() < height {
+            return false
         }
-        let proof_data = proof_set[height];
+        let proof_data = proof_set[height - 1];
         sum = node_sum(&sum, &proof_data);
         height += 1;
     }
 
-    while height < proof_set.len() {
-        let proof_data = proof_set[height];
+    while height - 1 < proof_set.len() {
+        let proof_data = proof_set[height - 1];
         sum = node_sum(&proof_data, &sum);
         height += 1;
     }
@@ -72,9 +74,13 @@ pub fn verify<T: AsRef<[u8]>>(
 #[cfg(test)]
 mod test {
     use super::verify;
-    use crate::binary::MerkleTree;
-    use crate::binary::Primitive;
-    use crate::common::StorageMap;
+    use crate::{
+        binary::{
+            MerkleTree,
+            Primitive,
+        },
+        common::StorageMap,
+    };
     use fuel_merkle_test_helpers::TEST_DATA;
     use fuel_storage::Mappable;
 
@@ -84,8 +90,8 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = u64;
-        type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
+        type Value = Self::OwnedValue;
     }
 
     #[test]
@@ -101,14 +107,11 @@ mod test {
             tree.push(datum).unwrap();
         }
 
-        let proof = tree.prove(PROOF_INDEX as u64).unwrap();
-        let root = proof.0;
-        let set = proof.1;
-
+        let (root, proof_set) = tree.prove(PROOF_INDEX as u64).unwrap();
         let verification = verify(
             &root,
-            TEST_DATA[PROOF_INDEX],
-            &set,
+            &TEST_DATA[PROOF_INDEX],
+            &proof_set,
             PROOF_INDEX as u64,
             LEAVES_COUNT as u64,
         );
@@ -116,7 +119,8 @@ mod test {
     }
 
     #[test]
-    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root() {
+    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root(
+    ) {
         // Check the Merkle root of one tree against the computed Merkle root of
         // another tree's proof set: because the two roots come from different
         // trees, the comparison should fail.
@@ -148,7 +152,7 @@ mod test {
 
         let verification = verify(
             &root,
-            TEST_DATA[PROOF_INDEX],
+            &TEST_DATA[PROOF_INDEX],
             &set,
             PROOF_INDEX as u64,
             LEAVES_COUNT as u64,
@@ -163,7 +167,7 @@ mod test {
 
         let verification = verify(
             &Default::default(),
-            TEST_DATA[PROOF_INDEX],
+            &TEST_DATA[PROOF_INDEX],
             &vec![],
             PROOF_INDEX as u64,
             LEAVES_COUNT as u64,
@@ -190,7 +194,7 @@ mod test {
 
         let verification = verify(
             &root,
-            TEST_DATA[PROOF_INDEX],
+            &TEST_DATA[PROOF_INDEX],
             &set,
             PROOF_INDEX as u64 + 15,
             LEAVES_COUNT as u64,

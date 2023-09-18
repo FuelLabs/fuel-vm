@@ -1,14 +1,50 @@
-use crate::transaction::field::{BytecodeLength, BytecodeWitnessIndex, Witnesses};
-use crate::transaction::{field, Chargeable, Create, Executable, Script};
-use crate::{Cacheable, ConsensusParameters, Input, Mint, Output, StorageSlot, Transaction, TxPointer, Witness};
+use crate::{
+    transaction::{
+        field,
+        field::{
+            BytecodeLength,
+            BytecodeWitnessIndex,
+            Witnesses,
+        },
+        Chargeable,
+        Create,
+        Executable,
+        Script,
+    },
+    Cacheable,
+    ConsensusParameters,
+    ContractParameters,
+    FeeParameters,
+    GasCosts,
+    Input,
+    Mint,
+    Output,
+    PredicateParameters,
+    ScriptParameters,
+    StorageSlot,
+    Transaction,
+    TxParameters,
+    TxPointer,
+    Witness,
+};
 
 #[cfg(feature = "std")]
 use crate::Signable;
 
 use fuel_crypto::SecretKey;
-use fuel_types::{BlockHeight, Nonce, Salt, Word};
+use fuel_types::{
+    AssetId,
+    BlockHeight,
+    ChainId,
+    Nonce,
+    Salt,
+    Word,
+};
 
-use alloc::vec::Vec;
+use alloc::{
+    collections::BTreeMap,
+    vec::Vec,
+};
 
 pub trait BuildableAloc
 where
@@ -88,11 +124,12 @@ pub struct TransactionBuilder<Tx> {
 
     should_prepare_script: bool,
     should_prepare_predicate: bool,
-    parameters: ConsensusParameters,
+    params: ConsensusParameters,
 
-    // We take the key by reference so this lib won't have the responsibility to properly zeroize
-    // the keys
-    sign_keys: Vec<SecretKey>,
+    // We take the key by reference so this lib won't have the responsibility to properly
+    // zeroize the keys
+    // Maps signing keys -> witness indexes
+    sign_keys: BTreeMap<SecretKey, u8>,
 }
 
 impl TransactionBuilder<Script> {
@@ -119,7 +156,13 @@ impl TransactionBuilder<Script> {
 }
 
 impl TransactionBuilder<Create> {
-    pub fn create(bytecode: Witness, salt: Salt, storage_slots: Vec<StorageSlot>) -> Self {
+    pub fn create(
+        bytecode: Witness,
+        salt: Salt,
+        mut storage_slots: Vec<StorageSlot>,
+    ) -> Self {
+        // sort the storage slots before initializing the builder
+        storage_slots.sort();
         let mut tx = Create {
             gas_price: Default::default(),
             gas_limit: Default::default(),
@@ -159,23 +202,88 @@ impl<Tx> TransactionBuilder<Tx> {
     fn with_tx(tx: Tx) -> Self {
         let should_prepare_script = false;
         let should_prepare_predicate = false;
-        let sign_keys = Vec::new();
+        let sign_keys = BTreeMap::new();
 
         Self {
             tx,
             should_prepare_script,
             should_prepare_predicate,
+            params: ConsensusParameters::standard(),
             sign_keys,
-            parameters: ConsensusParameters::DEFAULT,
         }
     }
 
     pub fn get_params(&self) -> &ConsensusParameters {
-        &self.parameters
+        &self.params
     }
 
-    pub fn with_params(&mut self, parameters: ConsensusParameters) -> &mut Self {
-        self.parameters = parameters;
+    pub fn get_tx_params(&self) -> &TxParameters {
+        self.params.tx_params()
+    }
+
+    pub fn get_predicate_params(&self) -> &PredicateParameters {
+        self.params.predicate_params()
+    }
+
+    pub fn get_script_params(&self) -> &ScriptParameters {
+        self.params.script_params()
+    }
+
+    pub fn get_contract_params(&self) -> &ContractParameters {
+        self.params.contract_params()
+    }
+
+    pub fn get_fee_params(&self) -> &FeeParameters {
+        self.params.fee_params()
+    }
+
+    pub fn get_chain_id(&self) -> ChainId {
+        self.params.chain_id()
+    }
+
+    pub fn with_params(&mut self, params: ConsensusParameters) -> &mut Self {
+        self.params = params;
+        self
+    }
+
+    pub fn with_tx_params(&mut self, tx_params: TxParameters) -> &mut Self {
+        self.params.tx_params = tx_params;
+        self
+    }
+
+    pub fn with_predicate_params(
+        &mut self,
+        predicate_params: PredicateParameters,
+    ) -> &mut Self {
+        self.params.predicate_params = predicate_params;
+        self
+    }
+
+    pub fn with_script_params(&mut self, script_params: ScriptParameters) -> &mut Self {
+        self.params.script_params = script_params;
+        self
+    }
+
+    pub fn with_contract_params(
+        &mut self,
+        contract_params: ContractParameters,
+    ) -> &mut Self {
+        self.params.contract_params = contract_params;
+        self
+    }
+
+    pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut Self {
+        self.params.fee_params = fee_params;
+        self
+    }
+
+    pub fn with_base_asset_id(&mut self, base_asset_id: AssetId) -> &mut Self {
+        self.params.base_asset_id = base_asset_id;
+        self
+    }
+
+    pub fn with_gas_costs(&mut self, gas_costs: GasCosts) -> &mut Self {
+        self.params.gas_costs = gas_costs;
         self
     }
 }
@@ -191,8 +299,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn sign_keys(&self) -> &[SecretKey] {
-        self.sign_keys.as_slice()
+    pub fn sign_keys(&self) -> impl Iterator<Item = &SecretKey> {
+        self.sign_keys.keys()
     }
 
     pub fn gas_price(&mut self, gas_price: Word) -> &mut Self {
@@ -204,6 +312,11 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     pub fn gas_limit(&mut self, gas_limit: Word) -> &mut Self {
         self.tx.set_gas_limit(gas_limit);
 
+        self
+    }
+
+    pub fn with_chain_id(&mut self, chain_id: ChainId) -> &mut Self {
+        self.params.chain_id = chain_id;
         self
     }
 
@@ -225,11 +338,36 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     ) -> &mut Self {
         let pk = secret.public_key();
 
-        self.sign_keys.push(secret);
-        self.tx
-            .add_unsigned_coin_input(utxo_id, &pk, amount, asset_id, tx_pointer, maturity);
+        let witness_index = self.upsert_secret(secret);
+
+        self.tx.add_unsigned_coin_input(
+            utxo_id,
+            &pk,
+            amount,
+            asset_id,
+            tx_pointer,
+            maturity,
+            witness_index,
+        );
 
         self
+    }
+
+    #[cfg(all(feature = "rand", feature = "std"))]
+    pub fn add_random_fee_input(&mut self) -> &mut Self {
+        use rand::{
+            Rng,
+            SeedableRng,
+        };
+        let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
+        self.add_unsigned_coin_input(
+            SecretKey::random(&mut rng),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            Default::default(),
+            Default::default(),
+        )
     }
 
     #[cfg(feature = "std")]
@@ -242,12 +380,18 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         data: Vec<u8>,
     ) -> &mut Self {
         let pk = secret.public_key();
-        self.sign_keys.push(secret);
-
         let recipient = Input::owner(&pk);
 
-        self.tx
-            .add_unsigned_message_input(sender, recipient, nonce, amount, data);
+        let witness_index = self.upsert_secret(secret);
+
+        self.tx.add_unsigned_message_input(
+            sender,
+            recipient,
+            nonce,
+            amount,
+            data,
+            witness_index,
+        );
 
         self
     }
@@ -276,6 +420,20 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+    /// Adds a secret to the builder, and adds a corresponding witness if it's a new entry
+    #[cfg(feature = "std")]
+    fn upsert_secret(&mut self, secret_key: SecretKey) -> u8 {
+        let witness_len = self.witnesses().len() as u8;
+
+        let witness_index = self.sign_keys.entry(secret_key).or_insert_with(|| {
+            // if this private key hasn't been used before,
+            // add a new witness entry and return its index
+            self.tx.witnesses_mut().push(Witness::default());
+            witness_len
+        });
+        *witness_index
+    }
+
     #[cfg(feature = "std")]
     fn prepare_finalize(&mut self) {
         if self.should_prepare_predicate {
@@ -288,25 +446,29 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     #[cfg(feature = "std")]
-    pub fn _finalize(&mut self) -> Tx {
+    fn finalize_inner(&mut self) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        self.sign_keys.iter().for_each(|k| tx.sign_inputs(k, &self.parameters));
+        self.sign_keys
+            .iter()
+            .for_each(|(k, _)| tx.sign_inputs(k, &self.get_chain_id()));
 
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.get_chain_id())
+            .expect("Should be able to calculate cache");
 
         tx
     }
 
     #[cfg(feature = "std")]
-    pub fn _finalize_without_signature(&mut self) -> Tx {
+    pub fn finalize_without_signature_inner(&mut self) -> Tx {
         self.prepare_finalize();
 
         let mut tx = core::mem::take(&mut self.tx);
 
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.get_chain_id())
+            .expect("Should be able to calculate cache");
 
         tx
     }
@@ -329,7 +491,8 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
-        tx.precompute(&self.parameters);
+        tx.precompute(&self.get_chain_id())
+            .expect("Should be able to calculate cache");
         tx
     }
 
@@ -341,22 +504,22 @@ impl Finalizable<Mint> for TransactionBuilder<Mint> {
 #[cfg(feature = "std")]
 impl Finalizable<Create> for TransactionBuilder<Create> {
     fn finalize(&mut self) -> Create {
-        self._finalize()
+        self.finalize_inner()
     }
 
     fn finalize_without_signature(&mut self) -> Create {
-        self._finalize_without_signature()
+        self.finalize_without_signature_inner()
     }
 }
 
 #[cfg(feature = "std")]
 impl Finalizable<Script> for TransactionBuilder<Script> {
     fn finalize(&mut self) -> Script {
-        self._finalize()
+        self.finalize_inner()
     }
 
     fn finalize_without_signature(&mut self) -> Script {
-        self._finalize_without_signature()
+        self.finalize_without_signature_inner()
     }
 }
 

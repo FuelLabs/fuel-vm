@@ -1,29 +1,33 @@
-use crate::receipt::sizes::{
-    CallSizesLayout, LogDataSizesLayout, LogSizesLayout, MessageOutSizesLayout, PanicSizesLayout,
-    ReturnDataSizesLayout, ReturnSizesLayout, RevertSizesLayout, ScriptResultSizesLayout, TransferOutSizesLayout,
-    TransferSizesLayout,
-};
 use crate::Output;
 use alloc::vec::Vec;
 use derivative::Derivative;
-use fuel_asm::InstructionResult;
-use fuel_types::bytes::{self, padded_len_usize, SizedBytes, WORD_SIZE};
-use fuel_types::{fmt_truncated_hex, Address, AssetId, Bytes32, ContractId, MessageId, Nonce, Word};
-
-#[cfg(feature = "std")]
-mod receipt_std;
+use fuel_asm::PanicInstruction;
+use fuel_crypto::Hasher;
+use fuel_types::{
+    canonical::{
+        Deserialize,
+        Serialize,
+        SerializedSizeFixed,
+    },
+    fmt_option_truncated_hex,
+    Address,
+    AssetId,
+    Bytes32,
+    ContractId,
+    MessageId,
+    Nonce,
+    Word,
+};
 
 mod receipt_repr;
 mod script_result;
-mod sizes;
-
-use receipt_repr::ReceiptRepr;
 
 use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Deserialize, Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {
@@ -50,18 +54,21 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
+        data: Option<Vec<u8>>,
     },
 
     Panic {
         id: ContractId,
-        reason: InstructionResult,
+        reason: PanicInstruction,
         pc: Word,
         is: Word,
         #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
         contract_id: Option<ContractId>,
     },
 
@@ -89,10 +96,12 @@ pub enum Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
+        data: Option<Vec<u8>>,
     },
 
     Transfer {
@@ -125,8 +134,24 @@ pub enum Receipt {
         nonce: Nonce,
         len: Word,
         digest: Bytes32,
-        #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-        data: Vec<u8>,
+        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
+        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[canonical(skip)]
+        data: Option<Vec<u8>>,
+    },
+    Mint {
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
+    },
+    Burn {
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
     },
 }
 
@@ -160,10 +185,23 @@ impl Receipt {
         Self::Return { id, val, pc, is }
     }
 
-    pub fn return_data(id: ContractId, ptr: Word, digest: Bytes32, data: Vec<u8>, pc: Word, is: Word) -> Self {
-        let len = bytes::padded_len(&data) as Word;
-
-        Self::return_data_with_len(id, ptr, len, digest, data, pc, is)
+    pub fn return_data(
+        id: ContractId,
+        ptr: Word,
+        pc: Word,
+        is: Word,
+        data: Vec<u8>,
+    ) -> Self {
+        let digest = Hasher::hash(&data);
+        Self::return_data_with_len(
+            id,
+            ptr,
+            data.len() as Word,
+            digest,
+            pc,
+            is,
+            Some(data),
+        )
     }
 
     pub const fn return_data_with_len(
@@ -171,22 +209,27 @@ impl Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        data: Option<Vec<u8>>,
     ) -> Self {
         Self::ReturnData {
             id,
             ptr,
             len,
             digest,
-            data,
             pc,
             is,
+            data,
         }
     }
 
-    pub const fn panic(id: ContractId, reason: InstructionResult, pc: Word, is: Word) -> Self {
+    pub const fn panic(
+        id: ContractId,
+        reason: PanicInstruction,
+        pc: Word,
+        is: Word,
+    ) -> Self {
         Self::Panic {
             id,
             reason,
@@ -198,7 +241,8 @@ impl Receipt {
 
     pub fn with_panic_contract_id(mut self, _contract_id: Option<ContractId>) -> Self {
         if let Receipt::Panic {
-            ref mut contract_id, ..
+            ref mut contract_id,
+            ..
         } = self
         {
             *contract_id = _contract_id;
@@ -210,7 +254,15 @@ impl Receipt {
         Self::Revert { id, ra, pc, is }
     }
 
-    pub const fn log(id: ContractId, ra: Word, rb: Word, rc: Word, rd: Word, pc: Word, is: Word) -> Self {
+    pub const fn log(
+        id: ContractId,
+        ra: Word,
+        rb: Word,
+        rc: Word,
+        rd: Word,
+        pc: Word,
+        is: Word,
+    ) -> Self {
         Self::Log {
             id,
             ra,
@@ -227,14 +279,22 @@ impl Receipt {
         ra: Word,
         rb: Word,
         ptr: Word,
-        digest: Bytes32,
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        data: Vec<u8>,
     ) -> Self {
-        let len = bytes::padded_len(&data) as Word;
-
-        Self::log_data_with_len(id, ra, rb, ptr, len, digest, data, pc, is)
+        let digest = Hasher::hash(&data);
+        Self::log_data_with_len(
+            id,
+            ra,
+            rb,
+            ptr,
+            data.len() as Word,
+            digest,
+            pc,
+            is,
+            Some(data),
+        )
     }
 
     pub const fn log_data_with_len(
@@ -244,9 +304,9 @@ impl Receipt {
         ptr: Word,
         len: Word,
         digest: Bytes32,
-        data: Vec<u8>,
         pc: Word,
         is: Word,
+        data: Option<Vec<u8>>,
     ) -> Self {
         Self::LogData {
             id,
@@ -255,13 +315,20 @@ impl Receipt {
             ptr,
             len,
             digest,
-            data,
             pc,
             is,
+            data,
         }
     }
 
-    pub const fn transfer(id: ContractId, to: ContractId, amount: Word, asset_id: AssetId, pc: Word, is: Word) -> Self {
+    pub const fn transfer(
+        id: ContractId,
+        to: ContractId,
+        amount: Word,
+        asset_id: AssetId,
+        pc: Word,
+        is: Word,
+    ) -> Self {
         Self::Transfer {
             id,
             to,
@@ -294,7 +361,7 @@ impl Receipt {
         Self::ScriptResult { result, gas_used }
     }
 
-    pub fn message_out_from_tx_output(
+    pub fn message_out(
         txid: &Bytes32,
         idx: Word,
         sender: Address,
@@ -305,20 +372,15 @@ impl Receipt {
         let nonce = Output::message_nonce(txid, idx);
         let digest = Output::message_digest(&data);
 
-        Self::message_out(sender, recipient, amount, nonce, digest, data)
-    }
-
-    pub fn message_out(
-        sender: Address,
-        recipient: Address,
-        amount: Word,
-        nonce: Nonce,
-        digest: Bytes32,
-        data: Vec<u8>,
-    ) -> Self {
-        let len = bytes::padded_len(&data) as Word;
-
-        Self::message_out_with_len(sender, recipient, amount, nonce, len, digest, data)
+        Self::message_out_with_len(
+            sender,
+            recipient,
+            amount,
+            nonce,
+            data.len() as Word,
+            digest,
+            Some(data),
+        )
     }
 
     pub const fn message_out_with_len(
@@ -328,7 +390,7 @@ impl Receipt {
         nonce: Nonce,
         len: Word,
         digest: Bytes32,
-        data: Vec<u8>,
+        data: Option<Vec<u8>>,
     ) -> Self {
         Self::MessageOut {
             sender,
@@ -338,6 +400,38 @@ impl Receipt {
             len,
             digest,
             data,
+        }
+    }
+
+    pub fn mint(
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
+    ) -> Self {
+        Self::Mint {
+            sub_id,
+            contract_id,
+            val,
+            pc,
+            is,
+        }
+    }
+
+    pub fn burn(
+        sub_id: Bytes32,
+        contract_id: ContractId,
+        val: Word,
+        pc: Word,
+        is: Word,
+    ) -> Self {
+        Self::Burn {
+            sub_id,
+            contract_id,
+            val,
+            pc,
+            is,
         }
     }
 
@@ -355,7 +449,17 @@ impl Receipt {
             Self::TransferOut { id, .. } => Some(id),
             Self::ScriptResult { .. } => None,
             Self::MessageOut { .. } => None,
+            Self::Mint { contract_id, .. } => Some(contract_id),
+            Self::Burn { contract_id, .. } => Some(contract_id),
         })
+    }
+
+    pub const fn sub_id(&self) -> Option<&Bytes32> {
+        match self {
+            Self::Mint { sub_id, .. } => Some(sub_id),
+            Self::Burn { sub_id, .. } => Some(sub_id),
+            _ => None,
+        }
     }
 
     pub const fn pc(&self) -> Option<Word> {
@@ -371,6 +475,8 @@ impl Receipt {
             Self::TransferOut { pc, .. } => Some(*pc),
             Self::ScriptResult { .. } => None,
             Self::MessageOut { .. } => None,
+            Self::Mint { pc, .. } => Some(*pc),
+            Self::Burn { pc, .. } => Some(*pc),
         }
     }
 
@@ -387,6 +493,8 @@ impl Receipt {
             Self::TransferOut { is, .. } => Some(*is),
             Self::ScriptResult { .. } => None,
             Self::MessageOut { .. } => None,
+            Self::Mint { is, .. } => Some(*is),
+            Self::Burn { is, .. } => Some(*is),
         }
     }
 
@@ -449,6 +557,8 @@ impl Receipt {
     pub const fn val(&self) -> Option<Word> {
         match self {
             Self::Return { val, .. } => Some(*val),
+            Self::Mint { val, .. } => Some(*val),
+            Self::Burn { val, .. } => Some(*val),
             _ => None,
         }
     }
@@ -489,14 +599,14 @@ impl Receipt {
 
     pub fn data(&self) -> Option<&[u8]> {
         match self {
-            Self::ReturnData { data, .. } => Some(data),
-            Self::LogData { data, .. } => Some(data),
-            Self::MessageOut { data, .. } => Some(data),
+            Self::ReturnData { data, .. } => data.as_ref().map(|data| data.as_slice()),
+            Self::LogData { data, .. } => data.as_ref().map(|data| data.as_slice()),
+            Self::MessageOut { data, .. } => data.as_ref().map(|data| data.as_slice()),
             _ => None,
         }
     }
 
-    pub const fn reason(&self) -> Option<InstructionResult> {
+    pub const fn reason(&self) -> Option<PanicInstruction> {
         match self {
             Self::Panic { reason, .. } => Some(*reason),
             _ => None,
@@ -557,7 +667,9 @@ impl Receipt {
                 nonce,
                 data,
                 ..
-            } => Some(compute_message_id(sender, recipient, nonce, *amount, data.as_slice())),
+            } => data.as_ref().map(|data| {
+                compute_message_id(sender, recipient, nonce, *amount, data.as_slice())
+            }),
             _ => None,
         }
     }
@@ -589,37 +701,16 @@ impl Receipt {
             _ => None,
         }
     }
-
-    fn variant_len_without_data(variant: ReceiptRepr) -> usize {
-        match variant {
-            ReceiptRepr::Call => CallSizesLayout::LEN,
-            ReceiptRepr::Return => ReturnSizesLayout::LEN,
-            ReceiptRepr::ReturnData => ReturnDataSizesLayout::LEN,
-            ReceiptRepr::Panic => PanicSizesLayout::LEN,
-            ReceiptRepr::Revert => RevertSizesLayout::LEN,
-            ReceiptRepr::Log => LogSizesLayout::LEN,
-            ReceiptRepr::LogData => LogDataSizesLayout::LEN,
-            ReceiptRepr::Transfer => TransferSizesLayout::LEN,
-            ReceiptRepr::TransferOut => TransferOutSizesLayout::LEN,
-            ReceiptRepr::ScriptResult => ScriptResultSizesLayout::LEN,
-            ReceiptRepr::MessageOut => MessageOutSizesLayout::LEN,
-        }
-    }
 }
 
 fn trim_contract_id(id: Option<&ContractId>) -> Option<&ContractId> {
-    id.and_then(|id| if id != &ContractId::zeroed() { Some(id) } else { None })
-}
-
-impl SizedBytes for Receipt {
-    fn serialized_size(&self) -> usize {
-        let data_len = self
-            .data()
-            .map(|data| WORD_SIZE + padded_len_usize(data.len()))
-            .unwrap_or(0);
-
-        Self::variant_len_without_data(ReceiptRepr::from(self)) + data_len
-    }
+    id.and_then(|id| {
+        if id != &ContractId::zeroed() {
+            Some(id)
+        } else {
+            None
+        }
+    })
 }
 
 #[cfg(test)]

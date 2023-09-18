@@ -1,4 +1,8 @@
-use crate::common::{self, Bytes32, Prefix};
+use crate::common::{
+    self,
+    Bytes32,
+    Prefix,
+};
 
 use digest::Digest;
 use sha2::Sha256;

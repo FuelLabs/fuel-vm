@@ -1,67 +1,64 @@
-use fuel_asm::{op, Instruction};
-use fuel_asm::{Imm18, RegId};
-use fuel_vm::prelude::*;
+use crate::prelude::*;
+use fuel_asm::{
+    op,
+    Imm18,
+    Instruction,
+    RegId,
+};
 
 use super::test_helpers::set_full_word;
 
-fn alu(registers_init: &[(RegisterId, Word)], ins: Instruction, reg: RegisterId, expected: Word) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+fn alu(
+    registers_init: &[(RegisterId, Word)],
+    ins: Instruction,
+    reg: RegisterId,
+    expected: Word,
+) {
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
-    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
         .flat_map(|(r, v)| set_full_word(*r, *v))
-        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)].iter().copied())
+        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     assert_eq!(
-        receipts.first().expect("Receipt not found").ra().expect("$ra expected"),
+        receipts
+            .first()
+            .expect("Receipt not found")
+            .ra()
+            .expect("$ra expected"),
         expected
     );
 }
 
 fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolean: bool) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let script = program
         .iter()
         .copied()
-        .chain([op::ret(RegId::ONE)].iter().copied())
+        .chain([op::ret(RegId::ONE)])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage.clone(), Default::default(), gas_costs.clone())
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     // TODO rename reason method
     // https://github.com/FuelLabs/fuel-tx/issues/120
@@ -78,35 +75,41 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
     let script = [op::movi(0x10, 0x02), op::flag(0x10)]
         .into_iter()
         .chain(program.iter().copied())
-        .chain(
-            [
-                op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
-                op::ret(RegId::ONE),
-            ]
-            .iter()
-            .copied(),
-        )
+        .chain([
+            op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
+            op::ret(RegId::ONE),
+        ])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     if !boolean {
-        let lo_value = receipts.first().expect("Receipt not found").ra().expect("$ra expected");
-        let hi_value = receipts.first().expect("Receipt not found").rb().expect("$rb expected");
+        let lo_value = receipts
+            .first()
+            .expect("Receipt not found")
+            .ra()
+            .expect("$ra expected");
+        let hi_value = receipts
+            .first()
+            .expect("Receipt not found")
+            .rb()
+            .expect("$rb expected");
 
         let overflow_value = lo_value as u128 + ((hi_value as u128) << 64);
 
         assert_eq!(overflow_value, expected);
     } else {
-        let overflow = receipts.first().expect("Receipt not found").rb().expect("$ra expected");
+        let overflow = receipts
+            .first()
+            .expect("Receipt not found")
+            .rb()
+            .expect("$ra expected");
         assert_eq!(overflow, expected as u64);
     }
 }
@@ -118,46 +121,34 @@ fn alu_wrapping(
     expected: Word,
     expected_of: bool,
 ) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
+    let set_regs = registers_init
+        .iter()
+        .flat_map(|(r, v)| set_full_word(*r, *v));
 
-    let set_regs = registers_init.iter().flat_map(|(r, v)| set_full_word(*r, *v));
-
-    let script = [
+    let script = vec![
         // TODO avoid magic constants
         // https://github.com/FuelLabs/fuel-asm/issues/60
         op::movi(RegId::WRITABLE, 0x2),
         op::flag(RegId::WRITABLE),
     ]
-    .iter()
-    .copied()
+    .into_iter()
     .chain(set_regs)
-    .chain(
-        [
-            ins,
-            op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
-            op::ret(RegId::ONE),
-        ]
-        .iter()
-        .copied(),
-    )
+    .chain([
+        ins,
+        op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
+        op::ret(RegId::ONE),
+    ])
     .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     let log_receipt = receipts.first().expect("Receipt not found");
 
@@ -170,32 +161,29 @@ fn alu_wrapping(
     );
 }
 
-fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: RegisterId, expected: Word) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+fn alu_err(
+    registers_init: &[(RegisterId, Immediate18)],
+    ins: Instruction,
+    reg: RegisterId,
+    expected: Word,
+) {
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
     let reg = u8::try_from(reg).unwrap();
-    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
         .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v))
-        .chain([ins, op::ret(RegId::ONE)].iter().copied())
+        .chain([ins, op::ret(RegId::ONE)])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage.clone(), Default::default(), gas_costs.clone())
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     // TODO rename reason method
     // https://github.com/FuelLabs/fuel-tx/issues/120
@@ -216,34 +204,30 @@ fn alu_err(registers_init: &[(RegisterId, Immediate18)], ins: Instruction, reg: 
                 .iter()
                 .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v)),
         )
-        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)].iter().copied())
+        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)])
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     assert_eq!(
-        receipts.first().expect("Receipt not found").ra().expect("$ra expected"),
+        receipts
+            .first()
+            .expect("Receipt not found")
+            .ra()
+            .expect("$ra expected"),
         expected
     );
 }
 
 fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
-    let storage = MemoryStorage::default();
-
-    let gas_price = 0;
+    let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-    let params = ConsensusParameters::default();
-    let gas_costs = GasCosts::default();
 
     let script = registers_init
         .iter()
@@ -251,15 +235,13 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
         .chain([ins, op::ret(RegId::ONE)].iter().copied())
         .collect();
 
-    let tx = Transaction::script(gas_price, gas_limit, maturity, script, vec![], vec![], vec![], vec![])
-        .into_checked(height, &params, &gas_costs)
-        .expect("failed to check tx");
+    let result = test_context
+        .start_script(script, vec![])
+        .gas_limit(gas_limit)
+        .fee_input()
+        .execute();
 
-    let receipts = Transactor::new(storage, Default::default(), gas_costs)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to execute ALU script!")
-        .to_owned();
+    let receipts = result.receipts();
 
     let result = receipts
         .iter()
@@ -292,7 +274,12 @@ fn reserved_register() {
 
 #[test]
 fn add() {
-    alu(&[(0x10, 128), (0x11, 25)], op::add(0x12, 0x10, 0x11), 0x12, 153);
+    alu(
+        &[(0x10, 128), (0x11, 25)],
+        op::add(0x12, 0x10, 0x11),
+        0x12,
+        153,
+    );
     alu_overflow(
         &[
             op::move_(0x10, RegId::ZERO),
@@ -323,7 +310,12 @@ fn addi() {
 
 #[test]
 fn mul() {
-    alu(&[(0x10, 128), (0x11, 25)], op::mul(0x12, 0x10, 0x11), 0x12, 3200);
+    alu(
+        &[(0x10, 128), (0x11, 25)],
+        op::mul(0x12, 0x10, 0x11),
+        0x12,
+        3200,
+    );
     alu_overflow(
         &[
             op::move_(0x10, RegId::ZERO),
@@ -363,13 +355,28 @@ fn mldv() {
 
 #[test]
 fn sll() {
-    alu(&[(0x10, 128), (0x11, 2)], op::sll(0x12, 0x10, 0x11), 0x12, 512);
+    alu(
+        &[(0x10, 128), (0x11, 2)],
+        op::sll(0x12, 0x10, 0x11),
+        0x12,
+        512,
+    );
     // test boundary 1<<63 == Word::MAX
-    alu(&[(0x10, 1), (0x11, 63)], op::sll(0x12, 0x10, 0x11), 0x12, 1 << 63);
+    alu(
+        &[(0x10, 1), (0x11, 63)],
+        op::sll(0x12, 0x10, 0x11),
+        0x12,
+        1 << 63,
+    );
     // test overflow 1<<64 == 0
     alu(&[(0x10, 1), (0x11, 64)], op::sll(0x12, 0x10, 0x11), 0x12, 0);
     // test too large shift
-    alu(&[(0x10, 1), (0x11, Word::MAX)], op::sll(0x12, 0x10, 0x11), 0x12, 0);
+    alu(
+        &[(0x10, 1), (0x11, Word::MAX)],
+        op::sll(0x12, 0x10, 0x11),
+        0x12,
+        0,
+    );
 }
 
 #[test]
@@ -383,13 +390,23 @@ fn slli() {
 
 #[test]
 fn srl() {
-    alu(&[(0x10, 128), (0x11, 2)], op::srl(0x12, 0x10, 0x11), 0x12, 32);
+    alu(
+        &[(0x10, 128), (0x11, 2)],
+        op::srl(0x12, 0x10, 0x11),
+        0x12,
+        32,
+    );
     // test boundary 2>>1 == 1
     alu(&[(0x10, 2), (0x11, 1)], op::srl(0x12, 0x10, 0x11), 0x12, 1);
     // test overflow 1>>1 == 0
     alu(&[(0x10, 1), (0x11, 1)], op::srl(0x12, 0x10, 0x11), 0x12, 0);
     // test too large shift
-    alu(&[(0x10, 1), (0x11, Word::MAX)], op::srl(0x12, 0x10, 0x11), 0x12, 0);
+    alu(
+        &[(0x10, 1), (0x11, Word::MAX)],
+        op::srl(0x12, 0x10, 0x11),
+        0x12,
+        0,
+    );
 }
 
 #[test]
@@ -403,7 +420,12 @@ fn srli() {
 
 #[test]
 fn sub() {
-    alu(&[(0x10, 128), (0x11, 25)], op::sub(0x12, 0x10, 0x11), 0x12, 103);
+    alu(
+        &[(0x10, 128), (0x11, 25)],
+        op::sub(0x12, 0x10, 0x11),
+        0x12,
+        103,
+    );
     alu_overflow(
         &[
             op::move_(0x10, RegId::ZERO),
@@ -429,7 +451,12 @@ fn subi() {
 
 #[test]
 fn div() {
-    alu(&[(0x10, 59), (0x11, 10)], op::div(0x12, 0x10, 0x11), 0x12, 5);
+    alu(
+        &[(0x10, 59), (0x11, 10)],
+        op::div(0x12, 0x10, 0x11),
+        0x12,
+        5,
+    );
     alu(&[(0x10, 59)], op::divi(0x12, 0x10, 10), 0x12, 5);
     alu_err(&[], op::div(0x10, RegId::ONE, RegId::ZERO), 0x10, 0x00);
     alu_err(&[], op::divi(0x10, RegId::ONE, 0), 0x10, 0x00);
@@ -437,7 +464,12 @@ fn div() {
 
 #[test]
 fn mod_() {
-    alu(&[(0x10, 59), (0x11, 10)], op::mod_(0x12, 0x10, 0x11), 0x12, 9);
+    alu(
+        &[(0x10, 59), (0x11, 10)],
+        op::mod_(0x12, 0x10, 0x11),
+        0x12,
+        9,
+    );
     alu(&[(0x10, 59)], op::modi(0x12, 0x10, 10), 0x12, 9);
     alu_err(&[], op::mod_(0x10, RegId::ONE, RegId::ZERO), 0x10, 0x00);
     alu_err(&[], op::modi(0x10, RegId::ONE, 0), 0x10, 0x00);
@@ -452,9 +484,18 @@ fn eq() {
 #[test]
 fn exp() {
     // EXP
-    alu(&[(0x10, 6), (0x11, 3)], op::exp(0x12, 0x10, 0x11), 0x12, 216);
+    alu(
+        &[(0x10, 6), (0x11, 3)],
+        op::exp(0x12, 0x10, 0x11),
+        0x12,
+        216,
+    );
     alu_overflow(
-        &[op::movi(0x10, 2), op::movi(0x11, 64), op::exp(0x10, 0x10, 0x11)],
+        &[
+            op::movi(0x10, 2),
+            op::movi(0x11, 64),
+            op::exp(0x10, 0x10, 0x11),
+        ],
         0x10,
         true as u128,
         true,
@@ -466,12 +507,29 @@ fn exp() {
         2u64.pow(32),
         false,
     );
-    alu_wrapping(&[(0x10, 2), (0x11, 64)], op::exp(0x10, 0x10, 0x11), 0x10, 0, true);
+    alu_wrapping(
+        &[(0x10, 2), (0x11, 64)],
+        op::exp(0x10, 0x10, 0x11),
+        0x10,
+        0,
+        true,
+    );
 
     // EXPI
     alu(&[(0x10, 6)], op::expi(0x12, 0x10, 3), 0x12, 216);
-    alu_overflow(&[op::movi(0x10, 2), op::expi(0x10, 0x10, 64)], 0x10, true as u128, true);
-    alu_wrapping(&[(0x10, 2)], op::expi(0x10, 0x10, 32), 0x10, 2u64.pow(32), false);
+    alu_overflow(
+        &[op::movi(0x10, 2), op::expi(0x10, 0x10, 64)],
+        0x10,
+        true as u128,
+        true,
+    );
+    alu_wrapping(
+        &[(0x10, 2)],
+        op::expi(0x10, 0x10, 32),
+        0x10,
+        2u64.pow(32),
+        false,
+    );
     alu_wrapping(&[(0x10, 2)], op::expi(0x10, 0x10, 64), 0x10, 0, true);
 }
 
@@ -479,20 +537,65 @@ fn exp() {
 fn mroo() {
     alu(&[(0x10, 0), (0x11, 1)], op::mroo(0x12, 0x10, 0x11), 0x12, 0);
     alu(&[(0x10, 2), (0x11, 1)], op::mroo(0x12, 0x10, 0x11), 0x12, 2);
-    alu(&[(0x10, 1234), (0x11, 1)], op::mroo(0x12, 0x10, 0x11), 0x12, 1234);
+    alu(
+        &[(0x10, 1234), (0x11, 1)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        1234,
+    );
 
     alu(&[(0x10, 0), (0x11, 2)], op::mroo(0x12, 0x10, 0x11), 0x12, 0);
     alu(&[(0x10, 2), (0x11, 2)], op::mroo(0x12, 0x10, 0x11), 0x12, 1);
-    alu(&[(0x10, 16), (0x11, 2)], op::mroo(0x12, 0x10, 0x11), 0x12, 4);
-    alu(&[(0x10, 17), (0x11, 2)], op::mroo(0x12, 0x10, 0x11), 0x12, 4);
-    alu(&[(0x10, 24), (0x11, 2)], op::mroo(0x12, 0x10, 0x11), 0x12, 4);
-    alu(&[(0x10, 25), (0x11, 2)], op::mroo(0x12, 0x10, 0x11), 0x12, 5);
-    alu(&[(0x10, 26), (0x11, 2)], op::mroo(0x12, 0x10, 0x11), 0x12, 5);
+    alu(
+        &[(0x10, 16), (0x11, 2)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        4,
+    );
+    alu(
+        &[(0x10, 17), (0x11, 2)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        4,
+    );
+    alu(
+        &[(0x10, 24), (0x11, 2)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        4,
+    );
+    alu(
+        &[(0x10, 25), (0x11, 2)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        5,
+    );
+    alu(
+        &[(0x10, 26), (0x11, 2)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        5,
+    );
 
-    alu(&[(0x10, 26), (0x11, 3)], op::mroo(0x12, 0x10, 0x11), 0x12, 2);
-    alu(&[(0x10, 27), (0x11, 3)], op::mroo(0x12, 0x10, 0x11), 0x12, 3);
+    alu(
+        &[(0x10, 26), (0x11, 3)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        2,
+    );
+    alu(
+        &[(0x10, 27), (0x11, 3)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        3,
+    );
 
-    alu(&[(0x10, 2441), (0x11, 12)], op::mroo(0x12, 0x10, 0x11), 0x12, 1);
+    alu(
+        &[(0x10, 2441), (0x11, 12)],
+        op::mroo(0x12, 0x10, 0x11),
+        0x12,
+        1,
+    );
     alu(
         &[(0x10, 4327279578356147249), (0x11, 7)],
         op::mroo(0x12, 0x10, 0x11),
@@ -523,20 +626,60 @@ fn mroo() {
 
 #[test]
 fn mlog() {
-    alu(&[(0x10, 1), (0x11, 10)], op::mlog(0x12, 0x10, 0x11), 0x12, 0);
-    alu(&[(0x10, 10), (0x11, 10)], op::mlog(0x12, 0x10, 0x11), 0x12, 1);
-    alu(&[(0x10, 100), (0x11, 10)], op::mlog(0x12, 0x10, 0x11), 0x12, 2);
-    alu(&[(0x10, 999), (0x11, 10)], op::mlog(0x12, 0x10, 0x11), 0x12, 2);
-    alu(&[(0x10, 1000), (0x11, 10)], op::mlog(0x12, 0x10, 0x11), 0x12, 3);
-    alu(&[(0x10, 1001), (0x11, 10)], op::mlog(0x12, 0x10, 0x11), 0x12, 3);
+    alu(
+        &[(0x10, 1), (0x11, 10)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        0,
+    );
+    alu(
+        &[(0x10, 10), (0x11, 10)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        1,
+    );
+    alu(
+        &[(0x10, 100), (0x11, 10)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        2,
+    );
+    alu(
+        &[(0x10, 999), (0x11, 10)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        2,
+    );
+    alu(
+        &[(0x10, 1000), (0x11, 10)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        3,
+    );
+    alu(
+        &[(0x10, 1001), (0x11, 10)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        3,
+    );
 
     alu(&[(0x10, 1), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 0);
     alu(&[(0x10, 2), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 1);
     alu(&[(0x10, 3), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 1);
     alu(&[(0x10, 4), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 2);
 
-    alu(&[(0x10, 2u64.pow(32)), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 32);
-    alu(&[(0x10, Word::MAX), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 63);
+    alu(
+        &[(0x10, 2u64.pow(32)), (0x11, 2)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        32,
+    );
+    alu(
+        &[(0x10, Word::MAX), (0x11, 2)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        63,
+    );
     alu(
         &[(0x10, 10u64.pow(10)), (0x11, 10)],
         op::mlog(0x12, 0x10, 0x11),
@@ -550,7 +693,12 @@ fn mlog() {
         11,
     );
 
-    alu_err(&[(0x10, 0), (0x11, 10)], op::mlog(0x12, 0x10, 0x11), 0x12, 0);
+    alu_err(
+        &[(0x10, 0), (0x11, 10)],
+        op::mlog(0x12, 0x10, 0x11),
+        0x12,
+        0,
+    );
     alu_err(&[(0x10, 0), (0x11, 2)], op::mlog(0x12, 0x10, 0x11), 0x12, 0);
 }
 
@@ -572,7 +720,12 @@ fn move_and_movi() {
     alu(&[(0x10, Word::MAX)], op::move_(0x12, 0x10), 0x12, Word::MAX);
 
     alu(&[], op::movi(0x12, 0), 0x12, 0);
-    alu(&[], op::movi(0x12, Imm18::MAX.into()), 0x12, Imm18::MAX.into());
+    alu(
+        &[],
+        op::movi(0x12, Imm18::MAX.into()),
+        0x12,
+        Imm18::MAX.into(),
+    );
 }
 
 #[test]
@@ -583,12 +736,27 @@ fn not() {
 
 #[test]
 fn bitwise_and_or_xor() {
-    alu(&[(0x10, 0xcc), (0x11, 0xaa)], op::and(0x12, 0x10, 0x11), 0x12, 0x88);
+    alu(
+        &[(0x10, 0xcc), (0x11, 0xaa)],
+        op::and(0x12, 0x10, 0x11),
+        0x12,
+        0x88,
+    );
     alu(&[(0x10, 0xcc)], op::andi(0x12, 0x10, 0xaa), 0x12, 0x88);
 
-    alu(&[(0x10, 0x11), (0x11, 0x22)], op::or(0x12, 0x10, 0x11), 0x12, 0x33);
+    alu(
+        &[(0x10, 0x11), (0x11, 0x22)],
+        op::or(0x12, 0x10, 0x11),
+        0x12,
+        0x33,
+    );
     alu(&[(0x10, 0x11)], op::ori(0x12, 0x10, 0x22), 0x12, 0x33);
 
-    alu(&[(0x10, 0x33), (0x11, 0x22)], op::xor(0x12, 0x10, 0x11), 0x12, 0x11);
+    alu(
+        &[(0x10, 0x33), (0x11, 0x22)],
+        op::xor(0x12, 0x10, 0x11),
+        0x12,
+        0x11,
+    );
     alu(&[(0x10, 0x33)], op::xori(0x12, 0x10, 0x22), 0x12, 0x11);
 }

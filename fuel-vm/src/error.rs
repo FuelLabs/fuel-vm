@@ -1,12 +1,19 @@
 //! Runtime interpreter error implementation
 
-use fuel_asm::{InstructionResult, PanicReason, RawInstruction};
+use fuel_asm::{
+    PanicInstruction,
+    PanicReason,
+    RawInstruction,
+};
 use fuel_tx::CheckError;
 use thiserror::Error;
 
-use std::convert::Infallible as StdInfallible;
-use std::error::Error as StdError;
-use std::{fmt, io};
+use std::{
+    convert::Infallible as StdInfallible,
+    error::Error as StdError,
+    fmt,
+    io,
+};
 
 /// Interpreter runtime error variants.
 #[derive(Debug, Error)]
@@ -14,7 +21,7 @@ pub enum InterpreterError {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
     #[error("Execution error: {0:?}")]
-    PanicInstruction(InstructionResult),
+    PanicInstruction(PanicInstruction),
     /// The VM execution resulted in a well-formed panic. This panic wasn't
     /// caused by an instruction contained in the transaction or a called
     /// contract.
@@ -34,7 +41,6 @@ pub enum InterpreterError {
     #[error("Unrecoverable error: {0}")]
     Io(#[from] io::Error),
 
-    #[cfg(feature = "debug")]
     #[error("Execution error")]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
@@ -44,7 +50,9 @@ impl InterpreterError {
     /// Describe the error as recoverable or halt.
     pub fn from_runtime(error: RuntimeError, instruction: RawInstruction) -> Self {
         match error {
-            RuntimeError::Recoverable(reason) => Self::PanicInstruction(InstructionResult::error(reason, instruction)),
+            RuntimeError::Recoverable(reason) => {
+                Self::PanicInstruction(PanicInstruction::error(reason, instruction))
+            }
             _ => Self::from(error),
         }
     }
@@ -68,7 +76,7 @@ impl InterpreterError {
 
     /// Return the underlying `InstructionResult` if this instance is
     /// `PanicInstruction`; returns `None` otherwise.
-    pub fn instruction_result(&self) -> Option<InstructionResult> {
+    pub fn instruction_result(&self) -> Option<PanicInstruction> {
         match self {
             Self::PanicInstruction(r) => Some(*r),
             _ => None,
@@ -109,7 +117,6 @@ impl PartialEq for InterpreterError {
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
             (Self::Io(s), Self::Io(o)) => s.kind() == o.kind(),
 
-            #[cfg(feature = "debug")]
             (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
 
             _ => false,
@@ -225,8 +232,11 @@ impl From<core::array::TryFromSliceError> for RuntimeError {
 /// Predicates checking failed
 #[derive(Debug, Error)]
 pub enum PredicateVerificationFailed {
+    /// The predicate did not use the amount of gas provided
+    #[error("Predicate used less than the required amount of gas")]
+    GasMismatch,
     /// The transaction doesn't contain enough gas to evaluate the predicate
-    #[error("Insufficient gas available for predicates")]
+    #[error("Insufficient gas available for single predicate")]
     OutOfGas,
     /// The predicate owner does not correspond to the predicate code
     #[error("Predicate owner invalid, doesn't match code root")]
@@ -234,6 +244,15 @@ pub enum PredicateVerificationFailed {
     /// The predicate wasn't successfully evaluated to true
     #[error("Predicate failed to evaluate")]
     False,
+    /// The predicate gas used was not specified before execution
+    #[error("Predicate failed to evaluate")]
+    GasNotSpecified,
+    /// The transaction doesn't contain enough gas to evaluate all predicates
+    #[error("Insufficient gas available for all predicates")]
+    CumulativePredicateGasExceededTxGasLimit,
+    /// The cumulative gas overflowed the u64 accumulator
+    #[error("Cumulative gas computation overflowed the u64 accumulator")]
+    GasOverflow,
     /// An unexpected error occurred.
     #[error(transparent)]
     Io(#[from] io::Error),
@@ -251,7 +270,9 @@ impl From<PredicateVerificationFailed> for CheckError {
 impl From<InterpreterError> for PredicateVerificationFailed {
     fn from(error: InterpreterError) -> Self {
         match error {
-            error if error.panic_reason() == Some(PanicReason::OutOfGas) => PredicateVerificationFailed::OutOfGas,
+            error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
+                PredicateVerificationFailed::OutOfGas
+            }
             InterpreterError::Io(e) => PredicateVerificationFailed::Io(e),
             _ => PredicateVerificationFailed::False,
         }
@@ -263,15 +284,17 @@ impl From<InterpreterError> for PredicateVerificationFailed {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "strum", derive(strum::EnumVariantNames))]
 pub enum BugId {
+    // Not used
     ID001,
     ID002,
     ID003,
     ID004,
+    // Not used
     ID005,
+    // Not used
     ID006,
     ID007,
     ID008,
-    ID009,
 }
 
 /// Traceable bug variants
@@ -291,9 +314,6 @@ pub enum BugVariant {
 
     /// The global gas is less than the context gas.
     GlobalGasLessThanContext,
-
-    /// Constraint larger then memory bounds
-    InvalidMemoryConstraint,
 }
 
 impl fmt::Display for BugVariant {
@@ -332,13 +352,6 @@ impl fmt::Display for BugVariant {
                 r#"The global gas cannot ever be less than the context gas. 
 
                 This means the registers are corrupted."#
-            ),
-
-            Self::InvalidMemoryConstraint => write!(
-                f,
-                r#"The memory constraint cannot exceed the memory size.
-
-                This is a bug in the vm."#
             ),
         }
     }

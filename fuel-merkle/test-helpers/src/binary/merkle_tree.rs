@@ -1,4 +1,11 @@
-use crate::binary::{empty_sum, leaf_sum, node_sum, Data, Node};
+use crate::binary::{
+    empty_sum,
+    leaf_sum,
+    node_sum,
+    Data,
+    Node,
+};
+use std::collections::VecDeque;
 
 type DataNode = Node<Data>;
 type ProofSet = Vec<Data>;
@@ -58,17 +65,21 @@ impl MerkleTree {
         let proof_set_length = self.proof_set.len() as u32;
 
         if self.head().is_none() || proof_set_length == 0 {
-            return (self.root(), self.proof_set);
+            return (self.root(), self.proof_set)
         }
 
         let mut current = self.head().clone().unwrap();
-        while current.next().is_some() && current.next_height().unwrap() < proof_set_length - 1 {
+        while current.next().is_some()
+            && current.next_height().unwrap() < proof_set_length - 1
+        {
             let mut node = current;
             let mut next_node = node.take_next().unwrap();
             current = Self::join_subtrees(&mut next_node, &node)
         }
 
-        if current.next().is_some() && current.next_height().unwrap() == proof_set_length - 1 {
+        if current.next().is_some()
+            && current.next_height().unwrap() == proof_set_length - 1
+        {
             self.proof_set.push(*current.data());
             current = current.take_next().unwrap();
         }
@@ -78,10 +89,16 @@ impl MerkleTree {
             current = current.take_next().unwrap();
         }
 
-        (self.root(), self.proof_set)
+        let root = self.root();
+
+        // The proof set starts with the hashed leaf data; remove the leaf data
+        // in order to conform with the proof set specification.
+        let mut proof_set = VecDeque::from(self.proof_set);
+        proof_set.pop_front();
+
+        (root, proof_set.into())
     }
 
-    //
     // PRIVATE
     //
 
@@ -93,7 +110,7 @@ impl MerkleTree {
         loop {
             let head = self.head.as_ref().unwrap();
             if !(head.next().is_some() && head.height() == head.next_height().unwrap()) {
-                break;
+                break
             }
 
             let proof_set_length = self.proof_set.len() as u32;
@@ -123,7 +140,11 @@ impl MerkleTree {
         Self::create_node(next, height, data)
     }
 
-    fn create_node(next: Option<Box<DataNode>>, height: u32, data: Data) -> Box<DataNode> {
+    fn create_node(
+        next: Option<Box<DataNode>>,
+        height: u32,
+        data: Data,
+    ) -> Box<DataNode> {
         Box::new(DataNode::new(next, height, data))
     }
 }
@@ -131,8 +152,14 @@ impl MerkleTree {
 #[cfg(test)]
 mod test {
     use super::MerkleTree;
-    use crate::binary::{empty_sum, leaf_sum, node_sum};
-    use crate::TEST_DATA;
+    use crate::{
+        binary::{
+            empty_sum,
+            leaf_sum,
+            node_sum,
+        },
+        TEST_DATA,
+    };
 
     #[test]
     fn root_returns_the_hash_of_the_empty_string_when_no_leaves_are_pushed() {
@@ -280,9 +307,7 @@ mod test {
             mt.push(datum);
         }
 
-        let proof = mt.prove();
-        let root = proof.0;
-        let set = proof.1;
+        let (root, proof_set) = mt.prove();
 
         //       N3
         //      /  \
@@ -301,12 +326,13 @@ mod test {
         let node_3 = node_sum(&node_1, &node_2);
 
         assert_eq!(root, node_3);
-        assert_eq!(set[0], leaf_1);
-        assert_eq!(set[1], leaf_2);
+        assert_eq!(proof_set[0], leaf_2);
+        assert_eq!(proof_set[1], node_2);
     }
 
     #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_left_of_the_root() {
+    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_left_of_the_root(
+    ) {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
@@ -315,9 +341,7 @@ mod test {
             mt.push(datum);
         }
 
-        let proof = mt.prove();
-        let root = proof.0;
-        let set = proof.1;
+        let (root, proof_set) = mt.prove();
 
         //          N4
         //         /  \
@@ -340,14 +364,14 @@ mod test {
         let node_4 = node_sum(&node_3, &leaf_5);
 
         assert_eq!(root, node_4);
-        assert_eq!(set[0], leaf_3);
-        assert_eq!(set[1], leaf_4);
-        assert_eq!(set[2], node_1);
-        assert_eq!(set[3], leaf_5);
+        assert_eq!(proof_set[0], leaf_4);
+        assert_eq!(proof_set[1], node_1);
+        assert_eq!(proof_set[2], leaf_5);
     }
 
     #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_right_of_the_root() {
+    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_right_of_the_root(
+    ) {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(4);
 
@@ -356,9 +380,7 @@ mod test {
             mt.push(datum);
         }
 
-        let proof = mt.prove();
-        let root = proof.0;
-        let set = proof.1;
+        let (root, proof_set) = mt.prove();
 
         //          N4
         //         /  \
@@ -381,17 +403,13 @@ mod test {
         let node_4 = node_sum(&node_3, &leaf_5);
 
         assert_eq!(root, node_4);
-        assert_eq!(set[0], leaf_5);
-        assert_eq!(set[1], node_3);
+        assert_eq!(proof_set[0], node_3);
     }
 
     #[test]
     fn prove_returns_the_root_of_the_empty_merkle_tree_when_no_leaves_are_added() {
         let mt = MerkleTree::new();
-
-        let proof = mt.prove();
-        let root = proof.0;
-
+        let (root, _proof_set) = mt.prove();
         let expected_root = empty_sum();
         assert_eq!(&root, expected_root);
     }
@@ -399,10 +417,7 @@ mod test {
     #[test]
     fn prove_returns_an_empty_proof_set_when_no_leaves_are_added() {
         let mt = MerkleTree::new();
-
-        let proof = mt.prove();
-        let set = proof.1;
-
-        assert_eq!(set.len(), 0);
+        let (_root, proof_set) = mt.prove();
+        assert!(proof_set.is_empty());
     }
 }

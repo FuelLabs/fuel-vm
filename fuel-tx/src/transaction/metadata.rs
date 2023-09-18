@@ -1,9 +1,15 @@
 use alloc::vec::Vec;
-use fuel_types::Bytes32;
+use fuel_types::{
+    Bytes32,
+    ChainId,
+};
 
-use crate::ConsensusParameters;
+use crate::CheckError;
 #[cfg(feature = "std")]
-use crate::{field, UniqueIdentifier};
+use crate::{
+    field,
+    UniqueIdentifier,
+};
 
 /// Entity support metadata computation to cache results.
 pub trait Cacheable {
@@ -13,7 +19,7 @@ pub trait Cacheable {
     fn is_computed(&self) -> bool;
 
     /// Computes the cache for the entity.
-    fn precompute(&mut self, parameters: &ConsensusParameters);
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError>;
 }
 
 #[cfg(feature = "std")]
@@ -26,11 +32,11 @@ impl Cacheable for super::Transaction {
         }
     }
 
-    fn precompute(&mut self, parameters: &ConsensusParameters) {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
         match self {
-            Self::Script(script) => script.precompute(parameters),
-            Self::Create(create) => create.precompute(parameters),
-            Self::Mint(mint) => mint.precompute(parameters),
+            Self::Script(script) => script.precompute(chain_id),
+            Self::Create(create) => create.precompute(chain_id),
+            Self::Mint(mint) => mint.precompute(chain_id),
         }
     }
 }
@@ -51,18 +57,17 @@ pub(crate) struct CommonMetadata {
 #[cfg(feature = "std")]
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
-    pub fn compute<Tx>(tx: &Tx, params: &ConsensusParameters) -> Self
+    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,
         Tx: field::Outputs,
         Tx: field::Witnesses,
-        Tx: fuel_types::bytes::SizedBytes,
     {
-        use fuel_types::bytes::SizedBytes;
+        use fuel_types::canonical::SerializedSize;
         use itertools::Itertools;
 
-        let id = tx.id(params);
+        let id = tx.id(chain_id);
 
         let inputs_predicate_offset_at = tx
             .inputs()
@@ -78,7 +83,7 @@ impl CommonMetadata {
             .iter()
             .map(|input| {
                 let i = offset;
-                offset += input.serialized_size();
+                offset += input.size();
                 i
             })
             .collect_vec();
@@ -92,7 +97,7 @@ impl CommonMetadata {
             .iter()
             .map(|output| {
                 let i = offset;
-                offset += output.serialized_size();
+                offset += output.size();
                 i
             })
             .collect_vec();
@@ -106,7 +111,7 @@ impl CommonMetadata {
             .iter()
             .map(|witness| {
                 let i = offset;
-                offset += witness.serialized_size();
+                offset += witness.size();
                 i
             })
             .collect_vec();

@@ -1,10 +1,27 @@
 use crate::{
-    binary::{empty_sum, in_memory::NodesTable, Node, Primitive},
-    common::{Bytes32, Position, ProofSet, StorageMap, Subtree},
-    storage::{Mappable, StorageInspect, StorageInspectInfallible, StorageMutate, StorageMutateInfallible},
+    binary::{
+        empty_sum,
+        in_memory::NodesTable,
+        Node,
+        Primitive,
+    },
+    common::{
+        Bytes32,
+        Position,
+        ProofSet,
+        StorageMap,
+        Subtree,
+    },
+    storage::{
+        Mappable,
+        StorageInspect,
+        StorageInspectInfallible,
+        StorageMutate,
+        StorageMutateInfallible,
+    },
 };
 
-use alloc::{boxed::Box, vec::Vec};
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone)]
@@ -32,7 +49,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 #[derive(Debug, Clone)]
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
-    head: Option<Box<Subtree<Node>>>,
+    head: Option<Subtree<Node>>,
     leaves_count: u64,
     phantom_table: PhantomData<TableType>,
 }
@@ -51,11 +68,14 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         }
     }
 
+    fn head(&self) -> Option<&Subtree<Node>> {
+        self.head.as_ref()
+    }
+
     pub fn leaves_count(&self) -> u64 {
         self.leaves_count
     }
 
-    //
     // PRIVATE
     //
 
@@ -75,9 +95,9 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     /// call, this temporary storage space will contain all intermediate nodes
     /// not held in persistent storage, and these nodes will be available to the
     /// callee.
-    ///
     fn root_node(&self, scratch_storage: &mut StorageMap<NodesTable>) -> Option<Node> {
-        self.head.as_ref().map(|head| build_root_node(head, scratch_storage))
+        self.head()
+            .map(|head| build_root_node(head, scratch_storage))
     }
 
     fn peak_positions(&self) -> Vec<Position> {
@@ -124,7 +144,10 @@ where
         }
     }
 
-    pub fn load(storage: StorageType, leaves_count: u64) -> Result<Self, MerkleTreeError<StorageError>> {
+    pub fn load(
+        storage: StorageType,
+        leaves_count: u64,
+    ) -> Result<Self, MerkleTreeError<StorageError>> {
         let mut tree = Self {
             storage,
             head: None,
@@ -137,32 +160,31 @@ where
         Ok(tree)
     }
 
-    pub fn prove(&self, proof_index: u64) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
+    pub fn prove(
+        &self,
+        proof_index: u64,
+    ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
         if proof_index + 1 > self.leaves_count {
-            return Err(MerkleTreeError::InvalidProofIndex(proof_index));
+            return Err(MerkleTreeError::InvalidProofIndex(proof_index))
         }
 
         let mut proof_set = ProofSet::new();
 
         let root_position = self.root_position();
         let leaf_position = Position::from_leaf_index(proof_index);
-        let primitive = self
-            .storage
-            .get(&leaf_position.in_order_index())?
-            .ok_or(MerkleTreeError::LoadError(proof_index))?
-            .into_owned();
-        let leaf_node = Node::from(primitive);
-        proof_set.push(*leaf_node.hash());
-
-        let (_, mut side_positions): (Vec<_>, Vec<_>) =
-            root_position.path(&leaf_position, self.leaves_count).iter().unzip();
+        let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
+            .path(&leaf_position, self.leaves_count)
+            .iter()
+            .unzip();
         side_positions.reverse(); // Reorder side positions from leaf to root.
         side_positions.pop(); // The last side position is the root; remove it.
 
         // Allocate scratch storage to store temporary nodes when building the
         // root.
         let mut scratch_storage = StorageMap::<NodesTable>::new();
-        let root_node = self.root_node(&mut scratch_storage).expect("Root node must be present");
+        let root_node = self
+            .root_node(&mut scratch_storage)
+            .expect("Root node must be present");
 
         // Get side nodes. First, we check the scratch storage. If the side node
         // is not found in scratch storage, we then check main storage. Finally,
@@ -187,7 +209,6 @@ where
         self.head = None;
     }
 
-    //
     // PRIVATE
     //
 
@@ -270,7 +291,6 @@ where
     ///
     /// By excluding the root position `07`, we have established the set of
     /// side positions `03`, `09`, and `12`, matching our set of MMR peaks.
-    ///
     fn build(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
         let mut current_head = None;
         let peaks = &self.peak_positions();
@@ -282,7 +302,7 @@ where
                 .ok_or(MerkleTreeError::LoadError(key))?
                 .into_owned()
                 .into();
-            let next = Box::new(Subtree::<Node>::new(node, current_head));
+            let next = Subtree::new(node, current_head);
             current_head = Some(next);
         }
 
@@ -301,7 +321,7 @@ where
         let node = Node::create_leaf(self.leaves_count, data);
         self.storage.insert(&node.key(), &node.as_ref().into())?;
         let next = self.head.take();
-        let head = Box::new(Subtree::<Node>::new(node, next));
+        let head = Subtree::new(node, next);
         self.head = Some(head);
         self.join_all_subtrees()?;
 
@@ -310,29 +330,32 @@ where
         Ok(())
     }
 
-    //
     // PRIVATE
     //
 
     fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
-        loop {
-            let current = self.head.as_ref().unwrap();
-            if !(current.next().is_some()
-                && current.node().position().height() == current.next_node().unwrap().position().height())
+        while {
+            // Iterate through all subtrees in the tree to see which subtrees
+            // can be merged. Two consecutive subtrees will be merged if, and
+            // only if, their heads are the same height.
+            if let Some((head, next)) = self
+                .head()
+                .and_then(|head| head.next().map(|next| (head, next)))
             {
-                break;
+                head.node().height() == next.node().height()
+            } else {
+                // This head belongs to the last subtree and merging is
+                // complete.
+                false
             }
-
+        } {
             // Merge the two front heads of the list into a single head
-            let joined_head = {
-                let mut head = self.head.take().unwrap();
-                let mut head_next = head.take_next().unwrap();
-                let joined_head = join_subtrees(&mut head_next, &mut head);
-                self.storage
-                    .insert(&joined_head.node().key(), &joined_head.node().as_ref().into())?;
-                joined_head
-            };
-            self.head = Some(Box::new(joined_head));
+            let mut head = self.head.take().expect("Expected head to be present");
+            let mut head_next = head.take_next().expect("Expected next to be present");
+            let joined_head = join_subtrees(&mut head_next, &mut head);
+            self.storage
+                .insert(&joined_head.node().key(), &joined_head.node().into())?;
+            self.head = Some(joined_head);
         }
 
         Ok(())
@@ -349,25 +372,35 @@ where
     Table: Mappable<Key = u64, OwnedValue = Primitive, Value = Primitive>,
     Storage: StorageMutateInfallible<Table>,
 {
-    let mut current = subtree.clone();
-    while current.next().is_some() {
-        let mut head = current;
-        let mut head_next = head.take_next().unwrap();
-        current = join_subtrees(&mut head_next, &mut head);
-        storage.insert(&current.node().key(), &current.node().as_ref().into());
+    let mut head = subtree.clone();
+    while let Some(mut head_next) = head.take_next() {
+        head = join_subtrees(&mut head_next, &mut head);
+        storage.insert(&head.node().key(), &head.node().into());
     }
-    current.node().clone()
+    head.node().clone()
 }
 
 #[cfg(test)]
 mod test {
-    use super::{MerkleTree, MerkleTreeError};
+    use super::{
+        MerkleTree,
+        MerkleTreeError,
+    };
     use crate::{
-        binary::{empty_sum, leaf_sum, node_sum, Node, Primitive},
+        binary::{
+            empty_sum,
+            leaf_sum,
+            node_sum,
+            Node,
+            Primitive,
+        },
         common::StorageMap,
     };
     use fuel_merkle_test_helpers::TEST_DATA;
-    use fuel_storage::{Mappable, StorageInspect};
+    use fuel_storage::{
+        Mappable,
+        StorageInspect,
+    };
 
     use alloc::vec::Vec;
 
@@ -377,8 +410,8 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = u64;
-        type Value = Self::OwnedValue;
         type OwnedValue = Primitive;
+        type Value = Self::OwnedValue;
     }
 
     #[test]
@@ -451,7 +484,9 @@ mod test {
 
         let expected_root = {
             let mut tree = MerkleTree::new(&mut storage_map);
-            let data = (0u64..LEAVES_COUNT).map(|i| i.to_be_bytes()).collect::<Vec<_>>();
+            let data = (0u64..LEAVES_COUNT)
+                .map(|i| i.to_be_bytes())
+                .collect::<Vec<_>>();
             for datum in data.iter() {
                 let _ = tree.push(datum);
             }
@@ -488,13 +523,15 @@ mod test {
         let mut storage_map = StorageMap::<TestTable>::new();
 
         let mut tree = MerkleTree::new(&mut storage_map);
-        let data = (0u64..LEAVES_COUNT).map(|i| i.to_be_bytes()).collect::<Vec<_>>();
+        let data = (0u64..LEAVES_COUNT)
+            .map(|i| i.to_be_bytes())
+            .collect::<Vec<_>>();
         for datum in data.iter() {
             let _ = tree.push(datum);
         }
 
-        let err =
-            MerkleTree::load(&mut storage_map, LEAVES_COUNT * 2).expect_err("Expected load() to return Error; got Ok");
+        let err = MerkleTree::load(&mut storage_map, LEAVES_COUNT * 2)
+            .expect_err("Expected load() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::LoadError(_)));
     }
 
@@ -572,12 +609,15 @@ mod test {
         let mut storage_map = StorageMap::<TestTable>::new();
         let tree = MerkleTree::new(&mut storage_map);
 
-        let err = tree.prove(0).expect_err("Expected prove() to return Error; got Ok");
+        let err = tree
+            .prove(0)
+            .expect_err("Expected prove() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::InvalidProofIndex(0)));
     }
 
     #[test]
-    fn prove_returns_invalid_proof_index_error_when_index_is_greater_than_number_of_leaves() {
+    fn prove_returns_invalid_proof_index_error_when_index_is_greater_than_number_of_leaves(
+    ) {
         let mut storage_map = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 
@@ -586,7 +626,9 @@ mod test {
             let _ = tree.push(datum);
         }
 
-        let err = tree.prove(10).expect_err("Expected prove() to return Error; got Ok");
+        let err = tree
+            .prove(10)
+            .expect_err("Expected prove() to return Error; got Ok");
         assert!(matches!(err, MerkleTreeError::InvalidProofIndex(10)))
     }
 
@@ -603,12 +645,9 @@ mod test {
         let leaf_0 = leaf_sum(data[0]);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, leaf_0);
-            assert_eq!(set[0], leaf_0);
+            assert!(proof_set.is_empty());
         }
     }
 
@@ -640,44 +679,28 @@ mod test {
         let node_3 = node_sum(&node_1, &node_5);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_0);
-            assert_eq!(set[1], leaf_1);
-            assert_eq!(set[2], node_5);
+            assert_eq!(proof_set[0], leaf_1);
+            assert_eq!(proof_set[1], node_5);
         }
         {
-            let proof = tree.prove(1).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(1).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_1);
-            assert_eq!(set[1], leaf_0);
-            assert_eq!(set[2], node_5);
+            assert_eq!(proof_set[0], leaf_0);
+            assert_eq!(proof_set[1], node_5);
         }
         {
-            let proof = tree.prove(2).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(2).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_2);
-            assert_eq!(set[1], leaf_3);
-            assert_eq!(set[2], node_1);
+            assert_eq!(proof_set[0], leaf_3);
+            assert_eq!(proof_set[1], node_1);
         }
         {
-            let proof = tree.prove(3).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(3).unwrap();
             assert_eq!(root, node_3);
-            assert_eq!(set[0], leaf_3);
-            assert_eq!(set[1], leaf_2);
-            assert_eq!(set[2], node_1);
+            assert_eq!(proof_set[0], leaf_2);
+            assert_eq!(proof_set[1], node_1);
         }
     }
 
@@ -714,57 +737,37 @@ mod test {
         let node_7 = node_sum(&node_3, &leaf_4);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_0);
-            assert_eq!(set[1], leaf_1);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_1);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(1).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(1).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_1);
-            assert_eq!(set[1], leaf_0);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_0);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(2).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(2).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_2);
-            assert_eq!(set[1], leaf_3);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_3);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(3).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(3).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_3);
-            assert_eq!(set[1], leaf_2);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], leaf_4);
+            assert_eq!(proof_set[0], leaf_2);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], leaf_4);
         }
         {
-            let proof = tree.prove(4).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(4).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_4);
-            assert_eq!(set[1], node_3);
+            assert_eq!(proof_set[0], node_3);
         }
     }
 
@@ -809,80 +812,52 @@ mod test {
         let node_7 = node_sum(&node_3, &node_11);
 
         {
-            let proof = tree.prove(0).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(0).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_0);
-            assert_eq!(set[1], leaf_1);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_1);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(1).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(1).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_1);
-            assert_eq!(set[1], leaf_0);
-            assert_eq!(set[2], node_5);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_0);
+            assert_eq!(proof_set[1], node_5);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(2).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(2).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_2);
-            assert_eq!(set[1], leaf_3);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_3);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(3).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(3).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_3);
-            assert_eq!(set[1], leaf_2);
-            assert_eq!(set[2], node_1);
-            assert_eq!(set[3], node_11);
+            assert_eq!(proof_set[0], leaf_2);
+            assert_eq!(proof_set[1], node_1);
+            assert_eq!(proof_set[2], node_11);
         }
         {
-            let proof = tree.prove(4).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(4).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_4);
-            assert_eq!(set[1], leaf_5);
-            assert_eq!(set[2], leaf_6);
-            assert_eq!(set[3], node_3);
+            assert_eq!(proof_set[0], leaf_5);
+            assert_eq!(proof_set[1], leaf_6);
+            assert_eq!(proof_set[2], node_3);
         }
         {
-            let proof = tree.prove(5).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(5).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_5);
-            assert_eq!(set[1], leaf_4);
-            assert_eq!(set[2], leaf_6);
-            assert_eq!(set[3], node_3);
+            assert_eq!(proof_set[0], leaf_4);
+            assert_eq!(proof_set[1], leaf_6);
+            assert_eq!(proof_set[2], node_3);
         }
         {
-            let proof = tree.prove(6).unwrap();
-            let root = proof.0;
-            let set = proof.1;
-
+            let (root, proof_set) = tree.prove(6).unwrap();
             assert_eq!(root, node_7);
-            assert_eq!(set[0], leaf_6);
-            assert_eq!(set[1], node_9);
-            assert_eq!(set[2], node_3);
+            assert_eq!(proof_set[0], node_9);
+            assert_eq!(proof_set[1], node_3);
         }
     }
 

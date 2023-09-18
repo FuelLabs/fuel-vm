@@ -9,8 +9,13 @@ use fuel_types::BlockHeight;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Runtime context description.
 pub enum Context {
+    /// Current context is a predicate estimation.
+    PredicateEstimation {
+        /// Predicate program to be executed
+        program: RuntimePredicate,
+    },
     /// Current context is a predicate verification.
-    Predicate {
+    PredicateVerification {
         /// Predicate program to be executed
         program: RuntimePredicate,
     },
@@ -37,12 +42,20 @@ impl Default for Context {
 impl Context {
     /// Check if the context is predicate
     pub const fn is_predicate(&self) -> bool {
-        matches!(self, Self::Predicate { .. })
+        matches!(
+            self,
+            Self::PredicateEstimation { .. } | Self::PredicateVerification { .. }
+        )
     }
 
     /// Return `true` if the context is external; `false` otherwise.
     pub const fn is_external(&self) -> bool {
-        matches!(self, Self::Predicate { .. } | Self::Script { .. })
+        matches!(
+            self,
+            Self::PredicateEstimation { .. }
+                | Self::PredicateVerification { .. }
+                | Self::Script { .. }
+        )
     }
 
     /// Return `true` if the context is internal; `false` otherwise.
@@ -53,7 +66,8 @@ impl Context {
     /// Return the program to be executed, if its a predicate
     pub const fn predicate(&self) -> Option<&RuntimePredicate> {
         match self {
-            Context::Predicate { program } => Some(program),
+            Context::PredicateEstimation { program } => Some(program),
+            Context::PredicateVerification { program } => Some(program),
             _ => None,
         }
     }
@@ -61,7 +75,9 @@ impl Context {
     /// Return the block height from the context, if either script or call
     pub const fn block_height(&self) -> Option<BlockHeight> {
         match self {
-            Context::Script { block_height } | Context::Call { block_height } => Some(*block_height),
+            Context::Script { block_height } | Context::Call { block_height } => {
+                Some(*block_height)
+            }
             _ => None,
         }
     }

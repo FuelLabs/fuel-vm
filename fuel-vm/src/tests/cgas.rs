@@ -1,9 +1,17 @@
-use fuel_asm::op;
-use fuel_asm::RegId;
-use fuel_vm::prelude::*;
-use fuel_vm::script_with_data_offset;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
+use crate::{
+    prelude::*,
+    script_with_data_offset,
+};
+use fuel_asm::{
+    op,
+    RegId,
+};
+use fuel_types::canonical::SerializedSize;
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 
 #[test]
 fn cgas_overflow_bug() {
@@ -61,7 +69,7 @@ fn cgas_overflow_bug() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -82,6 +90,7 @@ fn cgas_overflow_bug() {
         .gas_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
+        .fee_input()
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
         .execute();
@@ -90,7 +99,10 @@ fn cgas_overflow_bug() {
     assert!(!transfer_tx.should_revert());
 
     for receipt in transfer_tx.receipts() {
-        if let Receipt::Log { ra: cgas, rb: ggas, .. } = receipt {
+        if let Receipt::Log {
+            ra: cgas, rb: ggas, ..
+        } = receipt
+        {
             assert!(cgas <= ggas, "CGAS exceeded GGAS");
         }
     }
@@ -167,7 +179,7 @@ fn cgas_uses_min_available_gas() {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ],
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
     let script_data: Vec<u8> = [
         asset_id.as_ref(),
@@ -188,6 +200,7 @@ fn cgas_uses_min_available_gas() {
         .gas_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
+        .fee_input()
         .contract_output(&sender_contract_id)
         .contract_output(&dest_contract_id)
         .execute();

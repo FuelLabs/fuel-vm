@@ -1,22 +1,48 @@
 //! [`Interpreter`] implementation
 
-use crate::call::CallFrame;
-use crate::constraints::reg_key::*;
-use crate::consts::*;
-use crate::context::Context;
-use crate::gas::GasCosts;
-use crate::state::Debugger;
-use std::io::Read;
-use std::ops::Index;
-use std::{io, mem};
-
-use fuel_asm::{Flags, PanicReason};
-use fuel_tx::{
-    field, Chargeable, CheckError, ConsensusParameters, Create, Executable, Output, Receipt, Script, Transaction,
-    TransactionFee, TransactionRepr, UniqueIdentifier,
+use crate::{
+    call::CallFrame,
+    checked_transaction::CheckPredicateParams,
+    constraints::reg_key::*,
+    consts::*,
+    context::Context,
+    state::Debugger,
 };
-use fuel_types::bytes::{SerializableVec, SizedBytes};
-use fuel_types::{AssetId, ContractId, Word};
+use std::{
+    mem,
+    ops::Index,
+};
+
+use fuel_asm::{
+    Flags,
+    PanicReason,
+};
+use fuel_tx::{
+    field,
+    Chargeable,
+    CheckError,
+    ConsensusParameters,
+    ContractParameters,
+    Create,
+    Executable,
+    FeeParameters,
+    GasCosts,
+    Output,
+    PredicateParameters,
+    Receipt,
+    Script,
+    Transaction,
+    TransactionFee,
+    TransactionRepr,
+    TxParameters,
+    UniqueIdentifier,
+};
+use fuel_types::{
+    AssetId,
+    ChainId,
+    ContractId,
+    Word,
+};
 
 mod alu;
 mod balances;
@@ -36,7 +62,6 @@ mod metadata;
 mod post_execution;
 mod receipts;
 
-#[cfg(feature = "debug")]
 mod debug;
 
 use crate::profiler::Profiler;
@@ -48,11 +73,18 @@ pub use balances::RuntimeBalances;
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
-    CreateCheckedMetadata, IntoChecked, NonRetryableFreeBalances, RetryableAmount, ScriptCheckedMetadata,
+    CreateCheckedMetadata,
+    EstimatePredicates,
+    IntoChecked,
+    NonRetryableFreeBalances,
+    RetryableAmount,
+    ScriptCheckedMetadata,
 };
 
-use self::memory::Memory;
-use self::receipts::ReceiptsCtx;
+use self::{
+    memory::Memory,
+    receipts::ReceiptsCtx,
+};
 
 /// VM interpreter.
 ///
@@ -74,12 +106,83 @@ pub struct Interpreter<S, Tx = ()> {
     debugger: Debugger,
     context: Context,
     balances: RuntimeBalances,
-    gas_costs: GasCosts,
     profiler: Profiler,
-    params: ConsensusParameters,
-    /// `PanicContext` after the latest execution. It is consumed by `append_panic_receipt`
-    /// and is `PanicContext::None` after consumption.
+    interpreter_params: InterpreterParams,
+    /// `PanicContext` after the latest execution. It is consumed by
+    /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
+}
+
+/// Interpreter parameters
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InterpreterParams {
+    /// Gas costs
+    pub gas_costs: GasCosts,
+    /// Maximum number of inputs
+    pub max_inputs: u64,
+    /// Maximum size of the contract in bytes
+    pub contract_max_size: u64,
+    /// Offset of the transaction data in the memory
+    pub tx_offset: usize,
+    /// Maximum length of the message data
+    pub max_message_data_length: u64,
+    /// Chain ID
+    pub chain_id: ChainId,
+    /// Fee parameters
+    pub fee_params: FeeParameters,
+    /// Base Asset ID
+    pub base_asset_id: AssetId,
+}
+
+impl Default for InterpreterParams {
+    fn default() -> Self {
+        Self {
+            gas_costs: Default::default(),
+            max_inputs: TxParameters::DEFAULT.max_inputs,
+            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+            tx_offset: TxParameters::DEFAULT.tx_offset(),
+            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+            chain_id: ChainId::default(),
+            fee_params: FeeParameters::default(),
+            base_asset_id: Default::default(),
+        }
+    }
+}
+
+impl From<ConsensusParameters> for InterpreterParams {
+    fn from(value: ConsensusParameters) -> Self {
+        InterpreterParams::from(&value)
+    }
+}
+
+impl From<&ConsensusParameters> for InterpreterParams {
+    fn from(value: &ConsensusParameters) -> Self {
+        InterpreterParams {
+            gas_costs: value.gas_costs.to_owned(),
+            max_inputs: value.tx_params.max_inputs,
+            contract_max_size: value.contract_params.contract_max_size,
+            tx_offset: value.tx_params.tx_offset(),
+            max_message_data_length: value.predicate_params.max_message_data_length,
+            chain_id: value.chain_id,
+            fee_params: value.fee_params,
+            base_asset_id: value.base_asset_id,
+        }
+    }
+}
+
+impl From<CheckPredicateParams> for InterpreterParams {
+    fn from(params: CheckPredicateParams) -> Self {
+        InterpreterParams {
+            gas_costs: params.gas_costs,
+            max_inputs: params.max_inputs,
+            contract_max_size: params.contract_max_size,
+            tx_offset: params.tx_offset,
+            max_message_data_length: params.max_message_data_length,
+            chain_id: params.chain_id,
+            fee_params: params.fee_params,
+            base_asset_id: params.base_asset_id,
+        }
+    }
 }
 
 /// Sometimes it is possible to add some additional context information
@@ -124,14 +227,44 @@ impl<S, Tx> Interpreter<S, Tx> {
         &self.initial_balances
     }
 
-    /// Consensus parameters
-    pub const fn params(&self) -> &ConsensusParameters {
-        &self.params
+    /// Get max_inputs value
+    pub fn max_inputs(&self) -> u64 {
+        self.interpreter_params.max_inputs
     }
 
     /// Gas costs for opcodes
     pub fn gas_costs(&self) -> &GasCosts {
-        &self.gas_costs
+        &self.interpreter_params.gas_costs
+    }
+
+    /// Get the Fee Parameters
+    pub fn fee_params(&self) -> &FeeParameters {
+        &self.interpreter_params.fee_params
+    }
+
+    /// Get the base Asset ID
+    pub fn base_asset_id(&self) -> &AssetId {
+        &self.interpreter_params.base_asset_id
+    }
+
+    /// Get contract_max_size value
+    pub fn contract_max_size(&self) -> u64 {
+        self.interpreter_params.contract_max_size
+    }
+
+    /// Get tx_offset value
+    pub fn tx_offset(&self) -> usize {
+        self.interpreter_params.tx_offset
+    }
+
+    /// Get max_message_data_length value
+    pub fn max_message_data_length(&self) -> u64 {
+        self.interpreter_params.max_message_data_length
+    }
+
+    /// Get the chain id
+    pub fn chain_id(&self) -> ChainId {
+        self.interpreter_params.chain_id
     }
 
     /// Receipts generated by a transaction execution.
@@ -190,14 +323,14 @@ pub trait ExecutableTransaction:
     + Chargeable
     + Executable
     + IntoChecked
+    + EstimatePredicates
     + UniqueIdentifier
     + field::Maturity
     + field::Inputs
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
-    + SizedBytes
-    + SerializableVec
+    + fuel_types::canonical::SerializedSizeFixed
 {
     /// Casts the `Self` transaction into `&Script` if any.
     fn as_script(&self) -> Option<&Script>;
@@ -211,25 +344,23 @@ pub trait ExecutableTransaction:
     /// Casts the `Self` transaction into `&mut Create` if any.
     fn as_create_mut(&mut self) -> Option<&mut Create>;
 
-    /// Returns the type of the transaction like `Transaction::Create` or `Transaction::Script`.
+    /// Returns the type of the transaction like `Transaction::Create` or
+    /// `Transaction::Script`.
     fn transaction_type() -> Word;
 
-    /// Dumps the `Output` by the `idx` into the `buf` buffer.
-    fn output_to_mem(&mut self, idx: usize, buf: &mut [u8]) -> io::Result<usize> {
-        self.outputs_mut()
-            .get_mut(idx)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Invalid output idx"))
-            .and_then(|o| o.read(buf))
-    }
-
-    /// Replaces the `Output::Variable` with the `output`(should be also `Output::Variable`)
-    /// by the `idx` index.
-    fn replace_variable_output(&mut self, idx: usize, output: Output) -> Result<(), PanicReason> {
+    /// Replaces the `Output::Variable` with the `output`(should be also
+    /// `Output::Variable`) by the `idx` index.
+    fn replace_variable_output(
+        &mut self,
+        idx: usize,
+        output: Output,
+    ) -> Result<(), PanicReason> {
         if !output.is_variable() {
-            return Err(PanicReason::ExpectedOutputVariable);
+            return Err(PanicReason::ExpectedOutputVariable)
         }
 
-        // TODO increase the error granularity for this case - create a new variant of panic reason
+        // TODO increase the error granularity for this case - create a new variant of
+        // panic reason
         self.outputs_mut()
             .get_mut(idx)
             .and_then(|o| match o {
@@ -243,8 +374,8 @@ pub trait ExecutableTransaction:
 
     /// Update change and variable outputs.
     ///
-    /// `revert` will signal if the execution was reverted. It will refund the unused gas cost to
-    /// the base asset and reset output changes to their `initial_balances`.
+    /// `revert` will signal if the execution was reverted. It will refund the unused gas
+    /// cost to the base asset and reset output changes to their `initial_balances`.
     ///
     /// `remaining_gas` expects the raw content of `$ggas`
     ///
@@ -253,42 +384,52 @@ pub trait ExecutableTransaction:
     /// `balances` will contain the current state of the free balances
     fn update_outputs<I>(
         &mut self,
-        params: &ConsensusParameters,
         revert: bool,
         remaining_gas: Word,
         initial_balances: &InitialBalances,
         balances: &I,
+        fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
     ) -> Result<(), CheckError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
-        let gas_refund = TransactionFee::gas_refund_value(params, remaining_gas, self.price())
-            .ok_or(CheckError::ArithmeticOverflow)?;
+        let gas_refund =
+            TransactionFee::gas_refund_value(fee_params, remaining_gas, self.price())
+                .ok_or(CheckError::ArithmeticOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {
             // If revert, set base asset to initial balance and refund unused gas
             //
             // Note: the initial balance deducts the gas limit from base asset
-            Output::Change { asset_id, amount, .. } if revert && asset_id == &AssetId::BASE => initial_balances
-                .non_retryable[&AssetId::BASE]
+            Output::Change {
+                asset_id, amount, ..
+            } if revert && asset_id == base_asset_id => initial_balances.non_retryable
+                [base_asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
 
             // If revert, reset any non-base asset to its initial balance
-            Output::Change { asset_id, amount, .. } if revert => {
+            Output::Change {
+                asset_id, amount, ..
+            } if revert => {
                 *amount = initial_balances.non_retryable[asset_id];
                 Ok(())
             }
 
             // The change for the base asset will be the available balance + unused gas
-            Output::Change { asset_id, amount, .. } if asset_id == &AssetId::BASE => balances[asset_id]
+            Output::Change {
+                asset_id, amount, ..
+            } if asset_id == base_asset_id => balances[asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
                 .ok_or(CheckError::ArithmeticOverflow),
 
             // Set changes to the remainder provided balances
-            Output::Change { asset_id, amount, .. } => {
+            Output::Change {
+                asset_id, amount, ..
+            } => {
                 *amount = balances[asset_id];
                 Ok(())
             }
@@ -370,7 +511,7 @@ pub struct InitialBalances {
 /// Methods that should be implemented by the checked metadata of supported transactions.
 pub trait CheckedMetadata {
     /// Returns the initial balances from the checked metadata of the transaction.
-    fn balances(self) -> InitialBalances;
+    fn balances(&self) -> InitialBalances;
 
     /// Get gas used by predicates. Returns zero if the predicates haven't been checked.
     fn gas_used_by_predicates(&self) -> Word;
@@ -380,9 +521,9 @@ pub trait CheckedMetadata {
 }
 
 impl CheckedMetadata for ScriptCheckedMetadata {
-    fn balances(self) -> InitialBalances {
+    fn balances(&self) -> InitialBalances {
         InitialBalances {
-            non_retryable: self.non_retryable_balances,
+            non_retryable: self.non_retryable_balances.clone(),
             retryable: Some(self.retryable_balance),
         }
     }
@@ -397,9 +538,9 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 }
 
 impl CheckedMetadata for CreateCheckedMetadata {
-    fn balances(self) -> InitialBalances {
+    fn balances(&self) -> InitialBalances {
         InitialBalances {
-            non_retryable: self.free_balances,
+            non_retryable: self.free_balances.clone(),
             retryable: None,
         }
     }
@@ -410,5 +551,29 @@ impl CheckedMetadata for CreateCheckedMetadata {
 
     fn set_gas_used_by_predicates(&mut self, gas_used: Word) {
         self.gas_used_by_predicates = gas_used;
+    }
+}
+
+pub(crate) struct InputContracts<'vm, I> {
+    tx_input_contracts: I,
+    panic_context: &'vm mut PanicContext,
+}
+
+impl<'vm, I: Iterator<Item = &'vm ContractId>> InputContracts<'vm, I> {
+    pub fn new(tx_input_contracts: I, panic_context: &'vm mut PanicContext) -> Self {
+        Self {
+            tx_input_contracts,
+            panic_context,
+        }
+    }
+
+    /// Checks that the contract is declared in the transaction inputs.
+    pub fn check(&mut self, contract: &ContractId) -> Result<(), PanicReason> {
+        if !self.tx_input_contracts.any(|input| input == contract) {
+            *self.panic_context = PanicContext::ContractId(*contract);
+            Err(PanicReason::ContractNotInInputs)
+        } else {
+            Ok(())
+        }
     }
 }

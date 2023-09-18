@@ -1,7 +1,9 @@
 //! Profiler, can be used to export profiling data from VM runs
 
-use std::collections::HashMap;
-use std::fmt;
+use std::{
+    collections::HashMap,
+    fmt,
+};
 
 use dyn_clone::DynClone;
 
@@ -43,15 +45,17 @@ impl<'de> serde::de::Visitor<'de> for InstructionLocationVisitor {
         use std::str::FromStr;
 
         Ok(if let Some((l, r)) = value.split_once(':') {
-            let context = Some(
-                ContractId::from_str(l)
-                    .map_err(|_| serde::de::Error::custom("Invalid ContractId in InstructionLocation"))?,
-            );
+            let context = Some(ContractId::from_str(l).map_err(|_| {
+                serde::de::Error::custom("Invalid ContractId in InstructionLocation")
+            })?);
             let offset = r.parse().unwrap();
             InstructionLocation { context, offset }
         } else {
             let offset = value.parse().unwrap();
-            InstructionLocation { context: None, offset }
+            InstructionLocation {
+                context: None,
+                offset,
+            }
         })
     }
 }
@@ -91,7 +95,10 @@ impl fmt::Display for InstructionLocation {
             self.context
                 .map(|contract_id| format!(
                     "contract_id={}",
-                    contract_id.iter().map(|b| format!("{b:02x?}")).collect::<String>()
+                    contract_id
+                        .iter()
+                        .map(|b| format!("{b:02x?}"))
+                        .collect::<String>()
                 ),)
                 .unwrap_or_else(|| "script".to_string()),
             self.offset
@@ -102,7 +109,9 @@ impl fmt::Display for InstructionLocation {
 type PerLocation<T> = HashMap<InstructionLocation, T>;
 
 /// Iterates through location (key, value) pairs
-pub struct PerLocationIter<'a, T>(std::collections::hash_map::Iter<'a, InstructionLocation, T>);
+pub struct PerLocationIter<'a, T>(
+    std::collections::hash_map::Iter<'a, InstructionLocation, T>,
+);
 impl<'a, T> Iterator for PerLocationIter<'a, T> {
     type Item = (&'a InstructionLocation, &'a T);
 
@@ -112,7 +121,9 @@ impl<'a, T> Iterator for PerLocationIter<'a, T> {
 }
 
 /// Iterates through location keys
-pub struct PerLocationKeys<'a, T>(std::collections::hash_map::Keys<'a, InstructionLocation, T>);
+pub struct PerLocationKeys<'a, T>(
+    std::collections::hash_map::Keys<'a, InstructionLocation, T>,
+);
 impl<'a, T> Iterator for PerLocationKeys<'a, T> {
     type Item = &'a InstructionLocation;
 
@@ -122,7 +133,9 @@ impl<'a, T> Iterator for PerLocationKeys<'a, T> {
 }
 
 /// Iterates through location values
-pub struct PerLocationValues<'a, T>(std::collections::hash_map::Values<'a, InstructionLocation, T>);
+pub struct PerLocationValues<'a, T>(
+    std::collections::hash_map::Values<'a, InstructionLocation, T>,
+);
 impl<'a, T> Iterator for PerLocationValues<'a, T> {
     type Item = &'a T;
 
@@ -134,7 +147,11 @@ impl<'a, T> Iterator for PerLocationValues<'a, T> {
 /// Used to receive profile information from the interpreter
 pub trait ProfileReceiver: DynClone {
     /// Called after a transaction has completed
-    fn on_transaction(&mut self, state: &Result<ProgramState, InterpreterError>, data: &ProfilingData);
+    fn on_transaction(
+        &mut self,
+        state: &Result<ProgramState, InterpreterError>,
+        data: &ProfilingData,
+    );
 }
 
 dyn_clone::clone_trait_object!(ProfileReceiver);
@@ -144,7 +161,11 @@ dyn_clone::clone_trait_object!(ProfileReceiver);
 pub struct StderrReceiver;
 
 impl ProfileReceiver for StderrReceiver {
-    fn on_transaction(&mut self, state: &Result<ProgramState, InterpreterError>, data: &ProfilingData) {
+    fn on_transaction(
+        &mut self,
+        state: &Result<ProgramState, InterpreterError>,
+        data: &ProfilingData,
+    ) {
         eprintln!("PROFILER: {state:?} {data:?}");
     }
 }
@@ -160,7 +181,10 @@ pub struct Profiler {
 
 impl Profiler {
     /// Called by the VM after a transaction, send collected data to receiver
-    pub fn on_transaction(&mut self, state_result: &Result<ProgramState, InterpreterError>) {
+    pub fn on_transaction(
+        &mut self,
+        state_result: &Result<ProgramState, InterpreterError>,
+    ) {
         if let Some(r) = &mut self.receiver {
             r.on_transaction(state_result, &self.data);
         }

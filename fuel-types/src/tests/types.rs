@@ -264,7 +264,7 @@ fn test_key_types_hex_serialization() {
 #[test]
 fn test_asset_id_methods() {
     let asset_id = AssetId::new(ContractId::zeroed(), [0; 32].into());
-    
+
     // The below bytes were obtained from running the AssetId::new(ZERO_B256, ZERO_B256)
     // function in Sway.
     let expected_bytes = [
@@ -275,6 +275,6 @@ fn test_asset_id_methods() {
     assert_eq!(*asset_id, expected_bytes);
 
     let asset_id = AssetId::default_for_contract(ContractId::zeroed());
-    
+
     assert_eq!(*asset_id, expected_bytes);
 }

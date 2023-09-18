@@ -18,7 +18,7 @@ use core::{
 
 use sha2::{
     Digest,
-    Sha256
+    Sha256,
 };
 
 #[cfg(feature = "random")]

@@ -16,7 +16,10 @@ use core::{
     str,
 };
 
-use sha2::{Digest, Sha256};
+use sha2::{
+    Digest,
+    Sha256
+};
 
 #[cfg(feature = "random")]
 use rand::{
@@ -86,7 +89,7 @@ macro_rules! key_with_big_array {
 }
 
 macro_rules! key_new_method {
-    ($i:ident, $s:expr, true) => {
+    ($i:ident, $s:expr,true) => {
         impl $i {
             /// Bytes constructor.
             pub const fn new(bytes: [u8; $s]) -> Self {
@@ -94,7 +97,7 @@ macro_rules! key_new_method {
             }
         }
     };
-    ($i:ident, $s:expr, false) => {
+    ($i:ident, $s:expr,false) => {
         // No method for false
     };
 }
@@ -399,8 +402,9 @@ impl AssetId {
         Self::from(bytes)
     }
 
-    /// Creates a new AssetId from a ContractId and the zero SubId. Generally used as the default asset of that contract.
-    /// 
+    /// Creates a new AssetId from a ContractId and the zero SubId. Generally used as the
+    /// default asset of that contract.
+    ///
     /// ### Arguments
     ///
     /// * `contract_id` - The ContractId of the contract that created the asset.
@@ -412,7 +416,8 @@ impl AssetId {
     ///
     /// ### Additional Information
     ///
-    /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 AssetId.
+    /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00
+    /// AssetId.
     pub fn base_asset_id() -> Self {
         Self::BASE
     }

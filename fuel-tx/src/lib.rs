@@ -117,9 +117,6 @@ pub trait ContractIdExt {
 
 impl ContractIdExt for ContractId {
     fn asset_id(&self, sub_id: &Bytes32) -> AssetId {
-        AssetId::new(
-            *self,
-            fuel_types::SubId::from(**sub_id),
-        )
+        AssetId::new(*self, fuel_types::SubId::from(**sub_id))
     }
 }

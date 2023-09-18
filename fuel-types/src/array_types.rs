@@ -400,8 +400,8 @@ impl AssetId {
     pub fn new<T: Into<ContractId>>(contract_id: T, sub_id: SubId) -> Self {
         let contract_id = contract_id.into();
         let mut hasher = Sha256::new();
-        hasher.update(&contract_id);
-        hasher.update(&sub_id);
+        hasher.update(contract_id);
+        hasher.update(sub_id);
         let mut bytes = [0u8; 32];
         bytes.copy_from_slice(&hasher.finalize());
         Self::from(bytes)

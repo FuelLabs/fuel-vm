@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#586](https://github.com/FuelLabs/fuel-vm/pull/586): Added `default_asset` method to the `ContractIdExt` trait implementation, to mirror the `default` method on AssetId in the Sway std lib.
+
 ## [Version 0.37.0]
 
 #### Breaking

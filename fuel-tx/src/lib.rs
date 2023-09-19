@@ -113,6 +113,8 @@ pub use contract::Contract;
 pub trait ContractIdExt {
     /// Creates an `AssetId` from the `ContractId` and `sub_id`.
     fn asset_id(&self, sub_id: &Bytes32) -> AssetId;
+    /// Creates an `AssetId` from the `ContractId` and the default 0x00..000 `sub_id`.
+    fn default_asset(&self) -> AssetId;
 }
 
 impl ContractIdExt for ContractId {
@@ -124,5 +126,9 @@ impl ContractIdExt for ContractId {
                 .chain(sub_id.as_slice())
                 .finalize(),
         )
+    }
+
+    fn default_asset(&self) -> AssetId {
+        self.asset_id(&Bytes32::zeroed())
     }
 }

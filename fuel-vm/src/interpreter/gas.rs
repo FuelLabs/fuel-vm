@@ -108,7 +108,7 @@ pub(crate) fn gas_charge(
     ggas: RegMut<GGAS>,
     mut profiler: ProfileGas<'_>,
     gas: Word,
-) -> Result<(), PanicOrBug> {
+) -> SimpleResult<()> {
     profiler.profile(cgas.as_ref(), gas);
     gas_charge_inner(cgas, ggas, gas)
 }
@@ -117,7 +117,7 @@ fn gas_charge_inner(
     mut cgas: RegMut<CGAS>,
     mut ggas: RegMut<GGAS>,
     gas: Word,
-) -> Result<(), PanicOrBug> {
+) -> SimpleResult<()> {
     if *cgas > *ggas {
         Err(Bug::new(BugVariant::GlobalGasLessThanContext).into())
     } else if gas > *cgas {

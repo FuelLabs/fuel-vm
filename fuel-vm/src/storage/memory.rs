@@ -484,6 +484,7 @@ fn add_one(a: &mut [u8; 32]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
     use test_case::test_case;
 
     const fn key(k: u8) -> [u8; 32] {

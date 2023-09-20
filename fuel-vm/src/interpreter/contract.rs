@@ -135,8 +135,13 @@ where
     pub(crate) fn check_contract_exists(
         &self,
         contract: &ContractId,
-    ) -> Result<bool, RuntimeError<S::DataError>> {
-        Ok(self.storage.storage_contract_exists(contract)?)
+    ) -> IoResult<bool, S::DataError> {
+        // TODO: fix this
+        match self.storage.storage_contract_exists(contract) {
+            Ok(exists) => Ok(exists),
+            Err(e) => Err(e.into()),
+        }
+        // Ok(self.storage.storage_contract_exists(contract)?)
     }
 }
 
@@ -148,7 +153,8 @@ where
     S: InterpreterStorage,
 {
     storage
-        .storage_contract(contract)?
+        .storage_contract(contract)
+        .map_err(RuntimeError::Storage)?
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
@@ -165,7 +171,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         result: &mut Word,
         b: Word,
         c: Word,
-    ) -> SimpleResult<()>
+    ) -> IoResult<(), S::Error>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: ContractsAssetsStorage,
@@ -210,7 +216,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> Result<(), RuntimeError<S::Error>>
+    ) -> IoResult<(), S::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
@@ -232,9 +238,9 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             // optimistically attempt to load the internal contract id
             Ok(source_contract) => Some(*source_contract),
             // revert to external context if no internal contract is set
-            Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)) => None,
+            Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
 
         if let Some(source_contract) = internal_context {
@@ -281,7 +287,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         output_index: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> Result<(), RuntimeError<S::Error>>
+    ) -> IoResult<(), S::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
@@ -302,7 +308,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             // revert to external context if no internal contract is set
             Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
 
         if let Some(source_contract) = internal_context {
@@ -349,7 +355,8 @@ where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
     Ok(storage
-        .size_of_value(contract)?
+        .size_of_value(contract)
+        .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)? as Word)
 }
 
@@ -362,7 +369,8 @@ where
     S: ContractsAssetsStorage + ?Sized,
 {
     Ok(storage
-        .merkle_contract_asset_id_balance(contract, asset_id)?
+        .merkle_contract_asset_id_balance(contract, asset_id)
+        .map_err(RuntimeError::Storage)?
         .unwrap_or_default())
 }
 
@@ -380,7 +388,9 @@ where
     let balance = balance
         .checked_add(amount)
         .ok_or(PanicReason::ArithmeticOverflow)?;
-    storage.merkle_contract_asset_id_balance_insert(contract, asset_id, balance)?;
+    storage
+        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .map_err(RuntimeError::Storage)?;
     Ok(balance)
 }
 
@@ -398,6 +408,8 @@ where
     let balance = balance
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;
-    storage.merkle_contract_asset_id_balance_insert(contract, asset_id, balance)?;
+    storage
+        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .map_err(RuntimeError::Storage)?;
     Ok(balance)
 }

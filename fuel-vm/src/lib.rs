@@ -2,6 +2,7 @@
 
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
+#![deny(unused_must_use)]
 // #![deny(unused_crate_dependencies)]
 #![deny(clippy::string_slice)]
 #![cfg_attr(not(feature = "std"), no_std)]

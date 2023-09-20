@@ -21,7 +21,7 @@ impl StateReadQWord {
         destination_memory_address: Word,
         origin_key_memory_address: Word,
         num_slots: Word,
-    ) -> Result<Self, RuntimeError> {
+    ) -> SimpleResult<Self> {
         let r = OwnershipRegisters {
             sp: u64::MAX / 2,
             ssp: 0,
@@ -171,7 +171,7 @@ fn test_state_read_qword_input(
     origin_key_memory_address: Word,
     num_slots: Word,
     ownership_registers: OwnershipRegisters,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     StateReadQWord::new(
         destination_memory_address,
         origin_key_memory_address,

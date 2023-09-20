@@ -85,6 +85,7 @@ where
     }
 }
 
+#[cfg(test)]
 impl<Tx> Interpreter<(), Tx>
 where
     Tx: ExecutableTransaction,

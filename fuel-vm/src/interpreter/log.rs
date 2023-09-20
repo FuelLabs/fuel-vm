@@ -17,7 +17,6 @@ use crate::{
     error::SimpleResult,
 };
 
-use fuel_asm::PanicReason;
 use fuel_tx::{
     Receipt,
     Script,

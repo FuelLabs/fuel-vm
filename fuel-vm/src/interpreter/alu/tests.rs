@@ -5,6 +5,7 @@ use core::ops::Div;
 use fuel_asm::Imm12;
 use test_case::test_case;
 
+use crate::error::PanicOrBug;
 #[derive(Debug, PartialEq, Eq)]
 struct CommonInput {
     of: Word,
@@ -29,7 +30,7 @@ struct CommonInput {
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b00, u64::MAX as u128, 1 => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow));
+    0b00, u64::MAX as u128, 1 => Err(PanicOrBug::Panic(PanicReason::ArithmeticOverflow));
     "add u64::MAX 1 not wrapping"
 )]
 #[test_case(
@@ -46,7 +47,7 @@ fn test_add(
     flag: Word,
     b: u128,
     c: u128,
-) -> Result<(Word, CommonInput), RuntimeError> {
+) -> SimpleResult<(Word, CommonInput)> {
     let common = AluCommonReg {
         of: RegMut::new(&mut of),
         err: RegMut::new(&mut err),
@@ -76,7 +77,7 @@ fn test_add(
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b0, 10, 0, true => Err(RuntimeError::Recoverable(PanicReason::ArithmeticError));
+    0b0, 10, 0, true => Err(PanicOrBug::Panic(PanicReason::ArithmeticError));
     "div 10 0 error flag"
 )]
 #[test_case(
@@ -94,7 +95,7 @@ fn test_div(
     b: u64,
     c: u64,
     err_bool: bool,
-) -> Result<(Word, CommonInput), RuntimeError> {
+) -> SimpleResult<(Word, CommonInput)> {
     let common = AluCommonReg {
         of: RegMut::new(&mut of),
         err: RegMut::new(&mut err),
@@ -120,12 +121,12 @@ fn test_div(
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b00, 10, u64::MAX - 100 => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow));
+    0b00, 10, u64::MAX - 100 => Err(PanicOrBug::Panic(PanicReason::ArithmeticOverflow));
     "larger than 32 bit exp"
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b00, 10, (u32::MAX as u64)+ 1 => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow));
+    0b00, 10, (u32::MAX as u64)+ 1 => Err(PanicOrBug::Panic(PanicReason::ArithmeticOverflow));
     "just larger than 32 bit exp"
 )]
 #[test_case(
@@ -142,7 +143,7 @@ fn test_exp(
     flag: Word,
     b: u64,
     c: u64,
-) -> Result<(Word, CommonInput), RuntimeError> {
+) -> SimpleResult<(Word, CommonInput)> {
     let common = AluCommonReg {
         of: RegMut::new(&mut of),
         err: RegMut::new(&mut err),

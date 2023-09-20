@@ -4,8 +4,8 @@ use test_case::test_case;
 #[test_case(0, 0, 0 => Ok(0); "noop jump")]
 #[test_case(0, 0, 20 => Ok(80); "jump forwards")]
 #[test_case(0, 80, 10 => Ok(40); "jump backwards")]
-#[test_case(0, 40, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "jump too far forward")]
-fn test_absolute_jump(is: Word, mut pc: Word, j: Word) -> Result<Word, RuntimeError> {
+#[test_case(0, 40, VM_MAX_RAM => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump too far forward")]
+fn test_absolute_jump(is: Word, mut pc: Word, j: Word) -> SimpleResult<Word> {
     JumpArgs::new(JumpMode::Absolute)
         .to_address(j)
         .jump(Reg::new(&is), RegMut::new(&mut pc))
@@ -14,12 +14,8 @@ fn test_absolute_jump(is: Word, mut pc: Word, j: Word) -> Result<Word, RuntimeEr
 
 #[test_case(0, 0, 20 => Ok(84); "jump from zero")]
 #[test_case(0, 80, 10 => Ok(124); "jump from nonzero")]
-#[test_case(0, 40, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "jump too far forward")]
-fn test_relative_forwards_jump(
-    is: Word,
-    mut pc: Word,
-    j: Word,
-) -> Result<Word, RuntimeError> {
+#[test_case(0, 40, VM_MAX_RAM => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump too far forward")]
+fn test_relative_forwards_jump(is: Word, mut pc: Word, j: Word) -> SimpleResult<Word> {
     JumpArgs::new(JumpMode::RelativeForwards)
         .to_address(j)
         .jump(Reg::new(&is), RegMut::new(&mut pc))
@@ -28,14 +24,10 @@ fn test_relative_forwards_jump(
 
 #[test_case(0, 20, 4 => Ok(0); "jump to zero")]
 #[test_case(0, 80, 10 => Ok(36); "jump to nonzero")]
-#[test_case(0, 0, 0 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "jump below zero from zero 0")]
-#[test_case(0, 0, 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "jump below zero from zero 1")]
-#[test_case(0, 20, 50 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "jump below zero from nonzero")]
-fn test_relative_backwards_jump(
-    is: Word,
-    mut pc: Word,
-    j: Word,
-) -> Result<Word, RuntimeError> {
+#[test_case(0, 0, 0 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump below zero from zero 0")]
+#[test_case(0, 0, 1 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump below zero from zero 1")]
+#[test_case(0, 20, 50 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump below zero from nonzero")]
+fn test_relative_backwards_jump(is: Word, mut pc: Word, j: Word) -> SimpleResult<Word> {
     JumpArgs::new(JumpMode::RelativeBackwards)
         .to_address(j)
         .jump(Reg::new(&is), RegMut::new(&mut pc))
@@ -53,7 +45,7 @@ fn test_not_performed_conditional_jump(
     is: Word,
     mut pc: Word,
     j: Word,
-) -> Result<Word, RuntimeError> {
+) -> SimpleResult<Word> {
     JumpArgs::new(mode)
         .with_condition(false)
         .to_address(j)

@@ -118,7 +118,7 @@ where
         input.ret(a)
     }
 
-    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, PanicReason> {
+    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
@@ -201,10 +201,7 @@ impl RetCtx<'_> {
         self.return_from_context(receipt)
     }
 
-    pub(crate) fn return_from_context(
-        mut self,
-        receipt: Receipt,
-    ) -> Result<(), PanicOrBug> {
+    pub(crate) fn return_from_context(mut self, receipt: Receipt) -> SimpleResult<()> {
         if let Some(frame) = self.frames.pop() {
             let registers = &mut self.registers;
             let context = &mut self.context;
@@ -236,7 +233,7 @@ impl RetCtx<'_> {
         Ok(inc_pc(self.registers.pc_mut())?)
     }
 
-    pub(crate) fn ret_data(self, a: Word, b: Word) -> Result<Bytes32, PanicReason> {
+    pub(crate) fn ret_data(self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let range = MemoryRange::new(a, b)?;
 
         let receipt = Receipt::return_data(
@@ -344,7 +341,7 @@ impl JumpArgs {
             JumpMode::RelativeForwards => pc.saturating_add(offset_bytes),
             JumpMode::RelativeBackwards => pc
                 .checked_sub(offset_bytes)
-                .ok_or(RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
+                .ok_or(PanicReason::MemoryOverflow)?,
         };
 
         if target_addr >= VM_MAX_RAM {
@@ -368,7 +365,7 @@ where
         rb: RegId,
         rc: RegId,
         rd: RegId,
-    ) -> SimpleResult<()> {
+    ) -> IoResult<(), S::DataError> {
         self.prepare_call_inner(
             self.registers[ra],
             self.registers[rb],
@@ -384,7 +381,7 @@ where
         amount_of_coins_to_forward: Word,
         asset_id_mem_address: Word,
         amount_of_gas_to_forward: Word,
-    ) -> SimpleResult<()> {
+    ) -> IoResult<(), S::DataError> {
         let params = PrepareCallParams {
             call_params_mem_address,
             amount_of_coins_to_forward,
@@ -642,7 +639,7 @@ fn write_call_to_memory<S>(
     code_mem_range: MemoryRange,
     memory: &mut [u8; MEM_SIZE],
     storage: &S,
-) -> Result<Word, PanicReason>
+) -> IoResult<Word, S::Error>
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
 {
@@ -659,7 +656,8 @@ where
     code_range.shrink_end(frame.code_size_padding() as usize);
     let bytes_read = storage
         .storage::<ContractsRawCode>()
-        .read(frame.to(), code_range.write(memory))?
+        .read(frame.to(), code_range.write(memory))
+        .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read as Word != frame.code_size() {
         return Err(PanicReason::ContractMismatch.into())
@@ -679,7 +677,7 @@ fn call_frame<S>(
     storage: &S,
     call: Call,
     asset_id: AssetId,
-) -> Result<CallFrame, PanicReason>
+) -> IoResult<CallFrame, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {

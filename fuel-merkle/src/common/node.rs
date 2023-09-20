@@ -29,7 +29,7 @@ pub trait Node {
 }
 
 pub trait ParentNode: Sized + Node {
-    type Error: snafu::Error;
+    type Error;
 
     fn left_child(&self) -> ChildResult<Self>;
     fn right_child(&self) -> ChildResult<Self>;

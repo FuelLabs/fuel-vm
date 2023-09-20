@@ -15,10 +15,7 @@ use fuel_types::canonical::Deserialize;
 
 use crate::{
     consts::MEM_SIZE,
-    prelude::{
-        MemoryRange,
-        RuntimeError,
-    },
+    prelude::MemoryRange,
 };
 
 pub mod reg_key;

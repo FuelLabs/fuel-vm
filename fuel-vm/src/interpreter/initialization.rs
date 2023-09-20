@@ -114,7 +114,7 @@ where
         &mut self,
         checked: Checked<Tx>,
     ) -> Result<(), InterpreterError<S::DataError>> {
-        let block_height = self.storage.block_height()?;
+        let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 
         self.context = Context::Script { block_height };
 

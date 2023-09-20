@@ -2,6 +2,7 @@ use crate::{
     constraints::reg_key::ProgramRegistersSegment,
     error::{
         InterpreterError,
+        IoResult,
         RuntimeError,
     },
     interpreter::{
@@ -72,7 +73,7 @@ where
     fn instruction_inner(
         &mut self,
         raw: RawInstruction,
-    ) -> Result<ExecuteState, RuntimeError<S::DataError>> {
+    ) -> IoResult<ExecuteState, S::DataError> {
         let instruction = Instruction::try_from(raw)
             .map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
 
@@ -571,7 +572,7 @@ where
                 let (a, b) = retd.unpack();
                 let len = r!(b);
                 self.dependent_gas_charge(self.gas_costs().retd, len)?;
-                return self.ret_data(r!(a), len).map(ExecuteState::ReturnData)
+                return Ok(self.ret_data(r!(a), len).map(ExecuteState::ReturnData)?)
             }
 
             Instruction::RVRT(rvrt) => {

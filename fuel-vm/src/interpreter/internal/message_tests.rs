@@ -3,7 +3,10 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::interpreter::memory::Memory;
+use crate::{
+    error::PanicOrBug,
+    interpreter::memory::Memory,
+};
 
 use super::*;
 use fuel_tx::Create;
@@ -39,14 +42,14 @@ fn test_absolute_output_offset(
     ; "Output at 200 in memory"
 )]
 #[test_case(
-    MEM_SIZE - 1 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    MEM_SIZE - 1 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow))
     ; "Output at MEM_SIZE - 1 should overflow"
 )]
 #[test_case(
-    MEM_SIZE - 1 - 112 => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
+    MEM_SIZE - 1 - 112 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow))
     ; "Output at MEM_SIZE - 1 - output_size should overflow"
 )]
-fn test_update_memory_output(tx_offset: usize) -> Result<Memory<MEM_SIZE>, RuntimeError> {
+fn test_update_memory_output(tx_offset: usize) -> SimpleResult<Memory<MEM_SIZE>> {
     let mut tx = Create::default();
     *tx.outputs_mut() = vec![Output::default()];
     let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();

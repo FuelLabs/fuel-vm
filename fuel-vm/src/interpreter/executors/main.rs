@@ -458,13 +458,18 @@ where
         };
 
         // Prevent redeployment of contracts
-        if storage.storage_contract_exists(&id)? {
+        if storage
+            .storage_contract_exists(&id)
+            .map_err(RuntimeError::Storage)?
+        {
             return Err(InterpreterError::Panic(
                 PanicReason::ContractIdAlreadyDeployed,
             ))
         }
 
-        storage.deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)?;
+        storage
+            .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
+            .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,
             fee_params,
@@ -673,7 +678,13 @@ where
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
-        self.profiler.on_transaction(&state_result);
+        {
+            let r = match &state_result {
+                Ok(state) => Ok(state),
+                Err(err) => Err(err.erase_generics()),
+            };
+            self.profiler.on_transaction(r);
+        }
 
         let state = state_result?;
         Ok(StateTransitionRef::new(

@@ -8,10 +8,7 @@ use crate::{
     constraints::reg_key::*,
     consts::*,
     context::Context,
-    error::{
-        RuntimeError,
-        SimpleResult,
-    },
+    error::SimpleResult,
 };
 
 use fuel_asm::{

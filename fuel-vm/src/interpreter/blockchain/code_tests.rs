@@ -1,3 +1,5 @@
+use core::convert::Infallible;
+
 use alloc::vec;
 
 use super::*;
@@ -11,7 +13,7 @@ use crate::{
 use fuel_tx::Contract;
 
 #[test]
-fn test_load_contract() -> Result<(), RuntimeError> {
+fn test_load_contract() -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
@@ -53,7 +55,7 @@ fn test_load_contract() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn test_code_copy() -> Result<(), RuntimeError> {
+fn test_code_copy() -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;

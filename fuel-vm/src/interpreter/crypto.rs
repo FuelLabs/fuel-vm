@@ -16,14 +16,10 @@ use super::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
-    error::{
-        RuntimeError,
-        SimpleResult,
-    },
+    error::SimpleResult,
     prelude::MemoryRange,
 };
 
-use fuel_asm::PanicReason;
 use fuel_crypto::{
     Hasher,
     Message,

@@ -40,7 +40,7 @@ impl RuntimePredicate {
     }
 }
 
-#[cfg(feature = "random")]
+#[cfg(all(test, feature = "random"))]
 #[test]
 fn from_tx_works() {
     use alloc::{
@@ -50,7 +50,6 @@ fn from_tx_works() {
     use fuel_asm::op;
     use fuel_tx::TransactionBuilder;
     use fuel_types::bytes;
-    use fuel_vm::prelude::*;
     use rand::{
         rngs::StdRng,
         Rng,
@@ -58,6 +57,12 @@ fn from_tx_works() {
     };
 
     use core::iter;
+
+    use crate::{
+        interpreter::InterpreterParams,
+        prelude::*,
+        storage::PredicateStorage,
+    };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -128,11 +133,12 @@ fn from_tx_works() {
 
         assert_eq!(idx, runtime.idx());
 
-        let mut interpreter = Interpreter::without_storage();
+        let mut interpreter =
+            Interpreter::with_storage(PredicateStorage, InterpreterParams::default());
 
         assert!(interpreter
             .init_predicate(
-                fuel_vm::context::Context::PredicateVerification {
+                Context::PredicateVerification {
                     program: Default::default()
                 },
                 tx.transaction().clone(),

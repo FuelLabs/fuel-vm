@@ -12,13 +12,13 @@ struct GasChargeOutput {
     ggas: u64,
 }
 #[test_case(GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 0} => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "zero")]
-#[test_case(GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 1} => Err(RuntimeError::Recoverable(PanicReason::OutOfGas)); "no gas")]
-#[test_case(GasChargeInput{cgas: 2, ggas: 0, dependent_factor: 1} => matches Err(RuntimeError::Unrecoverable(_)); "global gas less than context")]
-#[test_case(GasChargeInput{cgas: 0, ggas: 2, dependent_factor: 1} => Err(RuntimeError::Recoverable(PanicReason::OutOfGas)); "no call gas")]
+#[test_case(GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 1} => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "no gas")]
+#[test_case(GasChargeInput{cgas: 2, ggas: 0, dependent_factor: 1} => matches Err(PanicOrBug::Bug(_)); "global gas less than context")]
+#[test_case(GasChargeInput{cgas: 0, ggas: 2, dependent_factor: 1} => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "no call gas")]
 #[test_case(GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 1} => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "just enough")]
 #[test_case(GasChargeInput{cgas: 10, ggas: 15, dependent_factor: 1} => Ok(GasChargeOutput{ cgas: 9, ggas: 14}); "heaps")]
 
-fn test_gas_charge(input: GasChargeInput) -> Result<GasChargeOutput, RuntimeError> {
+fn test_gas_charge(input: GasChargeInput) -> SimpleResult<GasChargeOutput> {
     let GasChargeInput {
         mut cgas,
         mut ggas,
@@ -41,7 +41,7 @@ fn test_gas_charges_ggas_on_out_of_gas() {
     let gas = 20;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas)
+    let _ = gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas)
         .expect_err("Gas charge should fail");
     assert_eq!(*ggas, 5);
     assert_eq!(*cgas, 0);
@@ -86,17 +86,15 @@ struct DepGasChargeInput {
     DepGasChargeInput{
         input: GasChargeInput{cgas: 0, ggas: 1, dependent_factor: 0},
         gas_cost: DependentCost{base: 1, dep_per_unit: 1}
-    } => Err(RuntimeError::Recoverable(PanicReason::OutOfGas)); "just base with no cgas"
+    } => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "just base with no cgas"
 )]
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 5, ggas: 10, dependent_factor: 25},
         gas_cost: DependentCost{base: 1, dep_per_unit: 5}
-    } => Err(RuntimeError::Recoverable(PanicReason::OutOfGas)); "unit with not enough cgas"
+    } => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "unit with not enough cgas"
 )]
-fn test_dependent_gas_charge(
-    input: DepGasChargeInput,
-) -> Result<GasChargeOutput, RuntimeError> {
+fn test_dependent_gas_charge(input: DepGasChargeInput) -> SimpleResult<GasChargeOutput> {
     let DepGasChargeInput { input, gas_cost } = input;
     let GasChargeInput {
         mut cgas,

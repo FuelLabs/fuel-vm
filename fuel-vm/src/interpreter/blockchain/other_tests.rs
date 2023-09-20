@@ -4,7 +4,10 @@ use crate::{
     interpreter::memory::Memory,
     storage::MemoryStorage,
 };
-use core::iter;
+use core::{
+    convert::Infallible,
+    iter,
+};
 
 use super::*;
 use crate::interpreter::PanicContext;
@@ -27,7 +30,7 @@ fn test_burn(
     initialize: impl Into<Option<Word>>,
     amount: Word,
     sub_id: [u8; 32],
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
@@ -109,7 +112,7 @@ fn test_mint(
     initialize: impl Into<Option<Word>>,
     amount: Word,
     sub_id: [u8; 32],
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
@@ -242,7 +245,7 @@ fn test_code_root() {
     let mut pc = 4;
     let input_contracts = [contract_id];
     let mut panic_context = PanicContext::None;
-    CodeRootCtx {
+    let _ = CodeRootCtx {
         memory: &mut memory,
         input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         storage: &storage,
@@ -290,7 +293,7 @@ fn test_code_root() {
             block_height: Default::default(),
         },
     };
-    CodeRootCtx {
+    let _ = CodeRootCtx {
         memory: &mut memory,
         input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
         storage: &storage,
@@ -332,7 +335,7 @@ fn test_code_size() {
         is: Reg::new(&is),
     };
     let mut result = 0;
-    input
+    let _ = input
         .code_size(&mut result, 1)
         .expect_err("Contract is not found");
     assert_eq!(pc, 4);
@@ -373,7 +376,7 @@ fn test_code_size() {
         is: Reg::new(&is),
     };
     let mut result = 0;
-    input
+    let _ = input
         .code_size(&mut result, 0)
         .expect_err("The contract is not in the input");
 }
@@ -383,7 +386,7 @@ fn test_timestamp() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
     let mut pc = 4;
     let mut result = 0;
-    timestamp(
+    let _ = timestamp(
         &storage,
         Default::default(),
         RegMut::new(&mut pc),
@@ -391,7 +394,7 @@ fn test_timestamp() {
         1,
     )
     .expect_err("Height is greater then current block height");
-    timestamp(
+    let _ = timestamp(
         &storage,
         u32::MAX.into(),
         RegMut::new(&mut pc),

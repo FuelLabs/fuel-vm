@@ -15,7 +15,7 @@ use super::*;
 
 #[cfg(feature = "random")]
 #[test]
-fn test_recover_secp256k1() -> Result<(), RuntimeError> {
+fn test_recover_secp256k1() -> SimpleResult<()> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
@@ -60,7 +60,7 @@ fn test_recover_secp256k1() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn test_recover_secp256r1() -> Result<(), RuntimeError> {
+fn test_recover_secp256r1() -> SimpleResult<()> {
     use fuel_crypto::secp256r1::encode_pubkey;
     use p256::ecdsa::SigningKey;
 
@@ -112,7 +112,7 @@ fn test_recover_secp256r1() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn test_verify_ed25519() -> Result<(), RuntimeError> {
+fn test_verify_ed25519() -> SimpleResult<()> {
     use ed25519_dalek::Signer;
 
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
@@ -149,7 +149,7 @@ fn test_verify_ed25519() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn test_keccak256() -> Result<(), RuntimeError> {
+fn test_keccak256() -> SimpleResult<()> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
@@ -178,7 +178,7 @@ fn test_keccak256() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn test_sha256() -> Result<(), RuntimeError> {
+fn test_sha256() -> SimpleResult<()> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,

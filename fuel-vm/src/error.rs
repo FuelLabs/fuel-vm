@@ -96,6 +96,24 @@ impl<StorageError> InterpreterError<StorageError> {
     }
 }
 
+impl<StorageError> InterpreterError<StorageError>
+where
+    StorageError: fmt::Debug,
+{
+    /// Make non-generic by converting the storage error to a string.
+    pub fn erase_generics(&self) -> InterpreterError<String> {
+        match self {
+            Self::Storage(e) => InterpreterError::Storage(format!("{e:?}")),
+            Self::PanicInstruction(e) => InterpreterError::PanicInstruction(*e),
+            Self::Panic(e) => InterpreterError::Panic(*e),
+            Self::CheckError(e) => InterpreterError::CheckError(e.clone()),
+            Self::NoTransactionInitialized => InterpreterError::NoTransactionInitialized,
+            Self::DebugStateNotInitialized => InterpreterError::DebugStateNotInitialized,
+            Self::Bug(e) => InterpreterError::Bug(e.clone()),
+        }
+    }
+}
+
 impl<StorageError> From<RuntimeError<StorageError>> for InterpreterError<StorageError> {
     fn from(error: RuntimeError<StorageError>) -> Self {
         match error {
@@ -137,7 +155,7 @@ impl<StorageError> From<Bug> for InterpreterError<StorageError> {
 }
 
 impl<StorageError> From<Infallible> for InterpreterError<StorageError> {
-    fn from(infallible: Infallible) -> Self {
+    fn from(_: Infallible) -> Self {
         unreachable!()
     }
 }
@@ -207,7 +225,7 @@ impl<StorageError> From<Bug> for RuntimeError<StorageError> {
 }
 
 impl<StorageError> From<Infallible> for RuntimeError<StorageError> {
-    fn from(infallible: Infallible) -> Self {
+    fn from(_: Infallible) -> Self {
         unreachable!()
     }
 }
@@ -258,6 +276,12 @@ pub enum PredicateVerificationFailed {
         error("Invalid interpreter state reached unexpectedly")
     )]
     Bug(Bug),
+    /// The VM execution resulted in a well-formed panic, caused by an instruction.
+    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
+    PanicInstruction(PanicInstruction),
+    /// The VM execution resulted in a well-formed panic not caused by an instruction.
+    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
+    Panic(PanicReason),
     /// Predicate verification failed since it attempted to access storage
     #[cfg_attr(
         feature = "std",
@@ -292,6 +316,21 @@ impl From<InterpreterError<predicate::StorageUnavailable>>
 impl From<Bug> for PredicateVerificationFailed {
     fn from(bug: Bug) -> Self {
         Self::Bug(bug)
+    }
+}
+
+impl From<PanicReason> for PredicateVerificationFailed {
+    fn from(reason: PanicReason) -> Self {
+        Self::Panic(reason)
+    }
+}
+
+impl From<PanicOrBug> for PredicateVerificationFailed {
+    fn from(err: PanicOrBug) -> Self {
+        match err {
+            PanicOrBug::Panic(reason) => Self::from(reason),
+            PanicOrBug::Bug(bug) => Self::Bug(bug),
+        }
     }
 }
 
@@ -462,7 +501,7 @@ impl fmt::Display for Bug {
 
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub enum PanicOrBug {
     /// VM panic

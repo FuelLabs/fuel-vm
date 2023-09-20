@@ -125,7 +125,6 @@ fn breakpoint_script() {
 
 #[test]
 fn single_stepping() {
-    use alloc::vec;
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 

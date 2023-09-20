@@ -14,14 +14,10 @@ use fuel_asm::{
     Word,
 };
 
-use crate::{
-    consts::{
-        VM_REGISTER_COUNT,
-        VM_REGISTER_PROGRAM_COUNT,
-        VM_REGISTER_SYSTEM_COUNT,
-    },
-    error::SimpleResult,
-    prelude::RuntimeError,
+use crate::consts::{
+    VM_REGISTER_COUNT,
+    VM_REGISTER_PROGRAM_COUNT,
+    VM_REGISTER_SYSTEM_COUNT,
 };
 
 #[cfg(test)]

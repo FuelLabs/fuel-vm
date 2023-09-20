@@ -46,16 +46,16 @@ pub struct PredicateStorage;
 #[derive(Debug, Clone, Copy)]
 pub struct StorageUnavailable;
 
-impl Into<InterpreterError<StorageUnavailable>> for StorageUnavailable {
-    fn into(self) -> InterpreterError<StorageUnavailable> {
-        let rt: RuntimeError<StorageUnavailable> = self.into();
+impl From<StorageUnavailable> for InterpreterError<StorageUnavailable> {
+    fn from(val: StorageUnavailable) -> Self {
+        let rt: RuntimeError<StorageUnavailable> = val.into();
         rt.into()
     }
 }
 
-impl Into<RuntimeError<StorageUnavailable>> for StorageUnavailable {
-    fn into(self) -> RuntimeError<StorageUnavailable> {
-        RuntimeError::Storage(self)
+impl From<StorageUnavailable> for RuntimeError<StorageUnavailable> {
+    fn from(val: StorageUnavailable) -> Self {
+        RuntimeError::Storage(val)
     }
 }
 

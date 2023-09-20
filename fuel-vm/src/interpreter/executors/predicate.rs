@@ -2,7 +2,6 @@ use crate::{
     error::{
         InterpreterError,
         PredicateVerificationFailed,
-        SimpleResult,
     },
     prelude::{
         CheckError,

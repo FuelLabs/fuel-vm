@@ -1,6 +1,8 @@
 use super::*;
 use test_case::test_case;
 
+use crate::error::PanicOrBug;
+
 #[test_case(0, 0, 0 => Ok(0); "noop jump")]
 #[test_case(0, 0, 20 => Ok(80); "jump forwards")]
 #[test_case(0, 80, 10 => Ok(40); "jump backwards")]

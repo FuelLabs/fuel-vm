@@ -56,14 +56,7 @@ where
         let chain_id = self.chain_id();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        Ok(metadata(
-            &self.context,
-            &self.frames,
-            pc,
-            result,
-            imm,
-            chain_id,
-        )?)
+        metadata(&self.context, &self.frames, pc, result, imm, chain_id)
     }
 
     pub(crate) fn get_transaction_field(
@@ -80,7 +73,7 @@ where
             tx_offset,
             pc,
         };
-        Ok(input.get_transaction_field(result, b, imm)?)
+        input.get_transaction_field(result, b, imm)
     }
 }
 

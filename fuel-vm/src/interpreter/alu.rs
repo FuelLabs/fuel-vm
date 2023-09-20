@@ -7,10 +7,7 @@ use super::{
 };
 use crate::{
     constraints::reg_key::*,
-    error::{
-        RuntimeError,
-        SimpleResult,
-    },
+    error::SimpleResult,
 };
 
 use fuel_asm::PanicReason;

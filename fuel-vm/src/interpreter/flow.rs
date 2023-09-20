@@ -36,7 +36,6 @@ use crate::{
     context::Context,
     error::{
         IoResult,
-        PanicOrBug,
         RuntimeError,
         SimpleResult,
     },

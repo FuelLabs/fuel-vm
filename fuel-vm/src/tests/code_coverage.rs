@@ -68,7 +68,7 @@ fn code_coverage() {
     impl ProfileReceiver for ProfilingOutput {
         fn on_transaction(
             &mut self,
-            _state: &Result<ProgramState, InterpreterError>,
+            _state: Result<&ProgramState, InterpreterError<String>>,
             data: &ProfilingData,
         ) {
             let mut guard = self.data.lock().unwrap();

@@ -12,10 +12,7 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::{
-        RuntimeError,
-        SimpleResult,
-    },
+    error::SimpleResult,
 };
 
 use fuel_asm::{
@@ -164,7 +161,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         let (ssp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
 
         if overflow || !self.is_external_context() && ssp > self.registers[RegId::SP] {
-            Err(PanicReason::MemoryOverflow.into())
+            Err(PanicReason::MemoryOverflow)
         } else {
             Ok(mem::replace(&mut self.registers[RegId::SSP], ssp))
         }
@@ -319,7 +316,7 @@ pub(crate) fn internal_contract_bounds(
     if context.is_internal() {
         CheckedMemConstLen::new(*fp)
     } else {
-        Err(PanicReason::ExpectedInternalContext.into())
+        Err(PanicReason::ExpectedInternalContext)
     }
 }
 

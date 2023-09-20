@@ -3,7 +3,6 @@ use crate::{
     constraints::reg_key::*,
     error::{
         PanicOrBug,
-        RuntimeError,
         SimpleResult,
     },
     prelude::{

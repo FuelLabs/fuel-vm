@@ -49,7 +49,7 @@ pub trait ToAddr {
 impl ToAddr for usize {
     fn to_addr(self) -> Result<usize, PanicReason> {
         if self > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow)
         }
         Ok(self)
     }
@@ -101,7 +101,7 @@ impl MemoryRange {
         let end = start.checked_add(size).ok_or(PanicReason::MemoryOverflow)?;
 
         if end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow)
         }
 
         Ok(Self(start..end))
@@ -128,7 +128,7 @@ impl MemoryRange {
     {
         let (addr, overflow) = overflowing_op(base, offset);
         if overflow {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow)
         }
         Self::new(addr, size)
     }

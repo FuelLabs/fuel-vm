@@ -3,7 +3,10 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::interpreter::memory::Memory;
+use crate::{
+    error::PanicOrBug,
+    interpreter::memory::Memory,
+};
 
 use super::*;
 

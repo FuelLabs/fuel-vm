@@ -52,7 +52,6 @@ use crate::{
     },
     prelude::Profiler,
     storage::{
-        self,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,

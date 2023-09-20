@@ -22,7 +22,6 @@ use crate::{
     error::{
         IoResult,
         RuntimeError,
-        SimpleResult,
     },
     interpreter::{
         receipts::ReceiptsCtx,

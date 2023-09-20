@@ -6,11 +6,9 @@ use crate::{
         InitialBalances,
         Interpreter,
     },
-    prelude::RuntimeError,
 };
 
 use fuel_asm::{
-    PanicReason,
     RegId,
     Word,
 };

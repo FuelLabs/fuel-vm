@@ -380,7 +380,7 @@ where
     S: MerkleRootStorage<Key, Type>,
 {
     fn root(&self, key: &Key) -> Result<fuel_storage::MerkleRoot, Self::Error> {
-        Ok(<S as MerkleRootStorage<Key, Type>>::root(&self.0, key)?)
+        <S as MerkleRootStorage<Key, Type>>::root(&self.0, key)
     }
 }
 

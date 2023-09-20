@@ -20,6 +20,7 @@ use crate::{
         VM_REGISTER_PROGRAM_COUNT,
         VM_REGISTER_SYSTEM_COUNT,
     },
+    error::SimpleResult,
     prelude::RuntimeError,
 };
 
@@ -42,7 +43,7 @@ pub struct WriteRegKey(usize);
 impl WriteRegKey {
     /// Create a new writable register key if the index is within the bounds
     /// of the writable registers.
-    pub fn new(k: impl Into<usize>) -> Result<Self, RuntimeError> {
+    pub fn new(k: impl Into<usize>) -> Result<Self, PanicReason> {
         let k = k.into();
         is_register_writable(&k)?;
         Ok(Self(k))
@@ -59,15 +60,13 @@ impl WriteRegKey {
 
 /// Check that the register is above the system registers and below the total
 /// number of registers.
-pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), RuntimeError> {
+pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), PanicReason> {
     const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
     const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
     if RANGE.contains(r) {
         Ok(())
     } else {
-        Err(RuntimeError::Recoverable(
-            PanicReason::ReservedRegisterNotWritable,
-        ))
+        Err(PanicReason::ReservedRegisterNotWritable)
     }
 }
 
@@ -379,7 +378,7 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
 }
 
 impl TryFrom<RegisterId> for WriteRegKey {
-    type Error = RuntimeError;
+    type Error = PanicReason;
 
     fn try_from(r: RegisterId) -> Result<Self, Self::Error> {
         Self::new(r)

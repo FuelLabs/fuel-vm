@@ -2,7 +2,6 @@
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 
-mod error;
 mod impls;
 
 extern crate alloc;
@@ -14,8 +13,6 @@ use alloc::{
     },
     vec::Vec,
 };
-
-pub use error::StorageError;
 
 /// Merkle root alias type
 pub type MerkleRoot = [u8; 32];
@@ -55,12 +52,13 @@ pub trait Mappable {
 ///
 /// Generic should implement [`Mappable`] trait with all storage type information.
 pub trait StorageInspect<Type: Mappable> {
+    type Error;
+
     /// Retrieve `Cow<Value>` such as `Key->Value`.
-    fn get(&self, key: &Type::Key)
-        -> Result<Option<Cow<Type::OwnedValue>>, StorageError>;
+    fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error>;
 
     /// Return `true` if there is a `Key` mapping to a value in the storage.
-    fn contains_key(&self, key: &Type::Key) -> Result<bool, StorageError>;
+    fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -75,7 +73,7 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
         &mut self,
         key: &Type::Key,
         value: &Type::Value,
-    ) -> Result<Option<Type::OwnedValue>, StorageError>;
+    ) -> Result<Option<Type::OwnedValue>, Self::Error>;
 
     /// Remove `Key->Value` mapping from the storage.
     ///
@@ -84,7 +82,7 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
     fn remove(
         &mut self,
         key: &Type::Key,
-    ) -> Result<Option<Type::OwnedValue>, StorageError>;
+    ) -> Result<Option<Type::OwnedValue>, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -94,7 +92,7 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
 /// copying the value into a buffer.
 pub trait StorageSize<Type: Mappable>: StorageInspect<Type> {
     /// Return the number of bytes stored at this key.
-    fn size_of_value(&self, key: &Type::Key) -> Result<Option<usize>, StorageError>;
+    fn size_of_value(&self, key: &Type::Key) -> Result<Option<usize>, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -111,16 +109,13 @@ pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> 
     ///
     /// Returns None if the value does not exist.
     /// Otherwise, returns the number of bytes read.
-    fn read(
-        &self,
-        key: &Type::Key,
-        buf: &mut [u8],
-    ) -> Result<Option<usize>, StorageError>;
+    fn read(&self, key: &Type::Key, buf: &mut [u8])
+        -> Result<Option<usize>, Self::Error>;
 
     /// Same as `read` but allocates a new buffer and returns it.
     ///
     /// Checks the size of the value and allocates a buffer of that size.
-    fn read_alloc(&self, key: &Type::Key) -> Result<Option<Vec<u8>>, StorageError>;
+    fn read_alloc(&self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -136,7 +131,7 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
     /// Does not perform any serialization.
     ///
     /// Returns the number of bytes written.
-    fn write(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<usize, StorageError>;
+    fn write(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<usize, Self::Error>;
 
     /// Write the value to the given key from the provided buffer and
     /// return the previous value if it existed.
@@ -148,12 +143,12 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
         &mut self,
         key: &Type::Key,
         buf: Vec<u8>,
-    ) -> Result<(usize, Option<Vec<u8>>), StorageError>
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
     where
         Self: StorageSize<Type>;
 
     /// Removes a value from the storage and returning it without deserializing it.
-    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, StorageError>;
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
 /// Returns the merkle root for the `StorageType` per merkle `Key`. The type should
@@ -167,7 +162,7 @@ where
     ///
     /// The cryptographic primitive is an arbitrary choice of the implementor and this
     /// trait won't impose any restrictions to that.
-    fn root(&self, key: &Key) -> Result<MerkleRoot, StorageError>;
+    fn root(&self, key: &Key) -> Result<MerkleRoot, Self::Error>;
 }
 
 /// The wrapper around the storage that supports only methods from `StorageInspect`.

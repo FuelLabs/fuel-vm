@@ -33,6 +33,7 @@ use crate::{
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     /// Initialize the VM with a given transaction
     fn init_inner(
@@ -41,7 +42,7 @@ where
         initial_balances: InitialBalances,
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), RuntimeError<S::DataError>> {
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
@@ -80,6 +81,7 @@ where
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     /// Initialize the VM for a predicate context
     pub fn init_predicate(
@@ -87,7 +89,7 @@ where
         context: Context,
         mut tx: Tx,
         gas_limit: Word,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), InterpreterError<S::DataError>> {
         self.context = context;
         tx.prepare_init_predicate();
 
@@ -100,6 +102,7 @@ where
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    <S as InterpreterStorage>::DataError: From<S::DataError>,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
@@ -107,7 +110,10 @@ where
     /// allows execution of contract opcodes.
     ///
     /// For predicate estimation and verification, check [`Self::init_predicate`]
-    pub fn init_script(&mut self, checked: Checked<Tx>) -> Result<(), InterpreterError> {
+    pub fn init_script(
+        &mut self,
+        checked: Checked<Tx>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
         let block_height = self.storage.block_height()?;
 
         self.context = Context::Script { block_height };

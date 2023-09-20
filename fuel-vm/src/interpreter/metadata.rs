@@ -8,7 +8,10 @@ use crate::{
     constraints::reg_key::*,
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::{
+        RuntimeError,
+        SimpleResult,
+    },
 };
 
 use fuel_asm::{
@@ -52,11 +55,18 @@ where
         &mut self,
         ra: RegisterId,
         imm: Immediate18,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let chain_id = self.chain_id();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        metadata(&self.context, &self.frames, pc, result, imm, chain_id)
+        Ok(metadata(
+            &self.context,
+            &self.frames,
+            pc,
+            result,
+            imm,
+            chain_id,
+        )?)
     }
 
     pub(crate) fn get_transaction_field(
@@ -64,7 +74,7 @@ where
         ra: RegisterId,
         b: Word,
         imm: Immediate12,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
@@ -73,7 +83,7 @@ where
             tx_offset,
             pc,
         };
-        input.get_transaction_field(result, b, imm)
+        Ok(input.get_transaction_field(result, b, imm)?)
     }
 }
 
@@ -84,7 +94,7 @@ pub(crate) fn metadata(
     result: &mut Word,
     imm: Immediate18,
     chain_id: ChainId,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let external = context.is_external();
     let args = GMArgs::try_from(imm)?;
 
@@ -125,7 +135,8 @@ pub(crate) fn metadata(
         }
     }
 
-    inc_pc(pc)
+    inc_pc(pc)?;
+    Ok(())
 }
 
 struct GTFInput<'vm, Tx> {
@@ -140,7 +151,7 @@ impl<Tx> GTFInput<'_, Tx> {
         result: &mut Word,
         b: Word,
         imm: Immediate12,
-    ) -> Result<(), RuntimeError>
+    ) -> SimpleResult<()>
     where
         Tx: ExecutableTransaction,
     {
@@ -590,6 +601,7 @@ impl<Tx> GTFInput<'_, Tx> {
 
         *result = a;
 
-        inc_pc(self.pc)
+        inc_pc(self.pc)?;
+        Ok(())
     }
 }

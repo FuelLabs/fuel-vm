@@ -34,7 +34,7 @@ where
     Tx: ExecutableTransaction,
 {
     /// Execute the current instruction located in `$m[$pc]`.
-    pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
+    pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         if let Some(raw_instruction) = self.fetch_instruction() {
             self.instruction(raw_instruction)
         } else {
@@ -57,7 +57,7 @@ where
     pub fn instruction<R: Into<RawInstruction> + Copy>(
         &mut self,
         raw: R,
-    ) -> Result<ExecuteState, InterpreterError> {
+    ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         if self.debugger.is_active() {
             let debug = self.eval_debugger_state();
             if !debug.should_continue() {
@@ -72,7 +72,7 @@ where
     fn instruction_inner(
         &mut self,
         raw: RawInstruction,
-    ) -> Result<ExecuteState, RuntimeError> {
+    ) -> Result<ExecuteState, RuntimeError<S::DataError>> {
         let instruction = Instruction::try_from(raw)
             .map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
 

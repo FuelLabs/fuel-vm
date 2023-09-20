@@ -10,10 +10,6 @@ license = "Apache-2.0"
 repository = { workspace = true }
 description = "Storage traits for Fuel storage-backed data structures."
 
-[dependencies]
-anyhow = { version = "1.0", default-features = false }
-thiserror = { version = "1.0", optional = true }
-
 [features]
 default = ["std"]
-std = ["anyhow/std", "thiserror"]
+std = []

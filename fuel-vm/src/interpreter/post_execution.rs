@@ -41,7 +41,7 @@ where
         remaining_gas: Word,
         initial_balances: &InitialBalances,
         balances: &RuntimeBalances,
-    ) -> Result<(), RuntimeError>
+    ) -> Result<(), RuntimeError<S::DataError>>
     where
         Tx: ExecutableTransaction,
     {

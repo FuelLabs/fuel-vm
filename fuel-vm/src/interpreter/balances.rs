@@ -1,5 +1,6 @@
 use crate::{
     consts::*,
+    error::SimpleResult,
     interpreter::{
         ExecutableTransaction,
         InitialBalances,
@@ -9,6 +10,7 @@ use crate::{
 };
 
 use fuel_asm::{
+    PanicReason,
     RegId,
     Word,
 };
@@ -111,7 +113,7 @@ impl RuntimeBalances {
     fn set_memory_balance_inner(
         balance: &Balance,
         memory: &mut [u8; MEM_SIZE],
-    ) -> Result<Word, RuntimeError> {
+    ) -> SimpleResult<Word> {
         let value = balance.value();
         let offset = balance.offset();
 

@@ -1,4 +1,5 @@
 use alloc::borrow::Cow;
+use core::convert::Infallible;
 
 // Re-export fuel-storage traits
 pub use fuel_storage::{
@@ -23,7 +24,7 @@ pub trait StorageMutateInfallible<Type: Mappable> {
 
 impl<S, Type> StorageInspectInfallible<Type> for S
 where
-    S: StorageInspect<Type>,
+    S: StorageInspect<Type, Error = Infallible>,
     Type: Mappable,
 {
     fn get(&self, key: &Type::Key) -> Option<Cow<Type::OwnedValue>> {
@@ -39,7 +40,7 @@ where
 
 impl<S, Type> StorageMutateInfallible<Type> for S
 where
-    S: StorageMutate<Type>,
+    S: StorageMutate<Type, Error = Infallible>,
     Type: Mappable,
 {
     fn insert(

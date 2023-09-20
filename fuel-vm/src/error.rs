@@ -5,7 +5,6 @@ use fuel_asm::{
     PanicReason,
     RawInstruction,
 };
-use fuel_storage::StorageError;
 use fuel_tx::CheckError;
 
 #[cfg(feature = "std")]
@@ -18,12 +17,17 @@ use alloc::{
         ToString,
     },
 };
-use core::fmt;
+use core::{
+    convert::Infallible,
+    fmt,
+};
+
+use crate::storage::predicate;
 
 /// Interpreter runtime error variants.
 #[cfg_attr(feature = "std", derive(Error))]
 #[derive(Debug)]
-pub enum InterpreterError {
+pub enum InterpreterError<StorageError> {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
     #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
@@ -51,9 +55,12 @@ pub enum InterpreterError {
     Bug(Bug),
 }
 
-impl InterpreterError {
+impl<StorageError> InterpreterError<StorageError> {
     /// Describe the error as recoverable or halt.
-    pub fn from_runtime(error: RuntimeError, instruction: RawInstruction) -> Self {
+    pub fn from_runtime(
+        error: RuntimeError<StorageError>,
+        instruction: RawInstruction,
+    ) -> Self {
         match error {
             RuntimeError::Recoverable(reason) => {
                 Self::PanicInstruction(PanicInstruction::error(reason, instruction))
@@ -89,32 +96,26 @@ impl InterpreterError {
     }
 }
 
-impl From<RuntimeError> for InterpreterError {
-    fn from(error: RuntimeError) -> Self {
+impl<StorageError> From<RuntimeError<StorageError>> for InterpreterError<StorageError> {
+    fn from(error: RuntimeError<StorageError>) -> Self {
         match error {
             RuntimeError::Recoverable(e) => Self::Panic(e),
-            RuntimeError::Unrecoverable(e) => match e {
-                Unrecoverable::Bug(bug) => Self::Bug(bug),
-                Unrecoverable::Storage(err) => Self::Storage(err),
-            },
+            RuntimeError::Bug(e) => Self::Bug(e),
+            RuntimeError::Storage(e) => Self::Storage(e),
         }
     }
 }
 
-impl From<CheckError> for InterpreterError {
+impl<StorageError> From<CheckError> for InterpreterError<StorageError> {
     fn from(error: CheckError) -> Self {
         Self::CheckError(error)
     }
 }
 
-impl From<StorageError> for InterpreterError {
-    fn from(error: StorageError) -> Self {
-        let error: RuntimeError = error.into();
-        error.into()
-    }
-}
-
-impl PartialEq for InterpreterError {
+impl<StorageError> PartialEq for InterpreterError<StorageError>
+where
+    StorageError: PartialEq,
+{
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
@@ -129,47 +130,32 @@ impl PartialEq for InterpreterError {
     }
 }
 
-#[derive(Debug, PartialEq)]
-/// Unrecoverable error
-pub enum Unrecoverable {
-    /// Invalid interpreter state reached unexpectedly, this is a bug
-    Bug(Bug),
-    /// Storage io error
-    Storage(StorageError),
-}
-
-impl fmt::Display for Unrecoverable {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Unrecoverable::Bug(bug) => write!(f, "{:#?}", bug),
-            Unrecoverable::Storage(err) => write!(f, "{:#?}", err),
-        }
-    }
-}
-
-impl From<Bug> for Unrecoverable {
+impl<StorageError> From<Bug> for InterpreterError<StorageError> {
     fn from(bug: Bug) -> Self {
         Self::Bug(bug)
     }
 }
 
-impl From<StorageError> for Unrecoverable {
-    fn from(err: StorageError) -> Self {
-        Self::Storage(err)
+impl<StorageError> From<Infallible> for InterpreterError<StorageError> {
+    fn from(infallible: Infallible) -> Self {
+        unreachable!()
     }
 }
 
 /// Runtime error description that should either be specified in the protocol or
 /// halt the execution.
 #[derive(Debug)]
-pub enum RuntimeError {
+#[must_use]
+pub enum RuntimeError<StorageError> {
     /// Specified error with well-formed fallback strategy, i.e. vm panics.
     Recoverable(PanicReason),
-    /// Unspecified error that should halt the execution, i.e. IO errors.
-    Unrecoverable(Unrecoverable),
+    /// Invalid interpreter state reached unexpectedly, this is a bug
+    Bug(Bug),
+    /// Storage io error
+    Storage(StorageError),
 }
 
-impl RuntimeError {
+impl<StorageError> RuntimeError<StorageError> {
     /// Flag whether the error is recoverable.
     pub const fn is_recoverable(&self) -> bool {
         matches!(self, Self::Recoverable(_))
@@ -177,51 +163,52 @@ impl RuntimeError {
 
     /// Flag whether the error must halt the execution.
     pub const fn must_halt(&self) -> bool {
-        matches!(self, Self::Unrecoverable(_))
+        !self.is_recoverable()
     }
 }
 
-impl PartialEq for RuntimeError {
+impl<StorageError: PartialEq> PartialEq for RuntimeError<StorageError> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (RuntimeError::Recoverable(a), RuntimeError::Recoverable(b)) => a == b,
-            (RuntimeError::Unrecoverable(a), RuntimeError::Unrecoverable(b)) => a == b,
+            (RuntimeError::Bug(a), RuntimeError::Bug(b)) => a == b,
+            (RuntimeError::Storage(a), RuntimeError::Storage(b)) => a == b,
             _ => false,
         }
     }
 }
 
-impl fmt::Display for RuntimeError {
+impl<StorageError: core::fmt::Debug> fmt::Display for RuntimeError<StorageError> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Recoverable(reason) => write!(f, "Recoverable error: {}", reason),
-            Self::Unrecoverable(err) => write!(f, "Unrecoverable error: {}", err),
+            Self::Bug(err) => write!(f, "Bug: {}", err),
+            Self::Storage(err) => write!(f, "Unrecoverable storage error: {:?}", err),
         }
     }
 }
 
-impl From<PanicReason> for RuntimeError {
+impl<StorageError> From<PanicReason> for RuntimeError<StorageError> {
     fn from(value: PanicReason) -> Self {
         Self::Recoverable(value)
     }
 }
 
-impl From<StorageError> for RuntimeError {
-    fn from(err: StorageError) -> Self {
-        let err: Unrecoverable = err.into();
-        Self::Unrecoverable(err)
-    }
-}
-
-impl From<core::array::TryFromSliceError> for RuntimeError {
+impl<StorageError> From<core::array::TryFromSliceError> for RuntimeError<StorageError> {
     fn from(value: core::array::TryFromSliceError) -> Self {
         Self::Recoverable(value.into())
     }
 }
 
-impl From<Bug> for RuntimeError {
+impl<StorageError> From<Bug> for RuntimeError<StorageError> {
     fn from(bug: Bug) -> Self {
-        Self::Unrecoverable(bug.into())
+        Self::Bug(bug)
+    }
+}
+
+impl<StorageError> From<Infallible> for RuntimeError<StorageError> {
+    fn from(infallible: Infallible) -> Self {
+        unreachable!()
     }
 }
 
@@ -265,6 +252,12 @@ pub enum PredicateVerificationFailed {
         error("Cumulative gas computation overflowed the u64 accumulator")
     )]
     GasOverflow,
+    /// Invalid interpreter state reached unexpectedly, this is a bug
+    #[cfg_attr(
+        feature = "std",
+        error("Invalid interpreter state reached unexpectedly")
+    )]
+    Bug(Bug),
     /// Predicate verification failed since it attempted to access storage
     #[cfg_attr(
         feature = "std",
@@ -282,8 +275,10 @@ impl From<PredicateVerificationFailed> for CheckError {
     }
 }
 
-impl From<InterpreterError> for PredicateVerificationFailed {
-    fn from(error: InterpreterError) -> Self {
+impl From<InterpreterError<predicate::StorageUnavailable>>
+    for PredicateVerificationFailed
+{
+    fn from(error: InterpreterError<predicate::StorageUnavailable>) -> Self {
         match error {
             error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
                 PredicateVerificationFailed::OutOfGas
@@ -291,6 +286,12 @@ impl From<InterpreterError> for PredicateVerificationFailed {
             InterpreterError::Storage(_) => PredicateVerificationFailed::Storage,
             _ => PredicateVerificationFailed::False,
         }
+    }
+}
+
+impl From<Bug> for PredicateVerificationFailed {
+    fn from(bug: Bug) -> Self {
+        Self::Bug(bug)
     }
 }
 
@@ -349,6 +350,7 @@ impl fmt::Display for BugVariant {
 ///
 /// The bug it self is identified by the caller location.
 #[derive(Debug, Clone)]
+#[must_use]
 pub struct Bug {
     /// Source code location of the bug, in `path/to/file.rs:line:column` notation
     location: String,
@@ -458,18 +460,52 @@ impl fmt::Display for Bug {
     }
 }
 
-impl From<Bug> for InterpreterError {
-    fn from(bug: Bug) -> Self {
-        RuntimeError::from(bug).into()
+/// Runtime error description that should either be specified in the protocol or
+/// halt the execution.
+#[derive(Debug)]
+#[must_use]
+pub enum PanicOrBug {
+    /// VM panic
+    Panic(PanicReason),
+    /// Invalid interpreter state reached unexpectedly, this is a bug
+    Bug(Bug),
+}
+
+impl From<PanicReason> for PanicOrBug {
+    fn from(panic: PanicReason) -> Self {
+        Self::Panic(panic)
     }
 }
 
-impl From<Bug> for PredicateVerificationFailed {
+impl From<Bug> for PanicOrBug {
     fn from(bug: Bug) -> Self {
-        let e: InterpreterError = bug.into();
-        e.into()
+        Self::Bug(bug)
     }
 }
+
+impl<StorageError> From<PanicOrBug> for RuntimeError<StorageError> {
+    fn from(value: PanicOrBug) -> Self {
+        match value {
+            PanicOrBug::Panic(reason) => Self::Recoverable(reason),
+            PanicOrBug::Bug(bug) => Self::Bug(bug),
+        }
+    }
+}
+
+impl<StorageError> From<PanicOrBug> for InterpreterError<StorageError> {
+    fn from(value: PanicOrBug) -> Self {
+        match value {
+            PanicOrBug::Panic(reason) => Self::Panic(reason),
+            PanicOrBug::Bug(bug) => Self::Bug(bug),
+        }
+    }
+}
+
+/// Result of a operation that doesn't access storage
+pub type SimpleResult<T> = Result<T, PanicOrBug>;
+
+/// Result of a operation that accesses storage
+pub type IoResult<T, S> = Result<T, RuntimeError<S>>;
 
 #[cfg(test)]
 mod tests {

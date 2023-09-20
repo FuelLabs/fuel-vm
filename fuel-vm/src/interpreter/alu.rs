@@ -7,7 +7,10 @@ use super::{
 };
 use crate::{
     constraints::reg_key::*,
-    error::RuntimeError,
+    error::{
+        RuntimeError,
+        SimpleResult,
+    },
 };
 
 use fuel_asm::PanicReason;
@@ -33,7 +36,7 @@ where
         f: F,
         b: B,
         c: C,
-    ) -> Result<(), RuntimeError>
+    ) -> SimpleResult<()>
     where
         F: FnOnce(B, C) -> (u128, bool),
     {
@@ -55,7 +58,7 @@ where
         f: F,
         b: B,
         c: C,
-    ) -> Result<(), RuntimeError>
+    ) -> SimpleResult<()>
     where
         F: FnOnce(B, C) -> (Word, bool),
     {
@@ -77,7 +80,7 @@ where
         b: B,
         c: C,
         err_bool: bool,
-    ) -> Result<(), RuntimeError>
+    ) -> SimpleResult<()>
     where
         F: FnOnce(B, C) -> Word,
     {
@@ -92,11 +95,7 @@ where
         alu_error(dest, flag.as_ref(), common, f, b, c, err_bool)
     }
 
-    pub(crate) fn alu_set(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> SimpleResult<()> {
         let (SystemRegisters { of, err, pc, .. }, mut w) =
             split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];
@@ -104,7 +103,7 @@ where
         alu_set(dest, common, b)
     }
 
-    pub(crate) fn alu_clear(&mut self) -> Result<(), RuntimeError> {
+    pub(crate) fn alu_clear(&mut self) -> SimpleResult<()> {
         let (SystemRegisters { of, err, pc, .. }, _) =
             split_registers(&mut self.registers);
         let common = AluCommonReg { of, err, pc };
@@ -136,7 +135,7 @@ pub(crate) fn alu_capture_overflow<F, B, C>(
     f: F,
     b: B,
     c: C,
-) -> Result<(), RuntimeError>
+) -> SimpleResult<()>
 where
     F: FnOnce(B, C) -> (u128, bool),
 {
@@ -153,7 +152,7 @@ where
     // set the return value to the low bits of the u128 result
     *dest = (result & Word::MAX as u128) as u64;
 
-    inc_pc(common.pc)
+    Ok(inc_pc(common.pc)?)
 }
 
 /// Set RegId::OF to true and zero the result register if overflow occurred.
@@ -164,7 +163,7 @@ pub(crate) fn alu_boolean_overflow<F, B, C>(
     f: F,
     b: B,
     c: C,
-) -> Result<(), RuntimeError>
+) -> SimpleResult<()>
 where
     F: FnOnce(B, C) -> (Word, bool),
 {
@@ -180,7 +179,7 @@ where
 
     *dest = if overflow { 0 } else { result };
 
-    inc_pc(common.pc)
+    Ok(inc_pc(common.pc)?)
 }
 
 pub(crate) fn alu_error<F, B, C>(
@@ -191,7 +190,7 @@ pub(crate) fn alu_error<F, B, C>(
     b: B,
     c: C,
     err_bool: bool,
-) -> Result<(), RuntimeError>
+) -> SimpleResult<()>
 where
     F: FnOnce(B, C) -> Word,
 {
@@ -204,25 +203,25 @@ where
 
     *dest = if err_bool { 0 } else { f(b, c) };
 
-    inc_pc(common.pc)
+    Ok(inc_pc(common.pc)?)
 }
 
 pub(crate) fn alu_set(
     dest: &mut Word,
     mut common: AluCommonReg,
     b: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     *common.of = 0;
     *common.err = 0;
 
     *dest = b;
 
-    inc_pc(common.pc)
+    Ok(inc_pc(common.pc)?)
 }
 
-pub(crate) fn alu_clear(mut common: AluCommonReg) -> Result<(), RuntimeError> {
+pub(crate) fn alu_clear(mut common: AluCommonReg) -> SimpleResult<()> {
     *common.of = 0;
     *common.err = 0;
 
-    inc_pc(common.pc)
+    Ok(inc_pc(common.pc)?)
 }

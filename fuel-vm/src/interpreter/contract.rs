@@ -19,7 +19,11 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::{
+        IoResult,
+        RuntimeError,
+        SimpleResult,
+    },
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
@@ -63,7 +67,7 @@ where
         ra: RegisterId,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), RuntimeError<S::DataError>> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = ContractBalanceCtx {
@@ -75,7 +79,8 @@ where
                 &mut self.panic_context,
             ),
         };
-        input.contract_balance(result, b, c)
+        input.contract_balance(result, b, c)?;
+        Ok(())
     }
 
     pub(crate) fn transfer(
@@ -83,7 +88,7 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
@@ -108,7 +113,7 @@ where
         b: Word,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
@@ -130,7 +135,7 @@ where
     pub(crate) fn check_contract_exists(
         &self,
         contract: &ContractId,
-    ) -> Result<bool, RuntimeError> {
+    ) -> Result<bool, RuntimeError<S::DataError>> {
         Ok(self.storage.storage_contract_exists(contract)?)
     }
 }
@@ -138,7 +143,7 @@ where
 pub(crate) fn contract<'s, S>(
     storage: &'s S,
     contract: &ContractId,
-) -> Result<Cow<'s, Contract>, RuntimeError>
+) -> IoResult<Cow<'s, Contract>, S::DataError>
 where
     S: InterpreterStorage,
 {
@@ -160,7 +165,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         result: &mut Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> SimpleResult<()>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: ContractsAssetsStorage,
@@ -177,7 +182,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
 
         *result = balance;
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 struct TransferCtx<'vm, S, Tx> {
@@ -205,7 +210,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> Result<(), RuntimeError<S::Error>>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
@@ -261,7 +266,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             receipt,
         );
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 
     /// In Fuel specs:
@@ -276,7 +281,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         output_index: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> Result<(), RuntimeError<S::Error>>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
@@ -295,7 +300,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             // optimistically attempt to load the internal contract id
             Ok(source_contract) => Some(*source_contract),
             // revert to external context if no internal contract is set
-            Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)) => None,
+            Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
             Err(e) => return Err(e),
         };
@@ -332,14 +337,14 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             receipt,
         );
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
@@ -352,7 +357,7 @@ pub(crate) fn balance<S>(
     storage: &S,
     contract: &ContractId,
     asset_id: &AssetId,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
@@ -367,7 +372,7 @@ pub(crate) fn balance_increase<S>(
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
@@ -385,7 +390,7 @@ pub(crate) fn balance_decrease<S>(
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {

@@ -12,7 +12,10 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::{
+        RuntimeError,
+        SimpleResult,
+    },
 };
 
 use fuel_asm::{
@@ -53,10 +56,7 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn update_memory_output(
-        &mut self,
-        idx: usize,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn update_memory_output(&mut self, idx: usize) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         update_memory_output(&mut self.tx, &mut self.memory, tx_offset, idx)
     }
@@ -83,7 +83,7 @@ pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
     tx_offset: usize,
     idx: usize,
     variable: Output,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     tx.replace_variable_output(idx, variable)?;
     update_memory_output(tx, memory, tx_offset, idx)
 }
@@ -100,7 +100,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
     tx: &Tx,
     tx_offset: usize,
     idx: usize,
-) -> Result<Option<MemoryRange>, RuntimeError> {
+) -> Result<Option<MemoryRange>, PanicReason> {
     absolute_output_offset(tx, tx_offset, idx)
         .and_then(|offset| tx.outputs().get(idx).map(|output| (offset, output.size())))
         .map_or(Ok(None), |(offset, output_size)| {
@@ -113,7 +113,7 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     memory: &mut [u8; MEM_SIZE],
     tx_offset: usize,
     idx: usize,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let mem_range = absolute_output_mem_range(tx, tx_offset, idx)?
         .ok_or(PanicReason::OutputNotFound)?;
     let mut mem = mem_range.write(memory);
@@ -160,7 +160,7 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
-    pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, RuntimeError> {
+    pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, PanicReason> {
         let (ssp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
 
         if overflow || !self.is_external_context() && ssp > self.registers[RegId::SP] {
@@ -170,7 +170,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         }
     }
 
-    pub(crate) fn push_stack(&mut self, data: &[u8]) -> Result<(), RuntimeError> {
+    pub(crate) fn push_stack(&mut self, data: &[u8]) -> SimpleResult<()> {
         let ssp = self.reserve_stack(data.len() as Word)?;
 
         self.memory[ssp as usize..self.registers[RegId::SSP] as usize]
@@ -179,7 +179,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         Ok(())
     }
 
-    pub(crate) fn set_flag(&mut self, a: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn set_flag(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
         set_flag(flag, pc, a)
     }
@@ -199,7 +199,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         )
     }
 
-    pub(crate) fn internal_contract(&self) -> Result<&ContractId, RuntimeError> {
+    pub(crate) fn internal_contract(&self) -> Result<&ContractId, PanicReason> {
         internal_contract(&self.context, self.registers.fp(), &self.memory)
     }
 
@@ -230,19 +230,19 @@ pub(crate) fn set_flag(
     mut flag: RegMut<FLAG>,
     pc: RegMut<PC>,
     a: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let Some(flags) = Flags::from_bits(a) else {
         return Err(PanicReason::ErrorFlag.into())
     };
 
     *flag = flags.bits();
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), RuntimeError> {
+pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), PanicReason> {
     pc.checked_add(Instruction::SIZE as Word)
-        .ok_or_else(|| PanicReason::MemoryOverflow.into())
+        .ok_or(PanicReason::MemoryOverflow)
         .map(|i| *pc = i)
 }
 
@@ -260,7 +260,7 @@ pub(crate) fn base_asset_balance_sub(
     balances: &mut RuntimeBalances,
     memory: &mut [u8; MEM_SIZE],
     value: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     external_asset_id_balance_sub(balances, memory, base_asset_id, value)
 }
 
@@ -270,7 +270,7 @@ pub(crate) fn external_asset_id_balance_sub(
     memory: &mut [u8; MEM_SIZE],
     asset_id: &AssetId,
     value: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     balances
         .checked_balance_sub(memory, asset_id, value)
         .ok_or(PanicReason::NotEnoughBalance)?;
@@ -291,7 +291,7 @@ pub(crate) fn current_contract<'a>(
     context: &Context,
     fp: Reg<FP>,
     memory: &'a [u8; MEM_SIZE],
-) -> Result<Option<&'a ContractId>, RuntimeError> {
+) -> Result<Option<&'a ContractId>, PanicReason> {
     if context.is_internal() {
         Ok(Some(internal_contract(context, fp, memory)?))
     } else {
@@ -303,7 +303,7 @@ pub(crate) fn internal_contract<'a>(
     context: &Context,
     register: Reg<FP>,
     memory: &'a [u8; MEM_SIZE],
-) -> Result<&'a ContractId, RuntimeError> {
+) -> Result<&'a ContractId, PanicReason> {
     let range = internal_contract_bounds(context, register)?;
 
     // Safety: Memory bounds logically verified by the interpreter
@@ -315,7 +315,7 @@ pub(crate) fn internal_contract<'a>(
 pub(crate) fn internal_contract_bounds(
     context: &Context,
     fp: Reg<FP>,
-) -> Result<CheckedMemConstLen<{ ContractId::LEN }>, RuntimeError> {
+) -> Result<CheckedMemConstLen<{ ContractId::LEN }>, PanicReason> {
     if context.is_internal() {
         CheckedMemConstLen::new(*fp)
     } else {

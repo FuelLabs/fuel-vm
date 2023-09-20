@@ -26,7 +26,10 @@ use crate::{
         RuntimeBalances,
     },
     predicate::RuntimePredicate,
-    prelude::BugVariant,
+    prelude::{
+        BugVariant,
+        RuntimeError,
+    },
     state::{
         ExecuteState,
         ProgramState,
@@ -422,7 +425,7 @@ where
         initial_balances: InitialBalances,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), InterpreterError<S::DataError>> {
         let remaining_gas = create
             .limit()
             .checked_sub(create.gas_used_by_predicates())
@@ -480,13 +483,15 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
-    fn update_transaction_outputs(&mut self) -> Result<(), InterpreterError> {
+    fn update_transaction_outputs(
+        &mut self,
+    ) -> Result<(), InterpreterError<S::DataError>> {
         let outputs = self.transaction().outputs().len();
         (0..outputs).try_for_each(|o| self.update_memory_output(o))?;
         Ok(())
     }
 
-    pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
+    pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         // TODO: Remove `Create` from here
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
@@ -603,7 +608,9 @@ where
         Ok(state)
     }
 
-    pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
+    pub(crate) fn run_program(
+        &mut self,
+    ) -> Result<ProgramState, InterpreterError<S::DataError>> {
         loop {
             // Check whether the instruction will be executed in a call context
             let in_call = !self.frames.is_empty();
@@ -645,7 +652,7 @@ where
         storage: S,
         tx: Checked<Tx>,
         params: InterpreterParams,
-    ) -> Result<StateTransition<Tx>, InterpreterError> {
+    ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
         let mut interpreter = Interpreter::with_storage(storage, params);
         interpreter
             .transact(tx)
@@ -662,7 +669,7 @@ where
     pub fn transact(
         &mut self,
         tx: Checked<Tx>,
-    ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError> {
+    ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
@@ -685,7 +692,10 @@ where
     /// the last state of execution of the `Script` transaction.
     ///
     /// Returns `Create` transaction with all modifications after execution.
-    pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
+    pub fn deploy(
+        &mut self,
+        tx: Checked<Create>,
+    ) -> Result<Create, InterpreterError<S::DataError>> {
         let (mut create, metadata) = tx.into();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();

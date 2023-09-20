@@ -21,7 +21,9 @@ impl<Tx> Interpreter<PredicateStorage, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn verify_predicate(&mut self) -> Result<ProgramState, InterpreterError> {
+    pub(crate) fn verify_predicate(
+        &mut self,
+    ) -> Result<ProgramState, InterpreterError<()>> {
         let range = self
             .context
             .predicate()

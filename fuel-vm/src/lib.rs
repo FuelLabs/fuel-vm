@@ -92,7 +92,6 @@ pub mod prelude {
         MerkleRootStorage,
         StorageAsMut,
         StorageAsRef,
-        StorageError,
         StorageInspect,
         StorageMutate,
     };

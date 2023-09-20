@@ -152,7 +152,7 @@ pub trait ProfileReceiver: DynClone {
     /// Called after a transaction has completed
     fn on_transaction(
         &mut self,
-        state: &Result<ProgramState, InterpreterError>,
+        state: &Result<ProgramState, InterpreterError<()>>,
         data: &ProfilingData,
     );
 }
@@ -167,7 +167,7 @@ impl ProfileReceiver for StderrReceiver {
     #[cfg_attr(not(feature = "std"), allow(unused_variables))]
     fn on_transaction(
         &mut self,
-        state: &Result<ProgramState, InterpreterError>,
+        state: &Result<ProgramState, InterpreterError<()>>,
         data: &ProfilingData,
     ) {
         #[cfg(feature = "std")]
@@ -188,7 +188,7 @@ impl Profiler {
     /// Called by the VM after a transaction, send collected data to receiver
     pub fn on_transaction(
         &mut self,
-        state_result: &Result<ProgramState, InterpreterError>,
+        state_result: &Result<ProgramState, InterpreterError<()>>,
     ) {
         if let Some(r) = &mut self.receiver {
             r.on_transaction(state_result, &self.data);

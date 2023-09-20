@@ -23,11 +23,10 @@ use crate::{
 
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-use fuel_storage::StorageError;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "std", derive(thiserror::Error))]
-pub enum MerkleTreeError {
+pub enum MerkleTreeError<StorageError> {
     #[cfg_attr(feature = "std", error("proof index {0} is not valid"))]
     InvalidProofIndex(u64),
 
@@ -41,8 +40,8 @@ pub enum MerkleTreeError {
     StorageError(StorageError),
 }
 
-impl From<StorageError> for MerkleTreeError {
-    fn from(err: StorageError) -> MerkleTreeError {
+impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
+    fn from(err: StorageError) -> MerkleTreeError<StorageError> {
         MerkleTreeError::StorageError(err)
     }
 }
@@ -131,10 +130,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 }
 
-impl<TableType, StorageType> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageInspect<TableType>,
+    StorageType: StorageInspect<TableType, Error = StorageError>,
 {
     pub fn new(storage: StorageType) -> Self {
         Self {
@@ -148,7 +147,7 @@ where
     pub fn load(
         storage: StorageType,
         leaves_count: u64,
-    ) -> Result<Self, MerkleTreeError> {
+    ) -> Result<Self, MerkleTreeError<StorageError>> {
         let mut tree = Self {
             storage,
             head: None,
@@ -164,7 +163,7 @@ where
     pub fn prove(
         &self,
         proof_index: u64,
-    ) -> Result<(Bytes32, ProofSet), MerkleTreeError> {
+    ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
         if proof_index + 1 > self.leaves_count {
             return Err(MerkleTreeError::InvalidProofIndex(proof_index))
         }
@@ -292,7 +291,7 @@ where
     ///
     /// By excluding the root position `07`, we have established the set of
     /// side positions `03`, `09`, and `12`, matching our set of MMR peaks.
-    fn build(&mut self) -> Result<(), MerkleTreeError> {
+    fn build(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
         let mut current_head = None;
         let peaks = &self.peak_positions();
         for peak in peaks.iter() {
@@ -313,10 +312,10 @@ where
     }
 }
 
-impl<TableType, StorageType> MerkleTree<TableType, StorageType>
+impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
 where
     TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageMutate<TableType>,
+    StorageType: StorageMutate<TableType, Error = StorageError>,
 {
     pub fn push(&mut self, data: &[u8]) -> Result<(), StorageError> {
         let node = Node::create_leaf(self.leaves_count, data);

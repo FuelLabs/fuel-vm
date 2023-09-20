@@ -29,9 +29,7 @@ pub trait Node {
 }
 
 pub trait ParentNode: Sized + Node {
-    type Error: Into<InterpreterError<Self::DataError>>
-        + Into<RuntimeError<Self::DataError>>
-        + core::fmt::Debug;
+    type Error: snafu::Error;
 
     fn left_child(&self) -> ChildResult<Self>;
     fn right_child(&self) -> ChildResult<Self>;

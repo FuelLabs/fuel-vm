@@ -52,7 +52,7 @@ pub trait Mappable {
 ///
 /// Generic should implement [`Mappable`] trait with all storage type information.
 pub trait StorageInspect<Type: Mappable> {
-    type Error;
+    type Error: Into<anyhow::Error>;
 
     /// Retrieve `Cow<Value>` such as `Key->Value`.
     fn get(&self, key: &Type::Key) -> Result<Option<Cow<Type::OwnedValue>>, Self::Error>;

@@ -98,10 +98,10 @@ pub use transaction::{
     Witness,
 };
 
-#[cfg(feature = "alloc")]
-pub use transaction::Signable;
-#[cfg(feature = "alloc")]
-pub use transaction::UniqueIdentifier;
+pub use transaction::{
+    Signable,
+    UniqueIdentifier,
+};
 
 #[cfg(feature = "alloc")]
 #[allow(deprecated)]

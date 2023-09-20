@@ -59,9 +59,7 @@ where
     where
         P: ProfileReceiver + Send + Sync + 'static,
     {
-        #[cfg(not(feature = "std"))]
-        use alloc::boxed::Box;
-        self.profiler.set_receiver(Box::new(receiver));
+        self.profiler.set_receiver(alloc::boxed::Box::new(receiver));
         self
     }
 }

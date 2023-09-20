@@ -207,7 +207,7 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
         Ok(self.memory.contracts.get(key).map(|c| {
             let len = buf.len().min(c.as_ref().len());
             buf.copy_from_slice(&c.as_ref()[..len]);
-            buf.len()
+            len
         }))
     }
 

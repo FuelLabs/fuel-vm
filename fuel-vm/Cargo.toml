@@ -65,4 +65,4 @@ profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
 serde = ["dep:serde", "hashbrown/serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde"]
-test-helpers = ["fuel-tx/builder", "random", "dep:anyhow", "fuel-crypto/test-helpers"]
+test-helpers = ["fuel-tx/builder", "alloc", "random", "dep:anyhow", "fuel-crypto/test-helpers"]

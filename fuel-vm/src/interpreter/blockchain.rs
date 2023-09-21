@@ -571,14 +571,9 @@ where
             .checked_sub(a)
             .ok_or(PanicReason::NotEnoughBalance)?;
 
-        match self.storage.merkle_contract_asset_id_balance_insert(
-            contract_id,
-            &asset_id,
-            balance,
-        ) {
-            Ok(_) => {}
-            Err(err) => return Err(RuntimeError::Storage(err)),
-        }
+        self.storage
+            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
+            .map_err(RuntimeError::Storage)?;
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
 

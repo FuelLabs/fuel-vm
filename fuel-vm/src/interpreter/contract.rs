@@ -135,12 +135,9 @@ where
         &self,
         contract: &ContractId,
     ) -> IoResult<bool, S::DataError> {
-        // TODO: fix this
-        match self.storage.storage_contract_exists(contract) {
-            Ok(exists) => Ok(exists),
-            Err(e) => Err(e.into()),
-        }
-        // Ok(self.storage.storage_contract_exists(contract)?)
+        self.storage
+            .storage_contract_exists(contract)
+            .map_err(RuntimeError::Storage)
     }
 }
 

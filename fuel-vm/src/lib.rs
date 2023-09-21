@@ -1,11 +1,11 @@
 //! FuelVM implementation
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
-// #![deny(unused_crate_dependencies)]
+#![deny(unused_crate_dependencies)]
 #![deny(clippy::string_slice)]
-#![cfg_attr(not(feature = "std"), no_std)]
 
 #[doc(hidden)] // Needed by some of the exported macros
 pub extern crate alloc;
@@ -34,7 +34,6 @@ pub mod util;
 pub mod profiler;
 
 #[cfg(test)]
-#[cfg(feature = "alloc")]
 mod tests;
 
 #[cfg(not(feature = "profile-any"))]

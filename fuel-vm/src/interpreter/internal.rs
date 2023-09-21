@@ -46,7 +46,7 @@ use core::mem;
 
 #[cfg(test)]
 mod message_tests;
-#[cfg(all(test, feature = "random"))]
+#[cfg(test)]
 mod tests;
 
 impl<S, Tx> Interpreter<S, Tx>

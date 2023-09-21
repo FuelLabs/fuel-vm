@@ -40,7 +40,7 @@ impl RuntimePredicate {
     }
 }
 
-#[cfg(all(test, feature = "random"))]
+#[cfg(test)]
 #[test]
 fn from_tx_works() {
     use alloc::{

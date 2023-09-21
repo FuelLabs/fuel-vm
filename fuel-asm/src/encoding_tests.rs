@@ -5,7 +5,7 @@ use fuel_asm as _;
 use strum::IntoEnumIterator;
 
 #[test]
-#[cfg(tests)]
+#[cfg(test)]
 fn opcode() {
     // values picked to test edge cases
     let r = RegId::new_checked(0x2d).unwrap();

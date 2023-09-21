@@ -107,7 +107,7 @@ where
     }
 }
 
-#[cfg(all(test, feature = "random"))]
+#[cfg(test)]
 mod tests {
     use crate::TxParameters;
     use core::{

@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 

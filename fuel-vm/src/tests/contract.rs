@@ -15,7 +15,7 @@ use fuel_tx::{
     ConsensusParameters,
     Witness,
 };
-use fuel_types::canonical::SerializedSize;
+use fuel_types::canonical::Serialize;
 use rand::{
     rngs::StdRng,
     Rng,

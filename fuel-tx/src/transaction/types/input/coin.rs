@@ -1,7 +1,10 @@
 use core::default::Default;
 
 use crate::{
-    input::fmt_as_field,
+    input::{
+        fmt_as_field,
+        Empty,
+    },
     transaction::types::input::AsField,
     TxPointer,
     UtxoId,
@@ -18,8 +21,6 @@ use fuel_types::{
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
 pub type CoinPredicate = Coin<Predicate>;
-
-type Empty = ();
 
 mod private {
     pub trait Seal {}
@@ -42,9 +43,9 @@ pub trait CoinSpecification: private::Seal {
 pub struct Signed;
 
 impl CoinSpecification for Signed {
-    type Predicate = Empty;
-    type PredicateData = Empty;
-    type PredicateGasUsed = Empty;
+    type Predicate = Empty<Vec<u8>>;
+    type PredicateData = Empty<Vec<u8>>;
+    type PredicateGasUsed = Empty<Word>;
     type Witness = u8;
 }
 
@@ -56,7 +57,7 @@ impl CoinSpecification for Predicate {
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
     type PredicateGasUsed = Word;
-    type Witness = Empty;
+    type Witness = Empty<u8>;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]

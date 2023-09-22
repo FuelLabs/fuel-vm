@@ -17,7 +17,7 @@ use fuel_tx::{
     TransactionBuilder,
 };
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::Serialize,
     AssetId,
     BlockHeight,
     ChainId,

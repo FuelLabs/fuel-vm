@@ -5,6 +5,7 @@
 #![warn(missing_docs)]
 #![deny(unused_crate_dependencies)]
 // `fuel-derive` requires `fuel_types` import
+// TODO: Move canonical serialization to `fuel-canonical` crate
 #![allow(unused_crate_dependencies)]
 extern crate self as fuel_types;
 

@@ -3,12 +3,8 @@
 #![deny(unused_must_use, missing_docs)]
 
 extern crate proc_macro;
-
-mod utils;
-
 mod attribute;
 mod deserialize;
-mod evaluate;
 mod serialize;
 
 use self::{

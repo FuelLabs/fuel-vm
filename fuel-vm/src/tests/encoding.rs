@@ -24,7 +24,7 @@ use fuel_types::{
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
-    T: Serialize + Deserialize + fmt::Debug + Clone + PartialEq,
+    T: Serialize + Deserialize + Serialize + fmt::Debug + Clone + PartialEq,
 {
     let mut buffer;
 
@@ -32,7 +32,9 @@ where
         buffer = vec![0u8; 1024];
 
         data.encode(&mut &mut buffer[..]).expect("Failed to encode");
-        T::decode(&mut &buffer[..]).expect("Failed to decode");
+        let data_decoded = T::decode(&mut &buffer[..]).expect("Failed to decode");
+        assert_eq!(data, &data_decoded);
+        assert_eq!(data.size(), data_decoded.size());
 
         let counted_bytes = {
             let mut v = Vec::new();

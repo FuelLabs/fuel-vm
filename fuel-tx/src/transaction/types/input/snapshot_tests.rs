@@ -2,8 +2,7 @@
 
 use super::*;
 use crate::TransactionBuilder;
-
-use fuel_types::canonical::SerializedSize;
+use fuel_types::canonical::Serialize;
 
 #[test]
 fn tx_with_signed_coin_snapshot() {
@@ -16,9 +15,9 @@ fn tx_with_signed_coin_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: 4,
             maturity: 2.into(),
-            predicate_gas_used: (),
-            predicate: (),
-            predicate_data: (),
+            predicate_gas_used: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
         }))
         .finalize_as_transaction();
 
@@ -36,7 +35,7 @@ fn tx_with_predicate_coin_snapshot() {
             amount: 11,
             asset_id: [5u8; 32].into(),
             tx_pointer: TxPointer::new(46.into(), 5),
-            witness_index: (),
+            witness_index: Empty::new(),
             maturity: 2.into(),
             predicate_gas_used: 100_000,
             predicate: vec![3u8; 10],
@@ -75,10 +74,10 @@ fn tx_with_signed_message_coin() {
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: 6,
-            predicate_gas_used: (),
-            data: (),
-            predicate: (),
-            predicate_data: (),
+            predicate_gas_used: Empty::new(),
+            data: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
         }))
         .finalize_as_transaction();
 
@@ -95,9 +94,9 @@ fn tx_with_predicate_message_coin() {
             recipient: [3u8; 32].into(),
             amount: 4,
             nonce: [5u8; 32].into(),
-            witness_index: (),
+            witness_index: Empty::new(),
             predicate_gas_used: 100_000,
-            data: (),
+            data: Empty::new(),
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
         }))
@@ -117,10 +116,10 @@ fn tx_with_signed_message_data() {
             amount: 4,
             nonce: [5u8; 32].into(),
             witness_index: 6,
-            predicate_gas_used: (),
+            predicate_gas_used: Empty::new(),
             data: vec![7u8; 10],
-            predicate: (),
-            predicate_data: (),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
         }))
         .finalize_as_transaction();
 
@@ -137,7 +136,7 @@ fn tx_with_predicate_message_data() {
             recipient: [3u8; 32].into(),
             amount: 4,
             nonce: [5u8; 32].into(),
-            witness_index: (),
+            witness_index: Empty::new(),
             predicate_gas_used: 100_000,
             data: vec![6u8; 10],
             predicate: vec![7u8; 11],

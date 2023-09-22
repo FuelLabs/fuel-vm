@@ -1,14 +1,17 @@
-use num_enum::{
-    IntoPrimitive,
-    TryFromPrimitive,
-};
-
 use super::{
     consts::*,
     Input,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    fuel_types::canonical::Serialize,
+    fuel_types::canonical::Deserialize,
+)]
 #[repr(u64)]
 pub enum InputRepr {
     Coin = 0x00,

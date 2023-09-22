@@ -2,7 +2,6 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSizeFixed,
     },
     Bytes32,
     Bytes64,
@@ -28,7 +27,7 @@ pub struct StorageSlot {
 }
 
 impl StorageSlot {
-    pub const SLOT_SIZE: usize = Self::SIZE_STATIC;
+    pub const SLOT_SIZE: usize = Bytes32::LEN + Bytes32::LEN;
 
     pub const fn new(key: Bytes32, value: Bytes32) -> Self {
         StorageSlot { key, value }

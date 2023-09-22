@@ -32,7 +32,6 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
-    canonical::SerializedSize,
     BlockHeight,
     Bytes32,
     ChainId,
@@ -356,6 +355,7 @@ impl crate::Cacheable for Create {
 mod field {
     use super::*;
     use crate::field::StorageSlotRef;
+    use fuel_types::canonical::Serialize;
 
     impl GasPrice for Create {
         #[inline(always)]

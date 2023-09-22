@@ -15,7 +15,6 @@ use crate::{
 use derivative::Derivative;
 use fuel_types::{
     bytes::WORD_SIZE,
-    canonical::SerializedSize,
     BlockHeight,
     Bytes32,
 };
@@ -24,6 +23,7 @@ use fuel_types::ChainId;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use fuel_types::canonical::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct MintMetadata {

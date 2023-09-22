@@ -63,39 +63,6 @@ pub trait Output {
     }
 }
 
-/// Calculates the size of the serialized object.
-pub trait SerializedSize: Serialize {
-    /// Size of the static part of the serialized object, in bytes.
-    fn size_static(&self) -> usize;
-
-    /// Total size of the serialized object, in bytes.
-    fn size(&self) -> usize {
-        self.size_static()
-            .checked_add(self.size_dynamic())
-            .expect("Serialized size of an object would overflow")
-    }
-
-    /// Encodes `Self` into bytes vector. Required known size.
-    #[cfg(feature = "alloc")]
-    fn to_bytes(&self) -> Vec<u8> {
-        let mut vec = Vec::with_capacity(self.size());
-        self.encode(&mut vec).expect("Unable to encode self");
-        vec
-    }
-}
-
-/// Types with fixed static size, any types except `enum` with diffrently-sized variants
-pub trait SerializedSizeFixed: Serialize {
-    /// Size of static portion of the type in bytes.
-    const SIZE_STATIC: usize;
-}
-
-impl<T: SerializedSizeFixed> SerializedSize for T {
-    fn size_static(&self) -> usize {
-        Self::SIZE_STATIC
-    }
-}
-
 /// Allows serialize the type into the `Output`.
 /// https://github.com/FuelLabs/fuel-specs/blob/master/specs/protocol/tx_format.md#transaction
 pub trait Serialize {
@@ -104,12 +71,16 @@ pub trait Serialize {
     #[doc(hidden)]
     const UNALIGNED_BYTES: bool = false;
 
-    /// True if the size has no dynamically sized fields.
-    /// This implies that `SIZE_STATIC` is the full size of the type.
-    const SIZE_NO_DYNAMIC: bool;
+    /// Size of the static part of the serialized object, in bytes.
+    fn size_static(&self) -> usize;
 
     /// Size of the dynamic part, in bytes.
     fn size_dynamic(&self) -> usize;
+
+    /// Total size of the serialized object, in bytes.
+    fn size(&self) -> usize {
+        self.size_static().saturating_add(self.size_dynamic())
+    }
 
     /// Encodes `Self` into the `buffer`.
     ///
@@ -129,6 +100,14 @@ pub trait Serialize {
     fn encode_dynamic<O: Output + ?Sized>(&self, _buffer: &mut O) -> Result<(), Error> {
         Ok(())
     }
+
+    /// Encodes `Self` into bytes vector. Required known size.
+    #[cfg(feature = "alloc")]
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut vec = Vec::with_capacity(self.size());
+        self.encode(&mut vec).expect("Unable to encode self");
+        vec
+    }
 }
 
 /// Allows reading of data into a slice.
@@ -136,8 +115,18 @@ pub trait Input: Clone {
     /// Returns the remaining length of the input data.
     fn remaining(&mut self) -> usize;
 
+    /// Peek the exact number of bytes required to fill the given buffer.
+    fn peek(&self, buf: &mut [u8]) -> Result<(), Error>;
+
     /// Read the exact number of bytes required to fill the given buffer.
     fn read(&mut self, buf: &mut [u8]) -> Result<(), Error>;
+
+    /// Peek a single byte from the input.
+    fn peek_byte(&mut self) -> Result<u8, Error> {
+        let mut buf = [0u8];
+        self.peek(&mut buf[..])?;
+        Ok(buf[0])
+    }
 
     /// Read a single byte from the input.
     fn read_byte(&mut self) -> Result<u8, Error> {
@@ -189,11 +178,7 @@ pub trait Deserialize: Sized {
 
 /// Returns the sum of two sizes, or panics if the sum overflows.
 pub const fn add_sizes(a: usize, b: usize) -> usize {
-    if let Some(result) = a.checked_add(b) {
-        result
-    } else {
-        panic!("Sum of sizes of two objects would overflow");
-    }
+    a.saturating_add(b)
 }
 
 /// The data of each field should be aligned to 64 bits.
@@ -211,13 +196,13 @@ pub const fn aligned_size(len: usize) -> usize {
 
 macro_rules! impl_for_primitives {
     ($t:ident, $unpadded:literal) => {
-        impl SerializedSizeFixed for $t {
-            const SIZE_STATIC: usize = aligned_size(::core::mem::size_of::<$t>());
-        }
-
         impl Serialize for $t {
-            const SIZE_NO_DYNAMIC: bool = true;
             const UNALIGNED_BYTES: bool = $unpadded;
+
+            #[inline(always)]
+            fn size_static(&self) -> usize {
+                aligned_size(::core::mem::size_of::<$t>())
+            }
 
             #[inline(always)]
             fn size_dynamic(&self) -> usize {
@@ -260,13 +245,11 @@ impl_for_primitives!(u32, false);
 impl_for_primitives!(u64, false);
 impl_for_primitives!(u128, false);
 
-impl SerializedSizeFixed for () {
-    const SIZE_STATIC: usize = 0;
-}
-
 // Empty tuple `()`, i.e. the unit type takes up no space.
 impl Serialize for () {
-    const SIZE_NO_DYNAMIC: bool = true;
+    fn size_static(&self) -> usize {
+        0
+    }
 
     #[inline(always)]
     fn size_dynamic(&self) -> usize {
@@ -289,20 +272,17 @@ impl Deserialize for () {
 pub const VEC_DECODE_LIMIT: usize = 100 * (1 << 20); // 100 MiB
 
 #[cfg(feature = "alloc")]
-impl<T: SerializedSize> SerializedSizeFixed for Vec<T> {
-    const SIZE_STATIC: usize = 8;
-}
-
-#[cfg(feature = "alloc")]
-impl<T: SerializedSize> Serialize for Vec<T> {
-    const SIZE_NO_DYNAMIC: bool = false;
+impl<T: Serialize> Serialize for Vec<T> {
+    fn size_static(&self) -> usize {
+        8
+    }
 
     #[inline(always)]
     fn size_dynamic(&self) -> usize {
         if T::UNALIGNED_BYTES {
             aligned_size(self.len())
         } else {
-            self.iter().map(|e| e.size()).sum()
+            aligned_size(self.iter().map(|e| e.size()).sum())
         }
     }
 
@@ -310,10 +290,9 @@ impl<T: SerializedSize> Serialize for Vec<T> {
     // Encode only the size of the vector. Elements will be encoded in the
     // `encode_dynamic` method.
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
-        assert!(
-            self.len() < VEC_DECODE_LIMIT,
-            "Refusing to encode vector too large to be decoded"
-        );
+        if self.len() > VEC_DECODE_LIMIT {
+            return Err(Error::AllocationLimit)
+        }
         let len: u64 = self.len().try_into().expect("msg.len() > u64::MAX");
         len.encode(buffer)
     }
@@ -373,20 +352,22 @@ impl<T: Deserialize> Deserialize for Vec<T> {
     }
 }
 
-impl<const N: usize, T: Serialize> SerializedSizeFixed for [T; N] {
-    const SIZE_STATIC: usize = if T::UNALIGNED_BYTES {
-        aligned_size(N)
-    } else {
-        aligned_size(::core::mem::size_of::<T>()) * N
-    };
-}
-
 impl<const N: usize, T: Serialize> Serialize for [T; N] {
-    const SIZE_NO_DYNAMIC: bool = true;
+    fn size_static(&self) -> usize {
+        if T::UNALIGNED_BYTES {
+            aligned_size(N)
+        } else {
+            aligned_size(self.iter().map(|e| e.size_static()).sum())
+        }
+    }
 
     #[inline(always)]
     fn size_dynamic(&self) -> usize {
-        0
+        if T::UNALIGNED_BYTES {
+            0
+        } else {
+            aligned_size(self.iter().map(|e| e.size_dynamic()).sum())
+        }
     }
 
     #[inline(always)]
@@ -488,6 +469,16 @@ impl<'a> Input for &'a [u8] {
         self.len()
     }
 
+    fn peek(&self, into: &mut [u8]) -> Result<(), Error> {
+        if into.len() > self.len() {
+            return Err(Error::BufferIsTooShort)
+        }
+
+        let len = into.len();
+        into.copy_from_slice(&self[..len]);
+        Ok(())
+    }
+
     fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {
         if into.len() > self.len() {
             return Err(Error::BufferIsTooShort)
@@ -511,18 +502,9 @@ impl<'a> Input for &'a [u8] {
 
 #[cfg(test)]
 mod tests {
-    use num_enum::{
-        IntoPrimitive,
-        TryFromPrimitive,
-    };
-
     use super::*;
 
-    fn validate<
-        T: Serialize + Deserialize + SerializedSizeFixed + Eq + core::fmt::Debug,
-    >(
-        t: T,
-    ) {
+    fn validate<T: Serialize + Deserialize + Eq + core::fmt::Debug>(t: T) {
         let bytes = t.to_bytes();
         let t2 = T::from_bytes(&bytes).expect("Roundtrip failed");
         assert_eq!(t, t2);
@@ -530,14 +512,10 @@ mod tests {
 
         let mut vec = Vec::new();
         t.encode_static(&mut vec).expect("Encode failed");
-        assert_eq!(vec.len(), T::SIZE_STATIC);
+        assert_eq!(vec.len(), t.size_static());
     }
 
-    fn validate_enum<
-        T: Serialize + Deserialize + SerializedSize + Eq + core::fmt::Debug,
-    >(
-        t: T,
-    ) {
+    fn validate_enum<T: Serialize + Deserialize + Eq + fmt::Debug>(t: T) {
         let bytes = t.to_bytes();
         let t2 = T::from_bytes(&bytes).expect("Roundtrip failed");
         assert_eq!(t, t2);
@@ -589,8 +567,10 @@ mod tests {
             b: u16,
         }
 
-        validate(TestStruct1 { a: 123, b: 456 });
-        assert_eq!(TestStruct1::SIZE_STATIC, 16);
+        let t = TestStruct1 { a: 123, b: 456 };
+        assert_eq!(t.size_static(), 16);
+        assert_eq!(t.size(), 16);
+        validate(t);
 
         #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         struct TestStruct2 {
@@ -617,8 +597,10 @@ mod tests {
         #[repr(transparent)]
         struct TestStruct3([u8; 64]);
 
-        validate(TestStruct3([1; 64]));
-        assert_eq!(TestStruct3::SIZE_STATIC, 64);
+        let t = TestStruct3([1; 64]);
+        assert_eq!(t.size_static(), 64);
+        assert_eq!(t.size(), 64);
+        validate(t);
 
         #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
         #[canonical(prefix = 1u64)]
@@ -636,10 +618,14 @@ mod tests {
         enum TestEnum1 {
             A,
             B,
+            C = 0x13,
+            D,
         }
 
         validate(TestEnum1::A);
         validate(TestEnum1::B);
+        validate(TestEnum1::C);
+        validate(TestEnum1::D);
 
         #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
         enum TestEnum2 {
@@ -657,20 +643,6 @@ mod tests {
         struct Prefixed2(u16);
         validate(Prefixed2(u16::MAX));
 
-        #[derive(Debug, PartialEq, Eq, TryFromPrimitive, IntoPrimitive)]
-        #[repr(u64)]
-        enum TestEnum3Discriminant {
-            P1 = 1,
-            P2 = 2,
-        }
-
-        #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-        #[canonical(inner_discriminant = TestEnum3Discriminant)]
-        enum TestEnum3 {
-            P1(Prefixed1),
-            P2(Prefixed2),
-        }
-
         assert_eq!(
             &Prefixed1 {
                 a: [1, 2, 3],
@@ -683,24 +655,5 @@ mod tests {
             Prefixed2(u16::MAX).to_bytes(),
             [0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0xff, 0xff]
         );
-
-        assert_eq!(
-            &TestEnum3::P1(Prefixed1 {
-                a: [1, 2, 3],
-                b: vec![4, 5]
-            })
-            .to_bytes()[..8],
-            &[0u8, 0, 0, 0, 0, 0, 0, 1]
-        );
-        assert_eq!(
-            TestEnum3::P2(Prefixed2(u16::MAX)).to_bytes(),
-            [0u8, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0xff, 0xff]
-        );
-
-        validate_enum(TestEnum3::P1(Prefixed1 {
-            a: [1, 2, 3],
-            b: vec![4, 5, 6],
-        }));
-        validate_enum(TestEnum3::P2(Prefixed2(u16::MAX)));
     }
 }

@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#578](https://github.com/FuelLabs/fuel-vm/pull/578): Support `no_std` environments for `fuel-crypto`, falling back to a pure-Rust crypto implementation.
 - [#582](https://github.com/FuelLabs/fuel-vm/pull/582): Make `fuel-vm` and `fuel-tx` crates compatible with `no_std` + `alloc`. This includes reworking all error handling that used `std::io::Error`, replacing some `std::collection::{HashMap, HashSet}` with `hashbrown::{HashMap, HashSet}` and many changes to feature-gating of APIs.
+- [#587](https://github.com/FuelLabs/fuel-vm/pull/587): Replace `thiserror` dependency with `derive_more`, so that `core::fmt::Display` is implemented without the `std` feature. Removes `std::io::Error` trait impls from the affected types.
+
 ### Added
 
 - [#586](https://github.com/FuelLabs/fuel-vm/pull/586): Added `default_asset` method to the `ContractIdExt` trait implementation, to mirror the `default` method on AssetId in the Sway std lib.

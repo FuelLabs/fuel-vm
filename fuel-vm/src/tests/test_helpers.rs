@@ -1,3 +1,8 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use fuel_asm::{
     op,
     Instruction,

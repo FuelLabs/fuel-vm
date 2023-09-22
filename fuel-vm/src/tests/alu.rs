@@ -1,3 +1,5 @@
+use alloc::vec;
+
 use crate::prelude::*;
 use fuel_asm::{
     op,

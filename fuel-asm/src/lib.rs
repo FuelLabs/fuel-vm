@@ -8,11 +8,14 @@
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 #[cfg(feature = "wee_alloc")]
 use wee_alloc as _;
 
-#[cfg(all(no_std, feature = "wee_alloc"))]
 // Use `wee_alloc` as the global allocator.
+#[cfg(all(no_std, feature = "wee_alloc"))]
 #[global_allocator]
 static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
@@ -877,15 +880,15 @@ where
 
 // Collect instructions into bytes or halfwords
 
-#[cfg(feature = "std")]
-impl core::iter::FromIterator<Instruction> for Vec<u8> {
+#[cfg(feature = "alloc")]
+impl core::iter::FromIterator<Instruction> for alloc::vec::Vec<u8> {
     fn from_iter<I: IntoIterator<Item = Instruction>>(iter: I) -> Self {
         iter.into_iter().flat_map(Instruction::to_bytes).collect()
     }
 }
 
-#[cfg(feature = "std")]
-impl core::iter::FromIterator<Instruction> for Vec<u32> {
+#[cfg(feature = "alloc")]
+impl core::iter::FromIterator<Instruction> for alloc::vec::Vec<u32> {
     fn from_iter<I: IntoIterator<Item = Instruction>>(iter: I) -> Self {
         iter.into_iter().map(u32::from).collect()
     }

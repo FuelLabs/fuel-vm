@@ -1,4 +1,12 @@
-use std::ops::Range;
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
+use core::{
+    convert::Infallible,
+    ops::Range,
+};
 
 use crate::{
     context::Context,
@@ -50,7 +58,7 @@ fn test_state_read_word(
     fp: Word,
     insert: impl Into<Option<Word>>,
     key: Word,
-) -> Result<(Word, Word), RuntimeError> {
+) -> Result<(Word, Word), RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
@@ -111,7 +119,7 @@ fn test_state_write_word(
     fp: Word,
     insert: bool,
     key: Word,
-) -> Result<Word, RuntimeError> {
+) -> Result<Word, RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);

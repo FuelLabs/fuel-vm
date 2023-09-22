@@ -1,3 +1,8 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use fuel_asm::RegId;
 use fuel_crypto::{
     Hasher,

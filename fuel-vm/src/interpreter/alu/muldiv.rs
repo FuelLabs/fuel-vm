@@ -6,7 +6,7 @@ use super::super::{
 };
 use crate::{
     constraints::reg_key::*,
-    error::RuntimeError,
+    error::SimpleResult,
 };
 
 use fuel_asm::PanicReason;
@@ -26,7 +26,7 @@ where
         lhs: Word,
         rhs: Word,
         divider: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let (
             SystemRegisters {
                 flag,
@@ -49,7 +49,8 @@ where
         *err = 0;
         *dest = result;
 
-        inc_pc(pc)
+        inc_pc(pc)?;
+        Ok(())
     }
 }
 

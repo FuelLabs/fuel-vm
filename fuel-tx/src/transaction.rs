@@ -59,7 +59,6 @@ use crate::input::coin::{
 };
 use input::*;
 
-#[cfg(feature = "std")]
 use crate::input::{
     contract::Contract,
     message::{
@@ -67,10 +66,9 @@ use crate::input::{
         MessageDataPredicate,
     },
 };
-#[cfg(feature = "std")]
 pub use fuel_types::ChainId;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub use id::Signable;
 
 pub use id::UniqueIdentifier;
@@ -303,21 +301,21 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Returns ids of all `Input::Contract` that are present in the inputs.
     // TODO: Return `Vec<input::Contract>` instead
-    #[cfg(feature = "std")]
     fn input_contracts(&self) -> IntoIter<&fuel_types::ContractId> {
-        self.inputs()
+        let mut inputs: Vec<_> = self
+            .inputs()
             .iter()
             .filter_map(|input| match input {
                 Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
                 _ => None,
             })
-            .unique()
-            .collect_vec()
-            .into_iter()
+            .collect();
+        inputs.sort();
+        inputs.dedup();
+        inputs.into_iter()
     }
 
     /// Checks that all owners of inputs in the predicates are valid.
-    #[cfg(feature = "std")]
     fn check_predicate_owners(&self, chain_id: &ChainId) -> bool {
         self.inputs()
             .iter()
@@ -411,7 +409,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     ///
     /// note: Fields dependent on storage/state such as balance and state roots, or tx
     /// pointers, should already set by the client beforehand.
-    #[cfg(feature = "std")]
     fn prepare_init_script(&mut self) -> &mut Self {
         self.outputs_mut()
             .iter_mut()

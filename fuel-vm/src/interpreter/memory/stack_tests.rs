@@ -1,3 +1,5 @@
+use alloc::vec;
+
 use fuel_asm::{
     Imm24,
     PanicReason,
@@ -6,12 +8,12 @@ use fuel_asm::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
+    error::PanicOrBug,
     interpreter::memory::{
         pop_selected_registers,
         push_selected_registers,
         Memory,
     },
-    prelude::RuntimeError,
 };
 
 #[rstest::rstest]
@@ -29,7 +31,7 @@ fn test_push_pop(
         Imm24::MAX.into(),
     )]
     bitmask: u32,
-) -> Result<(), RuntimeError> {
+) {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 0;
@@ -85,8 +87,6 @@ fn test_push_pop(
             .count() as u64,
         popcnt
     );
-
-    Ok(())
 }
 
 #[test]
@@ -110,10 +110,7 @@ fn test_push_stack_overflow() {
         Imm24::new(1),
     );
 
-    assert_eq!(
-        result,
-        Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
-    );
+    assert_eq!(result, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
 }
 
 #[test]
@@ -137,10 +134,7 @@ fn test_pop_from_empty_stack() {
         Imm24::new(0b111),
     );
 
-    assert_eq!(
-        result,
-        Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
-    );
+    assert_eq!(result, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
 }
 
 #[test]
@@ -164,8 +158,5 @@ fn test_pop_sp_overflow() {
         Imm24::new(0b111),
     );
 
-    assert_eq!(
-        result,
-        Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
-    );
+    assert_eq!(result, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
 }

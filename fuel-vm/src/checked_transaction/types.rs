@@ -4,11 +4,11 @@ pub use self::{
     create::CheckedMetadata as CreateCheckedMetadata,
     script::CheckedMetadata as ScriptCheckedMetadata,
 };
+use alloc::collections::BTreeMap;
 use fuel_types::{
     AssetId,
     Word,
 };
-use std::collections::BTreeMap;
 
 /// The spendable unrestricted initial assets.
 /// More information about it in the specification:

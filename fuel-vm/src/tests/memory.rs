@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use fuel_asm::PanicReason;
 use test_case::test_case;
 

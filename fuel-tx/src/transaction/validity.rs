@@ -11,19 +11,16 @@ use fuel_types::{
     BlockHeight,
 };
 
-#[cfg(feature = "std")]
 use crate::Transaction;
 
-#[cfg(feature = "std")]
 use fuel_types::{
     Address,
     Bytes32,
     ChainId,
 };
 
+use hashbrown::HashMap;
 use itertools::Itertools;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
 
 mod error;
 
@@ -52,7 +49,6 @@ use crate::{
 pub use error::CheckError;
 
 impl Input {
-    #[cfg(feature = "std")]
     pub fn check(
         &self,
         index: usize,
@@ -69,7 +65,6 @@ impl Input {
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     pub fn check_signature(
         &self,
         index: usize,
@@ -247,7 +242,6 @@ impl Output {
 /// such as spendable input balances or remaining gas. Primarily involves validating that
 /// transaction fields are correctly formatted and signed.
 pub trait FormatValidityChecks {
-    #[cfg(feature = "std")]
     /// Performs all stateless transaction validity checks. This includes the validity
     /// of fields according to rules in the specification and validity of signatures.
     fn check(
@@ -261,7 +255,6 @@ pub trait FormatValidityChecks {
         Ok(())
     }
 
-    #[cfg(feature = "std")]
     /// Validates that all required signatures are set in the transaction and that they
     /// are valid.
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError>;
@@ -275,7 +268,6 @@ pub trait FormatValidityChecks {
     ) -> Result<(), CheckError>;
 }
 
-#[cfg(feature = "std")]
 impl FormatValidityChecks for Transaction {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         match self {

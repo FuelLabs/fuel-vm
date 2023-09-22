@@ -1,10 +1,12 @@
+use alloc::vec::Vec;
+
 use super::*;
 use test_case::test_case;
 
 #[test]
 fn can_split() {
     let mut reg: [Word; VM_REGISTER_COUNT] =
-        std::iter::successors(Some(0), |x| Some(x + 1))
+        core::iter::successors(Some(0), |x| Some(x + 1))
             .take(VM_REGISTER_COUNT)
             .collect::<Vec<_>>()
             .try_into()
@@ -71,7 +73,7 @@ fn can_split() {
 #[test_case(4, 2 => Some((4, 2)))]
 fn can_split_writes(a: usize, b: usize) -> Option<(Word, Word)> {
     let mut reg: [Word; VM_REGISTER_PROGRAM_COUNT] =
-        std::iter::successors(Some(0), |x| Some(x + 1))
+        core::iter::successors(Some(0), |x| Some(x + 1))
             .take(VM_REGISTER_PROGRAM_COUNT)
             .collect::<Vec<_>>()
             .try_into()

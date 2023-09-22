@@ -1,5 +1,10 @@
 #![allow(clippy::type_complexity)]
 
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use crate::storage::{
     ContractsState,
     MemoryStorage,
@@ -123,6 +128,6 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
 fn test_state_clear_qword_input(
     start_key_memory_address: Word,
     num_slots: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     StateClearQWord::new(start_key_memory_address, num_slots).map(|_| ())
 }

@@ -7,7 +7,7 @@ use crate::{
     constraints::reg_key::*,
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::SimpleResult,
 };
 
 use fuel_asm::{
@@ -20,7 +20,8 @@ use fuel_types::{
     Word,
 };
 
-use std::{
+use alloc::boxed::Box;
+use core::{
     ops,
     ops::Range,
 };
@@ -42,20 +43,20 @@ pub trait ToAddr {
     /// Converts a value to `usize` used for memory addresses.
     /// Returns `Err` with `MemoryOverflow` if the resulting value does't fit in the VM
     /// memory. This can be used for both addresses and offsets.
-    fn to_addr(self) -> Result<usize, RuntimeError>;
+    fn to_addr(self) -> Result<usize, PanicReason>;
 }
 
 impl ToAddr for usize {
-    fn to_addr(self) -> Result<usize, RuntimeError> {
+    fn to_addr(self) -> Result<usize, PanicReason> {
         if self > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow)
         }
         Ok(self)
     }
 }
 
 impl ToAddr for Word {
-    fn to_addr(self) -> Result<usize, RuntimeError> {
+    fn to_addr(self) -> Result<usize, PanicReason> {
         let value = usize::try_from(self).map_err(|_| PanicReason::MemoryOverflow)?;
         value.to_addr()
     }
@@ -64,7 +65,7 @@ impl ToAddr for Word {
 #[cfg(feature = "test-helpers")]
 /// Implemented for `i32` to allow integer literals. Panics on negative values.
 impl ToAddr for i32 {
-    fn to_addr(self) -> Result<usize, RuntimeError> {
+    fn to_addr(self) -> Result<usize, PanicReason> {
         if self < 0 {
             panic!("Negative memory address");
         }
@@ -94,13 +95,13 @@ impl ops::Deref for MemoryRange {
 
 impl MemoryRange {
     /// Create a new memory range represented as `[address, address + size[`.
-    pub fn new<A: ToAddr, B: ToAddr>(address: A, size: B) -> Result<Self, RuntimeError> {
+    pub fn new<A: ToAddr, B: ToAddr>(address: A, size: B) -> Result<Self, PanicReason> {
         let start = address.to_addr()?;
         let size = size.to_addr()?;
         let end = start.checked_add(size).ok_or(PanicReason::MemoryOverflow)?;
 
         if end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow)
         }
 
         Ok(Self(start..end))
@@ -109,7 +110,7 @@ impl MemoryRange {
     /// Create a new const sized memory range.
     pub fn new_const<A: ToAddr, const SIZE: usize>(
         address: A,
-    ) -> Result<Self, RuntimeError> {
+    ) -> Result<Self, PanicReason> {
         Self::new(address, SIZE)
     }
 
@@ -121,13 +122,13 @@ impl MemoryRange {
         base: T,
         offset: T,
         size: A,
-    ) -> Result<Self, RuntimeError>
+    ) -> Result<Self, PanicReason>
     where
         F: FnOnce(T, T) -> (T, bool),
     {
         let (addr, overflow) = overflowing_op(base, offset);
         if overflow {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow)
         }
         Self::new(addr, size)
     }
@@ -208,11 +209,7 @@ where
         OwnershipRegisters::new(self)
     }
 
-    pub(crate) fn stack_pointer_overflow<F>(
-        &mut self,
-        f: F,
-        v: Word,
-    ) -> Result<(), RuntimeError>
+    pub(crate) fn stack_pointer_overflow<F>(&mut self, f: F, v: Word) -> SimpleResult<()>
     where
         F: FnOnce(Word, Word) -> (Word, bool),
     {
@@ -229,7 +226,7 @@ where
         &mut self,
         segment: ProgramRegistersSegment,
         bitmask: Imm24,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let (
             SystemRegisters {
                 sp, ssp, hp, pc, ..
@@ -252,7 +249,7 @@ where
         &mut self,
         segment: ProgramRegistersSegment,
         bitmask: Imm24,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let (
             SystemRegisters {
                 sp, ssp, hp, pc, ..
@@ -276,7 +273,7 @@ where
         ra: RegisterId,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_byte(&self.memory, pc, result, b, c)
@@ -287,49 +284,34 @@ where
         ra: RegisterId,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_word(&self.memory, pc, result, b, c)
     }
 
-    pub(crate) fn store_byte(
-        &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         store_byte(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    pub(crate) fn store_word(
-        &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    pub(crate) fn malloc(&mut self, a: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, pc, .. }, _) =
             split_registers(&mut self.registers);
         malloc(hp, sp.as_ref(), pc, a)
     }
 
-    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn memclear(&mut self, a: Word, b: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         memclear(&mut self.memory, owner, self.registers.pc_mut(), a, b)
     }
 
-    pub(crate) fn memcopy(
-        &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         memcopy(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
@@ -340,7 +322,7 @@ where
         b: Word,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         memeq(&mut self.memory, result, pc, b, c, d)
@@ -353,7 +335,7 @@ pub(crate) fn try_update_stack_pointer(
     ssp: Reg<SSP>,
     hp: Reg<HP>,
     new_sp: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     if new_sp >= *hp || new_sp < *ssp {
         Err(PanicReason::MemoryOverflow.into())
     } else {
@@ -369,7 +351,7 @@ pub(crate) fn stack_pointer_overflow<F>(
     pc: RegMut<PC>,
     f: F,
     v: Word,
-) -> Result<(), RuntimeError>
+) -> SimpleResult<()>
 where
     F: FnOnce(Word, Word) -> (Word, bool),
 {
@@ -380,7 +362,7 @@ where
     }
 
     try_update_stack_pointer(sp, ssp, hp, new_sp)?;
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -393,7 +375,7 @@ pub(crate) fn push_selected_registers(
     program_regs: &ProgramRegisters,
     segment: ProgramRegistersSegment,
     bitmask: Imm24,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let bitmask = bitmask.to_u32();
 
     // First update the new stack pointer, as that's the only error condition
@@ -412,7 +394,7 @@ pub(crate) fn push_selected_registers(
         }
     }
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -425,7 +407,7 @@ pub(crate) fn pop_selected_registers(
     program_regs: &mut ProgramRegisters,
     segment: ProgramRegistersSegment,
     bitmask: Imm24,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let bitmask = bitmask.to_u32();
 
     // First update the stack pointer, as that's the only error condition
@@ -447,7 +429,7 @@ pub(crate) fn pop_selected_registers(
         }
     }
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn load_byte(
@@ -456,10 +438,10 @@ pub(crate) fn load_byte(
     result: &mut Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let range = MemoryRange::new_overflowing_op(Word::overflowing_add, b, c, 1u64)?;
     *result = memory[range.start] as Word;
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn load_word(
@@ -468,12 +450,12 @@ pub(crate) fn load_word(
     result: &mut Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
     // immediate value.
     let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
     *result = Word::from_be_bytes(read_bytes(memory, addr)?);
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn store_byte(
@@ -483,9 +465,9 @@ pub(crate) fn store_byte(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     write_bytes(memory, owner, a.saturating_add(c), [b as u8])?;
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn store_word(
@@ -495,12 +477,12 @@ pub(crate) fn store_word(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
     // immediate value.
     let addr = a.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
     write_bytes(memory, owner, addr, b.to_be_bytes())?;
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn malloc(
@@ -508,7 +490,7 @@ pub(crate) fn malloc(
     sp: Reg<SP>,
     pc: RegMut<PC>,
     a: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let (result, overflow) = hp.overflowing_sub(a);
 
     if overflow || result < *sp {
@@ -516,7 +498,7 @@ pub(crate) fn malloc(
     } else {
         *hp = result;
 
-        inc_pc(pc)
+        Ok(inc_pc(pc)?)
     }
 }
 
@@ -526,11 +508,11 @@ pub(crate) fn memclear(
     pc: RegMut<PC>,
     a: Word,
     b: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let range = MemoryRange::new(a, b)?;
     owner.verify_ownership(&range)?;
     memory[range.usizes()].fill(0);
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn memcopy(
@@ -540,7 +522,7 @@ pub(crate) fn memcopy(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let dst_range = MemoryRange::new(a, c)?;
     let src_range = MemoryRange::new(b, c)?;
 
@@ -563,7 +545,7 @@ pub(crate) fn memcopy(
         dst[..len].copy_from_slice(&src[src_range.usizes()]);
     }
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn memeq(
@@ -573,11 +555,11 @@ pub(crate) fn memeq(
     b: Word,
     c: Word,
     d: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let range1 = MemoryRange::new(b, d)?;
     let range2 = MemoryRange::new(c, d)?;
     *result = (memory[range1.usizes()] == memory[range2.usizes()]) as Word;
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 #[derive(Debug)]
@@ -671,7 +653,7 @@ pub(crate) fn try_mem_write<A: ToAddr>(
     data: &[u8],
     owner: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let range = MemoryRange::new(addr, data.len())?;
     owner.verify_ownership(&range)?;
     memory[range.usizes()].copy_from_slice(data);
@@ -683,7 +665,7 @@ pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
     len: B,
     owner: OwnershipRegisters,
     memory: &mut [u8; MEM_SIZE],
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let range = MemoryRange::new(addr, len)?;
     owner.verify_ownership(&range)?;
     memory[range.usizes()].fill(0);
@@ -695,7 +677,7 @@ pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
 pub(crate) fn read_bytes<const COUNT: usize>(
     memory: &[u8; MEM_SIZE],
     addr: Word,
-) -> Result<[u8; COUNT], RuntimeError> {
+) -> Result<[u8; COUNT], PanicReason> {
     let range = MemoryRange::new_const::<_, COUNT>(addr)?;
     Ok(<[u8; COUNT]>::try_from(&memory[range.usizes()])
         .unwrap_or_else(|_| unreachable!()))
@@ -708,7 +690,7 @@ pub(crate) fn write_bytes<const COUNT: usize>(
     owner: OwnershipRegisters,
     addr: Word,
     bytes: [u8; COUNT],
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let range = MemoryRange::new_const::<_, COUNT>(addr)?;
     owner.verify_ownership(&range)?;
     memory[range.usizes()].copy_from_slice(&bytes);
@@ -723,7 +705,7 @@ pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
     dst_addr: A,
     src_offset: usize,
     len: B,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let range = MemoryRange::new(dst_addr, len)?;
 
     let src_end = src_offset.saturating_add(range.len()).min(src.len());

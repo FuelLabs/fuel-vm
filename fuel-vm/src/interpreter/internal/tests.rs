@@ -1,3 +1,5 @@
+use alloc::vec;
+
 use crate::{
     constraints::reg_key::RegMut,
     interpreter::{

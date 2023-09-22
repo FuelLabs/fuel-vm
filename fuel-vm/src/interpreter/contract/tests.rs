@@ -1,3 +1,7 @@
+use core::convert::Infallible;
+
+use alloc::vec;
+
 use crate::{
     interpreter::memory::Memory,
     storage::MemoryStorage,
@@ -17,7 +21,7 @@ use fuel_types::canonical::Deserialize;
 use test_case::test_case;
 
 #[test_case(0, 32 => Ok(()); "Can read contract balance")]
-fn test_contract_balance(b: Word, c: Word) -> Result<(), RuntimeError> {
+fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..(b as usize + AssetId::LEN)]
         .copy_from_slice(&[2u8; AssetId::LEN][..]);
@@ -71,7 +75,7 @@ fn test_transfer(
     transfer_amount: Word,
     requested_asset_id_offset: Word,
     real_asset_id_offset: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), Infallible> {
     // Given
 
     const ASSET_ID: AssetId = AssetId::new([2u8; AssetId::LEN]);
@@ -206,7 +210,7 @@ fn test_transfer_output(
     transfer_amount: Word,
     requested_asset_id_offset: Word,
     real_asset_id_offset: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), Infallible> {
     // Given
 
     const ASSET_ID: AssetId = AssetId::new([2u8; AssetId::LEN]);
@@ -340,7 +344,7 @@ fn test_transfer_output(
 fn test_balance_increase(
     initial: impl Into<Option<Word>>,
     amount: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), Infallible> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
@@ -375,7 +379,7 @@ fn test_balance_increase(
 fn test_balance_decrease(
     initial: impl Into<Option<Word>>,
     amount: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), Infallible> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());

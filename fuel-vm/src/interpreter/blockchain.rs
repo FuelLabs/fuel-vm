@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use super::{
     contract::{
         balance,
@@ -39,24 +41,24 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::{
+        IoResult,
+        RuntimeError,
+        SimpleResult,
+    },
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
     },
     prelude::Profiler,
     storage::{
-        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
     },
 };
 use fuel_asm::PanicReason;
-use fuel_storage::{
-    StorageInspect,
-    StorageSize,
-};
+use fuel_storage::StorageSize;
 use fuel_tx::{
     ContractIdExt,
     DependentCost,
@@ -84,8 +86,8 @@ mod test;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
-    S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
@@ -99,7 +101,7 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let contract_max_size = self.contract_max_size();
         let (
             SystemRegisters {
@@ -129,7 +131,7 @@ where
         input.load_contract_code(a, b, c)
     }
 
-    pub(crate) fn burn(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn burn(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, is, .. }, _) =
             split_registers(&mut self.registers);
@@ -149,7 +151,7 @@ where
         .burn(a, b)
     }
 
-    pub(crate) fn mint(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn mint(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, is, .. }, _) =
             split_registers(&mut self.registers);
@@ -175,7 +177,7 @@ where
         b: Word,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let owner = self.ownership_registers();
         let input = CodeCopyCtx {
             memory: &mut self.memory,
@@ -190,7 +192,7 @@ where
         input.code_copy(a, b, c, d)
     }
 
-    pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn block_hash(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
         let owner = self.ownership_registers();
         block_hash(
             &self.storage,
@@ -202,13 +204,13 @@ where
         )
     }
 
-    pub(crate) fn block_height(&mut self, ra: RegisterId) -> Result<(), RuntimeError> {
+    pub(crate) fn block_height(&mut self, ra: RegisterId) -> IoResult<(), S::DataError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        block_height(&self.context, pc, result)
+        Ok(block_height(&self.context, pc, result)?)
     }
 
-    pub(crate) fn block_proposer(&mut self, a: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn block_proposer(&mut self, a: Word) -> IoResult<(), S::DataError> {
         let owner = self.ownership_registers();
         coinbase(
             &self.storage,
@@ -219,7 +221,7 @@ where
         )
     }
 
-    pub(crate) fn code_root(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn code_root(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
         let owner = self.ownership_registers();
         CodeRootCtx {
             memory: &mut self.memory,
@@ -238,7 +240,7 @@ where
         &mut self,
         ra: RegisterId,
         b: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let gas_cost = self.gas_costs().csiz;
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
@@ -273,7 +275,7 @@ where
         a: Word,
         rb: RegisterId,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let contract_id = self.internal_contract().copied();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
@@ -293,7 +295,7 @@ where
         ra: RegisterId,
         rb: RegisterId,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let (SystemRegisters { fp, pc, .. }, mut w) =
             split_registers(&mut self.registers);
         let (result, got_result) = w
@@ -327,7 +329,7 @@ where
         rb: RegisterId,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let owner = self.ownership_registers();
         let contract_id = self.internal_contract().copied();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
@@ -348,7 +350,7 @@ where
         a: Word,
         rb: RegisterId,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let (SystemRegisters { fp, pc, .. }, mut w) =
             split_registers(&mut self.registers);
         let exists = &mut w[WriteRegKey::try_from(rb)?];
@@ -378,7 +380,7 @@ where
         rb: RegisterId,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let contract_id = self.internal_contract().copied();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
@@ -397,7 +399,7 @@ where
         &mut self,
         ra: RegisterId,
         b: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let block_height = self.get_block_height()?;
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
@@ -410,7 +412,7 @@ where
         b: Word,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let base_asset_id = self.interpreter_params.base_asset_id;
         let max_message_data_length = self.max_message_data_length();
         let tx_offset = self.tx_offset();
@@ -448,7 +450,10 @@ struct LoadContractCodeCtx<'vm, S, I> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
+impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I>
+where
+    S: InterpreterStorage,
+{
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
     /// ```txt
@@ -461,7 +466,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         contract_id_addr: Word,
         contract_offset: Word,
         length_unpadded: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> IoResult<(), S::DataError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
@@ -534,7 +539,7 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
                 .copy_from_slice(&new_code_size.to_be_bytes());
         }
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
@@ -550,9 +555,8 @@ struct BurnCtx<'vm, S> {
 impl<'vm, S> BurnCtx<'vm, S>
 where
     S: ContractsAssetsStorage,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
-    pub(crate) fn burn(self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn burn(self, a: Word, b: Word) -> IoResult<(), S::Error> {
         let range = internal_contract_bounds(self.context, self.fp)?;
         let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
         let memory = &*self.append.memory;
@@ -569,13 +573,13 @@ where
 
         self.storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
-            .map_err(RuntimeError::from_io)?;
+            .map_err(RuntimeError::Storage)?;
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
 
         append_receipt(self.append, receipt);
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
@@ -591,9 +595,8 @@ struct MintCtx<'vm, S> {
 impl<'vm, S> MintCtx<'vm, S>
 where
     S: ContractsAssetsStorage,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
-    pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
         let range = internal_contract_bounds(self.context, self.fp)?;
         let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
         let memory = &*self.append.memory;
@@ -608,13 +611,13 @@ where
 
         self.storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
-            .map_err(RuntimeError::from_io)?;
+            .map_err(RuntimeError::Storage)?;
 
         let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
 
         append_receipt(self.append, receipt);
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
@@ -626,14 +629,17 @@ struct CodeCopyCtx<'vm, S, I> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
+impl<'vm, S, I> CodeCopyCtx<'vm, S, I>
+where
+    S: InterpreterStorage,
+{
     pub(crate) fn code_copy(
         mut self,
         dst_addr: Word,
         contract_id_addr: Word,
         contract_offset: Word,
         length: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> IoResult<(), S::DataError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
@@ -664,7 +670,7 @@ impl<'vm, S, I> CodeCopyCtx<'vm, S, I> {
             length,
         )?;
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
@@ -675,29 +681,31 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     pc: RegMut<PC>,
     a: Word,
     b: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), S::DataError> {
     let height = u32::try_from(b)
         .map_err(|_| PanicReason::ArithmeticOverflow)?
         .into();
-    let hash = storage.block_hash(height).map_err(|e| e.into())?;
+    let hash = storage.block_hash(height).map_err(RuntimeError::Storage)?;
 
     try_mem_write(a, hash.as_ref(), owner, memory)?;
 
-    inc_pc(pc)
+    inc_pc(pc)?;
+    Ok(())
 }
 
 pub(crate) fn block_height(
     context: &Context,
     pc: RegMut<PC>,
     result: &mut Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     context
         .block_height()
         .map(|h| *h as Word)
         .map(|h| *result = h)
         .ok_or(PanicReason::TransactionValidity)?;
 
-    inc_pc(pc)
+    inc_pc(pc)?;
+    Ok(())
 }
 
 pub(crate) fn coinbase<S: InterpreterStorage>(
@@ -706,10 +714,11 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
-) -> Result<(), RuntimeError> {
-    let coinbase = storage.coinbase().map_err(RuntimeError::from_io)?;
+) -> IoResult<(), S::DataError> {
+    let coinbase = storage.coinbase().map_err(RuntimeError::Storage)?;
     try_mem_write(a, coinbase.as_ref(), owner, memory)?;
-    inc_pc(pc)
+    inc_pc(pc)?;
+    Ok(())
 }
 
 struct CodeRootCtx<'vm, S, I> {
@@ -721,7 +730,7 @@ struct CodeRootCtx<'vm, S, I> {
 }
 
 impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
-    pub(crate) fn code_root(mut self, a: Word, b: Word) -> Result<(), RuntimeError>
+    pub(crate) fn code_root(mut self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
     {
@@ -737,12 +746,12 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
             .storage_contract_root(contract_id)
             .transpose()
             .ok_or(PanicReason::ContractNotFound)?
-            .map_err(RuntimeError::from_io)?
+            .map_err(RuntimeError::Storage)?
             .into_owned();
 
         try_mem_write(a, root.as_ref(), self.owner, self.memory)?;
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
@@ -764,10 +773,9 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
         mut self,
         result: &mut Word,
         b: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> Result<(), RuntimeError<S::Error>>
     where
         S: StorageSize<ContractsRawCode>,
-        <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
     {
         let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
 
@@ -785,7 +793,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
         dependent_gas_charge(self.cgas, self.ggas, profiler, self.gas_cost, len)?;
         *result = len;
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
@@ -808,7 +816,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     result: &mut Word,
     got_result: &mut Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), S::DataError> {
     let key = CheckedMemConstLen::<{ Bytes32::LEN }>::new(c)?;
 
     let contract = internal_contract(context, fp, memory)?;
@@ -817,7 +825,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
 
     let value = storage
         .merkle_contract_state(contract, key)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .map(|bytes| {
             Word::from_be_bytes(
                 bytes[..8]
@@ -829,7 +837,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     *result = value.unwrap_or(0);
     *got_result = value.is_some() as Word;
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn state_write_word<S: InterpreterStorage>(
@@ -843,7 +851,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     a: Word,
     exists: &mut Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), S::DataError> {
     let key = CheckedMemConstLen::<{ Bytes32::LEN }>::new(a)?;
 
     let contract = internal_contract_bounds(context, fp)?;
@@ -858,20 +866,20 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
 
     let result = storage
         .merkle_contract_state_insert(contract, key, &value)
-        .map_err(RuntimeError::from_io)?;
+        .map_err(RuntimeError::Storage)?;
 
     *exists = result.is_some() as Word;
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn timestamp(
-    storage: &impl InterpreterStorage,
+pub(crate) fn timestamp<S: InterpreterStorage>(
+    storage: &S,
     block_height: BlockHeight,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), S::DataError> {
     let b = u32::try_from(b)
         .map_err(|_| PanicReason::ArithmeticOverflow)?
         .into();
@@ -879,14 +887,13 @@ pub(crate) fn timestamp(
         .then_some(())
         .ok_or(PanicReason::TransactionValidity)?;
 
-    *result = storage.timestamp(b).map_err(|e| e.into())?;
+    *result = storage.timestamp(b).map_err(RuntimeError::Storage)?;
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 struct MessageOutputCtx<'vm, Tx, S>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
@@ -912,9 +919,8 @@ where
 impl<Tx, S> MessageOutputCtx<'_, Tx, S>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
-    pub(crate) fn message_output(self) -> Result<(), RuntimeError>
+    pub(crate) fn message_output(self) -> Result<(), RuntimeError<S::Error>>
     where
         Tx: ExecutableTransaction,
     {
@@ -972,7 +978,7 @@ where
             receipt,
         );
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
@@ -991,7 +997,7 @@ impl StateReadQWord {
         origin_key_memory_address: Word,
         num_slots: Word,
         ownership_registers: OwnershipRegisters,
-    ) -> Result<Self, RuntimeError> {
+    ) -> SimpleResult<Self> {
         let destination_address_memory_range = MemoryRange::new(
             destination_memory_address,
             (Bytes32::LEN as Word).saturating_mul(num_slots),
@@ -1008,20 +1014,20 @@ impl StateReadQWord {
     }
 }
 
-fn state_read_qword(
+fn state_read_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
-    storage: &impl InterpreterStorage,
+    storage: &S,
     memory: &mut [u8; MEM_SIZE],
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateReadQWord,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), S::DataError> {
     let origin_key = Bytes32::from_bytes_ref(input.origin_key_memory_range.read(memory));
 
     let mut all_set = true;
     let result: Vec<u8> = storage
         .merkle_contract_state_range(contract_id, origin_key, input.num_slots)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .into_iter()
         .flat_map(|bytes| match bytes {
             Some(bytes) => **bytes,
@@ -1053,7 +1059,7 @@ impl StateWriteQWord {
         starting_storage_key_memory_address: Word,
         source_memory_address: Word,
         num_slots: Word,
-    ) -> Result<Self, RuntimeError> {
+    ) -> SimpleResult<Self> {
         let source_address_memory_range = MemoryRange::new(
             source_memory_address,
             (Bytes32::LEN as Word).saturating_mul(num_slots),
@@ -1071,14 +1077,14 @@ impl StateWriteQWord {
     }
 }
 
-fn state_write_qword(
+fn state_write_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
-    storage: &mut impl InterpreterStorage,
+    storage: &mut S,
     memory: &[u8; MEM_SIZE],
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), S::DataError> {
     let destination_key =
         Bytes32::from_bytes_ref(input.starting_storage_key_memory_range.read(memory));
 
@@ -1089,7 +1095,7 @@ fn state_write_qword(
 
     let any_none = storage
         .merkle_contract_state_insert_range(contract_id, destination_key, &values)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .is_some();
     *result_register = any_none as Word;
 
@@ -1110,7 +1116,7 @@ impl StateClearQWord {
     fn new(
         start_storage_key_memory_address: Word,
         num_slots: Word,
-    ) -> Result<Self, RuntimeError> {
+    ) -> SimpleResult<Self> {
         let start_storage_key_memory_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(
             start_storage_key_memory_address,
         )?;
@@ -1121,20 +1127,20 @@ impl StateClearQWord {
     }
 }
 
-fn state_clear_qword(
+fn state_clear_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
-    storage: &mut impl InterpreterStorage,
+    storage: &mut S,
     memory: &[u8; MEM_SIZE],
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateClearQWord,
-) -> Result<(), RuntimeError> {
+) -> IoResult<(), S::DataError> {
     let start_key =
         Bytes32::from_bytes_ref(input.start_storage_key_memory_range.read(memory));
 
     let all_previously_set = storage
         .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .is_some();
 
     *result_register = all_previously_set as Word;

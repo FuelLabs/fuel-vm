@@ -1,11 +1,11 @@
 use crate::{
     consts::*,
+    error::SimpleResult,
     interpreter::{
         ExecutableTransaction,
         InitialBalances,
         Interpreter,
     },
-    prelude::RuntimeError,
 };
 
 use fuel_asm::{
@@ -16,13 +16,9 @@ use fuel_tx::CheckError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
-use std::{
-    collections::{
-        BTreeMap,
-        HashMap,
-    },
-    ops::Index,
-};
+use alloc::collections::BTreeMap;
+use core::ops::Index;
+use hashbrown::HashMap;
 
 use super::MemoryRange;
 
@@ -115,7 +111,7 @@ impl RuntimeBalances {
     fn set_memory_balance_inner(
         balance: &Balance,
         memory: &mut [u8; MEM_SIZE],
-    ) -> Result<Word, RuntimeError> {
+    ) -> SimpleResult<Word> {
         let value = balance.value();
         let offset = balance.offset();
 
@@ -217,6 +213,7 @@ impl PartialEq for RuntimeBalances {
 #[test]
 fn writes_to_memory_correctly() {
     use crate::prelude::*;
+    use alloc::vec;
     use rand::{
         rngs::StdRng,
         Rng,
@@ -264,6 +261,7 @@ fn writes_to_memory_correctly() {
 #[test]
 fn try_from_iter_wont_overflow() {
     use crate::prelude::*;
+    use alloc::vec;
     use rand::{
         rngs::StdRng,
         Rng,
@@ -314,6 +312,7 @@ fn try_from_iter_wont_overflow() {
 #[test]
 fn checked_add_and_sub_works() {
     use crate::prelude::*;
+    use alloc::vec;
     use rand::{
         rngs::StdRng,
         Rng,

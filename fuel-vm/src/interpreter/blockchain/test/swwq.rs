@@ -1,5 +1,10 @@
 #![allow(clippy::type_complexity)]
 
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use crate::storage::{
     ContractsState,
     MemoryStorage,
@@ -173,7 +178,7 @@ fn test_state_write_qword_input(
     start_key_memory_address: Word,
     source_memory_address: Word,
     num_slots: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     StateWriteQWord::new(start_key_memory_address, source_memory_address, num_slots)
         .map(|_| ())
 }

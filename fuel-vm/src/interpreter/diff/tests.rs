@@ -1,3 +1,9 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+use hashbrown::HashMap;
+
 use fuel_asm::op;
 use fuel_tx::{
     ConsensusParameters,

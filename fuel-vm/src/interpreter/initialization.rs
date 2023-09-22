@@ -13,9 +13,9 @@ use crate::{
     context::Context,
     error::{
         Bug,
-        BugId,
         InterpreterError,
     },
+    prelude::RuntimeError,
     storage::InterpreterStorage,
 };
 
@@ -29,11 +29,11 @@ use crate::{
     error::BugVariant::GlobalGasUnderflow,
     interpreter::CheckedMetadata,
 };
-use std::io;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     /// Initialize the VM with a given transaction
     fn init_inner(
@@ -42,7 +42,7 @@ where
         initial_balances: InitialBalances,
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), RuntimeError<S::DataError>> {
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
@@ -59,21 +59,18 @@ where
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;
 
-        self.push_stack(self.transaction().id(&self.chain_id()).as_ref())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.push_stack(self.transaction().id(&self.chain_id()).as_ref())?;
 
         runtime_balances.to_vm(self);
 
         let tx_size = self.transaction().size() as Word;
         self.set_gas(gas_limit);
 
-        self.push_stack(&tx_size.to_be_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.push_stack(&tx_size.to_be_bytes())?;
 
         let tx_bytes = self.tx.to_bytes();
 
-        self.push_stack(tx_bytes.as_slice())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        self.push_stack(tx_bytes.as_slice())?;
 
         self.registers[RegId::SP] = self.registers[RegId::SSP];
 
@@ -84,6 +81,7 @@ where
 impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     /// Initialize the VM for a predicate context
     pub fn init_predicate(
@@ -91,19 +89,20 @@ where
         context: Context,
         mut tx: Tx,
         gas_limit: Word,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), InterpreterError<S::DataError>> {
         self.context = context;
         tx.prepare_init_predicate();
 
         let initial_balances: InitialBalances = Default::default();
         let runtime_balances = initial_balances.clone().try_into()?;
-        self.init_inner(tx, initial_balances, runtime_balances, gas_limit)
+        Ok(self.init_inner(tx, initial_balances, runtime_balances, gas_limit)?)
     }
 }
 
 impl<S, Tx> Interpreter<S, Tx>
 where
     S: InterpreterStorage,
+    <S as InterpreterStorage>::DataError: From<S::DataError>,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
@@ -111,11 +110,11 @@ where
     /// allows execution of contract opcodes.
     ///
     /// For predicate estimation and verification, check [`Self::init_predicate`]
-    pub fn init_script(&mut self, checked: Checked<Tx>) -> Result<(), InterpreterError> {
-        let block_height = self
-            .storage
-            .block_height()
-            .map_err(InterpreterError::from_io)?;
+    pub fn init_script(
+        &mut self,
+        checked: Checked<Tx>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 
         self.context = Context::Script { block_height };
 
@@ -125,10 +124,10 @@ where
         let gas_limit = tx
             .limit()
             .checked_sub(gas_used_by_predicates)
-            .ok_or_else(|| Bug::new(BugId::ID003, GlobalGasUnderflow))?;
+            .ok_or_else(|| Bug::new(GlobalGasUnderflow))?;
 
         let initial_balances = metadata.balances();
         let runtime_balances = initial_balances.try_into()?;
-        self.init_inner(tx, metadata.balances(), runtime_balances, gas_limit)
+        Ok(self.init_inner(tx, metadata.balances(), runtime_balances, gas_limit)?)
     }
 }

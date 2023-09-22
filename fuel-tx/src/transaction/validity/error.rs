@@ -6,14 +6,10 @@ use fuel_types::{
     ContractId,
     MessageId,
 };
-#[cfg(feature = "std")]
-use std::{
-    error,
-    io,
-};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", derive(thiserror::Error))]
 #[non_exhaustive]
 pub enum CheckError {
     /// Transaction doesn't have spendable input message or coin.
@@ -132,19 +128,5 @@ impl fmt::Display for CheckError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO better describe the error variants
         write!(f, "{self:?}")
-    }
-}
-
-#[cfg(feature = "std")]
-impl error::Error for CheckError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<CheckError> for io::Error {
-    fn from(v: CheckError) -> io::Error {
-        io::Error::new(io::ErrorKind::Other, v)
     }
 }

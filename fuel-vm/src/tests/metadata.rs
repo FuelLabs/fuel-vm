@@ -1,3 +1,9 @@
+use alloc::{
+    borrow::ToOwned,
+    vec,
+    vec::Vec,
+};
+
 use crate::{
     consts::*,
     interpreter::InterpreterParams,

@@ -3,6 +3,10 @@ use crate::{
     script_with_data_offset,
     util::test_helpers::TestBuilder,
 };
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use fuel_asm::{
     op,
     RegId,

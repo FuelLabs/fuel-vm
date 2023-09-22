@@ -1,6 +1,11 @@
 #[cfg(test)]
 mod tests;
 
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use crate::{
     checked_transaction::{
         Checked,
@@ -10,8 +15,6 @@ use crate::{
     context::Context,
     error::{
         Bug,
-        BugId,
-        BugVariant,
         InterpreterError,
         PredicateVerificationFailed,
     },
@@ -23,6 +26,10 @@ use crate::{
         RuntimeBalances,
     },
     predicate::RuntimePredicate,
+    prelude::{
+        BugVariant,
+        RuntimeError,
+    },
     state::{
         ExecuteState,
         ProgramState,
@@ -37,7 +44,6 @@ use crate::{
 
 use crate::{
     checked_transaction::CheckPredicateParams,
-    error::BugVariant::GlobalGasUnderflow,
     interpreter::InterpreterParams,
 };
 use fuel_asm::{
@@ -332,7 +338,7 @@ impl<T> Interpreter<PredicateStorage, T> {
 
         let gas_used = available_gas
             .checked_sub(vm.remaining_gas())
-            .ok_or_else(|| Bug::new(BugId::ID004, GlobalGasUnderflow))?;
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
@@ -419,11 +425,11 @@ where
         initial_balances: InitialBalances,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
-    ) -> Result<(), InterpreterError> {
+    ) -> Result<(), InterpreterError<S::DataError>> {
         let remaining_gas = create
             .limit()
             .checked_sub(create.gas_used_by_predicates())
-            .ok_or_else(|| InterpreterError::Panic(PanicReason::OutOfGas))?;
+            .ok_or(InterpreterError::Panic(PanicReason::OutOfGas))?;
 
         let metadata = create.metadata().as_ref();
         debug_assert!(
@@ -454,7 +460,7 @@ where
         // Prevent redeployment of contracts
         if storage
             .storage_contract_exists(&id)
-            .map_err(InterpreterError::from_io)?
+            .map_err(RuntimeError::Storage)?
         {
             return Err(InterpreterError::Panic(
                 PanicReason::ContractIdAlreadyDeployed,
@@ -463,7 +469,7 @@ where
 
         storage
             .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
-            .map_err(InterpreterError::from_io)?;
+            .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,
             fee_params,
@@ -482,13 +488,15 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
-    fn update_transaction_outputs(&mut self) -> Result<(), InterpreterError> {
+    fn update_transaction_outputs(
+        &mut self,
+    ) -> Result<(), InterpreterError<S::DataError>> {
         let outputs = self.transaction().outputs().len();
         (0..outputs).try_for_each(|o| self.update_memory_output(o))?;
         Ok(())
     }
 
-    pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError> {
+    pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         // TODO: Remove `Create` from here
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
@@ -545,7 +553,7 @@ where
                 .transaction()
                 .limit()
                 .checked_sub(self.remaining_gas())
-                .ok_or_else(|| Bug::new(BugId::ID002, BugVariant::GlobalGasUnderflow))?;
+                .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
             // Catch VM panic and don't propagate, generating a receipt
             let (status, program) = match program {
@@ -605,7 +613,9 @@ where
         Ok(state)
     }
 
-    pub(crate) fn run_program(&mut self) -> Result<ProgramState, InterpreterError> {
+    pub(crate) fn run_program(
+        &mut self,
+    ) -> Result<ProgramState, InterpreterError<S::DataError>> {
         loop {
             // Check whether the instruction will be executed in a call context
             let in_call = !self.frames.is_empty();
@@ -647,7 +657,7 @@ where
         storage: S,
         tx: Checked<Tx>,
         params: InterpreterParams,
-    ) -> Result<StateTransition<Tx>, InterpreterError> {
+    ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
         let mut interpreter = Interpreter::with_storage(storage, params);
         interpreter
             .transact(tx)
@@ -664,11 +674,17 @@ where
     pub fn transact(
         &mut self,
         tx: Checked<Tx>,
-    ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError> {
+    ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
-        self.profiler.on_transaction(&state_result);
+        {
+            let r = match &state_result {
+                Ok(state) => Ok(state),
+                Err(err) => Err(err.erase_generics()),
+            };
+            self.profiler.on_transaction(r);
+        }
 
         let state = state_result?;
         Ok(StateTransitionRef::new(
@@ -687,7 +703,10 @@ where
     /// the last state of execution of the `Script` transaction.
     ///
     /// Returns `Create` transaction with all modifications after execution.
-    pub fn deploy(&mut self, tx: Checked<Create>) -> Result<Create, InterpreterError> {
+    pub fn deploy(
+        &mut self,
+        tx: Checked<Create>,
+    ) -> Result<Create, InterpreterError<S::DataError>> {
         let (mut create, metadata) = tx.into();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();

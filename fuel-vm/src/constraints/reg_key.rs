@@ -2,7 +2,7 @@
 //! the register index is valid.
 //!
 //! This module also provides utilities for mutably accessing multiple registers.
-use std::ops::{
+use core::ops::{
     Deref,
     DerefMut,
 };
@@ -14,13 +14,10 @@ use fuel_asm::{
     Word,
 };
 
-use crate::{
-    consts::{
-        VM_REGISTER_COUNT,
-        VM_REGISTER_PROGRAM_COUNT,
-        VM_REGISTER_SYSTEM_COUNT,
-    },
-    prelude::RuntimeError,
+use crate::consts::{
+    VM_REGISTER_COUNT,
+    VM_REGISTER_PROGRAM_COUNT,
+    VM_REGISTER_SYSTEM_COUNT,
 };
 
 #[cfg(test)]
@@ -42,7 +39,7 @@ pub struct WriteRegKey(usize);
 impl WriteRegKey {
     /// Create a new writable register key if the index is within the bounds
     /// of the writable registers.
-    pub fn new(k: impl Into<usize>) -> Result<Self, RuntimeError> {
+    pub fn new(k: impl Into<usize>) -> Result<Self, PanicReason> {
         let k = k.into();
         is_register_writable(&k)?;
         Ok(Self(k))
@@ -59,15 +56,13 @@ impl WriteRegKey {
 
 /// Check that the register is above the system registers and below the total
 /// number of registers.
-pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), RuntimeError> {
+pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), PanicReason> {
     const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
     const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
     if RANGE.contains(r) {
         Ok(())
     } else {
-        Err(RuntimeError::Recoverable(
-            PanicReason::ReservedRegisterNotWritable,
-        ))
+        Err(PanicReason::ReservedRegisterNotWritable)
     }
 }
 
@@ -284,7 +279,7 @@ impl<'r> ProgramRegisters<'r> {
         b: WriteRegKey,
     ) -> Option<(&mut Word, &mut Word)> {
         match a.cmp(&b) {
-            std::cmp::Ordering::Less => {
+            core::cmp::Ordering::Less => {
                 // Translate the `a` absolute register index to a program register index.
                 let a = a.translate();
                 // Split the array at the first register which is a.
@@ -300,8 +295,8 @@ impl<'r> ProgramRegisters<'r> {
                 Some((i, j))
             }
             // Cannot mutably borrow the same register twice.
-            std::cmp::Ordering::Equal => None,
-            std::cmp::Ordering::Greater => {
+            core::cmp::Ordering::Equal => None,
+            core::cmp::Ordering::Greater => {
                 // Translate the `b` absolute register index to a program register index.
                 let b = b.translate();
                 // Split the array at the first register which is b.
@@ -379,7 +374,7 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
 }
 
 impl TryFrom<RegisterId> for WriteRegKey {
-    type Error = RuntimeError;
+    type Error = PanicReason;
 
     fn try_from(r: RegisterId) -> Result<Self, Self::Error> {
         Self::new(r)

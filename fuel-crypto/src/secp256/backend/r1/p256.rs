@@ -57,6 +57,7 @@ pub fn sign_prehashed(
 
 /// Convert the public key point to its uncompressed non-prefixed representation,
 /// i.e. 32 bytes of x coordinate and 32 bytes of y coordinate.
+#[cfg(feature = "test-helpers")]
 pub fn encode_pubkey(key: VerifyingKey) -> [u8; 64] {
     let point = key.to_encoded_point(false);
     let mut result = [0u8; 64];

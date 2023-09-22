@@ -19,9 +19,16 @@ use fuel_types::{
     ChainId,
 };
 
-use core::borrow::Borrow;
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
+use core::{
+    borrow::Borrow,
+    future::Future,
+};
+
 use fuel_tx::ConsensusParameters;
-use std::future::Future;
 
 mod balances;
 pub mod builder;
@@ -607,9 +614,11 @@ impl IntoChecked for Transaction {
     }
 }
 
+#[cfg(feature = "random")]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
     use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{
@@ -1069,6 +1078,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn basic_check_marks_basic_flag() {
         let block_height = 1.into();

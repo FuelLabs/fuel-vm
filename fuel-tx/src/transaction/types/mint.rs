@@ -20,7 +20,6 @@ use fuel_types::{
     Bytes32,
 };
 
-#[cfg(feature = "std")]
 use fuel_types::ChainId;
 
 #[cfg(feature = "alloc")]
@@ -33,7 +32,6 @@ pub(crate) struct MintMetadata {
     pub outputs_offset_at: Vec<usize>,
 }
 
-#[cfg(feature = "std")]
 impl MintMetadata {
     fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
     where
@@ -89,7 +87,6 @@ pub struct Mint {
     pub(crate) metadata: Option<MintMetadata>,
 }
 
-#[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Mint {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
@@ -106,7 +103,6 @@ impl crate::UniqueIdentifier for Mint {
 }
 
 impl FormatValidityChecks for Mint {
-    #[cfg(feature = "std")]
     fn check_signatures(&self, _: &ChainId) -> Result<(), CheckError> {
         Ok(())
     }
@@ -142,7 +138,6 @@ impl FormatValidityChecks for Mint {
     }
 }
 
-#[cfg(feature = "std")]
 impl crate::Cacheable for Mint {
     fn is_computed(&self) -> bool {
         self.metadata.is_some()

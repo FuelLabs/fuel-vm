@@ -1,3 +1,8 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use ethnum::U256;
 
 use fuel_asm::{

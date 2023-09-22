@@ -22,20 +22,25 @@ use fuel_types::{
     Word,
 };
 
-use crate::storage::{
-    ContractsAssets,
-    ContractsInfo,
-    ContractsRawCode,
-    ContractsState,
-};
-use std::{
-    borrow::Cow,
-    error::Error as StdError,
-    io,
-    ops::{
-        Deref,
-        DerefMut,
+use crate::{
+    prelude::{
+        InterpreterError,
+        RuntimeError,
     },
+    storage::{
+        ContractsAssets,
+        ContractsInfo,
+        ContractsRawCode,
+        ContractsState,
+    },
+};
+use alloc::{
+    borrow::Cow,
+    vec::Vec,
+};
+use core::ops::{
+    Deref,
+    DerefMut,
 };
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
@@ -49,7 +54,9 @@ pub trait InterpreterStorage:
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
-    type DataError: StdError + Into<io::Error>;
+    type DataError: Into<InterpreterError<Self::DataError>>
+        + Into<RuntimeError<Self::DataError>>
+        + core::fmt::Debug;
 
     /// Provide the current block height in which the transactions should be
     /// executed.
@@ -244,7 +251,7 @@ impl<S> InterpreterStorage for &mut S
 where
     S: InterpreterStorage,
 {
-    type DataError = S::DataError;
+    type DataError = <S as InterpreterStorage>::DataError;
 
     fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
         <S as InterpreterStorage>::block_height(self.deref())

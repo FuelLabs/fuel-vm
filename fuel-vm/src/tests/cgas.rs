@@ -1,3 +1,8 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use crate::{
     prelude::*,
     script_with_data_offset,

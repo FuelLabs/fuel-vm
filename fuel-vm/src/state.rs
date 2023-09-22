@@ -1,5 +1,7 @@
 //! Runtime state representation for the VM
 
+use alloc::vec::Vec;
+
 use fuel_tx::Receipt;
 use fuel_types::{
     Bytes32,

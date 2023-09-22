@@ -24,6 +24,11 @@ fn ephemeral_merkle_root_returns_the_expected_root() {
         SeedableRng,
     };
 
+    use alloc::{
+        vec,
+        vec::Vec,
+    };
+
     use crate::prelude::*;
 
     let mut rng = StdRng::seed_from_u64(2322u64);

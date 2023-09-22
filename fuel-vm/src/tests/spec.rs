@@ -1,3 +1,8 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use fuel_asm::*;
 use fuel_tx::Receipt;
 use fuel_types::Immediate18;

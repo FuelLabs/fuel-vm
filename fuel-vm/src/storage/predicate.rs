@@ -1,7 +1,13 @@
-use std::borrow::Cow;
+use alloc::{
+    borrow::Cow,
+    vec::Vec,
+};
 
 use crate::{
-    error::InterpreterError,
+    prelude::{
+        InterpreterError,
+        RuntimeError,
+    },
     storage::InterpreterStorage,
 };
 
@@ -36,18 +42,35 @@ use super::{
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PredicateStorage;
 
+/// Storage is unavailable in predicate context.
+#[derive(Debug, Clone, Copy)]
+pub struct StorageUnavailable;
+
+impl From<StorageUnavailable> for InterpreterError<StorageUnavailable> {
+    fn from(val: StorageUnavailable) -> Self {
+        let rt: RuntimeError<StorageUnavailable> = val.into();
+        rt.into()
+    }
+}
+
+impl From<StorageUnavailable> for RuntimeError<StorageUnavailable> {
+    fn from(val: StorageUnavailable) -> Self {
+        RuntimeError::Storage(val)
+    }
+}
+
 impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
-    type Error = InterpreterError;
+    type Error = StorageUnavailable;
 
     fn get(
         &self,
         _key: &Type::Key,
-    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
-    fn contains_key(&self, _key: &Type::Key) -> Result<bool, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn contains_key(&self, _key: &Type::Key) -> Result<bool, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 }
 
@@ -56,15 +79,15 @@ impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
         &mut self,
         _key: &Type::Key,
         _value: &Type::Value,
-    ) -> Result<Option<Type::OwnedValue>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<Type::OwnedValue>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
     fn remove(
         &mut self,
         _key: &Type::Key,
-    ) -> Result<Option<Type::OwnedValue>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<Type::OwnedValue>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 }
 
@@ -72,8 +95,8 @@ impl StorageSize<ContractsRawCode> for PredicateStorage {
     fn size_of_value(
         &self,
         _key: &ContractId,
-    ) -> Result<Option<usize>, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<usize>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 }
 
@@ -82,46 +105,46 @@ impl StorageRead<ContractsRawCode> for PredicateStorage {
         &self,
         _key: &<ContractsRawCode as Mappable>::Key,
         _buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<usize>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
     fn read_alloc(
         &self,
         _key: &<ContractsRawCode as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<Vec<u8>>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 }
 
 impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
-    fn root(&self, _parent: &Key) -> Result<MerkleRoot, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn root(&self, _parent: &Key) -> Result<MerkleRoot, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 }
 
 impl ContractsAssetsStorage for PredicateStorage {}
 
 impl InterpreterStorage for PredicateStorage {
-    type DataError = InterpreterError;
+    type DataError = StorageUnavailable;
 
-    fn block_height(&self) -> Result<BlockHeight, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn block_height(&self) -> Result<BlockHeight, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
-    fn timestamp(&self, _height: BlockHeight) -> Result<Word, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+    fn timestamp(&self, _height: BlockHeight) -> Result<Word, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
     fn block_hash(
         &self,
         _block_height: BlockHeight,
-    ) -> Result<Bytes32, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Bytes32, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
-    fn coinbase(&self) -> Result<Address, InterpreterError> {
-        Err(InterpreterError::PredicateFailure)
+    fn coinbase(&self) -> Result<Address, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
     fn merkle_contract_state_range(
@@ -129,8 +152,8 @@ impl InterpreterStorage for PredicateStorage {
         _id: &ContractId,
         _start_key: &Bytes32,
         _range: Word,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Vec<Option<Cow<Bytes32>>>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
     fn merkle_contract_state_insert_range(
@@ -138,8 +161,8 @@ impl InterpreterStorage for PredicateStorage {
         _contract: &ContractId,
         _start_key: &Bytes32,
         _values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<()>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 
     fn merkle_contract_state_remove_range(
@@ -147,7 +170,7 @@ impl InterpreterStorage for PredicateStorage {
         _contract: &ContractId,
         _start_key: &Bytes32,
         _range: Word,
-    ) -> Result<Option<()>, Self::DataError> {
-        Err(InterpreterError::PredicateFailure)
+    ) -> Result<Option<()>, StorageUnavailable> {
+        Err(StorageUnavailable)
     }
 }

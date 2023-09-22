@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use fuel_asm::{
     op,
     RegId,
@@ -66,7 +68,7 @@ fn code_coverage() {
     impl ProfileReceiver for ProfilingOutput {
         fn on_transaction(
             &mut self,
-            _state: &Result<ProgramState, InterpreterError>,
+            _state: Result<&ProgramState, InterpreterError<String>>,
             data: &ProfilingData,
         ) {
             let mut guard = self.data.lock().unwrap();
@@ -101,7 +103,7 @@ fn code_coverage() {
 
     assert_eq!(items.len(), expect.len());
 
-    for (item, expect) in items.into_iter().zip(expect.into_iter()) {
+    for (item, expect) in items.into_iter().zip(expect) {
         assert_eq!(
             *item,
             InstructionLocation::new(None, expect * HALF_WORD_SIZE)

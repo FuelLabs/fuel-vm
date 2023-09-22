@@ -1,3 +1,10 @@
+use core::convert::Infallible;
+
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use crate::{
     interpreter::{
         contract::balance as contract_balance,
@@ -201,7 +208,7 @@ fn test_smo(
         max_message_data_length,
         initial_balance,
     }: Input,
-) -> Result<Output, RuntimeError> {
+) -> Result<Output, RuntimeError<Infallible>> {
     let mut rng = StdRng::seed_from_u64(100);
     let base_asset_id = rng.gen();
 

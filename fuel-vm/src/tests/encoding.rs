@@ -24,7 +24,7 @@ use fuel_types::{
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
-    T: Serialize + Deserialize + Serialize + fmt::Debug + Clone + PartialEq,
+    T: Serialize + Deserialize + fmt::Debug + Clone + PartialEq,
 {
     let mut buffer;
 

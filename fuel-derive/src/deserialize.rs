@@ -1,5 +1,8 @@
 use proc_macro2::TokenStream as TokenStream2;
-use quote::quote;
+use quote::{
+    format_ident,
+    quote,
+};
 
 use crate::attribute::{
     should_skip_field,
@@ -70,10 +73,27 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     assert!(!s.variants().is_empty(), "got invalid empty enum");
 
     let mut next_discriminant = quote! { { 0u64 } };
+    let enum_ident = &s.ast().ident;
+    let calculated_discriminants =
+        s.variants().iter().enumerate().map(|(index, variant)| {
+            if variant.ast().discriminant.is_some() {
+                let variant_ident = variant.ast().ident;
+                next_discriminant = quote! { { #enum_ident::#variant_ident as u64 } };
+            }
+
+            let const_ident = format_ident!("V{}", index);
+            let result = quote! { const #const_ident: ::core::primitive::u64 =  #next_discriminant; };
+
+            next_discriminant = quote! { ( (#next_discriminant) + 1u64 ) };
+
+            result
+        });
+
     let decode_static: TokenStream2 = s
         .variants()
         .iter()
-        .map(|variant| {
+        .enumerate()
+        .map(|(index, variant)| {
             let decode_main = variant.construct(|field, _| {
                 if should_skip_field(&field.attrs) {
                     quote! {
@@ -86,22 +106,15 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
                     }}
                 }
             });
+            let const_ident = format_ident!("V{}", index);
 
-            if variant.ast().discriminant.is_some() {
-                let variant_ident = variant.ast().ident;
-                next_discriminant = quote! { { Self::#variant_ident as u64 } };
-            }
-
-            let result = quote! {
-                x if x == #next_discriminant => {
+            quote! {
+                #const_ident => {
                     ::core::result::Result::Ok(#decode_main)
                 }
-            };
-
-            next_discriminant = quote! { ( (#next_discriminant) + 1u64 ) };
-
-            result
-        }).collect();
+            }
+        })
+        .collect();
 
     let decode_dynamic = s.variants().iter().map(|variant| {
         let decode_dynamic = variant.each(|binding| {
@@ -128,6 +141,8 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     s.gen_impl(quote! {
         gen impl ::fuel_types::canonical::Deserialize for @Self {
             fn decode_static<I: ::fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, ::fuel_types::canonical::Error> {
+                #( #calculated_discriminants )*
+
                 match #discriminant {
                     #decode_static
                     _ => ::core::result::Result::Err(::fuel_types::canonical::Error::UnknownDiscriminant),

@@ -111,7 +111,7 @@ pub trait Serialize {
 }
 
 /// Allows reading of data into a slice.
-pub trait Input: Clone {
+pub trait Input {
     /// Returns the remaining length of the input data.
     fn remaining(&mut self) -> usize;
 

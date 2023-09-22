@@ -1,9 +1,8 @@
 use crate::common::PrefixError;
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
+#[derive(Debug, Clone, derive_more::Display)]
 pub enum DeserializeError {
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     PrefixError(PrefixError),
 }
 

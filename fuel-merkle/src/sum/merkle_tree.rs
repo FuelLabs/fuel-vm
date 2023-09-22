@@ -16,10 +16,9 @@ use fuel_storage::{
 
 use core::marker::PhantomData;
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
+#[derive(Debug, Clone, derive_more::Display)]
 pub enum MerkleTreeError {
-    #[cfg_attr(feature = "std", error("proof index {0} is not valid"))]
+    #[display(fmt = "proof index {_0} is not valid")]
     InvalidProofIndex(u64),
 }
 

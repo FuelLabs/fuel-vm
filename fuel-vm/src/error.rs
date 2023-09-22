@@ -7,9 +7,6 @@ use fuel_asm::{
 };
 use fuel_tx::CheckError;
 
-#[cfg(feature = "std")]
-use thiserror::Error;
-
 use alloc::{
     format,
     string::{
@@ -25,33 +22,32 @@ use core::{
 use crate::storage::predicate;
 
 /// Interpreter runtime error variants.
-#[cfg_attr(feature = "std", derive(Error))]
-#[derive(Debug)]
+#[derive(Debug, derive_more::Display)]
 pub enum InterpreterError<StorageError> {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
-    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
+    #[display(fmt = "Execution error: {_0:?}")]
     PanicInstruction(PanicInstruction),
     /// The VM execution resulted in a well-formed panic. This panic wasn't
     /// caused by an instruction contained in the transaction or a called
     /// contract.
-    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
+    #[display(fmt = "Execution error: {_0:?}")]
     Panic(PanicReason),
     /// The provided transaction isn't valid.
-    #[cfg_attr(feature = "std", error("Failed to check the transaction: {0}"))]
+    #[display(fmt = "Failed to check the transaction: {_0}")]
     CheckError(CheckError),
     /// No transaction was initialized in the interpreter. It cannot provide
     /// state transitions.
-    #[cfg_attr(feature = "std", error("Execution error"))]
+    #[display(fmt = "Execution error")]
     NoTransactionInitialized,
-    #[cfg_attr(feature = "std", error("Execution error"))]
+    #[display(fmt = "Execution error")]
     /// The debug state is not initialized; debug routines can't be called.
     DebugStateNotInitialized,
     /// Storage I/O error
-    #[cfg_attr(feature = "std", error("Storage error: {0}"))]
+    #[display(fmt = "Storage error: {}", _0)]
     Storage(StorageError),
     /// Encountered a bug
-    #[cfg_attr(feature = "std", error("Bug: {0}"))]
+    #[display(fmt = "Bug: {_0}")]
     Bug(Bug),
 }
 
@@ -231,61 +227,41 @@ impl<StorageError> From<Infallible> for RuntimeError<StorageError> {
 }
 
 /// Predicates checking failed
-#[cfg_attr(feature = "std", derive(Error))]
-#[derive(Debug)]
+#[derive(Debug, derive_more::Display)]
 pub enum PredicateVerificationFailed {
     /// The predicate did not use the amount of gas provided
-    #[cfg_attr(
-        feature = "std",
-        error("Predicate used less than the required amount of gas")
-    )]
+    #[display(fmt = "Predicate used less than the required amount of gas")]
     GasMismatch,
     /// The transaction doesn't contain enough gas to evaluate the predicate
-    #[cfg_attr(
-        feature = "std",
-        error("Insufficient gas available for single predicate")
-    )]
+    #[display(fmt = "Insufficient gas available for single predicate")]
     OutOfGas,
     /// The predicate owner does not correspond to the predicate code
-    #[cfg_attr(
-        feature = "std",
-        error("Predicate owner invalid, doesn't match code root")
-    )]
+    #[display(fmt = "Predicate owner invalid, doesn't match code root")]
     InvalidOwner,
     /// The predicate wasn't successfully evaluated to true
-    #[cfg_attr(feature = "std", error("Predicate failed to evaluate"))]
+    #[display(fmt = "Predicate failed to evaluate")]
     False,
     /// The predicate gas used was not specified before execution
-    #[cfg_attr(feature = "std", error("Predicate failed to evaluate"))]
+    #[display(fmt = "Predicate failed to evaluate")]
     GasNotSpecified,
     /// The transaction doesn't contain enough gas to evaluate all predicates
-    #[cfg_attr(
-        feature = "std",
-        error("Insufficient gas available for all predicates")
-    )]
+    #[display(fmt = "Insufficient gas available for all predicates")]
     CumulativePredicateGasExceededTxGasLimit,
     /// The cumulative gas overflowed the u64 accumulator
-    #[cfg_attr(
-        feature = "std",
-        error("Cumulative gas computation overflowed the u64 accumulator")
-    )]
+    #[display(fmt = "Cumulative gas computation overflowed the u64 accumulator")]
     GasOverflow,
     /// Invalid interpreter state reached unexpectedly, this is a bug
-    #[cfg_attr(
-        feature = "std",
-        error("Invalid interpreter state reached unexpectedly")
-    )]
+    #[display(fmt = "Invalid interpreter state reached unexpectedly")]
     Bug(Bug),
     /// The VM execution resulted in a well-formed panic, caused by an instruction.
-    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
+    #[display(fmt = "Execution error: {_0:?}")]
     PanicInstruction(PanicInstruction),
     /// The VM execution resulted in a well-formed panic not caused by an instruction.
-    #[cfg_attr(feature = "std", error("Execution error: {0:?}"))]
+    #[display(fmt = "Execution error: {_0:?}")]
     Panic(PanicReason),
     /// Predicate verification failed since it attempted to access storage
-    #[cfg_attr(
-        feature = "std",
-        error("Predicate verification failed since it attempted to access storage")
+    #[display(
+        fmt = "Predicate verification failed since it attempted to access storage"
     )]
     Storage,
 }

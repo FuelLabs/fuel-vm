@@ -82,6 +82,16 @@ impl fmt::UpperHex for UtxoId {
     }
 }
 
+impl core::fmt::Display for UtxoId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if f.alternate() {
+            write!(f, "{:#x}{:02x}", self.tx_id, self.output_index)
+        } else {
+            write!(f, "{:x}{:02x}", self.tx_id, self.output_index)
+        }
+    }
+}
+
 impl str::FromStr for UtxoId {
     type Err = &'static str;
 

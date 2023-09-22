@@ -38,17 +38,16 @@ pub trait ParentNode: Sized + Node {
 #[allow(type_alias_bounds)]
 pub type ChildResult<T: ParentNode> = Result<T, ChildError<T::Key, T::Error>>;
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
+#[derive(Debug, Clone, derive_more::Display)]
 pub enum ChildError<Key, E>
 where
     Key: KeyFormatting,
 {
-    #[cfg_attr(feature = "std", error("Child with key {} was not found in storage", .0.pretty()))]
+    #[display(fmt = "Child with key {} was not found in storage", _0.pretty())]
     ChildNotFound(Key),
-    #[cfg_attr(feature = "std", error("Node is a leaf with no children"))]
+    #[display(fmt = "Node is a leaf with no children")]
     NodeIsLeaf,
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     Error(E),
 }
 

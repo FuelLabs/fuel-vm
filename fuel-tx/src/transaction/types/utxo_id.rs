@@ -1,9 +1,6 @@
 use crate::TxId;
 
-use fuel_types::{
-    canonical::SerializedSizeFixed,
-    Bytes32,
-};
+use fuel_types::Bytes32;
 
 use core::{
     fmt,
@@ -31,7 +28,7 @@ pub struct UtxoId {
 }
 
 impl UtxoId {
-    pub const LEN: usize = Self::SIZE_STATIC;
+    pub const LEN: usize = TxId::LEN + 8;
 
     pub const fn new(tx_id: TxId, output_index: u8) -> Self {
         Self {

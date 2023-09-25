@@ -11,7 +11,7 @@ use fuel_asm::{
     op,
     RegId,
 };
-use fuel_types::canonical::SerializedSize;
+use fuel_types::canonical::Serialize;
 use rand::{
     rngs::StdRng,
     Rng,

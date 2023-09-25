@@ -1,5 +1,8 @@
 use fuel_types::{
-    canonical::Deserialize,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     Bytes32,
 };
 

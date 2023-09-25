@@ -3,7 +3,6 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSizeFixed,
     },
     Address,
     AssetId,

@@ -19,10 +19,12 @@ use fuel_crypto::{
 };
 use fuel_types::{
     bytes,
+    canonical,
     canonical::{
         Deserialize,
+        Error,
+        Output,
         Serialize,
-        SerializedSizeFixed,
     },
     fmt_truncated_hex,
     Address,
@@ -36,7 +38,6 @@ use fuel_types::{
     Word,
 };
 use message::*;
-use num_enum::TryFromPrimitive;
 
 pub mod coin;
 mod consts;
@@ -55,7 +56,58 @@ pub trait AsField<Type>: AsFieldFmt {
     fn as_mut_field(&mut self) -> Option<&mut Type>;
 }
 
-impl<Type> AsField<Type> for () {
+/// The empty field used by sub-types of the specification.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Empty<Type>(::core::marker::PhantomData<Type>);
+
+impl<Type> Empty<Type> {
+    /// Creates `Self`.
+    pub const fn new() -> Self {
+        Self(::core::marker::PhantomData {})
+    }
+}
+
+impl<Type> Default for Empty<Type> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<Type: Serialize + Default> Serialize for Empty<Type> {
+    #[inline(always)]
+    fn size_static(&self) -> usize {
+        Type::default().size_static()
+    }
+
+    #[inline(always)]
+    fn size_dynamic(&self) -> usize {
+        0
+    }
+
+    #[inline(always)]
+    fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+        Type::default().encode_static(buffer)
+    }
+}
+
+impl<Type: Deserialize> Deserialize for Empty<Type> {
+    #[inline(always)]
+    fn decode_static<I: canonical::Input + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<Self, Error> {
+        Type::decode_static(buffer)?;
+        Ok(Default::default())
+    }
+}
+
+impl<Type> AsFieldFmt for Empty<Type> {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str("Empty")
+    }
+}
+
+impl<Type> AsField<Type> for Empty<Type> {
     #[inline(always)]
     fn as_field(&self) -> Option<&Type> {
         None
@@ -63,12 +115,6 @@ impl<Type> AsField<Type> for () {
 
     fn as_mut_field(&mut self) -> Option<&mut Type> {
         None
-    }
-}
-
-impl AsFieldFmt for () {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
-        f.write_str("()")
     }
 }
 
@@ -134,97 +180,8 @@ where
     field.fmt_as_field(f)
 }
 
-fn input_serialized_size_static_helper(value: &Input) -> usize {
-    fuel_types::canonical::add_sizes(
-        8, // Discriminant
-        match value.clone() {
-            Input::CoinSigned(_) => CoinFull::SIZE_STATIC,
-            Input::CoinPredicate(_) => CoinFull::SIZE_STATIC,
-            Input::Contract(_) => Contract::SIZE_STATIC,
-            Input::MessageCoinSigned(_) => FullMessage::SIZE_STATIC,
-            Input::MessageCoinPredicate(_) => FullMessage::SIZE_STATIC,
-            Input::MessageDataSigned(_) => FullMessage::SIZE_STATIC,
-            Input::MessageDataPredicate(_) => FullMessage::SIZE_STATIC,
-        },
-    )
-}
-
-fn input_serialized_size_dynamic_helper(value: &Input) -> usize {
-    match value.clone() {
-        Input::CoinSigned(coin) => coin.into_full().size_dynamic(),
-        Input::CoinPredicate(coin) => coin.into_full().size_dynamic(),
-        Input::Contract(contract) => contract.size_dynamic(),
-        Input::MessageCoinSigned(message) => message.into_full().size_dynamic(),
-        Input::MessageCoinPredicate(message) => message.into_full().size_dynamic(),
-        Input::MessageDataSigned(message) => message.into_full().size_dynamic(),
-        Input::MessageDataPredicate(message) => message.into_full().size_dynamic(),
-    }
-}
-
-fn input_serialize_helper<O: fuel_types::canonical::Output + ?Sized>(
-    value: &Input,
-    output: &mut O,
-) -> Result<(), fuel_types::canonical::Error> {
-    let discr: u64 = InputRepr::from(value).into();
-    discr.encode(output)?;
-    match value.clone() {
-        Input::CoinSigned(coin) => coin.into_full().encode(output),
-        Input::CoinPredicate(coin) => coin.into_full().encode(output),
-        Input::Contract(contract) => contract.encode(output),
-        Input::MessageCoinSigned(message) => message.into_full().encode(output),
-        Input::MessageCoinPredicate(message) => message.into_full().encode(output),
-        Input::MessageDataSigned(message) => message.into_full().encode(output),
-        Input::MessageDataPredicate(message) => message.into_full().encode(output),
-    }
-}
-
-fn input_deserialize_helper<I: fuel_types::canonical::Input + ?Sized>(
-    discr: u64,
-    data: &mut I,
-) -> Result<Input, fuel_types::canonical::Error> {
-    Ok(
-        match InputRepr::try_from_primitive(discr)
-            .map_err(|_| fuel_types::canonical::Error::UnknownDiscriminant)?
-        {
-            InputRepr::Coin => {
-                let coin = CoinFull::decode(data)?;
-                if coin.predicate.is_empty() {
-                    Input::CoinSigned(coin.into_signed())
-                } else {
-                    Input::CoinPredicate(coin.into_predicate())
-                }
-            }
-            InputRepr::Contract => {
-                let contract = Contract::decode(data)?;
-                Input::Contract(contract)
-            }
-            InputRepr::Message => {
-                let message = FullMessage::decode(data)?;
-                match (message.data.is_empty(), message.predicate.is_empty()) {
-                    (true, true) => Input::MessageCoinSigned(message.into_coin_signed()),
-                    (true, false) => {
-                        Input::MessageCoinPredicate(message.into_coin_predicate())
-                    }
-                    (false, true) => {
-                        Input::MessageDataSigned(message.into_message_data_signed())
-                    }
-                    (false, false) => {
-                        Input::MessageDataPredicate(message.into_message_data_predicate())
-                    }
-                }
-            }
-        },
-    )
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Deserialize, Serialize)]
-#[canonical(serialized_size_static_with = input_serialized_size_static_helper)]
-#[canonical(serialized_size_dynamic_with = input_serialized_size_dynamic_helper)]
-#[canonical(serialize_with = input_serialize_helper)]
-#[canonical(deserialize_with = input_deserialize_helper)]
-#[canonical(SIZE_NO_DYNAMIC = CoinFull::SIZE_NO_DYNAMIC && Contract::SIZE_NO_DYNAMIC && FullMessage::SIZE_NO_DYNAMIC)]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
@@ -275,7 +232,7 @@ impl Input {
             amount,
             asset_id,
             tx_pointer,
-            witness_index: (),
+            witness_index: Empty::new(),
             maturity,
             predicate_gas_used,
             predicate,
@@ -300,9 +257,9 @@ impl Input {
             tx_pointer,
             witness_index,
             maturity,
-            predicate_gas_used: (),
-            predicate: (),
-            predicate_data: (),
+            predicate_gas_used: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
         })
     }
 
@@ -335,10 +292,10 @@ impl Input {
             amount,
             nonce,
             witness_index,
-            predicate_gas_used: (),
-            data: (),
-            predicate: (),
-            predicate_data: (),
+            predicate_gas_used: Empty::new(),
+            data: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
         })
     }
 
@@ -356,9 +313,9 @@ impl Input {
             recipient,
             amount,
             nonce,
-            witness_index: (),
+            witness_index: Empty::new(),
             predicate_gas_used,
-            data: (),
+            data: Empty::new(),
             predicate,
             predicate_data,
         })
@@ -379,9 +336,9 @@ impl Input {
             nonce,
             witness_index,
             data,
-            predicate: (),
-            predicate_data: (),
-            predicate_gas_used: (),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
+            predicate_gas_used: Empty::new(),
         })
     }
 
@@ -400,7 +357,7 @@ impl Input {
             recipient,
             amount,
             nonce,
-            witness_index: (),
+            witness_index: Empty::new(),
             predicate_gas_used,
             data,
             predicate,
@@ -822,6 +779,123 @@ impl Input {
     /// Prepare the output for VM predicate execution
     pub fn prepare_init_predicate(&mut self) {
         self.prepare_sign()
+    }
+}
+
+impl Serialize for Input {
+    fn size_static(&self) -> usize {
+        canonical::add_sizes(
+            8, // Discriminant
+            match self {
+                Input::CoinSigned(coin) => coin.size_static(),
+                Input::CoinPredicate(coin) => coin.size_static(),
+                Input::Contract(contract) => contract.size_static(),
+                Input::MessageCoinSigned(message) => message.size_static(),
+                Input::MessageCoinPredicate(message) => message.size_static(),
+                Input::MessageDataSigned(message) => message.size_static(),
+                Input::MessageDataPredicate(message) => message.size_static(),
+            },
+        )
+    }
+
+    fn size_dynamic(&self) -> usize {
+        match self {
+            Input::CoinSigned(coin) => coin.size_dynamic(),
+            Input::CoinPredicate(coin) => coin.size_dynamic(),
+            Input::Contract(contract) => contract.size_dynamic(),
+            Input::MessageCoinSigned(message) => message.size_dynamic(),
+            Input::MessageCoinPredicate(message) => message.size_dynamic(),
+            Input::MessageDataSigned(message) => message.size_dynamic(),
+            Input::MessageDataPredicate(message) => message.size_dynamic(),
+        }
+    }
+
+    fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+        let discr = InputRepr::from(self);
+        discr.encode_static(buffer)?;
+        match self {
+            Input::CoinSigned(coin) => coin.encode_static(buffer),
+            Input::CoinPredicate(coin) => coin.encode_static(buffer),
+            Input::Contract(contract) => contract.encode_static(buffer),
+            Input::MessageCoinSigned(message) => message.encode_static(buffer),
+            Input::MessageCoinPredicate(message) => message.encode_static(buffer),
+            Input::MessageDataSigned(message) => message.encode_static(buffer),
+            Input::MessageDataPredicate(message) => message.encode_static(buffer),
+        }
+    }
+
+    fn encode_dynamic<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+        let discr = InputRepr::from(self);
+        discr.encode_dynamic(buffer)?;
+        match self {
+            Input::CoinSigned(coin) => coin.encode_dynamic(buffer),
+            Input::CoinPredicate(coin) => coin.encode_dynamic(buffer),
+            Input::Contract(contract) => contract.encode_dynamic(buffer),
+            Input::MessageCoinSigned(message) => message.encode_dynamic(buffer),
+            Input::MessageCoinPredicate(message) => message.encode_dynamic(buffer),
+            Input::MessageDataSigned(message) => message.encode_dynamic(buffer),
+            Input::MessageDataPredicate(message) => message.encode_dynamic(buffer),
+        }
+    }
+}
+
+impl Deserialize for Input {
+    fn decode_static<I: canonical::Input + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<Self, Error> {
+        Ok(
+            match <InputRepr as Deserialize>::decode(buffer)
+                .map_err(|_| Error::UnknownDiscriminant)?
+            {
+                InputRepr::Coin => {
+                    let coin = CoinFull::decode_static(buffer)?;
+                    if coin.predicate.capacity() == 0 {
+                        Input::CoinSigned(coin.into_signed())
+                    } else {
+                        Input::CoinPredicate(coin.into_predicate())
+                    }
+                }
+                InputRepr::Contract => {
+                    let contract = Contract::decode_static(buffer)?;
+                    Input::Contract(contract)
+                }
+                InputRepr::Message => {
+                    let message = FullMessage::decode_static(buffer)?;
+                    match (
+                        message.data.capacity() == 0,
+                        message.predicate.capacity() == 0,
+                    ) {
+                        (true, true) => {
+                            Input::MessageCoinSigned(message.into_coin_signed())
+                        }
+                        (true, false) => {
+                            Input::MessageCoinPredicate(message.into_coin_predicate())
+                        }
+                        (false, true) => {
+                            Input::MessageDataSigned(message.into_message_data_signed())
+                        }
+                        (false, false) => Input::MessageDataPredicate(
+                            message.into_message_data_predicate(),
+                        ),
+                    }
+                }
+            },
+        )
+    }
+
+    fn decode_dynamic<I: canonical::Input + ?Sized>(
+        &mut self,
+        buffer: &mut I,
+    ) -> Result<(), Error> {
+        match self {
+            Input::CoinSigned(coin) => coin.decode_dynamic(buffer),
+            Input::CoinPredicate(coin) => coin.decode_dynamic(buffer),
+            Input::Contract(contract) => contract.decode_dynamic(buffer),
+            Input::MessageCoinSigned(message) => message.decode_dynamic(buffer),
+            Input::MessageCoinPredicate(message) => message.decode_dynamic(buffer),
+            Input::MessageDataSigned(message) => message.decode_dynamic(buffer),
+            Input::MessageDataPredicate(message) => message.decode_dynamic(buffer),
+        }
     }
 }
 

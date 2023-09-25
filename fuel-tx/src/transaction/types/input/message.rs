@@ -19,8 +19,6 @@ pub type MessageCoinSigned = Message<specifications::MessageCoin<specifications:
 pub type MessageCoinPredicate =
     Message<specifications::MessageCoin<specifications::Predicate>>;
 
-type Empty = ();
-
 mod private {
     pub trait Seal {}
 
@@ -33,20 +31,18 @@ mod private {
 
 /// Specifies the message based on the usage context. See [`Message`].
 pub trait MessageSpecification: private::Seal {
-    type Witness: AsField<u8>;
     type Data: AsField<Vec<u8>>;
     type Predicate: AsField<Vec<u8>>;
     type PredicateData: AsField<Vec<u8>>;
     type PredicateGasUsed: AsField<Word>;
+    type Witness: AsField<u8>;
 }
 
 pub mod specifications {
     use alloc::vec::Vec;
 
-    use super::{
-        Empty,
-        MessageSpecification,
-    };
+    use super::MessageSpecification;
+    use crate::input::Empty;
     use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
@@ -73,9 +69,9 @@ pub mod specifications {
 
     impl MessageSpecification for MessageData<Signed> {
         type Data = Vec<u8>;
-        type Predicate = Empty;
-        type PredicateData = Empty;
-        type PredicateGasUsed = Empty;
+        type Predicate = Empty<Vec<u8>>;
+        type PredicateData = Empty<Vec<u8>>;
+        type PredicateGasUsed = Empty<Word>;
         type Witness = u8;
     }
 
@@ -84,7 +80,7 @@ pub mod specifications {
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
-        type Witness = Empty;
+        type Witness = Empty<u8>;
     }
 
     /// The spendable message acts as a standard coin.
@@ -93,19 +89,19 @@ pub mod specifications {
     pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageCoin<Signed> {
-        type Data = Empty;
-        type Predicate = Empty;
-        type PredicateData = Empty;
-        type PredicateGasUsed = Empty;
+        type Data = Empty<Vec<u8>>;
+        type Predicate = Empty<Vec<u8>>;
+        type PredicateData = Empty<Vec<u8>>;
+        type PredicateGasUsed = Empty<Word>;
         type Witness = u8;
     }
 
     impl MessageSpecification for MessageCoin<Predicate> {
-        type Data = Empty;
+        type Data = Empty<Vec<u8>>;
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
-        type Witness = Empty;
+        type Witness = Empty<u8>;
     }
 
     /// The type is used to represent the full message. It is used during the

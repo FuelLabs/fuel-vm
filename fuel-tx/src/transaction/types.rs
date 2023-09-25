@@ -18,7 +18,7 @@ pub use storage::StorageSlot;
 pub use utxo_id::UtxoId;
 pub use witness::Witness;
 
-pub fn compute_transaction_id<T: fuel_types::canonical::SerializedSize>(
+pub fn compute_transaction_id<T: fuel_types::canonical::Serialize>(
     chain_id: &fuel_types::ChainId,
     tx: &mut T,
 ) -> crate::TxId {

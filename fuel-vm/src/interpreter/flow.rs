@@ -74,7 +74,7 @@ use fuel_tx::{
     Script,
 };
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::Serialize,
     AssetId,
     Bytes32,
     ContractId,

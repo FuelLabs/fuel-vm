@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Removed
 
-- [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Removed `SerializedSize` and `SerializedFixedSize` traits. Removed support for `SIZE_NO_DYNAMIC` and `SIZE_STATIC`. Removed enum attributes from derive macro for `Serialize` and `Deserialize` traits..
+- [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Removed `SerializedSize` and `SerializedFixedSize` traits. Removed support for `SIZE_NO_DYNAMIC` and `SIZE_STATIC`. Removed enum attributes from derive macro for `Serialize` and `Deserialize` traits.
 
 ## [Version 0.37.0]
 

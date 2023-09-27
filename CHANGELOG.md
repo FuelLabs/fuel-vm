@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.38.0]
+
 ### Added
 
 - [#586](https://github.com/FuelLabs/fuel-vm/pull/586): Added `default_asset` method to the `ContractIdExt` trait implementation, to mirror the `default` method on AssetId in the Sway std lib.
@@ -19,10 +21,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#587](https://github.com/FuelLabs/fuel-vm/pull/587): Replace `thiserror` dependency with `derive_more`, so that `core::fmt::Display` is implemented without the `std` feature. Removes `std::io::Error` trait impls from the affected types.
 - [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Re-worked the size calculation of the canonical serialization/deserialization.
 
-### Removed
+#### Removed
 
-#### Breaking
-- [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Removed `SerializedSize` and `SerializedFixedSize` traits. Removed support for `SIZE_NO_DYNAMIC` and `SIZE_STATIC`. Removed enum attributes from derive macro for `Serialize` and `Deserialize` traits..
+- [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Removed `SerializedSize` and `SerializedFixedSize` traits. Removed support for `SIZE_NO_DYNAMIC` and `SIZE_STATIC`. Removed enum attributes from derive macro for `Serialize` and `Deserialize` traits.
 
 ## [Version 0.37.0]
 

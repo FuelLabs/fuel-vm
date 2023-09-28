@@ -73,6 +73,9 @@ impl crate::UniqueIdentifier for Mint {
         }
 
         let mut clone = self.clone();
+        clone.input_contract.prepare_sign();
+        clone.output_contract.prepare_sign();
+
         crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 

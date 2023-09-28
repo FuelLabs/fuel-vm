@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+- [#593](https://github.com/FuelLabs/fuel-vm/pull/593): Reworked `Mint` transaction to work with `Input::Contract` and `Output::Contract` instead of `Output::Coin`. It allows account-based fee collection for the block producer.
+
 ## [Version 0.38.0]
 
 ### Added

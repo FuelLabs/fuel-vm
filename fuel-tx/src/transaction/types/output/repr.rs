@@ -68,7 +68,7 @@ impl OutputRepr {
     pub const fn from_output(output: &Output) -> Self {
         match output {
             Output::Coin { .. } => Self::Coin,
-            Output::Contract { .. } => Self::Contract,
+            Output::Contract(_) => Self::Contract,
             Output::Change { .. } => Self::Change,
             Output::Variable { .. } => Self::Variable,
             Output::ContractCreated { .. } => Self::ContractCreated,

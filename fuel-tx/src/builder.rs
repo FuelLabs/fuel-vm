@@ -1,4 +1,6 @@
 use crate::{
+    input,
+    output,
     transaction::{
         field,
         field::{
@@ -179,10 +181,20 @@ impl TransactionBuilder<Create> {
 }
 
 impl TransactionBuilder<Mint> {
-    pub fn mint(block_height: BlockHeight, tx_index: u16) -> Self {
+    pub fn mint(
+        block_height: BlockHeight,
+        tx_index: u16,
+        input_contract: input::contract::Contract,
+        output_contract: output::contract::Contract,
+        mint_amount: Word,
+        mint_asset_id: AssetId,
+    ) -> Self {
         let tx = Mint {
             tx_pointer: TxPointer::new(block_height, tx_index),
-            outputs: Default::default(),
+            input_contract,
+            output_contract,
+            mint_amount,
+            mint_asset_id,
             metadata: None,
         };
 

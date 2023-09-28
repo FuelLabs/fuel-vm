@@ -1,4 +1,5 @@
 use crate::{
+    output,
     ConsensusParameters,
     Input,
     Output,
@@ -191,11 +192,10 @@ impl Input {
                 if 1 != outputs
                     .iter()
                     .filter_map(|output| match output {
-                        Output::Contract { input_index, .. }
-                            if *input_index as usize == index =>
-                        {
-                            Some(())
-                        }
+                        Output::Contract(output::contract::Contract {
+                            input_index,
+                            ..
+                        }) if *input_index as usize == index => Some(()),
                         _ => None,
                     })
                     .count() =>
@@ -227,11 +227,12 @@ impl Output {
     /// transactions.
     pub fn check(&self, index: usize, inputs: &[Input]) -> Result<(), CheckError> {
         match self {
-            Self::Contract { input_index, .. } => match inputs.get(*input_index as usize)
-            {
-                Some(Input::Contract { .. }) => Ok(()),
-                _ => Err(CheckError::OutputContractInputIndex { index }),
-            },
+            Self::Contract(output::contract::Contract { input_index, .. }) => {
+                match inputs.get(*input_index as usize) {
+                    Some(Input::Contract { .. }) => Ok(()),
+                    _ => Err(CheckError::OutputContractInputIndex { index }),
+                }
+            }
 
             _ => Ok(()),
         }

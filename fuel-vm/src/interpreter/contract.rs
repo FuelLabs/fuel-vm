@@ -370,8 +370,8 @@ where
         .unwrap_or_default())
 }
 
-/// Increase the asset balance for a contract
-pub(crate) fn balance_increase<S>(
+/// Increase the asset balance for a contract.
+pub fn balance_increase<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,
@@ -390,8 +390,8 @@ where
     Ok(balance)
 }
 
-/// Decrease the asset balance for a contract
-pub(crate) fn balance_decrease<S>(
+/// Decrease the asset balance for a contract.
+pub fn balance_decrease<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,

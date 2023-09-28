@@ -834,39 +834,53 @@ fn mint() {
 
     let block_height = 1000.into();
 
-    TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate tx");
+    let err = TransactionBuilder::mint(
+        block_height,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+    )
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
-    let err = TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::contract(0, rng.gen(), rng.gen()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    assert_eq!(err, CheckError::TransactionMintIncorrectOutputIndex);
 
-    assert_eq!(err, CheckError::TransactionMintOutputIsNotCoin);
+    let err = TransactionBuilder::mint(
+        block_height,
+        rng.gen(),
+        rng.gen(),
+        output::contract::Contract {
+            input_index: 0,
+            balance_root: rng.gen(),
+            state_root: rng.gen(),
+        },
+        rng.gen(),
+        rng.gen(),
+    )
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
-    let err = TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    assert_eq!(err, CheckError::TransactionMintNonBaseAsset);
 
-    assert_eq!(
-        err,
-        CheckError::TransactionOutputCoinAssetIdDuplicated(AssetId::BASE)
-    );
-
-    let err = TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .finalize()
-        .check(block_height + 1.into(), &test_params())
-        .expect_err("Expected erroneous transaction");
+    let err = TransactionBuilder::mint(
+        block_height,
+        rng.gen(),
+        rng.gen(),
+        output::contract::Contract {
+            input_index: 0,
+            balance_root: rng.gen(),
+            state_root: rng.gen(),
+        },
+        rng.gen(),
+        rng.gen(),
+    )
+    .finalize()
+    .check(block_height + 1.into(), &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, CheckError::TransactionMintIncorrectBlockHeight);
 }

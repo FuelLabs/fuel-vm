@@ -1,3 +1,5 @@
+//! This module contains logic on contract management.
+
 use super::{
     internal::{
         append_receipt,

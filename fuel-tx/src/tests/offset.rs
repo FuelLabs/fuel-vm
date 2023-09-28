@@ -434,7 +434,6 @@ fn tx_offset_script() {
 
 #[test]
 fn tx_offset_mint() {
-    let cases = TestedFields::default();
     let number_cases = 100;
 
     // The seed will define how the transaction factory will generate a new transaction.
@@ -476,7 +475,9 @@ fn tx_offset_mint() {
 
             let ofs = tx.mint_asset_id_offset();
             let size = tx.mint_asset_id().size();
-            let mint_asset_id_p = AssetId::from_bytes(&bytes[ofs..ofs + size]);
+            let mint_asset_id_p =
+                <AssetId as Deserialize>::from_bytes(&bytes[ofs..ofs + size])
+                    .expect("Should encode `AssetId`");
 
             assert_eq!(*tx.mint_asset_id(), mint_asset_id_p);
         });

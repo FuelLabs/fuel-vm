@@ -172,7 +172,7 @@ where
 {
     pub fn prepare_sign(&mut self) {
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
-            core::mem::take(predicate_gas_used_field);
+            *predicate_gas_used_field = Default::default();
         }
     }
 

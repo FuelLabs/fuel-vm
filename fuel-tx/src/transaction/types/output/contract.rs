@@ -21,8 +21,8 @@ impl Contract {
     /// The "Note" section from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/output.md#outputcontract>.
     pub fn prepare_sign(&mut self) {
-        core::mem::take(&mut self.balance_root);
-        core::mem::take(&mut self.state_root);
+        self.balance_root = Default::default();
+        self.state_root = Default::default();
     }
 }
 

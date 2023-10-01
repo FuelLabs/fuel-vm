@@ -124,9 +124,9 @@ where
     /// The "Note" section from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
     pub fn prepare_sign(&mut self) {
-        core::mem::take(&mut self.tx_pointer);
+        self.tx_pointer = Default::default();
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {
-            core::mem::take(predicate_gas_used_field);
+            *predicate_gas_used_field = Default::default();
         }
     }
 }

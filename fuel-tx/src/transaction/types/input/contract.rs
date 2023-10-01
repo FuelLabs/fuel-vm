@@ -27,10 +27,10 @@ impl Contract {
     /// The "Note" section from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
     pub fn prepare_sign(&mut self) {
-        core::mem::take(&mut self.utxo_id);
-        core::mem::take(&mut self.balance_root);
-        core::mem::take(&mut self.state_root);
-        core::mem::take(&mut self.tx_pointer);
+        self.utxo_id = Default::default();
+        self.balance_root = Default::default();
+        self.state_root = Default::default();
+        self.tx_pointer = Default::default();
     }
 }
 

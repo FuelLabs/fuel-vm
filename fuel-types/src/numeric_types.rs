@@ -7,10 +7,8 @@ use core::{
     convert::TryFrom,
     fmt,
     ops::{
-        Add,
         Deref,
         DerefMut,
-        Sub,
     },
     str,
 };
@@ -246,27 +244,21 @@ macro_rules! key_methods {
                     Ok(ret.into())
                 }
             }
-
-            impl Add for $i {
-                type Output = $i;
-
-                #[inline(always)]
-                fn add(self, rhs: $i) -> $i {
-                    $i(self.0.wrapping_add(rhs.0))
-                }
-            }
-
-            impl Sub for $i {
-                type Output = $i;
-
-                #[inline(always)]
-                fn sub(self, rhs: $i) -> $i {
-                    $i(self.0.wrapping_sub(rhs.0))
-                }
-            }
         };
     };
 }
 
 key!(BlockHeight, u32);
 key!(ChainId, u64);
+
+impl BlockHeight {
+    /// Successor, i.e. next block after this
+    pub fn succ(self) -> Option<BlockHeight> {
+        Some(Self(self.0.checked_add(1)?))
+    }
+
+    /// Predecessor, i.e. previous block before this
+    pub fn pred(self) -> Option<BlockHeight> {
+        Some(Self(self.0.checked_sub(1)?))
+    }
+}

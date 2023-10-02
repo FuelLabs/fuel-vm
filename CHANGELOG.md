@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- [#595](https://github.com/FuelLabs/fuel-vm/pull/595): Removed `wee_alloc` dependency from `fuel-asm`. It now uses the builtin allocator on web targets as well.
+
+
 ## [Version 0.38.0]
 
 ### Added

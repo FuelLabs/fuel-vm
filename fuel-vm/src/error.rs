@@ -227,7 +227,7 @@ impl<StorageError> From<Infallible> for RuntimeError<StorageError> {
 }
 
 /// Predicates checking failed
-#[derive(Debug, derive_more::Display)]
+#[derive(Debug, PartialEq, derive_more::Display)]
 pub enum PredicateVerificationFailed {
     /// The predicate did not use the amount of gas provided
     #[display(fmt = "Predicate used less than the required amount of gas")]
@@ -283,6 +283,11 @@ impl From<InterpreterError<predicate::StorageUnavailable>>
             error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
                 PredicateVerificationFailed::OutOfGas
             }
+            InterpreterError::Panic(reason) => PredicateVerificationFailed::Panic(reason),
+            InterpreterError::PanicInstruction(result) => {
+                PredicateVerificationFailed::PanicInstruction(result)
+            }
+            InterpreterError::Bug(bug) => PredicateVerificationFailed::Bug(bug),
             InterpreterError::Storage(_) => PredicateVerificationFailed::Storage,
             _ => PredicateVerificationFailed::False,
         }

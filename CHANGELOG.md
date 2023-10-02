@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#595](https://github.com/FuelLabs/fuel-vm/pull/595): Removed `wee_alloc` dependency from `fuel-asm`. It now uses the builtin allocator on web targets as well.
 
 
+#### Breaking
+
+- [#596](https://github.com/FuelLabs/fuel-vm/pull/596): Remove `core::ops::{Add, Sub}` impls from `BlockHeight`. Use `succ` and `pred` to access adjacent blocks, or perform arithmetic directly on the wrapped integer instead.
+
+
 ## [Version 0.38.0]
 
 ### Added

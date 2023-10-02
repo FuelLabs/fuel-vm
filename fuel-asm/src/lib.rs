@@ -11,14 +11,6 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(feature = "wee_alloc")]
-use wee_alloc as _;
-
-// Use `wee_alloc` as the global allocator.
-#[cfg(all(no_std, feature = "wee_alloc"))]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 mod args;
 mod panic_instruction;
 // This is `pub` to make documentation for the private `impl_instructions!` macro more

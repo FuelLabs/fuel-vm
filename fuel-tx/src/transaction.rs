@@ -173,14 +173,15 @@ impl Transaction {
 
     pub fn mint(
         tx_pointer: TxPointer,
-        input_contract: Contract,
+        input_contract: input::contract::Contract,
+        output_contract: output::contract::Contract,
         mint_amount: Word,
         mint_asset_id: AssetId,
     ) -> Mint {
         Mint {
             tx_pointer,
             input_contract,
-            output_contract: Default::default(),
+            output_contract,
             mint_amount,
             mint_asset_id,
             metadata: None,

@@ -879,7 +879,7 @@ fn mint() {
         rng.gen(),
     )
     .finalize()
-    .check(block_height + 1.into(), &test_params())
+    .check(block_height.succ().unwrap(), &test_params())
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, CheckError::TransactionMintIncorrectBlockHeight);

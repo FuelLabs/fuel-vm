@@ -154,6 +154,19 @@ where
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
+pub(crate) fn get_contract_size<S>(
+    storage: &S,
+    contract: &ContractId,
+) -> Result<usize, RuntimeError>
+where
+    S: InterpreterStorage,
+{
+    storage
+        .storage_contract_size(contract)
+        .map_err(RuntimeError::from_io)?
+        .ok_or_else(|| PanicReason::ContractNotFound.into())
+}
+
 struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],

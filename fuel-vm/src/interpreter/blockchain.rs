@@ -129,6 +129,18 @@ where
         input.load_contract_code(a, b, c)
     }
 
+    pub(crate) fn load_contract_size(&mut self, a: Word) -> Result<usize, RuntimeError> {
+        let input = ContractSizeCodeCtx {
+            memory: &mut self.memory,
+            storage: &mut self.storage,
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
+        };
+        input.contract_size(a)
+    }
+
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> Result<(), RuntimeError> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, is, .. }, _) =
@@ -535,6 +547,31 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I> {
         }
 
         inc_pc(self.pc)
+    }
+}
+
+struct ContractSizeCodeCtx<'vm, S, I> {
+    memory: &'vm mut [u8; MEM_SIZE],
+    input_contracts: InputContracts<'vm, I>,
+    storage: &'vm S,
+}
+
+impl<'vm, S, I> ContractSizeCodeCtx<'vm, S, I> {
+    pub(crate) fn contract_size(
+        mut self,
+        contract_id_addr: Word,
+    ) -> Result<usize, RuntimeError>
+    where
+        I: Iterator<Item = &'vm ContractId>,
+        S: InterpreterStorage,
+    {
+        let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
+
+        self.input_contracts.check(&contract_id)?;
+
+        // Fetch the storage contract size
+        let size = super::contract::get_contract_size(self.storage, &contract_id)?;
+        Ok(size)
     }
 }
 

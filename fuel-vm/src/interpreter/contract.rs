@@ -157,13 +157,13 @@ where
 pub(crate) fn get_contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> Result<usize, RuntimeError>
+) -> IoResult<usize, S::DataError>
 where
     S: InterpreterStorage,
 {
     storage
         .storage_contract_size(contract)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 

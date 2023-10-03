@@ -131,7 +131,10 @@ where
         input.load_contract_code(a, b, c)
     }
 
-    pub(crate) fn load_contract_size(&mut self, a: Word) -> Result<usize, RuntimeError> {
+    pub(crate) fn load_contract_size(
+        &mut self,
+        a: Word,
+    ) -> IoResult<usize, S::DataError> {
         let input = ContractSizeCodeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
@@ -565,7 +568,7 @@ impl<'vm, S, I> ContractSizeCodeCtx<'vm, S, I> {
     pub(crate) fn contract_size(
         mut self,
         contract_id_addr: Word,
-    ) -> Result<usize, RuntimeError>
+    ) -> IoResult<usize, S::DataError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,

@@ -1,7 +1,5 @@
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-};
+use core::fmt::Debug;
+use hashbrown::HashMap;
 
 use fuel_storage::{
     StorageRead,
@@ -234,7 +232,7 @@ fn mappable_delta_to_hashmap<'value, K, V>(
     state: &mut Delta<HashMap<K, &'value V>>,
     delta: &'value MappableDelta<K, V>,
 ) where
-    K: Copy + PartialEq + Eq + std::hash::Hash + 'static,
+    K: Copy + PartialEq + Eq + core::hash::Hash + 'static,
     V: Clone + 'static,
 {
     match delta {
@@ -299,7 +297,7 @@ where
     fn get(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<std::borrow::Cow<<Type as Mappable>::OwnedValue>>, Self::Error>
+    ) -> Result<Option<alloc::borrow::Cow<<Type as Mappable>::OwnedValue>>, Self::Error>
     {
         <S as StorageInspect<Type>>::get(&self.0, key)
     }
@@ -418,7 +416,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Vec<Option<std::borrow::Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<alloc::borrow::Cow<Bytes32>>>, Self::DataError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
 
@@ -437,7 +435,7 @@ where
         contract: &ContractId,
         start_key: &Bytes32,
         range: Word,
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<Option<()>, S::DataError> {
         self.0
             .merkle_contract_state_remove_range(contract, start_key, range)
     }

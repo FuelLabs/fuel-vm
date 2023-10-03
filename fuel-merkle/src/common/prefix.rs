@@ -27,10 +27,9 @@ impl From<Prefix> for [u8; 1] {
     }
 }
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
+#[derive(Debug, Clone, derive_more::Display)]
 pub enum PrefixError {
-    #[cfg_attr(feature = "std", error("prefix {0} is not valid"))]
+    #[display(fmt = "prefix {_0} is not valid")]
     InvalidPrefix(u8),
 }
 

@@ -2,6 +2,7 @@ use crate::{
     constraints::reg_key::ProgramRegistersSegment,
     error::{
         InterpreterError,
+        IoResult,
         RuntimeError,
     },
     interpreter::{
@@ -26,7 +27,7 @@ use fuel_asm::{
 };
 use fuel_types::Word;
 
-use std::ops::Div;
+use core::ops::Div;
 
 impl<S, Tx> Interpreter<S, Tx>
 where
@@ -34,7 +35,7 @@ where
     Tx: ExecutableTransaction,
 {
     /// Execute the current instruction located in `$m[$pc]`.
-    pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError> {
+    pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         if let Some(raw_instruction) = self.fetch_instruction() {
             self.instruction(raw_instruction)
         } else {
@@ -57,7 +58,7 @@ where
     pub fn instruction<R: Into<RawInstruction> + Copy>(
         &mut self,
         raw: R,
-    ) -> Result<ExecuteState, InterpreterError> {
+    ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         if self.debugger.is_active() {
             let debug = self.eval_debugger_state();
             if !debug.should_continue() {
@@ -72,7 +73,7 @@ where
     fn instruction_inner(
         &mut self,
         raw: RawInstruction,
-    ) -> Result<ExecuteState, RuntimeError> {
+    ) -> IoResult<ExecuteState, S::DataError> {
         let instruction = Instruction::try_from(raw)
             .map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
 
@@ -571,7 +572,7 @@ where
                 let (a, b) = retd.unpack();
                 let len = r!(b);
                 self.dependent_gas_charge(self.gas_costs().retd, len)?;
-                return self.ret_data(r!(a), len).map(ExecuteState::ReturnData)
+                return Ok(self.ret_data(r!(a), len).map(ExecuteState::ReturnData)?)
             }
 
             Instruction::RVRT(rvrt) => {
@@ -908,7 +909,13 @@ fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
 
     // Use floating point operation to get an approximation for the starting point.
     // This is at most off by one in either direction.
-    let guess = (target as f64).powf((nth_root as f64).recip()) as u64;
+
+    #[cfg(feature = "std")]
+    let powf = f64::powf;
+    #[cfg(not(feature = "std"))]
+    let powf = libm::pow;
+
+    let guess = powf(target as f64, (nth_root as f64).recip()) as u64;
 
     debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
 

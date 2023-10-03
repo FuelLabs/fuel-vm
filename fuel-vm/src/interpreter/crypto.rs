@@ -16,7 +16,7 @@ use super::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
-    error::RuntimeError,
+    error::SimpleResult,
     prelude::MemoryRange,
 };
 
@@ -44,7 +44,7 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
         secp256k1_recover(&mut self.memory, owner, err, pc, a, b, c)
@@ -55,7 +55,7 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
         secp256r1_recover(&mut self.memory, owner, err, pc, a, b, c)
@@ -66,27 +66,17 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
         ed25519_verify(&mut self.memory, err, pc, a, b, c)
     }
 
-    pub(crate) fn keccak256(
-        &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         keccak256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    pub(crate) fn sha256(
-        &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         sha256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
@@ -100,7 +90,7 @@ pub(crate) fn secp256k1_recover(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let sig = Bytes64::from(read_bytes(memory, b)?);
     let msg = Bytes32::from(read_bytes(memory, c)?);
 
@@ -118,7 +108,7 @@ pub(crate) fn secp256k1_recover(
         }
     }
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn secp256r1_recover(
@@ -129,7 +119,7 @@ pub(crate) fn secp256r1_recover(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let sig = Bytes64::from(read_bytes(memory, b)?);
     let msg = Bytes32::from(read_bytes(memory, c)?);
     let message = Message::from_bytes_ref(&msg);
@@ -145,7 +135,7 @@ pub(crate) fn secp256r1_recover(
         }
     }
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn ed25519_verify(
@@ -155,7 +145,7 @@ pub(crate) fn ed25519_verify(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let pub_key = Bytes32::from(read_bytes(memory, a)?);
     let sig = Bytes64::from(read_bytes(memory, b)?);
     let msg = Bytes32::from(read_bytes(memory, c)?);
@@ -167,7 +157,7 @@ pub(crate) fn ed25519_verify(
         set_err(err);
     }
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn keccak256(
@@ -177,7 +167,7 @@ pub(crate) fn keccak256(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     use sha3::{
         Digest,
         Keccak256,
@@ -189,7 +179,7 @@ pub(crate) fn keccak256(
 
     try_mem_write(a, h.finalize().as_slice(), owner, memory)?;
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn sha256(
@@ -199,7 +189,7 @@ pub(crate) fn sha256(
     a: Word,
     b: Word,
     c: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     let src_range = MemoryRange::new(b, c)?;
 
     try_mem_write(
@@ -209,5 +199,5 @@ pub(crate) fn sha256(
         memory,
     )?;
 
-    inc_pc(pc)
+    Ok(inc_pc(pc)?)
 }

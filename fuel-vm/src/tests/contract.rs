@@ -3,6 +3,10 @@ use crate::{
     script_with_data_offset,
     util::test_helpers::TestBuilder,
 };
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use fuel_asm::{
     op,
     RegId,
@@ -11,7 +15,7 @@ use fuel_tx::{
     ConsensusParameters,
     Witness,
 };
-use fuel_types::canonical::SerializedSize;
+use fuel_types::canonical::Serialize;
 use rand::{
     rngs::StdRng,
     Rng,

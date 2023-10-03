@@ -1,3 +1,5 @@
+use alloc::vec;
+
 use crate::{
     constraints::reg_key::RegMut,
     interpreter::{
@@ -42,7 +44,7 @@ fn external_balance() {
 
     balances.iter().copied().for_each(|(asset, amount)| {
         tx.add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(&mut rng),
             rng.gen(),
             amount,
             asset,

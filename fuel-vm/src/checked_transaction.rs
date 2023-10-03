@@ -19,9 +19,16 @@ use fuel_types::{
     ChainId,
 };
 
-use core::borrow::Borrow;
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
+use core::{
+    borrow::Borrow,
+    future::Future,
+};
+
 use fuel_tx::ConsensusParameters;
-use std::future::Future;
 
 mod balances;
 pub mod builder;
@@ -607,9 +614,11 @@ impl IntoChecked for Transaction {
     }
 }
 
+#[cfg(feature = "random")]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::vec;
     use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{
@@ -712,9 +721,9 @@ mod tests {
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
-            .add_unsigned_message_input(rng.gen(), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
+            .add_unsigned_message_input(SecretKey::random(rng), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
             // Add empty base coin
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
             .finalize();
 
         let err = tx
@@ -752,7 +761,7 @@ mod tests {
                 vec![0xbb; 10],
             ))
             // Add empty base coin
-            .add_unsigned_coin_input(rng.gen(), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
             .finalize();
 
         let err = tx
@@ -1069,6 +1078,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn basic_check_marks_basic_flag() {
         let block_height = 1.into();
@@ -1196,7 +1206,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_coin_input(
-                rng.gen(),
+                SecretKey::random(rng),
                 rng.gen(),
                 input_amount,
                 asset,
@@ -1256,7 +1266,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_message_input(
-                rng.gen(),
+                SecretKey::random(rng),
                 rng.gen(),
                 rng.gen(),
                 input_amount,
@@ -1296,7 +1306,7 @@ mod tests {
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             .add_unsigned_coin_input(
-                rng.gen(),
+                SecretKey::random(rng),
                 rng.gen(),
                 input_amount,
                 AssetId::default(),

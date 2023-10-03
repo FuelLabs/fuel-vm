@@ -6,9 +6,14 @@ use crate::{
     constraints::reg_key::*,
     consts::*,
     context::Context,
+    error::SimpleResult,
     state::Debugger,
 };
-use std::{
+use alloc::{
+    borrow::ToOwned,
+    vec::Vec,
+};
+use core::{
     mem,
     ops::Index,
 };
@@ -330,7 +335,7 @@ pub trait ExecutableTransaction:
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
-    + fuel_types::canonical::SerializedSizeFixed
+    + fuel_types::canonical::Serialize
 {
     /// Casts the `Self` transaction into `&Script` if any.
     fn as_script(&self) -> Option<&Script>;
@@ -354,9 +359,9 @@ pub trait ExecutableTransaction:
         &mut self,
         idx: usize,
         output: Output,
-    ) -> Result<(), PanicReason> {
+    ) -> SimpleResult<()> {
         if !output.is_variable() {
-            return Err(PanicReason::ExpectedOutputVariable)
+            return Err(PanicReason::ExpectedOutputVariable.into())
         }
 
         // TODO increase the error granularity for this case - create a new variant of
@@ -368,8 +373,8 @@ pub trait ExecutableTransaction:
                 _ => None,
             })
             .map(|o| mem::replace(o, output))
-            .map(|_| ())
-            .ok_or(PanicReason::OutputNotFound)
+            .ok_or(PanicReason::OutputNotFound)?;
+        Ok(())
     }
 
     /// Update change and variable outputs.
@@ -568,10 +573,10 @@ impl<'vm, I: Iterator<Item = &'vm ContractId>> InputContracts<'vm, I> {
     }
 
     /// Checks that the contract is declared in the transaction inputs.
-    pub fn check(&mut self, contract: &ContractId) -> Result<(), PanicReason> {
+    pub fn check(&mut self, contract: &ContractId) -> SimpleResult<()> {
         if !self.tx_input_contracts.any(|input| input == contract) {
             *self.panic_context = PanicContext::ContractId(*contract);
-            Err(PanicReason::ContractNotInInputs)
+            Err(PanicReason::ContractNotInInputs.into())
         } else {
             Ok(())
         }

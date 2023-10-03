@@ -1,3 +1,7 @@
+use futures as _;
+use tokio as _;
+use tokio_rayon as _;
+
 mod test_helpers;
 
 mod alu;

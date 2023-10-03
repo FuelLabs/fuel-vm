@@ -1,6 +1,10 @@
 use crate::{
-    error::InterpreterError,
+    error::{
+        InterpreterError,
+        PredicateVerificationFailed,
+    },
     prelude::{
+        CheckError,
         ExecutableTransaction,
         Interpreter,
     },
@@ -20,11 +24,15 @@ impl<Tx> Interpreter<PredicateStorage, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn verify_predicate(&mut self) -> Result<ProgramState, InterpreterError> {
+    pub(crate) fn verify_predicate(
+        &mut self,
+    ) -> Result<ProgramState, PredicateVerificationFailed> {
         let range = self
             .context
             .predicate()
-            .ok_or(InterpreterError::PredicateFailure)?
+            .ok_or(InterpreterError::CheckError(
+                CheckError::PredicateVerificationFailed,
+            ))?
             .program()
             .words();
 
@@ -33,7 +41,7 @@ where
 
         loop {
             if range.end <= self.registers[RegId::PC] {
-                return Err(InterpreterError::Panic(PanicReason::MemoryOverflow))
+                return Err(PanicReason::MemoryOverflow.into())
             }
 
             match self.execute()? {
@@ -41,13 +49,13 @@ where
                     if r == 1 {
                         return Ok(ProgramState::Return(r))
                     } else {
-                        return Err(InterpreterError::PredicateFailure)
+                        return Err(PanicReason::ContractInstructionNotAllowed.into())
                     }
                 }
 
                 // A predicate is not expected to return data
                 ExecuteState::ReturnData(_) => {
-                    return Err(InterpreterError::PredicateFailure)
+                    return Err(PanicReason::ContractInstructionNotAllowed.into())
                 }
 
                 ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),

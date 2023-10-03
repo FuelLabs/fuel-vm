@@ -1,3 +1,8 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use super::test_helpers;
 use fuel_asm::*;
 use fuel_tx::Receipt;

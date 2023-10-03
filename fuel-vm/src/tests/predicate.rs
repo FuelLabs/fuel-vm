@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use fuel_asm::{
     op,
     GMArgs,
@@ -101,7 +103,7 @@ where
 
     (0..dummy_inputs).for_each(|_| {
         builder.add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(rng),
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -219,7 +221,7 @@ async fn execute_gas_metered_predicates(
 
     if predicates.is_empty() {
         builder.add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(rng),
             rng.gen(),
             coin_amount,
             AssetId::default(),
@@ -356,7 +358,7 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     let coin_amount = 10_000_000;
 
     builder.add_unsigned_coin_input(
-        rng.gen(),
+        SecretKey::random(rng),
         rng.gen(),
         coin_amount,
         AssetId::default(),
@@ -406,7 +408,7 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     // add non-predicate input before and after predicate input
     // to check that predicate verification only handles predicate inputs
     builder.add_unsigned_coin_input(
-        rng.gen(),
+        SecretKey::random(rng),
         rng.gen(),
         rng.gen(),
         AssetId::default(),
@@ -417,7 +419,7 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     builder.add_input(input);
 
     builder.add_unsigned_coin_input(
-        rng.gen(),
+        SecretKey::random(rng),
         rng.gen(),
         rng.gen(),
         AssetId::default(),
@@ -508,7 +510,7 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let coin_amount = 10_000_000;
 
     builder.add_unsigned_coin_input(
-        rng.gen(),
+        SecretKey::random(rng),
         rng.gen(),
         coin_amount,
         AssetId::default(),
@@ -633,7 +635,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     let coin_amount = 10_000_000;
 
     builder.add_unsigned_coin_input(
-        rng.gen(),
+        SecretKey::random(rng),
         rng.gen(),
         coin_amount,
         AssetId::default(),

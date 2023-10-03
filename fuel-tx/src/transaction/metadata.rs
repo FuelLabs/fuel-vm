@@ -1,13 +1,13 @@
 use alloc::vec::Vec;
 use fuel_types::{
+    canonical::Serialize,
     Bytes32,
     ChainId,
 };
 
-use crate::CheckError;
-#[cfg(feature = "std")]
 use crate::{
     field,
+    CheckError,
     UniqueIdentifier,
 };
 
@@ -22,7 +22,6 @@ pub trait Cacheable {
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError>;
 }
 
-#[cfg(feature = "std")]
 impl Cacheable for super::Transaction {
     fn is_computed(&self) -> bool {
         match self {
@@ -54,7 +53,6 @@ pub(crate) struct CommonMetadata {
     pub witnesses_offset_at: Vec<usize>,
 }
 
-#[cfg(feature = "std")]
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
@@ -64,7 +62,6 @@ impl CommonMetadata {
         Tx: field::Outputs,
         Tx: field::Witnesses,
     {
-        use fuel_types::canonical::SerializedSize;
         use itertools::Itertools;
 
         let id = tx.id(chain_id);

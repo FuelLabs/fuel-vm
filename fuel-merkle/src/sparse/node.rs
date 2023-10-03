@@ -328,12 +328,11 @@ impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageTyp
     }
 }
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
+#[derive(Debug, Clone, derive_more::Display)]
 pub enum StorageNodeError<StorageError> {
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     StorageError(StorageError),
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     DeserializeError(DeserializeError),
 }
 

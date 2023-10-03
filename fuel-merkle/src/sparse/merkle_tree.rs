@@ -30,22 +30,21 @@ use core::{
     marker::PhantomData,
 };
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
+#[derive(Debug, Clone, derive_more::Display)]
 pub enum MerkleTreeError<StorageError> {
-    #[cfg_attr(
-        feature = "std",
-        error("cannot load node with key {}; the key is not found in storage", hex::encode(.0))
+    #[display(
+        fmt = "cannot load node with key {}; the key is not found in storage",
+        "hex::encode(_0)"
     )]
     LoadError(Bytes32),
 
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     StorageError(StorageError),
 
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     DeserializeError(DeserializeError),
 
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
 }
 

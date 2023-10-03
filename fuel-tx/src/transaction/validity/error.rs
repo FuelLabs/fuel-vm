@@ -1,18 +1,11 @@
-use core::fmt;
-
 use crate::UtxoId;
 use fuel_types::{
     AssetId,
     ContractId,
     MessageId,
 };
-#[cfg(feature = "std")]
-use std::{
-    error,
-    io,
-};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::Display)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum CheckError {
@@ -103,6 +96,11 @@ pub enum CheckError {
     TransactionOutputCoinAssetIdNotFound(AssetId),
     /// The transaction doesn't provide enough input amount of the native chain asset to
     /// cover all potential execution fees
+    #[display(
+        fmt = "Insufficient fee amount: expected {}, provided {}",
+        expected,
+        provided
+    )]
     InsufficientFeeAmount {
         /// The expected amount of fees required to cover the transaction
         expected: u64,
@@ -111,6 +109,12 @@ pub enum CheckError {
     },
     /// The transaction doesn't provide enough input amount of the given asset to cover
     /// the amounts used in the outputs.
+    #[display(
+        fmt = "Insufficient input amount: asset {}, expected {}, provided {}",
+        asset,
+        expected,
+        provided
+    )]
     InsufficientInputAmount {
         /// The asset id being spent
         asset: AssetId,
@@ -126,25 +130,4 @@ pub enum CheckError {
     PredicateVerificationFailed,
     /// Predicate used all available gas
     PredicateExhaustedGas,
-}
-
-impl fmt::Display for CheckError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // TODO better describe the error variants
-        write!(f, "{self:?}")
-    }
-}
-
-#[cfg(feature = "std")]
-impl error::Error for CheckError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        None
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<CheckError> for io::Error {
-    fn from(v: CheckError) -> io::Error {
-        io::Error::new(io::ErrorKind::Other, v)
-    }
 }

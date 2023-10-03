@@ -1,11 +1,12 @@
 use super::Interpreter;
 use crate::{
-    arith,
     constraints::reg_key::*,
-    error::RuntimeError,
+    error::{
+        PanicOrBug,
+        SimpleResult,
+    },
     prelude::{
         Bug,
-        BugId,
         BugVariant,
     },
     profiler::Profiler,
@@ -42,7 +43,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         &mut self,
         gas_cost: DependentCost,
         arg: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let current_contract = self.contract_id();
         let SystemRegisters {
             pc, ggas, cgas, is, ..
@@ -57,7 +58,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
-    pub(crate) fn gas_charge(&mut self, gas: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
         let current_contract = self.contract_id();
         let SystemRegisters {
             pc, ggas, cgas, is, ..
@@ -79,7 +80,7 @@ pub(crate) fn dependent_gas_charge(
     mut profiler: ProfileGas<'_>,
     gas_cost: DependentCost,
     arg: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     if gas_cost.dep_per_unit == 0 {
         gas_charge(cgas, ggas, profiler, gas_cost.base)
     } else {
@@ -94,7 +95,7 @@ fn dependent_gas_charge_inner(
     ggas: RegMut<GGAS>,
     gas_cost: DependentCost,
     arg: Word,
-) -> Result<Word, RuntimeError> {
+) -> Result<Word, PanicOrBug> {
     let cost = gas_cost
         .base
         .saturating_add(arg.saturating_div(gas_cost.dep_per_unit));
@@ -106,7 +107,7 @@ pub(crate) fn gas_charge(
     ggas: RegMut<GGAS>,
     mut profiler: ProfileGas<'_>,
     gas: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     profiler.profile(cgas.as_ref(), gas);
     gas_charge_inner(cgas, ggas, gas)
 }
@@ -115,17 +116,23 @@ fn gas_charge_inner(
     mut cgas: RegMut<CGAS>,
     mut ggas: RegMut<GGAS>,
     gas: Word,
-) -> Result<(), RuntimeError> {
+) -> SimpleResult<()> {
     if *cgas > *ggas {
-        Err(Bug::new(BugId::ID008, BugVariant::GlobalGasLessThanContext).into())
+        Err(Bug::new(BugVariant::GlobalGasLessThanContext).into())
     } else if gas > *cgas {
-        *ggas = arith::sub_word(*ggas, *cgas)?;
+        *ggas = (*ggas)
+            .checked_sub(*cgas)
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
         *cgas = 0;
 
         Err(PanicReason::OutOfGas.into())
     } else {
-        *cgas = arith::sub_word(*cgas, gas)?;
-        *ggas = arith::sub_word(*ggas, gas)?;
+        *cgas = (*cgas)
+            .checked_sub(gas)
+            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
+        *ggas = (*ggas)
+            .checked_sub(gas)
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
         Ok(())
     }

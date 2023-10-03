@@ -70,7 +70,7 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((MerkleTreeKey::new(random_bytes32(rng)), random_bytes32(rng)));
-    let data = std::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
+    let data = core::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
 
     let expected_root = baseline_root(data.clone().into_iter());
     let root = subject_root(data.clone().into_iter());

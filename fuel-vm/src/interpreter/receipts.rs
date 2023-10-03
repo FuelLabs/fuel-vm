@@ -1,10 +1,13 @@
-use core::ops::Index;
-use std::mem;
+use alloc::vec::Vec;
+use core::{
+    mem,
+    ops::Index,
+};
 
 use fuel_merkle::binary;
 use fuel_tx::Receipt;
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::Serialize,
     Bytes32,
 };
 
@@ -122,9 +125,11 @@ mod tests {
         crypto::ephemeral_merkle_root,
         interpreter::receipts::ReceiptsCtx,
     };
+    use core::iter;
     use fuel_tx::Receipt;
-    use fuel_types::canonical::SerializedSize;
-    use std::iter;
+    use fuel_types::canonical::Serialize;
+
+    use alloc::vec::Vec;
 
     fn create_receipt() -> Receipt {
         Receipt::call(

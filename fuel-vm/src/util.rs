@@ -9,7 +9,7 @@
 ///
 /// ```
 /// use fuel_asm::{op, RegId};
-/// use fuel_types::{Immediate18, Word, canonical::{Serialize, SerializedSize}};
+/// use fuel_types::{Immediate18, Word, canonical::Serialize};
 /// use fuel_vm::prelude::{Call, TxParameters, ContractId, Opcode};
 /// use fuel_vm::script_with_data_offset;
 /// use itertools::Itertools;
@@ -42,6 +42,7 @@
 ///     TxParameters::DEFAULT.tx_offset()
 /// );
 /// ```
+#[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! script_with_data_offset {
     ($offset:ident, $script:expr, $tx_offset:expr) => {{
@@ -52,8 +53,8 @@ macro_rules! script_with_data_offset {
                 0 as Immediate18
             };
             // evaluate script expression with zeroed data offset to get the script length
-            let script_bytes: ::std::vec::Vec<u8> =
-                ::std::iter::IntoIterator::into_iter({ $script }).collect();
+            let script_bytes: $crate::alloc::vec::Vec<u8> =
+                ::core::iter::IntoIterator::into_iter({ $script }).collect();
             // compute the script data offset within the VM memory given the script length
             {
                 use $crate::{
@@ -76,9 +77,15 @@ macro_rules! script_with_data_offset {
 }
 
 #[allow(missing_docs)]
+#[cfg(feature = "random")]
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
+    use alloc::{
+        vec,
+        vec::Vec,
+    };
+
     use crate::{
         checked_transaction::{
             builder::TransactionBuilderExt,
@@ -137,7 +144,7 @@ pub mod test_helpers {
     use fuel_types::{
         canonical::{
             Deserialize,
-            SerializedSize,
+            Serialize,
         },
         Address,
         AssetId,
@@ -258,7 +265,7 @@ pub mod test_helpers {
             amount: Word,
         ) -> &mut TestBuilder {
             self.builder.add_unsigned_coin_input(
-                self.rng.gen(),
+                fuel_crypto::SecretKey::random(&mut self.rng),
                 self.rng.gen(),
                 amount,
                 asset_id,
@@ -686,7 +693,11 @@ pub mod test_helpers {
 }
 
 #[allow(missing_docs)]
-#[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
+#[cfg(all(
+    feature = "profile-gas",
+    feature = "std",
+    any(test, feature = "test-helpers")
+))]
 /// Gas testing utilities
 pub mod gas_profiling {
     use crate::prelude::*;
@@ -712,7 +723,7 @@ pub mod gas_profiling {
     impl ProfileReceiver for GasProfiler {
         fn on_transaction(
             &mut self,
-            _state: &Result<ProgramState, InterpreterError>,
+            _state: Result<&ProgramState, InterpreterError<String>>,
             data: &ProfilingData,
         ) {
             let mut guard = self.data.lock().unwrap();

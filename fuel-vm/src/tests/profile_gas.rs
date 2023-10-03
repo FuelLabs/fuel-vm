@@ -1,3 +1,5 @@
+#![cfg(feature = "std")]
+
 use fuel_asm::{
     op,
     RegId,
@@ -35,7 +37,7 @@ fn profile_gas() {
         let tx_deploy =
             TransactionBuilder::script(script_code.into_iter().collect(), vec![])
                 .add_unsigned_coin_input(
-                    rng.gen(),
+                    SecretKey::random(rng),
                     rng.gen(),
                     1,
                     Default::default(),

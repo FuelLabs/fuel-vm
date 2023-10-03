@@ -1,3 +1,5 @@
+use alloc::vec;
+
 use fuel_tx::Script;
 use fuel_types::BlockHeight;
 use test_case::test_case;

@@ -12,7 +12,7 @@ use fuel_types::{
 
 mod interpreter;
 mod memory;
-mod predicate;
+pub(crate) mod predicate;
 
 pub use interpreter::{
     ContractsAssetsStorage,

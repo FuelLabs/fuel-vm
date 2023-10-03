@@ -30,19 +30,17 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
-    canonical::SerializedSize,
+    canonical::Serialize,
     fmt_truncated_hex,
     BlockHeight,
     Bytes32,
+    ChainId,
     Word,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-#[cfg(feature = "std")]
-use fuel_types::ChainId;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct ScriptMetadata {
@@ -95,7 +93,6 @@ impl Default for Script {
     }
 }
 
-#[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Script {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
@@ -151,7 +148,6 @@ impl Chargeable for Script {
 }
 
 impl FormatValidityChecks for Script {
-    #[cfg(feature = "std")]
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
@@ -211,7 +207,6 @@ impl FormatValidityChecks for Script {
     }
 }
 
-#[cfg(feature = "std")]
 impl crate::Cacheable for Script {
     fn is_computed(&self) -> bool {
         self.metadata.is_some()

@@ -17,6 +17,8 @@ use crate::{
     storage::MemoryStorage,
 };
 
+use alloc::vec;
+
 #[cfg(feature = "profile-any")]
 use crate::profiler::ProfileReceiver;
 
@@ -57,7 +59,7 @@ where
     where
         P: ProfileReceiver + Send + Sync + 'static,
     {
-        self.profiler.set_receiver(Box::new(receiver));
+        self.profiler.set_receiver(alloc::boxed::Box::new(receiver));
         self
     }
 }
@@ -83,6 +85,7 @@ where
     }
 }
 
+#[cfg(test)]
 impl<Tx> Interpreter<(), Tx>
 where
     Tx: ExecutableTransaction,

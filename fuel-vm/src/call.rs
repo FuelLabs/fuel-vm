@@ -8,7 +8,6 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSizeFixed,
     },
     AssetId,
     ContractId,
@@ -35,7 +34,7 @@ pub struct Call {
 
 impl Call {
     /// The size of the call structures in memory representation.
-    pub const LEN: usize = Self::SIZE_STATIC;
+    pub const LEN: usize = ContractId::LEN + 8 + 8;
 
     /// Create a new call structure representation.
     pub const fn new(to: ContractId, a: Word, b: Word) -> Self {
@@ -211,17 +210,15 @@ impl TryFrom<&[u8]> for Call {
 }
 
 #[cfg(test)]
-impl From<Call> for Vec<u8> {
+impl From<Call> for alloc::vec::Vec<u8> {
     fn from(call: Call) -> Self {
-        use fuel_types::canonical::SerializedSize;
         call.to_bytes()
     }
 }
 
 #[cfg(test)]
-impl From<CallFrame> for Vec<u8> {
+impl From<CallFrame> for alloc::vec::Vec<u8> {
     fn from(call: CallFrame) -> Self {
-        use fuel_types::canonical::SerializedSize;
         call.to_bytes()
     }
 }

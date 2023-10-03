@@ -34,20 +34,29 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::{
+        IoResult,
+        RuntimeError,
+        SimpleResult,
+    },
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
         PanicContext,
     },
+    prelude::{
+        Bug,
+        BugVariant,
+    },
     profiler::Profiler,
     storage::{
-        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
     },
 };
+use alloc::vec::Vec;
+use core::cmp;
 use fuel_asm::{
     Instruction,
     PanicInstruction,
@@ -55,7 +64,6 @@ use fuel_asm::{
 };
 use fuel_storage::{
     StorageAsRef,
-    StorageInspect,
     StorageRead,
     StorageSize,
 };
@@ -66,13 +74,12 @@ use fuel_tx::{
     Script,
 };
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::Serialize,
     AssetId,
     Bytes32,
     ContractId,
     Word,
 };
-use std::cmp;
 
 #[cfg(test)]
 mod jump_tests;
@@ -85,12 +92,12 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn jump(&mut self, args: JumpArgs) -> Result<(), RuntimeError> {
+    pub(crate) fn jump(&mut self, args: JumpArgs) -> SimpleResult<()> {
         let (SystemRegisters { pc, is, .. }, _) = split_registers(&mut self.registers);
         args.jump(is.as_ref(), pc)
     }
 
-    pub(crate) fn ret(&mut self, a: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn ret(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
@@ -110,7 +117,7 @@ where
         input.ret(a)
     }
 
-    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
+    pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
@@ -178,7 +185,7 @@ struct RetCtx<'vm> {
 }
 
 impl RetCtx<'_> {
-    pub(crate) fn ret(self, a: Word) -> Result<(), RuntimeError> {
+    pub(crate) fn ret(self, a: Word) -> SimpleResult<()> {
         let receipt = Receipt::ret(
             self.current_contract.unwrap_or_else(ContractId::zeroed),
             a,
@@ -193,16 +200,14 @@ impl RetCtx<'_> {
         self.return_from_context(receipt)
     }
 
-    pub(crate) fn return_from_context(
-        mut self,
-        receipt: Receipt,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn return_from_context(mut self, receipt: Receipt) -> SimpleResult<()> {
         if let Some(frame) = self.frames.pop() {
             let registers = &mut self.registers;
             let context = &mut self.context;
 
-            registers[RegId::CGAS] =
-                arith::add_word(registers[RegId::CGAS], frame.context_gas())?;
+            registers[RegId::CGAS] = registers[RegId::CGAS]
+                .checked_add(frame.context_gas())
+                .ok_or_else(|| Bug::new(BugVariant::ContextGasOverflow))?;
 
             let cgas = registers[RegId::CGAS];
             let ggas = registers[RegId::GGAS];
@@ -224,10 +229,10 @@ impl RetCtx<'_> {
 
         append_receipt(self.append, receipt);
 
-        inc_pc(self.registers.pc_mut())
+        Ok(inc_pc(self.registers.pc_mut())?)
     }
 
-    pub(crate) fn ret_data(self, a: Word, b: Word) -> Result<Bytes32, RuntimeError> {
+    pub(crate) fn ret_data(self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let range = MemoryRange::new(a, b)?;
 
         let receipt = Receipt::return_data(
@@ -314,13 +319,9 @@ impl JumpArgs {
         self
     }
 
-    pub(crate) fn jump(
-        &self,
-        is: Reg<IS>,
-        mut pc: RegMut<PC>,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn jump(&self, is: Reg<IS>, mut pc: RegMut<PC>) -> SimpleResult<()> {
         if !self.condition {
-            return inc_pc(pc)
+            return Ok(inc_pc(pc)?)
         }
 
         let offset_instructions = match self.mode {
@@ -339,7 +340,7 @@ impl JumpArgs {
             JumpMode::RelativeForwards => pc.saturating_add(offset_bytes),
             JumpMode::RelativeBackwards => pc
                 .checked_sub(offset_bytes)
-                .ok_or_else(|| RuntimeError::Recoverable(PanicReason::MemoryOverflow))?,
+                .ok_or(PanicReason::MemoryOverflow)?,
         };
 
         if target_addr >= VM_MAX_RAM {
@@ -363,7 +364,7 @@ where
         rb: RegId,
         rc: RegId,
         rd: RegId,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         self.prepare_call_inner(
             self.registers[ra],
             self.registers[rb],
@@ -379,7 +380,7 @@ where
         amount_of_coins_to_forward: Word,
         asset_id_mem_address: Word,
         amount_of_gas_to_forward: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let params = PrepareCallParams {
             call_params_mem_address,
             amount_of_coins_to_forward,
@@ -487,16 +488,15 @@ struct PrepareCallCtx<'vm, S, I> {
 
 impl<'vm, S, I> PrepareCallCtx<'vm, S, I>
 where
+    S: InterpreterStorage,
     I: Iterator<Item = &'vm ContractId>,
 {
-    fn prepare_call(mut self) -> Result<(), RuntimeError>
+    fn prepare_call(mut self) -> IoResult<(), S::DataError>
     where
         S: StorageSize<ContractsRawCode>
             + ContractsAssetsStorage
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
-        <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
         let call = self.memory.call_params.try_from(self.memory.memory)?;
         let asset_id = self.memory.asset_id.try_from(self.memory.memory)?;
@@ -555,14 +555,17 @@ where
         );
 
         // subtract gas
-        *self.registers.system_registers.cgas =
-            arith::sub_word(*self.registers.system_registers.cgas, forward_gas_amount)?;
+        *self.registers.system_registers.cgas = (*self.registers.system_registers.cgas)
+            .checked_sub(forward_gas_amount)
+            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
 
         *frame.context_gas_mut() = *self.registers.system_registers.cgas;
         *frame.global_gas_mut() = *self.registers.system_registers.ggas;
 
         let frame_bytes = frame.to_bytes();
-        let len = arith::add_word(frame_bytes.len() as Word, frame.total_code_size())?;
+        let len = (frame_bytes.len() as Word)
+            .checked_add(frame.total_code_size())
+            .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
         if len > *self.registers.system_registers.hp
             || *self.registers.system_registers.sp
@@ -635,10 +638,9 @@ fn write_call_to_memory<S>(
     code_mem_range: MemoryRange,
     memory: &mut [u8; MEM_SIZE],
     storage: &S,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
 {
     let mut code_frame_range = code_mem_range.clone();
     // Addition is safe because code size + padding is always less than len
@@ -654,7 +656,7 @@ where
     let bytes_read = storage
         .storage::<ContractsRawCode>()
         .read(frame.to(), code_range.write(memory))
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read as Word != frame.code_size() {
         return Err(PanicReason::ContractMismatch.into())
@@ -674,10 +676,9 @@ fn call_frame<S>(
     storage: &S,
     call: Call,
     asset_id: AssetId,
-) -> Result<CallFrame, RuntimeError>
+) -> IoResult<CallFrame, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
 {
     let (to, a, b) = call.into_inner();
 
@@ -760,7 +761,7 @@ impl<'reg> From<SystemRegisters<'reg>>
 impl<'mem> TryFrom<(&'mem mut [u8; MEM_SIZE], &PrepareCallParams)>
     for PrepareCallMemory<'mem>
 {
-    type Error = RuntimeError;
+    type Error = PanicReason;
 
     fn try_from(
         (memory, params): (&'mem mut [u8; MEM_SIZE], &PrepareCallParams),

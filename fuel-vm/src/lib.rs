@@ -1,9 +1,17 @@
 //! FuelVM implementation
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
+#![deny(unused_must_use)]
 #![deny(unused_crate_dependencies)]
 #![deny(clippy::string_slice)]
+
+#[doc(hidden)] // Needed by some of the exported macros
+pub extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate libm as _; // Not needed with stdlib
 
 pub mod arith;
 pub mod backtrace;
@@ -116,9 +124,7 @@ pub mod prelude {
         context::Context,
         error::{
             Bug,
-            BugId,
             BugVariant,
-            Infallible,
             InterpreterError,
             RuntimeError,
         },
@@ -157,7 +163,11 @@ pub mod prelude {
         IntoChecked,
     };
 
-    #[cfg(all(feature = "profile-gas", any(test, feature = "test-helpers")))]
+    #[cfg(all(
+        feature = "profile-gas",
+        feature = "std",
+        any(test, feature = "test-helpers")
+    ))]
     pub use crate::util::gas_profiling::GasProfiler;
 
     pub use crate::profiler::Profiler;

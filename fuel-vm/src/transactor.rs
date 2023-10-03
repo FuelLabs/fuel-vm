@@ -36,14 +36,18 @@ use fuel_tx::{
 /// builder`.
 ///
 /// Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
-pub struct Transactor<S, Tx> {
+pub struct Transactor<S, Tx>
+where
+    S: InterpreterStorage,
+{
     interpreter: Interpreter<S, Tx>,
     program_state: Option<ProgramState>,
-    error: Option<InterpreterError>,
+    error: Option<InterpreterError<S::DataError>>,
 }
 
 impl<'a, S, Tx> Transactor<S, Tx>
 where
+    S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
     /// Transactor constructor
@@ -86,7 +90,7 @@ where
     ///
     /// Will be `None` if the last transaction resulted successful, or if no
     /// transaction was executed.
-    pub const fn error(&self) -> Option<&InterpreterError> {
+    pub const fn error(&self) -> Option<&InterpreterError<S::DataError>> {
         self.error.as_ref()
     }
 
@@ -104,7 +108,9 @@ where
     /// Result representation of the last executed transaction.
     ///
     /// Will return `None` if no transaction was executed.
-    pub fn result(&'a self) -> Result<StateTransitionRef<'a, Tx>, &InterpreterError> {
+    pub fn result(
+        &'a self,
+    ) -> Result<StateTransitionRef<'a, Tx>, &InterpreterError<S::DataError>> {
         let state = self.state_transition();
         let error = self.error.as_ref();
 
@@ -133,7 +139,10 @@ where
     }
 }
 
-impl<S> Transactor<S, Script> {
+impl<S> Transactor<S, Script>
+where
+    S: InterpreterStorage,
+{
     /// Receipts after the execution of a transaction.
     ///
     /// Follows the same criteria as [`Self::state_transition`] to return
@@ -162,7 +171,7 @@ where
     pub fn deploy(
         &mut self,
         checked: Checked<Create>,
-    ) -> Result<Create, InterpreterError> {
+    ) -> Result<Create, InterpreterError<S::DataError>> {
         self.interpreter.deploy(checked)
     }
 }
@@ -193,6 +202,7 @@ where
 impl<S, Tx> From<Interpreter<S, Tx>> for Transactor<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     fn from(interpreter: Interpreter<S, Tx>) -> Self {
         let program_state = None;
@@ -209,6 +219,7 @@ where
 impl<S, Tx> From<Transactor<S, Tx>> for Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     fn from(transactor: Transactor<S, Tx>) -> Self {
         transactor.interpreter
@@ -218,6 +229,7 @@ where
 impl<S, Tx> AsRef<Interpreter<S, Tx>> for Transactor<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     fn as_ref(&self) -> &Interpreter<S, Tx> {
         &self.interpreter
@@ -227,6 +239,7 @@ where
 impl<S, Tx> AsRef<S> for Transactor<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     fn as_ref(&self) -> &S {
         self.interpreter.as_ref()
@@ -236,6 +249,7 @@ where
 impl<S, Tx> AsMut<S> for Transactor<S, Tx>
 where
     Tx: ExecutableTransaction,
+    S: InterpreterStorage,
 {
     fn as_mut(&mut self) -> &mut S {
         self.interpreter.as_mut()
@@ -244,7 +258,7 @@ where
 
 impl<S, Tx> Default for Transactor<S, Tx>
 where
-    S: Default,
+    S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
 {
     fn default() -> Self {

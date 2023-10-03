@@ -24,19 +24,15 @@ use crate::{
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "std", derive(thiserror::Error))]
+#[derive(Debug, Clone, derive_more::Display)]
 pub enum MerkleTreeError<StorageError> {
-    #[cfg_attr(feature = "std", error("proof index {0} is not valid"))]
+    #[display(fmt = "proof index {_0} is not valid")]
     InvalidProofIndex(u64),
 
-    #[cfg_attr(
-        feature = "std",
-        error("cannot load node with key {0}; the key is not found in storage")
-    )]
+    #[display(fmt = "cannot load node with key {_0}; the key is not found in storage")]
     LoadError(u64),
 
-    #[cfg_attr(feature = "std", error(transparent))]
+    #[display(fmt = "{}", _0)]
     StorageError(StorageError),
 }
 

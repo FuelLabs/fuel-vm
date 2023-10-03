@@ -1,3 +1,8 @@
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use fuel_asm::RegId;
 use fuel_crypto::{
     Hasher,
@@ -12,7 +17,7 @@ use fuel_tx::{
     TransactionBuilder,
 };
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::Serialize,
     AssetId,
     BlockHeight,
     ChainId,
@@ -20,6 +25,7 @@ use fuel_types::{
 use itertools::Itertools;
 use rand::{
     rngs::StdRng,
+    CryptoRng,
     Rng,
     SeedableRng,
 };
@@ -1404,7 +1410,7 @@ fn smo_instruction_works() {
         gas_price: Word,
     ) -> bool
     where
-        R: Rng,
+        R: Rng + CryptoRng,
     {
         let mut client = MemoryClient::default();
         let fee_params = FeeParameters::default();

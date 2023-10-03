@@ -1,3 +1,9 @@
+#[cfg(test)]
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;

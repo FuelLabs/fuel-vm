@@ -3,7 +3,6 @@ use fuel_types::{
     canonical::{
         Deserialize,
         Serialize,
-        SerializedSizeFixed,
     },
     Address,
     AssetId,
@@ -223,7 +222,6 @@ impl Output {
     }
 
     /// Prepare the output for VM initialization for script execution
-    #[cfg(feature = "std")]
     pub fn prepare_init_script(&mut self) {
         match self {
             Output::Change { amount, .. } => {

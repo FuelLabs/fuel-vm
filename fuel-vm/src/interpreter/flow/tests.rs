@@ -1,3 +1,10 @@
+use core::convert::Infallible;
+
+use alloc::{
+    vec,
+    vec::Vec,
+};
+
 use crate::{
     interpreter::memory::Memory,
     storage::MemoryStorage,
@@ -11,7 +18,7 @@ use fuel_tx::{
     TxParameters,
 };
 use fuel_types::{
-    canonical::SerializedSize,
+    canonical::Serialize,
     ContractId,
 };
 use test_case::test_case;
@@ -84,8 +91,8 @@ struct Output {
     script: Option<Script>,
 }
 
-impl std::fmt::Debug for Output {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Output {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Output")
             .field("reg", &self.reg)
             .field("memory", &"[..]")
@@ -321,7 +328,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))); "Transfer too many coins internally"
 )]
-fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
+fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     let Input {
         params,
         mut reg,
@@ -391,8 +398,8 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError> {
 }
 
 fn check_output(
-    expected: Result<Output, RuntimeError>,
-) -> impl FnOnce(Result<Output, RuntimeError>) {
+    expected: Result<Output, RuntimeError<Infallible>>,
+) -> impl FnOnce(Result<Output, RuntimeError<Infallible>>) {
     move |result| match (expected, result) {
         (Ok(e), Ok(r)) => {
             assert_eq!(e.reg, r.reg);
@@ -432,7 +439,7 @@ fn check_output(
 fn test_write_call_to_memory(
     call_frame: CallFrame,
     code_mem_range: MemoryRange,
-) -> Result<Word, RuntimeError> {
+) -> IoResult<Word, Infallible> {
     let frame_bytes = call_frame.to_bytes();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let code = vec![6u8; call_frame.code_size() as usize];

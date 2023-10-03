@@ -19,14 +19,16 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::{
+        IoResult,
+        RuntimeError,
+    },
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
         PanicContext,
     },
     storage::{
-        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
@@ -37,10 +39,7 @@ use fuel_asm::{
     RegisterId,
     Word,
 };
-use fuel_storage::{
-    StorageInspect,
-    StorageSize,
-};
+use fuel_storage::StorageSize;
 use fuel_tx::{
     Contract,
     Output,
@@ -52,7 +51,7 @@ use fuel_types::{
     ContractId,
 };
 
-use std::borrow::Cow;
+use alloc::borrow::Cow;
 
 #[cfg(test)]
 mod tests;
@@ -67,7 +66,7 @@ where
         ra: RegisterId,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> Result<(), RuntimeError<S::DataError>> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = ContractBalanceCtx {
@@ -79,7 +78,8 @@ where
                 &mut self.panic_context,
             ),
         };
-        input.contract_balance(result, b, c)
+        input.contract_balance(result, b, c)?;
+        Ok(())
     }
 
     pub(crate) fn transfer(
@@ -87,7 +87,7 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
@@ -112,7 +112,7 @@ where
         b: Word,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
@@ -134,23 +134,23 @@ where
     pub(crate) fn check_contract_exists(
         &self,
         contract: &ContractId,
-    ) -> Result<bool, RuntimeError> {
+    ) -> IoResult<bool, S::DataError> {
         self.storage
             .storage_contract_exists(contract)
-            .map_err(RuntimeError::from_io)
+            .map_err(RuntimeError::Storage)
     }
 }
 
 pub(crate) fn contract<'s, S>(
     storage: &'s S,
     contract: &ContractId,
-) -> Result<Cow<'s, Contract>, RuntimeError>
+) -> IoResult<Cow<'s, Contract>, S::DataError>
 where
     S: InterpreterStorage,
 {
     storage
         .storage_contract(contract)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
@@ -180,11 +180,10 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         result: &mut Word,
         b: Word,
         c: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> IoResult<(), S::Error>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: ContractsAssetsStorage,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
         let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new(b)?;
         let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(c)?;
@@ -198,7 +197,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
 
         *result = balance;
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 struct TransferCtx<'vm, S, Tx> {
@@ -226,11 +225,10 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> IoResult<(), S::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
         let amount = transfer_amount;
         let destination =
@@ -249,9 +247,9 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             // optimistically attempt to load the internal contract id
             Ok(source_contract) => Some(*source_contract),
             // revert to external context if no internal contract is set
-            Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)) => None,
+            Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
 
         if let Some(source_contract) = internal_context {
@@ -283,7 +281,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             receipt,
         );
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 
     /// In Fuel specs:
@@ -298,11 +296,10 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         output_index: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> Result<(), RuntimeError>
+    ) -> IoResult<(), S::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
-        <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
     {
         let out_idx = output_index as usize;
         let to = Address::from(read_bytes(self.memory, recipient_offset)?);
@@ -318,9 +315,9 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             // optimistically attempt to load the internal contract id
             Ok(source_contract) => Some(*source_contract),
             // revert to external context if no internal contract is set
-            Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)) => None,
+            Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
 
         if let Some(source_contract) = internal_context {
@@ -355,21 +352,20 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             receipt,
         );
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }
 
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
-    <S as StorageInspect<ContractsRawCode>>::Error: Into<std::io::Error>,
 {
     Ok(storage
         .size_of_value(contract)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)? as Word)
 }
 
@@ -377,14 +373,13 @@ pub(crate) fn balance<S>(
     storage: &S,
     contract: &ContractId,
     asset_id: &AssetId,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
     Ok(storage
         .merkle_contract_asset_id_balance(contract, asset_id)
-        .map_err(RuntimeError::from_io)?
+        .map_err(RuntimeError::Storage)?
         .unwrap_or_default())
 }
 
@@ -394,10 +389,9 @@ pub(crate) fn balance_increase<S>(
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
@@ -405,7 +399,7 @@ where
         .ok_or(PanicReason::ArithmeticOverflow)?;
     storage
         .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
-        .map_err(RuntimeError::from_io)?;
+        .map_err(RuntimeError::Storage)?;
     Ok(balance)
 }
 
@@ -415,10 +409,9 @@ pub(crate) fn balance_decrease<S>(
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> Result<Word, RuntimeError>
+) -> IoResult<Word, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
-    <S as StorageInspect<ContractsAssets>>::Error: Into<std::io::Error>,
 {
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
@@ -426,6 +419,6 @@ where
         .ok_or(PanicReason::NotEnoughBalance)?;
     storage
         .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
-        .map_err(RuntimeError::from_io)?;
+        .map_err(RuntimeError::Storage)?;
     Ok(balance)
 }

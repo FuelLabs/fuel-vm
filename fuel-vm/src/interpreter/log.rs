@@ -14,7 +14,7 @@ use crate::{
     constraints::reg_key::*,
     consts::*,
     context::Context,
-    error::RuntimeError,
+    error::SimpleResult,
 };
 
 use fuel_tx::{
@@ -30,13 +30,7 @@ impl<S, Tx> Interpreter<S, Tx>
 where
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn log(
-        &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
@@ -59,7 +53,7 @@ where
         b: Word,
         c: Word,
         d: Word,
-    ) -> Result<(), RuntimeError> {
+    ) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
@@ -89,13 +83,7 @@ struct LogInput<'vm> {
 }
 
 impl LogInput<'_> {
-    pub(crate) fn log(
-        self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn log(self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
         let receipt = Receipt::log(
             internal_contract_or_default(self.context, self.fp, self.memory),
             a,
@@ -116,16 +104,10 @@ impl LogInput<'_> {
             receipt,
         );
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 
-    pub(crate) fn log_data(
-        self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
-    ) -> Result<(), RuntimeError> {
+    pub(crate) fn log_data(self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
         let range = MemoryRange::new(c, d)?;
 
         let receipt = Receipt::log_data(
@@ -148,6 +130,6 @@ impl LogInput<'_> {
             receipt,
         );
 
-        inc_pc(self.pc)
+        Ok(inc_pc(self.pc)?)
     }
 }

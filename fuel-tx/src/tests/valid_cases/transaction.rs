@@ -11,7 +11,7 @@ use fuel_tx::*;
 use fuel_tx_test_helpers::generate_bytes;
 use fuel_types::canonical::{
     Deserialize,
-    SerializedSize,
+    Serialize,
 };
 use rand::{
     rngs::StdRng,
@@ -865,7 +865,7 @@ fn mint() {
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
         .finalize()
-        .check(block_height + 1.into(), &test_params())
+        .check(block_height.succ().unwrap(), &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, CheckError::TransactionMintIncorrectBlockHeight);

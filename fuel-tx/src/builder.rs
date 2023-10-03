@@ -11,7 +11,6 @@ use crate::{
         Executable,
         Script,
     },
-    Cacheable,
     ConsensusParameters,
     ContractParameters,
     FeeParameters,
@@ -28,8 +27,10 @@ use crate::{
     Witness,
 };
 
-#[cfg(feature = "std")]
-use crate::Signable;
+use crate::{
+    Cacheable,
+    Signable,
+};
 
 use fuel_crypto::SecretKey;
 use fuel_types::{
@@ -59,13 +60,8 @@ where
 {
 }
 
-#[cfg(feature = "std")]
 pub trait BuildableStd: Signable + Cacheable {}
 
-#[cfg(not(feature = "std"))]
-pub trait BuildableSet: BuildableAloc {}
-
-#[cfg(feature = "std")]
 pub trait BuildableSet: BuildableAloc + BuildableStd {}
 
 pub trait Buildable
@@ -110,12 +106,8 @@ impl<T> BuildableAloc for T where
 {
 }
 
-#[cfg(feature = "std")]
 impl<T> BuildableStd for T where T: Signable + Cacheable {}
-#[cfg(feature = "std")]
 impl<T> BuildableSet for T where T: BuildableAloc + BuildableStd {}
-#[cfg(not(feature = "std"))]
-impl<T> BuildableSet for T where T: BuildableAloc {}
 impl<T> Buildable for T where T: BuildableSet {}
 
 #[derive(Debug, Clone)]
@@ -326,7 +318,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    #[cfg(feature = "std")]
     pub fn add_unsigned_coin_input(
         &mut self,
         secret: SecretKey,
@@ -353,7 +344,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    #[cfg(all(feature = "rand", feature = "std"))]
+    #[cfg(feature = "rand")]
     pub fn add_random_fee_input(&mut self) -> &mut Self {
         use rand::{
             Rng,
@@ -361,7 +352,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         };
         let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
         self.add_unsigned_coin_input(
-            rng.gen(),
+            SecretKey::random(&mut rng),
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -370,7 +361,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         )
     }
 
-    #[cfg(feature = "std")]
     pub fn add_unsigned_message_input(
         &mut self,
         secret: SecretKey,
@@ -421,7 +411,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     /// Adds a secret to the builder, and adds a corresponding witness if it's a new entry
-    #[cfg(feature = "std")]
     fn upsert_secret(&mut self, secret_key: SecretKey) -> u8 {
         let witness_len = self.witnesses().len() as u8;
 
@@ -434,7 +423,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         *witness_index
     }
 
-    #[cfg(feature = "std")]
     fn prepare_finalize(&mut self) {
         if self.should_prepare_predicate {
             self.tx.prepare_init_predicate();
@@ -445,7 +433,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         }
     }
 
-    #[cfg(feature = "std")]
     fn finalize_inner(&mut self) -> Tx {
         self.prepare_finalize();
 
@@ -461,7 +448,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         tx
     }
 
-    #[cfg(feature = "std")]
     pub fn finalize_without_signature_inner(&mut self) -> Tx {
         self.prepare_finalize();
 
@@ -487,7 +473,6 @@ pub trait Finalizable<Tx> {
     fn finalize_without_signature(&mut self) -> Tx;
 }
 
-#[cfg(feature = "std")]
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&mut self) -> Mint {
         let mut tx = core::mem::take(&mut self.tx);
@@ -501,7 +486,6 @@ impl Finalizable<Mint> for TransactionBuilder<Mint> {
     }
 }
 
-#[cfg(feature = "std")]
 impl Finalizable<Create> for TransactionBuilder<Create> {
     fn finalize(&mut self) -> Create {
         self.finalize_inner()
@@ -512,7 +496,6 @@ impl Finalizable<Create> for TransactionBuilder<Create> {
     }
 }
 
-#[cfg(feature = "std")]
 impl Finalizable<Script> for TransactionBuilder<Script> {
     fn finalize(&mut self) -> Script {
         self.finalize_inner()
@@ -528,12 +511,10 @@ where
     Self: Finalizable<Tx>,
     Transaction: From<Tx>,
 {
-    #[cfg(feature = "std")]
     pub fn finalize_as_transaction(&mut self) -> Transaction {
         self.finalize().into()
     }
 
-    #[cfg(feature = "std")]
     pub fn finalize_without_signature_as_transaction(&mut self) -> Transaction {
         self.finalize_without_signature().into()
     }

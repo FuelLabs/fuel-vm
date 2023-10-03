@@ -18,7 +18,7 @@ use super::super::{
 };
 use crate::{
     constraints::reg_key::*,
-    error::RuntimeError,
+    error::SimpleResult,
     interpreter::memory::{
         read_bytes,
         write_bytes,
@@ -76,7 +76,7 @@ macro_rules! wideint_ops {
                     b: Word,
                     c: Word,
                     args: CompareArgs,
-                ) -> Result<(), RuntimeError> {
+                ) -> SimpleResult<()> {
                     let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
                     let dest: &mut Word = &mut w[ra.try_into()?];
 
@@ -92,7 +92,8 @@ macro_rules! wideint_ops {
 
                     *dest = [<cmp_ $t:lower>](lhs, rhs, args.mode);
 
-                    inc_pc(pc)
+                    inc_pc(pc)?;
+                    Ok(())
                 }
 
                 pub(crate) fn [<alu_wideint_op_ $t:lower>](
@@ -101,7 +102,7 @@ macro_rules! wideint_ops {
                     b: Word,
                     c: Word,
                     args: MathArgs,
-                ) -> Result<(), RuntimeError> {
+                ) -> SimpleResult<()> {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
@@ -126,7 +127,7 @@ macro_rules! wideint_ops {
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, wrapped.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    Ok(inc_pc(pc)?)
                 }
 
                 pub(crate) fn [<alu_wideint_mul_ $t:lower>](
@@ -135,7 +136,7 @@ macro_rules! wideint_ops {
                     b: Word,
                     c: Word,
                     args: MulArgs,
-                ) -> Result<(), RuntimeError> {
+                ) -> SimpleResult<()> {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
@@ -163,7 +164,7 @@ macro_rules! wideint_ops {
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, wrapped.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    Ok(inc_pc(pc)?)
                 }
 
                 pub(crate) fn [<alu_wideint_div_ $t:lower>](
@@ -172,7 +173,7 @@ macro_rules! wideint_ops {
                     b: Word,
                     c: Word,
                     args: DivArgs,
-                ) -> Result<(), RuntimeError> {
+                ) -> SimpleResult<()> {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
@@ -208,7 +209,7 @@ macro_rules! wideint_ops {
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    Ok(inc_pc(pc)?)
                 }
 
                 pub(crate) fn [<alu_wideint_addmod_ $t:lower>](
@@ -217,7 +218,7 @@ macro_rules! wideint_ops {
                     b: Word,
                     c: Word,
                     d: Word,
-                ) -> Result<(), RuntimeError> {
+                ) -> SimpleResult<()> {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
@@ -248,7 +249,7 @@ macro_rules! wideint_ops {
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    Ok(inc_pc(pc)?)
                 }
 
                 pub(crate) fn [<alu_wideint_mulmod_ $t:lower>](
@@ -257,7 +258,7 @@ macro_rules! wideint_ops {
                     b: Word,
                     c: Word,
                     d: Word,
-                ) -> Result<(), RuntimeError> {
+                ) -> SimpleResult<()> {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
@@ -289,7 +290,7 @@ macro_rules! wideint_ops {
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    Ok(inc_pc(pc)?)
                 }
 
                 pub(crate) fn [<alu_wideint_muldiv_ $t:lower>](
@@ -298,7 +299,7 @@ macro_rules! wideint_ops {
                     b: Word,
                     c: Word,
                     d: Word,
-                ) -> Result<(), RuntimeError> {
+                ) -> SimpleResult<()> {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { mut of, mut err, pc, flag, .. }, _) = split_registers(&mut self.registers);
 
@@ -333,7 +334,7 @@ macro_rules! wideint_ops {
 
                     write_bytes(&mut self.memory, owner_regs, dest_addr, result.to_be_bytes())?;
 
-                    inc_pc(pc)
+                    Ok(inc_pc(pc)?)
                 }
             }
 

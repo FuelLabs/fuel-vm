@@ -6,6 +6,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- [#595](https://github.com/FuelLabs/fuel-vm/pull/595): Removed `wee_alloc` dependency from `fuel-asm`. It now uses the builtin allocator on web targets as well.
+
+
+#### Breaking
+
+- [#596](https://github.com/FuelLabs/fuel-vm/pull/596): Remove `core::ops::{Add, Sub}` impls from `BlockHeight`. Use `succ` and `pred` to access adjacent blocks, or perform arithmetic directly on the wrapped integer instead.
+
+
+## [Version 0.38.0]
+
+### Added
+
+- [#586](https://github.com/FuelLabs/fuel-vm/pull/586): Added `default_asset` method to the `ContractIdExt` trait implementation, to mirror the `default` method on AssetId in the Sway std lib.
+
+### Changed
+
+#### Breaking
+
+- [#578](https://github.com/FuelLabs/fuel-vm/pull/578): Support `no_std` environments for `fuel-crypto`, falling back to a pure-Rust crypto implementation.
+- [#582](https://github.com/FuelLabs/fuel-vm/pull/582): Make `fuel-vm` and `fuel-tx` crates compatible with `no_std` + `alloc`. This includes reworking all error handling that used `std::io::Error`, replacing some `std::collection::{HashMap, HashSet}` with `hashbrown::{HashMap, HashSet}` and many changes to feature-gating of APIs.
+- [#587](https://github.com/FuelLabs/fuel-vm/pull/587): Replace `thiserror` dependency with `derive_more`, so that `core::fmt::Display` is implemented without the `std` feature. Removes `std::io::Error` trait impls from the affected types.
+- [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Re-worked the size calculation of the canonical serialization/deserialization.
+
+#### Removed
+
+- [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Removed `SerializedSize` and `SerializedFixedSize` traits. Removed support for `SIZE_NO_DYNAMIC` and `SIZE_STATIC`. Removed enum attributes from derive macro for `Serialize` and `Deserialize` traits.
+
 ## [Version 0.37.0]
 
 #### Breaking
@@ -15,7 +44,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#537](https://github.com/FuelLabs/fuel-vm/pull/537): Use dependent cost for `k256`, `s256`, `mcpi`, `scwq`, `swwq` opcodes.
     These opcodes charged inadequately low costs in comparison to the amount of work.
     This change should make all transactions that used these opcodes much more expensive than before.
-
 - [#533](https://github.com/FuelLabs/fuel-vm/pull/533): Use custom serialization for fuel-types to allow no_std compilation.
 
 ## [Version 0.36.1]

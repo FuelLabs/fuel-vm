@@ -32,9 +32,9 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
-    canonical::SerializedSize,
     BlockHeight,
     Bytes32,
+    ChainId,
     ContractId,
     Salt,
     Word,
@@ -42,10 +42,8 @@ use fuel_types::{
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-#[cfg(feature = "std")]
-use fuel_types::ChainId;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
+
+use hashbrown::HashMap;
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -66,7 +64,6 @@ pub struct CreateMetadata {
     pub witnesses_offset_at: Vec<usize>,
 }
 
-#[cfg(feature = "std")]
 impl CreateMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, CheckError> {
@@ -134,7 +131,6 @@ impl Create {
     }
 }
 
-#[cfg(feature = "std")]
 impl crate::UniqueIdentifier for Create {
     fn id(&self, chain_id: &ChainId) -> crate::TxId {
         if let Some(id) = self.cached_id() {
@@ -189,7 +185,6 @@ impl Chargeable for Create {
 }
 
 impl FormatValidityChecks for Create {
-    #[cfg(feature = "std")]
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
         use crate::UniqueIdentifier;
 
@@ -289,22 +284,8 @@ impl FormatValidityChecks for Create {
             if let Some(metadata) = &self.metadata {
                 (metadata.state_root, metadata.contract_id)
             } else {
-                #[cfg(feature = "std")]
-                {
-                    let metadata = CreateMetadata::compute(self, chain_id)?;
-                    (metadata.state_root, metadata.contract_id)
-                }
-
-                #[cfg(not(feature = "std"))]
-                {
-                    let salt = self.salt();
-                    let storage_slots = self.storage_slots();
-                    let contract = Contract::try_from(self)?;
-                    let contract_root = contract.root();
-                    let state_root = Contract::initial_state_root(storage_slots.iter());
-                    let contract_id = contract.id(salt, &contract_root, &state_root);
-                    (state_root, contract_id)
-                }
+                let metadata = CreateMetadata::compute(self, chain_id)?;
+                (metadata.state_root, metadata.contract_id)
             };
 
         let mut contract_created = false;
@@ -359,7 +340,6 @@ impl FormatValidityChecks for Create {
     }
 }
 
-#[cfg(feature = "std")]
 impl crate::Cacheable for Create {
     fn is_computed(&self) -> bool {
         self.metadata.is_some()
@@ -375,6 +355,7 @@ impl crate::Cacheable for Create {
 mod field {
     use super::*;
     use crate::field::StorageSlotRef;
+    use fuel_types::canonical::Serialize;
 
     impl GasPrice for Create {
         #[inline(always)]

@@ -17,6 +17,7 @@ use fuel_tx_test_helpers::{
 use fuel_types::ChainId;
 use rand::{
     rngs::StdRng,
+    CryptoRng,
     Rng,
     SeedableRng,
 };
@@ -58,7 +59,7 @@ fn input_coin_message_signature() {
             f: F,
         ) -> Result<(), CheckError>
         where
-            R: Rng,
+            R: Rng + CryptoRng,
             I: Iterator<Item = (Tx, Vec<SecretKey>)>,
             F: Fn(&mut Tx, &PublicKey),
             Tx: Buildable,

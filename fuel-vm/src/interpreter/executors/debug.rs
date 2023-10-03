@@ -14,7 +14,7 @@ where
     Tx: ExecutableTransaction,
 {
     /// Continue the execution from a previously interrupted program flow.
-    pub fn resume(&mut self) -> Result<ProgramState, InterpreterError> {
+    pub fn resume(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         let state = self
             .debugger_last_state()
             .ok_or(InterpreterError::DebugStateNotInitialized)?;

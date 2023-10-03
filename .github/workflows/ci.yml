@@ -59,7 +59,7 @@ jobs:
           - command: check
             args: --all-targets --all-features
           - command: check
-            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-storage -p fuel-merkle --no-default-features
+            args: --target thumbv6m-none-eabi -p fuel-asm -p fuel-crypto -p fuel-storage -p fuel-merkle --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: check
@@ -70,6 +70,12 @@ jobs:
             args: --target wasm32-unknown-unknown -p fuel-types --features typescript --crate-type=cdylib
           - command: rustc
             args: --target wasm32-unknown-unknown -p fuel-asm --features typescript --crate-type=cdylib
+          - command: check
+            args: --target wasm32-unknown-unknown -p fuel-types --features serde --no-default-features
+          - command: check
+            args: --target wasm32-unknown-unknown -p fuel-vm --features alloc --no-default-features
+          - command: bench
+            args: --workspace --no-run
           - command: make
             args: check
           - command: test
@@ -91,7 +97,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: "thumbv6m-none-eabi,wasm32-unknown-unknown"
+          targets: "thumbv6m-none-eabi,riscv32imac-unknown-none-elf,wasm32-unknown-unknown"
           components: "clippy"
       - name: Install Cargo Make
         uses: davidB/rust-cargo-make@v1

@@ -1,6 +1,5 @@
 use fuel_crypto::PublicKey;
 use fuel_types::{
-    canonical::SerializedSizeFixed,
     Address,
     AssetId,
     BlockHeight,
@@ -43,6 +42,11 @@ pub use fee::{
     Chargeable,
     TransactionFee,
 };
+use fuel_types::canonical::{
+    Deserialize,
+    Error,
+    Serialize,
+};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
@@ -59,7 +63,6 @@ use crate::input::coin::{
 };
 use input::*;
 
-#[cfg(feature = "std")]
 use crate::input::{
     contract::Contract,
     message::{
@@ -67,10 +70,9 @@ use crate::input::{
         MessageDataPredicate,
     },
 };
-#[cfg(feature = "std")]
 pub use fuel_types::ChainId;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub use id::Signable;
 
 pub use id::UniqueIdentifier;
@@ -81,8 +83,6 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
-#[canonical(inner_discriminant = TransactionRepr)]
 pub enum Transaction {
     Script(Script),
     Create(Create),
@@ -303,21 +303,21 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
     /// Returns ids of all `Input::Contract` that are present in the inputs.
     // TODO: Return `Vec<input::Contract>` instead
-    #[cfg(feature = "std")]
     fn input_contracts(&self) -> IntoIter<&fuel_types::ContractId> {
-        self.inputs()
+        let mut inputs: Vec<_> = self
+            .inputs()
             .iter()
             .filter_map(|input| match input {
                 Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
                 _ => None,
             })
-            .unique()
-            .collect_vec()
-            .into_iter()
+            .collect();
+        inputs.sort();
+        inputs.dedup();
+        inputs.into_iter()
     }
 
     /// Checks that all owners of inputs in the predicates are valid.
-    #[cfg(feature = "std")]
     fn check_predicate_owners(&self, chain_id: &ChainId) -> bool {
         self.inputs()
             .iter()
@@ -411,7 +411,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     ///
     /// note: Fields dependent on storage/state such as balance and state roots, or tx
     /// pointers, should already set by the client beforehand.
-    #[cfg(feature = "std")]
     fn prepare_init_script(&mut self) -> &mut Self {
         self.outputs_mut()
             .iter_mut()
@@ -451,6 +450,81 @@ impl From<Create> for Transaction {
 impl From<Mint> for Transaction {
     fn from(mint: Mint) -> Self {
         Transaction::Mint(mint)
+    }
+}
+
+impl Serialize for Transaction {
+    fn size_static(&self) -> usize {
+        match self {
+            Transaction::Script(script) => script.size_static(),
+            Transaction::Create(create) => create.size_static(),
+            Transaction::Mint(mint) => mint.size_static(),
+        }
+    }
+
+    fn size_dynamic(&self) -> usize {
+        match self {
+            Transaction::Script(script) => script.size_dynamic(),
+            Transaction::Create(create) => create.size_dynamic(),
+            Transaction::Mint(mint) => mint.size_dynamic(),
+        }
+    }
+
+    fn encode_static<O: fuel_types::canonical::Output + ?Sized>(
+        &self,
+        buffer: &mut O,
+    ) -> Result<(), Error> {
+        match self {
+            Transaction::Script(script) => script.encode_static(buffer),
+            Transaction::Create(create) => create.encode_static(buffer),
+            Transaction::Mint(mint) => mint.encode_static(buffer),
+        }
+    }
+
+    fn encode_dynamic<O: fuel_types::canonical::Output + ?Sized>(
+        &self,
+        buffer: &mut O,
+    ) -> Result<(), Error> {
+        match self {
+            Transaction::Script(script) => script.encode_dynamic(buffer),
+            Transaction::Create(create) => create.encode_dynamic(buffer),
+            Transaction::Mint(mint) => mint.encode_dynamic(buffer),
+        }
+    }
+}
+
+impl Deserialize for Transaction {
+    fn decode_static<I: fuel_types::canonical::Input + ?Sized>(
+        buffer: &mut I,
+    ) -> Result<Self, Error> {
+        let mut discriminant_buffer = [0u8; 8];
+        buffer.peek(&mut discriminant_buffer)?;
+
+        let discriminant =
+            <TransactionRepr as Deserialize>::decode(&mut &discriminant_buffer[..])?;
+
+        match discriminant {
+            TransactionRepr::Script => {
+                Ok(<Script as Deserialize>::decode_static(buffer)?.into())
+            }
+            TransactionRepr::Create => {
+                Ok(<Create as Deserialize>::decode_static(buffer)?.into())
+            }
+            TransactionRepr::Mint => {
+                Ok(<Mint as Deserialize>::decode_static(buffer)?.into())
+            }
+        }
+    }
+
+    fn decode_dynamic<I: fuel_types::canonical::Input + ?Sized>(
+        &mut self,
+        buffer: &mut I,
+    ) -> Result<(), Error> {
+        match self {
+            Transaction::Script(script) => script.decode_dynamic(buffer),
+            Transaction::Create(create) => create.decode_dynamic(buffer),
+            Transaction::Mint(mint) => mint.decode_dynamic(buffer),
+        }
     }
 }
 

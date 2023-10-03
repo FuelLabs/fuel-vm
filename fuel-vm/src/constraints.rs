@@ -1,10 +1,13 @@
 //! Types to help constrain inputs to functions to only what is used.
-use std::ops::{
+use core::ops::{
     Deref,
     DerefMut,
 };
 
-use fuel_asm::Word;
+use fuel_asm::{
+    PanicReason,
+    Word,
+};
 use fuel_types::ContractId;
 
 #[cfg(test)]
@@ -12,10 +15,7 @@ use fuel_types::canonical::Deserialize;
 
 use crate::{
     consts::MEM_SIZE,
-    prelude::{
-        MemoryRange,
-        RuntimeError,
-    },
+    prelude::MemoryRange,
 };
 
 pub mod reg_key;
@@ -34,7 +34,7 @@ pub struct CheckedMemValue<T>(MemoryRange, core::marker::PhantomData<T>);
 
 impl<T> CheckedMemValue<T> {
     /// Create a new const sized memory range.
-    pub fn new<const SIZE: usize>(address: Word) -> Result<Self, RuntimeError> {
+    pub fn new<const SIZE: usize>(address: Word) -> Result<Self, PanicReason> {
         Ok(Self(
             MemoryRange::new_const::<_, SIZE>(address)?,
             core::marker::PhantomData,
@@ -42,10 +42,10 @@ impl<T> CheckedMemValue<T> {
     }
 
     /// Try to read a value of type `T` from memory.
-    pub fn try_from(self, memory: &[u8; MEM_SIZE]) -> Result<T, RuntimeError>
+    pub fn try_from(self, memory: &[u8; MEM_SIZE]) -> Result<T, PanicReason>
     where
         T: for<'a> TryFrom<&'a [u8]>,
-        RuntimeError: for<'a> From<<T as TryFrom<&'a [u8]>>::Error>,
+        PanicReason: for<'a> From<<T as TryFrom<&'a [u8]>>::Error>,
     {
         Ok(T::try_from(&memory[self.0.usizes()])?)
     }
@@ -73,7 +73,7 @@ impl<T> CheckedMemValue<T> {
 
 impl<const LEN: usize> CheckedMemConstLen<LEN> {
     /// Create a new const sized memory range.
-    pub fn new(address: Word) -> Result<Self, RuntimeError> {
+    pub fn new(address: Word) -> Result<Self, PanicReason> {
         Ok(Self(MemoryRange::new_const::<_, LEN>(address)?))
     }
 

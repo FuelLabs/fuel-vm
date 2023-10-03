@@ -12,17 +12,18 @@ description = "FuelVM transaction."
 
 [dependencies]
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"], optional = true }
+derive_more = { version = "0.99", default-features = false, features = ["display"] }
 fuel-asm = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true, default-features = false }
 fuel-merkle = { workspace = true, default-features = false, optional = true }
 fuel-types = { workspace = true, default-features = false }
+hashbrown = { version = "0.14", optional = true }
 itertools = { version = "0.10", default-features = false, optional = true }
 num-integer = { version = "0.1", default-features = false, optional = true }
-num_enum = { version = "0.7", optional = true }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
-strum = { version = "0.24", optional = true }
+strum = { version = "0.24", default-features = false, optional = true }
 strum_macros = { version = "0.24", optional = true }
 
 [dev-dependencies]
@@ -31,7 +32,7 @@ fuel-crypto = { workspace = true, default-features = false, features = ["random"
 fuel-tx = { path = ".", features = ["builder", "random"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
 fuel-types = { workspace = true, default-features = false, features = ["random"] }
-hex = { version = "0.4" }
+hex = { version = "0.4", default-features = false }
 insta = "1.0"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
@@ -40,10 +41,10 @@ rstest = "0.15"
 
 [features]
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]
-alloc = ["fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "num_enum", "num-integer", "strum", "strum_macros"]
 builder = ["alloc", "internals"]
 internals = []
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
-std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde?/default"]
+std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde?/default", "hex/std"]
+alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "num-integer", "strum", "strum_macros"]
 # serde is requiring alloc because its mandatory for serde_json. to avoid adding a new feature only for serde_json, we just require `alloc` here since as of the moment we don't have a use case of serde without alloc.
-serde = ["alloc", "dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde", "serde_json"]
+serde = ["alloc", "dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde", "serde_json", "hashbrown/serde"]

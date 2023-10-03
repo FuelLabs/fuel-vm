@@ -1,3 +1,5 @@
+use alloc::vec;
+
 use fuel_asm::{
     op,
     GTFArgs,
@@ -29,11 +31,14 @@ use sha3::{
 };
 
 use crate::{
-    checked_transaction::CheckPredicateParams,
     prelude::*,
-    tests::predicate::TokioWithRayon,
     util::test_helpers::check_expected_reason_for_instructions,
 };
+
+#[cfg(feature = "std")]
+use crate::checked_transaction::CheckPredicateParams;
+#[cfg(feature = "std")]
+use crate::tests::predicate::TokioWithRayon;
 
 #[test]
 fn secp256k1_recover() {
@@ -151,6 +156,7 @@ fn ecrecover_tx_id() {
     assert!(success);
 }
 
+#[cfg(feature = "std")]
 #[tokio::test]
 async fn recover_tx_id_predicate() {
     use crate::checked_transaction::EstimatePredicates;

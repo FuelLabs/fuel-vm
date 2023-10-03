@@ -9,7 +9,7 @@ use fuel_types::{
     Word,
 };
 
-use std::collections::{
+use hashbrown::{
     HashMap,
     HashSet,
 };

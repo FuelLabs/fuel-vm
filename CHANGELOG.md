@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [#598](https://github.com/FuelLabs/fuel-vm/pull/598): Update cost model for `ldc` opcode to take into account contract size.
 - [#595](https://github.com/FuelLabs/fuel-vm/pull/595): Removed `wee_alloc` dependency from `fuel-asm`. It now uses the builtin allocator on web targets as well.
 
 

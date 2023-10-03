@@ -574,7 +574,6 @@ impl<'vm, S, I> ContractSizeCodeCtx<'vm, S, I> {
 
         self.input_contracts.check(&contract_id)?;
 
-        // Fetch the storage contract size
         let size = super::contract::get_contract_size(self.storage, &contract_id)?;
         Ok(size)
     }

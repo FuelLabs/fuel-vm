@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [#595](https://github.com/FuelLabs/fuel-vm/pull/595): Removed `wee_alloc` dependency from `fuel-asm`. It now uses the builtin allocator on web targets as well.
+
+
 #### Breaking
 
 - [#594](https://github.com/FuelLabs/fuel-vm/pull/594): Add new predicate input validation tests. Also improves error propagation so that predicate error message better reflects the reason for invalidity.

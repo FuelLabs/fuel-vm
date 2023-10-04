@@ -25,7 +25,6 @@ use fuel_storage::{
 };
 use fuel_tx::Contract;
 use fuel_types::{
-    Address,
     BlockHeight,
     Bytes32,
     ContractId,
@@ -62,7 +61,7 @@ struct MemoryStorageInner {
 /// - persisted: will receive the persisted `transacted` state.
 pub struct MemoryStorage {
     block_height: BlockHeight,
-    coinbase: Address,
+    coinbase: ContractId,
     memory: MemoryStorageInner,
     transacted: MemoryStorageInner,
     persisted: MemoryStorageInner,
@@ -70,7 +69,7 @@ pub struct MemoryStorage {
 
 impl MemoryStorage {
     /// Create a new memory storage.
-    pub fn new(block_height: BlockHeight, coinbase: Address) -> Self {
+    pub fn new(block_height: BlockHeight, coinbase: ContractId) -> Self {
         Self {
             block_height,
             coinbase,
@@ -133,7 +132,7 @@ impl MemoryStorage {
 impl Default for MemoryStorage {
     fn default() -> Self {
         let block_height = 1.into();
-        let coinbase = Address::from(*Hasher::hash(b"coinbase"));
+        let coinbase = ContractId::from(*Hasher::hash(b"coinbase"));
 
         Self::new(block_height, coinbase)
     }
@@ -372,7 +371,7 @@ impl InterpreterStorage for MemoryStorage {
         Ok(Hasher::hash(block_height.to_be_bytes()))
     }
 
-    fn coinbase(&self) -> Result<Address, Infallible> {
+    fn coinbase(&self) -> Result<ContractId, Infallible> {
         Ok(self.coinbase)
     }
 

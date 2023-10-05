@@ -447,13 +447,9 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     client.deploy(tx_create_target);
 
-    let load_contract: Vec<Instruction>;
+    let load_contract = cmd;
 
-    let tx_deploy_loader;
-
-    load_contract = cmd;
-
-    tx_deploy_loader = TransactionBuilder::script(
+    let tx_deploy_loader = TransactionBuilder::script(
         load_contract.into_iter().collect(),
         contract_id.to_vec(),
     )

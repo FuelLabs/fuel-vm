@@ -189,17 +189,38 @@ mod tests {
             ($predicate:expr) => {{
                 let predicate: Vec<u8> = $predicate.into_iter().collect();
                 let owner = Input::predicate_owner(&predicate, &ChainId::default());
-                Input::coin_predicate(
-                    rng.gen(),
-                    owner,
-                    rng.gen(),
-                    rng.gen(),
-                    rng.gen(),
-                    rng.gen(),
-                    15,
-                    predicate.clone(),
-                    predicate_data.clone(),
-                )
+                [
+                    Input::coin_predicate(
+                        rng.gen(),
+                        owner,
+                        rng.gen(),
+                        rng.gen(),
+                        rng.gen(),
+                        rng.gen(),
+                        15,
+                        predicate.clone(),
+                        predicate_data.clone(),
+                    ),
+                    Input::message_coin_predicate(
+                        rng.gen(),
+                        owner,
+                        rng.gen(),
+                        rng.gen(),
+                        15,
+                        predicate.clone(),
+                        predicate_data.clone(),
+                    ),
+                    Input::message_data_predicate(
+                        rng.gen(),
+                        owner,
+                        rng.gen(),
+                        rng.gen(),
+                        15,
+                        vec![rng.gen(); rng.gen_range(1..100)],
+                        predicate.clone(),
+                        predicate_data.clone(),
+                    ),
+                ]
             }};
         }
 
@@ -244,22 +265,26 @@ mod tests {
             ),
         ];
 
-        for (input, expected) in inputs {
-            let tx =
-                TransactionBuilder::script([op::ret(0x01)].into_iter().collect(), vec![])
-                    .add_input(input)
-                    .gas_price(0)
-                    .gas_limit(TxParameters::DEFAULT.max_gas_per_tx)
-                    .add_random_fee_input()
-                    .finalize_checked_basic(height);
+        for (input_group, expected) in inputs {
+            for input in input_group {
+                let tx = TransactionBuilder::script(
+                    [op::ret(0x01)].into_iter().collect(),
+                    vec![],
+                )
+                .add_input(input)
+                .gas_price(0)
+                .gas_limit(TxParameters::DEFAULT.max_gas_per_tx)
+                .add_random_fee_input()
+                .finalize_checked_basic(height);
 
-            let result =
-                Interpreter::<PredicateStorage, Checked<Script>>::check_predicates(
-                    &tx,
-                    &CheckPredicateParams::default(),
-                );
+                let result =
+                    Interpreter::<PredicateStorage, Checked<Script>>::check_predicates(
+                        &tx,
+                        &CheckPredicateParams::default(),
+                    );
 
-            assert_eq!(result.map(|_| ()), expected);
+                assert_eq!(result.map(|_| ()), expected);
+            }
         }
     }
 }

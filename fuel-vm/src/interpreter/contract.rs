@@ -154,6 +154,27 @@ where
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
+/// Gets the bytes of the contract code from storage. If the contract is longer that
+/// specified `size` the contract will be shortened to `size` bytes. If the contract is
+/// shorter than `size` bytes, then the contract will stay it's original length.
+pub(crate) fn contract_partial<S>(
+    storage: &S,
+    contract: &ContractId,
+    size: usize,
+) -> IoResult<Contract, S::DataError>
+where
+    S: InterpreterStorage,
+{
+    let mut buf = vec![0; size];
+    let byte_count = storage
+        .read_contract(contract, &mut buf)
+        .map_err(RuntimeError::Storage)?
+        .ok_or_else(|| PanicReason::ContractNotFound)?;
+    buf.truncate(byte_count as usize);
+    let contract = Contract::from(buf);
+    Ok(contract)
+}
+
 struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
     memory: &'vm mut [u8; MEM_SIZE],

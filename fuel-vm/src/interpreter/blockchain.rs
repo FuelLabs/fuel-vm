@@ -500,9 +500,13 @@ where
         self.input_contracts.check(&contract_id)?;
 
         // Fetch the storage contract
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_size = contract.as_ref().as_ref().len();
+        let contract = super::contract::contract_partial(
+            self.storage,
+            &contract_id,
+            length_unpadded as usize,
+        )?;
         let contract = contract.as_ref().as_ref();
+        let contract_size = contract.len();
 
         // Mark stack space as allocated
         let new_stack = dst_range.words().end;

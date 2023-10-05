@@ -573,10 +573,8 @@ impl<'vm, S, I> ContractSizeCodeCtx<'vm, S, I> {
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
-        let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
-
-        self.input_contracts.check(&contract_id)?;
-
+        let bytes = read_bytes(self.memory, contract_id_addr)?;
+        let contract_id = ContractId::from(bytes);
         let size = super::contract::get_contract_size(self.storage, &contract_id)?;
         Ok(size)
     }

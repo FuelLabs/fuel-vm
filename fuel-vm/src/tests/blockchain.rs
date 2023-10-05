@@ -436,6 +436,7 @@ fn ldc_reason_helper(
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
+    println!("original contract_id: {:?}", contract_id.to_vec());
 
     let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
     let output0 = Output::contract_created(contract_id, state_root);
@@ -453,7 +454,6 @@ fn ldc_reason_helper(
 
     client.deploy(tx_create_target);
 
-    // test ssp != sp for LDC
     let mut load_contract: Vec<Instruction>;
 
     let mut tx_deploy_loader;
@@ -461,15 +461,17 @@ fn ldc_reason_helper(
     if !should_patch_jump {
         load_contract = cmd;
 
-        tx_deploy_loader =
-            TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
-                .gas_price(gas_price)
-                .gas_limit(gas_limit)
-                .maturity(maturity)
-                .add_random_fee_input()
-                .finalize()
-                .into_checked(height, &consensus_params)
-                .expect("failed to check tx");
+        tx_deploy_loader = TransactionBuilder::script(
+            load_contract.into_iter().collect(),
+            contract_id.to_vec(),
+        )
+        .gas_price(gas_price)
+        .gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx");
     } else {
         let reg_a = 0x20;
         let count = ContractId::LEN as Immediate12;
@@ -495,7 +497,7 @@ fn ldc_reason_helper(
 
         tx_deploy_loader = TransactionBuilder::script(
             load_contract.clone().into_iter().collect(),
-            vec![],
+            contract_id.to_vec(),
         )
         .gas_price(gas_price)
         .gas_limit(gas_limit)
@@ -552,12 +554,16 @@ fn ldc_reason_helper(
 
 #[test]
 fn ldc_ssp_not_sp() {
-    // test ssp != sp for LDC
-    let load_contract = vec![
-        op::cfei(0x1), // sp += 1
-        op::ldc(RegId::ZERO, RegId::ZERO, RegId::ZERO), /* Load first two words from
-                        * the contract */
-    ];
+    let (load_contract, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::cfei(0x1), // sp += 1
+            op::ldc(0x10, RegId::ZERO, RegId::ZERO), /* Load first two words from *
+                            * the contract */
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
 
     ldc_reason_helper(load_contract, ExpectedUnallocatedStack, false);
 }

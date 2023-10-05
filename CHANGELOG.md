@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#594](https://github.com/FuelLabs/fuel-vm/pull/594): Add new predicate input validation tests. Also improves error propagation so that predicate error message better reflects the reason for invalidity.
 - [#596](https://github.com/FuelLabs/fuel-vm/pull/596): Remove `core::ops::{Add, Sub}` impls from `BlockHeight`. Use `succ` and `pred` to access adjacent blocks, or perform arithmetic directly on the wrapped integer instead.
 
 

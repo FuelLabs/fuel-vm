@@ -498,16 +498,10 @@ where
         }
 
         self.input_contracts.check(&contract_id)?;
-        // let contract_size = self.contract_size(contract_id_addr)?;
 
         // Fetch the storage contract
         let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_size = contract
-            .as_ref()
-            .as_ref()
-            .len()
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
+        let contract_size = contract.as_ref().as_ref().len();
         let contract = contract.as_ref().as_ref();
 
         // Mark stack space as allocated

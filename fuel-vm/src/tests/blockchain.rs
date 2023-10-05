@@ -476,7 +476,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
             expected_reason,
             reason.reason()
         );
-        if expected_reason == PanicReason::ContractNotInInputs {
+        if expected_reason == PanicReason::ContractNotFound {
             assert!(actual_contract_id.is_some());
             assert_ne!(actual_contract_id, &Some(contract_id));
         };
@@ -545,10 +545,6 @@ fn ldc_contract_not_in_inputs() {
 
     // contract not in inputs
     let load_contract = vec![
-        op::xor(reg_a, reg_a, reg_a),       // r[b] := 0
-        op::addi(reg_a, reg_a, 1),          // r[a] += 1
-        op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
-        op::ori(reg_b, reg_b, 12),          // r[b] += 12 (will be padded to 16)
         op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
     ];
 

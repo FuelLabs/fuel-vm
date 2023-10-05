@@ -96,12 +96,13 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
+    /// Returns size of contract
     pub(crate) fn load_contract_code(
         &mut self,
         a: Word,
         b: Word,
         c: Word,
-    ) -> IoResult<(), S::DataError> {
+    ) -> IoResult<usize, S::DataError> {
         let contract_max_size = self.contract_max_size();
         let (
             SystemRegisters {
@@ -129,17 +130,6 @@ where
             pc,
         };
         input.load_contract_code(a, b, c)
-    }
-
-    pub(crate) fn load_contract_size(
-        &mut self,
-        a: Word,
-    ) -> IoResult<usize, S::DataError> {
-        let input = ContractSizeCodeCtx {
-            memory: &mut self.memory,
-            storage: &mut self.storage,
-        };
-        input.contract_size(a)
     }
 
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
@@ -477,7 +467,7 @@ where
         contract_id_addr: Word,
         contract_offset: Word,
         length_unpadded: Word,
-    ) -> IoResult<(), S::DataError>
+    ) -> IoResult<usize, S::DataError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
@@ -508,9 +498,16 @@ where
         }
 
         self.input_contracts.check(&contract_id)?;
+        // let contract_size = self.contract_size(contract_id_addr)?;
 
         // Fetch the storage contract
         let contract = super::contract::contract(self.storage, &contract_id)?;
+        let contract_size = contract
+            .as_ref()
+            .as_ref()
+            .len()
+            .try_into()
+            .map_err(|_| PanicReason::MemoryOverflow)?;
         let contract = contract.as_ref().as_ref();
 
         // Mark stack space as allocated
@@ -550,27 +547,9 @@ where
                 .copy_from_slice(&new_code_size.to_be_bytes());
         }
 
-        Ok(inc_pc(self.pc)?)
-    }
-}
+        inc_pc(self.pc)?;
 
-struct ContractSizeCodeCtx<'vm, S> {
-    memory: &'vm mut [u8; MEM_SIZE],
-    storage: &'vm S,
-}
-
-impl<'vm, S> ContractSizeCodeCtx<'vm, S> {
-    pub(crate) fn contract_size(
-        self,
-        contract_id_addr: Word,
-    ) -> IoResult<usize, S::DataError>
-    where
-        S: InterpreterStorage,
-    {
-        let bytes = read_bytes(self.memory, contract_id_addr)?;
-        let contract_id = ContractId::from(bytes);
-        let size = super::contract::get_contract_size(self.storage, &contract_id)?;
-        Ok(size)
+        Ok(contract_size)
     }
 }
 

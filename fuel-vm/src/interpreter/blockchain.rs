@@ -138,10 +138,6 @@ where
         let input = ContractSizeCodeCtx {
             memory: &mut self.memory,
             storage: &mut self.storage,
-            input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
-                &mut self.panic_context,
-            ),
         };
         input.contract_size(a)
     }
@@ -558,19 +554,17 @@ where
     }
 }
 
-struct ContractSizeCodeCtx<'vm, S, I> {
+struct ContractSizeCodeCtx<'vm, S> {
     memory: &'vm mut [u8; MEM_SIZE],
-    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
 }
 
-impl<'vm, S, I> ContractSizeCodeCtx<'vm, S, I> {
+impl<'vm, S> ContractSizeCodeCtx<'vm, S> {
     pub(crate) fn contract_size(
-        mut self,
+        self,
         contract_id_addr: Word,
     ) -> IoResult<usize, S::DataError>
     where
-        I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
         let bytes = read_bytes(self.memory, contract_id_addr)?;

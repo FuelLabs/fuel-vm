@@ -398,11 +398,7 @@ fn load_external_contract_code() {
     }
 }
 
-fn ldc_reason_helper(
-    cmd: Vec<Instruction>,
-    expected_reason: PanicReason,
-    should_patch_jump: bool,
-) {
+fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
@@ -436,11 +432,8 @@ fn ldc_reason_helper(
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
-    println!("original contract_id: {:?}", contract_id.to_vec());
 
-    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
     let output0 = Output::contract_created(contract_id, state_root);
-    let output1 = Output::contract(0, rng.gen(), rng.gen());
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)
@@ -454,79 +447,23 @@ fn ldc_reason_helper(
 
     client.deploy(tx_create_target);
 
-    let mut load_contract: Vec<Instruction>;
+    let load_contract: Vec<Instruction>;
 
-    let mut tx_deploy_loader;
+    let tx_deploy_loader;
 
-    if !should_patch_jump {
-        load_contract = cmd;
+    load_contract = cmd;
 
-        tx_deploy_loader = TransactionBuilder::script(
-            load_contract.into_iter().collect(),
-            contract_id.to_vec(),
-        )
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(maturity)
-        .add_random_fee_input()
-        .finalize()
-        .into_checked(height, &consensus_params)
-        .expect("failed to check tx");
-    } else {
-        let reg_a = 0x20;
-        let count = ContractId::LEN as Immediate12;
-
-        load_contract = vec![
-            op::xor(reg_a, reg_a, reg_a), // r[a] := 0
-            op::ori(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
-            op::aloc(reg_a),              // Reserve space for contract id in the heap
-        ];
-
-        // Generate code for pushing contract id to heap
-        for (i, byte) in contract_id.as_ref().iter().enumerate() {
-            let index = i as Immediate12;
-            let value = *byte as Immediate12;
-            load_contract.extend([
-                op::xor(reg_a, reg_a, reg_a),    // r[a] := 0
-                op::ori(reg_a, reg_a, value),    // r[a] := r[a] | value
-                op::sb(RegId::HP, reg_a, index), // m[$hp+index] := r[a] (=value)
-            ]);
-        }
-
-        load_contract.extend(cmd);
-
-        tx_deploy_loader = TransactionBuilder::script(
-            load_contract.clone().into_iter().collect(),
-            contract_id.to_vec(),
-        )
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(maturity)
-        .add_input(input0.clone())
-        .add_random_fee_input()
-        .add_output(output1)
-        .finalize()
-        .into_checked(height, &consensus_params)
-        .expect("failed to check tx");
-
-        // Patch the code with correct jump address
-        let transaction_end_addr =
-            tx_deploy_loader.transaction().size() - Script::script_offset_static();
-        *load_contract.last_mut().unwrap() =
-            op::ji((transaction_end_addr / 4) as Immediate24);
-
-        tx_deploy_loader =
-            TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
-                .gas_price(gas_price)
-                .gas_limit(gas_limit)
-                .maturity(maturity)
-                .add_input(input0)
-                .add_random_fee_input()
-                .add_output(output1)
-                .finalize()
-                .into_checked(height, &consensus_params)
-                .expect("failed to check tx");
-    }
+    tx_deploy_loader = TransactionBuilder::script(
+        load_contract.into_iter().collect(),
+        contract_id.to_vec(),
+    )
+    .gas_price(gas_price)
+    .gas_limit(gas_limit)
+    .maturity(maturity)
+    .add_random_fee_input()
+    .finalize()
+    .into_checked(height, &consensus_params)
+    .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
     if let Receipt::Panic {
@@ -565,7 +502,7 @@ fn ldc_ssp_not_sp() {
         TxParameters::DEFAULT.tx_offset()
     );
 
-    ldc_reason_helper(load_contract, ExpectedUnallocatedStack, false);
+    ldc_reason_helper(load_contract, ExpectedUnallocatedStack);
 }
 
 #[test]
@@ -573,14 +510,18 @@ fn ldc_mem_offset_above_reg_hp() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
 
-    // test memory offset above reg_hp value
-    let load_contract = vec![
-        op::move_(reg_a, RegId::HP), // r[a] := $hp
-        op::ldc(RegId::ZERO, RegId::ZERO, reg_a), /* Load first two words from the
-                                      * contract */
-    ];
+    let (load_contract, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::move_(reg_a, RegId::HP), // r[a] := $hp
+            op::ldc(0x10, RegId::ZERO, reg_a), /* Load first two words from the
+                                          * contract */
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
 
-    ldc_reason_helper(load_contract, MemoryOverflow, false);
+    ldc_reason_helper(load_contract, MemoryOverflow);
 }
 
 #[test]
@@ -597,7 +538,7 @@ fn ldc_contract_id_end_beyond_max_ram() {
         op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
     ];
 
-    ldc_reason_helper(load_contract, MemoryOverflow, false);
+    ldc_reason_helper(load_contract, MemoryOverflow);
 }
 
 #[test]
@@ -615,7 +556,7 @@ fn ldc_contract_not_in_inputs() {
         op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
     ];
 
-    ldc_reason_helper(load_contract, ContractNotInInputs, false);
+    ldc_reason_helper(load_contract, ContractNotInInputs);
 }
 
 #[test]

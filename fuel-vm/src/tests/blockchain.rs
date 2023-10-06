@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use alloc::{
     vec,
     vec::Vec,
@@ -268,7 +270,7 @@ fn state_read_write() {
 }
 
 #[test]
-fn load_external_contract_code() {
+fn ldc__load_external_contract_code() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
@@ -285,7 +287,7 @@ fn load_external_contract_code() {
     let program: Witness = bytes.into();
 
     let receipts =
-        load_len_of_target_contract(&mut client, rng, salt, len, program.clone());
+        ldc__load_len_of_target_contract(&mut client, rng, salt, len, program.clone());
 
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
         let mut code = program.into_inner();
@@ -302,9 +304,8 @@ fn load_external_contract_code() {
     }
 }
 
-#[allow(non_snake_case)]
 #[test]
-fn gas_cost_is_dependent_on_size_of_rC() {
+fn ldc__gas_cost_is_dependent_on_size_of_rC() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
@@ -316,7 +317,7 @@ fn gas_cost_is_dependent_on_size_of_rC() {
     let noop_cost = gas_costs.noop;
 
     let starting_len = 0;
-    let starting_gas_amount = gas_cost_for_len(&mut client, rng, salt, starting_len);
+    let starting_gas_amount = ldc__gas_cost_for_len(&mut client, rng, salt, starting_len);
 
     for i in 1..10 {
         // Increase by bytes_per_gas_increase for each attempt
@@ -328,12 +329,12 @@ fn gas_cost_is_dependent_on_size_of_rC() {
         let cost_of_noops = len_diff as u64 / 4 * noop_cost;
         let expected_gas_used = starting_gas_amount + cost_of_copy + cost_of_noops;
 
-        let actual_gas_used = gas_cost_for_len(&mut client, rng, salt, len);
+        let actual_gas_used = ldc__gas_cost_for_len(&mut client, rng, salt, len);
         assert_eq!(actual_gas_used, expected_gas_used);
     }
 }
 
-fn gas_cost_for_len(
+fn ldc__gas_cost_for_len(
     client: &mut MemoryClient,
     rng: &mut StdRng,
     salt: Salt,
@@ -347,7 +348,8 @@ fn gas_cost_for_len(
     let bytes = target_contract.into_iter().collect::<Vec<u8>>();
     let contract_code: Witness = bytes.into();
 
-    let receipts = load_len_of_target_contract(client, rng, salt, len, contract_code);
+    let receipts =
+        ldc__load_len_of_target_contract(client, rng, salt, len, contract_code);
 
     let result = receipts.last().expect("No receipt");
 
@@ -359,7 +361,7 @@ fn gas_cost_for_len(
     *actual_gas_used
 }
 
-fn load_len_of_target_contract<'a>(
+fn ldc__load_len_of_target_contract<'a>(
     client: &'a mut MemoryClient,
     rng: &mut StdRng,
     salt: Salt,
@@ -420,10 +422,9 @@ fn load_len_of_target_contract<'a>(
 
     // when
     load_contract.extend([
-        op::move_(reg_a, RegId::HP),  // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b), // r[b] := 0
-        op::ori(reg_b, reg_b, len),   /* r[b] += 12 (will be
-                                       * padded to 16) */
+        op::move_(reg_a, RegId::HP),        // r[a] := $hp
+        op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
+        op::ori(reg_b, reg_b, len),         // r[b] += len
         op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
         op::move_(reg_a, RegId::SSP),       // r[a] := $ssp
         op::subi(reg_a, reg_a, 16),         // r[a] -= 16 (start of the loaded code)

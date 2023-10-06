@@ -157,7 +157,7 @@ where
 /// Gets the bytes of the contract code from storage. If the contract is longer that
 /// specified `size` the contract will be shortened to `size` bytes. If the contract is
 /// shorter than `size` bytes, then the contract will stay it's original length.
-pub(crate) fn contract_partial<S>(
+pub(crate) fn contract_bytes<S>(
     storage: &S,
     contract: &ContractId,
     size: usize,
@@ -165,7 +165,6 @@ pub(crate) fn contract_partial<S>(
 where
     S: InterpreterStorage,
 {
-    // If $rC is greater than the code size, zero bytes are filled in.
     let mut buf = alloc::vec![0; size];
     let _ = storage
         .read_contract(contract, &mut buf)

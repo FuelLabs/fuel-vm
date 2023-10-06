@@ -500,7 +500,8 @@ where
         self.input_contracts.check(&contract_id)?;
 
         // Fetch the storage contract
-        let contract = super::contract::contract_partial(
+        // If $rC is greater than the code size, zero bytes are filled in.
+        let contract = super::contract::contract_bytes(
             self.storage,
             &contract_id,
             length_unpadded as usize,

@@ -165,6 +165,7 @@ pub(crate) fn contract_partial<S>(
 where
     S: InterpreterStorage,
 {
+    // If $rC is greater than the code size, zero bytes are filled in.
     let mut buf = alloc::vec![0; size];
     let _ = storage
         .read_contract(contract, &mut buf)

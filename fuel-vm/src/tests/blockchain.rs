@@ -502,8 +502,8 @@ fn gas_cost_for_len(
         op::ori(reg_b, reg_b, len),   /* r[b] += 12 (will be
                                        * padded to 16) */
         op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
-        op::move_(reg_a, RegId::SSP),       // r[b] := $ssp
-        op::subi(reg_a, reg_a, 8 * 2),      // r[a] -= 16 (start of the loaded code)
+        op::move_(reg_a, RegId::SSP),       // r[a] := $ssp
+        op::subi(reg_a, reg_a, 16),         // r[a] -= 16 (start of the loaded code)
         op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
         op::addi(reg_b, reg_b, 16),         // r[b] += 16 (length of the loaded code)
         op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), /* Log digest of the

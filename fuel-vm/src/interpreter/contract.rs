@@ -154,10 +154,10 @@ where
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
-/// Gets the bytes of the contract code from storage. If the contract is longer that
+/// Gets the bytes of the contract code from storage. If the contract is longer than
 /// specified `size` the contract will be shortened to `size` bytes. If the contract is
-/// shorter than `size` bytes, then the contract will stay it's original length.
-pub(crate) fn contract_bytes<S>(
+/// shorter than `size` bytes, the contract will be padded with zeros.
+pub(crate) fn contract_subsection<S>(
     storage: &S,
     contract: &ContractId,
     size: usize,

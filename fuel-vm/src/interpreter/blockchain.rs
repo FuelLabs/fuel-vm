@@ -96,7 +96,6 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
-    /// Returns size of contract
     pub(crate) fn load_contract_code(
         &mut self,
         a: Word,
@@ -501,7 +500,7 @@ where
 
         // Fetch the storage contract
         // If $rC is greater than the code size, zero bytes are filled in.
-        let contract = super::contract::contract_bytes(
+        let contract = super::contract::contract_subsection(
             self.storage,
             &contract_id,
             length_unpadded as usize,

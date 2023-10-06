@@ -274,114 +274,18 @@ fn load_external_contract_code() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
-    let gas_limit = 1_000_000;
-    let maturity = Default::default();
-    let height = Default::default();
-
-    // Start by creating and deploying a new example contract
-    let contract_code = vec![
+    let target_contract = vec![
         op::log(RegId::ONE, RegId::ONE, RegId::ONE, RegId::ONE),
         op::ret(RegId::ONE),
         op::ret(RegId::ZERO), // Pad to make length uneven to test padding
     ];
 
-    let program: Witness = contract_code.into_iter().collect::<Vec<u8>>().into();
+    let bytes = target_contract.into_iter().collect::<Vec<u8>>();
+    let len = bytes.len().try_into().unwrap();
+    let program: Witness = bytes.into();
 
-    let contract = Contract::from(program.as_ref());
-    let contract_root = contract.root();
-    let state_root = Contract::default_state_root();
-    let contract_id = contract.id(&salt, &contract_root, &state_root);
-
-    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let output0 = Output::contract_created(contract_id, state_root);
-    let output1 = Output::contract(0, rng.gen(), rng.gen());
-
-    let consensus_params = ConsensusParameters::standard();
-
-    let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(maturity)
-        .add_random_fee_input()
-        .add_output(output0)
-        .finalize()
-        .into_checked(height, &consensus_params)
-        .expect("failed to check tx");
-
-    client.deploy(tx_create_target);
-
-    // Then deploy another contract that attempts to read the first one
-    let reg_a = 0x20;
-    let reg_b = 0x21;
-
-    let count = ContractId::LEN as Immediate12;
-
-    let mut load_contract = vec![
-        op::xor(reg_a, reg_a, reg_a), // r[a] := 0
-        op::ori(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
-        op::aloc(reg_a),              // Reserve space for contract id in the heap
-    ];
-
-    // Generate code for pushing contract id to heap
-    for (i, byte) in contract_id.as_ref().iter().enumerate() {
-        let index = i as Immediate12;
-        let value = *byte as Immediate12;
-        load_contract.extend([
-            op::xor(reg_a, reg_a, reg_a),    // r[a] := 0
-            op::ori(reg_a, reg_a, value),    // r[a] := r[a] | value
-            op::sb(RegId::HP, reg_a, index), // m[$hp+index] := r[a] (=value)
-        ]);
-    }
-
-    load_contract.extend([
-        op::move_(reg_a, RegId::HP),  // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b), // r[b] := 0
-        op::ori(reg_b, reg_b, 12),    /* r[b] += 12 (will be
-                                       * padded to 16) */
-        op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
-        op::move_(reg_a, RegId::SSP),       // r[b] := $ssp
-        op::subi(reg_a, reg_a, 8 * 2),      // r[a] -= 16 (start of the loaded code)
-        op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
-        op::addi(reg_b, reg_b, 16),         // r[b] += 16 (length of the loaded code)
-        op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), // Log digest of the loaded code
-        op::noop(),                         // Patched to the jump later
-    ]);
-
-    let tx_deploy_loader = TransactionBuilder::script(
-        #[allow(clippy::iter_cloned_collect)]
-        load_contract.iter().copied().collect(),
-        vec![],
-    )
-    .gas_price(gas_price)
-    .gas_limit(gas_limit)
-    .maturity(maturity)
-    .add_input(input0.clone())
-    .add_random_fee_input()
-    .add_output(output1)
-    .finalize()
-    .into_checked(height, &consensus_params)
-    .expect("failed to check tx");
-
-    // Patch the code with correct jump address
-    let transaction_end_addr =
-        tx_deploy_loader.transaction().size() - Script::script_offset_static();
-    *load_contract.last_mut().unwrap() =
-        op::ji((transaction_end_addr / 4) as Immediate24);
-
-    let tx_deploy_loader =
-        TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
-            .gas_price(gas_price)
-            .gas_limit(gas_limit)
-            .maturity(maturity)
-            .add_input(input0)
-            .add_random_fee_input()
-            .add_output(output1)
-            .finalize()
-            .into_checked(height, &consensus_params)
-            .expect("failed to check tx");
-
-    let receipts = client.transact(tx_deploy_loader);
+    let receipts =
+        load_len_of_target_contract(&mut client, rng, salt, len, program.clone());
 
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
         let mut code = program.into_inner();
@@ -435,21 +339,39 @@ fn gas_cost_for_len(
     salt: Salt,
     len: u16,
 ) -> Word {
+    let mut target_contract = vec![];
+    for _ in 0..1000 {
+        target_contract.push(op::noop());
+    }
+
+    let bytes = target_contract.into_iter().collect::<Vec<u8>>();
+    let contract_code: Witness = bytes.into();
+
+    let receipts = load_len_of_target_contract(client, rng, salt, len, contract_code);
+
+    let result = receipts.last().expect("No receipt");
+
+    let actual_gas_used = match result {
+        Receipt::ScriptResult { gas_used, .. } => gas_used,
+        _ => panic!("Should be a `ScriptResult`"),
+    };
+
+    *actual_gas_used
+}
+
+fn load_len_of_target_contract<'a>(
+    client: &'a mut MemoryClient,
+    rng: &mut StdRng,
+    salt: Salt,
+    len: u16,
+    target_contract_witness: Witness,
+) -> &'a [Receipt] {
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
 
-    // Start by creating and deploying a new example contract
-    let mut contract_code = vec![];
-    for _ in 0..1000 {
-        contract_code.push(op::noop());
-    }
-
-    let bytes = contract_code.into_iter().collect::<Vec<u8>>();
-    let program: Witness = bytes.into();
-
-    let contract = Contract::from(program.as_ref());
+    let contract = Contract::from(target_contract_witness.as_ref());
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
@@ -460,15 +382,16 @@ fn gas_cost_for_len(
 
     let consensus_params = ConsensusParameters::standard();
 
-    let tx_create_target = TransactionBuilder::create(program.clone(), salt, vec![])
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(maturity)
-        .add_random_fee_input()
-        .add_output(output0)
-        .finalize()
-        .into_checked(height, &consensus_params)
-        .expect("failed to check tx");
+    let tx_create_target =
+        TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_random_fee_input()
+            .add_output(output0)
+            .finalize()
+            .into_checked(height, &consensus_params)
+            .expect("failed to check tx");
 
     client.deploy(tx_create_target);
 
@@ -544,16 +467,7 @@ fn gas_cost_for_len(
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
 
-    let receipts = client.transact(tx_deploy_loader);
-
-    let result = receipts.last().expect("No receipt");
-
-    let actual_gas_used = match result {
-        Receipt::ScriptResult { gas_used, .. } => gas_used,
-        _ => panic!("Should be a `ScriptResult`"),
-    };
-
-    *actual_gas_used
+    client.transact(tx_deploy_loader)
 }
 
 fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {

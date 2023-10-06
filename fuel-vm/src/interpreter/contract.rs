@@ -165,12 +165,11 @@ pub(crate) fn contract_partial<S>(
 where
     S: InterpreterStorage,
 {
-    let mut buf = vec![0; size];
-    let byte_count = storage
+    let mut buf = alloc::vec![0; size];
+    let _ = storage
         .read_contract(contract, &mut buf)
         .map_err(RuntimeError::Storage)?
-        .ok_or_else(|| PanicReason::ContractNotFound)?;
-    buf.truncate(byte_count as usize);
+        .ok_or(PanicReason::ContractNotFound)?;
     let contract = Contract::from(buf);
     Ok(contract)
 }

@@ -102,7 +102,7 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> IoResult<usize, S::DataError> {
+    ) -> IoResult<(), S::DataError> {
         let contract_max_size = self.contract_max_size();
         let (
             SystemRegisters {
@@ -467,7 +467,7 @@ where
         contract_id_addr: Word,
         contract_offset: Word,
         length_unpadded: Word,
-    ) -> IoResult<usize, S::DataError>
+    ) -> IoResult<(), S::DataError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
@@ -505,8 +505,7 @@ where
             &contract_id,
             length_unpadded as usize,
         )?;
-        let contract = contract.as_ref().as_ref();
-        let contract_size = contract.len();
+        let contract = contract.as_ref();
 
         // Mark stack space as allocated
         let new_stack = dst_range.words().end;
@@ -547,7 +546,7 @@ where
 
         inc_pc(self.pc)?;
 
-        Ok(contract_size)
+        Ok(())
     }
 }
 

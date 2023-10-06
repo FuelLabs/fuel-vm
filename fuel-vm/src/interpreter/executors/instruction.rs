@@ -759,8 +759,9 @@ where
 
             Instruction::LDC(ldc) => {
                 let (a, b, c) = ldc.unpack();
-                let contract_size = self.load_contract_code(r!(a), r!(b), r!(c))?;
-                self.dependent_gas_charge(self.gas_costs().ldc, contract_size as u64)?;
+                let len = r!(c);
+                self.load_contract_code(r!(a), r!(b), len)?;
+                self.dependent_gas_charge(self.gas_costs().ldc, len)?;
             }
 
             Instruction::LOG(log) => {

@@ -426,10 +426,11 @@ fn ldc__load_len_of_target_contract<'a>(
         op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
         op::ori(reg_b, reg_b, len),         // r[b] += len
         op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
-        op::subi(reg_a, RegId::SSP, 16),    // r[a] := $ssp - 16 (start of the loaded code)
-        op::movi(reg_b, 16),                // r[b] = 16 (length of the loaded code)
+        op::subi(reg_a, RegId::SSP, 16),    /* r[a] := $ssp - 16 (start of the loaded
+                                             * code) */
+        op::movi(reg_b, 16), // r[b] = 16 (length of the loaded code)
         op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), /* Log digest of the
-                                             * loaded code */
+                              * loaded code */
         op::noop(), // Patched to the jump later
     ]);
 

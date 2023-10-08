@@ -284,10 +284,17 @@ fn ldc__load_external_contract_code() {
 
     let bytes = target_contract.into_iter().collect::<Vec<u8>>();
     let len = bytes.len().try_into().unwrap();
+    let offset = 0;
     let program: Witness = bytes.into();
 
-    let receipts =
-        ldc__load_len_of_target_contract(&mut client, rng, salt, len, program.clone());
+    let receipts = ldc__load_len_of_target_contract(
+        &mut client,
+        rng,
+        salt,
+        offset,
+        len,
+        program.clone(),
+    );
 
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
         let mut code = program.into_inner();
@@ -313,26 +320,58 @@ fn ldc__gas_cost_is_not_dependent_on_rC() {
 
     let gas_costs = client.gas_costs();
     let ldc_cost = gas_costs.ldc;
-    let ldc_dep_cost = ldc_cost.dep_per_unit;
+    let ldc_dep_len = ldc_cost.dep_per_unit;
     let noop_cost = gas_costs.noop;
 
     let contract_size = 1000;
+    let offset = 0;
     let starting_rC = 0;
     let starting_gas_amount =
-        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, starting_rC);
+        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, offset, starting_rC);
 
     for i in 1..10 {
         // Increase by ldc_dep_cost for each attempt
-        let rC_diff = (i * ldc_dep_cost) as u16;
-        let rC = starting_rC + rC_diff;
+        let len_diff = (i * ldc_dep_len) as u16;
+        let len = starting_rC + len_diff;
         // The gas should go up 0 per ldc_dep_cost and 1 per noop_cost every 4
         // bytes (noop is 4 bytes)
-        let cost_of_noops = rC_diff as u64 / 4 * noop_cost;
+        let cost_of_noops = len_diff as u64 / 4 * noop_cost;
         let expected_gas_used = starting_gas_amount + cost_of_noops;
 
         let actual_gas_used =
-            ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, rC);
+            ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, offset, len);
         assert_eq!(actual_gas_used, expected_gas_used);
+    }
+}
+
+#[test]
+fn ldc__offset_affects_read_code() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let salt: Salt = rng.gen();
+
+    let mut client = MemoryClient::default();
+
+    let gas_costs = client.gas_costs();
+    let noop_cost = gas_costs.noop;
+
+    let contract_size = 1000;
+    let offset = 0;
+    let len = 100;
+    let starting_gas_amount =
+        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, offset, len);
+
+    for i in 1..10 {
+        let offset = i * 4;
+        let expected_gas_used = starting_gas_amount - (i * noop_cost);
+        let actual_gas_used = ldc__gas_cost_for_len(
+            &mut client,
+            rng,
+            salt,
+            contract_size,
+            offset as u16,
+            len,
+        );
+        assert_eq!(expected_gas_used, actual_gas_used);
     }
 }
 
@@ -345,17 +384,18 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
 
     let gas_costs = client.gas_costs();
     let ldc_cost = gas_costs.ldc;
-    let ldc_dep_cost = ldc_cost.dep_per_unit;
+    let ldc_dep_len = ldc_cost.dep_per_unit;
 
     let contract_size = 0;
-    let rC = 0;
+    let offset = 0;
+    let len = 0;
     let starting_gas_amount =
-        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, rC);
+        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, offset, len);
 
     let bytes_per_op = 4;
 
     for i in 1..10 {
-        let contract_size = contract_size + (i * ldc_dep_cost / bytes_per_op) as usize;
+        let contract_size = contract_size + (i * ldc_dep_len / bytes_per_op) as usize;
 
         let cost_of_ldc = i;
 
@@ -363,7 +403,7 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
         let expected_gas_used = starting_gas_amount + cost_of_ldc;
 
         let actual_gas_used =
-            ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, rC);
+            ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, offset, len);
         assert_eq!(actual_gas_used, expected_gas_used);
     }
 }
@@ -374,7 +414,8 @@ fn ldc__gas_cost_for_len(
     salt: Salt,
     // in number of opcodes
     target_contract_size: usize,
-    rC: u16,
+    offset: u16,
+    len: u16,
 ) -> Word {
     let mut target_contract = vec![];
     for _ in 0..target_contract_size {
@@ -384,7 +425,8 @@ fn ldc__gas_cost_for_len(
     let bytes = target_contract.into_iter().collect::<Vec<u8>>();
     let contract_code: Witness = bytes.into();
 
-    let receipts = ldc__load_len_of_target_contract(client, rng, salt, rC, contract_code);
+    let receipts =
+        ldc__load_len_of_target_contract(client, rng, salt, offset, len, contract_code);
 
     let result = receipts.last().expect("No receipt");
 
@@ -400,6 +442,7 @@ fn ldc__load_len_of_target_contract<'a>(
     client: &'a mut MemoryClient,
     rng: &mut StdRng,
     salt: Salt,
+    offset: u16,
     len: u16,
     target_contract_witness: Witness,
 ) -> &'a [Receipt] {
@@ -434,7 +477,8 @@ fn ldc__load_len_of_target_contract<'a>(
 
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
-    let reg_b = 0x21;
+    let reg_c = 0x21;
+    let reg_b = 0x22;
 
     let count = ContractId::LEN as Immediate12;
 
@@ -457,14 +501,16 @@ fn ldc__load_len_of_target_contract<'a>(
 
     // when
     load_contract.extend([
-        op::move_(reg_a, RegId::HP),        // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
-        op::ori(reg_b, reg_b, len),         // r[b] += len
-        op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
-        op::subi(reg_a, RegId::SSP, 16),    /* r[a] := $ssp - 16 (start of the loaded
-                                             * code) */
-        op::movi(reg_b, 16), // r[b] = 16 (length of the loaded code)
-        op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_b), /* Log digest of the
+        op::move_(reg_a, RegId::HP),   // r[a] := $hp
+        op::xor(reg_b, reg_b, reg_b),  // r[b] := 0
+        op::ori(reg_b, reg_b, offset), // r[b] += offset
+        op::xor(reg_c, reg_c, reg_c),  // r[b] := 0
+        op::ori(reg_c, reg_c, len),    // r[b] += len
+        op::ldc(reg_a, reg_b, reg_c),  // Load first two words from the contract
+        op::subi(reg_a, RegId::SSP, 16), /* r[a] := $ssp - 16 (start of the loaded
+                                        * code) */
+        op::movi(reg_c, 16), // r[b] = 16 (length of the loaded code)
+        op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_c), /* Log digest of the
                               * loaded code */
         op::noop(), // Patched to the jump later
     ]);

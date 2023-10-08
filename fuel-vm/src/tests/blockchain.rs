@@ -305,7 +305,7 @@ fn ldc__load_external_contract_code() {
 }
 
 #[test]
-fn ldc__gas_cost_is_dependent_on_size_of_rC() {
+fn ldc__gas_cost_is_not_dependent_on_rC() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
@@ -313,23 +313,57 @@ fn ldc__gas_cost_is_dependent_on_size_of_rC() {
 
     let gas_costs = client.gas_costs();
     let ldc_cost = gas_costs.ldc;
-    let bytes_per_gas_increase = ldc_cost.dep_per_unit;
+    let ldc_dep_cost = ldc_cost.dep_per_unit;
     let noop_cost = gas_costs.noop;
 
-    let starting_len = 0;
-    let starting_gas_amount = ldc__gas_cost_for_len(&mut client, rng, salt, starting_len);
+    let contract_size = 1000;
+    let starting_rC = 0;
+    let starting_gas_amount =
+        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, starting_rC);
 
     for i in 1..10 {
-        // Increase by bytes_per_gas_increase for each attempt
-        let len_diff = i * bytes_per_gas_increase as u16;
-        let len = starting_len + i * bytes_per_gas_increase as u16;
-        // The gas should go up 1 per bytes_per_gas_increase and noop_cost every 4 bytes
-        // (noop is 4 bytes)
-        let cost_of_copy = i as u64;
-        let cost_of_noops = len_diff as u64 / 4 * noop_cost;
-        let expected_gas_used = starting_gas_amount + cost_of_copy + cost_of_noops;
+        // Increase by ldc_dep_cost for each attempt
+        let rC_diff = (i * ldc_dep_cost) as u16;
+        let rC = starting_rC + rC_diff;
+        // The gas should go up 0 per ldc_dep_cost and 1 per noop_cost every 4
+        // bytes (noop is 4 bytes)
+        let cost_of_noops = rC_diff as u64 / 4 * noop_cost;
+        let expected_gas_used = starting_gas_amount + cost_of_noops;
 
-        let actual_gas_used = ldc__gas_cost_for_len(&mut client, rng, salt, len);
+        let actual_gas_used =
+            ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, rC);
+        assert_eq!(actual_gas_used, expected_gas_used);
+    }
+}
+
+#[test]
+fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let salt: Salt = rng.gen();
+
+    let mut client = MemoryClient::default();
+
+    let gas_costs = client.gas_costs();
+    let ldc_cost = gas_costs.ldc;
+    let ldc_dep_cost = ldc_cost.dep_per_unit;
+
+    let contract_size = 0;
+    let rC = 0;
+    let starting_gas_amount =
+        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, rC);
+
+    let bytes_per_op = 4;
+
+    for i in 1..10 {
+        let contract_size = contract_size + (i * ldc_dep_cost / bytes_per_op) as usize;
+
+        let cost_of_ldc = i;
+
+        // The gas should go up 1 per every ldc_dep_cost even when rC is 0
+        let expected_gas_used = starting_gas_amount + cost_of_ldc;
+
+        let actual_gas_used =
+            ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, rC);
         assert_eq!(actual_gas_used, expected_gas_used);
     }
 }
@@ -338,18 +372,19 @@ fn ldc__gas_cost_for_len(
     client: &mut MemoryClient,
     rng: &mut StdRng,
     salt: Salt,
-    len: u16,
+    // in number of opcodes
+    target_contract_size: usize,
+    rC: u16,
 ) -> Word {
     let mut target_contract = vec![];
-    for _ in 0..1000 {
+    for _ in 0..target_contract_size {
         target_contract.push(op::noop());
     }
 
     let bytes = target_contract.into_iter().collect::<Vec<u8>>();
     let contract_code: Witness = bytes.into();
 
-    let receipts =
-        ldc__load_len_of_target_contract(client, rng, salt, len, contract_code);
+    let receipts = ldc__load_len_of_target_contract(client, rng, salt, rC, contract_code);
 
     let result = receipts.last().expect("No receipt");
 

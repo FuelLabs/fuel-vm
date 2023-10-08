@@ -1,5 +1,3 @@
-use alloc::vec::Vec;
-
 use super::{
     contract::{
         balance,
@@ -57,6 +55,7 @@ use crate::{
         InterpreterStorage,
     },
 };
+use alloc::vec::Vec;
 use fuel_asm::PanicReason;
 use fuel_storage::StorageSize;
 use fuel_tx::{
@@ -101,7 +100,7 @@ where
         a: Word,
         b: Word,
         c: Word,
-    ) -> IoResult<(), S::DataError> {
+    ) -> IoResult<usize, S::DataError> {
         let contract_max_size = self.contract_max_size();
         let (
             SystemRegisters {
@@ -461,12 +460,13 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
+    /// Returns the total length of the contract code that was loaded from storage.
     pub(crate) fn load_contract_code(
         mut self,
         contract_id_addr: Word,
         contract_offset: Word,
         length_unpadded: Word,
-    ) -> IoResult<(), S::DataError>
+    ) -> IoResult<usize, S::DataError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
@@ -498,14 +498,21 @@ where
 
         self.input_contracts.check(&contract_id)?;
 
+        let length_unpadded: usize = length_unpadded
+            .try_into()
+            .map_err(|_| PanicReason::MemoryOverflow)?;
+
         // Fetch the storage contract
-        // If $rC is greater than the code size, zero bytes are filled in.
-        let contract = super::contract::contract_subsection(
-            self.storage,
-            &contract_id,
-            length_unpadded as usize,
-        )?;
-        let contract = contract.as_ref();
+        let contract_bytes: Vec<u8> =
+            super::contract::contract(self.storage, &contract_id)?
+                .into_owned()
+                .into();
+        let contract_len = contract_bytes.len();
+        let start = contract_offset;
+        let finish = contract_offset
+            .checked_add(length_unpadded)
+            .ok_or(PanicReason::MemoryOverflow)?;
+        let contract_sub_bytes = &contract_bytes[start..finish];
 
         // Mark stack space as allocated
         let new_stack = dst_range.words().end;
@@ -515,7 +522,7 @@ where
         // Copy the code. Ownership checks are not used as the stack is adjusted above.
         copy_from_slice_zero_fill_noownerchecks(
             self.memory,
-            contract,
+            contract_sub_bytes,
             dst_range.start,
             contract_offset,
             length,
@@ -546,7 +553,7 @@ where
 
         inc_pc(self.pc)?;
 
-        Ok(())
+        Ok(contract_len)
     }
 }
 

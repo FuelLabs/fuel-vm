@@ -8,12 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- [#598](https://github.com/FuelLabs/fuel-vm/pull/598): Update cost model for `ldc` opcode to take into account contract size.
 - [#595](https://github.com/FuelLabs/fuel-vm/pull/595): Removed `wee_alloc` dependency from `fuel-asm`. It now uses the builtin allocator on web targets as well.
 
 
 #### Breaking
 
+- [#598](https://github.com/FuelLabs/fuel-vm/pull/598): Update cost model for `ldc` opcode to take into account contract size.
 - [#594](https://github.com/FuelLabs/fuel-vm/pull/594): Add new predicate input validation tests. Also improves error propagation so that predicate error message better reflects the reason for invalidity.
 - [#596](https://github.com/FuelLabs/fuel-vm/pull/596): Remove `core::ops::{Add, Sub}` impls from `BlockHeight`. Use `succ` and `pred` to access adjacent blocks, or perform arithmetic directly on the wrapped integer instead.
 

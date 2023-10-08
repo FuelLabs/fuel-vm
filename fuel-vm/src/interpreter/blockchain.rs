@@ -557,7 +557,7 @@ where
 /// Copy $rC bytes of code starting at $rB for contract.
 /// If $rC is greater than the code size, zero bytes are filled in.
 fn read_contract_bytes(contract_bytes: &[u8], offset: usize, length: usize) -> Vec<u8> {
-    let mut buf = vec![0u8; length];
+    let mut buf = alloc::vec![0u8; length];
     if contract_bytes.len() > offset {
         for (i, val) in contract_bytes[offset..].iter().enumerate().take(length) {
             buf[i] = *val;

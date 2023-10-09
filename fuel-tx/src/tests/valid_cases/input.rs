@@ -45,7 +45,6 @@ fn input_coin_message_signature() {
                         outputs,
                         witnesses,
                         &Default::default(),
-                        &chain_id,
                         &mut None,
                     ),
                     _ => Ok(()),
@@ -210,7 +209,7 @@ fn coin_predicate() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let owner = Input::predicate_owner(&predicate, &ChainId::default());
+    let owner = Input::predicate_owner(&predicate);
 
     Input::coin_predicate(
         rng.gen(),
@@ -223,19 +222,11 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .unwrap();
 
     let predicate = vec![];
-    let owner = Input::predicate_owner(&predicate, &ChainId::default());
+    let owner = Input::predicate_owner(&predicate);
 
     let err = Input::coin_predicate(
         rng.gen(),
@@ -248,15 +239,7 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .err()
     .unwrap();
 
@@ -277,15 +260,7 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .err()
     .unwrap();
 
@@ -298,8 +273,6 @@ fn contract() {
 
     let txhash: Bytes32 = rng.gen();
 
-    let chain_id = ChainId::default();
-
     Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .check(
             1,
@@ -307,21 +280,12 @@ fn contract() {
             &[Output::contract(1, rng.gen(), rng.gen())],
             &[],
             &Default::default(),
-            &chain_id,
             &mut None,
         )
         .unwrap();
 
     let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
-        .check(
-            1,
-            &txhash,
-            &[],
-            &[],
-            &Default::default(),
-            &chain_id,
-            &mut None,
-        )
+        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
         .err()
         .unwrap();
 
@@ -337,7 +301,6 @@ fn contract() {
             &[Output::coin(rng.gen(), rng.gen(), rng.gen())],
             &[],
             &Default::default(),
-            &chain_id,
             &mut None,
         )
         .err()
@@ -355,7 +318,6 @@ fn contract() {
             &[Output::contract(2, rng.gen(), rng.gen())],
             &[],
             &Default::default(),
-            &chain_id,
             &mut None,
         )
         .err()
@@ -374,8 +336,7 @@ fn message_metadata() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let chain_id = ChainId::default();
-    let recipient = Input::predicate_owner(&predicate, &chain_id);
+    let recipient = Input::predicate_owner(&predicate);
 
     Input::message_data_predicate(
         rng.gen(),
@@ -387,15 +348,7 @@ fn message_metadata() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect("failed to validate empty message input");
 
     let mut tx = Script::default();
@@ -422,7 +375,7 @@ fn message_metadata() {
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = Input::predicate_owner(&predicate, &chain_id);
+    let recipient = Input::predicate_owner(&predicate);
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_data_predicate(
@@ -435,15 +388,7 @@ fn message_metadata() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &chain_id,
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputPredicateOwner { index: 1 }, err);
@@ -464,7 +409,6 @@ fn message_metadata() {
         &[],
         &[vec![].into()],
         &Default::default(),
-        &chain_id,
         &mut None,
     )
     .expect_err("expected max data length error");
@@ -481,15 +425,7 @@ fn message_metadata() {
         generate_nonempty_padded_bytes(rng),
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &chain_id,
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max data length error");
 
     assert_eq!(CheckError::InputMessageDataLength { index: 1 }, err,);
@@ -506,15 +442,7 @@ fn message_metadata() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate length error");
 
     assert_eq!(CheckError::InputPredicateLength { index: 1 }, err,);
@@ -532,15 +460,7 @@ fn message_metadata() {
         generate_bytes(rng),
         predicate_data,
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate data length error");
 
     assert_eq!(CheckError::InputPredicateDataLength { index: 1 }, err,);
@@ -553,8 +473,7 @@ fn message_message_coin() {
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
-    let chain_id = ChainId::default();
-    let recipient = Input::predicate_owner(&predicate, &chain_id);
+    let recipient = Input::predicate_owner(&predicate);
 
     Input::message_coin_predicate(
         rng.gen(),
@@ -565,15 +484,7 @@ fn message_message_coin() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect("failed to validate empty message input");
 
     let mut tx = Script::default();
@@ -589,7 +500,7 @@ fn message_message_coin() {
     assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
-    let recipient = Input::predicate_owner(&predicate, &ChainId::default());
+    let recipient = Input::predicate_owner(&predicate);
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_coin_predicate(
@@ -601,15 +512,7 @@ fn message_message_coin() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("Expected failure");
 
     assert_eq!(CheckError::InputPredicateOwner { index: 1 }, err);
@@ -625,15 +528,7 @@ fn message_message_coin() {
         predicate,
         generate_bytes(rng),
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate length error");
 
     assert_eq!(CheckError::InputPredicateLength { index: 1 }, err,);
@@ -650,15 +545,7 @@ fn message_message_coin() {
         generate_bytes(rng),
         predicate_data,
     )
-    .check(
-        1,
-        &txhash,
-        &[],
-        &[],
-        &Default::default(),
-        &ChainId::default(),
-        &mut None,
-    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate data length error");
 
     assert_eq!(CheckError::InputPredicateDataLength { index: 1 }, err,);

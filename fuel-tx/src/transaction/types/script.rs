@@ -160,13 +160,7 @@ impl FormatValidityChecks for Script {
             .iter()
             .enumerate()
             .try_for_each(|(index, input)| {
-                input.check_signature(
-                    index,
-                    &id,
-                    &self.witnesses,
-                    chain_id,
-                    &mut recovery_cache,
-                )
+                input.check_signature(index, &id, &self.witnesses, &mut recovery_cache)
             })?;
 
         Ok(())

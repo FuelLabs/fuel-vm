@@ -56,11 +56,10 @@ impl Input {
         outputs: &[Output],
         witnesses: &[Witness],
         predicate_params: &PredicateParameters,
-        chain_id: &ChainId,
         recovery_cache: &mut Option<HashMap<u8, Address>>,
     ) -> Result<(), CheckError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
-        self.check_signature(index, txhash, witnesses, chain_id, recovery_cache)?;
+        self.check_signature(index, txhash, witnesses, recovery_cache)?;
 
         Ok(())
     }
@@ -70,7 +69,6 @@ impl Input {
         index: usize,
         txhash: &Bytes32,
         witnesses: &[Witness],
-        chain_id: &ChainId,
         recovery_cache: &mut Option<HashMap<u8, Address>>,
     ) -> Result<(), CheckError> {
         match self {
@@ -133,7 +131,7 @@ impl Input {
                 recipient: owner,
                 predicate,
                 ..
-            }) if !Input::is_predicate_owner_valid(owner, predicate, chain_id) => {
+            }) if !Input::is_predicate_owner_valid(owner, predicate) => {
                 Err(CheckError::InputPredicateOwner { index })
             }
 

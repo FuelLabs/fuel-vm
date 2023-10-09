@@ -939,7 +939,6 @@ fn tx_id_bytecode_len() {
 
 mod inputs {
     use super::*;
-    use fuel_types::ChainId;
     use itertools::Itertools;
 
     #[test]
@@ -948,8 +947,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an owner of the coin
-        let chain_id = ChainId::default();
-        let owner: Address = Input::predicate_owner(&predicate, &chain_id);
+        let owner: Address = Input::predicate_owner(&predicate);
 
         let tx =
             TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -970,7 +968,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        assert!(tx.check_predicate_owners(&chain_id));
+        assert!(tx.check_predicate_owners());
     }
 
     #[test]
@@ -998,8 +996,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        let chain_id = ChainId::default();
-        assert!(!tx.check_predicate_owners(&chain_id));
+        assert!(!tx.check_predicate_owners());
     }
 
     #[test]
@@ -1008,8 +1005,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an recipient(owner) of the message
-        let chain_id = ChainId::default();
-        let recipient: Address = Input::predicate_owner(&predicate, &chain_id);
+        let recipient: Address = Input::predicate_owner(&predicate);
 
         let tx =
             TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -1029,7 +1025,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        assert!(tx.check_predicate_owners(&chain_id));
+        assert!(tx.check_predicate_owners());
     }
 
     #[test]
@@ -1056,7 +1052,6 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        let chain_id = ChainId::default();
-        assert!(!tx.check_predicate_owners(&chain_id));
+        assert!(!tx.check_predicate_owners());
     }
 }

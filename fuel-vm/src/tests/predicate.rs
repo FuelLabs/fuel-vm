@@ -29,7 +29,6 @@ use crate::checked_transaction::{
 use core::iter;
 use fuel_asm::PanicReason::OutOfGas;
 use fuel_tx::ConsensusParameters;
-use fuel_types::ChainId;
 
 pub struct TokioWithRayon;
 
@@ -76,7 +75,7 @@ where
     let height = Default::default();
     let predicate_gas_used = 0;
 
-    let owner = Input::predicate_owner(&predicate, &ChainId::default());
+    let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
         utxo_id,
         owner,
@@ -236,7 +235,7 @@ async fn execute_gas_metered_predicates(
             .flat_map(|op| u32::from(op).to_be_bytes())
             .collect();
 
-        let owner = Input::predicate_owner(&predicate, &ChainId::default());
+        let owner = Input::predicate_owner(&predicate);
         let input = Input::coin_predicate(
             rng.gen(),
             owner,
@@ -392,7 +391,7 @@ async fn gas_used_by_predicates_is_deducted_from_script_gas() {
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
     .collect();
-    let owner = Input::predicate_owner(&predicate, &params.chain_id);
+    let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -548,7 +547,7 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         .into_iter()
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
-    let owner = Input::predicate_owner(&predicate, &params.chain_id);
+    let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,
@@ -679,7 +678,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     .into_iter()
     .flat_map(|op| u32::from(op).to_be_bytes())
     .collect();
-    let owner = Input::predicate_owner(&predicate, &params.chain_id);
+    let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,

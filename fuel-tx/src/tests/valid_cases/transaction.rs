@@ -834,39 +834,53 @@ fn mint() {
 
     let block_height = 1000.into();
 
-    TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), rng.gen()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate tx");
+    let err = TransactionBuilder::mint(
+        block_height,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+    )
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
-    let err = TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::contract(0, rng.gen(), rng.gen()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    assert_eq!(err, CheckError::TransactionMintIncorrectOutputIndex);
 
-    assert_eq!(err, CheckError::TransactionMintOutputIsNotCoin);
+    let err = TransactionBuilder::mint(
+        block_height,
+        rng.gen(),
+        rng.gen(),
+        output::contract::Contract {
+            input_index: 0,
+            balance_root: rng.gen(),
+            state_root: rng.gen(),
+        },
+        rng.gen(),
+        rng.gen(),
+    )
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
-    let err = TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    assert_eq!(err, CheckError::TransactionMintNonBaseAsset);
 
-    assert_eq!(
-        err,
-        CheckError::TransactionOutputCoinAssetIdDuplicated(AssetId::BASE)
-    );
-
-    let err = TransactionBuilder::mint(block_height, rng.gen())
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .add_output(Output::coin(rng.gen(), rng.next_u64(), AssetId::BASE))
-        .finalize()
-        .check(block_height.succ().unwrap(), &test_params())
-        .expect_err("Expected erroneous transaction");
+    let err = TransactionBuilder::mint(
+        block_height,
+        rng.gen(),
+        rng.gen(),
+        output::contract::Contract {
+            input_index: 0,
+            balance_root: rng.gen(),
+            state_root: rng.gen(),
+        },
+        rng.gen(),
+        rng.gen(),
+    )
+    .finalize()
+    .check(block_height.succ().unwrap(), &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, CheckError::TransactionMintIncorrectBlockHeight);
 }
@@ -939,7 +953,6 @@ fn tx_id_bytecode_len() {
 
 mod inputs {
     use super::*;
-    use fuel_types::ChainId;
     use itertools::Itertools;
 
     #[test]
@@ -948,8 +961,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an owner of the coin
-        let chain_id = ChainId::default();
-        let owner: Address = Input::predicate_owner(&predicate, &chain_id);
+        let owner: Address = Input::predicate_owner(&predicate);
 
         let tx =
             TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -970,7 +982,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        assert!(tx.check_predicate_owners(&chain_id));
+        assert!(tx.check_predicate_owners());
     }
 
     #[test]
@@ -998,8 +1010,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        let chain_id = ChainId::default();
-        assert!(!tx.check_predicate_owners(&chain_id));
+        assert!(!tx.check_predicate_owners());
     }
 
     #[test]
@@ -1008,8 +1019,7 @@ mod inputs {
 
         let predicate = (0..1000).map(|_| rng.gen()).collect_vec();
         // The predicate is an recipient(owner) of the message
-        let chain_id = ChainId::default();
-        let recipient: Address = Input::predicate_owner(&predicate, &chain_id);
+        let recipient: Address = Input::predicate_owner(&predicate);
 
         let tx =
             TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -1029,7 +1039,7 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        assert!(tx.check_predicate_owners(&chain_id));
+        assert!(tx.check_predicate_owners());
     }
 
     #[test]
@@ -1056,7 +1066,6 @@ mod inputs {
                 .with_tx_params(TX_PARAMS)
                 .finalize();
 
-        let chain_id = ChainId::default();
-        assert!(!tx.check_predicate_owners(&chain_id));
+        assert!(!tx.check_predicate_owners());
     }
 }

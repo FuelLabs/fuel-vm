@@ -78,17 +78,19 @@ pub enum CheckError {
     TransactionScriptOutputContractCreated {
         index: usize,
     },
-    TransactionMintOutputIsNotCoin,
     /// The block height of the checking doesn't match the transaction's block height.
     /// `Mint` transaction only exists in the scope of the block.
     TransactionMintIncorrectBlockHeight,
+    /// The `Output.input_index` is not zero.
+    TransactionMintIncorrectOutputIndex,
+    /// The `Output.mint_base_asset` is not base asset.
+    TransactionMintNonBaseAsset,
     /// Max gas per tx exceeded
     TransactionGasLimit,
     TransactionMaturity,
     TransactionInputsMax,
     TransactionOutputsMax,
     TransactionWitnessesMax,
-    TransactionOutputCoinAssetIdDuplicated(AssetId),
     TransactionOutputChangeAssetIdDuplicated(AssetId),
     TransactionOutputChangeAssetIdNotFound(AssetId),
     /// This error happens when a transaction attempts to create a coin output for an

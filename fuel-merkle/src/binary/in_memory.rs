@@ -1,16 +1,9 @@
+use crate::binary::{empty_sum, Node};
 use crate::{
-    binary::{
-        self,
-        Primitive,
-    },
-    common::{
-        Bytes32,
-        ProofSet,
-        StorageMap,
-    },
+    binary::{self, Primitive},
+    common::{Bytes32, ProofSet, StorageMap},
     storage::Mappable,
 };
-use crate::binary::{empty_sum, Node};
 
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
 /// a binary array, where the storage key of the node is the `u64` index and
@@ -91,9 +84,14 @@ impl MerkleRootCalculator {
 
                     while let Some(last_merged) = self.stack.last() {
                         if self.stack.len() > 1 {
-                            if let Some(second_last_merged) = self.stack.get(self.stack.len() - 2) {
+                            if let Some(second_last_merged) =
+                                self.stack.get(self.stack.len() - 2)
+                            {
                                 if last_merged.height() == second_last_merged.height() {
-                                    let merged_node = Node::create_node(second_last_merged, last_merged);
+                                    let merged_node = Node::create_node(
+                                        second_last_merged,
+                                        last_merged,
+                                    );
                                     self.stack.pop();
                                     self.stack.pop();
                                     self.stack.push(merged_node);
@@ -107,12 +105,16 @@ impl MerkleRootCalculator {
                     }
                 }
             }
-            self.second_top_on_stack = Some(self.stack.last().expect("Unable to get last element from stack").clone());
+            self.second_top_on_stack = Some(
+                self.stack
+                    .last()
+                    .expect("Unable to get last element from stack")
+                    .clone(),
+            );
         }
     }
 
     pub fn root(&mut self) -> Bytes32 {
-
         if self.stack.is_empty() {
             return empty_sum().to_owned();
         }
@@ -128,15 +130,10 @@ impl MerkleRootCalculator {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use binary::{
-        empty_sum,
-        leaf_sum,
-        node_sum,
-    };
+    use binary::{empty_sum, leaf_sum, node_sum};
     use fuel_merkle_test_helpers::TEST_DATA;
 
     #[test]

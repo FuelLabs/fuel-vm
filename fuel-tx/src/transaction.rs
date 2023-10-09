@@ -4,7 +4,6 @@ use fuel_types::{
     AssetId,
     BlockHeight,
     Bytes32,
-    ChainId,
     Nonce,
     Salt,
     Word,

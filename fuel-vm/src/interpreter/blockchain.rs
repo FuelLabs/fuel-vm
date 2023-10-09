@@ -498,18 +498,12 @@ where
 
         self.input_contracts.check(&contract_id)?;
 
-        let length_unpadded: usize = length_unpadded
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
-
         // Fetch the storage contract
         let contract_bytes: Vec<u8> =
             super::contract::contract(self.storage, &contract_id)?
                 .into_owned()
                 .into();
         let contract_len = contract_bytes.len();
-        let contract_sub_bytes =
-            read_contract_bytes(&contract_bytes, contract_offset, length_unpadded);
 
         // Mark stack space as allocated
         let new_stack = dst_range.words().end;
@@ -519,7 +513,7 @@ where
         // Copy the code. Ownership checks are not used as the stack is adjusted above.
         copy_from_slice_zero_fill_noownerchecks(
             self.memory,
-            &contract_sub_bytes,
+            &contract_bytes,
             dst_range.start,
             contract_offset,
             length,
@@ -552,18 +546,6 @@ where
 
         Ok(contract_len)
     }
-}
-
-/// Copy $rC bytes of code starting at $rB for contract.
-/// If $rC is greater than the code size, zero bytes are filled in.
-fn read_contract_bytes(contract_bytes: &[u8], offset: usize, length: usize) -> Vec<u8> {
-    let mut buf = alloc::vec![0u8; length];
-    if contract_bytes.len() > offset {
-        for (i, val) in contract_bytes[offset..].iter().enumerate().take(length) {
-            buf[i] = *val;
-        }
-    };
-    buf
 }
 
 struct BurnCtx<'vm, S> {

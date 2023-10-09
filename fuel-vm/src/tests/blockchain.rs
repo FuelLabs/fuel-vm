@@ -354,11 +354,11 @@ fn ldc__offset_affects_read_code() {
     let gas_costs = client.gas_costs();
     let noop_cost = gas_costs.noop;
 
-    let contract_size = 1000;
+    let number_of_opcodes = 25;
     let offset = 0;
     let len = 100;
     let starting_gas_amount =
-        ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, offset, len);
+        ldc__gas_cost_for_len(&mut client, rng, salt, number_of_opcodes, offset, len);
 
     for i in 1..10 {
         let offset = i * 4;
@@ -367,10 +367,11 @@ fn ldc__offset_affects_read_code() {
             &mut client,
             rng,
             salt,
-            contract_size,
+            number_of_opcodes,
             offset as u16,
             len,
         );
+
         assert_eq!(expected_gas_used, actual_gas_used);
     }
 }
@@ -395,7 +396,7 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
     let bytes_per_op = 4;
 
     for i in 1..10 {
-        let contract_size = contract_size + (i * ldc_dep_len / bytes_per_op) as usize;
+        let number_of_opcodes = contract_size + (i * ldc_dep_len / bytes_per_op) as usize;
 
         let cost_of_ldc = i;
 
@@ -403,7 +404,7 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
         let expected_gas_used = starting_gas_amount + cost_of_ldc;
 
         let actual_gas_used =
-            ldc__gas_cost_for_len(&mut client, rng, salt, contract_size, offset, len);
+            ldc__gas_cost_for_len(&mut client, rng, salt, number_of_opcodes, offset, len);
         assert_eq!(actual_gas_used, expected_gas_used);
     }
 }
@@ -413,12 +414,12 @@ fn ldc__gas_cost_for_len(
     rng: &mut StdRng,
     salt: Salt,
     // in number of opcodes
-    target_contract_size: usize,
+    number_of_opcodes: usize,
     offset: u16,
     len: u16,
 ) -> Word {
     let mut target_contract = vec![];
-    for _ in 0..target_contract_size {
+    for _ in 0..number_of_opcodes {
         target_contract.push(op::noop());
     }
 
@@ -477,8 +478,8 @@ fn ldc__load_len_of_target_contract<'a>(
 
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
-    let reg_c = 0x21;
-    let reg_b = 0x22;
+    let reg_b = 0x21;
+    let reg_c = 0x22;
 
     let count = ContractId::LEN as Immediate12;
 

@@ -81,38 +81,20 @@ impl MerkleRootCalculator {
         let node = Node::create_leaf(0, data);
         self.stack.push(node);
 
-        if let Some(top_node) = self.stack.last() {
+        while let Some(top_node) = self.stack.last() {
             if self.stack.len() > 1 {
                 if let Some(second_top_node) = self.stack.get(self.stack.len() - 2) {
-                    if second_top_node.height() == top_node.height() {
+                    if top_node.height() == second_top_node.height() {
                         let merged_node = Node::create_node(second_top_node, top_node);
                         self.stack.pop();
                         self.stack.pop();
                         self.stack.push(merged_node);
-                        while let Some(last_merged) = self.stack.last() {
-                            if self.stack.len() > 1 {
-                                if let Some(second_last_merged) =
-                                    self.stack.get(self.stack.len() - 2)
-                                {
-                                    if last_merged.height() == second_last_merged.height()
-                                    {
-                                        let merged_node = Node::create_node(
-                                            second_last_merged,
-                                            last_merged,
-                                        );
-                                        self.stack.pop();
-                                        self.stack.pop();
-                                        self.stack.push(merged_node);
-                                    } else {
-                                        break
-                                    }
-                                }
-                            } else {
-                                break
-                            }
-                        }
+                    } else {
+                        break
                     }
                 }
+            } else {
+                break
             }
         }
     }

@@ -74,9 +74,7 @@ pub struct MerkleRootCalculator {
 
 impl MerkleRootCalculator {
     pub fn new() -> Self {
-        Self {
-            stack: Vec::new(),
-        }
+        Self { stack: Vec::new() }
     }
 
     pub fn push(&mut self, data: &[u8]) {
@@ -94,8 +92,10 @@ impl MerkleRootCalculator {
                         while let Some(last_merged) = self.stack.last() {
                             if self.stack.len() > 1 {
                                 if let Some(second_last_merged) =
-                                    self.stack.get(self.stack.len() - 2) {
-                                    if last_merged.height() == second_last_merged.height() {
+                                    self.stack.get(self.stack.len() - 2)
+                                {
+                                    if last_merged.height() == second_last_merged.height()
+                                    {
                                         let merged_node = Node::create_node(
                                             second_last_merged,
                                             last_merged,

@@ -24,6 +24,7 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field,
+    output,
     Chargeable,
     CheckError,
     ConsensusParameters,
@@ -53,7 +54,7 @@ mod alu;
 mod balances;
 mod blockchain;
 mod constructors;
-mod contract;
+pub mod contract;
 mod crypto;
 pub mod diff;
 mod executors;
@@ -453,9 +454,9 @@ pub trait ExecutableTransaction:
     /// Finds `Output::Contract` corresponding to the `input` index.
     fn find_output_contract(&self, input: usize) -> Option<(usize, &Output)> {
         self.outputs().iter().enumerate().find(|(_idx, o)| {
-            matches!(o, Output::Contract {
+            matches!(o, Output::Contract( output::contract::Contract {
                 input_index, ..
-            } if *input_index as usize == input)
+            }) if *input_index as usize == input)
         })
     }
 }

@@ -121,12 +121,12 @@ mod tests {
 
     use fuel_tx::{
         field::*,
+        input,
         input::{
             coin::{
                 CoinPredicate,
                 CoinSigned,
             },
-            contract::Contract,
             message::{
                 MessageCoinPredicate,
                 MessageCoinSigned,
@@ -134,6 +134,7 @@ mod tests {
                 MessageDataSigned,
             },
         },
+        output,
         Buildable,
         Input,
         Output,
@@ -366,28 +367,28 @@ mod tests {
             assert_io_eq!(
                 tx,
                 inputs_mut,
-                Input::Contract[Contract],
+                Input::Contract[input::contract::Contract],
                 utxo_id,
                 invert_utxo_id
             );
             assert_io_eq!(
                 tx,
                 inputs_mut,
-                Input::Contract[Contract],
+                Input::Contract[input::contract::Contract],
                 balance_root,
                 invert
             );
             assert_io_eq!(
                 tx,
                 inputs_mut,
-                Input::Contract[Contract],
+                Input::Contract[input::contract::Contract],
                 state_root,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
-                Input::Contract[Contract],
+                Input::Contract[input::contract::Contract],
                 contract_id,
                 invert
             );
@@ -577,9 +578,27 @@ mod tests {
             assert_io_ne!(tx, outputs_mut, Output::Coin, amount, not);
             assert_io_ne!(tx, outputs_mut, Output::Coin, asset_id, invert);
 
-            assert_io_ne!(tx, outputs_mut, Output::Contract, input_index, not);
-            assert_io_eq!(tx, outputs_mut, Output::Contract, balance_root, invert);
-            assert_io_eq!(tx, outputs_mut, Output::Contract, state_root, invert);
+            assert_io_ne!(
+                tx,
+                outputs_mut,
+                Output::Contract[output::contract::Contract],
+                input_index,
+                not
+            );
+            assert_io_eq!(
+                tx,
+                outputs_mut,
+                Output::Contract[output::contract::Contract],
+                balance_root,
+                invert
+            );
+            assert_io_eq!(
+                tx,
+                outputs_mut,
+                Output::Contract[output::contract::Contract],
+                state_root,
+                invert
+            );
 
             assert_io_ne!(tx, outputs_mut, Output::Change, to, invert);
             assert_io_eq!(tx, outputs_mut, Output::Change, amount, not);

@@ -297,8 +297,7 @@ impl<T> Interpreter<PredicateStorage, T> {
                 recipient: address,
                 ..
             }) => {
-                if !Input::is_predicate_owner_valid(address, predicate, &params.chain_id)
-                {
+                if !Input::is_predicate_owner_valid(address, predicate) {
                     return Err(PredicateVerificationFailed::InvalidOwner)
                 }
             }

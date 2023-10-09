@@ -15,8 +15,10 @@ use fuel_types::{
 use core::mem;
 
 mod consts;
+pub mod contract;
 mod repr;
 
+use contract::Contract;
 pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
@@ -29,11 +31,7 @@ pub enum Output {
         asset_id: AssetId,
     },
 
-    Contract {
-        input_index: u8,
-        balance_root: Bytes32,
-        state_root: Bytes32,
-    },
+    Contract(Contract),
 
     Change {
         to: Address,
@@ -80,11 +78,11 @@ impl Output {
         balance_root: Bytes32,
         state_root: Bytes32,
     ) -> Self {
-        Self::Contract {
+        Self::Contract(Contract {
             input_index,
             balance_root,
             state_root,
-        }
+        })
     }
 
     pub const fn change(to: Address, amount: Word, asset_id: AssetId) -> Self {
@@ -139,21 +137,21 @@ impl Output {
 
     pub const fn input_index(&self) -> Option<u8> {
         match self {
-            Output::Contract { input_index, .. } => Some(*input_index),
+            Output::Contract(Contract { input_index, .. }) => Some(*input_index),
             _ => None,
         }
     }
 
     pub const fn balance_root(&self) -> Option<&Bytes32> {
         match self {
-            Output::Contract { balance_root, .. } => Some(balance_root),
+            Output::Contract(Contract { balance_root, .. }) => Some(balance_root),
             _ => None,
         }
     }
 
     pub const fn state_root(&self) -> Option<&Bytes32> {
         match self {
-            Output::Contract { state_root, .. }
+            Output::Contract(Contract { state_root, .. })
             | Output::ContractCreated { state_root, .. } => Some(state_root),
             _ => None,
         }
@@ -175,7 +173,7 @@ impl Output {
     }
 
     pub const fn is_contract(&self) -> bool {
-        matches!(self, Self::Contract { .. })
+        matches!(self, Self::Contract(_))
     }
 
     pub const fn is_contract_created(&self) -> bool {
@@ -193,14 +191,7 @@ impl Output {
     /// Empties fields that should be zero during the signing.
     pub(crate) fn prepare_sign(&mut self) {
         match self {
-            Output::Contract {
-                balance_root,
-                state_root,
-                ..
-            } => {
-                mem::take(balance_root);
-                mem::take(state_root);
-            }
+            Output::Contract(contract) => contract.prepare_sign(),
 
             Output::Change { amount, .. } => {
                 mem::take(amount);

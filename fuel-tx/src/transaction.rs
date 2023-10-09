@@ -4,6 +4,7 @@ use fuel_types::{
     AssetId,
     BlockHeight,
     Bytes32,
+    ChainId,
     Nonce,
     Salt,
     Word,
@@ -55,22 +56,22 @@ pub use validity::{
     FormatValidityChecks,
 };
 
-use crate::TxPointer;
-
-use crate::input::coin::{
-    CoinPredicate,
-    CoinSigned,
+use crate::{
+    input::{
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
+        contract::Contract,
+        message::{
+            MessageCoinPredicate,
+            MessageDataPredicate,
+        },
+    },
+    TxPointer,
 };
 use input::*;
-
-use crate::input::{
-    contract::Contract,
-    message::{
-        MessageCoinPredicate,
-        MessageDataPredicate,
-    },
-};
-pub use fuel_types::ChainId;
+use output::*;
 
 #[cfg(feature = "alloc")]
 pub use id::Signable;
@@ -172,12 +173,17 @@ impl Transaction {
 
     pub fn mint(
         tx_pointer: TxPointer,
-        // TODO: Use directly `Output::Coin` here.
-        outputs: Vec<Output>,
+        input_contract: input::contract::Contract,
+        output_contract: output::contract::Contract,
+        mint_amount: Word,
+        mint_asset_id: AssetId,
     ) -> Mint {
         Mint {
             tx_pointer,
-            outputs,
+            input_contract,
+            output_contract,
+            mint_amount,
+            mint_asset_id,
             metadata: None,
         }
     }
@@ -318,7 +324,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     }
 
     /// Checks that all owners of inputs in the predicates are valid.
-    fn check_predicate_owners(&self, chain_id: &ChainId) -> bool {
+    fn check_predicate_owners(&self) -> bool {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
@@ -338,7 +344,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate, chain_id)
+                result && Input::is_predicate_owner_valid(owner, predicate)
             })
     }
 
@@ -532,12 +538,15 @@ impl Deserialize for Transaction {
 /// can be used to write generic code based on the different combinations of the fields.
 pub mod field {
     use crate::{
+        input,
+        output,
         Input,
         Output,
         StorageSlot,
         Witness,
     };
     use fuel_types::{
+        AssetId,
         BlockHeight,
         Bytes32,
         Word,
@@ -587,6 +596,30 @@ pub mod field {
         }
 
         fn tx_pointer_static() -> usize;
+    }
+
+    pub trait InputContract {
+        fn input_contract(&self) -> &input::contract::Contract;
+        fn input_contract_mut(&mut self) -> &mut input::contract::Contract;
+        fn input_contract_offset(&self) -> usize;
+    }
+
+    pub trait OutputContract {
+        fn output_contract(&self) -> &output::contract::Contract;
+        fn output_contract_mut(&mut self) -> &mut output::contract::Contract;
+        fn output_contract_offset(&self) -> usize;
+    }
+
+    pub trait MintAmount {
+        fn mint_amount(&self) -> &Word;
+        fn mint_amount_mut(&mut self) -> &mut Word;
+        fn mint_amount_offset(&self) -> usize;
+    }
+
+    pub trait MintAssetId {
+        fn mint_asset_id(&self) -> &AssetId;
+        fn mint_asset_id_mut(&mut self) -> &mut AssetId;
+        fn mint_asset_id_offset(&self) -> usize;
     }
 
     pub trait ReceiptsRoot {

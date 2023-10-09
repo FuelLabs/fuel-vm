@@ -13,6 +13,9 @@ use crate::{
     storage::Mappable,
 };
 
+use crate::alloc::borrow::ToOwned;
+use alloc::vec::Vec;
+
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
 /// a binary array, where the storage key of the node is the `u64` index and
 /// value is the [`Node`](crate::binary::Node).

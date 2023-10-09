@@ -407,7 +407,7 @@ where
         self.0.block_hash(block_height)
     }
 
-    fn coinbase(&self) -> Result<fuel_types::Address, Self::DataError> {
+    fn coinbase(&self) -> Result<fuel_types::ContractId, Self::DataError> {
         self.0.coinbase()
     }
 

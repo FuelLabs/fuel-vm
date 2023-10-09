@@ -112,7 +112,7 @@ mod use_std {
                 Output::decode(&mut &empty[..])
                     .map(|o| match o {
                         Output::Coin { .. } => (),
-                        Output::Contract { .. } => (),
+                        Output::Contract(_) => (),
                         Output::Change { .. } => (),
                         Output::Variable { .. } => (),
                         Output::ContractCreated { .. } => (),
@@ -372,10 +372,15 @@ mod use_std {
         R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Mint {
-            let mut builder =
-                TransactionBuilder::<Mint>::mint(self.rng.gen(), self.rng.gen());
+            let mut builder = TransactionBuilder::<Mint>::mint(
+                self.rng.gen(),
+                self.rng.gen(),
+                self.rng.gen(),
+                self.rng.gen(),
+                self.rng.gen(),
+                self.rng.gen(),
+            );
 
-            self.fill_outputs(&mut builder);
             builder.finalize()
         }
     }

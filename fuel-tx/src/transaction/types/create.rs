@@ -287,7 +287,7 @@ impl FormatValidityChecks for Create {
             .iter()
             .enumerate()
             .try_for_each(|(index, output)| match output {
-                Output::Contract { .. } => {
+                Output::Contract(_) => {
                     Err(CheckError::TransactionCreateOutputContract { index })
                 }
 

@@ -759,9 +759,18 @@ where
 
             Instruction::LDC(ldc) => {
                 let (a, b, c) = ldc.unpack();
-                // returns length of internal contract that was loaded
-                let len = self.load_contract_code(r!(a), r!(b), r!(c))?;
+                let contract_id_addr = r!(a);
+                let contract_offset = r!(b);
+                let length_unpadded = r!(c);
+                let contract_bytes =
+                    self.get_contract_bytes(contract_id_addr, length_unpadded)?;
+                let len = contract_bytes.len();
                 self.dependent_gas_charge(self.gas_costs().ldc, len as u64)?;
+                self.load_contract_code(
+                    contract_bytes,
+                    contract_offset,
+                    length_unpadded,
+                )?;
             }
 
             Instruction::LOG(log) => {

@@ -48,7 +48,19 @@ fn test_load_contract() -> IoResult<(), Infallible> {
         hp: Reg::new(&hp),
         pc: RegMut::new(&mut pc),
     };
-    input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
+    let contract_bytes = input.get_contract_bytes(contract_id_mem_address, num_bytes)?;
+    let input = LoadContractCodeCtx {
+        contract_max_size: 100,
+        storage: &storage,
+        memory: &mut memory,
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        ssp: RegMut::new(&mut ssp),
+        sp: RegMut::new(&mut sp),
+        fp: Reg::new(&fp),
+        hp: Reg::new(&hp),
+        pc: RegMut::new(&mut pc),
+    };
+    input.load_contract_code(contract_bytes, offset, num_bytes)?;
     assert_eq!(pc, 8);
 
     Ok(())

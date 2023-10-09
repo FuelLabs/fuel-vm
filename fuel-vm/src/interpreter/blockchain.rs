@@ -88,19 +88,11 @@ where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    /// Loads contract ID pointed by `a`, and then for that contract,
-    /// copies `c` bytes from it starting from offset `b` into the stack.
-    /// ```txt
-    /// contract_id = mem[$rA, 32]
-    /// contract_code = contracts[contract_id]
-    /// mem[$ssp, $rC] = contract_code[$rB, $rC]
-    /// ```
-    pub(crate) fn load_contract_code(
+    pub(crate) fn get_contract_bytes(
         &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-    ) -> IoResult<usize, S::DataError> {
+        contract_id_addr: Word,
+        length_unpadded: Word,
+    ) -> IoResult<Vec<u8>, S::DataError> {
         let contract_max_size = self.contract_max_size();
         let (
             SystemRegisters {
@@ -127,7 +119,49 @@ where
             hp: hp.as_ref(),
             pc,
         };
-        input.load_contract_code(a, b, c)
+        input.get_contract_bytes(contract_id_addr, length_unpadded)
+    }
+
+    /// Loads contract ID pointed by `a`, and then for that contract,
+    /// copies `c` bytes from it starting from offset `b` into the stack.
+    /// ```txt
+    /// contract_id = mem[$rA, 32]
+    /// contract_code = contracts[contract_id]
+    /// mem[$ssp, $rC] = contract_code[$rB, $rC]
+    /// ```
+    pub(crate) fn load_contract_code(
+        &mut self,
+        contract_bytes: Vec<u8>,
+        contract_offset: Word,
+        length_unpadded: Word,
+    ) -> IoResult<(), S::DataError> {
+        let contract_max_size = self.contract_max_size();
+        let (
+            SystemRegisters {
+                ssp,
+                sp,
+                hp,
+                fp,
+                pc,
+                ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
+        let input = LoadContractCodeCtx {
+            memory: &mut self.memory,
+            storage: &mut self.storage,
+            contract_max_size,
+            input_contracts: InputContracts::new(
+                self.tx.input_contracts(),
+                &mut self.panic_context,
+            ),
+            ssp,
+            sp,
+            fp: fp.as_ref(),
+            hp: hp.as_ref(),
+            pc,
+        };
+        input.load_contract_code(contract_bytes, contract_offset, length_unpadded)
     }
 
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
@@ -453,36 +487,23 @@ impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I>
 where
     S: InterpreterStorage,
 {
-    /// Loads contract ID pointed by `a`, and then for that contract,
-    /// copies `c` bytes from it starting from offset `b` into the stack.
-    /// ```txt
-    /// contract_id = mem[$rA, 32]
-    /// contract_code = contracts[contract_id]
-    /// mem[$ssp, $rC] = contract_code[$rB, $rC]
-    /// ```
-    /// Returns the total length of the contract code that was loaded from storage.
-    pub(crate) fn load_contract_code(
+    /// Gets `ContractId` pointed to by `contract_id_addr` and returns the bytes of
+    /// contract.
+    pub(crate) fn get_contract_bytes(
         mut self,
         contract_id_addr: Word,
-        contract_offset: Word,
         length_unpadded: Word,
-    ) -> IoResult<usize, S::DataError>
+    ) -> IoResult<Vec<u8>, S::DataError>
     where
         I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
-        let fp = *self.fp as usize;
 
         if ssp != sp {
             return Err(PanicReason::ExpectedUnallocatedStack.into())
         }
-
-        let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
-        let contract_offset: usize = contract_offset
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
 
         let length = bytes::padded_len_word(length_unpadded);
         let dst_range = MemoryRange::new(ssp, length)?;
@@ -496,6 +517,8 @@ where
             return Err(PanicReason::MemoryOverflow.into())
         }
 
+        let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
+
         self.input_contracts.check(&contract_id)?;
 
         // Fetch the storage contract
@@ -503,12 +526,37 @@ where
             super::contract::contract(self.storage, &contract_id)?
                 .into_owned()
                 .into();
-        let contract_len = contract_bytes.len();
+
+        Ok(contract_bytes)
+    }
+
+    /// Takes bytes of contract and  
+    /// copies `length_unpadded` bytes from it starting from offset `contract_offset` into
+    /// the stack.
+    pub(crate) fn load_contract_code(
+        mut self,
+        contract_bytes: Vec<u8>,
+        contract_offset: Word,
+        length_unpadded: Word,
+    ) -> IoResult<(), S::DataError>
+    where
+        I: Iterator<Item = &'vm ContractId>,
+        S: InterpreterStorage,
+    {
+        let ssp = *self.ssp;
+        let fp = *self.fp as usize;
+
+        let length = bytes::padded_len_word(length_unpadded);
+        let dst_range = MemoryRange::new(ssp, length)?;
 
         // Mark stack space as allocated
         let new_stack = dst_range.words().end;
         *self.sp = new_stack;
         *self.ssp = new_stack;
+
+        let contract_offset: usize = contract_offset
+            .try_into()
+            .map_err(|_| PanicReason::MemoryOverflow)?;
 
         // Copy the code. Ownership checks are not used as the stack is adjusted above.
         copy_from_slice_zero_fill_noownerchecks(
@@ -544,7 +592,7 @@ where
 
         inc_pc(self.pc)?;
 
-        Ok(contract_len)
+        Ok(())
     }
 }
 

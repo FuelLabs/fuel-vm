@@ -70,14 +70,12 @@ impl Default for MerkleTree {
 #[derive(Default, Debug, Clone)]
 pub struct MerkleRootCalculator {
     stack: Vec<Node>,
-    second_top_on_stack: Option<Node>,
 }
 
 impl MerkleRootCalculator {
     pub fn new() -> Self {
         Self {
             stack: Vec::new(),
-            second_top_on_stack: None,
         }
     }
 
@@ -86,42 +84,36 @@ impl MerkleRootCalculator {
         self.stack.push(node);
 
         if let Some(top_node) = self.stack.last() {
-            if let Some(second_top_node) = &self.second_top_on_stack {
-                if second_top_node.height() == top_node.height() {
-                    let merged_node = Node::create_node(second_top_node, top_node);
-                    self.stack.pop();
-                    self.stack.pop();
-                    self.stack.push(merged_node);
-
-                    while let Some(last_merged) = self.stack.last() {
-                        if self.stack.len() > 1 {
-                            if let Some(second_last_merged) =
-                                self.stack.get(self.stack.len() - 2)
-                            {
-                                if last_merged.height() == second_last_merged.height() {
-                                    let merged_node = Node::create_node(
-                                        second_last_merged,
-                                        last_merged,
-                                    );
-                                    self.stack.pop();
-                                    self.stack.pop();
-                                    self.stack.push(merged_node);
-                                } else {
-                                    break
+            if self.stack.len() > 1 {
+                if let Some(second_top_node) = self.stack.get(self.stack.len() - 2) {
+                    if second_top_node.height() == top_node.height() {
+                        let merged_node = Node::create_node(second_top_node, top_node);
+                        self.stack.pop();
+                        self.stack.pop();
+                        self.stack.push(merged_node);
+                        while let Some(last_merged) = self.stack.last() {
+                            if self.stack.len() > 1 {
+                                if let Some(second_last_merged) =
+                                    self.stack.get(self.stack.len() - 2) {
+                                    if last_merged.height() == second_last_merged.height() {
+                                        let merged_node = Node::create_node(
+                                            second_last_merged,
+                                            last_merged,
+                                        );
+                                        self.stack.pop();
+                                        self.stack.pop();
+                                        self.stack.push(merged_node);
+                                    } else {
+                                        break
+                                    }
                                 }
+                            } else {
+                                break
                             }
-                        } else {
-                            break
                         }
                     }
                 }
             }
-            self.second_top_on_stack = Some(
-                self.stack
-                    .last()
-                    .expect("Unable to get last element from stack")
-                    .clone(),
-            );
         }
     }
 

@@ -1,7 +1,15 @@
-use crate::binary::{empty_sum, Node};
 use crate::{
-    binary::{self, Primitive},
-    common::{Bytes32, ProofSet, StorageMap},
+    binary::{
+        self,
+        empty_sum,
+        Node,
+        Primitive,
+    },
+    common::{
+        Bytes32,
+        ProofSet,
+        StorageMap,
+    },
     storage::Mappable,
 };
 
@@ -96,11 +104,11 @@ impl MerkleRootCalculator {
                                     self.stack.pop();
                                     self.stack.push(merged_node);
                                 } else {
-                                    break;
+                                    break
                                 }
                             }
                         } else {
-                            break;
+                            break
                         }
                     }
                 }
@@ -116,7 +124,7 @@ impl MerkleRootCalculator {
 
     pub fn root(&mut self) -> Bytes32 {
         if self.stack.is_empty() {
-            return empty_sum().to_owned();
+            return empty_sum().to_owned()
         }
 
         while self.stack.len() > 1 {
@@ -133,7 +141,11 @@ impl MerkleRootCalculator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use binary::{empty_sum, leaf_sum, node_sum};
+    use binary::{
+        empty_sum,
+        leaf_sum,
+        node_sum,
+    };
     use fuel_merkle_test_helpers::TEST_DATA;
 
     #[test]

@@ -318,7 +318,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     }
 
     /// Checks that all owners of inputs in the predicates are valid.
-    fn check_predicate_owners(&self, chain_id: &ChainId) -> bool {
+    fn check_predicate_owners(&self) -> bool {
         self.inputs()
             .iter()
             .filter_map(|i| match i {
@@ -338,7 +338,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate, chain_id)
+                result && Input::is_predicate_owner_valid(owner, predicate)
             })
     }
 

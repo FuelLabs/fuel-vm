@@ -75,7 +75,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .into_iter()
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
-    let owner = Input::predicate_owner(&predicate, &params.chain_id);
+    let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
         rng.gen(),
         owner,

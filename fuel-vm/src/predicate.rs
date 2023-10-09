@@ -48,10 +48,7 @@ mod tests {
     };
     use fuel_asm::op;
     use fuel_tx::TransactionBuilder;
-    use fuel_types::{
-        bytes,
-        ChainId,
-    };
+    use fuel_types::bytes;
     use rand::{
         rngs::StdRng,
         Rng,
@@ -188,7 +185,7 @@ mod tests {
         macro_rules! predicate_input {
             ($predicate:expr) => {{
                 let predicate: Vec<u8> = $predicate.into_iter().collect();
-                let owner = Input::predicate_owner(&predicate, &ChainId::default());
+                let owner = Input::predicate_owner(&predicate);
                 [
                     Input::coin_predicate(
                         rng.gen(),

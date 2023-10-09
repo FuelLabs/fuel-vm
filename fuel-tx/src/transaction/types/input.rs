@@ -31,7 +31,6 @@ use fuel_types::{
     AssetId,
     BlockHeight,
     Bytes32,
-    ChainId,
     ContractId,
     MessageId,
     Nonce,
@@ -748,7 +747,7 @@ impl Input {
         compute_message_id(sender, recipient, nonce, amount, data)
     }
 
-    pub fn predicate_owner<P>(predicate: P, chain_id: &ChainId) -> Address
+    pub fn predicate_owner<P>(predicate: P) -> Address
     where
         P: AsRef<[u8]>,
     {
@@ -759,21 +758,16 @@ impl Input {
         let mut hasher = Hasher::default();
 
         hasher.input(ContractId::SEED);
-        hasher.input(chain_id.to_be_bytes());
         hasher.input(root);
 
         (*hasher.digest()).into()
     }
 
-    pub fn is_predicate_owner_valid<P>(
-        owner: &Address,
-        predicate: P,
-        chain_id: &ChainId,
-    ) -> bool
+    pub fn is_predicate_owner_valid<P>(owner: &Address, predicate: P) -> bool
     where
         P: AsRef<[u8]>,
     {
-        owner == &Self::predicate_owner(predicate, chain_id)
+        owner == &Self::predicate_owner(predicate)
     }
 
     /// Prepare the output for VM predicate execution

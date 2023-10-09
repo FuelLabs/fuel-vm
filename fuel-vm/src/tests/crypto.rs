@@ -200,7 +200,7 @@ async fn recover_tx_id_predicate() {
 
     let input = Input::coin_predicate(
         rng.gen(),
-        Input::predicate_owner(&predicate, &check_params.chain_id),
+        Input::predicate_owner(&predicate),
         1000,
         rng.gen(),
         Default::default(),

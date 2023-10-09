@@ -13,7 +13,6 @@ use fuel_tx::{
     StorageSlot,
 };
 use fuel_types::{
-    Address,
     AssetId,
     BlockHeight,
     Bytes32,
@@ -74,7 +73,7 @@ pub trait InterpreterStorage:
     fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError>;
 
     /// Provide the coinbase address for the VM instructions implementation.
-    fn coinbase(&self) -> Result<Address, Self::DataError>;
+    fn coinbase(&self) -> Result<ContractId, Self::DataError>;
 
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
@@ -265,7 +264,7 @@ where
         <S as InterpreterStorage>::block_hash(self.deref(), block_height)
     }
 
-    fn coinbase(&self) -> Result<Address, Self::DataError> {
+    fn coinbase(&self) -> Result<ContractId, Self::DataError> {
         <S as InterpreterStorage>::coinbase(self.deref())
     }
 

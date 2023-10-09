@@ -1,6 +1,10 @@
 use fuel_tx::{
     field::{
+        InputContract,
         Inputs,
+        MintAmount,
+        MintAssetId,
+        OutputContract,
         Outputs,
         ReceiptsRoot,
         Salt as SaltField,
@@ -8,6 +12,7 @@ use fuel_tx::{
         TxPointer as TxPointerField,
         Witnesses,
     },
+    input,
     *,
 };
 use fuel_tx_test_helpers::TransactionFactory;
@@ -429,7 +434,6 @@ fn tx_offset_script() {
 
 #[test]
 fn tx_offset_mint() {
-    let mut cases = TestedFields::default();
     let number_cases = 100;
 
     // The seed will define how the transaction factory will generate a new transaction.
@@ -447,17 +451,36 @@ fn tx_offset_mint() {
 
             assert_eq!(*tx.tx_pointer(), tx_pointer_p);
 
-            outputs_assert(&tx, &bytes, &mut cases);
-        });
+            let ofs = tx.input_contract_offset();
+            let size = tx.input_contract().size();
+            let input_p = input::contract::Contract::from_bytes(&bytes[ofs..ofs + size])
+                .expect("Should decode `input::contract::Contract`");
 
-    // Actually, `Mint` transaction works only with `Coin`s, but let's test all possible
-    // outputs.
-    assert!(cases.output_to);
-    assert!(cases.output_asset_id);
-    assert!(cases.output_balance_root);
-    assert!(cases.output_contract_state_root);
-    assert!(cases.output_contract_created_state_root);
-    assert!(cases.output_contract_created_id);
+            assert_eq!(*tx.input_contract(), input_p);
+
+            let ofs = tx.output_contract_offset();
+            let size = tx.output_contract().size();
+            let output_p =
+                output::contract::Contract::from_bytes(&bytes[ofs..ofs + size])
+                    .expect("Should decode `output::contract::Contract`");
+
+            assert_eq!(*tx.output_contract(), output_p);
+
+            let ofs = tx.mint_amount_offset();
+            let size = tx.mint_amount().size();
+            let mint_amount_p =
+                Word::from_bytes(&bytes[ofs..ofs + size]).expect("Should decode `Word`");
+
+            assert_eq!(*tx.mint_amount(), mint_amount_p);
+
+            let ofs = tx.mint_asset_id_offset();
+            let size = tx.mint_asset_id().size();
+            let mint_asset_id_p =
+                <AssetId as Deserialize>::from_bytes(&bytes[ofs..ofs + size])
+                    .expect("Should encode `AssetId`");
+
+            assert_eq!(*tx.mint_asset_id(), mint_asset_id_p);
+        });
 }
 
 #[test]

@@ -22,7 +22,6 @@ use fuel_storage::{
     StorageSize,
 };
 use fuel_types::{
-    Address,
     BlockHeight,
     Bytes32,
     ContractId,
@@ -143,7 +142,7 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn coinbase(&self) -> Result<Address, StorageUnavailable> {
+    fn coinbase(&self) -> Result<ContractId, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 

@@ -1,8 +1,6 @@
 use crate::{
     binary::{
         self,
-        empty_sum,
-        Node,
         Primitive,
     },
     common::{
@@ -12,9 +10,6 @@ use crate::{
     },
     storage::Mappable,
 };
-
-use crate::alloc::borrow::ToOwned;
-use alloc::vec::Vec;
 
 /// The table of the Binary Merkle Tree's nodes. [`MerkleTree`] works with it as
 /// a binary array, where the storage key of the node is the `u64` index and
@@ -67,54 +62,6 @@ impl Default for MerkleTree {
     }
 }
 
-#[derive(Default, Debug, Clone)]
-pub struct MerkleRootCalculator {
-    stack: Vec<Node>,
-}
-
-impl MerkleRootCalculator {
-    pub fn new() -> Self {
-        Self { stack: Vec::new() }
-    }
-
-    pub fn push(&mut self, data: &[u8]) {
-        let node = Node::create_leaf(0, data);
-        self.stack.push(node);
-
-        while let Some(top_node) = self.stack.last() {
-            if self.stack.len() > 1 {
-                if let Some(second_top_node) = self.stack.get(self.stack.len() - 2) {
-                    if top_node.height() == second_top_node.height() {
-                        let merged_node = Node::create_node(second_top_node, top_node);
-                        self.stack.pop();
-                        self.stack.pop();
-                        self.stack.push(merged_node);
-                    } else {
-                        break
-                    }
-                }
-            } else {
-                break
-            }
-        }
-    }
-
-    pub fn root(self) -> Bytes32 {
-        if self.stack.is_empty() {
-            return empty_sum().to_owned()
-        }
-
-        while self.stack.len() > 1 {
-            let right_child = self.stack.pop().expect("Unable to pop element from stack");
-            let left_child = self.stack.pop().expect("Unable to pop element from stack");
-            let merged_node = Node::create_node(&left_child, &right_child);
-            self.stack.push(merged_node);
-        }
-
-        self.stack.pop().unwrap().hash().to_owned()
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -128,41 +75,33 @@ mod test {
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {
         let tree = MerkleTree::new();
-        let mut calculate_root = MerkleRootCalculator::new();
 
         let root = tree.root();
-        assert_eq!(root, empty_sum().clone());
-        let root = calculate_root.root();
         assert_eq!(root, empty_sum().clone());
     }
 
     #[test]
     fn root_returns_the_merkle_root_for_1_leaf() {
         let mut tree = MerkleTree::new();
-        let mut calculate_root = MerkleRootCalculator::new();
 
         let data = &TEST_DATA[0..1]; // 1 leaf
         for datum in data.iter() {
             tree.push(datum);
-            calculate_root.push(datum)
         }
 
         let leaf_0 = leaf_sum(data[0]);
 
         let root = tree.root();
         assert_eq!(root, leaf_0);
-        assert_eq!(root, calculate_root.root());
     }
 
     #[test]
     fn root_returns_the_merkle_root_for_7_leaves() {
         let mut tree = MerkleTree::new();
-        let mut calculate_root = MerkleRootCalculator::new();
 
         let data = &TEST_DATA[0..7]; // 7 leaves
         for datum in data.iter() {
             tree.push(datum);
-            calculate_root.push(datum)
         }
 
         //               07
@@ -197,7 +136,6 @@ mod test {
 
         let root = tree.root();
         assert_eq!(root, node_7);
-        assert_eq!(root, calculate_root.root());
     }
 
     #[test]

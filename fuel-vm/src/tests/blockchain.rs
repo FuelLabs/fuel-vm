@@ -294,6 +294,7 @@ fn ldc__load_external_contract_code() {
         offset,
         len,
         program.clone(),
+        true,
     );
 
     if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
@@ -426,8 +427,15 @@ fn ldc__gas_cost_for_len(
     let bytes = target_contract.into_iter().collect::<Vec<u8>>();
     let contract_code: Witness = bytes.into();
 
-    let receipts =
-        ldc__load_len_of_target_contract(client, rng, salt, offset, len, contract_code);
+    let receipts = ldc__load_len_of_target_contract(
+        client,
+        rng,
+        salt,
+        offset,
+        len,
+        contract_code,
+        false,
+    );
 
     let result = receipts.last().expect("No receipt");
 
@@ -446,6 +454,7 @@ fn ldc__load_len_of_target_contract<'a>(
     offset: u16,
     len: u16,
     target_contract_witness: Witness,
+    include_log_d: bool,
 ) -> &'a [Receipt] {
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -508,13 +517,21 @@ fn ldc__load_len_of_target_contract<'a>(
         op::xor(reg_c, reg_c, reg_c),  // r[b] := 0
         op::ori(reg_c, reg_c, len),    // r[b] += len
         op::ldc(reg_a, reg_b, reg_c),  // Load first two words from the contract
-        op::subi(reg_a, RegId::SSP, 16), /* r[a] := $ssp - 16 (start of the loaded
-                                        * code) */
-        op::movi(reg_c, 16), // r[b] = 16 (length of the loaded code)
-        op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_c), /* Log digest of the
-                              * loaded code */
-        op::noop(), // Patched to the jump later
     ]);
+
+    if include_log_d {
+        let padded_len = pad(len);
+        load_contract.extend([
+            op::subi(reg_a, RegId::SSP, padded_len), /* r[a] := $ssp - 16 (start of
+                                                      * the loaded
+                                                      * code) */
+            op::movi(reg_c, padded_len as u32), // r[b] = 16 (length of the loaded code)
+            op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_c), /* Log digest of the
+                                                 * loaded code */
+        ])
+    }
+
+    load_contract.push(op::noop()); // Patched to the jump later
 
     let tx_deploy_loader = TransactionBuilder::script(
         #[allow(clippy::iter_cloned_collect)]
@@ -550,6 +567,16 @@ fn ldc__load_len_of_target_contract<'a>(
             .expect("failed to check tx");
 
     client.transact(tx_deploy_loader)
+}
+
+fn pad(a: u16) -> u16 {
+    const SIZE: u16 = 8;
+    let rem = a % SIZE;
+    if rem == 0 {
+        a
+    } else {
+        a + (SIZE - rem)
+    }
 }
 
 fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {

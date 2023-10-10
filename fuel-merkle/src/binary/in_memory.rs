@@ -99,7 +99,7 @@ impl MerkleRootCalculator {
         }
     }
 
-    pub fn root(&mut self) -> Bytes32 {
+    pub fn root(self) -> Bytes32 {
         if self.stack.is_empty() {
             return empty_sum().to_owned()
         }

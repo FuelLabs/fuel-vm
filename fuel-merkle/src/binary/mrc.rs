@@ -6,6 +6,9 @@ use crate::{
     common::Bytes32,
 };
 
+use crate::alloc::borrow::ToOwned;
+use alloc::vec::Vec;
+
 #[derive(Default, Debug, Clone)]
 pub struct MerkleRootCalculator {
     stack: Vec<Node>,

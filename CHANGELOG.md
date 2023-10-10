@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
-- [#603](https://github.com/FuelLabs/fuel-vm/pull/603): Added `MerkleRootCalculator`for efficient in-memory merkle root calculation.
+- [#603](https://github.com/FuelLabs/fuel-vm/pull/603): Added `MerkleRootCalculator`for efficient in-memory Merkle root calculation.
 
 ### Changed
 

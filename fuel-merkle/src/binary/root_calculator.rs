@@ -23,18 +23,14 @@ impl MerkleRootCalculator {
         let node = Node::create_leaf(0, data);
         self.stack.push(node);
 
-        while let Some(top_node) = self.stack.last() {
-            if self.stack.len() > 1 {
-                if let Some(second_top_node) = self.stack.get(self.stack.len() - 2) {
-                    if top_node.height() == second_top_node.height() {
-                        let merged_node = Node::create_node(second_top_node, top_node);
-                        self.stack.pop();
-                        self.stack.pop();
-                        self.stack.push(merged_node);
-                    } else {
-                        break
-                    }
-                }
+        while self.stack.len() > 1 {
+            let right_node = &self.stack[self.stack.len() - 1];
+            let left_node = &self.stack[self.stack.len() - 2];
+            if right_node.height() == left_node.height() {
+                let merged_node = Node::create_node(left_node, right_node);
+                self.stack.pop();
+                self.stack.pop();
+                self.stack.push(merged_node);
             } else {
                 break
             }

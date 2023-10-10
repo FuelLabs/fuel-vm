@@ -493,7 +493,6 @@ fn ldc__load_len_of_target_contract<'a>(
     let count = ContractId::LEN as Immediate12;
 
     let mut load_contract = vec![
-        op::xor(reg_a, reg_a, reg_a), // r[a] := 0
         op::ori(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
         op::aloc(reg_a),              // Reserve space for contract id in the heap
     ];
@@ -512,9 +511,7 @@ fn ldc__load_len_of_target_contract<'a>(
     // when
     load_contract.extend([
         op::move_(reg_a, RegId::HP),   // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b),  // r[b] := 0
         op::ori(reg_b, reg_b, offset), // r[b] += offset
-        op::xor(reg_c, reg_c, reg_c),  // r[b] := 0
         op::ori(reg_c, reg_c, len),    // r[b] += len
         op::ldc(reg_a, reg_b, reg_c),  // Load first two words from the contract
     ]);

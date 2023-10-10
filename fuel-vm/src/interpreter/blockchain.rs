@@ -88,18 +88,18 @@ where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    /// Loads contract ID pointed by `a`, and then for that contract,
-    /// copies `c` bytes from it starting from offset `b` into the stack.
-    /// ```txt
+    /// Loads contract ID pointed by `contract_id_addr`, and then for that contract,
+    /// copies `length_unpadded` bytes from it starting from offset `contract_offset` into
+    /// the stack. ```txt
     /// contract_id = mem[$rA, 32]
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
     pub(crate) fn load_contract_code(
         &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
+        contract_id_addr: Word,
+        contract_offset: Word,
+        length_unpadded: Word,
     ) -> IoResult<(), S::DataError> {
         let mut gas_cost = self.gas_costs().ldc;
         // Charge only for the `base` execution.
@@ -144,7 +144,7 @@ where
             pc,
             is: is.as_ref(),
         };
-        input.load_contract_code(a, b, c)
+        input.load_contract_code(contract_id_addr, contract_offset, length_unpadded)
     }
 
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {

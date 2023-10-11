@@ -9,7 +9,8 @@ use crate::{
 use crate::alloc::borrow::ToOwned;
 use alloc::vec::Vec;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MerkleRootCalculator {
     stack: Vec<Node>,
 }
@@ -17,6 +18,10 @@ pub struct MerkleRootCalculator {
 impl MerkleRootCalculator {
     pub fn new() -> Self {
         Self { stack: Vec::new() }
+    }
+
+    pub fn new_with_stack(stack: Vec<Node>) -> Self {
+        Self { stack }
     }
 
     pub fn push(&mut self, data: &[u8]) {
@@ -62,6 +67,10 @@ impl MerkleRootCalculator {
 
         calculator.root()
     }
+
+    pub fn stack(&self) -> &Vec<Node> {
+        &self.stack
+    }
 }
 
 #[cfg(test)]
@@ -69,6 +78,8 @@ mod test {
     use super::*;
     use crate::binary::in_memory::MerkleTree;
     use fuel_merkle_test_helpers::TEST_DATA;
+    #[cfg(test)]
+    use serde_json as _;
 
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {
@@ -132,5 +143,22 @@ mod test {
         let root = calculate_root.root_from_iterator(data.iter());
 
         assert_eq!(tree.root(), root);
+    }
+
+    #[test]
+    #[cfg(feature = "serde")]
+    fn test_serialize_deserialize() {
+        let mut calculator = MerkleRootCalculator::new();
+
+        let data = &TEST_DATA[0..7];
+        for datum in data.iter() {
+            calculator.push(datum);
+        }
+        let json = serde_json::to_string(&calculator).unwrap();
+
+        let deserialized_calculator: MerkleRootCalculator =
+            serde_json::from_str(&json).expect("Unable to read from str");
+
+        assert_eq!(calculator.root(), deserialized_calculator.root());
     }
 }

@@ -387,7 +387,11 @@ where
             asset_id_mem_address,
             amount_of_gas_to_forward,
         };
-        let gas_cost = self.gas_costs().call;
+        let mut gas_cost = self.gas_costs().call;
+        // Charge only for the `base` execution.
+        // We will charge for the frame size in the `prepare_call`.
+        self.gas_charge(gas_cost.base)?;
+        gas_cost.base = 0;
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();

@@ -727,6 +727,7 @@ where
             }
 
             Instruction::CALL(call) => {
+                // We charge for the gas inside of the `prepare_call` function.
                 let (a, b, c, d) = call.unpack();
 
                 // Enter call context
@@ -753,13 +754,14 @@ where
             }
 
             Instruction::CSIZ(csiz) => {
+                // We charge for the gas inside of the `code_size` function.
                 let (a, b) = csiz.unpack();
                 self.code_size(a.into(), r!(b))?;
             }
 
             Instruction::LDC(ldc) => {
+                // We charge for the gas inside of the `load_contract_code` function.
                 let (a, b, c) = ldc.unpack();
-                self.dependent_gas_charge(self.gas_costs().ldc, r!(c))?;
                 self.load_contract_code(r!(a), r!(b), r!(c))?;
             }
 

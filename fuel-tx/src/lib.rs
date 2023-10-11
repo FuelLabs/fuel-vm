@@ -89,19 +89,16 @@ pub use transaction::{
     PredicateParameters,
     Script,
     ScriptParameters,
+    Signable,
     StorageSlot,
     Transaction,
     TransactionFee,
     TransactionRepr,
     TxId,
     TxParameters,
+    UniqueIdentifier,
     UtxoId,
     Witness,
-};
-
-pub use transaction::{
-    Signable,
-    UniqueIdentifier,
 };
 
 #[cfg(feature = "alloc")]

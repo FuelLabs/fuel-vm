@@ -1,7 +1,7 @@
 use core::convert::Infallible;
 
 /// Crypto error variants
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::Display)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Error {
     /// Invalid secp256k1 secret key

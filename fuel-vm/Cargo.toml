@@ -23,7 +23,7 @@ fuel-asm = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true, default-features = false }
 fuel-merkle = { workspace = true, default-features = false }
 fuel-storage = { workspace = true }
-fuel-tx = { workspace = true, default-features = false }
+fuel-tx = { workspace = true, default-features = false, features = ["alloc", "builder"] }
 fuel-types = { workspace = true, default-features = false }
 hashbrown = "0.14"
 itertools = { version = "0.10", default-features = false }

@@ -13,6 +13,7 @@ description = "Fuel cryptographic primitives."
 [dependencies]
 coins-bip32 = { version = "0.8", default-features = false, optional = true }
 coins-bip39 = { version = "0.8", default-features = false, features = ["english"], optional = true }
+derive_more = { workspace = true, default-features = false }
 ecdsa = { version = "0.16", default-features = false }
 ed25519-dalek = { version = "2.0.0", default-features = false }
 fuel-types = { workspace = true, default-features = false }

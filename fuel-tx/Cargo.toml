@@ -12,7 +12,7 @@ description = "FuelVM transaction."
 
 [dependencies]
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"], optional = true }
-derive_more = { version = "0.99", default-features = false, features = ["display"] }
+derive_more = { workspace = true, default-features = false }
 fuel-asm = { workspace = true, default-features = false }
 fuel-crypto = { workspace = true, default-features = false }
 fuel-merkle = { workspace = true, default-features = false, optional = true }

@@ -519,12 +519,14 @@ fn ldc__load_len_of_target_contract<'a>(
     if include_log_d {
         let padded_len = pad(len);
         load_contract.extend([
-            op::subi(reg_a, RegId::SSP, padded_len), /* r[a] := $ssp - 16 (start of
+            op::subi(reg_a, RegId::SSP, padded_len), /* r[a] := $ssp - padded_len
+                                                      * (start of
                                                       * the loaded
                                                       * code) */
-            op::movi(reg_c, padded_len as u32), // r[b] = 16 (length of the loaded code)
+            op::movi(reg_c, padded_len as u32), /* r[b] = padded_len (length of the
+                                                 * loaded code) */
             op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_c), /* Log digest of the
-                                                 * loaded code */
+                                                               * loaded code */
         ])
     }
 

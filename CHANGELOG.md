@@ -6,10 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [#603](https://github.com/FuelLabs/fuel-vm/pull/603): Added `MerkleRootCalculator`for efficient in-memory Merkle root calculation.
+
 ### Changed
 
 - [#595](https://github.com/FuelLabs/fuel-vm/pull/595): Removed `wee_alloc` dependency from `fuel-asm`. It now uses the builtin allocator on web targets as well.
-
 
 #### Breaking
 

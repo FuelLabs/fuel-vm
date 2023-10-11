@@ -18,21 +18,28 @@ fn test_load_contract() -> IoResult<(), Infallible> {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let hp = 2000;
+    let mut cgas = 1000;
+    let mut ggas = 1000;
     let mut ssp = 1000;
     let mut sp = 1000;
     let fp = 0;
+    let is = 0;
 
     let contract_id = ContractId::from([4u8; 32]);
 
     let contract_id_mem_address: Word = 32;
     let offset = 20;
     let num_bytes = 40;
+    const CONTRACT_SIZE: u64 = 400;
 
     memory[contract_id_mem_address as usize
         ..contract_id_mem_address as usize + ContractId::LEN]
         .copy_from_slice(contract_id.as_ref());
     storage
-        .storage_contract_insert(&contract_id, &Contract::from(vec![5u8; 400]))
+        .storage_contract_insert(
+            &contract_id,
+            &Contract::from(vec![5u8; CONTRACT_SIZE as usize]),
+        )
         .unwrap();
 
     let mut panic_context = PanicContext::None;
@@ -41,15 +48,32 @@ fn test_load_contract() -> IoResult<(), Infallible> {
         contract_max_size: 100,
         storage: &storage,
         memory: &mut memory,
+        profiler: &mut Profiler::default(),
         input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        current_contract: None,
+        gas_cost: DependentCost {
+            base: 13,
+            dep_per_unit: 1,
+        },
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         ssp: RegMut::new(&mut ssp),
         sp: RegMut::new(&mut sp),
         fp: Reg::new(&fp),
         hp: Reg::new(&hp),
         pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
+    assert_eq!(
+        cgas,
+        1000 - CONTRACT_SIZE /* price per byte */ - 13 // base price
+    );
+    assert_eq!(
+        ggas,
+        1000 - CONTRACT_SIZE /* price per byte */ - 13 // base price
+    );
 
     Ok(())
 }

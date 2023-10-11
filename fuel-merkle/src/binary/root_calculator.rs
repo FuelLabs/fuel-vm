@@ -9,9 +9,6 @@ use crate::{
 use crate::alloc::borrow::ToOwned;
 use alloc::vec::Vec;
 
-#[cfg(test)]
-use serde_json as _;
-
 #[derive(Default, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MerkleRootCalculator {
@@ -81,6 +78,8 @@ mod test {
     use super::*;
     use crate::binary::in_memory::MerkleTree;
     use fuel_merkle_test_helpers::TEST_DATA;
+    #[cfg(test)]
+    use serde_json as _;
 
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {

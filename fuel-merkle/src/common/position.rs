@@ -8,10 +8,10 @@ use crate::common::{
     PositionPath,
 };
 use core::convert::Infallible;
-use serde::{
-    Deserialize,
-    Serialize,
-};
+// use serde::{
+//     Deserialize,
+//     Serialize,
+// };
 
 /// # Position
 ///
@@ -90,7 +90,8 @@ use serde::{
 /// balanced Merkle tree, using methods to retrieve a `Position's` sibling,
 /// parent, or uncle `Position`. However, in such cases, the corresponding
 /// sibling or uncle nodes are not guaranteed to exist in the tree.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Position(u64);
 
 const LEFT_CHILD_DIRECTION: i64 = -1;

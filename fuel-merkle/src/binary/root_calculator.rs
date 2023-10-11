@@ -6,15 +6,14 @@ use crate::{
     common::Bytes32,
 };
 
-use serde::{
-    Deserialize,
-    Serialize,
-};
-
 use crate::alloc::borrow::ToOwned;
 use alloc::vec::Vec;
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg(test)]
+use serde_json as _;
+
+#[derive(Default, Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MerkleRootCalculator {
     stack: Vec<Node>,
 }
@@ -148,6 +147,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn test_serialize_deserialize() {
         let mut calculator = MerkleRootCalculator::new();
 
@@ -155,11 +155,10 @@ mod test {
         for datum in data.iter() {
             calculator.push(datum);
         }
-
         let json = serde_json::to_string(&calculator).unwrap();
 
         let deserialized_calculator: MerkleRootCalculator =
-            serde_json::from_str(&json).unwrap();
+            serde_json::from_str(&json).expect("Unable to read from str");
 
         assert_eq!(calculator.root(), deserialized_calculator.root());
     }

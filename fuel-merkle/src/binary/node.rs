@@ -10,12 +10,12 @@ use crate::{
 };
 
 use core::fmt::Debug;
-use serde::{
-    Deserialize,
-    Serialize,
-};
-
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+// use serde::{
+//     Deserialize,
+//     Serialize,
+// };
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Node {
     position: Position,
     hash: Bytes32,

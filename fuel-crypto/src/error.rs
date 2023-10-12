@@ -51,11 +51,6 @@ impl From<Infallible> for Error {
 mod use_std {
     use super::*;
     use coins_bip39::MnemonicError;
-    use std::{
-        error,
-        fmt,
-        io,
-    };
 
     impl From<MnemonicError> for Error {
         fn from(_: MnemonicError) -> Self {
@@ -66,24 +61,6 @@ mod use_std {
     impl From<coins_bip32::Bip32Error> for Error {
         fn from(_: coins_bip32::Bip32Error) -> Self {
             Self::Bip32Error
-        }
-    }
-
-    impl fmt::Display for Error {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{self:?}")
-        }
-    }
-
-    impl error::Error for Error {
-        fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-            None
-        }
-    }
-
-    impl From<Error> for io::Error {
-        fn from(e: Error) -> io::Error {
-            io::Error::new(io::ErrorKind::Other, e)
         }
     }
 }

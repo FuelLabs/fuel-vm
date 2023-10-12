@@ -96,6 +96,7 @@ where
             balances: self.balances,
             panic_context: self.panic_context,
             profiler: self.profiler,
+            ecal_function: self.ecal_function,
             interpreter_params: self.interpreter_params,
         }
     }
@@ -169,6 +170,7 @@ where
             balances: self.balances,
             panic_context: self.panic_context,
             profiler: self.profiler,
+            ecal_function: self.ecal_function,
             interpreter_params: self.interpreter_params,
         }
     }

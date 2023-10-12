@@ -228,6 +228,7 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::TIME => true,
         Opcode::CFE => false,
         Opcode::CFS => false,
+        Opcode::ECAL => true,
     }
 }
 
@@ -342,5 +343,6 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::TIME => false,
         Opcode::CFE => false,
         Opcode::CFS => false,
+        Opcode::ECAL => true,
     }
 }

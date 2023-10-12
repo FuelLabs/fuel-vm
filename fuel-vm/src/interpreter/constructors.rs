@@ -48,6 +48,7 @@ where
             context: Context::default(),
             balances: RuntimeBalances::default(),
             profiler: Profiler::default(),
+            ecal_function: Self::DEFAULT_ECAL,
             interpreter_params,
             panic_context: PanicContext::None,
         }

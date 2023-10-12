@@ -880,6 +880,11 @@ where
                 let (a, b, c, d) = tro.unpack();
                 self.transfer_output(r!(a), r!(b), r!(c), r!(d))?;
             }
+
+            Instruction::ECAL(ecal) => {
+                let (a, b, c, d) = ecal.unpack();
+                self.external_call(a, b, c, d)?;
+            }
         }
 
         Ok(ExecuteState::Proceed)

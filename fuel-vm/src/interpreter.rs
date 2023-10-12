@@ -69,6 +69,7 @@ mod post_execution;
 mod receipts;
 
 mod debug;
+mod ecal;
 
 use crate::profiler::Profiler;
 
@@ -88,6 +89,7 @@ use crate::checked_transaction::{
 };
 
 use self::{
+    ecal::EcalFn,
     memory::Memory,
     receipts::ReceiptsCtx,
 };
@@ -113,6 +115,9 @@ pub struct Interpreter<S, Tx = ()> {
     context: Context,
     balances: RuntimeBalances,
     profiler: Profiler,
+    /// This is called by `ECAL` instruction.
+    /// By default, does nothing but consumes gas like `NOOP`.
+    ecal_function: EcalFn,
     interpreter_params: InterpreterParams,
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.

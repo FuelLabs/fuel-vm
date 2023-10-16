@@ -8,6 +8,7 @@ use crate::{
 use core::hash::Hash;
 
 use fuel_types::{
+    canonical,
     AssetId,
     BlockHeight,
 };
@@ -293,6 +294,17 @@ impl FormatValidityChecks for Transaction {
             }
         }
     }
+}
+
+pub(crate) fn check_size<T>(tx: &T) -> Result<(), CheckError>
+where
+    T: canonical::Serialize,
+{
+    if tx.size_dynamic() > 17 * 1024 * 1024 {
+        Err(CheckError::TransactionSizeLimitExceeded)?;
+    }
+
+    Ok(())
 }
 
 pub(crate) fn check_common_part<T>(

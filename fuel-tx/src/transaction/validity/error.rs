@@ -85,6 +85,8 @@ pub enum CheckError {
     TransactionMintIncorrectOutputIndex,
     /// The `Output.mint_base_asset` is not base asset.
     TransactionMintNonBaseAsset,
+    /// The transaction exceeded the size limit of 17mb.
+    TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded
     TransactionGasLimit,
     TransactionMaturity,

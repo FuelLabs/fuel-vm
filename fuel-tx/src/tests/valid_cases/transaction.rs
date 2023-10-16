@@ -852,7 +852,7 @@ fn script_transaction_at_maximum_size_is_valid() {
                 maturity,
             )
             .finalize();
-        tx.size_dynamic()
+        tx.size_static() + tx.size_dynamic()
     };
 
     let script_size = MAX_SIZE - base_size;
@@ -906,14 +906,15 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
                 maturity,
             )
             .finalize();
-        tx.size_dynamic()
+        tx.size_static() + tx.size_dynamic()
     };
 
     let script_size = MAX_SIZE - base_size;
 
     let script = {
         // Exceed the maximum size by 1 byte
-        let mut data = alloc::vec![0u8; script_size + 1];
+        let script_size = script_size + 1;
+        let mut data = alloc::vec![0u8; script_size];
         rng.fill_bytes(data.as_mut_slice());
         data
     };

@@ -1,6 +1,5 @@
 use super::{
     internal::inc_pc,
-    ExecutableTransaction,
     Interpreter,
 };
 use crate::{
@@ -157,10 +156,7 @@ impl MemoryRange {
     /// Return an owned memory slice with a relative address to the heap space
     /// defined in `r[$hp]`. Panics if the range is not within the heap space.
     #[cfg(test)]
-    pub fn to_heap<S, Tx>(self, vm: &Interpreter<S, Tx>) -> Self
-    where
-        Tx: ExecutableTransaction,
-    {
+    pub fn to_heap<S, Tx>(self, vm: &Interpreter<S, Tx>) -> Self {
         let hp = vm.registers()[RegId::HP] as usize;
         let start = self.start.checked_add(hp).expect("Overflow");
         let end = self.end.checked_add(hp).expect("Overflow");
@@ -200,10 +196,7 @@ impl MemoryRange {
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
-where
-    Tx: ExecutableTransaction,
-{
+impl<S, Tx> Interpreter<S, Tx> {
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
         OwnershipRegisters::new(self)

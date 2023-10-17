@@ -10,6 +10,8 @@ use crate::{
 use super::Interpreter;
 
 pub trait EcalAccess {
+    // Accessors
+
     fn memory(&self) -> &[u8];
     fn memory_mut(&mut self) -> &mut [u8];
 
@@ -25,6 +27,10 @@ pub trait EcalAccess {
         arg: Word,
     ) -> SimpleResult<()>;
     fn gas_costs(&self) -> &fuel_tx::GasCosts;
+
+    // Helper methods
+
+    fn allocate(&mut self, size: Word) -> SimpleResult<()>;
 }
 
 impl<S, Tx> EcalAccess for Interpreter<S, Tx> {
@@ -63,6 +69,10 @@ impl<S, Tx> EcalAccess for Interpreter<S, Tx> {
     fn gas_costs(&self) -> &fuel_tx::GasCosts {
         &self.interpreter_params.gas_costs
     }
+
+    fn allocate(&mut self, size: Word) -> SimpleResult<()> {
+        self.malloc(size)
+    }
 }
 
 pub type EcalFn = fn(&mut dyn EcalAccess, RegId, RegId, RegId, RegId) -> SimpleResult<()>;
@@ -80,6 +90,16 @@ fn noop_ecall(
 
 impl<S, Tx> Interpreter<S, Tx> {
     pub(crate) const DEFAULT_ECAL: EcalFn = noop_ecall;
+
+    /// Sets ECAL opcode handler function
+    pub fn set_ecal(&mut self, ecal_function: EcalFn) {
+        self.ecal_function = ecal_function;
+    }
+
+    /// Resets ECAL opcode handler function back to default noop
+    pub fn reset_ecal(&mut self) {
+        self.set_ecal(Self::DEFAULT_ECAL);
+    }
 
     pub(crate) fn external_call(
         &mut self,

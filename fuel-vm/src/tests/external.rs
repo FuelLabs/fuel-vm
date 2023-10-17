@@ -43,7 +43,6 @@ fn default_ecal() {
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
-    dbg!(&receipts);
 
     let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() else {
         panic!("Expected a result receipt");
@@ -110,7 +109,6 @@ fn provide_ecal_fn() {
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
-    dbg!(&receipts);
 
     let Receipt::Log { ra, rb, .. } = receipts.first().unwrap() else {
         panic!("Expected a log receipt");

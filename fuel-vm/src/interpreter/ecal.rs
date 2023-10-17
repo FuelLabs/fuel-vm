@@ -1,3 +1,5 @@
+//! See `fuel-vm/examples/external.rs` for example usage.
+
 use fuel_asm::RegId;
 use fuel_tx::DependentCost;
 use fuel_types::Word;
@@ -16,6 +18,7 @@ use super::{
     Interpreter,
 };
 
+/// Accessing the VM state from ECAL instruction handler is done through this trait.
 pub trait EcalAccess {
     // Accessors
 
@@ -82,8 +85,10 @@ impl<S, Tx> EcalAccess for Interpreter<S, Tx> {
     }
 }
 
+/// ECAL opcode handler function type
 pub type EcalFn = fn(&mut dyn EcalAccess, RegId, RegId, RegId, RegId) -> SimpleResult<()>;
 
+/// Default ECAL opcode handler function, which charges for `noop` and does nothing.
 fn noop_ecall(
     vm: &mut dyn EcalAccess,
     _: RegId,
@@ -107,6 +112,7 @@ impl<S, Tx> Interpreter<S, Tx> {
         self.set_ecal(Self::DEFAULT_ECAL);
     }
 
+    /// Executes ECAL opcode handler function and increments PC
     pub(crate) fn external_call(
         &mut self,
         a: RegId,

@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [#607](https://github.com/FuelLabs/fuel-vm/pull/607): Added `ECAL` instruction.
+
 ## [Version 0.39.0]
 
 ### Added

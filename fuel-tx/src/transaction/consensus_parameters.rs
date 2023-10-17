@@ -15,6 +15,7 @@ pub use gas::{
 };
 
 const MAX_GAS: u64 = 100_000_000;
+const MAX_SIZE: u64 = 17_000_000;
 
 /// A collection of parameters for convenience
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -232,6 +233,8 @@ pub struct TxParameters {
     pub max_witnesses: u64,
     /// Maximum gas per transaction.
     pub max_gas_per_tx: u64,
+    /// Maximum size in bytes
+    pub max_size: u64,
 }
 
 impl TxParameters {
@@ -241,6 +244,7 @@ impl TxParameters {
         max_outputs: 255,
         max_witnesses: 255,
         max_gas_per_tx: MAX_GAS,
+        max_size: MAX_SIZE,
     };
 
     /// Transaction memory offset in VM runtime
@@ -272,6 +276,12 @@ impl TxParameters {
     /// Replace the max gas per transaction with the given argument
     pub const fn with_max_gas_per_tx(mut self, max_gas_per_tx: u64) -> Self {
         self.max_gas_per_tx = max_gas_per_tx;
+        self
+    }
+
+    /// Replace the max size of the transaction with the given argument
+    pub const fn with_max_size(mut self, max_size: u64) -> Self {
+        self.max_size = max_size;
         self
     }
 }

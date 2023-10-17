@@ -3,7 +3,10 @@ use crate::{
     output,
     transaction::{
         field::TxPointer as TxPointerField,
-        validity::FormatValidityChecks,
+        validity::{
+            check_size,
+            FormatValidityChecks,
+        },
     },
     CheckError,
     ConsensusParameters,
@@ -94,6 +97,8 @@ impl FormatValidityChecks for Mint {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
+        check_size(self, consensus_params.tx_params())?;
+
         if self.tx_pointer().block_height() != block_height {
             return Err(CheckError::TransactionMintIncorrectBlockHeight)
         }

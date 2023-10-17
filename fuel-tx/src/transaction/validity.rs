@@ -297,15 +297,17 @@ impl FormatValidityChecks for Transaction {
 }
 
 /// Validates the size of the transaction in bytes. Transactions cannot exceed
-/// 17mb in size. The size of a transaction is calculated as the sum of the
-/// sizes of its static and dynamic parts.
-pub(crate) fn check_size<T>(tx: &T) -> Result<(), CheckError>
+/// the total size specified by the transaction parameters. The size of a
+/// transaction is calculated as the sum of the sizes of its static and dynamic
+/// parts.
+pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), CheckError>
 where
     T: canonical::Serialize,
 {
-    let sz_static = tx.size_static();
-    let sz_dynamic = tx.size_dynamic();
-    if (sz_static + sz_dynamic) > 17 * 1024 * 1024 {
+    let size_static = tx.size_static();
+    let size_dynamic = tx.size_dynamic();
+    let total_size = (size_static + size_dynamic) as u64;
+    if total_size > tx_params.max_size {
         Err(CheckError::TransactionSizeLimitExceeded)?;
     }
 

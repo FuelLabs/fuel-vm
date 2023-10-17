@@ -172,7 +172,7 @@ impl FormatValidityChecks for Script {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
-        check_size(self)?;
+        check_size(self, consensus_params.tx_params())?;
 
         check_common_part(
             self,

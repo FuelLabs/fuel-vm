@@ -222,7 +222,7 @@ impl FormatValidityChecks for Create {
             ..
         } = consensus_params;
 
-        check_size(self)?;
+        check_size(self, consensus_params.tx_params())?;
 
         check_common_part(
             self,

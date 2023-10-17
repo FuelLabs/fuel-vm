@@ -4,10 +4,17 @@ use fuel_types::Word;
 
 use crate::{
     call::CallFrame,
+    constraints::reg_key::{
+        split_registers,
+        SystemRegisters,
+    },
     error::SimpleResult,
 };
 
-use super::Interpreter;
+use super::{
+    internal::inc_pc,
+    Interpreter,
+};
 
 pub trait EcalAccess {
     // Accessors
@@ -84,8 +91,7 @@ fn noop_ecall(
     _: RegId,
     _: RegId,
 ) -> SimpleResult<()> {
-    vm.gas_charge(vm.gas_costs().noop)?;
-    Ok(())
+    vm.gas_charge(vm.gas_costs().noop)
 }
 
 impl<S, Tx> Interpreter<S, Tx> {
@@ -108,6 +114,8 @@ impl<S, Tx> Interpreter<S, Tx> {
         c: RegId,
         d: RegId,
     ) -> SimpleResult<()> {
-        (self.ecal_function)(self, a, b, c, d)
+        (self.ecal_function)(self, a, b, c, d)?;
+        let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
+        Ok(inc_pc(pc)?)
     }
 }

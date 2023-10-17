@@ -1,3 +1,4 @@
+use alloc::vec;
 use fuel_asm::{
     op,
     GTFArgs,

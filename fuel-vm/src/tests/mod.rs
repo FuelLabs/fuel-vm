@@ -12,6 +12,7 @@ mod code_coverage;
 mod contract;
 mod crypto;
 mod encoding;
+mod external;
 mod flow;
 mod gas_factor;
 mod jump_absolute;

@@ -836,14 +836,11 @@ fn script_transaction_at_maximum_size_is_valid() {
     let maturity = 100.into();
     let block_height = 100.into();
     let mut params = test_params();
-    let max_size = params.tx_params.max_size as usize;
-    params.script_params.max_script_length = max_size as u64;
+    let max_size = 1024usize;
+    params.tx_params.max_size = max_size as u64;
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .gas_limit(params.tx_params.max_gas_per_tx)
-            .gas_price(rng.gen())
-            .maturity(maturity)
             .add_unsigned_coin_input(
                 secret,
                 rng.gen(),
@@ -853,7 +850,7 @@ fn script_transaction_at_maximum_size_is_valid() {
                 maturity,
             )
             .finalize();
-        tx.size_static() + tx.size_dynamic()
+        tx.size()
     };
 
     let script_size = max_size - base_size;
@@ -864,9 +861,6 @@ fn script_transaction_at_maximum_size_is_valid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_limit(params.tx_params.max_gas_per_tx)
-        .gas_price(rng.gen())
-        .maturity(maturity)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
@@ -889,14 +883,11 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
     let maturity = 100.into();
     let block_height = 100.into();
     let mut params = test_params();
-    let max_size = params.tx_params.max_size as usize;
-    params.script_params.max_script_length = max_size as u64;
+    let max_size = 1024usize;
+    params.tx_params.max_size = max_size as u64;
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .gas_limit(params.tx_params.max_gas_per_tx)
-            .gas_price(rng.gen())
-            .maturity(maturity)
             .add_unsigned_coin_input(
                 secret,
                 rng.gen(),
@@ -906,7 +897,7 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
                 maturity,
             )
             .finalize();
-        tx.size_static() + tx.size_dynamic()
+        tx.size()
     };
 
     let script_size = max_size - base_size;
@@ -919,9 +910,6 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_limit(params.tx_params.max_gas_per_tx)
-        .gas_price(rng.gen())
-        .maturity(maturity)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),

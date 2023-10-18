@@ -15,7 +15,7 @@ pub use gas::{
 };
 
 const MAX_GAS: u64 = 100_000_000;
-const MAX_SIZE: u64 = 17_000_000;
+const MAX_SIZE: u64 = 17 * 1024 * 1024;
 
 /// A collection of parameters for convenience
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

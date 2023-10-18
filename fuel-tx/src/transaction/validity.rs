@@ -26,6 +26,9 @@ use itertools::Itertools;
 
 mod error;
 
+#[cfg(test)]
+mod tests;
+
 use crate::{
     input::{
         coin::{
@@ -304,10 +307,7 @@ pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), Chec
 where
     T: canonical::Serialize,
 {
-    let size_static = tx.size_static();
-    let size_dynamic = tx.size_dynamic();
-    let total_size = (size_static + size_dynamic) as u64;
-    if total_size > tx_params.max_size {
+    if tx.size() as u64 > tx_params.max_size {
         Err(CheckError::TransactionSizeLimitExceeded)?;
     }
 

@@ -726,6 +726,7 @@ pub mod field {
     pub trait Inputs {
         fn inputs(&self) -> &Vec<Input>;
         fn inputs_mut(&mut self) -> &mut Vec<Input>;
+        fn num_inputs(&self) -> usize;
         fn inputs_offset(&self) -> usize;
 
         /// Returns the offset to the `Input` at `idx` index, if any.

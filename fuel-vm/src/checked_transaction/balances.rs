@@ -15,6 +15,7 @@ use fuel_tx::{
     Chargeable,
     CheckError,
     FeeParameters,
+    GasCosts,
     Input,
     Output,
     TransactionFee,
@@ -28,6 +29,7 @@ use alloc::collections::BTreeMap;
 
 pub(crate) fn initial_free_balances<T>(
     transaction: &T,
+    gas_costs: &GasCosts,
     params: &FeeParameters,
     base_asset_id: &AssetId,
 ) -> Result<AvailableBalances, CheckError>

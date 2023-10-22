@@ -33,7 +33,7 @@ impl ReceiptsCtx {
     }
 
     pub fn root(&self) -> Bytes32 {
-        self.receipts_tree.root().into()
+        self.receipts_tree.clone().root().into()
     }
 
     /// Get a mutable lock on this context

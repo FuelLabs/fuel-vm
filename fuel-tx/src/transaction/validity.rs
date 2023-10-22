@@ -8,6 +8,7 @@ use crate::{
 use core::hash::Hash;
 
 use fuel_types::{
+    canonical,
     AssetId,
     BlockHeight,
 };
@@ -24,6 +25,9 @@ use hashbrown::HashMap;
 use itertools::Itertools;
 
 mod error;
+
+#[cfg(test)]
+mod tests;
 
 use crate::{
     input::{
@@ -293,6 +297,21 @@ impl FormatValidityChecks for Transaction {
             }
         }
     }
+}
+
+/// Validates the size of the transaction in bytes. Transactions cannot exceed
+/// the total size specified by the transaction parameters. The size of a
+/// transaction is calculated as the sum of the sizes of its static and dynamic
+/// parts.
+pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), CheckError>
+where
+    T: canonical::Serialize,
+{
+    if tx.size() as u64 > tx_params.max_size {
+        Err(CheckError::TransactionSizeLimitExceeded)?;
+    }
+
+    Ok(())
 }
 
 pub(crate) fn check_common_part<T>(

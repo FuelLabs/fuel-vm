@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#609](https://github.com/FuelLabs/fuel-vm/pull/609): Checked transactions (`Create`, `Script`, and `Mint`) now enforce a maximum size. The maximum size is specified by `MAX_TRANSACTION_SIZE` in the transaction parameters, under consensus parameters. Checking a transaction above this size raises `CheckError::TransactionSizeLimitExceeded`.
+
 ## [Version 0.39.0]
 
 ### Added

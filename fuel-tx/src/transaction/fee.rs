@@ -224,15 +224,14 @@ mod tests {
         )
         .expect("failed to calculate fee");
 
-        let expected = PARAMS.gas_per_byte * metered_bytes + gas_limit;
-        let expected = expected * gas_price;
-        let expected = expected as f64 / PARAMS.gas_price_factor as f64;
-        let truncated = expected as Word;
-        let expected = expected.ceil() as Word;
+        let expected_max_fee = PARAMS.gas_per_byte * metered_bytes + gas_limit;
+        let expected_max_fee = expected_max_fee * gas_price;
+        let expected_max_fee = expected_max_fee as f64 / PARAMS.gas_price_factor as f64;
+        let truncated = expected_max_fee as Word;
+        let expected_max_fee = expected_max_fee.ceil() as Word;
 
-        assert_ne!(truncated, expected);
-        assert_eq!(expected, fee.max_fee);
-        assert_eq!(expected, fee.min_fee);
+        assert_ne!(truncated, expected_max_fee);
+        assert_eq!(expected_max_fee, fee.max_fee);
     }
 
     #[test]

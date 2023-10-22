@@ -4,7 +4,7 @@ use core::{
     ops::Index,
 };
 
-use fuel_merkle::binary;
+use fuel_merkle::binary::root_calculator::MerkleRootCalculator as MerkleTree;
 use fuel_tx::Receipt;
 use fuel_types::{
     canonical::Serialize,
@@ -14,7 +14,7 @@ use fuel_types::{
 #[derive(Debug, Default, Clone)]
 pub(crate) struct ReceiptsCtx {
     receipts: Vec<Receipt>,
-    receipts_tree: binary::in_memory::MerkleTree,
+    receipts_tree: MerkleTree,
 }
 
 impl ReceiptsCtx {
@@ -24,7 +24,7 @@ impl ReceiptsCtx {
     }
 
     pub fn clear(&mut self) {
-        self.receipts_tree.reset();
+        self.receipts_tree = MerkleTree::new();
         self.receipts.clear();
     }
 
@@ -44,7 +44,7 @@ impl ReceiptsCtx {
     /// Recalculates the Merkle root of the receipts from scratch. This should
     /// only be used when the list of receipts has been mutated externally.
     fn recalculate_root(&mut self) {
-        self.receipts_tree.reset();
+        self.receipts_tree = MerkleTree::new();
         // TODO: Remove `clone()` when `to_bytes()` no longer requires `&mut self`
         let receipts = self.as_ref().clone();
         for receipt in receipts {

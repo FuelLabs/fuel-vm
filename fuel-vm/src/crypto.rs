@@ -1,6 +1,6 @@
 //! Crypto implementations for the instructions
 
-use fuel_merkle::binary::in_memory::MerkleTree;
+use fuel_merkle::binary::root_calculator::MerkleRootCalculator as MerkleTree;
 use fuel_types::Bytes32;
 
 /// Calculate a binary merkle root with in-memory storage

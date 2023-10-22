@@ -7,7 +7,7 @@ use crate::{
 use derivative::Derivative;
 use fuel_crypto::Hasher;
 use fuel_merkle::{
-    binary::in_memory::MerkleTree as BinaryMerkleTree,
+    binary::root_calculator::MerkleRootCalculator as BinaryMerkleTree,
     sparse::{
         in_memory::MerkleTree as SparseMerkleTree,
         MerkleTreeKey,

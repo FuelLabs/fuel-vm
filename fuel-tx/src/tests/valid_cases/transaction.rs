@@ -829,6 +829,105 @@ fn create() {
 }
 
 #[test]
+fn script_transaction_at_maximum_size_is_valid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let secret = SecretKey::random(rng);
+
+    let maturity = 100.into();
+    let block_height = 100.into();
+    let mut params = test_params();
+    let max_size = 1024usize;
+    params.tx_params.max_size = max_size as u64;
+
+    let base_size = {
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .add_unsigned_coin_input(
+                secret,
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                maturity,
+            )
+            .finalize();
+        tx.size()
+    };
+
+    let script_size = max_size - base_size;
+
+    let script = {
+        let mut data = alloc::vec![0u8; script_size];
+        rng.fill_bytes(data.as_mut_slice());
+        data
+    };
+    let tx = TransactionBuilder::script(script, vec![])
+        .add_unsigned_coin_input(
+            secret,
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            maturity,
+        )
+        .finalize();
+
+    tx.check(block_height, &params)
+        .expect("Expected valid transaction");
+}
+
+#[test]
+fn script_transaction_exceeding_maximum_size_is_invalid() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let secret = SecretKey::random(rng);
+
+    let maturity = 100.into();
+    let block_height = 100.into();
+    let mut params = test_params();
+    let max_size = 1024usize;
+    params.tx_params.max_size = max_size as u64;
+
+    let base_size = {
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .add_unsigned_coin_input(
+                secret,
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                maturity,
+            )
+            .finalize();
+        tx.size()
+    };
+
+    let script_size = max_size - base_size;
+
+    let script = {
+        // Exceed the maximum size by 1 byte
+        let script_size = script_size + 1;
+        let mut data = alloc::vec![0u8; script_size];
+        rng.fill_bytes(data.as_mut_slice());
+        data
+    };
+    let tx = TransactionBuilder::script(script, vec![])
+        .add_unsigned_coin_input(
+            secret,
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            maturity,
+        )
+        .finalize();
+
+    let err = tx
+        .check(block_height, &params)
+        .expect_err("Expected valid transaction");
+
+    assert_eq!(err, CheckError::TransactionSizeLimitExceeded);
+}
+
+#[test]
 fn mint() {
     let rng = &mut StdRng::seed_from_u64(8586);
 

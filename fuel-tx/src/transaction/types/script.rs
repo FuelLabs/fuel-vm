@@ -15,6 +15,7 @@ use crate::{
         metadata::CommonMetadata,
         validity::{
             check_common_part,
+            check_size,
             FormatValidityChecks,
         },
         Chargeable,
@@ -171,6 +172,8 @@ impl FormatValidityChecks for Script {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
+        check_size(self, consensus_params.tx_params())?;
+
         check_common_part(
             self,
             block_height,

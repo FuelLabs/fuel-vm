@@ -796,13 +796,15 @@ mod tests {
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -826,13 +828,15 @@ mod tests {
             return TestResult::discard()
         }
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -857,11 +861,13 @@ mod tests {
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -885,11 +891,13 @@ mod tests {
             return TestResult::discard()
         }
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_min_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -1146,6 +1154,7 @@ mod tests {
 
     fn is_valid_max_fee<Tx>(
         tx: &Tx,
+        gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
     ) -> Result<bool, CheckError>
@@ -1153,7 +1162,7 @@ mod tests {
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
         let available_balances =
-            balances::initial_free_balances(tx, fee_params, base_asset_id)?;
+            balances::initial_free_balances(tx, gas_costs, fee_params, base_asset_id)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let bytes = (tx.metered_bytes_size() as u128)
             * fee_params.gas_per_byte as u128
@@ -1171,6 +1180,7 @@ mod tests {
 
     fn is_valid_min_fee<Tx>(
         tx: &Tx,
+        gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
     ) -> Result<bool, CheckError>
@@ -1178,7 +1188,7 @@ mod tests {
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
         let available_balances =
-            balances::initial_free_balances(tx, fee_params, base_asset_id)?;
+            balances::initial_free_balances(tx, gas_costs, fee_params, base_asset_id)?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
         let bytes = (tx.metered_bytes_size() as u128

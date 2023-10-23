@@ -173,8 +173,8 @@ mod tests {
     fn gas_to_fee(gas: u64, gas_price: Word) -> Word {
         let fee = gas * gas_price;
         let fee = fee as f64 / PARAMS.gas_price_factor as f64;
-        let fee = fee.ceil() as Word;
-        fee
+        
+        fee.ceil() as Word
     }
 
     #[test]

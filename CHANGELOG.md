@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- [#612](https://github.com/FuelLabs/fuel-vm/pull/612): Reduced the memory consumption in all places where we calculate BMT root.
+
 #### Breaking
 
 - [#609](https://github.com/FuelLabs/fuel-vm/pull/609): Checked transactions (`Create`, `Script`, and `Mint`) now enforce a maximum size. The maximum size is specified by `MAX_TRANSACTION_SIZE` in the transaction parameters, under consensus parameters. Checking a transaction above this size raises `CheckError::TransactionSizeLimitExceeded`.

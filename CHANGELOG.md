@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#613](https://github.com/FuelLabs/fuel-vm/pull/613): Transaction fees now include the cost of signature recovery for each signed input.
+
 ## [Version 0.39.0]
 
 ### Added

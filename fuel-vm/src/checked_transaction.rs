@@ -1239,7 +1239,7 @@ mod tests {
         let gas_used_by_bytes =
             tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
         let gas_used_by_signature_recovery =
-            tx.signed_inputs_with_unique_witnesses().iter().count() as u128
+            tx.signed_inputs_with_unique_witnesses().len() as u128
                 * gas_costs.ecr1 as u128;
         let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
         let total =

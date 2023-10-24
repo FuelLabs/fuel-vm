@@ -126,8 +126,7 @@ impl TransactionFee {
         tx: &T,
     ) -> Option<Self> {
         let metered_bytes = tx.metered_bytes_size() as Word;
-        let unique_witnesses =
-            tx.signed_inputs_with_unique_witnesses().iter().count() as Word;
+        let unique_witnesses = tx.signed_inputs_with_unique_witnesses().len() as Word;
         let gas_used_by_signature_recovery =
             unique_witnesses.saturating_mul(gas_costs.ecr1);
         let gas_used_by_predicates = tx.gas_used_by_predicates();

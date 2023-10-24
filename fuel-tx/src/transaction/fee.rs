@@ -129,7 +129,7 @@ impl TransactionFee {
         let metered_bytes = tx.metered_bytes_size() as Word;
         let unique_witnesses = tx
             .inputs()
-            .into_iter()
+            .iter()
             .filter_map(|input| input.witness_index())
             .unique()
             .collect::<Vec<_>>();

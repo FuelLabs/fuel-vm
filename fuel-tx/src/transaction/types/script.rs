@@ -348,11 +348,6 @@ mod field {
         }
 
         #[inline(always)]
-        fn num_inputs(&self) -> usize {
-            self.inputs.len()
-        }
-
-        #[inline(always)]
         fn inputs_offset(&self) -> usize {
             if let Some(ScriptMetadata {
                 common: CommonMetadata { inputs_offset, .. },

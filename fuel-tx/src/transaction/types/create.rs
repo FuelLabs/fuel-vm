@@ -499,11 +499,6 @@ mod field {
         }
 
         #[inline(always)]
-        fn num_inputs(&self) -> usize {
-            self.inputs.len()
-        }
-
-        #[inline(always)]
         fn inputs_offset(&self) -> usize {
             Self::storage_slots_offset_static()
                 + self.storage_slots.len() * StorageSlot::SLOT_SIZE

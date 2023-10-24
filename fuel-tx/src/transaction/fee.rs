@@ -4,6 +4,7 @@ use crate::{
     GasCosts,
 };
 use fuel_asm::Word;
+use itertools::Itertools;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -126,8 +127,14 @@ impl TransactionFee {
         tx: &T,
     ) -> Option<Self> {
         let metered_bytes = tx.metered_bytes_size() as Word;
+        let unique_witnesses = tx
+            .inputs()
+            .into_iter()
+            .filter_map(|input| input.witness_index())
+            .unique()
+            .collect::<Vec<_>>();
         let gas_used_by_signature_recovery =
-            (tx.num_inputs() as Word).saturating_mul(gas_costs.ecr1);
+            (unique_witnesses.len() as Word).saturating_mul(gas_costs.ecr1);
         let gas_used_by_predicates = tx.gas_used_by_predicates();
         let gas_limit = tx.limit();
         let gas_price = tx.price();
@@ -173,7 +180,7 @@ mod tests {
     fn gas_to_fee(gas: u64, gas_price: Word) -> Word {
         let fee = gas * gas_price;
         let fee = fee as f64 / PARAMS.gas_price_factor as f64;
-        
+
         fee.ceil() as Word
     }
 

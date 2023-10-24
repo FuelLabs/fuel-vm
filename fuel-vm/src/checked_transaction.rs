@@ -626,6 +626,7 @@ mod tests {
         Script,
         TransactionBuilder,
     };
+    use itertools::Itertools;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
     use rand::{
@@ -1164,11 +1165,11 @@ mod tests {
         let available_balances =
             balances::initial_free_balances(tx, gas_costs, fee_params, base_asset_id)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
-        let bytes = (tx.metered_bytes_size() as u128)
+        let fee = tx.metered_bytes_size() as u128
             * fee_params.gas_per_byte as u128
             * tx.price() as u128;
         let gas = tx.limit() as u128 * tx.price() as u128;
-        let total = bytes + gas;
+        let total = fee + gas;
         // use different division mechanism than impl
         let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =
@@ -1191,14 +1192,19 @@ mod tests {
             balances::initial_free_balances(tx, gas_costs, fee_params, base_asset_id)?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
-        let bytes = (tx.metered_bytes_size() as u128
-            + tx.gas_used_by_predicates() as u128)
-            * fee_params.gas_per_byte as u128
-            * tx.price() as u128;
+        let gas_used_by_bytes =
+            tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
+        let gas_used_by_signature_recovery =
+            tx.signed_inputs_with_unique_witnesses().iter().count() as u128
+                * gas_costs.ecr1 as u128;
+        let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
+        let total =
+            (gas_used_by_bytes + gas_used_by_predicates + gas_used_by_signature_recovery)
+                * tx.price() as u128;
         // use different division mechanism than impl
-        let fee = bytes / fee_params.gas_price_factor as u128;
+        let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =
-            (bytes.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
+            (total.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
         Ok(rounded_fee == available_balances.fee.min_fee())

@@ -626,7 +626,6 @@ mod tests {
         Script,
         TransactionBuilder,
     };
-    use itertools::Itertools;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
     use rand::{
@@ -896,6 +895,51 @@ mod tests {
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
+
+        if let Ok(valid) = is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
+            TestResult::from_bool(valid)
+        } else {
+            TestResult::discard()
+        }
+    }
+
+    #[quickcheck]
+    fn min_fee_multiple_message_input(
+        gas_price: u64,
+        gas_limit: u64,
+        seed: u64,
+    ) -> TestResult {
+        // verify min fee a transaction can consume based on bytes is correct
+        let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let base_asset_id = rng.gen();
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .finalize();
 
         if let Ok(valid) = is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
         {

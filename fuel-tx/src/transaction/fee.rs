@@ -131,10 +131,11 @@ impl TransactionFee {
             .inputs()
             .iter()
             .filter_map(|input| input.witness_index())
-            .unique()
-            .collect::<Vec<_>>();
+            .sorted_unstable()
+            .dedup()
+            .count() as Word;
         let gas_used_by_signature_recovery =
-            (unique_witnesses.len() as Word).saturating_mul(gas_costs.ecr1);
+            unique_witnesses.saturating_mul(gas_costs.ecr1);
         let gas_used_by_predicates = tx.gas_used_by_predicates();
         let gas_limit = tx.limit();
         let gas_price = tx.price();
@@ -177,11 +178,9 @@ mod tests {
         .with_gas_per_byte(2)
         .with_gas_price_factor(3);
 
-    fn gas_to_fee(gas: u64, gas_price: Word) -> Word {
+    fn gas_to_fee(gas: u64, gas_price: Word) -> f64 {
         let fee = gas * gas_price;
-        let fee = fee as f64 / PARAMS.gas_price_factor as f64;
-
-        fee.ceil() as Word
+        fee as f64 / PARAMS.gas_price_factor as f64
     }
 
     #[test]
@@ -203,11 +202,11 @@ mod tests {
         .expect("failed to calculate fee");
 
         let expected_max_gas = PARAMS.gas_per_byte * metered_bytes + gas_limit;
-        let expected_max_fee = gas_to_fee(expected_max_gas, gas_price);
+        let expected_max_fee = gas_to_fee(expected_max_gas, gas_price).ceil() as Word;
         let expected_min_gas = PARAMS.gas_per_byte * metered_bytes
             + gas_used_by_signature_recovery
             + gas_limit;
-        let expected_min_fee = gas_to_fee(expected_min_gas, gas_price);
+        let expected_min_fee = gas_to_fee(expected_min_gas, gas_price).ceil() as Word;
 
         assert_eq!(expected_max_fee, fee.max_fee);
         assert_eq!(expected_min_fee, fee.min_fee);
@@ -231,14 +230,21 @@ mod tests {
         )
         .expect("failed to calculate fee");
 
-        let expected_max_fee = PARAMS.gas_per_byte * metered_bytes + gas_limit;
-        let expected_max_fee = expected_max_fee * gas_price;
-        let expected_max_fee = expected_max_fee as f64 / PARAMS.gas_price_factor as f64;
+        let expected_max_gas = PARAMS.gas_per_byte * metered_bytes + gas_limit;
+        let expected_max_fee = gas_to_fee(expected_max_gas, gas_price);
         let truncated = expected_max_fee as Word;
         let expected_max_fee = expected_max_fee.ceil() as Word;
-
         assert_ne!(truncated, expected_max_fee);
         assert_eq!(expected_max_fee, fee.max_fee);
+
+        let expected_min_gas = PARAMS.gas_per_byte * metered_bytes
+            + gas_used_by_signature_recovery
+            + gas_limit;
+        let expected_min_fee = gas_to_fee(expected_min_gas, gas_price);
+        let truncated = expected_max_fee as Word;
+        let expected_min_fee = expected_min_fee.ceil() as Word;
+        assert_ne!(truncated, expected_min_fee);
+        assert_eq!(expected_min_fee, fee.min_fee);
     }
 
     #[test]

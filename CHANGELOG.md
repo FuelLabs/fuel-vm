@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - [#612](https://github.com/FuelLabs/fuel-vm/pull/612): Reduced the memory consumption in all places where we calculate BMT root.
+- [#615](https://github.com/FuelLabs/fuel-vm/pull/615): Made `ReceiptsCtx` of the VM modifiable with `test-helpers` feature.
 
 #### Breaking
 

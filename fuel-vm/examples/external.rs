@@ -83,18 +83,17 @@ fn main() {
         Interpreter::with_memory_storage();
 
     let script_data: Vec<u8> = file!().bytes().collect();
-    let script =
-        vec![
-            op::movi(0x20, 4),                                     // Seek 4 bytes
-            op::movi(0x21, 8),                                     // Read next 8 bytes
-            op::gtf_args(0x22, 0x00, GTFArgs::ScriptData),         // File path pointer
-            op::movi(0x23, script_data.len().try_into().unwrap()), // File path length
-            op::ecal(0x20, 0x21, 0x22, 0x23),                      // Read from file
-            op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x21),   // Log the result
-            op::ret(RegId::ONE),
-        ]
-        .into_iter()
-        .collect();
+    let script = vec![
+        op::movi(0x20, 4),                                     // Seek 4 bytes
+        op::movi(0x21, 8),                                     // Read next 8 bytes
+        op::gtf_args(0x22, 0x00, GTFArgs::ScriptData),         // File path pointer
+        op::movi(0x23, script_data.len().try_into().unwrap()), // File path length
+        op::ecal(0x20, 0x21, 0x22, 0x23),                      // Read from file
+        op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x21),   // Log the result
+        op::ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect();
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();

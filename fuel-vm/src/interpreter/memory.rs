@@ -295,8 +295,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
 
     /// Expand heap by `a` bytes.
     pub fn allocate(&mut self, a: Word) -> SimpleResult<()> {
-        let (SystemRegisters { hp, sp, .. }, _) =
-            split_registers(&mut self.registers);
+        let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
         try_allocate(hp, sp.as_ref(), a)
     }
 
@@ -485,11 +484,7 @@ pub(crate) fn store_word(
     Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn try_allocate(
-    mut hp: RegMut<HP>,
-    sp: Reg<SP>,
-    a: Word,
-) -> SimpleResult<()> {
+pub(crate) fn try_allocate(mut hp: RegMut<HP>, sp: Reg<SP>, a: Word) -> SimpleResult<()> {
     let (result, overflow) = hp.overflowing_sub(a);
 
     if overflow || result < *sp {

@@ -30,7 +30,7 @@ use fuel_types::Word;
 
 use core::ops::Div;
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,

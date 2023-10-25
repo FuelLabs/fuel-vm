@@ -92,10 +92,6 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
-        interpreter::{
-            EcalHandler,
-            NoopEcal,
-        },
         memory_client::MemoryClient,
         state::StateTransition,
         storage::{
@@ -453,15 +449,15 @@ pub mod test_helpers {
             }
         }
 
-        fn execute_tx_inner<Ecal, Tx>(
+        fn execute_tx_inner<Tx, Ecal>(
             &mut self,
-            transactor: &mut Transactor<MemoryStorage, Ecal, Tx>,
+            transactor: &mut Transactor<MemoryStorage, Tx, Ecal>,
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
-            Ecal: EcalHandler,
+            Ecal: crate::interpreter::EcalHandler,
         {
             self.storage.set_block_height(self.block_height);
 
@@ -501,8 +497,8 @@ pub mod test_helpers {
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
             let interpreter_params = InterpreterParams::from(&self.consensus_params);
-            let mut transactor: Transactor<_, NoopEcal, _> =
-                Transactor::new(self.storage.clone(), interpreter_params);
+            let mut transactor =
+                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -512,8 +508,8 @@ pub mod test_helpers {
             checked: Checked<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
             let interpreter_params = (&self.consensus_params).into();
-            let mut transactor: Transactor<_, NoopEcal, _> =
-                Transactor::new(self.storage.clone(), interpreter_params);
+            let mut transactor =
+                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -523,8 +519,8 @@ pub mod test_helpers {
             checked: Checked<Script>,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
             let interpreter_params = (&self.consensus_params).into();
-            let mut transactor: Transactor<_, NoopEcal, _> =
-                Transactor::new(self.storage.clone(), interpreter_params);
+            let mut transactor =
+                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
             let state = self.execute_tx_inner(&mut transactor, checked)?;
             let backtrace = transactor.backtrace();
@@ -575,8 +571,7 @@ pub mod test_helpers {
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
-        let client =
-            MemoryClient::new(MemoryStorage::default(), InterpreterParams::default());
+        let client = MemoryClient::default();
 
         check_expected_reason_for_instructions_with_client(
             client,
@@ -586,7 +581,7 @@ pub mod test_helpers {
     }
 
     fn check_expected_reason_for_instructions_with_client(
-        mut client: MemoryClient<NoopEcal>,
+        mut client: MemoryClient,
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
@@ -651,7 +646,7 @@ pub mod test_helpers {
     }
 
     pub fn check_reason_for_transaction(
-        mut client: MemoryClient<NoopEcal>,
+        mut client: MemoryClient,
         checked_tx: Checked<Script>,
         expected_reason: PanicReason,
     ) {

@@ -9,7 +9,7 @@ use crate::{
     storage::InterpreterStorage,
 };
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,

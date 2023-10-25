@@ -38,10 +38,7 @@ pub use types::*;
 
 use crate::{
     error::PredicateVerificationFailed,
-    interpreter::{
-        CheckedMetadata as CheckedMetadataAccessTrait,
-        PredicateErrorEcal,
-    },
+    interpreter::CheckedMetadata as CheckedMetadataAccessTrait,
     prelude::*,
 };
 
@@ -321,9 +318,7 @@ where
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let checked =
-                Interpreter::<PredicateStorage, PredicateErrorEcal>::check_predicates(
-                    &self, params,
-                )?;
+                Interpreter::<PredicateStorage, _>::check_predicates(&self, params)?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
@@ -339,7 +334,7 @@ where
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let predicates_checked =
-                Interpreter::<PredicateStorage, PredicateErrorEcal>::check_predicates_async::<_, E>(
+                Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
                     &self, params,
                 )
                 .await?;
@@ -372,10 +367,8 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     where
         E: ParallelExecutor,
     {
-        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<_, E>(
-            self, params,
-        )
-        .await?;
+        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(self, params)
+            .await?;
 
         Ok(())
     }

@@ -25,7 +25,7 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: Default,
 {
@@ -56,7 +56,7 @@ where
     }
 }
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
@@ -66,29 +66,9 @@ impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
         self.profiler.set_receiver(alloc::boxed::Box::new(receiver));
         self
     }
-
-    /// Sets ECAL opcode handler on type level
-    pub fn with_ecal<NewEcal>(self) -> Interpreter<S, NewEcal, Tx> {
-        Interpreter {
-            _ecal_handler: core::marker::PhantomData::<NewEcal>,
-            registers: self.registers,
-            memory: self.memory,
-            frames: self.frames,
-            receipts: self.receipts,
-            tx: self.tx,
-            initial_balances: self.initial_balances,
-            storage: self.storage,
-            debugger: self.debugger,
-            context: self.context,
-            balances: self.balances,
-            profiler: self.profiler,
-            interpreter_params: self.interpreter_params,
-            panic_context: self.panic_context,
-        }
-    }
 }
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: Clone,
     Tx: ExecutableTransaction,
@@ -100,14 +80,14 @@ where
     }
 }
 
-impl<S, Ecal, Tx> Default for Interpreter<S, Ecal, Tx>
+impl<S, Tx, Ecal> Default for Interpreter<S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {
     fn default() -> Self {
-        Interpreter::<S, Ecal, Tx>::with_storage(
+        Interpreter::<S, Tx, Ecal>::with_storage(
             Default::default(),
             InterpreterParams::default(),
         )
@@ -115,7 +95,7 @@ where
 }
 
 #[cfg(test)]
-impl<Ecal, Tx> Interpreter<(), Ecal, Tx>
+impl<Tx, Ecal> Interpreter<(), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
@@ -128,7 +108,7 @@ where
     }
 }
 
-impl<Ecal, Tx> Interpreter<MemoryStorage, Ecal, Tx>
+impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,

@@ -1,5 +1,4 @@
 use crate::{
-    interpreter::UnreachableEcal,
     prelude::*,
     script_with_data_offset,
     util::test_helpers::TestBuilder,
@@ -83,7 +82,7 @@ fn prevent_contract_id_redeployment() {
     client
         .deploy(create.clone())
         .expect("First create should be executed");
-    let mut txtor: Transactor<_, UnreachableEcal, _> = client.into();
+    let mut txtor: Transactor<_, _> = client.into();
     // second deployment should fail
     let result = txtor.deploy(create).unwrap_err();
     assert_eq!(

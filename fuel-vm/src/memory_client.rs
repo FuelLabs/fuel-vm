@@ -11,7 +11,7 @@ use crate::{
 use crate::interpreter::{
     EcalHandler,
     InterpreterParams,
-    UnreachableEcal,
+    NotSupportedEcal,
 };
 use fuel_tx::{
     Create,
@@ -22,12 +22,12 @@ use fuel_tx::{
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<Ecal: EcalHandler> {
-    transactor: Transactor<MemoryStorage, Ecal, Script>,
+pub struct MemoryClient<Ecal = NotSupportedEcal> {
+    transactor: Transactor<MemoryStorage, Script, Ecal>,
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Default for MemoryClient<UnreachableEcal> {
+impl Default for MemoryClient {
     fn default() -> Self {
         Self::new(MemoryStorage::default(), InterpreterParams::default())
     }
@@ -54,7 +54,7 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     }
 
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<MemoryStorage, Ecal, Script>) -> Self {
+    pub fn from_txtor(transactor: Transactor<MemoryStorage, Script, Ecal>) -> Self {
         Self { transactor }
     }
 
@@ -128,7 +128,7 @@ impl<Ecal: EcalHandler> From<MemoryStorage> for MemoryClient<Ecal> {
 }
 
 impl<Ecal: EcalHandler> From<MemoryClient<Ecal>>
-    for Transactor<MemoryStorage, Ecal, Script>
+    for Transactor<MemoryStorage, Script, Ecal>
 {
     fn from(client: MemoryClient<Ecal>) -> Self {
         client.transactor

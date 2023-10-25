@@ -41,9 +41,10 @@ use fuel_vm::{
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FileReadEcal;
+
 impl EcalHandler for FileReadEcal {
     fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Self, Tx>,
+        vm: &mut Interpreter<S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -78,7 +79,7 @@ impl EcalHandler for FileReadEcal {
 }
 
 fn main() {
-    let vm: Interpreter<MemoryStorage, FileReadEcal, Script> =
+    let vm: Interpreter<MemoryStorage, Script, FileReadEcal> =
         Interpreter::with_memory_storage();
 
     let script_data: Vec<u8> = file!().bytes().collect();

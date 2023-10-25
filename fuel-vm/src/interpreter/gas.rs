@@ -25,9 +25,9 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Global remaining gas amount
-    pub(crate) fn remaining_gas(&self) -> Word {
+    pub fn remaining_gas(&self) -> Word {
         self.registers[RegId::GGAS]
     }
 

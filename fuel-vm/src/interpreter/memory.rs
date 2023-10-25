@@ -156,7 +156,7 @@ impl MemoryRange {
     /// Return an owned memory slice with a relative address to the heap space
     /// defined in `r[$hp]`. Panics if the range is not within the heap space.
     #[cfg(test)]
-    pub fn to_heap<S, Ecal, Tx>(self, vm: &Interpreter<S, Ecal, Tx>) -> Self {
+    pub fn to_heap<S, Tx, Ecal>(self, vm: &Interpreter<S, Tx, Ecal>) -> Self {
         let hp = vm.registers()[RegId::HP] as usize;
         let start = self.start.checked_add(hp).expect("Overflow");
         let end = self.end.checked_add(hp).expect("Overflow");
@@ -196,7 +196,7 @@ impl MemoryRange {
     }
 }
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
         OwnershipRegisters::new(self)
@@ -580,7 +580,7 @@ pub struct OwnershipRegisters {
 }
 
 impl OwnershipRegisters {
-    pub(crate) fn new<S, Ecal, Tx>(vm: &Interpreter<S, Ecal, Tx>) -> Self {
+    pub(crate) fn new<S, Tx, Ecal>(vm: &Interpreter<S, Tx, Ecal>) -> Self {
         OwnershipRegisters {
             sp: vm.registers[RegId::SP],
             ssp: vm.registers[RegId::SSP],

@@ -79,9 +79,7 @@ use crate::profiler::InstructionLocation;
 pub use balances::RuntimeBalances;
 pub use ecal::{
     EcalHandler,
-    NoopEcal,
     PredicateErrorEcal,
-    UnreachableEcal,
 };
 pub use memory::MemoryRange;
 
@@ -99,6 +97,10 @@ use self::{
     receipts::ReceiptsCtx,
 };
 
+/// ECAL opcode is not supported and return an error if you try to call.
+#[derive(Debug, Copy, Clone, Default)]
+pub struct NotSupportedEcal;
+
 /// VM interpreter.
 ///
 /// The internal state of the VM isn't expose because the intended usage is to
@@ -108,7 +110,7 @@ use self::{
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<S, Ecal, Tx = ()> {
+pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: Memory<MEM_SIZE>,
     frames: Vec<CallFrame>,
@@ -211,7 +213,7 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Returns the current state of the VM memory
     pub fn memory(&self) -> &[u8] {
         self.memory.as_slice()
@@ -328,13 +330,13 @@ fn current_location(
     InstructionLocation::new(current_contract, *pc - *is)
 }
 
-impl<S, Ecal, Tx> AsRef<S> for Interpreter<S, Ecal, Tx> {
+impl<S, Tx, Ecal> AsRef<S> for Interpreter<S, Tx, Ecal> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<S, Ecal, Tx> AsMut<S> for Interpreter<S, Ecal, Tx> {
+impl<S, Tx, Ecal> AsMut<S> for Interpreter<S, Tx, Ecal> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }

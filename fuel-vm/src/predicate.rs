@@ -58,16 +58,9 @@ mod tests {
     use core::iter;
 
     use crate::{
-        checked_transaction::{
-            CheckPredicateParams,
-            Checked,
-        },
+        checked_transaction::CheckPredicateParams,
         error::PredicateVerificationFailed,
-        interpreter::{
-            InterpreterParams,
-            PredicateErrorEcal,
-            UnreachableEcal,
-        },
+        interpreter::InterpreterParams,
         prelude::*,
         storage::PredicateStorage,
     };
@@ -143,7 +136,7 @@ mod tests {
 
             assert_eq!(idx, runtime.idx());
 
-            let mut interpreter = Interpreter::<_, UnreachableEcal, _>::with_storage(
+            let mut interpreter = Interpreter::<_, _>::with_storage(
                 PredicateStorage,
                 InterpreterParams::default(),
             );
@@ -280,12 +273,9 @@ mod tests {
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
 
-                let result = Interpreter::<
-                    PredicateStorage,
-                    PredicateErrorEcal,
-                    Checked<Script>,
-                >::check_predicates(
-                    &tx, &CheckPredicateParams::default()
+                let result = Interpreter::<PredicateStorage, Script>::check_predicates(
+                    &tx,
+                    &CheckPredicateParams::default(),
                 );
 
                 assert_eq!(result.map(|_| ()), expected);

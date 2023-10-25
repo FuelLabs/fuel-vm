@@ -11,6 +11,7 @@ use crate::{
         SystemRegisters,
     },
     error::SimpleResult,
+    interpreter::NotSupportedEcal,
 };
 
 use super::{
@@ -29,28 +30,24 @@ where
 
     /// ECAL opcode handler
     fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Self, Tx>,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-        _: RegId,
+        vm: &mut Interpreter<S, Tx, Self>,
+        a: RegId,
+        b: RegId,
+        c: RegId,
+        d: RegId,
     ) -> SimpleResult<()>;
 }
 
 /// Default ECAL opcode handler function, which charges for `noop` and does nothing.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct NoopEcal;
-
-/// Default ECAL opcode handler function, which charges for `noop` and does nothing.
-impl EcalHandler for NoopEcal {
+impl EcalHandler for NotSupportedEcal {
     fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Self, Tx>,
+        _: &mut Interpreter<S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
         _: RegId,
     ) -> SimpleResult<()> {
-        vm.gas_charge(vm.gas_costs().noop)
+        Err(PanicReason::EcalError)?
     }
 }
 
@@ -61,7 +58,7 @@ pub struct PredicateErrorEcal;
 /// ECAL is not allowed in predicates
 impl EcalHandler for PredicateErrorEcal {
     fn ecal<S, Tx>(
-        _vm: &mut Interpreter<S, Self, Tx>,
+        _vm: &mut Interpreter<S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -71,23 +68,7 @@ impl EcalHandler for PredicateErrorEcal {
     }
 }
 
-/// ECAL opcode handler cannot be used in this context
-#[derive(Debug, Clone, Copy, Default)]
-pub struct UnreachableEcal;
-
-impl EcalHandler for UnreachableEcal {
-    fn ecal<S, Tx>(
-        _vm: &mut Interpreter<S, Self, Tx>,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-    ) -> SimpleResult<()> {
-        unreachable!("ECAL cannot be used in this part of the VM")
-    }
-}
-
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Ecal: EcalHandler,
 {

@@ -68,7 +68,7 @@ impl EcalHandler for FileReadEcal {
             .map_err(|_| PanicReason::EcalError)?;
 
         // Allocate the buffer in the vm memory and read directly from the file into it
-        vm.malloc(b)?;
+        vm.allocate(b)?;
         let r = MemoryRange::new(vm.registers()[RegId::HP], b)?;
         file.read(&mut vm.memory_mut()[r.usizes()])
             .map_err(|_| PanicReason::EcalError)?;
@@ -89,8 +89,7 @@ fn main() {
             op::gtf_args(0x22, 0x00, GTFArgs::ScriptData),         // File path pointer
             op::movi(0x23, script_data.len().try_into().unwrap()), // File path length
             op::ecal(0x20, 0x21, 0x22, 0x23),                      // Read from file
-            op::lw(0x20, RegId::HP, 0), // Read the 8 bytes from the file into a register
-            op::log(0x20, RegId::ZERO, RegId::ZERO, RegId::ZERO), // Log the result
+            op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x21),   // Log the result
             op::ret(RegId::ONE),
         ]
         .into_iter()
@@ -109,12 +108,11 @@ fn main() {
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
 
-    let Receipt::Log { ra, .. } = receipts.first().unwrap() else {
-        panic!("Expected a log receipt");
+    let Receipt::LogData { data, .. } = receipts.first().unwrap() else {
+        panic!("Expected a data log receipt");
     };
 
-    // ra contains the bytes read from the file
-    let read_bytes = ra.to_be_bytes();
+    let read_bytes = data.as_ref().unwrap();
     let expected_bytes = &fs::read(file!()).expect("Couldn't read")[4..12];
     assert_eq!(read_bytes, expected_bytes);
 }

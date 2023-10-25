@@ -23,6 +23,10 @@ pub trait EcalHandler: Default + Clone + Copy
 where
     Self: Sized,
 {
+    /// Whether to increment PC after executing ECAL. If this is false,
+    /// the handler must increment PC itself.
+    const INC_PC: bool = true;
+
     /// ECAL opcode handler
     fn ecal<S, Tx>(
         vm: &mut Interpreter<S, Self, Tx>,
@@ -97,6 +101,10 @@ where
     ) -> SimpleResult<()> {
         Ecal::ecal(self, a, b, c, d)?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
-        Ok(inc_pc(pc)?)
+        if Ecal::INC_PC {
+            Ok(inc_pc(pc)?)
+        } else {
+            Ok(())
+        }
     }
 }

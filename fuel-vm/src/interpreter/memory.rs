@@ -293,8 +293,14 @@ impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
         store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    /// Attempt to extend the heap by `a` bytes
-    pub fn malloc(&mut self, a: Word) -> SimpleResult<()> {
+    /// Expand heap by `a` bytes.
+    pub fn allocate(&mut self, a: Word) -> SimpleResult<()> {
+        let (SystemRegisters { hp, sp, .. }, _) =
+            split_registers(&mut self.registers);
+        try_allocate(hp, sp.as_ref(), a)
+    }
+
+    pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, pc, .. }, _) =
             split_registers(&mut self.registers);
         malloc(hp, sp.as_ref(), pc, a)
@@ -479,10 +485,9 @@ pub(crate) fn store_word(
     Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn malloc(
+pub(crate) fn try_allocate(
     mut hp: RegMut<HP>,
     sp: Reg<SP>,
-    pc: RegMut<PC>,
     a: Word,
 ) -> SimpleResult<()> {
     let (result, overflow) = hp.overflowing_sub(a);
@@ -491,9 +496,18 @@ pub(crate) fn malloc(
         Err(PanicReason::MemoryOverflow.into())
     } else {
         *hp = result;
-
-        Ok(inc_pc(pc)?)
+        Ok(())
     }
+}
+
+pub(crate) fn malloc(
+    hp: RegMut<HP>,
+    sp: Reg<SP>,
+    pc: RegMut<PC>,
+    a: Word,
+) -> SimpleResult<()> {
+    try_allocate(hp, sp, a)?;
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn memclear(

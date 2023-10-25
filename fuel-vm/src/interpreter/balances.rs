@@ -160,7 +160,7 @@ impl RuntimeBalances {
     }
 
     /// Write all assets into the VM memory.
-    pub fn to_vm<S, Ecal, Tx>(self, vm: &mut Interpreter<S, Ecal, Tx>)
+    pub fn to_vm<S, Tx, Ecal>(self, vm: &mut Interpreter<S, Tx, Ecal>)
     where
         Tx: ExecutableTransaction,
     {
@@ -212,10 +212,7 @@ impl PartialEq for RuntimeBalances {
 
 #[test]
 fn writes_to_memory_correctly() {
-    use crate::{
-        interpreter::UnreachableEcal,
-        prelude::*,
-    };
+    use crate::prelude::*;
     use alloc::vec;
     use rand::{
         rngs::StdRng,
@@ -224,7 +221,7 @@ fn writes_to_memory_correctly() {
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let mut interpreter = Interpreter::<_, UnreachableEcal, Script>::without_storage();
+    let mut interpreter = Interpreter::<_, Script>::without_storage();
 
     let base = AssetId::zeroed();
     let base_balance = 950;
@@ -314,10 +311,7 @@ fn try_from_iter_wont_overflow() {
 
 #[test]
 fn checked_add_and_sub_works() {
-    use crate::{
-        interpreter::UnreachableEcal,
-        prelude::*,
-    };
+    use crate::prelude::*;
     use alloc::vec;
     use rand::{
         rngs::StdRng,
@@ -327,7 +321,7 @@ fn checked_add_and_sub_works() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut memory = Interpreter::<_, UnreachableEcal, Script>::without_storage().memory;
+    let mut memory = Interpreter::<_, Script>::without_storage().memory;
 
     let asset: AssetId = rng.gen();
 

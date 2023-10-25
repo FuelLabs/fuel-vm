@@ -10,10 +10,7 @@ use fuel_asm::{
 use fuel_tx::Receipt;
 use fuel_vm::{
     consts::VM_MAX_RAM,
-    interpreter::{
-        InterpreterParams,
-        UnreachableEcal,
-    },
+    interpreter::InterpreterParams,
     prelude::*,
 };
 
@@ -24,9 +21,7 @@ use super::test_helpers::{
 };
 use fuel_tx::ConsensusParameters;
 
-fn setup(
-    program: Vec<Instruction>,
-) -> Transactor<MemoryStorage, UnreachableEcal, Script> {
+fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -66,7 +61,7 @@ fn test_lw() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, UnreachableEcal, Script> = vm.as_ref();
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize];
     assert_eq!(1, result);
 }
@@ -83,7 +78,7 @@ fn test_lw_unaglined() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, UnreachableEcal, Script> = vm.as_ref();
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize];
     assert_eq!(1, result);
 }
@@ -100,7 +95,7 @@ fn test_lb() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, UnreachableEcal, Script> = vm.as_ref();
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize] as u8;
     assert_eq!(1, result);
 }
@@ -117,7 +112,7 @@ fn test_aloc_sb_lb_last_byte_of_memory() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, UnreachableEcal, Script> = vm.as_ref();
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
     let r1 = vm.registers()[0x20_usize];
     let r2 = vm.registers()[0x21_usize];
     assert_eq!(r1 - 1, r2);
@@ -264,7 +259,7 @@ fn test_mcl_and_mcli(
     ops.push(op::ret(RegId::ONE));
 
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, UnreachableEcal, Script> = vm.as_ref();
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
         let data = data.as_ref().unwrap();
@@ -318,7 +313,7 @@ fn test_mcp_and_mcpi(
     ops.push(op::ret(RegId::ONE));
 
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, UnreachableEcal, Script> = vm.as_ref();
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
         let data = data.as_ref().unwrap();
@@ -372,7 +367,7 @@ fn test_meq(
     ops.push(op::ret(RegId::ONE));
 
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, UnreachableEcal, Script> = vm.as_ref();
+    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
         if count == 0 {

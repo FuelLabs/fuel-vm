@@ -6,10 +6,7 @@ use alloc::{
 use super::*;
 use crate::{
     checked_transaction::IntoChecked,
-    interpreter::{
-        InterpreterParams,
-        UnreachableEcal,
-    },
+    interpreter::InterpreterParams,
     prelude::{
         FeeParameters,
         MemoryStorage,
@@ -56,7 +53,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         ..Default::default()
     };
 
-    let mut vm: Interpreter<_, UnreachableEcal, _> = Interpreter::with_storage(
+    let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
         InterpreterParams::from(&consensus_params),
     );

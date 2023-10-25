@@ -126,7 +126,7 @@ where
     };
 
     let parallel_execution = {
-        Interpreter::<PredicateStorage, _>::check_predicates_async::<_, TokioWithRayon>(
+        Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
             &checked, &params,
         )
         .await
@@ -271,7 +271,7 @@ async fn execute_gas_metered_predicates(
             .into_checked_basic(Default::default(), &ConsensusParameters::standard())
             .expect("Should successfully create checked tranaction with predicate");
 
-        Interpreter::<PredicateStorage, _>::check_predicates_async::<_, TokioWithRayon>(
+        Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
             &tx, &params,
         )
         .await

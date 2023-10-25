@@ -46,7 +46,7 @@ mod message_tests;
 #[cfg(test)]
 mod tests;
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -153,7 +153,7 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
     }
 }
 
-impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, PanicReason> {
         let (ssp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
 

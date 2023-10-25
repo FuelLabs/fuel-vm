@@ -21,7 +21,7 @@ use fuel_asm::{
     RegId,
 };
 
-impl<Ecal, Tx> Interpreter<PredicateStorage, Ecal, Tx>
+impl<Tx, Ecal> Interpreter<PredicateStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,

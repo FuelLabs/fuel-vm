@@ -13,19 +13,27 @@ use fuel_tx::{
     ScriptExecutionResult,
     TransactionBuilder,
 };
-use fuel_vm::{
-    interpreter::{
-        InterpreterParams,
-        NoopEcal,
-    },
-    prelude::{
-        Interpreter,
-        IntoChecked,
-        MemoryClient,
-    },
-    storage::MemoryStorage,
+use fuel_vm::prelude::{
+    Interpreter,
+    IntoChecked,
+    MemoryClient,
 };
 use itertools::Itertools;
+
+/// An ECAL opcode handler function, which charges for `noop` and does nothing.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NoopEcal;
+impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
+    fn ecal<S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
+        _: RegId,
+        _: RegId,
+        _: RegId,
+        _: RegId,
+    ) -> ::fuel_vm::error::SimpleResult<()> {
+        vm.gas_charge(vm.gas_costs().noop)
+    }
+}
 
 #[test]
 fn noop_ecal() {
@@ -37,8 +45,8 @@ fn noop_ecal() {
     .collect();
 
     let mut client = MemoryClient::<NoopEcal>::new(
-        MemoryStorage::default(),
-        InterpreterParams::default(),
+        fuel_vm::prelude::MemoryStorage::default(),
+        Default::default(),
     );
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, vec![])
@@ -64,7 +72,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
     fn ecal<S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<S, Self, Tx>,
+        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -91,8 +99,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 
 #[test]
 fn provide_ecal_fn() {
-    let vm: Interpreter<MemoryStorage, SumProdEcal, Script> =
-        Interpreter::with_memory_storage();
+    let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
 
     let script_data = [
         2u64.to_be_bytes(),

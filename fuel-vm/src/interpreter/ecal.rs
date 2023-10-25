@@ -64,22 +64,6 @@ impl EcalHandler for PredicateErrorEcal {
     }
 }
 
-/// ECAL opcode handler cannot be used in this context
-#[derive(Debug, Clone, Copy, Default)]
-pub struct UnreachableEcal;
-
-impl EcalHandler for UnreachableEcal {
-    fn ecal<S, Tx>(
-        _vm: &mut Interpreter<S, Tx, Self>,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-    ) -> SimpleResult<()> {
-        unreachable!("ECAL cannot be used in this part of the VM")
-    }
-}
-
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Ecal: EcalHandler,

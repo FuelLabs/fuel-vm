@@ -174,13 +174,7 @@ where
             _ecal_handler: core::marker::PhantomData::<Ecal>,
         }
     }
-}
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
-where
-    S: InterpreterStorage,
-    Tx: ExecutableTransaction,
-{
     /// Change this VMs internal state to match the initial state from this diff.
     pub fn reset_vm_state(&mut self, diff: &Diff<InitialVmState>)
     where

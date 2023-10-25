@@ -11,27 +11,32 @@ use fuel_types::{
     Bytes32,
 };
 
+/// Receipts and the associated Merkle tree
 #[derive(Debug, Default, Clone)]
-pub(crate) struct ReceiptsCtx {
+pub struct ReceiptsCtx {
     receipts: Vec<Receipt>,
     receipts_tree: MerkleTree,
 }
 
 impl ReceiptsCtx {
+    /// Add a new receipts, updating the Merkle tree as well
     pub fn push(&mut self, receipt: Receipt) {
         self.receipts_tree.push(receipt.to_bytes().as_slice());
         self.receipts.push(receipt)
     }
 
+    /// Reset the context to an empty state
     pub fn clear(&mut self) {
         self.receipts_tree = MerkleTree::new();
         self.receipts.clear();
     }
 
+    /// Return how many receipts are in this context
     pub fn len(&self) -> usize {
         self.receipts.len()
     }
 
+    /// Return current Merkle root of the receipts
     pub fn root(&self) -> Bytes32 {
         self.receipts_tree.clone().root().into()
     }
@@ -98,7 +103,7 @@ impl From<ReceiptsCtx> for Vec<Receipt> {
 /// context is in scope, access to the original context is forbidden due to
 /// borrowing semantics. When the mutable context is dropped, we recalculate the
 /// root and return access to the original context.
-pub(crate) struct ReceiptsCtxMut<'a> {
+pub struct ReceiptsCtxMut<'a> {
     receipts_ctx: &'a mut ReceiptsCtx,
 }
 

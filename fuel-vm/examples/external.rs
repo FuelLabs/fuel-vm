@@ -28,6 +28,8 @@ use fuel_tx::{
     TransactionBuilder,
 };
 use fuel_vm::{
+    error::SimpleResult,
+    interpreter::EcalHandler,
     prelude::{
         Interpreter,
         IntoChecked,
@@ -37,9 +39,16 @@ use fuel_vm::{
     storage::MemoryStorage,
 };
 
-fn main() {
-    let mut vm: Interpreter<MemoryStorage, Script> = Interpreter::with_memory_storage();
-    vm.set_ecal(|vm, a, b, c, d| {
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FileReadEcal;
+impl EcalHandler for FileReadEcal {
+    fn ecal<S, Tx>(
+        vm: &mut Interpreter<S, Self, Tx>,
+        a: RegId,
+        b: RegId,
+        c: RegId,
+        d: RegId,
+    ) -> SimpleResult<()> {
         let a = vm.registers()[a]; // Seek offset
         let b = vm.registers()[b]; // Read length
         let c = vm.registers()[c]; // File path pointer in vm memory
@@ -59,13 +68,18 @@ fn main() {
             .map_err(|_| PanicReason::EcalError)?;
 
         // Allocate the buffer in the vm memory and read directly from the file into it
-        vm.allocate(b)?;
+        vm.malloc(b)?;
         let r = MemoryRange::new(vm.registers()[RegId::HP], b)?;
         file.read(&mut vm.memory_mut()[r.usizes()])
             .map_err(|_| PanicReason::EcalError)?;
 
         Ok(())
-    });
+    }
+}
+
+fn main() {
+    let vm: Interpreter<MemoryStorage, FileReadEcal, Script> =
+        Interpreter::with_memory_storage();
 
     let script_data: Vec<u8> = file!().bytes().collect();
     let script =

@@ -25,7 +25,7 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx> Interpreter<S, Tx> {
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
     /// Global remaining gas amount
     pub(crate) fn remaining_gas(&self) -> Word {
         self.registers[RegId::GGAS]
@@ -58,7 +58,7 @@ impl<S, Tx> Interpreter<S, Tx> {
     }
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
-    pub(crate) fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
+    pub fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
         let current_contract = self.contract_id();
         let SystemRegisters {
             pc, ggas, cgas, is, ..

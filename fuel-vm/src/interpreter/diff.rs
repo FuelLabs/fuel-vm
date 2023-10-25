@@ -319,7 +319,7 @@ where
         })
 }
 
-impl<S, Tx> Interpreter<S, Tx> {
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
     /// The diff function generates a diff of VM state, represented by the Diff struct,
     /// between two VMs internal states.
     pub fn diff(&self, other: &Self) -> Diff<Deltas>
@@ -471,7 +471,7 @@ fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>)
     invert_vec(ctx_mut.receipts_mut(), value);
 }
 
-impl<S, Tx> PartialEq for Interpreter<S, Tx>
+impl<S, Ecal, Tx> PartialEq for Interpreter<S, Ecal, Tx>
 where
     Tx: PartialEq,
 {

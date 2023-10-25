@@ -74,7 +74,7 @@ pub struct Record<S>(pub(super) S, pub(super) Vec<StorageDelta>)
 where
     S: InterpreterStorage;
 
-impl<S, Tx> Interpreter<Record<S>, Tx>
+impl<S, Ecal, Tx> Interpreter<Record<S>, Ecal, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -82,7 +82,7 @@ where
     /// Remove the [`Recording`] wrapper from the storage.
     /// Recording storage changes has an overhead so it's
     /// useful to be able to remove it once the diff is generated.
-    pub fn remove_recording(self) -> Interpreter<S, Tx> {
+    pub fn remove_recording(self) -> Interpreter<S, Ecal, Tx> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -96,8 +96,8 @@ where
             balances: self.balances,
             panic_context: self.panic_context,
             profiler: self.profiler,
-            ecal_function: self.ecal_function,
             interpreter_params: self.interpreter_params,
+            _ecal_handler: core::marker::PhantomData::<Ecal>,
         }
     }
 
@@ -147,7 +147,7 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -156,7 +156,7 @@ where
     /// record any changes this VM makes to it's storage.
     /// Recording storage changes has an overhead so should
     /// be used in production.
-    pub fn add_recording(self) -> Interpreter<Record<S>, Tx> {
+    pub fn add_recording(self) -> Interpreter<Record<S>, Ecal, Tx> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -170,11 +170,17 @@ where
             balances: self.balances,
             panic_context: self.panic_context,
             profiler: self.profiler,
-            ecal_function: self.ecal_function,
             interpreter_params: self.interpreter_params,
+            _ecal_handler: core::marker::PhantomData::<Ecal>,
         }
     }
+}
 
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
+where
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+{
     /// Change this VMs internal state to match the initial state from this diff.
     pub fn reset_vm_state(&mut self, diff: &Diff<InitialVmState>)
     where

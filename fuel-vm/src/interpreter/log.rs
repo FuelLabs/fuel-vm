@@ -26,7 +26,7 @@ use fuel_types::Word;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     Tx: ExecutableTransaction,
 {

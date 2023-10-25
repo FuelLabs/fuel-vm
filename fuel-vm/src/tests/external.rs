@@ -14,6 +14,10 @@ use fuel_tx::{
     TransactionBuilder,
 };
 use fuel_vm::{
+    interpreter::{
+        InterpreterParams,
+        NoopEcal,
+    },
     prelude::{
         Interpreter,
         IntoChecked,
@@ -24,7 +28,7 @@ use fuel_vm::{
 use itertools::Itertools;
 
 #[test]
-fn default_ecal() {
+fn noop_ecal() {
     let script = vec![
         op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(RegId::ONE),
@@ -32,7 +36,10 @@ fn default_ecal() {
     .into_iter()
     .collect();
 
-    let mut client = MemoryClient::default();
+    let mut client = MemoryClient::<NoopEcal>::new(
+        MemoryStorage::default(),
+        InterpreterParams::default(),
+    );
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(0)
@@ -51,13 +58,18 @@ fn default_ecal() {
     assert_eq!(*result, ScriptExecutionResult::Success);
 }
 
-#[test]
-fn provide_ecal_fn() {
-    let mut vm: Interpreter<MemoryStorage, Script> = Interpreter::with_memory_storage();
-    vm.set_ecal(|vm, a, b, c, d| {
-        // This ecal fn computes saturatign sum and product of inputs (a,b,c,d),
-        // and stores them in a and b respectively. It charges only a single gas.
-
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SumProdEcal;
+impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
+    /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
+    /// and stores them in a and b respectively. It charges only a single gas.
+    fn ecal<S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<S, Self, Tx>,
+        a: RegId,
+        b: RegId,
+        c: RegId,
+        d: RegId,
+    ) -> ::fuel_vm::error::SimpleResult<()> {
         vm.gas_charge(1)?;
 
         let args = [
@@ -74,7 +86,13 @@ fn provide_ecal_fn() {
         vm.registers_mut()[b] = product;
 
         Ok(())
-    });
+    }
+}
+
+#[test]
+fn provide_ecal_fn() {
+    let vm: Interpreter<MemoryStorage, SumProdEcal, Script> =
+        Interpreter::with_memory_storage();
 
     let script_data = [
         2u64.to_be_bytes(),

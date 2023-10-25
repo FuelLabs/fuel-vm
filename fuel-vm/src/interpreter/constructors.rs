@@ -2,6 +2,7 @@
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
 use super::{
+    EcalHandler,
     ExecutableTransaction,
     Interpreter,
     RuntimeBalances,
@@ -24,7 +25,7 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     Tx: Default,
 {
@@ -48,12 +49,14 @@ where
             context: Context::default(),
             balances: RuntimeBalances::default(),
             profiler: Profiler::default(),
-            ecal_function: Self::DEFAULT_ECAL,
             interpreter_params,
             panic_context: PanicContext::None,
+            _ecal_handler: core::marker::PhantomData::<Ecal>,
         }
     }
+}
 
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
@@ -63,12 +66,33 @@ where
         self.profiler.set_receiver(alloc::boxed::Box::new(receiver));
         self
     }
+
+    /// Sets ECAL opcode handler on type level
+    pub fn with_ecal<NewEcal>(self) -> Interpreter<S, NewEcal, Tx> {
+        Interpreter {
+            _ecal_handler: core::marker::PhantomData::<NewEcal>,
+            registers: self.registers,
+            memory: self.memory,
+            frames: self.frames,
+            receipts: self.receipts,
+            tx: self.tx,
+            initial_balances: self.initial_balances,
+            storage: self.storage,
+            debugger: self.debugger,
+            context: self.context,
+            balances: self.balances,
+            profiler: self.profiler,
+            interpreter_params: self.interpreter_params,
+            panic_context: self.panic_context,
+        }
+    }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: Clone,
     Tx: ExecutableTransaction,
+    Ecal: Clone,
 {
     /// Build the interpreter
     pub fn build(&mut self) -> Self {
@@ -76,20 +100,25 @@ where
     }
 }
 
-impl<S, Tx> Default for Interpreter<S, Tx>
+impl<S, Ecal, Tx> Default for Interpreter<S, Ecal, Tx>
 where
     S: Default,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     fn default() -> Self {
-        Self::with_storage(Default::default(), InterpreterParams::default())
+        Interpreter::<S, Ecal, Tx>::with_storage(
+            Default::default(),
+            InterpreterParams::default(),
+        )
     }
 }
 
 #[cfg(test)]
-impl<Tx> Interpreter<(), Tx>
+impl<Ecal, Tx> Interpreter<(), Ecal, Tx>
 where
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     /// Create a new interpreter without a storage backend.
     ///
@@ -99,9 +128,10 @@ where
     }
 }
 
-impl<Tx> Interpreter<MemoryStorage, Tx>
+impl<Ecal, Tx> Interpreter<MemoryStorage, Ecal, Tx>
 where
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     /// Create a new storage with a provided in-memory storage.
     ///

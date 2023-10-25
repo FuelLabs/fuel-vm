@@ -8,6 +8,7 @@ use crate::{
             set_variable_output,
         },
         InterpreterParams,
+        UnreachableEcal,
     },
     prelude::*,
 };
@@ -30,7 +31,7 @@ use super::inc_pc;
 fn external_balance() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::with_memory_storage();
+    let mut vm = Interpreter::<_, UnreachableEcal, _>::with_memory_storage();
 
     let gas_price = 0;
     let gas_limit = 1_000_000;
@@ -101,7 +102,7 @@ fn variable_output_updates_in_memory() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     let consensus_params = ConsensusParameters::standard();
-    let mut vm = Interpreter::with_storage(
+    let mut vm = Interpreter::<_, UnreachableEcal, _>::with_storage(
         MemoryStorage::default(),
         InterpreterParams::from(&consensus_params),
     );

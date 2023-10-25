@@ -77,6 +77,12 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
+pub use ecal::{
+    EcalHandler,
+    NoopEcal,
+    PredicateErrorEcal,
+    UnreachableEcal,
+};
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
@@ -89,7 +95,6 @@ use crate::checked_transaction::{
 };
 
 use self::{
-    ecal::EcalFn,
     memory::Memory,
     receipts::ReceiptsCtx,
 };
@@ -103,7 +108,7 @@ use self::{
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<S, Tx = ()> {
+pub struct Interpreter<S, Ecal, Tx = ()> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: Memory<MEM_SIZE>,
     frames: Vec<CallFrame>,
@@ -115,13 +120,11 @@ pub struct Interpreter<S, Tx = ()> {
     context: Context,
     balances: RuntimeBalances,
     profiler: Profiler,
-    /// This is called by `ECAL` instruction.
-    /// By default, does nothing but consumes gas like `NOOP`.
-    ecal_function: EcalFn,
     interpreter_params: InterpreterParams,
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
+    _ecal_handler: core::marker::PhantomData<Ecal>,
 }
 
 /// Interpreter parameters
@@ -208,15 +211,25 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<S, Tx> Interpreter<S, Tx> {
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx> {
     /// Returns the current state of the VM memory
     pub fn memory(&self) -> &[u8] {
         self.memory.as_slice()
     }
 
+    /// Returns mutable access to the vm memory
+    pub fn memory_mut(&mut self) -> &mut [u8] {
+        self.memory.as_mut()
+    }
+
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
+    }
+
+    /// Returns mutable access to the registers
+    pub fn registers_mut(&mut self) -> &mut [Word] {
+        &mut self.registers
     }
 
     pub(crate) fn call_stack(&self) -> &[CallFrame] {
@@ -315,13 +328,13 @@ fn current_location(
     InstructionLocation::new(current_contract, *pc - *is)
 }
 
-impl<S, Tx> AsRef<S> for Interpreter<S, Tx> {
+impl<S, Ecal, Tx> AsRef<S> for Interpreter<S, Ecal, Tx> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<S, Tx> AsMut<S> for Interpreter<S, Tx> {
+impl<S, Ecal, Tx> AsMut<S> for Interpreter<S, Ecal, Tx> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }

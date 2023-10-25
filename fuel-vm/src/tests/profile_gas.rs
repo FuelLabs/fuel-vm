@@ -5,7 +5,10 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::TransactionBuilder;
-use fuel_vm::prelude::*;
+use fuel_vm::{
+    interpreter::UnreachableEcal,
+    prelude::*,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -51,7 +54,7 @@ fn profile_gas() {
 
         let output = GasProfiler::default();
 
-        let mut client = MemoryClient::from_txtor(
+        let mut client = MemoryClient::<UnreachableEcal>::from_txtor(
             Interpreter::with_memory_storage()
                 .with_profiler(output.clone())
                 .build()

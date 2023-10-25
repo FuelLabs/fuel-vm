@@ -41,8 +41,8 @@ impl Backtrace {
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<S, Tx>(
-        vm: &Interpreter<S, Tx>,
+    pub fn from_vm_error<S, Ecal, Tx>(
+        vm: &Interpreter<S, Ecal, Tx>,
         result: ScriptExecutionResult,
     ) -> Self {
         let call_stack = vm.call_stack().to_owned();

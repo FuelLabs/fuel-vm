@@ -83,7 +83,7 @@ mod smo_tests;
 #[cfg(test)]
 mod test;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,

@@ -20,9 +20,11 @@ use crate::{
     },
     interpreter::{
         CheckedMetadata,
+        EcalHandler,
         ExecutableTransaction,
         InitialBalances,
         Interpreter,
+        PredicateErrorEcal,
         RuntimeBalances,
     },
     predicate::RuntimePredicate,
@@ -117,7 +119,7 @@ impl<Tx> From<&PredicateRunKind<'_, Tx>> for PredicateAction {
     }
 }
 
-impl<T> Interpreter<PredicateStorage, T> {
+impl<T> Interpreter<PredicateStorage, PredicateErrorEcal, T> {
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
     ///
@@ -308,7 +310,10 @@ impl<T> Interpreter<PredicateStorage, T> {
         let max_gas_per_predicate = params.max_gas_per_predicate;
         let interpreter_params = params.into();
 
-        let mut vm = Interpreter::with_storage(PredicateStorage {}, interpreter_params);
+        let mut vm = Interpreter::<_, PredicateErrorEcal, _>::with_storage(
+            PredicateStorage {},
+            interpreter_params,
+        );
 
         let available_gas = match predicate_action {
             PredicateAction::Verifying => {
@@ -414,7 +419,7 @@ impl<T> Interpreter<PredicateStorage, T> {
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: InterpreterStorage,
 {
@@ -482,10 +487,11 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -643,11 +649,12 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
+    Ecal: EcalHandler,
 {
     /// Allocate internally a new instance of [`Interpreter`] with the provided
     /// storage, initialize it with the provided transaction and return the
@@ -657,7 +664,8 @@ where
         tx: Checked<Tx>,
         params: InterpreterParams,
     ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
-        let mut interpreter = Interpreter::with_storage(storage, params);
+        let mut interpreter: Self =
+            Interpreter::<_, Ecal, _>::with_storage(storage, params).with_ecal();
         interpreter
             .transact(tx)
             .map(ProgramState::from)
@@ -694,7 +702,7 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: InterpreterStorage,
 {

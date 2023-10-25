@@ -32,14 +32,6 @@ use rand::{
     SeedableRng,
 };
 
-use crate::{
-    consts::*,
-    prelude::*,
-};
-
-use crate::interpreter::InterpreterParams;
-
-use crate::script_with_data_offset;
 use fuel_asm::{
     op,
     Instruction,
@@ -54,7 +46,16 @@ use fuel_tx::{
     field::Script as ScriptField,
     ConsensusParameters,
 };
-use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
+use fuel_vm::{
+    consts::*,
+    interpreter::{
+        InterpreterParams,
+        UnreachableEcal,
+    },
+    prelude::*,
+    script_with_data_offset,
+    util::test_helpers::check_expected_reason_for_instructions,
+};
 
 const SET_STATUS_REG: u8 = 0x39;
 // log2(VM_MAX_MEM) - used to set a pointer to the memory boundary via SHL:
@@ -411,7 +412,7 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
 }
 
 fn ldc__gas_cost_for_len(
-    client: &mut MemoryClient,
+    client: &mut MemoryClient<UnreachableEcal>,
     rng: &mut StdRng,
     salt: Salt,
     // in number of opcodes
@@ -448,7 +449,7 @@ fn ldc__gas_cost_for_len(
 }
 
 fn ldc__load_len_of_target_contract<'a>(
-    client: &'a mut MemoryClient,
+    client: &'a mut MemoryClient<UnreachableEcal>,
     rng: &mut StdRng,
     salt: Salt,
     offset: u16,
@@ -592,7 +593,10 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let interpreter_params = InterpreterParams::from(&consensus_params);
 
-    let mut client = MemoryClient::new(MemoryStorage::default(), interpreter_params);
+    let mut client = MemoryClient::<UnreachableEcal>::new(
+        MemoryStorage::default(),
+        interpreter_params,
+    );
 
     let gas_price = 0;
     let gas_limit = 1_000_000;

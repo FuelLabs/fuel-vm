@@ -11,6 +11,7 @@ use fuel_tx::{
 
 use fuel_vm::{
     consts::*,
+    interpreter::UnreachableEcal,
     prelude::*,
 };
 use rand::{
@@ -78,7 +79,7 @@ fn code_coverage() {
 
     let output = ProfilingOutput::default();
 
-    let mut client = MemoryClient::from_txtor(
+    let mut client = MemoryClient::<UnreachableEcal>::from_txtor(
         Interpreter::with_memory_storage()
             .with_profiler(output.clone())
             .build()

@@ -11,6 +11,7 @@ use crate::{
             JumpArgs,
             JumpMode,
         },
+        EcalHandler,
         ExecutableTransaction,
         Interpreter,
     },
@@ -29,10 +30,11 @@ use fuel_types::Word;
 
 use core::ops::Div;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {

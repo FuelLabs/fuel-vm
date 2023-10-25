@@ -27,7 +27,7 @@ use crate::{
     interpreter::CheckedMetadata,
 };
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -96,7 +96,7 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Ecal, Tx> Interpreter<S, Ecal, Tx>
 where
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,

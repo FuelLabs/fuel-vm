@@ -6,7 +6,10 @@ use alloc::{
 
 use crate::{
     consts::*,
-    interpreter::InterpreterParams,
+    interpreter::{
+        InterpreterParams,
+        UnreachableEcal,
+    },
 };
 use fuel_asm::{
     op,
@@ -93,9 +96,12 @@ fn metadata() {
     let interpreter_params = InterpreterParams::from(&consensus_params);
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::new(&mut storage, interpreter_params.clone())
-        .transact(tx)
-        .is_success());
+    assert!(Transactor::<_, UnreachableEcal, _>::new(
+        &mut storage,
+        interpreter_params.clone()
+    )
+    .transact(tx)
+    .is_success());
 
     let mut routine_call_metadata_contract = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
@@ -140,9 +146,12 @@ fn metadata() {
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    assert!(Transactor::new(&mut storage, interpreter_params.clone())
-        .transact(tx)
-        .is_success());
+    assert!(Transactor::<_, UnreachableEcal, _>::new(
+        &mut storage,
+        interpreter_params.clone()
+    )
+    .transact(tx)
+    .is_success());
 
     let mut inputs = vec![];
     let mut outputs = vec![];
@@ -200,11 +209,12 @@ fn metadata() {
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let receipts = Transactor::new(&mut storage, interpreter_params)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to transact")
-        .to_owned();
+    let receipts =
+        Transactor::<_, UnreachableEcal, _>::new(&mut storage, interpreter_params)
+            .transact(tx)
+            .receipts()
+            .expect("Failed to transact")
+            .to_owned();
 
     let ra = receipts[1]
         .ra()
@@ -236,7 +246,8 @@ fn get_metadata_chain_id() {
         ..Default::default()
     };
 
-    let mut client = MemoryClient::new(Default::default(), interpreter_params);
+    let mut client =
+        MemoryClient::<UnreachableEcal>::new(Default::default(), interpreter_params);
 
     #[rustfmt::skip]
         let get_chain_id = vec![

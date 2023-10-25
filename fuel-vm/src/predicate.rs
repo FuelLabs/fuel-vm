@@ -63,7 +63,11 @@ mod tests {
             Checked,
         },
         error::PredicateVerificationFailed,
-        interpreter::InterpreterParams,
+        interpreter::{
+            InterpreterParams,
+            PredicateErrorEcal,
+            UnreachableEcal,
+        },
         prelude::*,
         storage::PredicateStorage,
     };
@@ -139,8 +143,10 @@ mod tests {
 
             assert_eq!(idx, runtime.idx());
 
-            let mut interpreter =
-                Interpreter::with_storage(PredicateStorage, InterpreterParams::default());
+            let mut interpreter = Interpreter::<_, UnreachableEcal, _>::with_storage(
+                PredicateStorage,
+                InterpreterParams::default(),
+            );
 
             assert!(interpreter
                 .init_predicate(
@@ -274,11 +280,13 @@ mod tests {
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
 
-                let result =
-                    Interpreter::<PredicateStorage, Checked<Script>>::check_predicates(
-                        &tx,
-                        &CheckPredicateParams::default(),
-                    );
+                let result = Interpreter::<
+                    PredicateStorage,
+                    PredicateErrorEcal,
+                    Checked<Script>,
+                >::check_predicates(
+                    &tx, &CheckPredicateParams::default()
+                );
 
                 assert_eq!(result.map(|_| ()), expected);
             }

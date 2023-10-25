@@ -3,7 +3,10 @@ use core::ops::Range;
 
 use super::*;
 use crate::{
-    interpreter::InterpreterParams,
+    interpreter::{
+        InterpreterParams,
+        UnreachableEcal,
+    },
     prelude::*,
 };
 use fuel_asm::op;
@@ -13,6 +16,8 @@ use test_case::test_case;
 #[cfg(feature = "random")]
 #[test]
 fn memcopy() {
+    use crate::interpreter::UnreachableEcal;
+
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
 
     let consensus_params = ConsensusParameters {
@@ -20,7 +25,7 @@ fn memcopy() {
         ..Default::default()
     };
 
-    let mut vm = Interpreter::with_storage(
+    let mut vm = Interpreter::<_, UnreachableEcal, _>::with_storage(
         MemoryStorage::default(),
         InterpreterParams::from(&consensus_params),
     );
@@ -89,7 +94,7 @@ fn memrange() {
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid");
-    let mut vm = Interpreter::with_memory_storage();
+    let mut vm = Interpreter::<_, UnreachableEcal, _>::with_memory_storage();
     vm.init_script(tx).expect("Failed to init VM");
 
     let bytes = 1024;
@@ -111,7 +116,7 @@ fn memrange() {
 
 #[test]
 fn stack_alloc_ownership() {
-    let mut vm = Interpreter::with_memory_storage();
+    let mut vm = Interpreter::<_, UnreachableEcal, _>::with_memory_storage();
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .gas_limit(1000000)

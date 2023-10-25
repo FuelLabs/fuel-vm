@@ -9,6 +9,7 @@ use crate::{
     error::InterpreterError,
     interpreter::{
         CheckedMetadata,
+        EcalHandler,
         ExecutableTransaction,
         Interpreter,
     },
@@ -20,7 +21,10 @@ use crate::{
     storage::InterpreterStorage,
 };
 
-use crate::interpreter::InterpreterParams;
+use crate::interpreter::{
+    InterpreterParams,
+    NotSupportedEcal,
+};
 use fuel_tx::{
     Create,
     GasCosts,
@@ -36,23 +40,31 @@ use fuel_tx::{
 /// builder`.
 ///
 /// Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
-pub struct Transactor<S, Tx>
+pub struct Transactor<S, Tx, Ecal = NotSupportedEcal>
 where
     S: InterpreterStorage,
 {
-    interpreter: Interpreter<S, Tx>,
+    interpreter: Interpreter<S, Tx, Ecal>,
     program_state: Option<ProgramState>,
     error: Option<InterpreterError<S::DataError>>,
 }
 
-impl<'a, S, Tx> Transactor<S, Tx>
+impl<'a, S, Tx, Ecal> Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     /// Transactor constructor
     pub fn new(storage: S, interpreter_params: InterpreterParams) -> Self {
-        Interpreter::with_storage(storage, interpreter_params).into()
+        Self {
+            interpreter: Interpreter::<S, Tx, Ecal>::with_storage(
+                storage,
+                interpreter_params,
+            ),
+            program_state: None,
+            error: None,
+        }
     }
 
     /// State transition representation after the execution of a transaction.
@@ -124,7 +136,7 @@ where
     }
 
     /// Gets the interpreter.
-    pub fn interpreter(&self) -> &Interpreter<S, Tx> {
+    pub fn interpreter(&self) -> &Interpreter<S, Tx, Ecal> {
         &self.interpreter
     }
 
@@ -139,7 +151,7 @@ where
     }
 }
 
-impl<S> Transactor<S, Script>
+impl<S, Ecal> Transactor<S, Script, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -163,7 +175,7 @@ where
     }
 }
 
-impl<S, Tx> Transactor<S, Tx>
+impl<S, Tx, Ecal> Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -176,11 +188,12 @@ where
     }
 }
 
-impl<S, Tx> Transactor<S, Tx>
+impl<S, Tx, Ecal> Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
+    Ecal: EcalHandler,
 {
     /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
@@ -199,12 +212,12 @@ where
     }
 }
 
-impl<S, Tx> From<Interpreter<S, Tx>> for Transactor<S, Tx>
+impl<S, Tx, Ecal> From<Interpreter<S, Tx, Ecal>> for Transactor<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    fn from(interpreter: Interpreter<S, Tx>) -> Self {
+    fn from(interpreter: Interpreter<S, Tx, Ecal>) -> Self {
         let program_state = None;
         let error = None;
 
@@ -216,27 +229,27 @@ where
     }
 }
 
-impl<S, Tx> From<Transactor<S, Tx>> for Interpreter<S, Tx>
+impl<S, Tx, Ecal> From<Transactor<S, Tx, Ecal>> for Interpreter<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    fn from(transactor: Transactor<S, Tx>) -> Self {
+    fn from(transactor: Transactor<S, Tx, Ecal>) -> Self {
         transactor.interpreter
     }
 }
 
-impl<S, Tx> AsRef<Interpreter<S, Tx>> for Transactor<S, Tx>
+impl<S, Tx, Ecal> AsRef<Interpreter<S, Tx, Ecal>> for Transactor<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    fn as_ref(&self) -> &Interpreter<S, Tx> {
+    fn as_ref(&self) -> &Interpreter<S, Tx, Ecal> {
         &self.interpreter
     }
 }
 
-impl<S, Tx> AsRef<S> for Transactor<S, Tx>
+impl<S, Tx, Ecal> AsRef<S> for Transactor<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -246,7 +259,7 @@ where
     }
 }
 
-impl<S, Tx> AsMut<S> for Transactor<S, Tx>
+impl<S, Tx, Ecal> AsMut<S> for Transactor<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -256,10 +269,11 @@ where
     }
 }
 
-impl<S, Tx> Default for Transactor<S, Tx>
+impl<S, Tx, Ecal> Default for Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     fn default() -> Self {
         Self::new(S::default(), InterpreterParams::default())

@@ -160,7 +160,7 @@ impl RuntimeBalances {
     }
 
     /// Write all assets into the VM memory.
-    pub fn to_vm<S, Tx>(self, vm: &mut Interpreter<S, Tx>)
+    pub fn to_vm<S, Tx, Ecal>(self, vm: &mut Interpreter<S, Tx, Ecal>)
     where
         Tx: ExecutableTransaction,
     {

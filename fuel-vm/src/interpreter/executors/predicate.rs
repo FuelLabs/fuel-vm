@@ -3,6 +3,7 @@ use crate::{
         InterpreterError,
         PredicateVerificationFailed,
     },
+    interpreter::EcalHandler,
     prelude::{
         CheckError,
         ExecutableTransaction,
@@ -20,9 +21,10 @@ use fuel_asm::{
     RegId,
 };
 
-impl<Tx> Interpreter<PredicateStorage, Tx>
+impl<Tx, Ecal> Interpreter<PredicateStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     pub(crate) fn verify_predicate(
         &mut self,

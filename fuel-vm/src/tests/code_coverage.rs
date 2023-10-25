@@ -79,7 +79,7 @@ fn code_coverage() {
     let output = ProfilingOutput::default();
 
     let mut client = MemoryClient::from_txtor(
-        Interpreter::with_memory_storage()
+        Interpreter::<_, _>::with_memory_storage()
             .with_profiler(output.clone())
             .build()
             .into(),

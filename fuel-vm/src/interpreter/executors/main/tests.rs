@@ -98,7 +98,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .into_checked(Default::default(), params)
         .is_err());
 
-    Interpreter::<PredicateStorage>::estimate_predicates(
+    Interpreter::<PredicateStorage, _>::estimate_predicates(
         &mut transaction,
         &params.into(),
     )

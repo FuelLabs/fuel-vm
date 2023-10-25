@@ -2,6 +2,7 @@
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
 use super::{
+    EcalHandler,
     ExecutableTransaction,
     Interpreter,
     RuntimeBalances,
@@ -24,7 +25,7 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: Default,
 {
@@ -50,9 +51,12 @@ where
             profiler: Profiler::default(),
             interpreter_params,
             panic_context: PanicContext::None,
+            _ecal_handler: core::marker::PhantomData::<Ecal>,
         }
     }
+}
 
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
@@ -64,10 +68,11 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: Clone,
     Tx: ExecutableTransaction,
+    Ecal: Clone,
 {
     /// Build the interpreter
     pub fn build(&mut self) -> Self {
@@ -75,20 +80,25 @@ where
     }
 }
 
-impl<S, Tx> Default for Interpreter<S, Tx>
+impl<S, Tx, Ecal> Default for Interpreter<S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     fn default() -> Self {
-        Self::with_storage(Default::default(), InterpreterParams::default())
+        Interpreter::<S, Tx, Ecal>::with_storage(
+            Default::default(),
+            InterpreterParams::default(),
+        )
     }
 }
 
 #[cfg(test)]
-impl<Tx> Interpreter<(), Tx>
+impl<Tx, Ecal> Interpreter<(), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     /// Create a new interpreter without a storage backend.
     ///
@@ -98,9 +108,10 @@ where
     }
 }
 
-impl<Tx> Interpreter<MemoryStorage, Tx>
+impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     /// Create a new storage with a provided in-memory storage.
     ///

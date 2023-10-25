@@ -1,6 +1,7 @@
 use crate::{
     transaction::validity::{
         check_common_part,
+        check_size,
         FormatValidityChecks,
     },
     ConsensusParameters,
@@ -220,6 +221,8 @@ impl FormatValidityChecks for Create {
             base_asset_id,
             ..
         } = consensus_params;
+
+        check_size(self, consensus_params.tx_params())?;
 
         check_common_part(
             self,

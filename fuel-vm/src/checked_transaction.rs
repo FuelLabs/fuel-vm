@@ -904,20 +904,17 @@ mod tests {
         }
     }
 
-    #[quickcheck]
-    fn min_fee_multiple_message_input(
-        gas_price: u64,
-        gas_limit: u64,
-        seed: u64,
-    ) -> TestResult {
-        // verify min fee a transaction can consume based on bytes is correct
-        let rng = &mut StdRng::seed_from_u64(seed);
+    #[test]
+    fn min_fee_multiple_signed_inputs() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
         let gas_costs = GasCosts::default();
-        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(100);
-        let base_asset_id = rng.gen();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
+            // Set up 3 signed inputs
             .add_unsigned_message_input(
                 SecretKey::random(rng),
                 rng.gen(),
@@ -940,13 +937,174 @@ mod tests {
                 vec![],
             )
             .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + 3 * gas_costs.ecr1)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+    }
 
-        if let Ok(valid) = is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
-        {
-            TestResult::from_bool(valid)
-        } else {
-            TestResult::discard()
-        }
+    #[test]
+    fn min_fee_multiple_signed_inputs_single_owner() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let owner = SecretKey::random(rng);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            // Set up 3 signed inputs
+            .add_unsigned_message_input(
+                owner,
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                owner,
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                owner,
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+        let min_fee = fee.min_fee();
+        // Because all inputs are owned by the same address, the address will only need to
+        // be recovered once. Therefore, we charge only once for the address
+        // recovery of the sigend inputs.
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + 1 * gas_costs.ecr1)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+    }
+
+    #[test]
+    fn min_fee_multiple_predicate_inputs() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            // Set up 3 predicate inputs
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                Default::default(),
+                vec![],
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                Default::default(),
+                vec![],
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                Default::default(),
+                vec![],
+                vec![],
+            ))
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + 3 * gas_costs.contract_root)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+    }
+
+    #[test]
+    fn min_fee_multiple_signed_and_predicate_inputs() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            // Set up 3 signed inputs
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            // Set up 3 predicate inputs
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                Default::default(),
+                vec![],
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                Default::default(),
+                vec![],
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                Default::default(),
+                vec![],
+                vec![],
+            ))
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + 3 * gas_costs.ecr1
+            + 3 * gas_costs.contract_root)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
     }
 
     #[test]

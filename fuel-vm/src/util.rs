@@ -449,14 +449,15 @@ pub mod test_helpers {
             }
         }
 
-        fn execute_tx_inner<Tx>(
+        fn execute_tx_inner<Tx, Ecal>(
             &mut self,
-            transactor: &mut Transactor<MemoryStorage, Tx>,
+            transactor: &mut Transactor<MemoryStorage, Tx, Ecal>,
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
+            Ecal: crate::interpreter::EcalHandler,
         {
             self.storage.set_block_height(self.block_height);
 
@@ -497,7 +498,7 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Create>> {
             let interpreter_params = InterpreterParams::from(&self.consensus_params);
             let mut transactor =
-                Transactor::new(self.storage.clone(), interpreter_params);
+                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -508,7 +509,7 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Script>> {
             let interpreter_params = (&self.consensus_params).into();
             let mut transactor =
-                Transactor::new(self.storage.clone(), interpreter_params);
+                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -519,7 +520,7 @@ pub mod test_helpers {
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
             let interpreter_params = (&self.consensus_params).into();
             let mut transactor =
-                Transactor::new(self.storage.clone(), interpreter_params);
+                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
             let state = self.execute_tx_inner(&mut transactor, checked)?;
             let backtrace = transactor.backtrace();

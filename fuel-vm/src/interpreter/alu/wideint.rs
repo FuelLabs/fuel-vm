@@ -66,7 +66,7 @@ macro_rules! wideint_ops {
                 $t::from_le_bytes(truncated)
             }
 
-            impl<S, Tx> Interpreter<S, Tx>
+            impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
             where
                 Tx: ExecutableTransaction,
             {

@@ -1,6 +1,5 @@
 use super::{
     internal::inc_pc,
-    ExecutableTransaction,
     Interpreter,
 };
 use crate::{
@@ -157,10 +156,7 @@ impl MemoryRange {
     /// Return an owned memory slice with a relative address to the heap space
     /// defined in `r[$hp]`. Panics if the range is not within the heap space.
     #[cfg(test)]
-    pub fn to_heap<S, Tx>(self, vm: &Interpreter<S, Tx>) -> Self
-    where
-        Tx: ExecutableTransaction,
-    {
+    pub fn to_heap<S, Tx, Ecal>(self, vm: &Interpreter<S, Tx, Ecal>) -> Self {
         let hp = vm.registers()[RegId::HP] as usize;
         let start = self.start.checked_add(hp).expect("Overflow");
         let end = self.end.checked_add(hp).expect("Overflow");
@@ -200,10 +196,7 @@ impl MemoryRange {
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
-where
-    Tx: ExecutableTransaction,
-{
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
         OwnershipRegisters::new(self)
@@ -298,6 +291,12 @@ where
     pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+    }
+
+    /// Expand heap by `a` bytes.
+    pub fn allocate(&mut self, a: Word) -> SimpleResult<()> {
+        let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
+        try_allocate(hp, sp.as_ref(), a)
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
@@ -485,21 +484,25 @@ pub(crate) fn store_word(
     Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn malloc(
-    mut hp: RegMut<HP>,
-    sp: Reg<SP>,
-    pc: RegMut<PC>,
-    a: Word,
-) -> SimpleResult<()> {
+pub(crate) fn try_allocate(mut hp: RegMut<HP>, sp: Reg<SP>, a: Word) -> SimpleResult<()> {
     let (result, overflow) = hp.overflowing_sub(a);
 
     if overflow || result < *sp {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         *hp = result;
-
-        Ok(inc_pc(pc)?)
+        Ok(())
     }
+}
+
+pub(crate) fn malloc(
+    hp: RegMut<HP>,
+    sp: Reg<SP>,
+    pc: RegMut<PC>,
+    a: Word,
+) -> SimpleResult<()> {
+    try_allocate(hp, sp, a)?;
+    Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn memclear(
@@ -572,7 +575,7 @@ pub struct OwnershipRegisters {
 }
 
 impl OwnershipRegisters {
-    pub(crate) fn new<S, Tx>(vm: &Interpreter<S, Tx>) -> Self {
+    pub(crate) fn new<S, Tx, Ecal>(vm: &Interpreter<S, Tx, Ecal>) -> Self {
         OwnershipRegisters {
             sp: vm.registers[RegId::SP],
             ssp: vm.registers[RegId::SSP],

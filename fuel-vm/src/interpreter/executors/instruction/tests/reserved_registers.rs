@@ -30,6 +30,10 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     };
     let opcode = random_instruction.opcode();
 
+    if opcode == Opcode::ECAL {
+        return TestResult::passed() // ECAL can do anything with registers, so skip it
+    }
+
     // ignore if rA/rB isn't set to writeable register and the opcode should write to that
     // register
     let [ra, rb, _, _] = random_instruction.reg_ids();
@@ -49,7 +53,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         ..Default::default()
     };
 
-    let mut vm = Interpreter::with_storage(
+    let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
         InterpreterParams::from(&consensus_params),
     );
@@ -228,6 +232,7 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::TIME => true,
         Opcode::CFE => false,
         Opcode::CFS => false,
+        Opcode::ECAL => true,
     }
 }
 
@@ -342,5 +347,6 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::TIME => false,
         Opcode::CFE => false,
         Opcode::CFS => false,
+        Opcode::ECAL => true,
     }
 }

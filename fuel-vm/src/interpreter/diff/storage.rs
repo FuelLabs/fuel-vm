@@ -74,7 +74,7 @@ pub struct Record<S>(pub(super) S, pub(super) Vec<StorageDelta>)
 where
     S: InterpreterStorage;
 
-impl<S, Tx> Interpreter<Record<S>, Tx>
+impl<S, Tx, Ecal> Interpreter<Record<S>, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -82,7 +82,7 @@ where
     /// Remove the [`Recording`] wrapper from the storage.
     /// Recording storage changes has an overhead so it's
     /// useful to be able to remove it once the diff is generated.
-    pub fn remove_recording(self) -> Interpreter<S, Tx> {
+    pub fn remove_recording(self) -> Interpreter<S, Tx, Ecal> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -97,6 +97,7 @@ where
             panic_context: self.panic_context,
             profiler: self.profiler,
             interpreter_params: self.interpreter_params,
+            _ecal_handler: core::marker::PhantomData::<Ecal>,
         }
     }
 
@@ -146,7 +147,7 @@ where
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -155,7 +156,7 @@ where
     /// record any changes this VM makes to it's storage.
     /// Recording storage changes has an overhead so should
     /// be used in production.
-    pub fn add_recording(self) -> Interpreter<Record<S>, Tx> {
+    pub fn add_recording(self) -> Interpreter<Record<S>, Tx, Ecal> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -170,6 +171,7 @@ where
             panic_context: self.panic_context,
             profiler: self.profiler,
             interpreter_params: self.interpreter_params,
+            _ecal_handler: core::marker::PhantomData::<Ecal>,
         }
     }
 

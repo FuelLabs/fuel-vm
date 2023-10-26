@@ -55,7 +55,7 @@ fn gas_factor_rounds_correctly() {
     let interpreter_params = InterpreterParams::from(&consensus_params);
     let storage = MemoryStorage::default();
 
-    let mut interpreter = Interpreter::with_storage(storage, interpreter_params);
+    let mut interpreter = Interpreter::<_, _>::with_storage(storage, interpreter_params);
     let res = interpreter
         .with_profiler(profiler.clone())
         .transact(transaction)

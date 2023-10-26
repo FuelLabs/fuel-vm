@@ -37,7 +37,10 @@ use crate::{
     prelude::*,
 };
 
-use crate::interpreter::InterpreterParams;
+use crate::interpreter::{
+    InterpreterParams,
+    NotSupportedEcal,
+};
 
 use crate::script_with_data_offset;
 use fuel_asm::{
@@ -592,7 +595,10 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let interpreter_params = InterpreterParams::from(&consensus_params);
 
-    let mut client = MemoryClient::new(MemoryStorage::default(), interpreter_params);
+    let mut client = MemoryClient::<NotSupportedEcal>::new(
+        MemoryStorage::default(),
+        interpreter_params,
+    );
 
     let gas_price = 0;
     let gas_limit = 1_000_000;

@@ -126,7 +126,7 @@ where
     };
 
     let parallel_execution = {
-        Interpreter::<PredicateStorage>::check_predicates_async::<_, TokioWithRayon>(
+        Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
             &checked, &params,
         )
         .await
@@ -134,7 +134,7 @@ where
     };
 
     let seq_execution =
-        Interpreter::<PredicateStorage>::check_predicates(&checked, &params)
+        Interpreter::<PredicateStorage, _>::check_predicates(&checked, &params)
             .map(|checked| checked.gas_used());
 
     match (parallel_execution, seq_execution) {
@@ -271,7 +271,7 @@ async fn execute_gas_metered_predicates(
             .into_checked_basic(Default::default(), &ConsensusParameters::standard())
             .expect("Should successfully create checked tranaction with predicate");
 
-        Interpreter::<PredicateStorage>::check_predicates_async::<_, TokioWithRayon>(
+        Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
             &tx, &params,
         )
         .await
@@ -286,7 +286,7 @@ async fn execute_gas_metered_predicates(
         .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
-    let seq_gas_used = Interpreter::<PredicateStorage>::check_predicates(&tx, &params)
+    let seq_gas_used = Interpreter::<PredicateStorage, _>::check_predicates(&tx, &params)
         .map(|r| r.gas_used())
         .map_err(|_| ())?;
 

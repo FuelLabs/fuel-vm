@@ -35,7 +35,7 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {

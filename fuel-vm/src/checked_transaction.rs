@@ -318,7 +318,7 @@ where
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let checked =
-                Interpreter::<PredicateStorage>::check_predicates(&self, params)?;
+                Interpreter::<PredicateStorage, _>::check_predicates(&self, params)?;
             self.checks_bitmask.insert(Checks::Predicates);
             self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
@@ -334,7 +334,7 @@ where
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             let predicates_checked =
-                Interpreter::<PredicateStorage>::check_predicates_async::<_, E>(
+                Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
                     &self, params,
                 )
                 .await?;
@@ -356,7 +356,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
         &mut self,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
-        Interpreter::<PredicateStorage>::estimate_predicates(self, params)?;
+        Interpreter::<PredicateStorage, _>::estimate_predicates(self, params)?;
         Ok(())
     }
 
@@ -367,7 +367,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     where
         E: ParallelExecutor,
     {
-        Interpreter::<PredicateStorage>::estimate_predicates_async::<_, E>(self, params)
+        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(self, params)
             .await?;
 
         Ok(())

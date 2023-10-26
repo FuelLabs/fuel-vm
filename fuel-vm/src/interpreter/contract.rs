@@ -58,7 +58,7 @@ use alloc::borrow::Cow;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,

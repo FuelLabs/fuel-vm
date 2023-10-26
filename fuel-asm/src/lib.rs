@@ -330,6 +330,9 @@ impl_instructions! {
     0xac WDMM wdmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
     "MulMod 256bit"
     0xad WQMM wqmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
+
+    "Call external function"
+    0xb0 ECAL ecal [a: RegId b: RegId c: RegId d: RegId]
 }
 
 impl Instruction {
@@ -978,7 +981,7 @@ fn check_predicate_allowed() {
             let should_allow = match repr {
                 BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG
                 | LOGD | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ
-                | TIME | TR | TRO => false,
+                | TIME | TR | TRO | ECAL => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

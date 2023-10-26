@@ -6,13 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [#607](https://github.com/FuelLabs/fuel-vm/pull/607): Added `ECAL` instruction support.
+
 ### Changed
 
 - [#612](https://github.com/FuelLabs/fuel-vm/pull/612): Reduced the memory consumption in all places where we calculate BMT root.
 
 #### Breaking
 
-- [#613](https://github.com/FuelLabs/fuel-vm/pull/613): Transaction fees now include the cost of signature recovery for each signed input.
+- [#613](https://github.com/FuelLabs/fuel-vm/pull/613): Transaction fees now include the cost of signature verification for each input. For signed inputs, the cost of an EC recovery is charged. For predicate inputs, the cost of a BMT root of bytecode is charged. 
+- [#607](https://github.com/FuelLabs/fuel-vm/pull/607): The `Interpreter` expects the third generic argument during type definition that specifies the implementer of the `EcalHandler` trait for `ecal` opcode.
 - [#609](https://github.com/FuelLabs/fuel-vm/pull/609): Checked transactions (`Create`, `Script`, and `Mint`) now enforce a maximum size. The maximum size is specified by `MAX_TRANSACTION_SIZE` in the transaction parameters, under consensus parameters. Checking a transaction above this size raises `CheckError::TransactionSizeLimitExceeded`.
 
 ## [Version 0.39.0]

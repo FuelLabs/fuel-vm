@@ -11,6 +11,7 @@ use crate::{
             JumpArgs,
             JumpMode,
         },
+        EcalHandler,
         ExecutableTransaction,
         Interpreter,
     },
@@ -29,10 +30,11 @@ use fuel_types::Word;
 
 use core::ops::Div;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
 {
     /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
@@ -879,6 +881,11 @@ where
                 self.gas_charge(self.gas_costs().tro)?;
                 let (a, b, c, d) = tro.unpack();
                 self.transfer_output(r!(a), r!(b), r!(c), r!(d))?;
+            }
+
+            Instruction::ECAL(ecal) => {
+                let (a, b, c, d) = ecal.unpack();
+                self.external_call(a, b, c, d)?;
             }
         }
 

@@ -88,7 +88,7 @@ mod ret_tests;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -352,7 +352,7 @@ impl JumpArgs {
     }
 }
 
-impl<S, Tx> Interpreter<S, Tx>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,

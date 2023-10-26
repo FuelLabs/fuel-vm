@@ -36,6 +36,11 @@ impl ReceiptsCtx {
         self.receipts.len()
     }
 
+    /// Returns `true` if the context has no receipts.
+    pub fn is_empty(&self) -> bool {
+        self.receipts.len() == 0
+    }
+
     /// Return current Merkle root of the receipts
     pub fn root(&self) -> Bytes32 {
         self.receipts_tree.clone().root().into()

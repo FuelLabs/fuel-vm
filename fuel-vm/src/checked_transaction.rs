@@ -985,7 +985,7 @@ mod tests {
         // be recovered once. Therefore, we charge only once for the address
         // recovery of the signed inputs.
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + 1 * gas_costs.ecr1)
+            + gas_costs.ecr1)
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
     }

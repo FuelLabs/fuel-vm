@@ -952,27 +952,27 @@ mod tests {
         let gas_limit = 1000;
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
-        let owner = SecretKey::random(rng);
+        let secret = SecretKey::random(rng);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
             // Set up 3 signed inputs
             .add_unsigned_message_input(
-                owner,
+                secret,
                 rng.gen(),
                 rng.gen(),
                 rng.gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
-                owner,
+                secret,
                 rng.gen(),
                 rng.gen(),
                 rng.gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
-                owner,
+                secret,
                 rng.gen(),
                 rng.gen(),
                 rng.gen::<u32>() as u64,
@@ -1006,7 +1006,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
-                Default::default(),
+                50,
                 vec![],
                 vec![],
             ))
@@ -1015,7 +1015,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
-                Default::default(),
+                100,
                 vec![],
                 vec![],
             ))
@@ -1024,7 +1024,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
-                Default::default(),
+                200,
                 vec![],
                 vec![],
             ))
@@ -1032,7 +1032,10 @@ mod tests {
         let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + 3 * gas_costs.contract_root)
+            + 3 * gas_costs.contract_root
+            + 50
+            + 100
+            + 200)
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
     }
@@ -1075,7 +1078,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
-                Default::default(),
+                50,
                 vec![],
                 vec![],
             ))
@@ -1084,7 +1087,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
-                Default::default(),
+                100,
                 vec![],
                 vec![],
             ))
@@ -1093,7 +1096,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 rng.gen(),
-                Default::default(),
+                200,
                 vec![],
                 vec![],
             ))
@@ -1102,7 +1105,10 @@ mod tests {
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
             + 3 * gas_costs.ecr1
-            + 3 * gas_costs.contract_root)
+            + 3 * gas_costs.contract_root
+            + 50
+            + 100
+            + 200)
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
     }

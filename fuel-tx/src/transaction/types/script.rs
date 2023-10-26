@@ -160,7 +160,7 @@ impl Chargeable for Script {
             HashMap::with_capacity(self.witnesses().len());
         self.inputs()
             .iter()
-            .filter_map(|input| match input {
+            .filter(|input| match input {
                 // Include signed inputs of unique witness indices
                 Input::CoinSigned(CoinSigned { witness_index, .. })
                 | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
@@ -168,14 +168,14 @@ impl Chargeable for Script {
                     if !witness_cache.contains_key(witness_index) =>
                 {
                     witness_cache.insert(*witness_index, true);
-                    Some(input)
+                    true
                 }
                 // Include all predicates
                 Input::CoinPredicate(_)
                 | Input::MessageCoinPredicate(_)
-                | Input::MessageDataPredicate(_) => Some(input),
+                | Input::MessageDataPredicate(_) => true,
                 // Ignore all other inputs
-                _ => None,
+                _ => false,
             })
             .map(|input| match input {
                 // Charge EC recovery cost for signed inputs

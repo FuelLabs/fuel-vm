@@ -556,7 +556,6 @@ pub mod field {
         Deref,
         DerefMut,
     };
-    use itertools::Itertools;
 
     pub trait GasPrice {
         fn gas_price(&self) -> &Word;
@@ -735,24 +734,24 @@ pub mod field {
         /// Returns predicate's offset and length of the `Input` at `idx`, if any.
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)>;
 
-        /// Returns all signed inputs. This excludes predicate inputs.
-        fn signed_inputs(&self) -> Vec<&Input> {
-            self.inputs()
-                .iter()
-                .filter_map(|input| input.witness_index().is_some().then_some(input))
-                .collect_vec()
-        }
-
-        /// Returns all signed inputs filtered by witness uniqueness.
-        fn signed_inputs_with_unique_witnesses(&self) -> Vec<&Input> {
-            self.signed_inputs()
-                .into_iter()
-                .sorted_unstable_by(|a, b| {
-                    Ord::cmp(&a.witness_index(), &b.witness_index())
-                })
-                .dedup()
-                .collect_vec()
-        }
+        // /// Returns all signed inputs. This excludes predicate inputs.
+        // fn signed_inputs(&self) -> Vec<&Input> {
+        //     self.inputs()
+        //         .iter()
+        //         .filter_map(|input| input.witness_index().is_some().then_some(input))
+        //         .collect_vec()
+        // }
+        //
+        // /// Returns all signed inputs filtered by witness uniqueness.
+        // fn signed_inputs_with_unique_witnesses(&self) -> Vec<&Input> {
+        //     self.signed_inputs()
+        //         .into_iter()
+        //         .sorted_unstable_by(|a, b| {
+        //             Ord::cmp(&a.witness_index(), &b.witness_index())
+        //         })
+        //         .dedup()
+        //         .collect_vec()
+        // }
     }
 
     pub trait Outputs {

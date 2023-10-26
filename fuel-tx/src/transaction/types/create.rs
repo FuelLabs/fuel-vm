@@ -5,20 +5,30 @@ use crate::{
         FormatValidityChecks,
     },
     ConsensusParameters,
+    GasCosts,
 };
 
 use crate::{
-    transaction::field::{
-        BytecodeLength,
-        BytecodeWitnessIndex,
-        GasLimit,
-        GasPrice,
-        Inputs,
-        Maturity,
-        Outputs,
-        Salt as SaltField,
-        StorageSlots,
-        Witnesses,
+    transaction::{
+        field::{
+            BytecodeLength,
+            BytecodeWitnessIndex,
+            GasLimit,
+            GasPrice,
+            Inputs,
+            Maturity,
+            Outputs,
+            Salt as SaltField,
+            StorageSlots,
+            Witnesses,
+        },
+        types::input::{
+            coin::CoinSigned,
+            message::{
+                MessageCoinSigned,
+                MessageDataSigned,
+            },
+        },
     },
     Chargeable,
     CheckError,
@@ -182,6 +192,43 @@ impl Chargeable for Create {
             }
         }
         cumulative_predicate_gas
+    }
+
+    fn gas_used_by_signature_checks(&self, gas_costs: &GasCosts) -> Word {
+        let mut witness_cache: HashMap<u8, bool> =
+            HashMap::with_capacity(self.witnesses().len());
+        self.inputs()
+            .iter()
+            .filter_map(|input| match input {
+                // Include signed inputs of unique witness indices
+                Input::CoinSigned(CoinSigned { witness_index, .. })
+                | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
+                | Input::MessageDataSigned(MessageDataSigned { witness_index, .. })
+                    if !witness_cache.contains_key(witness_index) =>
+                {
+                    witness_cache.insert(*witness_index, true);
+                    Some(input)
+                }
+                // Include all predicates
+                Input::CoinPredicate(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_) => Some(input),
+                // Ignore all other inputs
+                _ => None,
+            })
+            .map(|input| match input {
+                // Charge EC recovery cost for signed inputs
+                Input::CoinSigned(_)
+                | Input::MessageCoinSigned(_)
+                | Input::MessageDataSigned(_) => gas_costs.ecr1,
+                // Charge the cost of the contract root for predicate inputs
+                Input::CoinPredicate(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_) => gas_costs.contract_root,
+                // Charge nothing for all other inputs
+                _ => 0,
+            })
+            .fold(0, |acc, cost| acc.saturating_add(cost))
     }
 }
 

@@ -913,7 +913,7 @@ mod tests {
         // verify min fee a transaction can consume based on bytes is correct
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
-        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(100);
         let base_asset_id = rng.gen();
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
@@ -1239,8 +1239,7 @@ mod tests {
         let gas_used_by_bytes =
             tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
         let gas_used_by_signature_recovery =
-            tx.signed_inputs_with_unique_witnesses().len() as u128
-                * gas_costs.ecr1 as u128;
+            tx.gas_used_by_signature_checks(gas_costs) as u128;
         let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
         let total =
             (gas_used_by_bytes + gas_used_by_predicates + gas_used_by_signature_recovery)

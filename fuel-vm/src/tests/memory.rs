@@ -400,7 +400,6 @@ fn test_heap_not_executable() {
     ]);
 
     if let Some(Receipt::Panic { reason, .. }) = receipts.first() {
-        dbg!(reason);
         assert!(matches!(reason.reason(), PanicReason::MemoryNotExecutable));
     } else {
         panic!("Expected panic receipt");

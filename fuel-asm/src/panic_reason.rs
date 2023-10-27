@@ -70,7 +70,7 @@ enum_from! {
         /// The provided register does not allow write operations.
         ReservedRegisterNotWritable = 0x11,
         /// The execution resulted in an erroneous state of the interpreter.
-        ErrorFlag = 0x12,
+        InvalidFlags = 0x12,
         /// The provided immediate value is not valid for this instruction.
         InvalidImmediateValue = 0x13,
         /// The provided transaction input is not of type `Coin`.

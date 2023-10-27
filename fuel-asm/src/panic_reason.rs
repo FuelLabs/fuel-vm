@@ -113,7 +113,7 @@ enum_from! {
         TransferZeroCoins = 0x25,
         /// Attempted to execute an invalid instruction
         InvalidInstruction = 0x26,
-        /// Memory after $ssp is not executable
+        /// Memory outside $is..$ssp range is not executable
         MemoryNotExecutable = 0x27,
     }
 }

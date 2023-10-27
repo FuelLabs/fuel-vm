@@ -49,7 +49,6 @@ use fuel_asm::{
     PanicReason::{
         ContractNotInInputs,
         ExpectedUnallocatedStack,
-        InvalidFlags,
         MemoryOverflow,
     },
 };

@@ -3,10 +3,7 @@ use alloc::vec;
 use fuel_asm::{
     op,
     GTFArgs,
-    PanicReason::{
-        ErrorFlag,
-        MemoryOverflow,
-    },
+    PanicReason::MemoryOverflow,
     RegId,
 };
 use fuel_crypto::{
@@ -39,6 +36,11 @@ use crate::{
 use crate::checked_transaction::CheckPredicateParams;
 #[cfg(feature = "std")]
 use crate::tests::predicate::TokioWithRayon;
+
+use super::test_helpers::{
+    assert_success,
+    run_script,
+};
 
 #[test]
 fn secp256k1_recover() {
@@ -266,9 +268,18 @@ fn secp256k1_recover_error() {
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
         op::eck1(0x11, 0x20, 0x21),
+        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(script, ErrorFlag)
+    let receipts = run_script(script);
+    assert_success(&receipts);
+
+    let Some(Receipt::Log { ra, .. }) = receipts.first() else {
+        panic!("Expected log receipt");
+    };
+
+    assert_eq!(*ra, 1, "Verification should have failed");
 }
 
 #[test]
@@ -283,6 +294,7 @@ fn secp256k1_recover_a_gt_vmaxram_sub_64() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
         op::eck1(reg_a, reg_b, reg_b),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -300,6 +312,7 @@ fn secp256k1_recover_b_gt_vmaxram_sub_64() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
         op::eck1(reg_b, reg_a, reg_b),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -317,6 +330,7 @@ fn secp256k1_recover_c_gt_vmaxram_sub_32() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 31),
         op::eck1(reg_b, reg_b, reg_a),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -399,9 +413,18 @@ fn secp256r1_recover_error() {
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
         op::ecr1(0x11, 0x20, 0x21),
+        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(script, ErrorFlag)
+    let receipts = run_script(script);
+    assert_success(&receipts);
+
+    let Some(Receipt::Log { ra, .. }) = receipts.first() else {
+        panic!("Expected log receipt");
+    };
+
+    assert_eq!(*ra, 1, "Verification should have failed");
 }
 
 #[test]
@@ -416,6 +439,7 @@ fn secp256r1_recover_a_gt_vmaxram_sub_64() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
         op::ecr1(reg_a, reg_b, reg_b),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -433,6 +457,7 @@ fn secp256r1_recover_b_gt_vmaxram_sub_64() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
         op::ecr1(reg_b, reg_a, reg_b),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -450,6 +475,7 @@ fn secp256r1_recover_c_gt_vmaxram_sub_32() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 31),
         op::ecr1(reg_b, reg_b, reg_a),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -517,21 +543,32 @@ fn ed25519_verify_error() {
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let message = Message::new(message);
-
     let signature = Signature::sign(&secret, &message);
+
+    let altered_message = b"The gift of words is the gift of deception and illusion!";
+    let altered_message = Message::new(altered_message);
 
     #[rustfmt::skip]
     let script = vec![
-        // op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
-        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::addi(0x22, 0x21, altered_message.as_ref().len() as Immediate12),
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
         op::move_(0x11, RegId::HP),
         op::ed19(0x11, 0x20, 0x21),
+        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(script, ErrorFlag)
+    let receipts = run_script(script);
+    assert_success(&receipts);
+
+    let Some(Receipt::Log { ra, .. }) = receipts.first() else {
+        panic!("Expected log receipt");
+    };
+
+    assert_eq!(*ra, 1, "Verification should have failed");
 }
 
 #[test]
@@ -546,6 +583,7 @@ fn ed25519_verify_a_gt_vmaxram_sub_64() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
         op::ed19(reg_a, reg_b, reg_b),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -563,6 +601,7 @@ fn ed25519_verify_b_gt_vmaxram_sub_64() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 63),
         op::ed19(reg_b, reg_a, reg_b),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
@@ -580,6 +619,7 @@ fn ed25519_verify_c_gt_vmaxram_sub_32() {
         op::not(reg_a, reg_a),
         op::subi(reg_a, reg_a, 31),
         op::ed19(reg_b, reg_b, reg_a),
+        op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);

@@ -387,3 +387,21 @@ fn test_meq(
         panic!("Expected LogData receipt");
     }
 }
+
+#[test]
+fn test_heap_not_executable() {
+    let receipts = run_script(vec![
+        op::movi(0x10, 16),
+        op::aloc(0x10),
+        op::sub(0x10, RegId::HP, RegId::IS),
+        op::divi(0x10, 0x10, 4),
+        op::jmp(0x10),
+        op::ret(RegId::ONE),
+    ]);
+
+    if let Some(Receipt::Panic { reason, .. }) = receipts.first() {
+        assert!(matches!(reason.reason(), PanicReason::MemoryNotExecutable));
+    } else {
+        panic!("Expected panic receipt");
+    }
+}

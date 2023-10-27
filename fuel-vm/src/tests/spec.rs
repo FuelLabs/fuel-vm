@@ -337,5 +337,5 @@ fn spec_cannot_write_reserved_flags(#[values(0b100, 0b111)] flags: Immediate18) 
     script.push(op::ret(RegId::ONE));
 
     let receipts = run_script(script.into_iter().collect());
-    assert_panics(&receipts, PanicReason::ErrorFlag);
+    assert_panics(&receipts, PanicReason::InvalidFlags);
 }

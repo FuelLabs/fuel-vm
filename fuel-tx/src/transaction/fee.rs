@@ -81,7 +81,7 @@ impl TransactionFee {
         let min_gas = bytes_gas
             .checked_add(gas_used_by_signature_checks)?
             .checked_add(gas_used_by_predicates)?;
-        let max_gas = bytes_gas.checked_add(gas_limit)?;
+        let max_gas = min_gas.checked_add(gas_limit)?;
 
         let max_gas_to_pay = max_gas.checked_mul(gas_price).and_then(|total| {
             num_integer::div_ceil(total as u128, factor).try_into().ok()

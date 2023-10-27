@@ -905,7 +905,7 @@ mod tests {
     }
 
     #[test]
-    fn min_fee_multiple_signed_inputs() {
+    fn fee_multiple_signed_inputs() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let gas_price = 100;
         let gas_limit = 1000;
@@ -938,15 +938,20 @@ mod tests {
             )
             .finalize();
         let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
             + 3 * gas_costs.ecr1)
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = expected_min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
     }
 
     #[test]
-    fn min_fee_multiple_signed_inputs_single_owner() {
+    fn fee_multiple_signed_inputs_single_owner() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let gas_price = 100;
         let gas_limit = 1000;
@@ -980,6 +985,7 @@ mod tests {
             )
             .finalize();
         let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
         let min_fee = fee.min_fee();
         // Because all inputs are owned by the same address, the address will only need to
         // be recovered once. Therefore, we charge only once for the address
@@ -988,6 +994,10 @@ mod tests {
             + gas_costs.ecr1)
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
     }
 
     #[test]
@@ -1030,6 +1040,7 @@ mod tests {
             ))
             .finalize();
         let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
             + 3 * gas_costs.contract_root
@@ -1038,6 +1049,10 @@ mod tests {
             + 200)
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
     }
 
     #[test]
@@ -1102,6 +1117,7 @@ mod tests {
             ))
             .finalize();
         let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
             + 3 * gas_costs.ecr1
@@ -1111,6 +1127,10 @@ mod tests {
             + 200)
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
     }
 
     #[test]
@@ -1373,11 +1393,16 @@ mod tests {
         let available_balances =
             balances::initial_free_balances(tx, gas_costs, fee_params, base_asset_id)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
-        let fee = tx.metered_bytes_size() as u128
-            * fee_params.gas_per_byte as u128
+        let gas_used_by_bytes =
+            tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
+        let gas_used_by_signature_recovery =
+            tx.gas_used_by_signature_checks(gas_costs) as u128;
+        let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
+        let total = (gas_used_by_bytes
+            + gas_used_by_predicates
+            + gas_used_by_signature_recovery
+            + tx.limit() as u128)
             * tx.price() as u128;
-        let gas = tx.limit() as u128 * tx.price() as u128;
-        let total = fee + gas;
         // use different division mechanism than impl
         let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =

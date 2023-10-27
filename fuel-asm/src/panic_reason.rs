@@ -70,7 +70,7 @@ enum_from! {
         /// The provided register does not allow write operations.
         ReservedRegisterNotWritable = 0x11,
         /// The execution resulted in an erroneous state of the interpreter.
-        ErrorFlag = 0x12,
+        InvalidFlags = 0x12,
         /// The provided immediate value is not valid for this instruction.
         InvalidImmediateValue = 0x13,
         /// The provided transaction input is not of type `Coin`.
@@ -111,6 +111,10 @@ enum_from! {
         ContractInstructionNotAllowed = 0x24,
         /// Transfer of zero coins is not allowed.
         TransferZeroCoins = 0x25,
+        /// Attempted to execute an invalid instruction
+        InvalidInstruction = 0x26,
+        /// Memory outside $is..$ssp range is not executable
+        MemoryNotExecutable = 0x27,
     }
 }
 

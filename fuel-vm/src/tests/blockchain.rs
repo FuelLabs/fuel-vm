@@ -48,7 +48,6 @@ use fuel_asm::{
     Instruction,
     PanicReason::{
         ContractNotInInputs,
-        ErrorFlag,
         ExpectedUnallocatedStack,
         MemoryOverflow,
     },
@@ -1475,14 +1474,12 @@ fn message_output_b_gt_msg_len() {
 
     // cover contract_id_end beyond max ram
     let message_output = vec![
-        op::xor(reg_a, reg_a, reg_a), // r[a] = 0
-        op::ori(reg_a, reg_a, 1),     // r[a] = 1
-        op::slli(reg_a, reg_a, 20),   // r[a] = 2^20
-        op::addi(reg_a, reg_a, 1),    // r[a] = 2^20 + 1
+        op::slli(reg_a, RegId::ONE, (VM_MAX_RAM.ilog2() + 2) as u16),
         op::smo(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(message_output, ErrorFlag);
+    check_expected_reason_for_instructions(message_output, MemoryOverflow);
 }
 
 #[test]

@@ -111,6 +111,8 @@ enum_from! {
         ContractInstructionNotAllowed = 0x24,
         /// Transfer of zero coins is not allowed.
         TransferZeroCoins = 0x25,
+        /// Memory after $ssp is not executable
+        MemoryNotExecutable = 0x26,
     }
 }
 

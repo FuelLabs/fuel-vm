@@ -22,6 +22,7 @@ use crate::{
 use fuel_asm::{
     wideint,
     Instruction,
+    PanicInstruction,
     PanicReason,
     RawInstruction,
     RegId,
@@ -38,22 +39,40 @@ where
 {
     /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
-        if let Some(raw_instruction) = self.fetch_instruction() {
-            self.instruction(raw_instruction)
-        } else {
-            Err(InterpreterError::Panic(PanicReason::MemoryOverflow))
-        }
+        let raw_instruction = self.fetch_instruction()?;
+        self.instruction(raw_instruction)
     }
 
-    /// Reads the current instruction located in `$m[$pc]`,
-    /// returning `None` on any memory access violation.
-    fn fetch_instruction(&self) -> Option<RawInstruction> {
-        let start: usize = self.registers[RegId::PC].try_into().ok()?;
+    /// Reads instruction bytes at given address,
+    /// returning `None` if the location is unreadable.
+    fn fetch_instruction_bytes(&self, addr: Word) -> Option<RawInstruction> {
+        let start: usize = addr.try_into().ok()?;
         let end = start.checked_add(Instruction::SIZE)?;
         let bytes = self.memory.get(start..end)?;
         Some(RawInstruction::from_be_bytes(
             bytes.try_into().expect("Slice len mismatch"),
         ))
+    }
+
+    /// Reads the current instruction located in `$m[$pc]`,
+    /// performing memory boundary checks.
+    fn fetch_instruction(
+        &self,
+    ) -> Result<RawInstruction, InterpreterError<S::DataError>> {
+        let pc = self.registers[RegId::PC];
+        let instruction = self.fetch_instruction_bytes(pc).ok_or(
+            InterpreterError::PanicInstruction(PanicInstruction::error(
+                PanicReason::MemoryOverflow,
+                0, // The value is meaningless since fetch was out-of-bounds
+            )),
+        )?;
+        if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP] {
+            return Err(InterpreterError::PanicInstruction(
+                PanicInstruction::error(PanicReason::MemoryNotExecutable, instruction)
+                    .into(),
+            ))
+        }
+        Ok(instruction)
     }
 
     /// Execute a provided instruction

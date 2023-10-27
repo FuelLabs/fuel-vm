@@ -1,8 +1,18 @@
 use crate::{
+    field,
+    input::{
+        coin::CoinSigned,
+        message::{
+            MessageCoinSigned,
+            MessageDataSigned,
+        },
+    },
     FeeParameters,
     GasCosts,
+    Input,
 };
 use fuel_asm::Word;
+use hashbrown::HashSet;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -119,11 +129,14 @@ impl TransactionFee {
     /// Attempt to create a transaction fee from parameters and transaction internals
     ///
     /// Will return `None` if arithmetic overflow occurs.
-    pub fn checked_from_tx<T: Chargeable>(
+    pub fn checked_from_tx<T>(
         gas_costs: &GasCosts,
         params: &FeeParameters,
         tx: &T,
-    ) -> Option<Self> {
+    ) -> Option<Self>
+    where
+        T: Chargeable + field::Inputs,
+    {
         let metered_bytes = tx.metered_bytes_size() as Word;
         let gas_used_by_signature_checks = tx.gas_used_by_signature_checks(gas_costs);
         let gas_used_by_predicates = tx.gas_used_by_predicates();
@@ -153,9 +166,58 @@ pub trait Chargeable {
     fn metered_bytes_size(&self) -> usize;
 
     /// Used for accounting purposes when charging for predicates.
-    fn gas_used_by_predicates(&self) -> Word;
+    fn gas_used_by_predicates(&self) -> Word
+    where
+        Self: field::Inputs,
+    {
+        let mut cumulative_predicate_gas: Word = 0;
+        for input in self.inputs() {
+            if let Some(predicate_gas_used) = input.predicate_gas_used() {
+                cumulative_predicate_gas =
+                    cumulative_predicate_gas.saturating_add(predicate_gas_used);
+            }
+        }
+        cumulative_predicate_gas
+    }
 
-    fn gas_used_by_signature_checks(&self, gas_costs: &GasCosts) -> Word;
+    fn gas_used_by_signature_checks(&self, gas_costs: &GasCosts) -> Word
+    where
+        Self: field::Inputs,
+    {
+        let mut witness_cache: HashSet<u8> = HashSet::new();
+        self.inputs()
+            .iter()
+            .filter(|input| match input {
+                // Include signed inputs of unique witness indices
+                Input::CoinSigned(CoinSigned { witness_index, .. })
+                | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
+                | Input::MessageDataSigned(MessageDataSigned { witness_index, .. })
+                    if !witness_cache.contains(witness_index) =>
+                {
+                    witness_cache.insert(*witness_index);
+                    true
+                }
+                // Include all predicates
+                Input::CoinPredicate(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_) => true,
+                // Ignore all other inputs
+                _ => false,
+            })
+            .map(|input| match input {
+                // Charge EC recovery cost for signed inputs
+                Input::CoinSigned(_)
+                | Input::MessageCoinSigned(_)
+                | Input::MessageDataSigned(_) => gas_costs.ecr1,
+                // Charge the cost of the contract root for predicate inputs
+                Input::CoinPredicate(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_) => gas_costs.contract_root,
+                // Charge nothing for all other inputs
+                _ => 0,
+            })
+            .fold(0, |acc, cost| acc.saturating_add(cost))
+    }
 }
 
 #[cfg(test)]

@@ -96,7 +96,7 @@ where
         raw: RawInstruction,
     ) -> IoResult<ExecuteState, S::DataError> {
         let instruction = Instruction::try_from(raw)
-            .map_err(|_| RuntimeError::from(PanicReason::ErrorFlag))?;
+            .map_err(|_| RuntimeError::from(PanicReason::InvalidInstruction))?;
 
         // TODO additional branch that might be optimized after
         // https://github.com/FuelLabs/fuel-asm/issues/68

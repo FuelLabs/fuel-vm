@@ -1,9 +1,14 @@
 use crate::{
     field,
     input::{
-        coin::CoinSigned,
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
         message::{
+            MessageCoinPredicate,
             MessageCoinSigned,
+            MessageDataPredicate,
             MessageDataSigned,
         },
     },
@@ -210,9 +215,13 @@ pub trait Chargeable {
                 | Input::MessageCoinSigned(_)
                 | Input::MessageDataSigned(_) => gas_costs.ecr1,
                 // Charge the cost of the contract root for predicate inputs
-                Input::CoinPredicate(_)
-                | Input::MessageCoinPredicate(_)
-                | Input::MessageDataPredicate(_) => gas_costs.contract_root,
+                Input::CoinPredicate(CoinPredicate { predicate, .. })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    predicate, ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    predicate, ..
+                }) => gas_costs.contract_root.resolve(predicate.len() as u64),
                 // Charge nothing for all other inputs
                 _ => 0,
             })

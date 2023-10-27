@@ -1000,6 +1000,14 @@ mod tests {
         assert_eq!(max_fee, expected_max_fee);
     }
 
+    fn random_bytes<const N: usize, R: Rng + ?Sized>(rng: &mut R) -> Box<[u8; N]> {
+        let mut bytes = Box::new([0u8; N]);
+        for chunk in bytes.chunks_mut(32) {
+            rng.fill(chunk);
+        }
+        bytes
+    }
+
     #[test]
     fn min_fee_multiple_predicate_inputs() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -1007,6 +1015,9 @@ mod tests {
         let gas_limit = 1000;
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let predicate_1 = random_bytes::<1024, _>(rng);
+        let predicate_2 = random_bytes::<2048, _>(rng);
+        let predicate_3 = random_bytes::<4096, _>(rng);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
@@ -1017,7 +1028,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 50,
-                vec![],
+                predicate_1.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
@@ -1026,7 +1037,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 100,
-                vec![],
+                predicate_2.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
@@ -1035,7 +1046,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 200,
-                vec![],
+                predicate_3.to_vec(),
                 vec![],
             ))
             .finalize();
@@ -1043,7 +1054,9 @@ mod tests {
 
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + 3 * gas_costs.contract_root
+            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
             + 50
             + 100
             + 200)
@@ -1062,6 +1075,9 @@ mod tests {
         let gas_limit = 1000;
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let predicate_1 = random_bytes::<1024, _>(rng);
+        let predicate_2 = random_bytes::<2048, _>(rng);
+        let predicate_3 = random_bytes::<4096, _>(rng);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
             .gas_limit(gas_limit)
@@ -1094,7 +1110,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 50,
-                vec![],
+                predicate_1.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
@@ -1103,7 +1119,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 100,
-                vec![],
+                predicate_2.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
@@ -1112,7 +1128,7 @@ mod tests {
                 rng.gen(),
                 rng.gen(),
                 200,
-                vec![],
+                predicate_3.to_vec(),
                 vec![],
             ))
             .finalize();
@@ -1121,7 +1137,9 @@ mod tests {
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
             + 3 * gas_costs.ecr1
-            + 3 * gas_costs.contract_root
+            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
             + 50
             + 100
             + 200)

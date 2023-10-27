@@ -318,6 +318,7 @@ pub struct GasCostsValues {
     pub srwq: DependentCost,
     pub swwq: DependentCost,
 
+    // Non-opcode relative costs
     pub contract_root: Word,
 }
 

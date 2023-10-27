@@ -161,6 +161,6 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 44,
             dep_per_unit: 5,
         },
-        contract_root: 100,
+        contract_root: 3024932,
     }
 }

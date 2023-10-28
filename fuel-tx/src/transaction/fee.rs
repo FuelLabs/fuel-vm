@@ -241,9 +241,9 @@ mod tests {
         .with_gas_per_byte(2)
         .with_gas_price_factor(3);
 
-    fn gas_to_fee(gas: u64, gas_price: Word) -> f64 {
+    fn gas_to_fee(params: &FeeParameters, gas: u64, gas_price: Word) -> f64 {
         let fee = gas * gas_price;
-        fee as f64 / PARAMS.gas_price_factor as f64
+        fee as f64 / params.gas_price_factor as f64
     }
 
     #[test]
@@ -254,8 +254,9 @@ mod tests {
         let gas_limit = 7;
         let gas_price = 11;
 
+        let params = PARAMS;
         let fee = TransactionFee::checked_from_values(
-            &PARAMS,
+            &params,
             metered_bytes,
             gas_used_by_signature_checks,
             gas_used_by_predicates,
@@ -264,12 +265,17 @@ mod tests {
         )
         .expect("failed to calculate fee");
 
-        let expected_max_gas = PARAMS.gas_per_byte * metered_bytes + gas_limit;
-        let expected_max_fee = gas_to_fee(expected_max_gas, gas_price).ceil() as Word;
-        let expected_min_gas = PARAMS.gas_per_byte * metered_bytes
+        let expected_max_gas = params.gas_per_byte * metered_bytes
             + gas_used_by_signature_checks
+            + gas_used_by_predicates
             + gas_limit;
-        let expected_min_fee = gas_to_fee(expected_min_gas, gas_price).ceil() as Word;
+        let expected_max_fee =
+            gas_to_fee(&params, expected_max_gas, gas_price).ceil() as Word;
+        let expected_min_gas = params.gas_per_byte * metered_bytes
+            + gas_used_by_signature_checks
+            + gas_used_by_predicates;
+        let expected_min_fee =
+            gas_to_fee(&params, expected_min_gas, gas_price).ceil() as Word;
 
         assert_eq!(expected_max_fee, fee.max_fee);
         assert_eq!(expected_min_fee, fee.min_fee);
@@ -282,9 +288,9 @@ mod tests {
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 11;
-
+        let params = PARAMS.with_gas_price_factor(10);
         let fee = TransactionFee::checked_from_values(
-            &PARAMS,
+            &params,
             metered_bytes,
             gas_used_by_signature_checks,
             gas_used_by_predicates,
@@ -293,20 +299,23 @@ mod tests {
         )
         .expect("failed to calculate fee");
 
-        let expected_max_gas = PARAMS.gas_per_byte * metered_bytes + gas_limit;
-        let expected_max_fee = gas_to_fee(expected_max_gas, gas_price);
+        let expected_max_gas = params.gas_per_byte * metered_bytes
+            + gas_used_by_signature_checks
+            + gas_used_by_predicates
+            + gas_limit;
+        let expected_max_fee = gas_to_fee(&params, expected_max_gas, gas_price);
         let truncated = expected_max_fee as Word;
         let expected_max_fee = expected_max_fee.ceil() as Word;
-        assert_ne!(truncated, expected_max_fee);
+        assert_ne!(truncated, fee.max_fee);
         assert_eq!(expected_max_fee, fee.max_fee);
 
-        let expected_min_gas = PARAMS.gas_per_byte * metered_bytes
+        let expected_min_gas = params.gas_per_byte * metered_bytes
             + gas_used_by_signature_checks
-            + gas_limit;
-        let expected_min_fee = gas_to_fee(expected_min_gas, gas_price);
-        let truncated = expected_max_fee as Word;
+            + gas_used_by_predicates;
+        let expected_min_fee = gas_to_fee(&params, expected_min_gas, gas_price);
+        let truncated = expected_min_fee as Word;
         let expected_min_fee = expected_min_fee.ceil() as Word;
-        assert_ne!(truncated, expected_min_fee);
+        assert_ne!(truncated, fee.min_fee);
         assert_eq!(expected_min_fee, fee.min_fee);
     }
 
@@ -416,26 +425,5 @@ mod tests {
         .is_none();
 
         assert!(overflow);
-    }
-
-    #[test]
-    fn base_fee_gas_limit_less_than_gas_used_by_predicates() {
-        let metered_bytes = 5;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_predicates = 8;
-        let gas_limit = 7;
-        let gas_price = 11;
-
-        let fee = TransactionFee::checked_from_values(
-            &PARAMS,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .expect("failed to calculate fee");
-
-        assert!(fee.min_fee > fee.max_fee);
     }
 }

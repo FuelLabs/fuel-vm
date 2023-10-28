@@ -339,6 +339,8 @@ pub struct DependentCost {
 
 impl DependentCost {
     pub fn resolve(&self, units: Word) -> Word {
+        // Apply the linear transformation from units to cost:
+        // f(x) = base + mx
         self.base + self.dep_per_unit.saturating_mul(units)
     }
 }

@@ -1413,12 +1413,12 @@ mod tests {
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let gas_used_by_bytes =
             tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
-        let gas_used_by_signature_recovery =
+        let gas_used_by_signature_checks =
             tx.gas_used_by_signature_checks(gas_costs) as u128;
         let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
         let total = (gas_used_by_bytes
             + gas_used_by_predicates
-            + gas_used_by_signature_recovery
+            + gas_used_by_signature_checks
             + tx.limit() as u128)
             * tx.price() as u128;
         // use different division mechanism than impl
@@ -1445,11 +1445,11 @@ mod tests {
         // u64::MAX
         let gas_used_by_bytes =
             tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
-        let gas_used_by_signature_recovery =
+        let gas_used_by_signature_checks =
             tx.gas_used_by_signature_checks(gas_costs) as u128;
         let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
         let total =
-            (gas_used_by_bytes + gas_used_by_predicates + gas_used_by_signature_recovery)
+            (gas_used_by_bytes + gas_used_by_predicates + gas_used_by_signature_checks)
                 * tx.price() as u128;
         // use different division mechanism than impl
         let fee = total / fee_params.gas_price_factor as u128;

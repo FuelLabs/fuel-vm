@@ -318,8 +318,10 @@ pub struct GasCostsValues {
     pub srwq: DependentCost,
     pub swwq: DependentCost,
 
-    // Non-opcode dependent costs
+    // Non-opcode costs
+    pub contract_id: Word,
     pub contract_root: DependentCost,
+    pub state_root: DependentCost,
 }
 
 /// Dependent cost is a cost that depends on the number of units.
@@ -468,7 +470,9 @@ impl GasCostsValues {
             smo: DependentCost::free(),
             srwq: DependentCost::free(),
             swwq: DependentCost::free(),
+            contract_id: 0,
             contract_root: DependentCost::free(),
+            state_root: DependentCost::free(),
         }
     }
 
@@ -581,7 +585,9 @@ impl GasCostsValues {
             smo: DependentCost::unit(),
             srwq: DependentCost::unit(),
             swwq: DependentCost::unit(),
+            contract_id: 1,
             contract_root: DependentCost::unit(),
+            state_root: DependentCost::unit(),
         }
     }
 }

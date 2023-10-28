@@ -85,6 +85,7 @@ impl TransactionFee {
         params: &FeeParameters,
         metered_bytes: Word,
         gas_used_by_signature_checks: Word,
+        gas_used_by_metadata: Word,
         gas_used_by_predicates: Word,
         gas_limit: Word,
         gas_price: Word,
@@ -95,6 +96,7 @@ impl TransactionFee {
         let bytes_gas = params.gas_per_byte.checked_mul(metered_bytes)?;
         let min_gas = bytes_gas
             .checked_add(gas_used_by_signature_checks)?
+            .checked_add(gas_used_by_metadata)?
             .checked_add(gas_used_by_predicates)?;
         let max_gas = min_gas.checked_add(gas_limit)?;
 
@@ -143,6 +145,7 @@ impl TransactionFee {
         T: Chargeable + field::Inputs,
     {
         let metered_bytes = tx.metered_bytes_size() as Word;
+        let gas_used_by_metadata = tx.gas_used_by_metadata(gas_costs) as Word;
         let gas_used_by_signature_checks = tx.gas_used_by_signature_checks(gas_costs);
         let gas_used_by_predicates = tx.gas_used_by_predicates();
         let gas_limit = tx.limit();
@@ -152,6 +155,7 @@ impl TransactionFee {
             params,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -227,6 +231,9 @@ pub trait Chargeable {
             })
             .fold(0, |acc, cost| acc.saturating_add(cost))
     }
+
+    /// Used for accounting purposes when charging for metadata creation.
+    fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word;
 }
 
 #[cfg(test)]

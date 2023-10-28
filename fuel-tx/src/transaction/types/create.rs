@@ -5,6 +5,7 @@ use crate::{
         FormatValidityChecks,
     },
     ConsensusParameters,
+    GasCosts,
 };
 
 use crate::{
@@ -171,6 +172,36 @@ impl Chargeable for Create {
         // the compressed representation for accounting purposes
         // is defined. Witness data should still be excluded.
         self.witnesses_offset()
+    }
+
+    fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word {
+        // let contract = Contract::try_from(tx)?;
+        // let contract_root = contract.root();
+        // let state_root = Contract::initial_state_root(storage_slots.iter());
+        // let contract_id = contract.id(salt, &contract_root, &state_root);
+
+        let Create {
+            bytecode_witness_index,
+            witnesses,
+            storage_slots,
+            ..
+        } = self;
+
+        let contract: Option<Contract> = witnesses
+            .get(*bytecode_witness_index as usize)
+            .map(|c| c.as_ref().into());
+
+        let contract_length =
+            contract.map(|contract| contract.len() as Word).unwrap_or(0);
+        let contract_root_gas = gas_costs.contract_root.resolve(contract_length);
+
+        let state_root_length = storage_slots.len() as Word;
+        let state_root_gas = gas_costs.state_root.resolve(state_root_length);
+
+        let contract_id_gas = gas_costs.contract_id;
+
+        let total = contract_root_gas + state_root_gas + contract_id_gas;
+        total
     }
 }
 

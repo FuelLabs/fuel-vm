@@ -257,6 +257,7 @@ mod tests {
     fn base_fee_is_calculated_correctly() {
         let metered_bytes = 5;
         let gas_used_by_signature_checks = 12;
+        let gas_used_by_metadata = 0;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 11;
@@ -266,6 +267,7 @@ mod tests {
             &params,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -292,6 +294,7 @@ mod tests {
     fn base_fee_ceils() {
         let metered_bytes = 5;
         let gas_used_by_signature_checks = 12;
+        let gas_used_by_metadata = 0;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 11;
@@ -300,6 +303,7 @@ mod tests {
             &params,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -330,6 +334,7 @@ mod tests {
     fn base_fee_zeroes() {
         let metered_bytes = 5;
         let gas_used_by_signature_checks = 12;
+        let gas_used_by_metadata = 0;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 0;
@@ -338,6 +343,7 @@ mod tests {
             &PARAMS,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -354,6 +360,7 @@ mod tests {
     fn base_fee_wont_overflow_on_bytes() {
         let metered_bytes = Word::MAX;
         let gas_used_by_signature_checks = 12;
+        let gas_used_by_metadata = 0;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 11;
@@ -362,6 +369,7 @@ mod tests {
             &PARAMS,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -375,6 +383,7 @@ mod tests {
     fn base_fee_wont_overflow_on_gas_used_by_predicates() {
         let metered_bytes = 5;
         let gas_used_by_signature_checks = 12;
+        let gas_used_by_metadata = 0;
         let gas_used_by_predicates = Word::MAX;
         let gas_limit = 7;
         let gas_price = 11;
@@ -383,6 +392,7 @@ mod tests {
             &PARAMS,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -396,6 +406,7 @@ mod tests {
     fn base_fee_wont_overflow_on_limit() {
         let metered_bytes = 5;
         let gas_used_by_signature_checks = 12;
+        let gas_used_by_metadata = 0;
         let gas_used_by_predicates = 7;
         let gas_limit = Word::MAX;
         let gas_price = 11;
@@ -404,6 +415,7 @@ mod tests {
             &PARAMS,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -417,6 +429,7 @@ mod tests {
     fn base_fee_wont_overflow_on_price() {
         let metered_bytes = 5;
         let gas_used_by_signature_checks = 12;
+        let gas_used_by_metadata = 0;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = Word::MAX;
@@ -425,6 +438,7 @@ mod tests {
             &PARAMS,
             metered_bytes,
             gas_used_by_signature_checks,
+            gas_used_by_metadata,
             gas_used_by_predicates,
             gas_limit,
             gas_price,

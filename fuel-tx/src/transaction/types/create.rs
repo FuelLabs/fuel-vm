@@ -200,8 +200,7 @@ impl Chargeable for Create {
 
         let contract_id_gas = gas_costs.contract_id;
 
-        let total = contract_root_gas + state_root_gas + contract_id_gas;
-        total
+        contract_root_gas + state_root_gas + contract_id_gas
     }
 }
 

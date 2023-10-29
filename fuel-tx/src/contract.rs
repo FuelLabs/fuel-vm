@@ -64,6 +64,11 @@ impl Contract {
         self.0.len()
     }
 
+    /// If the contract's bytecode is empty
+    pub fn empty(&self) -> bool {
+        self.0.len() == 0
+    }
+
     /// Calculate the code root of the contract, using [`Self::root_from_code`].
     pub fn root(&self) -> Bytes32 {
         Self::root_from_code(self)

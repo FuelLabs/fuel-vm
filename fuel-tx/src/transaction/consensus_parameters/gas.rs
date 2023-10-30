@@ -339,14 +339,6 @@ pub struct DependentCost {
     pub dep_per_unit: Word,
 }
 
-impl DependentCost {
-    pub fn resolve(&self, units: Word) -> Word {
-        // Apply the linear transformation from units to cost:
-        // f(x) = base + mx
-        self.base + self.dep_per_unit.saturating_mul(units)
-    }
-}
-
 #[cfg(feature = "alloc")]
 impl GasCosts {
     /// Create costs that are all set to zero.
@@ -607,6 +599,10 @@ impl DependentCost {
             base: 1,
             dep_per_unit: 0,
         }
+    }
+
+    pub fn resolve(&self, units: Word) -> Word {
+        self.base + units.saturating_div(self.dep_per_unit)
     }
 }
 

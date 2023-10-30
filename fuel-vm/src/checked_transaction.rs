@@ -1152,6 +1152,68 @@ mod tests {
     }
 
     #[test]
+    fn fee_create_tx() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let gen_storage_slot = || rng.gen::<StorageSlot>();
+        let storage_slots = std::iter::repeat_with(gen_storage_slot)
+            .take(100)
+            .collect::<Vec<_>>();
+        let storage_slots_len = storage_slots.len();
+        let bytecode = rng.gen::<Witness>();
+        let bytecode_len = bytecode.as_ref().len();
+        let salt = rng.gen::<Salt>();
+        let tx = TransactionBuilder::create(bytecode, salt, storage_slots)
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + gas_costs.state_root.resolve(storage_slots_len as Word)
+            + gas_costs.contract_root.resolve(bytecode_len as Word)
+            + gas_costs.contract_id)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
+    }
+
+    #[test]
+    fn fee_create_tx_no_bytecode() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let bytecode: Witness = Vec::<u8>::new().into();
+        let salt = rng.gen::<Salt>();
+        let tx = TransactionBuilder::create(bytecode, salt, vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + gas_costs.state_root.resolve(0)
+            + gas_costs.contract_root.resolve(0)
+            + gas_costs.contract_id)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
+    }
+
+    #[test]
     fn checked_tx_rejects_invalid_tx() {
         // simple smoke test that invalid txs cannot be checked
         let rng = &mut StdRng::seed_from_u64(2322u64);

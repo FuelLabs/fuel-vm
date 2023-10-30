@@ -585,7 +585,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let salt: Salt = rng.gen();
 
     // make gas costs free
-    let gas_costs = GasCosts::free();
+    let gas_costs = GasCosts::default();
 
     let consensus_params = ConsensusParameters {
         gas_costs,

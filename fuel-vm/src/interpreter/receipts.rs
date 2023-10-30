@@ -19,7 +19,7 @@ pub struct ReceiptsCtx {
 }
 
 impl ReceiptsCtx {
-    /// Add a new receipts, updating the Merkle tree as well
+    /// Add a new receipt, updating the Merkle tree as well
     pub fn push(&mut self, receipt: Receipt) {
         self.receipts_tree.push(receipt.to_bytes().as_slice());
         self.receipts.push(receipt)

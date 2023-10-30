@@ -20,6 +20,7 @@ fn gas_factor_rounds_correctly() {
     let factor = 5479_f64;
     let gas_price = 6197;
 
+    let gas_costs = GasCosts::default();
     let fee_params = FeeParameters::default().with_gas_price_factor(factor as Word);
 
     // Random script to consume some gas
@@ -37,8 +38,12 @@ fn gas_factor_rounds_correctly() {
         .change_output(AssetId::default())
         .build();
 
-    let fee = TransactionFee::checked_from_tx(&fee_params, transaction.transaction())
-        .expect("failed to calculate fee");
+    let fee = TransactionFee::checked_from_tx(
+        &gas_costs,
+        &fee_params,
+        transaction.transaction(),
+    )
+    .expect("failed to calculate fee");
 
     let profiler = GasProfiler::default();
 

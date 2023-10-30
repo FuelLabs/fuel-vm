@@ -796,13 +796,15 @@ mod tests {
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -826,13 +828,15 @@ mod tests {
             return TestResult::discard()
         }
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx =
             predicate_tx(rng, gas_price, gas_limit, input_amount, predicate_gas_used);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -857,11 +861,13 @@ mod tests {
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -885,15 +891,264 @@ mod tests {
             return TestResult::discard()
         }
         let rng = &mut StdRng::seed_from_u64(seed);
+        let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_min_fee(&tx, &fee_params, &base_asset_id) {
+        if let Ok(valid) = is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
         }
+    }
+
+    #[test]
+    fn fee_multiple_signed_inputs() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            // Set up 3 signed inputs
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + 3 * gas_costs.ecr1)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = expected_min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
+    }
+
+    #[test]
+    fn fee_multiple_signed_inputs_single_owner() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let secret = SecretKey::random(rng);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            // Set up 3 signed inputs
+            .add_unsigned_message_input(
+                secret,
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                secret,
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                secret,
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
+        let min_fee = fee.min_fee();
+        // Because all inputs are owned by the same address, the address will only need to
+        // be recovered once. Therefore, we charge only once for the address
+        // recovery of the signed inputs.
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + gas_costs.ecr1)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
+    }
+
+    fn random_bytes<const N: usize, R: Rng + ?Sized>(rng: &mut R) -> Box<[u8; N]> {
+        let mut bytes = Box::new([0u8; N]);
+        for chunk in bytes.chunks_mut(32) {
+            rng.fill(chunk);
+        }
+        bytes
+    }
+
+    #[test]
+    fn min_fee_multiple_predicate_inputs() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let predicate_1 = random_bytes::<1024, _>(rng);
+        let predicate_2 = random_bytes::<2048, _>(rng);
+        let predicate_3 = random_bytes::<4096, _>(rng);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            // Set up 3 predicate inputs
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                50,
+                predicate_1.to_vec(),
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                100,
+                predicate_2.to_vec(),
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                200,
+                predicate_3.to_vec(),
+                vec![],
+            ))
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
+            + 50
+            + 100
+            + 200)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
+    }
+
+    #[test]
+    fn min_fee_multiple_signed_and_predicate_inputs() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 100;
+        let gas_limit = 1000;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
+        let predicate_1 = random_bytes::<1024, _>(rng);
+        let predicate_2 = random_bytes::<2048, _>(rng);
+        let predicate_3 = random_bytes::<4096, _>(rng);
+        let tx = TransactionBuilder::script(vec![], vec![])
+            .gas_price(gas_price)
+            .gas_limit(gas_limit)
+            // Set up 3 signed inputs
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            .add_unsigned_message_input(
+                SecretKey::random(rng),
+                rng.gen(),
+                rng.gen(),
+                rng.gen::<u32>() as u64,
+                vec![],
+            )
+            // Set up 3 predicate inputs
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                50,
+                predicate_1.to_vec(),
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                100,
+                predicate_2.to_vec(),
+                vec![],
+            ))
+            .add_input(Input::message_coin_predicate(
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                rng.gen(),
+                200,
+                predicate_3.to_vec(),
+                vec![],
+            ))
+            .finalize();
+        let fee = TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx).unwrap();
+
+        let min_fee = fee.min_fee();
+        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
+            + 3 * gas_costs.ecr1
+            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
+            + 50
+            + 100
+            + 200)
+            * gas_price;
+        assert_eq!(min_fee, expected_min_fee);
+
+        let max_fee = fee.max_fee();
+        let expected_max_fee = min_fee + gas_limit * gas_price;
+        assert_eq!(max_fee, expected_max_fee);
     }
 
     #[test]
@@ -1118,9 +1373,9 @@ mod tests {
     fn predicates_check_marks_predicate_flag() {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
-        let gas_costs = GasCosts::free();
+        let gas_costs = GasCosts::default();
 
-        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
+        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, gas_costs.ret);
 
         let consensus_params = ConsensusParameters {
             gas_costs,
@@ -1146,6 +1401,7 @@ mod tests {
 
     fn is_valid_max_fee<Tx>(
         tx: &Tx,
+        gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
     ) -> Result<bool, CheckError>
@@ -1153,13 +1409,18 @@ mod tests {
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
         let available_balances =
-            balances::initial_free_balances(tx, fee_params, base_asset_id)?;
+            balances::initial_free_balances(tx, gas_costs, fee_params, base_asset_id)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
-        let bytes = (tx.metered_bytes_size() as u128)
-            * fee_params.gas_per_byte as u128
+        let gas_used_by_bytes =
+            tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
+        let gas_used_by_signature_checks =
+            tx.gas_used_by_signature_checks(gas_costs) as u128;
+        let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
+        let total = (gas_used_by_bytes
+            + gas_used_by_predicates
+            + gas_used_by_signature_checks
+            + tx.limit() as u128)
             * tx.price() as u128;
-        let gas = tx.limit() as u128 * tx.price() as u128;
-        let total = bytes + gas;
         // use different division mechanism than impl
         let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =
@@ -1171,6 +1432,7 @@ mod tests {
 
     fn is_valid_min_fee<Tx>(
         tx: &Tx,
+        gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
     ) -> Result<bool, CheckError>
@@ -1178,17 +1440,21 @@ mod tests {
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
         let available_balances =
-            balances::initial_free_balances(tx, fee_params, base_asset_id)?;
+            balances::initial_free_balances(tx, gas_costs, fee_params, base_asset_id)?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
-        let bytes = (tx.metered_bytes_size() as u128
-            + tx.gas_used_by_predicates() as u128)
-            * fee_params.gas_per_byte as u128
-            * tx.price() as u128;
+        let gas_used_by_bytes =
+            tx.metered_bytes_size() as u128 * fee_params.gas_per_byte as u128;
+        let gas_used_by_signature_checks =
+            tx.gas_used_by_signature_checks(gas_costs) as u128;
+        let gas_used_by_predicates = tx.gas_used_by_predicates() as u128;
+        let total =
+            (gas_used_by_bytes + gas_used_by_predicates + gas_used_by_signature_checks)
+                * tx.price() as u128;
         // use different division mechanism than impl
-        let fee = bytes / fee_params.gas_price_factor as u128;
+        let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =
-            (bytes.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
+            (total.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
         let rounded_fee = (fee + fee_remainder) as u64;
 
         Ok(rounded_fee == available_balances.fee.min_fee())

@@ -110,6 +110,7 @@ pub mod create {
                 fee,
             } = initial_free_balances(
                 &self,
+                consensus_params.gas_costs(),
                 consensus_params.fee_params(),
                 consensus_params.base_asset_id(),
             )?;
@@ -224,6 +225,7 @@ pub mod script {
                 fee,
             } = initial_free_balances(
                 &self,
+                consensus_params.gas_costs(),
                 consensus_params.fee_params(),
                 consensus_params.base_asset_id(),
             )?;

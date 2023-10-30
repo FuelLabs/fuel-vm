@@ -161,5 +161,9 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 44,
             dep_per_unit: 5,
         },
+        contract_root: DependentCost {
+            base: 75,
+            dep_per_unit: 1,
+        },
     }
 }

@@ -274,7 +274,7 @@ fn get_metadata_chain_id() {
 #[test]
 fn get_transaction_fields() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let gas_costs = GasCosts::free();
+    let gas_costs = GasCosts::default();
 
     let mut client = MemoryClient::default();
 
@@ -314,7 +314,7 @@ fn get_transaction_fields() {
         rng.gen(),
         rng.gen(),
         100.into(),
-        0,
+        gas_costs.ret,
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -338,7 +338,7 @@ fn get_transaction_fields() {
         owner,
         7_500,
         rng.gen(),
-        0,
+        gas_costs.ret,
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),

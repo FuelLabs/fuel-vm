@@ -1373,9 +1373,9 @@ mod tests {
     fn predicates_check_marks_predicate_flag() {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
-        let gas_costs = GasCosts::free();
+        let gas_costs = GasCosts::default();
 
-        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, 0);
+        let tx = predicate_tx(&mut rng, 1, 1000000, 1000000, gas_costs.ret);
 
         let consensus_params = ConsensusParameters {
             gas_costs,

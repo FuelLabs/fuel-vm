@@ -168,7 +168,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         },
         state_root: DependentCost {
             base: 412,
-            dep_per_unit: 0,
+            dep_per_unit: 1,
         },
     }
 }

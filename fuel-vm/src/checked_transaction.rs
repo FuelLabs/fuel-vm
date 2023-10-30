@@ -216,7 +216,7 @@ pub struct CheckPredicateParams {
     /// Maximum gas per transaction
     pub max_gas_per_tx: u64,
     /// Maximum number of inputs
-    pub max_inputs: u32,
+    pub max_inputs: u8,
     /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
     /// Maximum length of the message data

@@ -226,9 +226,9 @@ impl Default for PredicateParameters {
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct TxParameters {
     /// Maximum number of inputs.
-    pub max_inputs: u32,
+    pub max_inputs: u8,
     /// Maximum number of outputs.
-    pub max_outputs: u32,
+    pub max_outputs: u8,
     /// Maximum number of witnesses.
     pub max_witnesses: u32,
     /// Maximum gas per transaction.
@@ -256,13 +256,13 @@ impl TxParameters {
     }
 
     /// Replace the max inputs with the given argument
-    pub const fn with_max_inputs(mut self, max_inputs: u32) -> Self {
+    pub const fn with_max_inputs(mut self, max_inputs: u8) -> Self {
         self.max_inputs = max_inputs;
         self
     }
 
     /// Replace the max outputs with the given argument
-    pub const fn with_max_outputs(mut self, max_outputs: u32) -> Self {
+    pub const fn with_max_outputs(mut self, max_outputs: u8) -> Self {
         self.max_outputs = max_outputs;
         self
     }
@@ -384,8 +384,8 @@ pub mod default_parameters {
     use fuel_types::ChainId;
 
     pub const CONTRACT_MAX_SIZE: u64 = ContractParameters::DEFAULT.contract_max_size;
-    pub const MAX_INPUTS: u32 = TxParameters::DEFAULT.max_inputs;
-    pub const MAX_OUTPUTS: u32 = TxParameters::DEFAULT.max_outputs;
+    pub const MAX_INPUTS: u8 = TxParameters::DEFAULT.max_inputs;
+    pub const MAX_OUTPUTS: u8 = TxParameters::DEFAULT.max_outputs;
     pub const MAX_WITNESSES: u32 = TxParameters::DEFAULT.max_witnesses;
     pub const MAX_GAS_PER_TX: u64 = TxParameters::DEFAULT.max_gas_per_tx;
 

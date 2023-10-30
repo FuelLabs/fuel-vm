@@ -57,12 +57,14 @@ where
 /// Fused multiply-divide with arbitrary precision intermediate result.
 /// Returns `(result, overflow)`.
 /// Divider 0 is treated as `1<<64`.
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn muldiv(lhs: u64, rhs: u64, divider: u64) -> (u64, u64) {
     let intermediate = lhs as u128 * rhs as u128; // Never overflows
     if divider == 0 {
         ((intermediate >> 64) as u64, 0)
     } else {
         let result = intermediate / (divider as u128);
+        // We want to truncate the `result` here and return a non-empty `overflow`.
         (result as u64, (result >> 64) as u64)
     }
 }

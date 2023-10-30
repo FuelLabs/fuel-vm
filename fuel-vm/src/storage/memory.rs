@@ -379,7 +379,7 @@ impl InterpreterStorage for MemoryStorage {
         &self,
         id: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
         let start: ContractsStateKey = (id, start_key).into();
         let end: ContractsStateKey = (id, &Bytes32::new([u8::MAX; 32])).into();
@@ -408,7 +408,7 @@ impl InterpreterStorage for MemoryStorage {
             },
             None => None,
         })
-        .take(range as usize)
+        .take(range)
         .collect())
     }
 
@@ -442,7 +442,7 @@ impl InterpreterStorage for MemoryStorage {
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Option<()>, Self::DataError> {
         let mut all_set_key = true;
         let mut values: hashbrown::HashSet<_> =
@@ -454,7 +454,7 @@ impl InterpreterStorage for MemoryStorage {
                     Some(n)
                 }
             })
-            .take(range as usize)
+            .take(range)
             .collect();
         self.memory.contract_state.retain(|key, _| {
             let c = key.contract_id();
@@ -503,7 +503,7 @@ mod tests {
     fn test_contract_state_range(
         store: &[&[u8; 32]],
         start: &[u8; 32],
-        range: Word,
+        range: usize,
     ) -> Vec<Option<Bytes32>> {
         let mut mem = MemoryStorage::default();
         for k in store {

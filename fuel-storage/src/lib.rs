@@ -1,4 +1,5 @@
 #![no_std]
+#![deny(clippy::cast_possible_truncation)]
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 

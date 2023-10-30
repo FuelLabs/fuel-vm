@@ -135,7 +135,7 @@ pub struct InterpreterParams {
     /// Gas costs
     pub gas_costs: GasCosts,
     /// Maximum number of inputs
-    pub max_inputs: u64,
+    pub max_inputs: u32,
     /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
     /// Offset of the transaction data in the memory
@@ -254,7 +254,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     }
 
     /// Get max_inputs value
-    pub fn max_inputs(&self) -> u64 {
+    pub fn max_inputs(&self) -> u32 {
         self.interpreter_params.max_inputs
     }
 

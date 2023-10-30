@@ -4,6 +4,7 @@
 #![warn(unsafe_code)]
 #![warn(missing_docs)]
 #![deny(unused_crate_dependencies)]
+#![deny(clippy::cast_possible_truncation)]
 // `fuel-derive` requires `fuel_types` import
 // TODO: Move canonical serialization to `fuel-canonical` crate
 #![allow(unused_crate_dependencies)]

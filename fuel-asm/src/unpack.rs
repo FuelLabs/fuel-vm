@@ -62,26 +62,32 @@ pub(super) fn ra_imm18_from_bytes(bs: [u8; 3]) -> (RegId, Imm18) {
     (ra_from_bytes(bs), imm18_from_bytes(bs))
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn ra_from_u32(u: u32) -> RegId {
     RegId::new((u >> 18) as u8)
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn rb_from_u32(u: u32) -> RegId {
     RegId::new((u >> 12) as u8)
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn rc_from_u32(u: u32) -> RegId {
     RegId::new((u >> 6) as u8)
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn rd_from_u32(u: u32) -> RegId {
     RegId::new(u as u8)
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn imm06_from_u32(u: u32) -> Imm06 {
     Imm06::new(u as u8)
 }
 
+#[allow(clippy::cast_possible_truncation)]
 fn imm12_from_u32(u: u32) -> Imm12 {
     Imm12::new(u as u16)
 }

@@ -181,7 +181,11 @@ impl Output {
     }
 
     pub fn message_nonce(txid: &Bytes32, idx: Word) -> Nonce {
-        (*Hasher::default().chain(txid).chain([idx as u8]).finalize()).into()
+        (*Hasher::default()
+            .chain(txid)
+            .chain(idx.to_bytes())
+            .finalize())
+        .into()
     }
 
     pub fn message_digest(data: &[u8]) -> Bytes32 {

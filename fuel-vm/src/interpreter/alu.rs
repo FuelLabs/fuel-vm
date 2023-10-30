@@ -147,7 +147,8 @@ where
     *common.err = 0;
 
     // set the return value to the low bits of the u128 result
-    *dest = (result & Word::MAX as u128) as u64;
+    *dest = u64::try_from(result & Word::MAX as u128)
+        .expect("We already truncated the result");
 
     Ok(inc_pc(common.pc)?)
 }

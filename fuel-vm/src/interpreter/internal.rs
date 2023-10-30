@@ -165,10 +165,12 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     }
 
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> SimpleResult<()> {
-        let ssp = self.reserve_stack(data.len() as Word)?;
+        let old_ssp = usize::try_from(self.reserve_stack(data.len() as Word)?)
+            .expect("SSP couldn't be more than `usize`");
+        let new_ssp = usize::try_from(self.registers[RegId::SSP])
+            .expect("SSP couldn't be more than `usize`");
 
-        self.memory[ssp as usize..self.registers[RegId::SSP] as usize]
-            .copy_from_slice(data);
+        self.memory[old_ssp..new_ssp].copy_from_slice(data);
 
         Ok(())
     }

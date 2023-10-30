@@ -40,7 +40,7 @@ where
 {
     let branch = if left_branch.node.is_leaf() && right_branch.node.is_leaf() {
         let parent_depth = left_branch.node.common_path_length(&right_branch.node);
-        let parent_height = (Node::max_height() - parent_depth) as u32;
+        let parent_height = Node::max_height() - parent_depth;
         let node =
             Node::create_node(&left_branch.node, &right_branch.node, parent_height);
         Branch {
@@ -53,9 +53,10 @@ where
         if right_branch.node.is_node() {
             let mut current_node = right_branch.node;
             let path = right_branch.bits;
-            let parent_height = current_node.height() as usize + 1;
+            let parent_height = current_node.height() + 1;
             let stale_depth = ancestor_height - parent_height;
-            let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
+            let placeholders =
+                iter::repeat(Node::create_placeholder()).take(stale_depth as usize);
             for placeholder in placeholders {
                 current_node =
                     Node::create_node_on_path(&path, &current_node, &placeholder);
@@ -66,9 +67,10 @@ where
         if left_branch.node.is_node() {
             let mut current_node = left_branch.node;
             let path = left_branch.bits;
-            let parent_height = current_node.height() as usize + 1;
+            let parent_height = current_node.height() + 1;
             let stale_depth = ancestor_height - parent_height;
-            let placeholders = iter::repeat(Node::create_placeholder()).take(stale_depth);
+            let placeholders =
+                iter::repeat(Node::create_placeholder()).take(stale_depth as usize);
             for placeholder in placeholders {
                 current_node =
                     Node::create_node_on_path(&path, &current_node, &placeholder);
@@ -76,11 +78,8 @@ where
             }
             left_branch.node = current_node;
         }
-        let node = Node::create_node(
-            &left_branch.node,
-            &right_branch.node,
-            ancestor_height as u32,
-        );
+        let node =
+            Node::create_node(&left_branch.node, &right_branch.node, ancestor_height);
         Branch {
             bits: left_branch.bits,
             node,

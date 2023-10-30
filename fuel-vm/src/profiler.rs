@@ -102,10 +102,11 @@ impl fmt::Display for InstructionLocation {
             self.context
                 .map(|contract_id| format!(
                     "contract_id={}",
-                    contract_id
-                        .iter()
-                        .map(|b| format!("{b:02x?}"))
-                        .collect::<String>()
+                    contract_id.iter().fold(String::new(), |mut output, b| {
+                        use core::fmt::Write;
+                        let _ = write!(output, "{b:02x?}");
+                        output
+                    })
                 ),)
                 .unwrap_or_else(|| "script".to_string()),
             self.offset

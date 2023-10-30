@@ -442,7 +442,7 @@ fn test_write_call_to_memory(
 ) -> IoResult<Word, Infallible> {
     let frame_bytes = call_frame.to_bytes();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let code = vec![6u8; call_frame.code_size() as usize];
+    let code = vec![6u8; call_frame.code_size()];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)
         .unwrap();
@@ -465,7 +465,7 @@ fn check_memory(result: Memory<MEM_SIZE>, expected: CallFrame, code: Vec<u8>) {
     assert_eq!(frame, expected);
     assert_eq!(
         &result[CallFrame::serialized_size()
-            ..(CallFrame::serialized_size() + frame.total_code_size() as usize)],
+            ..(CallFrame::serialized_size() + frame.total_code_size())],
         &code[..]
     );
 }

@@ -157,7 +157,7 @@ impl MemoryRange {
     /// defined in `r[$hp]`. Panics if the range is not within the heap space.
     #[cfg(test)]
     pub fn to_heap<S, Tx, Ecal>(self, vm: &Interpreter<S, Tx, Ecal>) -> Self {
-        let hp = vm.registers()[RegId::HP] as usize;
+        let hp = usize::try_from(vm.registers()[RegId::HP]).expect("Truncate");
         let start = self.start.checked_add(hp).expect("Overflow");
         let end = self.end.checked_add(hp).expect("Overflow");
         if end > MEM_SIZE {
@@ -457,6 +457,7 @@ pub(crate) fn load_word(
     Ok(inc_pc(pc)?)
 }
 
+#[allow(clippy::cast_possible_truncation)]
 pub(crate) fn store_byte(
     memory: &mut [u8; MEM_SIZE],
     owner: OwnershipRegisters,

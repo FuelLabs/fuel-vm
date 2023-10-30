@@ -202,8 +202,10 @@ where
     T: 'static + core::cmp::PartialEq + Clone,
     I: Iterator<Item = &'iter T> + 'iter,
 {
-    a.enumerate().zip(b).filter_map(move |(a, b)| {
-        (a.1 != b).then(|| {
+    a.enumerate()
+        .zip(b)
+        .filter(|&(a, b)| (a.1 != b))
+        .map(move |(a, b)| {
             change(Delta {
                 from: VecState {
                     index: a.0,
@@ -215,7 +217,6 @@ where
                 },
             })
         })
-    })
 }
 
 type ChangeDeltaVariant<S> = fn(Delta<S>) -> Change<Deltas>;
@@ -313,10 +314,8 @@ where
         .enumerate()
         .zip(b.map(Some).chain(core::iter::repeat(None)))
         .take_while(|((_, a), b)| a.is_some() || b.is_some())
-        .filter_map(|((index, a), b)| {
-            b.map_or(true, |b| a.map_or(true, |a| a != b))
-                .then(|| (index, a.cloned(), b.cloned()))
-        })
+        .filter(|((_, a), b)| b.map_or(true, |b| a.map_or(true, |a| a != b)))
+        .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {

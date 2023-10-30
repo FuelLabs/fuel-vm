@@ -216,7 +216,7 @@ pub struct CheckPredicateParams {
     /// Maximum gas per transaction
     pub max_gas_per_tx: u64,
     /// Maximum number of inputs
-    pub max_inputs: u64,
+    pub max_inputs: u32,
     /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
     /// Maximum length of the message data
@@ -617,6 +617,7 @@ impl IntoChecked for Transaction {
 #[cfg(feature = "random")]
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::cast_possible_truncation)]
     use super::*;
     use alloc::vec;
     use fuel_asm::op;

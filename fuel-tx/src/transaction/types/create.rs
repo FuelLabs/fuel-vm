@@ -246,7 +246,7 @@ impl FormatValidityChecks for Create {
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
-        if self.storage_slots.len() > contract_params.max_storage_slots as usize {
+        if self.storage_slots.len() as u64 > contract_params.max_storage_slots {
             return Err(CheckError::TransactionCreateStorageSlotMax)
         }
 

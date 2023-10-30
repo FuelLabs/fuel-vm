@@ -1159,7 +1159,7 @@ mod tests {
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
         let gen_storage_slot = || rng.gen::<StorageSlot>();
-        let storage_slots = std::iter::repeat_with(gen_storage_slot)
+        let storage_slots = core::iter::repeat_with(gen_storage_slot)
             .take(100)
             .collect::<Vec<_>>();
         let storage_slots_len = storage_slots.len();

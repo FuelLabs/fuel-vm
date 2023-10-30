@@ -226,7 +226,7 @@ pub(crate) fn set_flag(
     a: Word,
 ) -> SimpleResult<()> {
     let Some(flags) = Flags::from_bits(a) else {
-        return Err(PanicReason::ErrorFlag.into())
+        return Err(PanicReason::InvalidFlags.into())
     };
 
     *flag = flags.bits();

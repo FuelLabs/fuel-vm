@@ -175,11 +175,6 @@ impl Chargeable for Create {
     }
 
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word {
-        // let contract = Contract::try_from(tx)?;
-        // let contract_root = contract.root();
-        // let state_root = Contract::initial_state_root(storage_slots.iter());
-        // let contract_id = contract.id(salt, &contract_root, &state_root);
-
         let Create {
             bytecode_witness_index,
             witnesses,

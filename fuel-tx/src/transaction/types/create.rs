@@ -36,6 +36,7 @@ use fuel_types::{
     bytes::WORD_SIZE,
     BlockHeight,
     Bytes32,
+    Bytes4,
     ChainId,
     ContractId,
     Salt,
@@ -195,7 +196,12 @@ impl Chargeable for Create {
         let state_root_length = storage_slots.len() as Word;
         let state_root_gas = gas_costs.state_root.resolve(state_root_length);
 
-        let contract_id_gas = gas_costs.contract_id;
+        // See https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md
+        let contract_id_input_length = core::mem::size_of::<Bytes4>()
+            + core::mem::size_of::<Salt>()
+            + core::mem::size_of::<Bytes32>()
+            + core::mem::size_of::<Bytes32>();
+        let contract_id_gas = gas_costs.s256.resolve(contract_id_input_length as Word);
 
         contract_root_gas + state_root_gas + contract_id_gas
     }

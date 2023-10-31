@@ -59,6 +59,16 @@ impl Contract {
         85, 54, 172, 30, 84, 115, 226, 164, 0, 99, 103, 189, 154, 243,
     ]);
 
+    /// Number of bytes in the contract's bytecode
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Check if the contract's bytecode is empty
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Calculate the code root of the contract, using [`Self::root_from_code`].
     pub fn root(&self) -> Bytes32 {
         Self::root_from_code(self)

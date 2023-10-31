@@ -22,6 +22,7 @@ use crate::{
     },
     CheckError,
     ConsensusParameters,
+    GasCosts,
     Input,
     Output,
     TransactionRepr,
@@ -134,6 +135,10 @@ impl Chargeable for Script {
         // the compressed representation for accounting purposes
         // is defined. Witness data should still be excluded.
         self.witnesses_offset()
+    }
+
+    fn gas_used_by_metadata(&self, _gas_costs: &GasCosts) -> Word {
+        0
     }
 }
 

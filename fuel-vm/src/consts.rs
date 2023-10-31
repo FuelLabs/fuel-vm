@@ -33,6 +33,7 @@ pub const FUEL_MAX_MEMORY_SIZE: u64 = 64;
 pub const VM_MAX_RAM: u64 = 1024 * 1024 * FUEL_MAX_MEMORY_SIZE;
 
 /// Size of the VM memory, in bytes.
+#[allow(clippy::cast_possible_truncation)]
 pub const MEM_SIZE: usize = VM_MAX_RAM as usize;
 
 static_assertions::const_assert!(VM_MAX_RAM < usize::MAX as u64);

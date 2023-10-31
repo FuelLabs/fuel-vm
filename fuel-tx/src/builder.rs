@@ -172,7 +172,7 @@ impl TransactionBuilder<Create> {
         };
 
         *tx.bytecode_length_mut() = (bytecode.as_ref().len() / 4) as Word;
-        *tx.bytecode_witness_index_mut() = tx.witnesses().len() as u8;
+        *tx.bytecode_witness_index_mut() = 0;
 
         tx.witnesses_mut().push(bytecode);
 
@@ -424,7 +424,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
     /// Adds a secret to the builder, and adds a corresponding witness if it's a new entry
     fn upsert_secret(&mut self, secret_key: SecretKey) -> u8 {
-        let witness_len = self.witnesses().len() as u8;
+        let witness_len = u8::try_from(self.witnesses().len())
+            .expect("The number of witnesses can't exceed `u8::MAX`");
 
         let witness_index = self.sign_keys.entry(secret_key).or_insert_with(|| {
             // if this private key hasn't been used before,

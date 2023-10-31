@@ -70,7 +70,7 @@ pub struct CallFrame {
     to: ContractId,
     asset_id: AssetId,
     registers: [Word; VM_REGISTER_COUNT],
-    code_size: Word,
+    code_size: usize,
     a: Word,
     b: Word,
 }
@@ -95,7 +95,7 @@ impl CallFrame {
         to: ContractId,
         asset_id: AssetId,
         registers: [Word; VM_REGISTER_COUNT],
-        code_size: Word,
+        code_size: usize,
         a: Word,
         b: Word,
     ) -> Self {
@@ -155,18 +155,17 @@ impl CallFrame {
     }
 
     /// Contract code length in bytes.
-    pub fn code_size(&self) -> Word {
+    pub fn code_size(&self) -> usize {
         self.code_size
     }
 
     /// Padding to the next word boundary.
-    pub fn code_size_padding(&self) -> Word {
-        const WORD_SIZE: Word = crate::consts::WORD_SIZE as Word;
+    pub fn code_size_padding(&self) -> usize {
         (WORD_SIZE - self.code_size() % WORD_SIZE) % WORD_SIZE
     }
 
     /// Total code size including padding.
-    pub fn total_code_size(&self) -> Word {
+    pub fn total_code_size(&self) -> usize {
         self.code_size() + self.code_size_padding()
     }
 

@@ -163,7 +163,7 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() > predicate_params.max_predicate_length as usize =>
+                if predicate.len() as u64 > predicate_params.max_predicate_length =>
             {
                 Err(CheckError::InputPredicateLength { index })
             }
@@ -174,8 +174,8 @@ impl Input {
             })
             | Self::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
-            }) if predicate_data.len()
-                > predicate_params.max_predicate_data_length as usize =>
+            }) if predicate_data.len() as u64
+                > predicate_params.max_predicate_data_length =>
             {
                 Err(CheckError::InputPredicateDataLength { index })
             }
@@ -208,7 +208,7 @@ impl Input {
             Self::MessageDataSigned(MessageDataSigned { data, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
                 if data.is_empty()
-                    || data.len() > predicate_params.max_message_data_length as usize =>
+                    || data.len() as u64 > predicate_params.max_message_data_length =>
             {
                 Err(CheckError::InputMessageDataLength { index })
             }

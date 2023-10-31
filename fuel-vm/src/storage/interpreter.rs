@@ -191,7 +191,7 @@ pub trait InterpreterStorage:
         &self,
         id: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
@@ -209,7 +209,7 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Option<()>, Self::DataError>;
 }
 
@@ -287,7 +287,7 @@ where
         &self,
         id: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
         <S as InterpreterStorage>::merkle_contract_state_range(
             self.deref(),
@@ -315,7 +315,7 @@ where
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Option<()>, Self::DataError> {
         <S as InterpreterStorage>::merkle_contract_state_remove_range(
             self.deref_mut(),

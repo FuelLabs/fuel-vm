@@ -90,7 +90,9 @@ where
 {
     /// Loads contract ID pointed by `contract_id_addr`, and then for that contract,
     /// copies `length_unpadded` bytes from it starting from offset `contract_offset` into
-    /// the stack. ```txt
+    /// the stack.
+    ///
+    /// ```txt
     /// contract_id = mem[$rA, 32]
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
@@ -500,7 +502,7 @@ where
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
-        let fp = *self.fp as usize;
+        let fp = *self.fp;
 
         if ssp != sp {
             return Err(PanicReason::ExpectedUnallocatedStack.into())
@@ -514,7 +516,7 @@ where
         let length = bytes::padded_len_word(length_unpadded);
         let dst_range = MemoryRange::new(ssp, length)?;
 
-        if dst_range.end >= *self.hp as usize {
+        if dst_range.end as Word >= *self.hp {
             // Would make stack and heap overlap
             return Err(PanicReason::MemoryOverflow.into())
         }
@@ -560,9 +562,9 @@ where
         // Update frame pointer, if we have a stack frame (e.g. fp > 0)
         if fp > 0 {
             let fp_code_size = MemoryRange::new_overflowing_op(
-                usize::overflowing_add,
+                u64::overflowing_add,
                 fp,
-                CallFrame::code_size_offset(),
+                CallFrame::code_size_offset() as Word,
                 WORD_SIZE,
             )?;
 
@@ -826,7 +828,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
 
         self.input_contracts.check(contract_id)?;
 
-        let len = contract_size(self.storage, contract_id)?;
+        let len = contract_size(self.storage, contract_id)? as Word;
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
@@ -1031,7 +1033,7 @@ struct StateReadQWord {
     /// The starting storage key location is stored in this range of memory.
     origin_key_memory_range: CheckedMemConstLen<{ Bytes32::LEN }>,
     /// Number of slots to read.
-    num_slots: Word,
+    num_slots: usize,
 }
 
 impl StateReadQWord {
@@ -1041,9 +1043,11 @@ impl StateReadQWord {
         num_slots: Word,
         ownership_registers: OwnershipRegisters,
     ) -> SimpleResult<Self> {
+        let num_slots =
+            usize::try_from(num_slots).map_err(|_| PanicReason::ArithmeticOverflow)?;
         let destination_address_memory_range = MemoryRange::new(
             destination_memory_address,
-            (Bytes32::LEN as Word).saturating_mul(num_slots),
+            Bytes32::LEN.saturating_mul(num_slots),
         )?;
         ownership_registers.verify_ownership(&destination_address_memory_range)?;
         ownership_registers.verify_internal_context()?;
@@ -1152,7 +1156,7 @@ struct StateClearQWord {
     /// in this range of memory.
     start_storage_key_memory_range: CheckedMemConstLen<{ Bytes32::LEN }>,
     /// Number of slots to read.
-    num_slots: Word,
+    num_slots: usize,
 }
 
 impl StateClearQWord {
@@ -1163,6 +1167,8 @@ impl StateClearQWord {
         let start_storage_key_memory_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(
             start_storage_key_memory_address,
         )?;
+        let num_slots =
+            usize::try_from(num_slots).map_err(|_| PanicReason::ArithmeticOverflow)?;
         Ok(Self {
             start_storage_key_memory_range,
             num_slots,

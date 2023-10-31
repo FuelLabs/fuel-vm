@@ -523,7 +523,7 @@ where
             self.registers.system_registers.ggas.as_mut(),
             profiler,
             self.gas_cost,
-            frame.total_code_size(),
+            frame.total_code_size() as Word,
         )?;
 
         if let Some(source_contract) = self.current_contract {
@@ -568,7 +568,7 @@ where
 
         let frame_bytes = frame.to_bytes();
         let len = (frame_bytes.len() as Word)
-            .checked_add(frame.total_code_size())
+            .checked_add(frame.total_code_size() as Word)
             .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
         if len > *self.registers.system_registers.hp
@@ -648,7 +648,7 @@ where
 {
     let mut code_frame_range = code_mem_range.clone();
     // Addition is safe because code size + padding is always less than len
-    code_frame_range.shrink_end((frame.code_size() + frame.code_size_padding()) as usize);
+    code_frame_range.shrink_end(frame.code_size() + frame.code_size_padding());
     code_frame_range
         .clone()
         .write(memory)
@@ -656,20 +656,19 @@ where
 
     let mut code_range = code_mem_range.clone();
     code_range.grow_start(CallFrame::serialized_size());
-    code_range.shrink_end(frame.code_size_padding() as usize);
+    code_range.shrink_end(frame.code_size_padding());
     let bytes_read = storage
         .storage::<ContractsRawCode>()
         .read(frame.to(), code_range.write(memory))
         .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
-    if bytes_read as Word != frame.code_size() {
+    if bytes_read != frame.code_size() {
         return Err(PanicReason::ContractMismatch.into())
     }
 
     if frame.code_size_padding() > 0 {
         let mut padding_range = code_mem_range;
-        padding_range
-            .grow_start(CallFrame::serialized_size() + frame.code_size() as usize);
+        padding_range.grow_start(CallFrame::serialized_size() + frame.code_size());
         padding_range.write(memory).fill(0);
     }
     Ok(code_frame_range.end as Word)

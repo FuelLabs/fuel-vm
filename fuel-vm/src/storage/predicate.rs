@@ -150,7 +150,7 @@ impl InterpreterStorage for PredicateStorage {
         &self,
         _id: &ContractId,
         _start_key: &Bytes32,
-        _range: Word,
+        _range: usize,
     ) -> Result<Vec<Option<Cow<Bytes32>>>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
@@ -168,7 +168,7 @@ impl InterpreterStorage for PredicateStorage {
         &mut self,
         _contract: &ContractId,
         _start_key: &Bytes32,
-        _range: Word,
+        _range: usize,
     ) -> Result<Option<()>, StorageUnavailable> {
         Err(StorageUnavailable)
     }

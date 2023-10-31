@@ -932,7 +932,7 @@ fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
         return Some(1)
     }
 
-    let nth_root = nth_root as u32; // Never loses bits, checked above
+    let nth_root = u32::try_from(nth_root).expect("Never loses bits, checked above");
 
     // Use floating point operation to get an approximation for the starting point.
     // This is at most off by one in either direction.
@@ -942,6 +942,7 @@ fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
     #[cfg(not(feature = "std"))]
     let powf = libm::pow;
 
+    #[allow(clippy::cast_possible_truncation)]
     let guess = powf(target as f64, (nth_root as f64).recip()) as u64;
 
     debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");

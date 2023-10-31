@@ -84,7 +84,7 @@ use crate::common::{
 pub struct PathIter<T: ParentNode> {
     leaf_key: T::Key,
     current: Option<(ChildResult<T>, ChildResult<T>)>,
-    current_offset: usize,
+    current_offset: u32,
 }
 
 impl<T> PathIter<T>
@@ -137,7 +137,7 @@ where
         // 0       7    00  02  04  06  08  10  12  14   252 254
         //              00  01  02  03  04  05  06  07   126 127
         //
-        let initial_offset = T::key_size_in_bits() - root.height() as usize;
+        let initial_offset = T::key_size_in_bits() - root.height();
         Self {
             leaf_key,
             current: Some(initial),

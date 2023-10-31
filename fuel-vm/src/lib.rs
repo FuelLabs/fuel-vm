@@ -5,6 +5,7 @@
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
 #![deny(unused_crate_dependencies)]
+#![deny(clippy::cast_possible_truncation)]
 #![deny(clippy::string_slice)]
 
 #[doc(hidden)] // Needed by some of the exported macros

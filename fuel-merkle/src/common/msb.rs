@@ -5,11 +5,11 @@ pub enum Bit {
 }
 
 trait GetBit {
-    fn get_bit(&self, bit_index: usize) -> Option<Bit>;
+    fn get_bit(&self, bit_index: u32) -> Option<Bit>;
 }
 
 impl GetBit for u8 {
-    fn get_bit(&self, bit_index: usize) -> Option<Bit> {
+    fn get_bit(&self, bit_index: u32) -> Option<Bit> {
         if bit_index < 8 {
             let mask = 1 << (7 - bit_index);
             let bit = self & mask;
@@ -24,21 +24,21 @@ impl GetBit for u8 {
 }
 
 pub trait Msb {
-    fn get_bit_at_index_from_msb(&self, index: usize) -> Option<Bit>;
-    fn common_prefix_count(&self, other: &Self) -> usize;
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit>;
+    fn common_prefix_count(&self, other: &Self) -> u32;
 }
 
 impl<const N: usize> Msb for [u8; N] {
-    fn get_bit_at_index_from_msb(&self, index: usize) -> Option<Bit> {
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit> {
         // The byte that contains the bit
         let byte_index = index / 8;
         // The bit within the containing byte
         let byte_bit_index = index % 8;
-        self.get(byte_index)
+        self.get(byte_index as usize)
             .and_then(|byte| byte.get_bit(byte_bit_index))
     }
 
-    fn common_prefix_count(&self, other: &Self) -> usize {
+    fn common_prefix_count(&self, other: &Self) -> u32 {
         let mut count = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
             // For each pair of bytes, compute the similarity of each byte using
@@ -49,10 +49,11 @@ impl<const N: usize> Msb for [u8; N] {
                 break
             }
         }
-        count as usize
+        count
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 #[cfg(test)]
 mod test {
     use crate::common::{
@@ -66,7 +67,7 @@ mod test {
 
     #[test]
     fn test_msb_for_bytes_1() {
-        const NUM_BITS: usize = size_of::<Bytes1>() * 8;
+        const NUM_BITS: u32 = size_of::<Bytes1>() as u32 * 8;
 
         let bytes: Bytes1 = [0b10101010];
         let expected_n = u8::from_be_bytes(bytes);
@@ -83,7 +84,7 @@ mod test {
 
     #[test]
     fn test_msb_for_bytes_2() {
-        const NUM_BITS: usize = size_of::<Bytes2>() * 8;
+        const NUM_BITS: u32 = size_of::<Bytes2>() as u32 * 8;
 
         let bytes: Bytes2 = [0b10101010, 0b10101010];
         let expected_n = u16::from_be_bytes(bytes);
@@ -100,7 +101,7 @@ mod test {
 
     #[test]
     fn test_msb_for_bytes_4() {
-        const NUM_BITS: usize = size_of::<Bytes4>() * 8;
+        const NUM_BITS: u32 = size_of::<Bytes4>() as u32 * 8;
 
         let bytes: Bytes4 = [0b10101010, 0b10101010, 0b10101010, 0b10101010];
         let expected_n = u32::from_be_bytes(bytes);
@@ -117,7 +118,7 @@ mod test {
 
     #[test]
     fn test_msb_for_bytes_8() {
-        const NUM_BITS: usize = size_of::<Bytes8>() * 8;
+        const NUM_BITS: u32 = size_of::<Bytes8>() as u32 * 8;
 
         let bytes: Bytes8 = [
             0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010,

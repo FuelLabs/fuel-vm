@@ -1,3 +1,4 @@
+#![allow(clippy::cast_possible_truncation)]
 use super::{
     test_params,
     CHAIN_ID,
@@ -184,7 +185,8 @@ fn max_iow() {
         .gas_limit(TX_PARAMS.max_gas_per_tx)
         .maturity(maturity);
 
-    let secrets = cmp::min(TX_PARAMS.max_inputs, TX_PARAMS.max_witnesses - 1) as usize;
+    let secrets =
+        cmp::min(TX_PARAMS.max_inputs as u32, TX_PARAMS.max_witnesses - 1) as usize;
     let secrets: Vec<SecretKey> = (0..secrets - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();

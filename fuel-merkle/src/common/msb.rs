@@ -53,6 +53,7 @@ impl<const N: usize> Msb for [u8; N] {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 #[cfg(test)]
 mod test {
     use crate::common::{
@@ -62,10 +63,11 @@ mod test {
         Bytes8,
         Msb,
     };
+    use core::mem::size_of;
 
     #[test]
     fn test_msb_for_bytes_1() {
-        const NUM_BITS: u32 = 8;
+        const NUM_BITS: u32 = size_of::<Bytes1>() as u32 * 8;
 
         let bytes: Bytes1 = [0b10101010];
         let expected_n = u8::from_be_bytes(bytes);
@@ -82,7 +84,7 @@ mod test {
 
     #[test]
     fn test_msb_for_bytes_2() {
-        const NUM_BITS: u32 = 2 * 8;
+        const NUM_BITS: u32 = size_of::<Bytes2>() as u32 * 8;
 
         let bytes: Bytes2 = [0b10101010, 0b10101010];
         let expected_n = u16::from_be_bytes(bytes);
@@ -99,7 +101,7 @@ mod test {
 
     #[test]
     fn test_msb_for_bytes_4() {
-        const NUM_BITS: u32 = 4 * 8;
+        const NUM_BITS: u32 = size_of::<Bytes4>() as u32 * 8;
 
         let bytes: Bytes4 = [0b10101010, 0b10101010, 0b10101010, 0b10101010];
         let expected_n = u32::from_be_bytes(bytes);
@@ -116,7 +118,7 @@ mod test {
 
     #[test]
     fn test_msb_for_bytes_8() {
-        const NUM_BITS: u32 = 8 * 8;
+        const NUM_BITS: u32 = size_of::<Bytes8>() as u32 * 8;
 
         let bytes: Bytes8 = [
             0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010, 0b10101010,

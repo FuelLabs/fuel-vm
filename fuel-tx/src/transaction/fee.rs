@@ -1,5 +1,23 @@
-use crate::FeeParameters;
+use crate::{
+    field,
+    input::{
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
+        message::{
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
+            MessageDataSigned,
+        },
+    },
+    FeeParameters,
+    GasCosts,
+    Input,
+};
 use fuel_asm::Word;
+use hashbrown::HashSet;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -66,6 +84,7 @@ impl TransactionFee {
     pub fn checked_from_values(
         params: &FeeParameters,
         metered_bytes: Word,
+        gas_used_by_signature_checks: Word,
         gas_used_by_predicates: Word,
         gas_limit: Word,
         gas_price: Word,
@@ -74,8 +93,10 @@ impl TransactionFee {
 
         // TODO: use native div_ceil once stabilized out from nightly
         let bytes_gas = params.gas_per_byte.checked_mul(metered_bytes)?;
-        let min_gas = bytes_gas.checked_add(gas_used_by_predicates)?;
-        let max_gas = bytes_gas.checked_add(gas_limit)?;
+        let min_gas = bytes_gas
+            .checked_add(gas_used_by_signature_checks)?
+            .checked_add(gas_used_by_predicates)?;
+        let max_gas = min_gas.checked_add(gas_limit)?;
 
         let max_gas_to_pay = max_gas.checked_mul(gas_price).and_then(|total| {
             num_integer::div_ceil(total as u128, factor).try_into().ok()
@@ -113,11 +134,16 @@ impl TransactionFee {
     /// Attempt to create a transaction fee from parameters and transaction internals
     ///
     /// Will return `None` if arithmetic overflow occurs.
-    pub fn checked_from_tx<T: Chargeable>(
+    pub fn checked_from_tx<T>(
+        gas_costs: &GasCosts,
         params: &FeeParameters,
         tx: &T,
-    ) -> Option<Self> {
+    ) -> Option<Self>
+    where
+        T: Chargeable + field::Inputs,
+    {
         let metered_bytes = tx.metered_bytes_size() as Word;
+        let gas_used_by_signature_checks = tx.gas_used_by_signature_checks(gas_costs);
         let gas_used_by_predicates = tx.gas_used_by_predicates();
         let gas_limit = tx.limit();
         let gas_price = tx.price();
@@ -125,6 +151,7 @@ impl TransactionFee {
         Self::checked_from_values(
             params,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -144,7 +171,62 @@ pub trait Chargeable {
     fn metered_bytes_size(&self) -> usize;
 
     /// Used for accounting purposes when charging for predicates.
-    fn gas_used_by_predicates(&self) -> Word;
+    fn gas_used_by_predicates(&self) -> Word
+    where
+        Self: field::Inputs,
+    {
+        let mut cumulative_predicate_gas: Word = 0;
+        for input in self.inputs() {
+            if let Some(predicate_gas_used) = input.predicate_gas_used() {
+                cumulative_predicate_gas =
+                    cumulative_predicate_gas.saturating_add(predicate_gas_used);
+            }
+        }
+        cumulative_predicate_gas
+    }
+
+    fn gas_used_by_signature_checks(&self, gas_costs: &GasCosts) -> Word
+    where
+        Self: field::Inputs,
+    {
+        let mut witness_cache: HashSet<u8> = HashSet::new();
+        self.inputs()
+            .iter()
+            .filter(|input| match input {
+                // Include signed inputs of unique witness indices
+                Input::CoinSigned(CoinSigned { witness_index, .. })
+                | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
+                | Input::MessageDataSigned(MessageDataSigned { witness_index, .. })
+                    if !witness_cache.contains(witness_index) =>
+                {
+                    witness_cache.insert(*witness_index);
+                    true
+                }
+                // Include all predicates
+                Input::CoinPredicate(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_) => true,
+                // Ignore all other inputs
+                _ => false,
+            })
+            .map(|input| match input {
+                // Charge EC recovery cost for signed inputs
+                Input::CoinSigned(_)
+                | Input::MessageCoinSigned(_)
+                | Input::MessageDataSigned(_) => gas_costs.ecr1,
+                // Charge the cost of the contract root for predicate inputs
+                Input::CoinPredicate(CoinPredicate { predicate, .. })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    predicate, ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    predicate, ..
+                }) => gas_costs.contract_root.resolve(predicate.len() as u64),
+                // Charge nothing for all other inputs
+                _ => 0,
+            })
+            .fold(0, |acc, cost| acc.saturating_add(cost))
+    }
 }
 
 #[cfg(test)]
@@ -160,61 +242,88 @@ mod tests {
         .with_gas_per_byte(2)
         .with_gas_price_factor(3);
 
+    fn gas_to_fee(params: &FeeParameters, gas: u64, gas_price: Word) -> f64 {
+        let fee = gas * gas_price;
+        fee as f64 / params.gas_price_factor as f64
+    }
+
     #[test]
     fn base_fee_is_calculated_correctly() {
         let metered_bytes = 5;
+        let gas_used_by_signature_checks = 12;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 11;
 
+        let params = PARAMS;
         let fee = TransactionFee::checked_from_values(
-            &PARAMS,
+            &params,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
         )
         .expect("failed to calculate fee");
 
-        let expected = PARAMS.gas_per_byte * metered_bytes + gas_limit;
-        let expected = expected * gas_price;
-        let expected = expected as f64 / PARAMS.gas_price_factor as f64;
-        let expected = expected.ceil() as Word;
+        let expected_max_gas = params.gas_per_byte * metered_bytes
+            + gas_used_by_signature_checks
+            + gas_used_by_predicates
+            + gas_limit;
+        let expected_max_fee =
+            gas_to_fee(&params, expected_max_gas, gas_price).ceil() as Word;
+        let expected_min_gas = params.gas_per_byte * metered_bytes
+            + gas_used_by_signature_checks
+            + gas_used_by_predicates;
+        let expected_min_fee =
+            gas_to_fee(&params, expected_min_gas, gas_price).ceil() as Word;
 
-        assert_eq!(expected, fee.max_fee);
-        assert_eq!(expected, fee.min_fee);
+        assert_eq!(expected_max_fee, fee.max_fee);
+        assert_eq!(expected_min_fee, fee.min_fee);
     }
 
     #[test]
     fn base_fee_ceils() {
         let metered_bytes = 5;
+        let gas_used_by_signature_checks = 12;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 11;
-
+        let params = PARAMS.with_gas_price_factor(10);
         let fee = TransactionFee::checked_from_values(
-            &PARAMS,
+            &params,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
         )
         .expect("failed to calculate fee");
 
-        let expected = PARAMS.gas_per_byte * metered_bytes + gas_limit;
-        let expected = expected * gas_price;
-        let expected = expected as f64 / PARAMS.gas_price_factor as f64;
-        let truncated = expected as Word;
-        let expected = expected.ceil() as Word;
+        let expected_max_gas = params.gas_per_byte * metered_bytes
+            + gas_used_by_signature_checks
+            + gas_used_by_predicates
+            + gas_limit;
+        let expected_max_fee = gas_to_fee(&params, expected_max_gas, gas_price);
+        let truncated = expected_max_fee as Word;
+        let expected_max_fee = expected_max_fee.ceil() as Word;
+        assert_ne!(truncated, fee.max_fee);
+        assert_eq!(expected_max_fee, fee.max_fee);
 
-        assert_ne!(truncated, expected);
-        assert_eq!(expected, fee.max_fee);
-        assert_eq!(expected, fee.min_fee);
+        let expected_min_gas = params.gas_per_byte * metered_bytes
+            + gas_used_by_signature_checks
+            + gas_used_by_predicates;
+        let expected_min_fee = gas_to_fee(&params, expected_min_gas, gas_price);
+        let truncated = expected_min_fee as Word;
+        let expected_min_fee = expected_min_fee.ceil() as Word;
+        assert_ne!(truncated, fee.min_fee);
+        assert_eq!(expected_min_fee, fee.min_fee);
     }
 
     #[test]
     fn base_fee_zeroes() {
         let metered_bytes = 5;
+        let gas_used_by_signature_checks = 12;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 0;
@@ -222,6 +331,7 @@ mod tests {
         let fee = TransactionFee::checked_from_values(
             &PARAMS,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -237,6 +347,7 @@ mod tests {
     #[test]
     fn base_fee_wont_overflow_on_bytes() {
         let metered_bytes = Word::MAX;
+        let gas_used_by_signature_checks = 12;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = 11;
@@ -244,6 +355,7 @@ mod tests {
         let overflow = TransactionFee::checked_from_values(
             &PARAMS,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -256,6 +368,7 @@ mod tests {
     #[test]
     fn base_fee_wont_overflow_on_gas_used_by_predicates() {
         let metered_bytes = 5;
+        let gas_used_by_signature_checks = 12;
         let gas_used_by_predicates = Word::MAX;
         let gas_limit = 7;
         let gas_price = 11;
@@ -263,6 +376,7 @@ mod tests {
         let overflow = TransactionFee::checked_from_values(
             &PARAMS,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -275,6 +389,7 @@ mod tests {
     #[test]
     fn base_fee_wont_overflow_on_limit() {
         let metered_bytes = 5;
+        let gas_used_by_signature_checks = 12;
         let gas_used_by_predicates = 7;
         let gas_limit = Word::MAX;
         let gas_price = 11;
@@ -282,6 +397,7 @@ mod tests {
         let overflow = TransactionFee::checked_from_values(
             &PARAMS,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -294,6 +410,7 @@ mod tests {
     #[test]
     fn base_fee_wont_overflow_on_price() {
         let metered_bytes = 5;
+        let gas_used_by_signature_checks = 12;
         let gas_used_by_predicates = 7;
         let gas_limit = 7;
         let gas_price = Word::MAX;
@@ -301,6 +418,7 @@ mod tests {
         let overflow = TransactionFee::checked_from_values(
             &PARAMS,
             metered_bytes,
+            gas_used_by_signature_checks,
             gas_used_by_predicates,
             gas_limit,
             gas_price,
@@ -308,24 +426,5 @@ mod tests {
         .is_none();
 
         assert!(overflow);
-    }
-
-    #[test]
-    fn base_fee_gas_limit_less_than_gas_used_by_predicates() {
-        let metered_bytes = 5;
-        let gas_used_by_predicates = 8;
-        let gas_limit = 7;
-        let gas_price = 11;
-
-        let fee = TransactionFee::checked_from_values(
-            &PARAMS,
-            metered_bytes,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .expect("failed to calculate fee");
-
-        assert!(fee.min_fee > fee.max_fee);
     }
 }

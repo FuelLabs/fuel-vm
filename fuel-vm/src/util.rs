@@ -251,7 +251,7 @@ pub mod test_helpers {
                 .expect("expected contract input with matching contract id");
 
             self.builder.add_output(Output::contract(
-                input_idx.0 as u8,
+                u8::try_from(input_idx.0).expect("The input index is more than allowed"),
                 self.rng.gen(),
                 self.rng.gen(),
             ));
@@ -369,7 +369,12 @@ pub mod test_helpers {
                 data_offset,
                 vec![
                     op::movi(0x11, data_offset),
-                    op::addi(0x12, 0x11, AssetId::LEN as Immediate12),
+                    op::addi(
+                        0x12,
+                        0x11,
+                        Immediate12::try_from(AssetId::LEN)
+                            .expect("`AssetId::LEN` is 32 bytes")
+                    ),
                     op::bal(0x10, 0x11, 0x12),
                     op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
                     op::ret(RegId::ONE),

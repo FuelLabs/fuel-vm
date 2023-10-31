@@ -242,6 +242,7 @@ macro_rules! impl_for_primitives {
 impl_for_primitives!(u8, true);
 impl_for_primitives!(u16, false);
 impl_for_primitives!(u32, false);
+impl_for_primitives!(usize, false);
 impl_for_primitives!(u64, false);
 impl_for_primitives!(u128, false);
 

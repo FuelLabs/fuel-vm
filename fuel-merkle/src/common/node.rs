@@ -18,8 +18,9 @@ pub trait KeyFormatting {
 pub trait Node {
     type Key: KeyFormatting;
 
-    fn key_size_in_bits() -> usize {
-        mem::size_of::<Self::Key>() * 8
+    fn key_size_in_bits() -> u32 {
+        u32::try_from(mem::size_of::<Self::Key>() * 8)
+            .expect("The key usually is several bytes")
     }
 
     fn height(&self) -> u32;

@@ -290,7 +290,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
     {
-        let out_idx = output_index as usize;
+        let out_idx =
+            usize::try_from(output_index).map_err(|_| PanicReason::ArithmeticOverflow)?;
         let to = Address::from(read_bytes(self.memory, recipient_offset)?);
         let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
         let amount = transfer_amount;
@@ -348,14 +349,14 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> IoResult<Word, S::Error>
+) -> IoResult<usize, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
     Ok(storage
         .size_of_value(contract)
         .map_err(RuntimeError::Storage)?
-        .ok_or(PanicReason::ContractNotFound)? as Word)
+        .ok_or(PanicReason::ContractNotFound)?)
 }
 
 pub(crate) fn balance<S>(

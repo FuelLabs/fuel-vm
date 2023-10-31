@@ -3,6 +3,7 @@
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "std", doc = include_str!("../README.md"))]
+#![deny(clippy::cast_possible_truncation)]
 #![deny(clippy::string_slice)]
 #![deny(missing_docs)]
 #![deny(unsafe_code)]

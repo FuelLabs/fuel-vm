@@ -18,18 +18,18 @@ impl From<Bit> for Instruction {
 }
 
 pub trait Path {
-    fn get_instruction(&self, index: usize) -> Option<Instruction>;
+    fn get_instruction(&self, index: u32) -> Option<Instruction>;
 }
 
 pub trait ComparablePath {
-    fn common_path_length(&self, other: &Self) -> usize;
+    fn common_path_length(&self, other: &Self) -> u32;
 }
 
 impl<T> Path for T
 where
     T: Msb,
 {
-    fn get_instruction(&self, index: usize) -> Option<Instruction> {
+    fn get_instruction(&self, index: u32) -> Option<Instruction> {
         self.get_bit_at_index_from_msb(index).map(Into::into)
     }
 }
@@ -38,7 +38,7 @@ impl<T> ComparablePath for T
 where
     T: Msb,
 {
-    fn common_path_length(&self, other: &Self) -> usize {
+    fn common_path_length(&self, other: &Self) -> u32 {
         self.common_prefix_count(other)
     }
 }

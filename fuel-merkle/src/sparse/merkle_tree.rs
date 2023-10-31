@@ -133,7 +133,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 
     fn set_root_node(&mut self, node: Node) {
-        debug_assert!(node.is_leaf() || node.height() == Node::max_height() as u32);
+        debug_assert!(node.is_leaf() || node.height() == Node::max_height());
         self.root_node = node;
     }
 }
@@ -252,7 +252,7 @@ where
         }
 
         let mut nodes = Vec::<Branch>::with_capacity(branches.len());
-        let mut proximities = Vec::<usize>::with_capacity(branches.len());
+        let mut proximities = Vec::<u32>::with_capacity(branches.len());
 
         // Building the tree starts by merging all leaf nodes where possible.
         // Given a set of leaf nodes sorted left to right (i.e., keys are sorted
@@ -336,9 +336,9 @@ where
         // node has the final height and forms the root node.
         let mut node = top.node;
         let path = top.bits;
-        let height = node.height() as usize;
+        let height = node.height();
         let depth = Node::max_height() - height;
-        let placeholders = iter::repeat(Node::create_placeholder()).take(depth);
+        let placeholders = iter::repeat(Node::create_placeholder()).take(depth as usize);
         for placeholder in placeholders {
             node = Node::create_node_on_path(&path, &node, &placeholder);
             storage.insert(node.hash(), &node.as_ref().into())?;
@@ -455,7 +455,7 @@ where
 
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
-            let stale_depth = cmp::max(side_nodes.len(), ancestor_depth);
+            let stale_depth = cmp::max(side_nodes.len(), ancestor_depth as usize);
             let placeholders_count = stale_depth - side_nodes.len();
             let placeholders =
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);

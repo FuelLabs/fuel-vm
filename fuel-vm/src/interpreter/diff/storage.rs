@@ -417,7 +417,7 @@ where
         &self,
         id: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Vec<Option<alloc::borrow::Cow<Bytes32>>>, Self::DataError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
@@ -436,7 +436,7 @@ where
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        range: Word,
+        range: usize,
     ) -> Result<Option<()>, S::DataError> {
         self.0
             .merkle_contract_state_remove_range(contract, start_key, range)

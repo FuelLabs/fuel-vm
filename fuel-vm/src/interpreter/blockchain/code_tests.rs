@@ -1,3 +1,4 @@
+#![allow(clippy::cast_possible_truncation)]
 use core::convert::Infallible;
 
 use alloc::vec;

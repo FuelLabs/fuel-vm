@@ -8,6 +8,7 @@
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
+#![deny(clippy::cast_possible_truncation)]
 
 // Satisfy unused_crate_dependencies lint for self-dependency enabling test features
 #[cfg(test)]

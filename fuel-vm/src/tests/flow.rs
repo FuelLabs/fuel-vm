@@ -203,11 +203,11 @@ fn call_frame_code_offset() {
         contract_id,
         asset_id,
         [0; VM_REGISTER_COUNT],
-        contract.as_ref().len() as Word,
+        contract.as_ref().len(),
         0,
         0,
     );
-    let stack = frame.to_bytes().len() as Word + frame.total_code_size();
+    let stack = (frame.to_bytes().len() + frame.total_code_size()) as Word;
 
     let receipts = result.receipts();
 
@@ -445,7 +445,7 @@ fn revert() {
     assert_eq!(receipts[1].rb().expect("Register value expected"), val);
 
     match receipts[3] {
-        Receipt::Revert { ra, .. } if ra == 1 => (),
+        Receipt::Revert { ra: 1, .. } => (),
         _ => panic!("Expected revert receipt: {:?}", receipts[3]),
     }
 }

@@ -102,6 +102,7 @@ impl From<PanicInstruction> for Word {
 }
 
 impl From<Word> for PanicInstruction {
+    #[allow(clippy::cast_possible_truncation)]
     fn from(val: Word) -> Self {
         // Safe to cast as we've shifted the 8 MSB.
         let reason_u8 = (val >> REASON_OFFSET) as u8;

@@ -1,3 +1,4 @@
+#![allow(clippy::cast_possible_truncation)]
 use super::PREDICATE_PARAMS;
 
 use fuel_crypto::{

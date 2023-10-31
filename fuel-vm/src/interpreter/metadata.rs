@@ -145,7 +145,7 @@ impl<Tx> GTFInput<'_, Tx> {
     where
         Tx: ExecutableTransaction,
     {
-        let b = b as usize;
+        let b = usize::try_from(b).map_err(|_| PanicReason::ArithmeticOverflow)?;
         let args = GTFArgs::try_from(imm)?;
         let tx = self.tx;
         let ofs = self.tx_offset;

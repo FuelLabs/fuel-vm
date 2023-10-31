@@ -58,7 +58,7 @@ impl Node {
         hash.finalize().try_into().unwrap()
     }
 
-    pub fn max_height() -> usize {
+    pub fn max_height() -> u32 {
         Node::key_size_in_bits()
     }
 
@@ -112,7 +112,7 @@ impl Node {
             // leaves.
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node);
-            let parent_height = (Node::max_height() - parent_depth) as u32;
+            let parent_height = Node::max_height() - parent_depth;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)
@@ -127,7 +127,7 @@ impl Node {
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
             let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
-            let parent_depth = Node::max_height() - parent_height as usize;
+            let parent_depth = Node::max_height() - parent_height;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)
@@ -143,7 +143,7 @@ impl Node {
         Self::Placeholder
     }
 
-    pub fn common_path_length(&self, other: &Node) -> usize {
+    pub fn common_path_length(&self, other: &Node) -> u32 {
         debug_assert!(self.is_leaf());
         debug_assert!(other.is_leaf());
 

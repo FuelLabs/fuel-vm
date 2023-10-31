@@ -1,3 +1,4 @@
+#![allow(clippy::cast_possible_truncation)]
 use alloc::vec;
 
 use fuel_crypto::SecretKey;

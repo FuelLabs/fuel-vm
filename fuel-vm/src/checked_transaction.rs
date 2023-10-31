@@ -1176,7 +1176,7 @@ mod tests {
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
             + gas_costs.state_root.resolve(storage_slots_len as Word)
             + gas_costs.contract_root.resolve(bytecode_len as Word)
-            + gas_costs.contract_id)
+            + gas_costs.s256.resolve(100))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1204,7 +1204,7 @@ mod tests {
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
             + gas_costs.state_root.resolve(0)
             + gas_costs.contract_root.resolve(0)
-            + gas_costs.contract_id)
+            + gas_costs.s256.resolve(100))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 

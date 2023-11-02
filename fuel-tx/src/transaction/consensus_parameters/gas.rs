@@ -324,18 +324,29 @@ pub struct GasCostsValues {
 }
 
 /// Dependent cost is a cost that depends on the number of units.
-/// The cost starts at the base and grows by `dep_per_unit` for every unit.
-///
-/// For example, if the base is 10 and the `dep_per_unit` is 2,
-/// then the cost for 0 units is 10, 1 unit is 12, 2 units is 14, etc.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct DependentCost {
-    /// The minimum that this operation can cost.
-    pub base: Word,
-    /// The amount that this operation costs per
-    /// increase in unit.
-    pub dep_per_unit: Word,
+pub enum DependentCost {
+    /// When an operation is dependent on the magnitude of its inputs, and the
+    /// time per unit of input is less than a single no-op operation
+    LightOperation {
+        /// The minimum that this operation can cost.
+        base: Word,
+        /// How many elements can be processed with a single unit of gas. The
+        /// higher the units_per_gas, the less additional cost you will incur
+        /// for a given number of units, because you need more units to increase
+        /// the total cost.
+        units_per_gas: Word,
+    },
+
+    /// When an operation is dependent on the magnitude of its inputs, and the
+    /// time per unit of input is greater than a single no-op operation
+    HeavyOperation {
+        /// The minimum that this operation can cost.
+        base: Word,
+        /// How much gas is required to process a single unit.
+        gas_per_unit: Word,
+    },
 }
 
 #[cfg(feature = "alloc")]
@@ -584,22 +595,88 @@ impl GasCostsValues {
 impl DependentCost {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
-        Self {
+        Self::HeavyOperation {
             base: 0,
-            dep_per_unit: 0,
+            gas_per_unit: 0,
         }
     }
 
     /// Create costs that are all set to one.
     pub fn unit() -> Self {
-        Self {
+        Self::HeavyOperation {
             base: 1,
-            dep_per_unit: 0,
+            gas_per_unit: 1,
+        }
+    }
+
+    /// Create a dependent cost from a base and unit cost
+    /// Unit costs within the range (0, 1) are considered light.
+    /// Unit costs greater than 1 are considered heavy.
+    /// Unit costs of 0 will always resolve to the base cost, but are internally
+    /// set to heavy.
+    pub fn from_costs(base_cost: Word, unit_cost: f64) -> Self {
+        debug_assert!(
+            unit_cost.is_sign_positive(),
+            "Cannot create dependent cost with negative unit cost"
+        );
+        if unit_cost > 0.0 && unit_cost < 1.0 {
+            DependentCost::LightOperation {
+                base: base_cost,
+                // Convert 1/x to x in order to store the gas cost as
+                // whole number.
+                units_per_gas: (1.0 / unit_cost) as Word,
+            }
+        } else {
+            DependentCost::HeavyOperation {
+                base: base_cost,
+                gas_per_unit: unit_cost as Word,
+            }
+        }
+    }
+
+    pub fn base(&self) -> Word {
+        match self {
+            DependentCost::LightOperation { base, .. } => *base,
+            DependentCost::HeavyOperation { base, .. } => *base,
+        }
+    }
+
+    pub fn set_base(&mut self, value: Word) {
+        match self {
+            DependentCost::LightOperation { base, .. } => *base = value,
+            DependentCost::HeavyOperation { base, .. } => *base = value,
+        };
+    }
+
+    pub fn gas_per_unit(&self) -> f64 {
+        match self {
+            DependentCost::LightOperation { units_per_gas, .. } => {
+                // Convert units/gas to gas/unit
+                1.0 / *units_per_gas as f64
+            }
+            DependentCost::HeavyOperation { gas_per_unit, .. } => *gas_per_unit as f64,
+        }
+    }
+
+    pub fn units_per_gas(&self) -> f64 {
+        match self {
+            DependentCost::LightOperation { units_per_gas, .. } => *units_per_gas as f64,
+            DependentCost::HeavyOperation { gas_per_unit, .. } => {
+                // Convert gas/unit to units/gas
+                1.0 / *gas_per_unit as f64
+            }
         }
     }
 
     pub fn resolve(&self, units: Word) -> Word {
-        self.base + units.saturating_div(self.dep_per_unit)
+        let base = self.base();
+        let gas_per_unit = self.gas_per_unit();
+        // Apply the linear transformation f(x) = mx + b, where:
+        //   x is the number of units
+        //   m is the gas per unit
+        //   b is the base cost
+        let dependent_value = (units as f64) * gas_per_unit;
+        base + dependent_value as Word
     }
 }
 

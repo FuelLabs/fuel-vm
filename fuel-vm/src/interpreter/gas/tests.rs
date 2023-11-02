@@ -55,43 +55,43 @@ struct DepGasChargeInput {
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 0},
-        gas_cost: DependentCost{base: 0, dep_per_unit: 1}
+        gas_cost: DependentCost::from_costs(0, 1.0)
     } => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "zero"
 )]
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 0},
-        gas_cost: DependentCost{base: 1, dep_per_unit: 1}
+        gas_cost: DependentCost::from_costs(1, 1.0)
     } => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "just base"
 )]
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 1},
-        gas_cost: DependentCost{base: 1, dep_per_unit: 2}
+        gas_cost: DependentCost::from_costs(1, 1.0/2.0)
     } => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "just base with gas"
 )]
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 3, ggas: 3, dependent_factor: 8},
-        gas_cost: DependentCost{base: 1, dep_per_unit: 4}
+        gas_cost: DependentCost::from_costs(1, 1.0/4.0)
     } => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "base with gas and a unit"
 )]
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 3, ggas: 3, dependent_factor: 5},
-        gas_cost: DependentCost{base: 0, dep_per_unit: 4}
+        gas_cost: DependentCost::from_costs(0, 1.0/4.0)
     } => Ok(GasChargeOutput{ cgas: 2, ggas: 2}); "base with gas and a unit and left over"
 )]
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 0, ggas: 1, dependent_factor: 0},
-        gas_cost: DependentCost{base: 1, dep_per_unit: 1}
+        gas_cost: DependentCost::from_costs(1, 1.0)
     } => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "just base with no cgas"
 )]
 #[test_case(
     DepGasChargeInput{
         input: GasChargeInput{cgas: 5, ggas: 10, dependent_factor: 25},
-        gas_cost: DependentCost{base: 1, dep_per_unit: 5}
+        gas_cost: DependentCost::from_costs(1, 1.0/5.0)
     } => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "unit with not enough cgas"
 )]
 fn test_dependent_gas_charge(input: DepGasChargeInput) -> SimpleResult<GasChargeOutput> {

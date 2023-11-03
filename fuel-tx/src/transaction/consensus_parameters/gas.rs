@@ -642,7 +642,7 @@ impl DependentCost {
         let base = self.base();
         let dependent_value = match self {
             DependentCost::LightOperation { units_per_gas, .. } => {
-                // Apply the linear transformation f(x) = x/m = 1/m * x, where:
+                // Apply the linear transformation f(x) = 1/m * x = x/m = where:
                 //   x is the number of units
                 //   1/m is the gas_per_unit
                 units.saturating_div(*units_per_gas)

@@ -609,29 +609,19 @@ impl DependentCost {
         }
     }
 
-    /// Create a dependent cost from a base and unit cost
-    /// Unit costs within the range (0, 1) are considered light.
-    /// Unit costs greater than 1 are considered heavy.
-    /// Unit costs of 0 will always resolve to the base cost, but are internally
-    /// set to heavy.
-    pub fn from_costs(base_cost: Word, unit_cost: f64) -> Self {
+    pub fn from_units_per_gas(base: Word, units_per_gas: Word) -> Self {
         debug_assert!(
-            unit_cost.is_sign_positive(),
-            "Cannot create dependent cost with negative unit cost"
+            units_per_gas > 0,
+            "Cannot create dependent gas cost with per-0-gas ratio"
         );
-        if unit_cost > 0.0 && unit_cost < 1.0 {
-            DependentCost::LightOperation {
-                base: base_cost,
-                // Convert 1/x to x in order to store the gas cost as
-                // whole number.
-                units_per_gas: (1.0 / unit_cost) as Word,
-            }
-        } else {
-            DependentCost::HeavyOperation {
-                base: base_cost,
-                gas_per_unit: unit_cost as Word,
-            }
+        DependentCost::LightOperation {
+            base,
+            units_per_gas,
         }
+    }
+
+    pub fn from_gas_per_unit(base: Word, gas_per_unit: Word) -> Self {
+        DependentCost::HeavyOperation { base, gas_per_unit }
     }
 
     pub fn base(&self) -> Word {
@@ -648,35 +638,23 @@ impl DependentCost {
         };
     }
 
-    pub fn gas_per_unit(&self) -> f64 {
-        match self {
-            DependentCost::LightOperation { units_per_gas, .. } => {
-                // Convert units/gas to gas/unit
-                1.0 / *units_per_gas as f64
-            }
-            DependentCost::HeavyOperation { gas_per_unit, .. } => *gas_per_unit as f64,
-        }
-    }
-
-    pub fn units_per_gas(&self) -> f64 {
-        match self {
-            DependentCost::LightOperation { units_per_gas, .. } => *units_per_gas as f64,
-            DependentCost::HeavyOperation { gas_per_unit, .. } => {
-                // Convert gas/unit to units/gas
-                1.0 / *gas_per_unit as f64
-            }
-        }
-    }
-
     pub fn resolve(&self, units: Word) -> Word {
         let base = self.base();
-        let gas_per_unit = self.gas_per_unit();
-        // Apply the linear transformation f(x) = mx + b, where:
-        //   x is the number of units
-        //   m is the gas per unit
-        //   b is the base cost
-        let dependent_value = (units as f64) * gas_per_unit;
-        base + dependent_value as Word
+        let dependent_value = match self {
+            DependentCost::LightOperation { units_per_gas, .. } => {
+                // Apply the linear transformation f(x) = x/m = 1/m * x, where:
+                //   x is the number of units
+                //   1/m is the gas_per_unit
+                units.saturating_div(*units_per_gas)
+            }
+            DependentCost::HeavyOperation { gas_per_unit, .. } => {
+                // Apply the linear transformation f(x) = mx, where:
+                //   x is the number of units
+                //   m is the gas per unit
+                units.saturating_mul(*gas_per_unit)
+            }
+        };
+        base + dependent_value
     }
 }
 
@@ -698,5 +676,50 @@ impl From<GasCostsValues> for GasCosts {
 impl From<GasCosts> for GasCostsValues {
     fn from(i: GasCosts) -> Self {
         (*i.0).clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::DependentCost;
+
+    #[test]
+    fn light_operation_gas_cost_resolves_correctly() {
+        // Create a linear gas cost function with a slope of 1/10
+        let cost = DependentCost::from_units_per_gas(0, 10);
+        let total = cost.resolve(0);
+        assert_eq!(total, 0);
+
+        let total = cost.resolve(5);
+        assert_eq!(total, 0);
+
+        let total = cost.resolve(10);
+        assert_eq!(total, 1);
+
+        let total = cost.resolve(100);
+        assert_eq!(total, 10);
+
+        let total = cost.resolve(721);
+        assert_eq!(total, 72);
+    }
+
+    #[test]
+    fn heavy_operation_gas_cost_resolves_correctly() {
+        // Create a linear gas cost function with a slope of 10
+        let cost = DependentCost::from_gas_per_unit(0, 10);
+        let total = cost.resolve(0);
+        assert_eq!(total, 0);
+
+        let total = cost.resolve(5);
+        assert_eq!(total, 50);
+
+        let total = cost.resolve(10);
+        assert_eq!(total, 100);
+
+        let total = cost.resolve(100);
+        assert_eq!(total, 1_000);
+
+        let total = cost.resolve(721);
+        assert_eq!(total, 7_210);
     }
 }

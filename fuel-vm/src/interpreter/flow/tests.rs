@@ -52,7 +52,7 @@ impl Default for Input {
             input_contracts: vec![Default::default()],
             storage_balance: Default::default(),
             memory: vec![0u8; MEM_SIZE].try_into().unwrap(),
-            gas_cost: DependentCost::from_costs(10, 1.0 / 10.0),
+            gas_cost: DependentCost::from_units_per_gas(10, 10),
             storage_contract: vec![(ContractId::default(), vec![0u8; 10])],
             script: None,
         }

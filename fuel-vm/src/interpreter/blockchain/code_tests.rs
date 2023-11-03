@@ -52,7 +52,7 @@ fn test_load_contract() -> IoResult<(), Infallible> {
         profiler: &mut Profiler::default(),
         input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         current_contract: None,
-        gas_cost: DependentCost::from_costs(13, 1.0),
+        gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         ssp: RegMut::new(&mut ssp),

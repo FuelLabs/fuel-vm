@@ -547,12 +547,6 @@ pub struct InitialBalances {
 pub trait CheckedMetadata {
     /// Returns the initial balances from the checked metadata of the transaction.
     fn balances(&self) -> InitialBalances;
-
-    /// Get gas used by predicates. Returns zero if the predicates haven't been checked.
-    fn gas_used_by_predicates(&self) -> Word;
-
-    /// Set gas used by predicates after checking them.
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word);
 }
 
 impl CheckedMetadata for ScriptCheckedMetadata {
@@ -562,14 +556,6 @@ impl CheckedMetadata for ScriptCheckedMetadata {
             retryable: Some(self.retryable_balance),
         }
     }
-
-    fn gas_used_by_predicates(&self) -> Word {
-        self.gas_used_by_predicates
-    }
-
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word) {
-        self.gas_used_by_predicates = gas_used;
-    }
 }
 
 impl CheckedMetadata for CreateCheckedMetadata {
@@ -578,14 +564,6 @@ impl CheckedMetadata for CreateCheckedMetadata {
             non_retryable: self.free_balances.clone(),
             retryable: None,
         }
-    }
-
-    fn gas_used_by_predicates(&self) -> Word {
-        self.gas_used_by_predicates
-    }
-
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word) {
-        self.gas_used_by_predicates = gas_used;
     }
 }
 

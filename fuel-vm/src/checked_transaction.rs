@@ -38,7 +38,6 @@ pub use types::*;
 
 use crate::{
     error::PredicateVerificationFailed,
-    interpreter::CheckedMetadata as CheckedMetadataAccessTrait,
     prelude::*,
 };
 
@@ -317,10 +316,8 @@ where
         params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            let checked =
-                Interpreter::<PredicateStorage, _>::check_predicates(&self, params)?;
+            Interpreter::<PredicateStorage, _>::check_predicates(&self, params)?;
             self.checks_bitmask.insert(Checks::Predicates);
-            self.metadata.set_gas_used_by_predicates(checked.gas_used());
         }
         Ok(self)
     }
@@ -333,15 +330,12 @@ where
         E: ParallelExecutor,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            let predicates_checked =
-                Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
-                    &self, params,
-                )
-                .await?;
+            Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
+                &self, params,
+            )
+            .await?;
 
             self.checks_bitmask.insert(Checks::Predicates);
-            self.metadata
-                .set_gas_used_by_predicates(predicates_checked.gas_used());
 
             Ok(self)
         } else {

@@ -163,7 +163,7 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::ScriptOutputsCount | GTFArgs::CreateOutputsCount => {
                 tx.outputs().len() as Word
             }
-            GTFArgs::ScriptWitnessesCound | GTFArgs::CreateWitnessesCount => {
+            GTFArgs::ScriptWitnessesCount | GTFArgs::CreateWitnessesCount => {
                 tx.witnesses().len() as Word
             }
             GTFArgs::ScriptInputAtIndex | GTFArgs::CreateInputAtIndex => {

@@ -12,6 +12,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
+    policies::Policies,
     ConsensusParameters,
     Witness,
 };
@@ -48,10 +49,8 @@ fn prevent_contract_id_redeployment() {
     let output = Output::contract_created(contract_undefined, state_root);
 
     let mut create = Transaction::create(
-        gas_price,
         Default::default(),
-        Default::default(),
-        Default::default(),
+        Policies::new().with_gas_price(gas_price),
         salt,
         vec![],
         vec![],

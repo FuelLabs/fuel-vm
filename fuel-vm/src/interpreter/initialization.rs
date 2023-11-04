@@ -17,6 +17,7 @@ use crate::{
 };
 
 use fuel_asm::RegId;
+use fuel_tx::field::GasLimit;
 use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
@@ -111,7 +112,10 @@ where
 
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
-        let gas_limit = tx.limit();
+        let gas_limit = tx
+            .as_script()
+            .map(|script| *script.gas_limit())
+            .unwrap_or_default();
 
         let initial_balances = metadata.balances();
         let runtime_balances = initial_balances.try_into()?;

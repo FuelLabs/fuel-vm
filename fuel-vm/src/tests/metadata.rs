@@ -85,7 +85,6 @@ fn metadata() {
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -137,7 +136,6 @@ fn metadata() {
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -279,7 +277,9 @@ fn get_transaction_fields() {
     let mut client = MemoryClient::default();
 
     let gas_price = 1;
-    let gas_limit = 100_000_000;
+    let witness_limit = 1234;
+    let max_fee_limit = 4321;
+    let gas_limit = 10_000_000;
     let maturity = 50.into();
     let height = 122.into();
     let input = 10_000_000;
@@ -473,7 +473,7 @@ fn get_transaction_fields() {
 
         op::movi(0x11, gas_price as Immediate18),
         op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptGasPrice),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyGasPrice),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -488,7 +488,25 @@ fn get_transaction_fields() {
 
         op::movi(0x19, 0x00),
         op::movi(0x11, *maturity as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptMaturity),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaturity),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, max_fee_limit as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaxFee),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, witness_limit as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyWitnessLimit),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, 4 as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyCount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -871,6 +889,8 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .gas_price(gas_price)
         .gas_limit(gas_limit)
+        .witness_limit(witness_limit)
+        .max_fee_limit(max_fee_limit)
         .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);

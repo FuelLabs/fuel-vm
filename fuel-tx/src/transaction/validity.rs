@@ -1,8 +1,5 @@
 use crate::{
-    field::{
-        Maturity,
-        MaxFeeLimit,
-    },
+    field::Maturity,
     input::{
         coin::{
             CoinPredicate,
@@ -346,12 +343,15 @@ where
         }
     }
 
-    if tx.max_gas(gas_costs, fee_params) > tx_params.max_gas_per_tx {
+    let max_gas = tx.max_gas(gas_costs, fee_params);
+    if max_gas > tx_params.max_gas_per_tx {
         Err(CheckError::TransactionMaxGasExceeded)?
     }
 
-    if tx.max_fee(gas_costs, fee_params) > tx.max_fee_limit() as u128 {
-        Err(CheckError::TransactionMaxFeeLimitExceeded)?
+    if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
+        if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
+            Err(CheckError::TransactionMaxFeeLimitExceeded)?
+        }
     }
 
     if tx.maturity() > block_height {

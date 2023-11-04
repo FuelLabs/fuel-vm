@@ -26,7 +26,7 @@ fn memcopy() {
         InterpreterParams::from(&consensus_params),
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
-        .gas_limit(tx_params.max_gas_per_tx)
+        .gas_limit(tx_params.max_gas_per_tx >> 1)
         .add_random_fee_input()
         .finalize();
 

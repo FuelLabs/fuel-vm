@@ -97,6 +97,16 @@ impl Policies {
         }
     }
 
+    /// Returns `true` if no policies are set.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Returns the number of set policies.
+    pub fn len(&self) -> usize {
+        self.bits.bits().count_ones() as usize
+    }
+
     /// Sets the `gas_price` policy.
     pub fn with_gas_price(mut self, gas_price: Word) -> Self {
         self.set(PolicyType::GasPrice, Some(gas_price));
@@ -128,6 +138,11 @@ impl Policies {
         } else {
             None
         }
+    }
+
+    /// Returns a policy's type by the `index`.
+    pub fn get_type_by_index(&self, index: usize) -> Option<u32> {
+        self.bits.iter().nth(index).map(|bit| bit.bits())
     }
 
     /// Sets a policy's value if the `value` is `Some`, otherwise, unset it.

@@ -83,6 +83,7 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[allow(clippy::large_enum_variant)]
 pub enum Transaction {
     Script(Script),
     Create(Create),
@@ -629,7 +630,7 @@ pub mod field {
     impl<T: Policies + ?Sized> MaxFeeLimit for T {
         #[inline(always)]
         fn max_fee_limit(&self) -> Word {
-            self.policies().get(PolicyType::MaxFee).unwrap_or(Word::MAX)
+            self.policies().get(PolicyType::MaxFee).unwrap_or(0)
         }
 
         #[inline(always)]

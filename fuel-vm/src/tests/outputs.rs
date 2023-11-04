@@ -20,6 +20,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
+    policies::Policies,
     ConsensusParameters,
     Witness,
 };
@@ -136,10 +137,8 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let context = context.base_asset_id(base_asset_id);
     let bytecode_witness = 0;
     let mut create = Transaction::create(
-        gas_price,
-        Default::default(),
-        Default::default(),
         bytecode_witness,
+        Policies::new().with_gas_price(gas_price),
         salt,
         vec![],
         vec![],

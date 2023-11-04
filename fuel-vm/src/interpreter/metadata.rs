@@ -21,12 +21,14 @@ use fuel_tx::{
     field::{
         BytecodeLength,
         BytecodeWitnessIndex,
+        GasLimit,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
         ScriptData,
         StorageSlots,
     },
+    policies::PolicyType,
     Input,
     InputRepr,
     Output,
@@ -154,9 +156,32 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::Type => Tx::transaction_type(),
 
             // General
-            GTFArgs::ScriptGasPrice | GTFArgs::CreateGasPrice => tx.price(),
-            GTFArgs::ScriptGasLimit | GTFArgs::CreateGasLimit => tx.limit(),
-            GTFArgs::ScriptMaturity | GTFArgs::CreateMaturity => **tx.maturity() as Word,
+            GTFArgs::ScriptGasLimit => tx
+                .as_script()
+                .map(|script| *script.gas_limit())
+                .unwrap_or_default(),
+            GTFArgs::PolicyCount => tx.policies().len() as Word,
+            GTFArgs::PolicyType => {
+                tx.policies()
+                    .get_type_by_index(b)
+                    .ok_or(PanicReason::PolicyNotFound)? as Word
+            }
+            GTFArgs::PolicyGasPrice => tx
+                .policies()
+                .get(PolicyType::GasPrice)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyWitnessLimit => tx
+                .policies()
+                .get(PolicyType::WitnessLimit)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyMaturity => tx
+                .policies()
+                .get(PolicyType::Maturity)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyMaxFee => tx
+                .policies()
+                .get(PolicyType::MaxFee)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => {
                 tx.inputs().len() as Word
             }

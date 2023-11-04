@@ -423,7 +423,6 @@ pub mod test_helpers {
 
             let tx = TransactionBuilder::create(program, salt, storage_slots)
                 .gas_price(self.gas_price)
-                .gas_limit(self.gas_limit)
                 .maturity(Default::default())
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
@@ -592,7 +591,7 @@ pub mod test_helpers {
     ) {
         let gas_price = 0;
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
-        let gas_limit = tx_params.max_gas_per_tx;
+        let gas_limit = tx_params.max_gas_per_tx >> 1;
         let maturity = Default::default();
         let height = Default::default();
 

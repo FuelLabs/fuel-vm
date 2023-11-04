@@ -112,8 +112,7 @@ fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
         .checked_mul(gas_price as u128)
         .expect("Impossible to overflow because multiplication of two `u64` <= `u128`");
     // TODO: use native div_ceil once stabilized out from nightly
-    let fee = num_integer::div_ceil(total_price, factor as u128);
-    fee
+    num_integer::div_ceil(total_price, factor as u128)
 }
 
 /// Means that the blockchain charges fee for the transaction.
@@ -129,8 +128,8 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
         // validity. In the production, the value always will be lower than
         // `u64::MAX`.
-        self.gas_used_by_inputs(&gas_costs)
-            .saturating_add(self.gas_used_by_metadata(&gas_costs))
+        self.gas_used_by_inputs(gas_costs)
+            .saturating_add(self.gas_used_by_metadata(gas_costs))
             .saturating_add(bytes_gas)
     }
 

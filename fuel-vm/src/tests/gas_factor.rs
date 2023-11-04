@@ -1,15 +1,16 @@
 #![cfg(feature = "std")]
 
-use fuel_asm::op;
-use fuel_vm::prelude::*;
-
+use crate::{
+    interpreter::InterpreterParams,
+    prelude::*,
+};
 use core::iter;
+use fuel_asm::op;
 use fuel_tx::{
     field::Outputs,
     ConsensusParameters,
     FeeParameters,
 };
-use fuel_vm::interpreter::InterpreterParams;
 
 #[test]
 fn gas_factor_rounds_correctly() {
@@ -56,6 +57,7 @@ fn gas_factor_rounds_correctly() {
     let storage = MemoryStorage::default();
 
     let mut interpreter = Interpreter::<_, _>::with_storage(storage, interpreter_params);
+    let gas_costs = interpreter.gas_costs().clone();
     let res = interpreter
         .with_profiler(profiler.clone())
         .transact(transaction)
@@ -74,8 +76,9 @@ fn gas_factor_rounds_correctly() {
 
     let gas_used = profiler.total_gas();
 
-    let gas_remainder = gas_limit - gas_used;
-    let refund = TransactionFee::gas_refund_value(&fee_params, gas_remainder, gas_price)
+    let refund = res
+        .tx()
+        .refund_fee(&gas_costs, &fee_params, gas_used)
         .expect("failed to calculate refund");
 
     assert_eq!(*change, initial_balance + refund);

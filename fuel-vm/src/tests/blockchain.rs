@@ -1,17 +1,39 @@
 #![allow(non_snake_case)]
 
+use crate::{
+    consts::*,
+    interpreter::{
+        InterpreterParams,
+        NotSupportedEcal,
+    },
+    prelude::*,
+    script_with_data_offset,
+    util::test_helpers::check_expected_reason_for_instructions,
+};
 use alloc::{
     vec,
     vec::Vec,
 };
-
-use fuel_asm::RegId;
+use fuel_asm::{
+    op,
+    Instruction,
+    PanicReason::{
+        ContractNotInInputs,
+        ExpectedUnallocatedStack,
+        MemoryOverflow,
+    },
+    RegId,
+};
 use fuel_crypto::{
     Hasher,
     SecretKey,
 };
 use fuel_tx::{
-    field::Outputs,
+    field::{
+        Outputs,
+        Script as ScriptField,
+    },
+    ConsensusParameters,
     Finalizable,
     Input,
     Output,
@@ -31,32 +53,6 @@ use rand::{
     Rng,
     SeedableRng,
 };
-
-use crate::{
-    consts::*,
-    prelude::*,
-};
-
-use crate::interpreter::{
-    InterpreterParams,
-    NotSupportedEcal,
-};
-
-use crate::script_with_data_offset;
-use fuel_asm::{
-    op,
-    Instruction,
-    PanicReason::{
-        ContractNotInInputs,
-        ExpectedUnallocatedStack,
-        MemoryOverflow,
-    },
-};
-use fuel_tx::{
-    field::Script as ScriptField,
-    ConsensusParameters,
-};
-use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
 const SET_STATUS_REG: u8 = 0x39;
 // log2(VM_MAX_MEM) - used to set a pointer to the memory boundary via SHL:
@@ -477,7 +473,6 @@ fn ldc__load_len_of_target_contract<'a>(
     let tx_create_target =
         TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
             .maturity(maturity)
             .add_random_fee_input()
             .add_output(output0)
@@ -622,7 +617,6 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output0)
@@ -1620,8 +1614,10 @@ fn smo_instruction_works() {
             panic!("expected script result")
         };
         // get refunded fee amount
-        let refund_amount =
-            TransactionFee::gas_refund_value(&fee_params, *gas_used, gas_price).unwrap();
+        let refund_amount = state
+            .tx()
+            .refund_fee(client.gas_costs(), &fee_params, *gas_used)
+            .unwrap();
 
         // check that refundable balances aren't converted into change on failed txs
         if !success {

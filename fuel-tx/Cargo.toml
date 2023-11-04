@@ -11,6 +11,7 @@ repository = { workspace = true }
 description = "FuelVM transaction."
 
 [dependencies]
+bitflags = { workspace = true }
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"], optional = true }
 derive_more = { version = "0.99", default-features = false, features = ["display"] }
 fuel-asm = { workspace = true, default-features = false }
@@ -47,4 +48,4 @@ random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde?/default", "hex/std"]
 alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "num-integer", "strum", "strum_macros"]
 # serde is requiring alloc because its mandatory for serde_json. to avoid adding a new feature only for serde_json, we just require `alloc` here since as of the moment we don't have a use case of serde without alloc.
-serde = ["alloc", "dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde", "fuel-merkle/serde", "serde_json", "hashbrown/serde"]
+serde = ["alloc", "dep:serde", "fuel-asm/serde", "fuel-crypto/serde", "fuel-types/serde", "fuel-merkle/serde", "serde_json", "hashbrown/serde", "bitflags/serde"]

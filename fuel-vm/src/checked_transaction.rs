@@ -43,6 +43,7 @@ use crate::{
 
 bitflags::bitflags! {
     /// Possible types of transaction checks.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
     pub struct Checks: u32 {
         /// Basic checks defined in the specification for each transaction:
         /// https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md#transaction
@@ -51,16 +52,12 @@ bitflags::bitflags! {
         const Signatures    = 0b00000010;
         /// Check that predicate in the transactions are valid.
         const Predicates    = 0b00000100;
-        /// All possible checks.
-        const All           = Self::Basic.bits
-                            | Self::Signatures.bits
-                            | Self::Predicates.bits;
     }
 }
 
 impl core::fmt::Display for Checks {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        write!(f, "{:032b}", self.bits)
+        write!(f, "{:032b}", self.bits())
     }
 }
 

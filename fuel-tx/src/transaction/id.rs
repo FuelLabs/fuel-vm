@@ -109,7 +109,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::TxParameters;
     use core::{
         mem,
         ops::Not,
@@ -279,7 +278,6 @@ mod tests {
     fn assert_id_common_attrs<Tx: Buildable>(tx: &Tx) {
         use core::ops::Deref;
         assert_id_ne(tx, |t| t.set_gas_price(t.gas_price().not()));
-        assert_id_ne(tx, |t| t.set_gas_limit(t.gas_limit().not()));
         assert_id_ne(tx, |t| t.set_maturity((t.maturity().deref().not()).into()));
 
         if !tx.inputs().is_empty() {
@@ -716,16 +714,16 @@ mod tests {
                         for script_data in script_data.iter() {
                             let tx = Transaction::script(
                                 rng.next_u64(),
-                                rng.next_u64(),
-                                rng.gen(),
                                 script.clone(),
                                 script_data.clone(),
+                                rng.gen(),
                                 inputs.clone(),
                                 outputs.clone(),
                                 witnesses.clone(),
                             );
 
                             assert_id_common_attrs(&tx);
+                            assert_id_ne(&tx, |t| t.set_gas_limit(t.gas_limit().not()));
                             assert_id_ne(&tx, |t| inv_v(t.script_mut()));
                             assert_id_ne(&tx, |t| inv_v(t.script_data_mut()));
                         }
@@ -733,10 +731,8 @@ mod tests {
 
                     for storage_slots in storage_slots.iter() {
                         let tx = Transaction::create(
-                            rng.next_u64(),
-                            TxParameters::DEFAULT.max_gas_per_tx,
-                            rng.gen(),
                             rng.next_u32().to_be_bytes()[0],
+                            rng.gen(),
                             rng.gen(),
                             storage_slots.clone(),
                             inputs.clone(),

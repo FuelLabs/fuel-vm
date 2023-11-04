@@ -6,6 +6,8 @@ use crate::{
         field::{
             BytecodeLength,
             BytecodeWitnessIndex,
+            GasPrice,
+            Maturity,
             Witnesses,
         },
         Chargeable,
@@ -34,6 +36,17 @@ use crate::{
     Signable,
 };
 
+use crate::{
+    field::{
+        MaxFeeLimit,
+        WitnessLimit,
+    },
+    policies::Policies,
+};
+use alloc::{
+    collections::BTreeMap,
+    vec::Vec,
+};
 use fuel_crypto::SecretKey;
 use fuel_types::{
     AssetId,
@@ -44,21 +57,9 @@ use fuel_types::{
     Word,
 };
 
-use alloc::{
-    collections::BTreeMap,
-    vec::Vec,
-};
-
 pub trait BuildableAloc
 where
-    Self: Default
-        + Clone
-        + Executable
-        + Chargeable
-        + field::GasLimit
-        + field::GasPrice
-        + field::Maturity
-        + Into<Transaction>,
+    Self: Default + Clone + Executable + Chargeable + field::Policies + Into<Transaction>,
 {
 }
 
@@ -80,31 +81,17 @@ where
         self.witnesses_mut().push(witness);
     }
 
-    /// Set the gas price
-    fn set_gas_price(&mut self, price: Word) {
-        *self.gas_price_mut() = price;
-    }
-
     /// Set the gas limit
-    fn set_gas_limit(&mut self, limit: Word) {
+    fn set_gas_limit(&mut self, limit: Word)
+    where
+        Self: field::GasLimit,
+    {
         *self.gas_limit_mut() = limit;
-    }
-
-    /// Set the maturity
-    fn set_maturity(&mut self, maturity: BlockHeight) {
-        *self.maturity_mut() = maturity;
     }
 }
 
 impl<T> BuildableAloc for T where
-    Self: Default
-        + Clone
-        + Executable
-        + Chargeable
-        + field::GasLimit
-        + field::GasPrice
-        + field::Maturity
-        + Into<Transaction>
+    Self: Default + Clone + Executable + Chargeable + field::Policies + Into<Transaction>
 {
 }
 
@@ -129,11 +116,10 @@ pub struct TransactionBuilder<Tx> {
 impl TransactionBuilder<Script> {
     pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
         let tx = Script {
-            gas_price: Default::default(),
             gas_limit: Default::default(),
-            maturity: Default::default(),
             script,
             script_data,
+            policies: Policies::new().with_gas_price(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -158,13 +144,11 @@ impl TransactionBuilder<Create> {
         // sort the storage slots before initializing the builder
         storage_slots.sort();
         let mut tx = Create {
-            gas_price: Default::default(),
-            gas_limit: Default::default(),
-            maturity: Default::default(),
             bytecode_length: Default::default(),
             bytecode_witness_index: Default::default(),
             salt,
             storage_slots,
+            policies: Policies::new().with_gas_price(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -313,7 +297,10 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn gas_limit(&mut self, gas_limit: Word) -> &mut Self {
+    pub fn gas_limit(&mut self, gas_limit: Word) -> &mut Self
+    where
+        Tx: field::GasLimit,
+    {
         self.tx.set_gas_limit(gas_limit);
 
         self
@@ -326,6 +313,18 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
     pub fn maturity(&mut self, maturity: BlockHeight) -> &mut Self {
         self.tx.set_maturity(maturity);
+
+        self
+    }
+
+    pub fn witness_limit(&mut self, witness_limit: Word) -> &mut Self {
+        self.tx.set_witness_limit(witness_limit);
+
+        self
+    }
+
+    pub fn max_fee_limit(&mut self, max_fee: Word) -> &mut Self {
+        self.tx.set_max_fee_limit(max_fee);
 
         self
     }

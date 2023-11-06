@@ -1,26 +1,26 @@
 use crate::{
-    transaction::validity::{
-        check_common_part,
-        FormatValidityChecks,
-    },
-    ConsensusParameters,
-    GasCosts,
-};
-
-use crate::{
-    transaction::field::{
-        BytecodeLength,
-        BytecodeWitnessIndex,
-        Inputs,
-        Outputs,
-        Policies as PoliciesField,
-        Salt as SaltField,
-        StorageSlots,
-        Witnesses,
+    policies::Policies,
+    transaction::{
+        field::{
+            BytecodeLength,
+            BytecodeWitnessIndex,
+            Inputs,
+            Outputs,
+            Policies as PoliciesField,
+            Salt as SaltField,
+            StorageSlots,
+            Witnesses,
+        },
+        validity::{
+            check_common_part,
+            FormatValidityChecks,
+        },
     },
     Chargeable,
     CheckError,
+    ConsensusParameters,
     Contract,
+    GasCosts,
     Input,
     Output,
     StorageSlot,
@@ -44,7 +44,6 @@ use fuel_types::{
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-use crate::policies::Policies;
 use hashbrown::HashMap;
 
 #[cfg(all(test, feature = "std"))]

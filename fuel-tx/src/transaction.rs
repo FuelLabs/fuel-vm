@@ -10,6 +10,7 @@ use crate::{
             MessageDataPredicate,
         },
     },
+    policies::Policies,
     TxPointer,
 };
 use fuel_crypto::PublicKey;
@@ -74,7 +75,6 @@ pub use validity::{
 #[cfg(feature = "alloc")]
 pub use id::Signable;
 
-use crate::policies::Policies;
 pub use id::UniqueIdentifier;
 
 /// Identification of transaction (also called transaction hash)

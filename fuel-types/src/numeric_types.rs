@@ -63,16 +63,6 @@ macro_rules! key_methods {
                 pub fn to_bytes(self) -> [u8; SIZE] {
                     self.0.to_be_bytes()
                 }
-
-                /// Convert to usize.
-                pub const fn to_usize(self) -> usize {
-                    self.0 as usize
-                }
-
-                /// Convert to usize.
-                pub const fn as_usize(&self) -> usize {
-                    self.0 as usize
-                }
             }
 
             #[cfg(feature = "typescript")]

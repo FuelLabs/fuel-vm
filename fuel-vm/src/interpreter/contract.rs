@@ -21,6 +21,7 @@ use crate::{
     },
     consts::*,
     context::Context,
+    convert,
     error::{
         IoResult,
         RuntimeError,
@@ -291,7 +292,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         S: ContractsAssetsStorage,
     {
         let out_idx =
-            usize::try_from(output_index).map_err(|_| PanicReason::OutputNotFound)?;
+            convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;
         let to = Address::from(read_bytes(self.memory, recipient_offset)?);
         let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
         let amount = transfer_amount;

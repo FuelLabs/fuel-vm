@@ -38,6 +38,7 @@ use crate::{
     },
     consts::*,
     context::Context,
+    convert,
     error::{
         IoResult,
         RuntimeError,
@@ -1042,8 +1043,7 @@ impl StateReadQWord {
         num_slots: Word,
         ownership_registers: OwnershipRegisters,
     ) -> SimpleResult<Self> {
-        let num_slots =
-            usize::try_from(num_slots).map_err(|_| PanicReason::ArithmeticOverflow)?;
+        let num_slots = convert::to_usize(num_slots).ok_or(PanicReason::TooManySlots)?;
         let destination_address_memory_range = MemoryRange::new(
             destination_memory_address,
             Bytes32::LEN.saturating_mul(num_slots),
@@ -1166,8 +1166,9 @@ impl StateClearQWord {
         let start_storage_key_memory_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(
             start_storage_key_memory_address,
         )?;
-        let num_slots =
-            usize::try_from(num_slots).map_err(|_| PanicReason::ArithmeticOverflow)?;
+
+        let num_slots = convert::to_usize(num_slots).ok_or(PanicReason::TooManySlots)?;
+
         Ok(Self {
             start_storage_key_memory_range,
             num_slots,

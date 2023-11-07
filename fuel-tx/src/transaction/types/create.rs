@@ -171,7 +171,7 @@ impl Chargeable for Create {
         let contract_len = witnesses
             .get(*bytecode_witness_index as usize)
             .map(|c| c.as_ref().len())
-            .unwrap_or_default();
+            .unwrap_or(0);
 
         let contract_root_gas = gas_costs.contract_root.resolve(contract_len as Word);
         let state_root_length = storage_slots.len() as Word;

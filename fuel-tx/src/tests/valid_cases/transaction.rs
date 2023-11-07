@@ -117,49 +117,110 @@ fn maturity() {
 }
 
 #[test]
-fn witness_limit_script_no_limit_works() {
+fn script_not_set_witness_limit_success() {
+    // Given
     let rng = &mut StdRng::seed_from_u64(8586);
-
     let block_height = 1000.into();
 
-    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+    // When
+    let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate script");
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
 }
 
 #[test]
-fn witness_limit_create_no_limit_works() {
+fn create_not_set_witness_limit_success() {
+    // Given
     let rng = &mut StdRng::seed_from_u64(8586);
-
     let block_height = 1000.into();
     let bytecode = vec![];
-    TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
+
+    // When
+    let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate tx create");
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
 }
 
 #[test]
-fn witness_limit_script_limit_works() {
+fn script_set_witness_limit_for_empty_witness_success() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();
+    // Given
     let limit = Signature::LEN /* witness from random fee */ + vec![0u8; 0].size_static();
-    // With enough limit should work
+
+    // When
+    let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .add_random_fee_input()
+        .witness_limit(limit as u64)
+        .finalize()
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn script_set_witness_limit_for_non_empty_witness_fails() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+    let witness_size = Signature::LEN + vec![0u8; 0].size_static();
 
     // Given
-    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+    let limit = witness_size - 1;
+
+    // When
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .add_random_fee_input()
         .witness_limit(limit as u64)
         .finalize()
         .check(block_height, &test_params())
-        .expect("Failed to validate script");
+        .expect_err("Expected erroneous transaction");
+
+    // Then
+    assert_eq!(CheckError::TransactionWitnessLimitExceeded, err);
+}
+
+#[test]
+fn create_set_witness_limit_for_empty_witness_success() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+    let bytecode = vec![];
+    // Given
+    let limit = Signature::LEN /* witness from random fee */ + bytecode.size_static() + bytecode.size_static();
 
     // When
-    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+    let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
+        .add_random_fee_input()
+        .witness_limit(limit as u64)
+        .finalize()
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn create_set_witness_limit_for_non_empty_witness_fails() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+    let bytecode = vec![];
+    // Given
+    let limit = Signature::LEN /* witness from random fee */ + bytecode.size_static() + bytecode.size_static();
+
+    // When
+    let err = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
         .add_random_fee_input()
         .witness_limit(limit as u64 - 1)
         .finalize()
@@ -171,51 +232,33 @@ fn witness_limit_script_limit_works() {
 }
 
 #[test]
-fn witness_create_script_limit_works() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    let block_height = 1000.into();
-    let bytecode = vec![];
-    let limit = Signature::LEN /* witness from random fee */ + bytecode.size_static();
-
+fn script_not_set_max_fee_limit_success() {
     // Given
-    TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
-        .add_random_fee_input()
-        .witness_limit((limit + bytecode.size_static()) as u64)
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate tx create");
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
 
     // When
-    let err = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
-        .add_random_fee_input()
-        .witness_limit((limit + bytecode.size_static()) as u64 - 1)
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
-
-    // Then
-    assert_eq!(CheckError::TransactionWitnessLimitExceeded, err);
-}
-
-#[test]
-fn max_fee_limit_script_works() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    let block_height = 1000.into();
-
-    // Given
-    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+    let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_price(rng.gen())
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate script");
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn script_set_max_fee_limit_fails() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+    // Given
+    let max_fee = 0;
 
     // When
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_price(rng.gen())
-        .max_fee_limit(0)
+        .max_fee_limit(max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
@@ -226,23 +269,33 @@ fn max_fee_limit_script_works() {
 }
 
 #[test]
-fn max_fee_limit_create_works() {
+fn create_not_set_max_fee_limit_success() {
+    // Given
     let rng = &mut StdRng::seed_from_u64(8586);
-
     let block_height = 1000.into();
 
-    // Given
-    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+    // When
+    let result = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
         .gas_price(rng.gen())
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate tx create");
+        .check(block_height, &test_params());
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn create_set_max_fee_limit_fails() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+    // Given
+    let max_fee = 0;
 
     // When
     let err = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .max_fee_limit(0)
+        .max_fee_limit(max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())

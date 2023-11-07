@@ -271,22 +271,26 @@ impl Distribution<Policies> for Standard {
 }
 
 #[test]
-fn values_for_bitmask_works() {
+fn values_for_bitmask_produces_expected_values() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
     const VALUES: [Word; POLICIES_NUMBER] = [0x1000001, 0x2000001, 0x3000001, 0x4000001];
 
+    // Given
     let mut set = hashbrown::HashSet::new();
 
+    // When
     for bitmask in 0..MAX_BITMASK {
         let bits =
             PoliciesBits::from_bits(bitmask).expect("Should construct a valid bits");
         set.insert(Policies::values_for_bitmask(bits, VALUES));
     }
+
+    // Then
     assert_eq!(set.len(), MAX_BITMASK as usize);
 }
 
 #[test]
-fn canonical() {
+fn canonical_serialization_deserialization_for_any_combination_of_values_works() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
     const VALUES: [Word; POLICIES_NUMBER] = [0x1000001, 0x2000001, 0x3000001, 0x4000001];
 

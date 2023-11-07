@@ -136,13 +136,13 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     ///
     /// The function guarantees that the value is not less than [Self::min_gas].
     fn max_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
-        let remaining_allowed_witness = self
+        let remaining_allowed_witness_gas = self
             .witness_limit()
             .saturating_sub(self.witnesses().size_dynamic() as u64)
             .saturating_mul(fee.gas_per_byte);
 
         self.min_gas(gas_costs, fee)
-            .saturating_add(remaining_allowed_witness)
+            .saturating_add(remaining_allowed_witness_gas)
     }
 
     /// Returns the minimum fee required to start transaction execution.
@@ -158,14 +158,11 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     ///
     /// The function guarantees that the value is not less than [Self::min_fee].
     fn max_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
-        let min_gas = self.min_gas(gas_costs, fee);
-        let max_gas = self.max_gas(gas_costs, fee);
-        let refundable_gas = max_gas.saturating_sub(min_gas);
-
-        let min_fee = gas_to_fee(min_gas, self.price(), fee.gas_price_factor);
-
-        gas_to_fee(refundable_gas, self.price(), fee.gas_price_factor)
-            .saturating_add(min_fee)
+        gas_to_fee(
+            self.max_gas(gas_costs, fee),
+            self.price(),
+            fee.gas_price_factor,
+        )
     }
 
     /// Returns the fee amount that can be refunded back based on the `used_gas` and
@@ -178,29 +175,18 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         fee: &FeeParameters,
         used_gas: Word,
     ) -> Option<Word> {
-        // We've already charged the user for witnesses as part of the minimal gas.
-        // So subtracting it from the maximum gas already returns the number of gas
-        // that we need to refund, assuming that we didn't execute the transaction.
+        // We've already charged the user for witnesses as part of the minimal gas and all
+        // execution required to validate transaction validity rules.
         let min_gas = self.min_gas(gas_costs, fee);
-        let max_gas = self.max_gas(gas_costs, fee);
-        let refundable_gas = max_gas.saturating_sub(min_gas);
 
-        // Subtracting used gas gives a final amount that we need to refund for the unused
-        // witness limit and unused gas.
-        let refundable_gas = refundable_gas.saturating_sub(used_gas);
+        let total_used_gas = min_gas.saturating_add(used_gas);
+        let used_fee = gas_to_fee(total_used_gas, self.price(), fee.gas_price_factor);
 
-        let total_price = (refundable_gas as u128)
-            .checked_mul(self.price() as u128)
-            .expect(
-                "Impossible to overflow because multiplication of two `u64` <= `u128`",
-            );
-
+        let refund = self.max_fee(gas_costs, fee).saturating_sub(used_fee);
         // It is okay to saturate everywhere above because it only can decrease the value
-        // of `refundable_gas`. But here, because we need to return the amount we
+        // of `refund`. But here, because we need to return the amount we
         // want to refund, we need to handle the overflow caused by the price.
-        num_integer::div_floor(total_price, fee.gas_price_factor as u128)
-            .try_into()
-            .ok()
+        refund.try_into().ok()
     }
 
     /// Used for accounting purposes when charging byte based fees.

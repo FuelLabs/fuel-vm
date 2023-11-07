@@ -586,20 +586,31 @@ impl DependentCost {
     pub fn free() -> Self {
         Self {
             base: 0,
+            // The main idea of `free` cost is to return zero gas for the opcode
+            // regardless of the units number. The dividing by the maximum
+            // `u64` enforces that for any `units` value except another `u64::MAX`.
             dep_per_unit: u64::MAX,
         }
     }
 
-    /// Create costs that are all set to one.
+    /// Create costs that make operations cost `1`.
     pub fn unit() -> Self {
         Self {
             base: 1,
-            dep_per_unit: 0,
+            // The main idea of `unit` cost is to return 1 gas for the opcode
+            // regardless of the units number. The dividing by the maximum
+            // `u64` enforces that for any `units` value except another `u64::MAX`.
+            dep_per_unit: u64::MAX,
         }
     }
 
     pub fn resolve(&self, units: Word) -> Word {
-        self.base + units.saturating_div(self.dep_per_unit)
+        self.base
+            + if units == u64::MAX {
+                0
+            } else {
+                units.saturating_div(self.dep_per_unit)
+            }
     }
 }
 

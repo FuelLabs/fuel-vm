@@ -1503,7 +1503,6 @@ mod tests {
         let min_gas = gas_used_by_bytes
             .saturating_add(gas_used_by_inputs)
             .saturating_add(gas_used_by_metadata);
-        let min_fee = gas_to_fee(min_gas, tx.price(), fee_params.gas_price_factor);
 
         // use different division mechanism than impl
         let witness_limit_allowance = tx
@@ -1513,10 +1512,7 @@ mod tests {
         let max_gas = min_gas
             .saturating_add(*tx.gas_limit())
             .saturating_add(witness_limit_allowance);
-        let delta_gas = max_gas.saturating_sub(min_gas);
-        let delta_fee = gas_to_fee(delta_gas, tx.price(), fee_params.gas_price_factor);
-        let max_fee = min_fee + delta_fee;
-        let max_fee: u64 = max_fee
+        let max_fee: u64 = gas_to_fee(max_gas, tx.price(), fee_params.gas_price_factor)
             .try_into()
             .map_err(|_| CheckError::ArithmeticOverflow)?;
 

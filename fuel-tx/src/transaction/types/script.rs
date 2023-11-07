@@ -81,7 +81,10 @@ impl Default for Script {
         let script = fuel_asm::op::ret(0x10).to_bytes().to_vec();
 
         Self {
-            gas_limit: TxParameters::DEFAULT.max_gas_per_tx >> 1,
+            // We want to use any values much less than `max_gas_per_tx`
+            // to avoid the `TransactionMaxGasExceeded` error. For example,
+            // `max_gas_per_tx / 4`.
+            gas_limit: TxParameters::DEFAULT.max_gas_per_tx / 4,
             script,
             script_data: Default::default(),
             policies: Policies::new()

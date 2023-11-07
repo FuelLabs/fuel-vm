@@ -55,9 +55,7 @@ impl ReceiptsCtx {
     /// only be used when the list of receipts has been mutated externally.
     fn recalculate_root(&mut self) {
         self.receipts_tree = MerkleTree::new();
-        // TODO: Remove `clone()` when `to_bytes()` no longer requires `&mut self`
-        let receipts = self.as_ref().clone();
-        for receipt in receipts {
+        for receipt in &self.receipts {
             self.receipts_tree.push(receipt.to_bytes().as_slice())
         }
     }

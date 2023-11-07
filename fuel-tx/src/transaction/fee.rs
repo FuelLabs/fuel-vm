@@ -92,7 +92,6 @@ impl TransactionFee {
     ) -> Option<Self> {
         let factor = params.gas_price_factor as u128;
 
-        // TODO: use native div_ceil once stabilized out from nightly
         let bytes_gas = params.gas_per_byte.checked_mul(metered_bytes)?;
         let min_gas = bytes_gas
             .checked_add(gas_used_by_signature_checks)?
@@ -100,13 +99,13 @@ impl TransactionFee {
             .checked_add(gas_used_by_predicates)?;
         let max_gas = min_gas.checked_add(gas_limit)?;
 
-        let max_gas_to_pay = max_gas.checked_mul(gas_price).and_then(|total| {
-            num_integer::div_ceil(total as u128, factor).try_into().ok()
-        });
+        let max_gas_to_pay = max_gas
+            .checked_mul(gas_price)
+            .and_then(|total| (total as u128).div_ceil(factor).try_into().ok());
 
-        let min_gas_to_pay = min_gas.checked_mul(gas_price).and_then(|bytes| {
-            num_integer::div_ceil(bytes as u128, factor).try_into().ok()
-        });
+        let min_gas_to_pay = min_gas
+            .checked_mul(gas_price)
+            .and_then(|bytes| (bytes as u128).div_ceil(factor).try_into().ok());
 
         min_gas_to_pay
             .zip(max_gas_to_pay)

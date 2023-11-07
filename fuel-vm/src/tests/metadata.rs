@@ -26,6 +26,7 @@ use fuel_tx::{
         Script as ScriptField,
         Witnesses,
     },
+    policies::PoliciesBits,
     ConsensusParameters,
     Finalizable,
     Receipt,
@@ -505,8 +506,8 @@ fn get_transaction_fields() {
         op::and(0x20, 0x20, 0x10),
 
         op::movi(0x19, 0x00),
-        op::movi(0x11, 4 as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::PolicyCount),
+        op::movi(0x11, PoliciesBits::all().bits() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyTypes),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 

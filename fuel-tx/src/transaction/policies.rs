@@ -25,13 +25,13 @@ bitflags::bitflags! {
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
-        const GasPrice = 1;
+        const GasPrice = 1 << 0;
         /// If set, the witness limit is present in the policies.
-        const WitnessLimit = 2;
+        const WitnessLimit = 1 << 1;
         /// If set, the maturity is present in the policies.
-        const Maturity = 4;
+        const Maturity = 1 << 2;
         /// If set, the max fee is present in the policies.
-        const MaxFee = 8;
+        const MaxFee = 1 << 3;
     }
 }
 
@@ -105,6 +105,11 @@ impl Policies {
     /// Returns the number of set policies.
     pub fn len(&self) -> usize {
         self.bits.bits().count_ones() as usize
+    }
+
+    /// Returns the bit mask of the policies.
+    pub fn bits(&self) -> u32 {
+        self.bits.bits()
     }
 
     /// Sets the `gas_price` policy.

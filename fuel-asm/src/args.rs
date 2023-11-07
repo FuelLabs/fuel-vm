@@ -248,11 +248,8 @@ crate::enum_try_from! {
         /// Set `$rA` to `Memory address of tx.witnesses[$rB].data`
         WitnessData = 0x401,
 
-        /// Set `$rA` to `count_ones(tx.policyTypes)`
-        PolicyCount = 0x500,
-
-        /// Set `$rA` to `tx.policies[$rB].type`
-        PolicyType = 0x501,
+        /// Set `$rA` to `tx.policies[$rB].policyTypes`
+        PolicyTypes = 0x501,
 
         /// Set `$rA` to `tx.policies[0x00].gasPrice`
         PolicyGasPrice = 0x502,
@@ -364,8 +361,7 @@ fn encode_gtf_args() {
         GTFArgs::OutputContractCreatedStateRoot,
         GTFArgs::WitnessDataLength,
         GTFArgs::WitnessData,
-        GTFArgs::PolicyCount,
-        GTFArgs::PolicyType,
+        GTFArgs::PolicyTypes,
         GTFArgs::PolicyGasPrice,
         GTFArgs::PolicyWitnessLimit,
         GTFArgs::PolicyMaturity,

@@ -160,12 +160,7 @@ impl<Tx> GTFInput<'_, Tx> {
                 .as_script()
                 .map(|script| *script.gas_limit())
                 .unwrap_or_default(),
-            GTFArgs::PolicyCount => tx.policies().len() as Word,
-            GTFArgs::PolicyType => {
-                tx.policies()
-                    .get_type_by_index(b)
-                    .ok_or(PanicReason::PolicyNotFound)? as Word
-            }
+            GTFArgs::PolicyTypes => tx.policies().bits() as Word,
             GTFArgs::PolicyGasPrice => tx
                 .policies()
                 .get(PolicyType::GasPrice)

@@ -178,15 +178,16 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         fee: &FeeParameters,
         used_gas: Word,
     ) -> Option<Word> {
+        // We've already charged the user for witnesses as part of the minimal gas.
+        // So subtracting it from the maximum gas already returns the number of gas
+        // that we need to refund, assuming that we didn't execute the transaction.
         let min_gas = self.min_gas(gas_costs, fee);
         let max_gas = self.max_gas(gas_costs, fee);
         let refundable_gas = max_gas.saturating_sub(min_gas);
-        let used_gas_by_witness =
-            (self.witnesses().size_dynamic() as Word).saturating_mul(fee.gas_per_byte);
 
-        let refundable_gas = refundable_gas
-            .saturating_sub(used_gas_by_witness)
-            .saturating_sub(used_gas);
+        // Subtracting used gas gives a final amount that we need to refund for the unused
+        // witness limit and unused gas.
+        let refundable_gas = refundable_gas.saturating_sub(used_gas);
 
         let total_price = (refundable_gas as u128)
             .checked_mul(self.price() as u128)

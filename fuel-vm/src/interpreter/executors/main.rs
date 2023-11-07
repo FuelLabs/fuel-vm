@@ -84,6 +84,7 @@ use fuel_types::{
 pub struct PredicatesChecked {
     gas_used: Word,
 }
+
 impl PredicatesChecked {
     pub fn gas_used(&self) -> Word {
         self.gas_used
@@ -171,9 +172,10 @@ where
     pub fn estimate_predicates(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
-    ) -> Result<(), PredicateVerificationFailed> {
-        Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
-        Ok(())
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
+        let predicates_checked =
+            Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
+        Ok(predicates_checked)
     }
 
     /// Initialize the VM with the provided transaction, check all predicates defined in
@@ -185,15 +187,18 @@ where
     pub async fn estimate_predicates_async<E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
-    ) -> Result<(), PredicateVerificationFailed>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
         E: ParallelExecutor,
     {
-        Self::run_predicate_async::<E>(PredicateRunKind::Estimating(transaction), params)
-            .await?;
+        let predicates_checked = Self::run_predicate_async::<E>(
+            PredicateRunKind::Estimating(transaction),
+            params,
+        )
+        .await?;
 
-        Ok(())
+        Ok(predicates_checked)
     }
 
     async fn run_predicate_async<E>(
@@ -372,10 +377,11 @@ where
             });
         }
 
-        if kind.tx().max_gas(&params.gas_costs, &params.fee_params)
-            > params.max_gas_per_tx
-        {
-            return Err(PredicateVerificationFailed::TransactionExceedsTotalGasAllowance);
+        let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
+        if max_gas > params.max_gas_per_tx {
+            return Err(
+                PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
+            );
         }
 
         let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {

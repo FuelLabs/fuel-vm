@@ -4,6 +4,7 @@ use fuel_asm::{
     PanicInstruction,
     PanicReason,
     RawInstruction,
+    Word,
 };
 use fuel_tx::CheckError;
 
@@ -245,8 +246,8 @@ pub enum PredicateVerificationFailed {
     #[display(fmt = "Predicate failed to evaluate")]
     GasNotSpecified,
     /// The transaction `max_gas` more than global gas limit.
-    #[display(fmt = "Transaction exceeds total gas allowance")]
-    TransactionExceedsTotalGasAllowance,
+    #[display(fmt = "Transaction exceeds total gas allowance {_0:?}")]
+    TransactionExceedsTotalGasAllowance(Word),
     /// The cumulative gas overflowed the u64 accumulator
     #[display(fmt = "Cumulative gas computation overflowed the u64 accumulator")]
     GasOverflow,

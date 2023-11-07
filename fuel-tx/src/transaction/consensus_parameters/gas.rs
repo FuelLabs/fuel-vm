@@ -599,7 +599,12 @@ impl DependentCost {
     }
 
     pub fn resolve(&self, units: Word) -> Word {
-        self.base + units.saturating_div(self.dep_per_unit)
+        self.base
+            + if self.dep_per_unit != 0 {
+                units.saturating_div(self.dep_per_unit)
+            } else {
+                0
+            }
     }
 }
 

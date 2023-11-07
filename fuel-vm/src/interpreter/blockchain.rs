@@ -30,7 +30,6 @@ use super::{
     RuntimeBalances,
 };
 use crate::{
-    arith::checked_add_word,
     call::CallFrame,
     constraints::{
         reg_key::*,
@@ -652,7 +651,7 @@ where
         let asset_id = contract_id.asset_id(sub_id);
 
         let balance = balance(self.storage, contract_id, &asset_id)?;
-        let balance = checked_add_word(balance, a)?;
+        let balance = balance.checked_add(a).ok_or(PanicReason::BalanceOverflow)?;
 
         self.storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
@@ -728,7 +727,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     b: Word,
 ) -> IoResult<(), S::DataError> {
     let height = u32::try_from(b)
-        .map_err(|_| PanicReason::ArithmeticOverflow)?
+        .map_err(|_| PanicReason::InvalidBlockHeight)?
         .into();
     let hash = storage.block_hash(height).map_err(RuntimeError::Storage)?;
 
@@ -926,7 +925,7 @@ pub(crate) fn timestamp<S: InterpreterStorage>(
     b: Word,
 ) -> IoResult<(), S::DataError> {
     let b = u32::try_from(b)
-        .map_err(|_| PanicReason::ArithmeticOverflow)?
+        .map_err(|_| PanicReason::InvalidBlockHeight)?
         .into();
     (b <= block_height)
         .then_some(())

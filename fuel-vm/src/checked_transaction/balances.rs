@@ -68,7 +68,7 @@ where
 
     // Deduct fee from base asset
     let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction)
-        .ok_or(CheckError::ArithmeticOverflow)?;
+        .ok_or(CheckError::BalanceOverflow)?;
 
     let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
 

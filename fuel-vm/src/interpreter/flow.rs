@@ -23,7 +23,6 @@ use super::{
     RuntimeBalances,
 };
 use crate::{
-    arith,
     call::{
         Call,
         CallFrame,
@@ -584,7 +583,7 @@ where
         );
 
         let old_sp = *self.registers.system_registers.sp;
-        let new_sp = arith::checked_add_word(old_sp, len)?;
+        let new_sp = old_sp.checked_add(len).ok_or(PanicReason::MemoryOverflow)?;
 
         set_frame_pointer(
             self.context,

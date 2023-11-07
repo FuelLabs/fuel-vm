@@ -127,9 +127,10 @@ pub enum CheckError {
         /// The total amount provided by coin inputs
         provided: u64,
     },
-    /// The user provided amounts for coins or gas prices that caused an arithmetic
-    /// overflow.
-    ArithmeticOverflow,
+    /// The given coins is too large
+    BalanceOverflow,
+    /// The given gas costs is are too large
+    GasCostsCoinsOverflow,
     /// Predicate verification failed
     PredicateVerificationFailed,
     /// Predicate used all available gas

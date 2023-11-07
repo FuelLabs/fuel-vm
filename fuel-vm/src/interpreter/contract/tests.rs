@@ -340,8 +340,8 @@ fn test_transfer_output(
 #[test_case(None, Word::MAX => Ok(()); "Can initialize balance to max")]
 #[test_case(0, Word::MAX => Ok(()); "Can add max to zero")]
 #[test_case(Word::MAX, 0 => Ok(()); "Can add zero to max")]
-#[test_case(1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Overflowing add")]
-#[test_case(Word::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Overflowing 1 add")]
+#[test_case(1, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::BalanceOverflow)); "Overflowing add")]
+#[test_case(Word::MAX, 1 => Err(RuntimeError::Recoverable(PanicReason::BalanceOverflow)); "Overflowing 1 add")]
 fn test_balance_increase(
     initial: impl Into<Option<Word>>,
     amount: Word,

@@ -431,7 +431,7 @@ pub trait ExecutableTransaction:
     {
         let gas_refund =
             TransactionFee::gas_refund_value(fee_params, remaining_gas, self.price())
-                .ok_or(CheckError::ArithmeticOverflow)?;
+                .ok_or(CheckError::GasCostsCoinsOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {
             // If revert, set base asset to initial balance and refund unused gas
@@ -443,7 +443,7 @@ pub trait ExecutableTransaction:
                 [base_asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
-                .ok_or(CheckError::ArithmeticOverflow),
+                .ok_or(CheckError::BalanceOverflow),
 
             // If revert, reset any non-base asset to its initial balance
             Output::Change {
@@ -459,7 +459,7 @@ pub trait ExecutableTransaction:
             } if asset_id == base_asset_id => balances[asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
-                .ok_or(CheckError::ArithmeticOverflow),
+                .ok_or(CheckError::BalanceOverflow),
 
             // Set changes to the remainder provided balances
             Output::Change {

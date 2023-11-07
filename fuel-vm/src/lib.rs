@@ -14,7 +14,6 @@ pub extern crate alloc;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
 
-pub mod arith;
 pub mod backtrace;
 pub mod call;
 pub mod checked_transaction;

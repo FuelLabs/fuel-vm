@@ -1329,7 +1329,7 @@ mod tests {
             .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
-        assert_eq!(err, CheckError::ArithmeticOverflow);
+        assert_eq!(err, CheckError::BalanceOverflow);
     }
 
     #[test]
@@ -1347,7 +1347,7 @@ mod tests {
             .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
-        assert_eq!(err, CheckError::ArithmeticOverflow);
+        assert_eq!(err, CheckError::BalanceOverflow);
     }
 
     #[test]

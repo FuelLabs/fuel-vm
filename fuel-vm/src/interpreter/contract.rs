@@ -291,7 +291,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         S: ContractsAssetsStorage,
     {
         let out_idx =
-            usize::try_from(output_index).map_err(|_| PanicReason::ArithmeticOverflow)?;
+            usize::try_from(output_index).map_err(|_| PanicReason::OutputNotFound)?;
         let to = Address::from(read_bytes(self.memory, recipient_offset)?);
         let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
         let amount = transfer_amount;
@@ -386,7 +386,7 @@ where
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
         .checked_add(amount)
-        .ok_or(PanicReason::ArithmeticOverflow)?;
+        .ok_or(PanicReason::BalanceOverflow)?;
     storage
         .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;

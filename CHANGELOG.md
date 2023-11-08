@@ -16,14 +16,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     of some limits to the transaction to protect the user or specify some details regarding execution.
     This change makes the `GasPrice` and `Maturity` fields optional, allowing to save space in the future. 
     Also, this will enable us to support multidimensional prices later.
-    Renamed the `GasLimit` was renamed to `ScriptGasLimit`.
+    `GasLimit` was renamed to `ScriptGasLimit`.
     
     Along with this change, we introduced two new policies:
     - `WitnessLimit` - allows the limitation of the maximum size of witnesses in bytes for the contract. Because of the changes in the gas calculation model(the blockchain also charges the user for the witness data), the user should protect himself from the block producer or third parties blowing up witness data and draining the user's funds.
     - `MaxFee` - allows the upper bound for the maximum fee that users agree to pay for the transaction.
 
     This change brings the following modification to the gas model:
-    - The `ScriptGasLimit` only limits the script execution. Previously, the `ScriptGasLimit` also limited the predicate execution time, but it is not valid anymore. So, it is not possible to use the `ScriptGasLimit` for transaction cost limitations. A new `MaxFee` policy is a way to do that. The `ScriptGasLimit` field was removed from the `Create` transaction because it only relates to the script execution(which the `Create` transaction doesn't have).
+    - The `ScriptGasLimit` only limits script execution. Previously, the `ScriptGasLimit` also limited the predicate execution time, instead predicate gas is now directly included into `min_fee`. So, it is not possible to use the `ScriptGasLimit` for transaction cost limitations. A new `MaxFee` policy is a way to do that. The `GasLimit` field was removed from the `Create` transaction because it only relates to the script execution (which the `Create` transaction doesn't have).
     - The blockchain charges the user for the size of witness data (before it was free). There is no separate price for the storage, so it uses gas to charge the user. This change affects `min_gas` and `min_fee` calculation.
     - A new policy called `WitnessLimit` also impacts the `max_gas` and `max_fee` calculation in addition to `ScriptGasLimit`(in the case of `Create` transaction only `WitnessLimit` affects the `max_gas` and `max_fee`).
     - The minimal gas also charges the user for transaction ID calculation.

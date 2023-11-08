@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
-- [#625](https://github.com/FuelLabs/fuel-vm/pull/625): Use `ArithmeticError` only for arithmetic operations, and introduce new errors like `BalanceOverflow` for others. Whenever an error is internally caused by a type conversion to `usize`, so that an overflowing value wouldn't map to a valid index anyway, return the missing item error instead. Also, it's fixes a division by zero panic on depdendent costs with zero per-unit cost.
+- [#625](https://github.com/FuelLabs/fuel-vm/pull/625): Use `ArithmeticError` only for arithmetic operations, and introduce new errors like `BalanceOverflow` for others. Whenever an error is internally caused by a type conversion to `usize`, so that an overflowing value wouldn't map to a valid index anyway, return the missing item error instead.
 
 ## [Version 0.40.0]
 

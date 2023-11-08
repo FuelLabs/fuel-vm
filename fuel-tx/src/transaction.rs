@@ -570,7 +570,8 @@ pub mod field {
 
         #[inline(always)]
         fn set_gas_price(&mut self, price: Word) {
-            self.policies_mut().set(PolicyType::GasPrice, Some(price))
+            self.policies_mut()
+                .set::<{ PolicyType::GasPrice as usize }>(Some(price))
         }
     }
 
@@ -591,7 +592,7 @@ pub mod field {
         #[inline(always)]
         fn set_witness_limit(&mut self, value: Word) {
             self.policies_mut()
-                .set(PolicyType::WitnessLimit, Some(value))
+                .set::<{ PolicyType::WitnessLimit as usize }>(Some(value))
         }
     }
 
@@ -622,7 +623,9 @@ pub mod field {
         #[inline(always)]
         fn set_maturity(&mut self, block_height: BlockHeight) {
             self.policies_mut()
-                .set(PolicyType::Maturity, Some(block_height.as_usize() as u64))
+                .set::<{ PolicyType::Maturity as usize }>(Some(
+                    block_height.as_usize() as u64
+                ))
         }
     }
 
@@ -642,7 +645,8 @@ pub mod field {
 
         #[inline(always)]
         fn set_max_fee_limit(&mut self, value: Word) {
-            self.policies_mut().set(PolicyType::MaxFee, Some(value))
+            self.policies_mut()
+                .set::<{ PolicyType::MaxFee as usize }>(Some(value))
         }
     }
 

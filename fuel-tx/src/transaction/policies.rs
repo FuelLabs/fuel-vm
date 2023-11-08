@@ -62,7 +62,7 @@ impl From<usize> for PolicyType {
             1 => PolicyType::WitnessLimit,
             2 => PolicyType::Maturity,
             3 => PolicyType::MaxFee,
-            _ => unreachable!(),
+            _ => unreachable!("Invalid PolicyType conversion"),
         }
     }
 }
@@ -180,25 +180,25 @@ impl Policies {
 
     /// Sets the `gas_price` policy.
     pub fn with_gas_price(mut self, gas_price: Word) -> Self {
-        self.set(PolicyType::GasPrice, Some(gas_price));
+        self.set::<{ PolicyType::GasPrice as usize }>(Some(gas_price));
         self
     }
 
     /// Sets the `witness_limit` policy.
     pub fn with_witness_limit(mut self, witness_limit: Word) -> Self {
-        self.set(PolicyType::WitnessLimit, Some(witness_limit));
+        self.set::<{ PolicyType::WitnessLimit as usize }>(Some(witness_limit));
         self
     }
 
     /// Sets the `maturity` policy.
     pub fn with_maturity(mut self, maturity: BlockHeight) -> Self {
-        self.set(PolicyType::Maturity, Some(maturity.as_usize() as u64));
+        self.set::<{ PolicyType::Maturity as usize }>(Some(maturity.as_usize() as u64));
         self
     }
 
     /// Sets the `max_fee` policy.
     pub fn with_max_fee(mut self, max_fee: Word) -> Self {
-        self.set(PolicyType::MaxFee, Some(max_fee));
+        self.set::<{ PolicyType::MaxFee as usize }>(Some(max_fee));
         self
     }
 
@@ -218,7 +218,8 @@ impl Policies {
     }
 
     /// Sets a policy's value if the `value` is `Some`, otherwise, unset it.
-    pub fn set(&mut self, policy_type: PolicyType, value: Option<Word>) {
+    pub fn set<const N: usize>(&mut self, value: Option<Word>) {
+        let policy_type = PolicyType::from(N);
         if let Some(value) = value {
             self.bits.insert(policy_type.bit());
             self.values[policy_type.index()] = value;
@@ -351,7 +352,7 @@ impl Distribution<Policies> for Standard {
             .is_some()
         {
             let maturity: u32 = rng.gen();
-            policies.set(PolicyType::Maturity, Some(maturity as u64));
+            policies.set::<{ PolicyType::Maturity as usize }>(Some(maturity as u64));
         }
 
         policies

@@ -92,82 +92,82 @@ pub fn default_gas_costs() -> GasCostsValues {
         wqmm: 3,
         xor: 1,
         xori: 1,
-        k256: DependentCost {
+        k256: DependentCost::LightOperation {
             base: 11,
-            dep_per_unit: 214,
+            units_per_gas: 214,
         },
-        s256: DependentCost {
+        s256: DependentCost::LightOperation {
             base: 2,
-            dep_per_unit: 214,
+            units_per_gas: 214,
         },
-        call: DependentCost {
+        call: DependentCost::LightOperation {
             base: 144,
-            dep_per_unit: 214,
+            units_per_gas: 214,
         },
-        ccp: DependentCost {
+        ccp: DependentCost::LightOperation {
             base: 15,
-            dep_per_unit: 103,
+            units_per_gas: 103,
         },
-        csiz: DependentCost {
+        csiz: DependentCost::LightOperation {
             base: 17,
-            dep_per_unit: 790,
+            units_per_gas: 790,
         },
-        ldc: DependentCost {
+        ldc: DependentCost::LightOperation {
             base: 15,
-            dep_per_unit: 272,
+            units_per_gas: 272,
         },
-        logd: DependentCost {
+        logd: DependentCost::LightOperation {
             base: 26,
-            dep_per_unit: 64,
+            units_per_gas: 64,
         },
-        mcl: DependentCost {
+        mcl: DependentCost::LightOperation {
             base: 1,
-            dep_per_unit: 3333,
+            units_per_gas: 3333,
         },
-        mcli: DependentCost {
+        mcli: DependentCost::LightOperation {
             base: 1,
-            dep_per_unit: 3333,
+            units_per_gas: 3333,
         },
-        mcp: DependentCost {
+        mcp: DependentCost::LightOperation {
             base: 1,
-            dep_per_unit: 2000,
+            units_per_gas: 2000,
         },
-        mcpi: DependentCost {
+        mcpi: DependentCost::LightOperation {
             base: 3,
-            dep_per_unit: 2000,
+            units_per_gas: 2000,
         },
-        meq: DependentCost {
+        meq: DependentCost::LightOperation {
             base: 1,
-            dep_per_unit: 2500,
+            units_per_gas: 2500,
         },
         rvrt: 13,
-        smo: DependentCost {
+        smo: DependentCost::LightOperation {
             base: 209,
-            dep_per_unit: 55,
+            units_per_gas: 55,
         },
-        retd: DependentCost {
+        retd: DependentCost::LightOperation {
             base: 29,
-            dep_per_unit: 62,
+            units_per_gas: 62,
         },
-        srwq: DependentCost {
+        srwq: DependentCost::LightOperation {
             base: 47,
-            dep_per_unit: 5,
+            units_per_gas: 5,
         },
-        scwq: DependentCost {
+        scwq: DependentCost::LightOperation {
             base: 13,
-            dep_per_unit: 5,
+            units_per_gas: 5,
         },
-        swwq: DependentCost {
+        swwq: DependentCost::LightOperation {
             base: 44,
-            dep_per_unit: 5,
+            units_per_gas: 5,
         },
-        contract_root: DependentCost {
+        contract_root: DependentCost::LightOperation {
             base: 75,
-            dep_per_unit: 1,
+            units_per_gas: 1,
         },
-        state_root: DependentCost {
+        state_root: DependentCost::LightOperation {
             base: 412,
-            dep_per_unit: 1,
+            units_per_gas: 1,
         },
     }
 }

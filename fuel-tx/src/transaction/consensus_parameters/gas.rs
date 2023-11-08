@@ -324,18 +324,29 @@ pub struct GasCostsValues {
 }
 
 /// Dependent cost is a cost that depends on the number of units.
-/// The cost starts at the base and grows by `dep_per_unit` for every unit.
-///
-/// For example, if the base is 10 and the `dep_per_unit` is 2,
-/// then the cost for 0 units is 10, 1 unit is 12, 2 units is 14, etc.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct DependentCost {
-    /// The minimum that this operation can cost.
-    pub base: Word,
-    /// The amount that this operation costs per
-    /// increase in unit.
-    pub dep_per_unit: Word,
+pub enum DependentCost {
+    /// When an operation is dependent on the magnitude of its inputs, and the
+    /// time per unit of input is less than a single no-op operation
+    LightOperation {
+        /// The minimum that this operation can cost.
+        base: Word,
+        /// How many elements can be processed with a single gas. The
+        /// higher the `units_per_gas`, the less additional cost you will incur
+        /// for a given number of units, because you need more units to increase
+        /// the total cost.
+        units_per_gas: Word,
+    },
+
+    /// When an operation is dependent on the magnitude of its inputs, and the
+    /// time per unit of input is greater than a single no-op operation
+    HeavyOperation {
+        /// The minimum that this operation can cost.
+        base: Word,
+        /// How much gas is required to process a single unit.
+        gas_per_unit: Word,
+    },
 }
 
 #[cfg(feature = "alloc")]
@@ -584,33 +595,66 @@ impl GasCostsValues {
 impl DependentCost {
     /// Create costs that make operations free.
     pub fn free() -> Self {
-        Self {
+        Self::HeavyOperation {
             base: 0,
-            // The main idea of `free` cost is to return zero gas for the opcode
-            // regardless of the units number. The dividing by the maximum
-            // `u64` enforces that for any `units` value except another `u64::MAX`.
-            dep_per_unit: u64::MAX,
+            gas_per_unit: 0,
         }
     }
 
     /// Create costs that make operations cost `1`.
     pub fn unit() -> Self {
-        Self {
+        Self::HeavyOperation {
             base: 1,
-            // The main idea of `unit` cost is to return 1 gas for the opcode
-            // regardless of the units number. The dividing by the maximum
-            // `u64` enforces that for any `units` value except another `u64::MAX`.
-            dep_per_unit: u64::MAX,
+            gas_per_unit: 0,
         }
     }
 
+    pub fn from_units_per_gas(base: Word, units_per_gas: Word) -> Self {
+        debug_assert!(
+            units_per_gas > 0,
+            "Cannot create dependent gas cost with per-0-gas ratio"
+        );
+        DependentCost::LightOperation {
+            base,
+            units_per_gas,
+        }
+    }
+
+    pub fn from_gas_per_unit(base: Word, gas_per_unit: Word) -> Self {
+        DependentCost::HeavyOperation { base, gas_per_unit }
+    }
+
+    pub fn base(&self) -> Word {
+        match self {
+            DependentCost::LightOperation { base, .. } => *base,
+            DependentCost::HeavyOperation { base, .. } => *base,
+        }
+    }
+
+    pub fn set_base(&mut self, value: Word) {
+        match self {
+            DependentCost::LightOperation { base, .. } => *base = value,
+            DependentCost::HeavyOperation { base, .. } => *base = value,
+        };
+    }
+
     pub fn resolve(&self, units: Word) -> Word {
-        self.base
-            + if units == u64::MAX {
-                0
-            } else {
-                units.saturating_div(self.dep_per_unit)
+        let base = self.base();
+        let dependent_value = match self {
+            DependentCost::LightOperation { units_per_gas, .. } => {
+                // Apply the linear transformation f(x) = 1/m * x = x/m = where:
+                //   x is the number of units
+                //   1/m is the gas_per_unit
+                units.saturating_div(*units_per_gas)
             }
+            DependentCost::HeavyOperation { gas_per_unit, .. } => {
+                // Apply the linear transformation f(x) = mx, where:
+                //   x is the number of units
+                //   m is the gas per unit
+                units.saturating_mul(*gas_per_unit)
+            }
+        };
+        base + dependent_value
     }
 }
 
@@ -632,5 +676,50 @@ impl From<GasCostsValues> for GasCosts {
 impl From<GasCosts> for GasCostsValues {
     fn from(i: GasCosts) -> Self {
         (*i.0).clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::DependentCost;
+
+    #[test]
+    fn light_operation_gas_cost_resolves_correctly() {
+        // Create a linear gas cost function with a slope of 1/10
+        let cost = DependentCost::from_units_per_gas(0, 10);
+        let total = cost.resolve(0);
+        assert_eq!(total, 0);
+
+        let total = cost.resolve(5);
+        assert_eq!(total, 0);
+
+        let total = cost.resolve(10);
+        assert_eq!(total, 1);
+
+        let total = cost.resolve(100);
+        assert_eq!(total, 10);
+
+        let total = cost.resolve(721);
+        assert_eq!(total, 72);
+    }
+
+    #[test]
+    fn heavy_operation_gas_cost_resolves_correctly() {
+        // Create a linear gas cost function with a slope of 10
+        let cost = DependentCost::from_gas_per_unit(0, 10);
+        let total = cost.resolve(0);
+        assert_eq!(total, 0);
+
+        let total = cost.resolve(5);
+        assert_eq!(total, 50);
+
+        let total = cost.resolve(10);
+        assert_eq!(total, 100);
+
+        let total = cost.resolve(100);
+        assert_eq!(total, 1_000);
+
+        let total = cost.resolve(721);
+        assert_eq!(total, 7_210);
     }
 }

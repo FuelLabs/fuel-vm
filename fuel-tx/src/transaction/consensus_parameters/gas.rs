@@ -605,7 +605,7 @@ impl DependentCost {
     pub fn unit() -> Self {
         Self::HeavyOperation {
             base: 1,
-            gas_per_unit: 1,
+            gas_per_unit: 0,
         }
     }
 

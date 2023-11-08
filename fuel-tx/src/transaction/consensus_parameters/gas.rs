@@ -332,8 +332,8 @@ pub enum DependentCost {
     LightOperation {
         /// The minimum that this operation can cost.
         base: Word,
-        /// How many elements can be processed with a single unit of gas. The
-        /// higher the units_per_gas, the less additional cost you will incur
+        /// How many elements can be processed with a single gas. The
+        /// higher the `units_per_gas`, the less additional cost you will incur
         /// for a given number of units, because you need more units to increase
         /// the total cost.
         units_per_gas: Word,

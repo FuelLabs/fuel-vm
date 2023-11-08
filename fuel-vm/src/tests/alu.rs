@@ -28,7 +28,7 @@ fn alu(
 
     let result = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -56,7 +56,7 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
 
     let result = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -85,7 +85,7 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
 
     let result = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -146,7 +146,7 @@ fn alu_wrapping(
 
     let result = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -181,7 +181,7 @@ fn alu_err(
 
     let result = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -211,7 +211,7 @@ fn alu_err(
 
     let result = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -239,7 +239,7 @@ fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
 
     let result = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 

@@ -740,7 +740,7 @@ mod tests {
         let gas_limit = 1000;
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .add_unsigned_message_input(SecretKey::random(rng), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
             // Add empty base coin
             .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
@@ -769,7 +769,7 @@ mod tests {
         let gas_limit = 1000;
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .add_input(Input::message_data_predicate(
                 rng.gen(),
                 rng.gen(),
@@ -981,7 +981,7 @@ mod tests {
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             // Set up 3 signed inputs
             .add_unsigned_message_input(
                 SecretKey::random(rng),
@@ -1029,7 +1029,7 @@ mod tests {
         let secret = SecretKey::random(rng);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             // Set up 3 signed inputs
             .add_unsigned_message_input(
                 secret,
@@ -1090,7 +1090,7 @@ mod tests {
         let predicate_3 = random_bytes::<4096, _>(rng);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             // Set up 3 predicate inputs
             .add_input(Input::message_coin_predicate(
                 rng.gen(),
@@ -1151,7 +1151,7 @@ mod tests {
         let predicate_3 = random_bytes::<4096, _>(rng);
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             // Set up 3 signed inputs
             .add_unsigned_message_input(
                 SecretKey::random(rng),
@@ -1305,7 +1305,7 @@ mod tests {
         // create a tx with invalid signature
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .add_input(Input::coin_signed(
                 rng.gen(),
                 rng.gen(),
@@ -1440,7 +1440,7 @@ mod tests {
         let any_asset = rng.gen();
         let tx = TransactionBuilder::script(vec![], vec![])
             .gas_price(1)
-            .gas_limit(100)
+            .script_gas_limit(100)
             // base asset
             .add_unsigned_coin_input(
                 secret,
@@ -1629,7 +1629,7 @@ mod tests {
         let asset = AssetId::default();
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .add_unsigned_coin_input(
                 SecretKey::random(rng),
                 rng.gen(),
@@ -1665,7 +1665,7 @@ mod tests {
         let owner = Input::predicate_owner(&predicate);
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .witness_limit(witness_limit)
             .add_input(Input::coin_predicate(
                 rng.gen(),
@@ -1691,7 +1691,7 @@ mod tests {
     ) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .add_unsigned_message_input(
                 SecretKey::random(rng),
                 rng.gen(),
@@ -1710,7 +1710,7 @@ mod tests {
     ) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .add_input(Input::message_coin_predicate(
                 rng.gen(),
                 rng.gen(),
@@ -1731,7 +1731,7 @@ mod tests {
     ) -> Script {
         TransactionBuilder::script(vec![], vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .add_unsigned_coin_input(
                 SecretKey::random(rng),
                 rng.gen(),

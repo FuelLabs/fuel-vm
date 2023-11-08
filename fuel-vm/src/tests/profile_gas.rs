@@ -44,7 +44,7 @@ fn profile_gas() {
                     rng.gen(),
                     Default::default(),
                 )
-                .gas_limit(gas_limit)
+                .script_gas_limit(gas_limit)
                 .gas_price(gas_price)
                 .maturity(maturity)
                 .finalize_checked(height);

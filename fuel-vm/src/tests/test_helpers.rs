@@ -31,7 +31,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(0)
-        .gas_limit(1_000_000)
+        .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()

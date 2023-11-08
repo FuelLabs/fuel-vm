@@ -26,7 +26,7 @@ fn transaction_can_be_executed_after_maturity() {
         rng.gen(),
         Default::default(),
     )
-    .gas_limit(100)
+    .script_gas_limit(100)
     .maturity(MATURITY)
     .finalize_checked(BLOCK_HEIGHT);
 

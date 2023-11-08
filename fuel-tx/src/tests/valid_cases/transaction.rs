@@ -169,7 +169,7 @@ fn script_set_witness_limit_for_empty_witness_success() {
 }
 
 #[test]
-fn script_set_witness_limit_for_non_empty_witness_fails() {
+fn script_set_witness_limit_less_than_witness_data_size_fails() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();
@@ -211,7 +211,7 @@ fn create_set_witness_limit_for_empty_witness_success() {
 }
 
 #[test]
-fn create_set_witness_limit_for_non_empty_witness_fails() {
+fn create_set_witness_limit_less_than_witness_data_size_fails() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();

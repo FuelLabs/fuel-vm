@@ -57,7 +57,7 @@ pub(crate) struct ScriptMetadata {
 #[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
-    pub(crate) gas_limit: Word,
+    pub(crate) script_gas_limit: Word,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script: Vec<u8>,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
@@ -84,7 +84,7 @@ impl Default for Script {
             // We want to use any values much less than `max_gas_per_tx`
             // to avoid the `TransactionMaxGasExceeded` error. For example,
             // `max_gas_per_tx / 4`.
-            gas_limit: TxParameters::DEFAULT.max_gas_per_tx / 4,
+            script_gas_limit: TxParameters::DEFAULT.max_gas_per_tx / 4,
             script,
             script_data: Default::default(),
             policies: Policies::new()
@@ -136,7 +136,7 @@ impl Chargeable for Script {
 
         self.min_gas(gas_costs, fee)
             .saturating_add(remaining_allowed_witness)
-            .saturating_add(self.gas_limit)
+            .saturating_add(self.script_gas_limit)
     }
 
     #[inline(always)]
@@ -221,12 +221,12 @@ mod field {
     impl ScriptGasLimit for Script {
         #[inline(always)]
         fn script_gas_limit(&self) -> &Word {
-            &self.gas_limit
+            &self.script_gas_limit
         }
 
         #[inline(always)]
         fn script_gas_limit_mut(&mut self) -> &mut Word {
-            &mut self.gas_limit
+            &mut self.script_gas_limit
         }
 
         #[inline(always)]

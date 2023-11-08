@@ -95,8 +95,9 @@ enum_from! {
         ExpectedOutputVariable = 0x1d,
         /// The expected context of the stack parent is internal.
         ExpectedParentInternalContext = 0x1e,
-        /// The jump instruction cannot move backwards in predicate verification.
-        IllegalJump = 0x1f,
+        /// The predicate returned non `1`. The `1` means successful verification
+        /// of the predicate, all other values means unsuccessful.
+        PredicateReturnedNonOne = 0x1f,
         /// The contract ID is already deployed and can't be overwritten.
         ContractIdAlreadyDeployed = 0x20,
         /// The loaded contract mismatch expectations.

@@ -21,11 +21,11 @@ use fuel_tx::{
     field::{
         BytecodeLength,
         BytecodeWitnessIndex,
-        GasLimit,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
         ScriptData,
+        ScriptGasLimit,
         StorageSlots,
     },
     policies::PolicyType,
@@ -158,7 +158,7 @@ impl<Tx> GTFInput<'_, Tx> {
             // General
             GTFArgs::ScriptGasLimit => tx
                 .as_script()
-                .map(|script| *script.gas_limit())
+                .map(|script| *script.script_gas_limit())
                 .unwrap_or_default(),
             GTFArgs::PolicyTypes => tx.policies().bits() as Word,
             GTFArgs::PolicyGasPrice => tx

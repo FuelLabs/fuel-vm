@@ -615,7 +615,7 @@ mod tests {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
         field::{
-            GasLimit,
+            ScriptGasLimit,
             WitnessLimit,
             Witnesses,
         },
@@ -1544,7 +1544,7 @@ mod tests {
             .saturating_sub(tx.witnesses().size_dynamic() as u64)
             .saturating_mul(fee_params.gas_per_byte);
         let max_gas = min_gas
-            .saturating_add(*tx.gas_limit())
+            .saturating_add(*tx.script_gas_limit())
             .saturating_add(witness_limit_allowance);
         let max_fee: u64 = gas_to_fee(max_gas, tx.price(), fee_params.gas_price_factor)
             .try_into()

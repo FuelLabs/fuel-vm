@@ -723,7 +723,9 @@ mod tests {
                             );
 
                             assert_id_common_attrs(&tx);
-                            assert_id_ne(&tx, |t| t.set_gas_limit(t.gas_limit().not()));
+                            assert_id_ne(&tx, |t| {
+                                t.set_script_gas_limit(t.script_gas_limit().not())
+                            });
                             assert_id_ne(&tx, |t| inv_v(t.script_mut()));
                             assert_id_ne(&tx, |t| inv_v(t.script_data_mut()));
                         }

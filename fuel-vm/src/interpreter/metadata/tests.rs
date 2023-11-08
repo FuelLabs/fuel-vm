@@ -43,7 +43,7 @@ fn test_get_transaction_field() {
         .get_transaction_field(&mut result, b, GTFArgs::ScriptGasLimit as Immediate12)
         .unwrap();
     assert_eq!(pc, 8);
-    assert_eq!(result, *tx.gas_limit());
+    assert_eq!(result, *tx.script_gas_limit());
 }
 
 #[test_case(Context::PredicateEstimation { program: Default::default() }, 2 => (); "can fetch inside predicate estimation")]

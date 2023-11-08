@@ -50,7 +50,7 @@ crate::enum_try_from! {
         /// Set `$rA` to `tx.type`
         Type = 0x001,
 
-        /// Set `$rA` to `tx.gasLimit`
+        /// Set `$rA` to `tx.scriptGasLimit`
         ScriptGasLimit = 0x002,
 
         /// Set `$rA` to `tx.scriptLength`

@@ -53,10 +53,10 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field::{
-        GasLimit,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
+        ScriptGasLimit,
         StorageSlots,
     },
     input::{
@@ -507,7 +507,7 @@ where
             let is_empty_script;
             if let Some(script) = self.transaction().as_script() {
                 let offset = (self.tx_offset() + script.script_offset()) as Word;
-                gas_limit = *script.gas_limit();
+                gas_limit = *script.script_gas_limit();
                 is_empty_script = script.script().is_empty();
 
                 self.registers[RegId::PC] = offset;

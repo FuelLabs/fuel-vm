@@ -17,7 +17,7 @@ use crate::{
 };
 
 use fuel_asm::RegId;
-use fuel_tx::field::GasLimit;
+use fuel_tx::field::ScriptGasLimit;
 use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
@@ -114,7 +114,7 @@ where
         tx.prepare_init_script();
         let gas_limit = tx
             .as_script()
-            .map(|script| *script.gas_limit())
+            .map(|script| *script.script_gas_limit())
             .unwrap_or_default();
 
         let initial_balances = metadata.balances();

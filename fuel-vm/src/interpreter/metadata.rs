@@ -163,20 +163,20 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::PolicyTypes => tx.policies().bits() as Word,
             GTFArgs::PolicyGasPrice => tx
                 .policies()
-                .get(PolicyType::GasPrice)
-                .ok_or(PanicReason::PolicyIsNotSet)?,
+                .get::<{ PolicyType::GasPrice as usize }>()
+                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
             GTFArgs::PolicyWitnessLimit => tx
                 .policies()
-                .get(PolicyType::WitnessLimit)
-                .ok_or(PanicReason::PolicyIsNotSet)?,
+                .get::<{ PolicyType::WitnessLimit as usize }>()
+                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
             GTFArgs::PolicyMaturity => tx
                 .policies()
-                .get(PolicyType::Maturity)
-                .ok_or(PanicReason::PolicyIsNotSet)?,
+                .get::<{ PolicyType::Maturity as usize }>()
+                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
             GTFArgs::PolicyMaxFee => tx
                 .policies()
-                .get(PolicyType::MaxFee)
-                .ok_or(PanicReason::PolicyIsNotSet)?,
+                .get::<{ PolicyType::MaxFee as usize}>()
+                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
             GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => {
                 tx.inputs().len() as Word
             }

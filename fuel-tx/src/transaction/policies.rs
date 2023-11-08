@@ -55,6 +55,18 @@ pub enum PolicyType {
     MaxFee,
 }
 
+impl From<usize> for PolicyType {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => PolicyType::GasPrice,
+            1 => PolicyType::WitnessLimit,
+            2 => PolicyType::Maturity,
+            3 => PolicyType::MaxFee,
+            _ => unreachable!()
+        }
+    }
+}
+
 impl PolicyType {
     pub const fn index(&self) -> usize {
         match self {
@@ -72,6 +84,68 @@ impl PolicyType {
             PolicyType::Maturity => PoliciesBits::Maturity,
             PolicyType::MaxFee => PoliciesBits::MaxFee,
         }
+    }
+}
+
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Policy<const N: usize> {
+    pub data: Word
+}
+
+
+impl <const N: usize> From<Word> for Policy<N> {
+    fn from(value: Word) -> Self {
+        Self::new(value)
+    }
+}
+
+impl <const N: usize> Policy<N> {
+    pub fn new(data: Word) -> Self {
+        Self {
+            data
+        }
+    }
+
+    pub fn data(&self) -> Word {
+        self.data
+    }
+}
+
+impl Policy<{ PolicyType::GasPrice as usize }> {
+    fn is_valid(&self) -> bool {
+        true
+    }
+}
+
+impl Policy<{ PolicyType::WitnessLimit as usize }> {
+    fn is_valid(&self) -> bool {
+        true
+    }
+
+    pub(crate) fn check(&self, value: usize) -> bool {
+        (value as u64) <= self.data()
+    }
+}
+
+impl Policy<{ PolicyType::Maturity as usize }> {
+    fn is_valid(&self) -> bool {
+        self.data() <= u32::MAX as u64
+    }
+
+    pub(crate) fn check(&self, _value: usize) -> bool {
+        true
+    }
+}
+
+
+impl Policy<{ PolicyType::MaxFee as usize }> {
+    fn is_valid(&self) -> bool {
+        true
+    }
+
+    pub(crate) fn check(&self, value: u128) -> bool {
+        value < self.data() as u128
     }
 }
 
@@ -137,9 +211,10 @@ impl Policies {
     }
 
     /// Returns a policy's value if the corresponding bit is set.
-    pub fn get(&self, policy_type: PolicyType) -> Option<Word> {
+    pub fn get<const N: usize>(&self) -> Option<Policy<N>> {
+        let policy_type = PolicyType::from(N);
         if self.bits.contains(policy_type.bit()) {
-            Some(self.values[policy_type.index()])
+            Some(self.values[policy_type.index()].into())
         } else {
             None
         }
@@ -173,8 +248,26 @@ impl Policies {
             return false
         }
 
-        if let Some(maturity) = self.get(PolicyType::Maturity) {
-            if maturity > u32::MAX as u64 {
+        if let Some(gas_price) = self.get::<{PolicyType::GasPrice as usize}>() {
+            if !gas_price.is_valid() {
+                return false
+            }
+        }
+
+        if let Some(witness_limit) = self.get::<{PolicyType::WitnessLimit as usize}>() {
+            if !witness_limit.is_valid() {
+                return false
+            }
+        }
+
+        if let Some(maturity) = self.get::<{PolicyType::Maturity as usize}>() {
+           if !maturity.is_valid() {
+               return false
+           }
+        }
+
+        if let Some(max_fee) = self.get::<{PolicyType::MaxFee as usize}>() {
+            if !max_fee.is_valid() {
                 return false
             }
         }
@@ -239,8 +332,8 @@ impl Deserialize for Policies {
             }
         }
 
-        if let Some(maturity) = self.get(PolicyType::Maturity) {
-            if maturity > u32::MAX as u64 {
+        if let Some(maturity) = self.get::<{ PolicyType::Maturity as usize} >() {
+            if !maturity.is_valid() {
                 return Err(Error::Unknown("The maturity in more than `u32::MAX`"))
             }
         }
@@ -261,7 +354,7 @@ impl Distribution<Policies> for Standard {
             values: Policies::values_for_bitmask(bits, values),
         };
 
-        if policies.get(PolicyType::Maturity).is_some() {
+        if policies.get::<{ PolicyType::Maturity as usize }>().is_some() {
             let maturity: u32 = rng.gen();
             policies.set(PolicyType::Maturity, Some(maturity as u64));
         }

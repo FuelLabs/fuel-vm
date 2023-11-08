@@ -30,14 +30,7 @@ use crate::{
     Witness,
 };
 use core::hash::Hash;
-use fuel_types::{
-    canonical,
-    canonical::Serialize,
-    Address,
-    BlockHeight,
-    Bytes32,
-    ChainId,
-};
+use fuel_types::{canonical, canonical::Serialize, Address, BlockHeight, Bytes32, ChainId};
 use hashbrown::HashMap;
 use itertools::Itertools;
 
@@ -332,13 +325,13 @@ where
         Err(CheckError::TransactionPoliciesAreInvalid)?
     }
 
-    if tx.policies().get(PolicyType::GasPrice).is_none() {
+    if tx.policies().get::<{ PolicyType::GasPrice as usize }>().is_none() {
         Err(CheckError::TransactionNoGasPricePolicy)?
     }
 
-    if let Some(witness_limit) = tx.policies().get(PolicyType::WitnessLimit) {
+    if let Some(witness_limit) = tx.policies().get::<{ PolicyType::WitnessLimit as usize } >() {
         let witness_size = tx.witnesses().size_dynamic();
-        if witness_size as u64 > witness_limit {
+        if !witness_limit.check(witness_size) {
             Err(CheckError::TransactionWitnessLimitExceeded)?
         }
     }
@@ -348,8 +341,9 @@ where
         Err(CheckError::TransactionMaxGasExceeded)?
     }
 
-    if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
-        if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
+    if let Some(max_fee_limit) = tx.policies().get::<{ PolicyType::MaxFee as usize }>() {
+        let max_fee = tx.max_fee(gas_costs, fee_params);
+        if !max_fee_limit.check(max_fee) {
             Err(CheckError::TransactionMaxFeeLimitExceeded)?
         }
     }

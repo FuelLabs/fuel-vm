@@ -39,7 +39,6 @@ use itertools::Itertools;
 
 mod fee;
 mod metadata;
-pub mod policies;
 mod repr;
 mod types;
 mod validity;
@@ -47,6 +46,7 @@ mod validity;
 mod id;
 
 pub mod consensus_parameters;
+pub mod policies;
 
 pub use consensus_parameters::{
     ConsensusParameters,

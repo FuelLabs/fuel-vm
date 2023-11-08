@@ -35,7 +35,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()

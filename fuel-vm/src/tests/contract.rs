@@ -153,7 +153,7 @@ fn mint_burn() {
             script_check_balance.clone(),
             script_data_check_balance.clone(),
         )
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -164,7 +164,7 @@ fn mint_burn() {
 
     test_context
         .start_script(script_call.clone(), script_call_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -175,7 +175,7 @@ fn mint_burn() {
             script_check_balance.clone(),
             script_data_check_balance.clone(),
         )
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -189,7 +189,7 @@ fn mint_burn() {
 
     let result = test_context
         .start_script(script_call.clone(), script_call_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -201,7 +201,7 @@ fn mint_burn() {
             script_check_balance.clone(),
             script_data_check_balance.clone(),
         )
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -216,7 +216,7 @@ fn mint_burn() {
     let script_call_data = Call::new(contract_id, 1, burn).to_bytes();
     test_context
         .start_script(script_call.clone(), script_call_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -228,7 +228,7 @@ fn mint_burn() {
             script_check_balance.clone(),
             script_data_check_balance.clone(),
         )
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -241,7 +241,7 @@ fn mint_burn() {
     let script_call_data = Call::new(contract_id, 1, balance).to_bytes();
     test_context
         .start_script(script_call, script_call_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -249,7 +249,7 @@ fn mint_burn() {
 
     let result = test_context
         .start_script(script_check_balance, script_data_check_balance)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -305,7 +305,7 @@ fn call_increases_contract_asset_balance_and_balance_register() {
     // call contract with some amount of coins to forward
     let transfer_tx = test_context
         .start_script(script_ops, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .gas_price(0)
         .coin_input(asset_id, call_amount)
         .contract_input(contract_id)
@@ -394,7 +394,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
     // initiate the call between contracts
     let transfer_tx = test_context
         .start_script(script_ops, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .gas_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
@@ -483,7 +483,7 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
     // initiate the transfer between contracts
     let transfer_tx = test_context
         .start_script(script_ops, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .gas_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)
@@ -565,7 +565,7 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
 
     let transfer_tx = test_context
         .start_script(script_ops, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .gas_price(0)
         .contract_input(sender_contract_id)
         .contract_input(dest_contract_id)

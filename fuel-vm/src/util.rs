@@ -204,7 +204,7 @@ pub mod test_helpers {
             let bytecode = script.into_iter().collect();
             self.builder = TransactionBuilder::script(bytecode, script_data);
             self.builder.gas_price(self.gas_price);
-            self.builder.gas_limit(self.gas_limit);
+            self.builder.script_gas_limit(self.gas_limit);
             self
         }
 
@@ -214,8 +214,8 @@ pub mod test_helpers {
             self
         }
 
-        pub fn gas_limit(&mut self, limit: Word) -> &mut TestBuilder {
-            self.builder.gas_limit(limit);
+        pub fn script_gas_limit(&mut self, limit: Word) -> &mut TestBuilder {
+            self.builder.script_gas_limit(limit);
             self.gas_limit = limit;
             self
         }
@@ -391,7 +391,7 @@ pub mod test_helpers {
             TestBuilder::new(2322u64)
                 .start_script(script, script_data)
                 .gas_price(0)
-                .gas_limit(1_000_000)
+                .script_gas_limit(1_000_000)
                 .contract_input(*contract_id)
                 .fee_input()
                 .contract_output(contract_id)
@@ -634,7 +634,7 @@ pub mod test_helpers {
 
         let tx_deploy_loader = TransactionBuilder::script(script, script_data)
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .maturity(maturity)
             .with_tx_params(tx_params)
             .add_input(Input::contract(

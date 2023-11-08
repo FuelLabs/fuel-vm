@@ -85,7 +85,7 @@ fn secp256k1_recover() {
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(height);
@@ -140,7 +140,7 @@ fn ecrecover_tx_id() {
 
     let mut tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize();
@@ -214,7 +214,7 @@ async fn recover_tx_id_predicate() {
 
     let mut tx = TransactionBuilder::script(vec![], script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(input)
         .add_unsigned_coin_input(
@@ -381,7 +381,7 @@ fn secp256r1_recover() {
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(height);
@@ -522,7 +522,7 @@ fn ed25519_verify() {
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(height);
@@ -659,7 +659,7 @@ fn sha256() {
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(height);
@@ -757,7 +757,7 @@ fn keccak256() {
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(height);

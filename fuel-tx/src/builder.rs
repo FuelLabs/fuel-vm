@@ -297,7 +297,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn gas_limit(&mut self, gas_limit: Word) -> &mut Self
+    pub fn script_gas_limit(&mut self, gas_limit: Word) -> &mut Self
     where
         Tx: field::ScriptGasLimit,
     {

@@ -164,19 +164,23 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::PolicyGasPrice => tx
                 .policies()
                 .get::<{ PolicyType::GasPrice as usize }>()
-                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
+                .ok_or(PanicReason::PolicyIsNotSet)?
+                .data(),
             GTFArgs::PolicyWitnessLimit => tx
                 .policies()
                 .get::<{ PolicyType::WitnessLimit as usize }>()
-                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
+                .ok_or(PanicReason::PolicyIsNotSet)?
+                .data(),
             GTFArgs::PolicyMaturity => tx
                 .policies()
                 .get::<{ PolicyType::Maturity as usize }>()
-                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
+                .ok_or(PanicReason::PolicyIsNotSet)?
+                .data(),
             GTFArgs::PolicyMaxFee => tx
                 .policies()
-                .get::<{ PolicyType::MaxFee as usize}>()
-                .ok_or(PanicReason::PolicyIsNotSet)?.data(),
+                .get::<{ PolicyType::MaxFee as usize }>()
+                .ok_or(PanicReason::PolicyIsNotSet)?
+                .data(),
             GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => {
                 tx.inputs().len() as Word
             }

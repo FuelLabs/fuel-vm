@@ -30,7 +30,14 @@ use crate::{
     Witness,
 };
 use core::hash::Hash;
-use fuel_types::{canonical, canonical::Serialize, Address, BlockHeight, Bytes32, ChainId};
+use fuel_types::{
+    canonical,
+    canonical::Serialize,
+    Address,
+    BlockHeight,
+    Bytes32,
+    ChainId,
+};
 use hashbrown::HashMap;
 use itertools::Itertools;
 
@@ -325,11 +332,17 @@ where
         Err(CheckError::TransactionPoliciesAreInvalid)?
     }
 
-    if tx.policies().get::<{ PolicyType::GasPrice as usize }>().is_none() {
+    if tx
+        .policies()
+        .get::<{ PolicyType::GasPrice as usize }>()
+        .is_none()
+    {
         Err(CheckError::TransactionNoGasPricePolicy)?
     }
 
-    if let Some(witness_limit) = tx.policies().get::<{ PolicyType::WitnessLimit as usize } >() {
+    if let Some(witness_limit) =
+        tx.policies().get::<{ PolicyType::WitnessLimit as usize }>()
+    {
         let witness_size = tx.witnesses().size_dynamic();
         if !witness_limit.check(witness_size) {
             Err(CheckError::TransactionWitnessLimitExceeded)?

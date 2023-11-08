@@ -62,7 +62,7 @@ impl From<usize> for PolicyType {
             1 => PolicyType::WitnessLimit,
             2 => PolicyType::Maturity,
             3 => PolicyType::MaxFee,
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }
@@ -90,21 +90,18 @@ impl PolicyType {
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Policy<const N: usize> {
-    pub data: Word
+    pub data: Word,
 }
 
-
-impl <const N: usize> From<Word> for Policy<N> {
+impl<const N: usize> From<Word> for Policy<N> {
     fn from(value: Word) -> Self {
         Self::new(value)
     }
 }
 
-impl <const N: usize> Policy<N> {
+impl<const N: usize> Policy<N> {
     pub fn new(data: Word) -> Self {
-        Self {
-            data
-        }
+        Self { data }
     }
 
     pub fn data(&self) -> Word {
@@ -137,7 +134,6 @@ impl Policy<{ PolicyType::Maturity as usize }> {
         true
     }
 }
-
 
 impl Policy<{ PolicyType::MaxFee as usize }> {
     fn is_valid(&self) -> bool {
@@ -248,25 +244,25 @@ impl Policies {
             return false
         }
 
-        if let Some(gas_price) = self.get::<{PolicyType::GasPrice as usize}>() {
+        if let Some(gas_price) = self.get::<{ PolicyType::GasPrice as usize }>() {
             if !gas_price.is_valid() {
                 return false
             }
         }
 
-        if let Some(witness_limit) = self.get::<{PolicyType::WitnessLimit as usize}>() {
+        if let Some(witness_limit) = self.get::<{ PolicyType::WitnessLimit as usize }>() {
             if !witness_limit.is_valid() {
                 return false
             }
         }
 
-        if let Some(maturity) = self.get::<{PolicyType::Maturity as usize}>() {
-           if !maturity.is_valid() {
-               return false
-           }
+        if let Some(maturity) = self.get::<{ PolicyType::Maturity as usize }>() {
+            if !maturity.is_valid() {
+                return false
+            }
         }
 
-        if let Some(max_fee) = self.get::<{PolicyType::MaxFee as usize}>() {
+        if let Some(max_fee) = self.get::<{ PolicyType::MaxFee as usize }>() {
             if !max_fee.is_valid() {
                 return false
             }
@@ -332,7 +328,7 @@ impl Deserialize for Policies {
             }
         }
 
-        if let Some(maturity) = self.get::<{ PolicyType::Maturity as usize} >() {
+        if let Some(maturity) = self.get::<{ PolicyType::Maturity as usize }>() {
             if !maturity.is_valid() {
                 return Err(Error::Unknown("The maturity in more than `u32::MAX`"))
             }
@@ -354,7 +350,10 @@ impl Distribution<Policies> for Standard {
             values: Policies::values_for_bitmask(bits, values),
         };
 
-        if policies.get::<{ PolicyType::Maturity as usize }>().is_some() {
+        if policies
+            .get::<{ PolicyType::Maturity as usize }>()
+            .is_some()
+        {
             let maturity: u32 = rng.gen();
             policies.set(PolicyType::Maturity, Some(maturity as u64));
         }

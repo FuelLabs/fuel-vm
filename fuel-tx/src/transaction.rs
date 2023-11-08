@@ -563,8 +563,9 @@ pub mod field {
         #[inline(always)]
         fn gas_price(&self) -> Word {
             self.policies()
-                .get::<{PolicyType::GasPrice as usize}>()
-                .unwrap_or_default().data()
+                .get::<{ PolicyType::GasPrice as usize }>()
+                .unwrap_or_default()
+                .data()
         }
 
         #[inline(always)]
@@ -581,7 +582,10 @@ pub mod field {
     impl<T: Policies + ?Sized> WitnessLimit for T {
         #[inline(always)]
         fn witness_limit(&self) -> Word {
-            self.policies().get::<{ PolicyType::WitnessLimit as usize }>().unwrap_or_default().data()
+            self.policies()
+                .get::<{ PolicyType::WitnessLimit as usize }>()
+                .unwrap_or_default()
+                .data()
         }
 
         #[inline(always)]
@@ -630,7 +634,10 @@ pub mod field {
     impl<T: Policies + ?Sized> MaxFeeLimit for T {
         #[inline(always)]
         fn max_fee_limit(&self) -> Word {
-            self.policies().get::<{PolicyType::MaxFee as usize}>().unwrap_or_default().data()
+            self.policies()
+                .get::<{ PolicyType::MaxFee as usize }>()
+                .unwrap_or_default()
+                .data()
         }
 
         #[inline(always)]

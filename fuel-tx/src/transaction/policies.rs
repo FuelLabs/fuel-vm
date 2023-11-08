@@ -137,7 +137,7 @@ impl Policy<{ PolicyType::MaxFee as usize }> {
     }
 
     pub(crate) fn check(&self, value: u128) -> bool {
-        value < self.data() as u128
+        value <= self.data() as u128
     }
 }
 

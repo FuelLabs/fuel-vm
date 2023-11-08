@@ -129,10 +129,6 @@ impl Policy<{ PolicyType::Maturity as usize }> {
     fn is_valid(&self) -> bool {
         self.data() <= u32::MAX as u64
     }
-
-    pub(crate) fn check(&self, _value: usize) -> bool {
-        true
-    }
 }
 
 impl Policy<{ PolicyType::MaxFee as usize }> {

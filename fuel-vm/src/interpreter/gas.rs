@@ -81,13 +81,9 @@ pub(crate) fn dependent_gas_charge(
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
-    if gas_cost.dep_per_unit == 0 {
-        gas_charge(cgas, ggas, profiler, gas_cost.base)
-    } else {
-        let cost = dependent_gas_charge_inner(cgas.as_mut(), ggas, gas_cost, arg)?;
-        profiler.profile(cgas.as_ref(), cost);
-        Ok(())
-    }
+    let cost = dependent_gas_charge_inner(cgas.as_mut(), ggas, gas_cost, arg)?;
+    profiler.profile(cgas.as_ref(), cost);
+    Ok(())
 }
 
 fn dependent_gas_charge_inner(
@@ -96,9 +92,7 @@ fn dependent_gas_charge_inner(
     gas_cost: DependentCost,
     arg: Word,
 ) -> Result<Word, PanicOrBug> {
-    let cost = gas_cost
-        .base
-        .saturating_add(arg.saturating_div(gas_cost.dep_per_unit));
+    let cost = gas_cost.resolve(arg);
     gas_charge_inner(cgas, ggas, cost).map(|_| cost)
 }
 

@@ -322,10 +322,7 @@ fn test_code_size() {
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
-        gas_cost: DependentCost {
-            base: 0,
-            dep_per_unit: 0,
-        },
+        gas_cost: DependentCost::free(),
         profiler: &mut Profiler::default(),
         input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
         current_contract: None,
@@ -343,10 +340,7 @@ fn test_code_size() {
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
-        gas_cost: DependentCost {
-            base: 0,
-            dep_per_unit: 0,
-        },
+        gas_cost: DependentCost::free(),
         input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
@@ -363,10 +357,7 @@ fn test_code_size() {
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
-        gas_cost: DependentCost {
-            base: 0,
-            dep_per_unit: 0,
-        },
+        gas_cost: DependentCost::free(),
         input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,

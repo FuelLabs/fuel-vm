@@ -323,7 +323,10 @@ fn ldc__gas_cost_is_not_dependent_on_rC() {
 
     let gas_costs = client.gas_costs();
     let ldc_cost = gas_costs.ldc;
-    let ldc_dep_len = ldc_cost.dep_per_unit;
+    let ldc_dep_len = match ldc_cost {
+        DependentCost::LightOperation { units_per_gas, .. } => units_per_gas,
+        DependentCost::HeavyOperation { gas_per_unit, .. } => gas_per_unit,
+    };
     let noop_cost = gas_costs.noop;
 
     let contract_size = 1000;
@@ -388,8 +391,10 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
 
     let gas_costs = client.gas_costs();
     let ldc_cost = gas_costs.ldc;
-    let ldc_dep_len = ldc_cost.dep_per_unit;
-
+    let ldc_dep_len = match ldc_cost {
+        DependentCost::LightOperation { units_per_gas, .. } => units_per_gas,
+        DependentCost::HeavyOperation { gas_per_unit, .. } => gas_per_unit,
+    };
     let contract_size = 0;
     let offset = 0;
     let len = 0;

@@ -22,11 +22,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
     This change brings the following modification to the gas model:
     - The `GasLimit` only limits the script execution. Previously, the `GasLimit` also limited the predicate execution time, but it is not valid anymore. So, it is not possible to use the `GasLimit` for transaction cost limitations. A new `MaxFee` policy is a way to do that. The `GasLimit` field was removed from the `Create` transaction because it only relates to the script execution(which the `Create` transaction doesn't have).
-    - The blockchain changes the user for the size of witness data(before it was free). There is no separate price for the storage, so it uses gas to charge the user. It affects the `min_gas` and `min_fee` calculation.
-    - A new `WhitnessLimit` also impacts the `max_gas` and `max_fee` calculation along with the `GasLimit`(in the case of `Create` transaction only `WitnessLimit` affects the `max_gas` and `max_fee`).
+    - The blockchain charges the user for the size of witness data (before it was free). There is no separate price for the storage, so it uses gas to charge the user. This change affects `min_gas` and `min_fee` calculation.
+    - A new policy called `WitnessLimit` also impacts the `max_gas` and `max_fee` calculation in addition to `GasLimit`(in the case of `Create` transaction only `WitnessLimit` affects the `max_gas` and `max_fee`).
     - The minimal gas also charges the user for transaction ID calculation.
       
-    The change has the following modification to the layout transaction:
+    The change has the following modification to the transaction layout:
     - The `Create` transaction doesn't have the `GasLimit` field anymore. Because the `Create` transaction doesn't have any script to execute
     - The `Create` and `Script` transactions don't have explicit `maturity` and `gas_price` fields. Instead, these fields can be set via a new `policies` field.
     - The `Create` and `Script` transactions have a new `policies` field with a unique canonical serialization and deserialization for optimal space consumption.

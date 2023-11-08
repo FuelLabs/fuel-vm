@@ -58,7 +58,7 @@ fn contract() {
         .err()
         .unwrap();
 
-    assert_eq!(CheckError::OutputContractInputIndex { index: 2 }, err);
+    assert_eq!(ValidityError::OutputContractInputIndex { index: 2 }, err);
 
     let err = Output::contract(2, rng.gen(), rng.gen())
         .check(
@@ -79,7 +79,7 @@ fn contract() {
         .err()
         .unwrap();
 
-    assert_eq!(CheckError::OutputContractInputIndex { index: 2 }, err);
+    assert_eq!(ValidityError::OutputContractInputIndex { index: 2 }, err);
 }
 
 #[test]

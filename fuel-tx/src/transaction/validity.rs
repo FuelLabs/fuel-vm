@@ -46,7 +46,7 @@ mod error;
 #[cfg(test)]
 mod tests;
 
-pub use error::CheckError;
+pub use error::ValidityError;
 
 impl Input {
     pub fn check(
@@ -57,7 +57,7 @@ impl Input {
         witnesses: &[Witness],
         predicate_params: &PredicateParameters,
         recovery_cache: &mut Option<HashMap<u8, Address>>,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
         self.check_signature(index, txhash, witnesses, recovery_cache)?;
 
@@ -70,7 +70,7 @@ impl Input {
         txhash: &Bytes32,
         witnesses: &[Witness],
         recovery_cache: &mut Option<HashMap<u8, Address>>,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         match self {
             Self::CoinSigned(CoinSigned {
                 witness_index,
@@ -88,10 +88,10 @@ impl Input {
                 ..
             }) => {
                 // Helper function for recovering the address from a witness
-                let recover_address = || -> Result<Address, CheckError> {
+                let recover_address = || -> Result<Address, ValidityError> {
                     let witness = witnesses
                         .get(*witness_index as usize)
-                        .ok_or(CheckError::InputWitnessIndexBounds { index })?;
+                        .ok_or(ValidityError::InputWitnessIndexBounds { index })?;
 
                     witness.recover_witness(txhash, *witness_index as usize)
                 };
@@ -113,7 +113,7 @@ impl Input {
                 };
 
                 if owner != &recovered_address {
-                    return Err(CheckError::InputInvalidSignature { index })
+                    return Err(ValidityError::InputInvalidSignature { index })
                 }
 
                 Ok(())
@@ -132,7 +132,7 @@ impl Input {
                 predicate,
                 ..
             }) if !Input::is_predicate_owner_valid(owner, predicate) => {
-                Err(CheckError::InputPredicateOwner { index })
+                Err(ValidityError::InputPredicateOwner { index })
             }
 
             _ => Ok(()),
@@ -145,14 +145,14 @@ impl Input {
         outputs: &[Output],
         witnesses: &[Witness],
         predicate_params: &PredicateParameters,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         match self {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.is_empty() =>
             {
-                Err(CheckError::InputPredicateEmpty { index })
+                Err(ValidityError::InputPredicateEmpty { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate, .. })
@@ -160,7 +160,7 @@ impl Input {
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
                 if predicate.len() as u64 > predicate_params.max_predicate_length =>
             {
-                Err(CheckError::InputPredicateLength { index })
+                Err(ValidityError::InputPredicateLength { index })
             }
 
             Self::CoinPredicate(CoinPredicate { predicate_data, .. })
@@ -172,7 +172,7 @@ impl Input {
             }) if predicate_data.len() as u64
                 > predicate_params.max_predicate_data_length =>
             {
-                Err(CheckError::InputPredicateDataLength { index })
+                Err(ValidityError::InputPredicateDataLength { index })
             }
 
             Self::CoinSigned(CoinSigned { witness_index, .. })
@@ -180,7 +180,7 @@ impl Input {
             | Self::MessageDataSigned(MessageDataSigned { witness_index, .. })
                 if *witness_index as usize >= witnesses.len() =>
             {
-                Err(CheckError::InputWitnessIndexBounds { index })
+                Err(ValidityError::InputWitnessIndexBounds { index })
             }
 
             // ∀ inputContract ∃! outputContract : outputContract.inputIndex =
@@ -197,7 +197,7 @@ impl Input {
                     })
                     .count() =>
             {
-                Err(CheckError::InputContractAssociatedOutputContract { index })
+                Err(ValidityError::InputContractAssociatedOutputContract { index })
             }
 
             Self::MessageDataSigned(MessageDataSigned { data, .. })
@@ -205,7 +205,7 @@ impl Input {
                 if data.is_empty()
                     || data.len() as u64 > predicate_params.max_message_data_length =>
             {
-                Err(CheckError::InputMessageDataLength { index })
+                Err(ValidityError::InputMessageDataLength { index })
             }
 
             // TODO: If h is the block height the UTXO being spent was created,
@@ -222,12 +222,12 @@ impl Output {
     /// initialization, but this transaction will no longer be valid in post-execution
     /// because the VM might mutate the message outputs, producing invalid
     /// transactions.
-    pub fn check(&self, index: usize, inputs: &[Input]) -> Result<(), CheckError> {
+    pub fn check(&self, index: usize, inputs: &[Input]) -> Result<(), ValidityError> {
         match self {
             Self::Contract(output::contract::Contract { input_index, .. }) => {
                 match inputs.get(*input_index as usize) {
                     Some(Input::Contract { .. }) => Ok(()),
-                    _ => Err(CheckError::OutputContractInputIndex { index }),
+                    _ => Err(ValidityError::OutputContractInputIndex { index }),
                 }
             }
 
@@ -246,7 +246,7 @@ pub trait FormatValidityChecks {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         self.check_without_signatures(block_height, consensus_params)?;
         self.check_signatures(&consensus_params.chain_id())?;
 
@@ -255,7 +255,7 @@ pub trait FormatValidityChecks {
 
     /// Validates that all required signatures are set in the transaction and that they
     /// are valid.
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError>;
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError>;
 
     /// Validates the transactions according to rules from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>
@@ -263,11 +263,11 @@ pub trait FormatValidityChecks {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<(), CheckError>;
+    ) -> Result<(), ValidityError>;
 }
 
 impl FormatValidityChecks for Transaction {
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         match self {
             Transaction::Script(script) => script.check_signatures(chain_id),
             Transaction::Create(create) => create.check_signatures(chain_id),
@@ -279,7 +279,7 @@ impl FormatValidityChecks for Transaction {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         match self {
             Transaction::Script(script) => {
                 script.check_without_signatures(block_height, consensus_params)
@@ -298,12 +298,12 @@ impl FormatValidityChecks for Transaction {
 /// the total size specified by the transaction parameters. The size of a
 /// transaction is calculated as the sum of the sizes of its static and dynamic
 /// parts.
-pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), CheckError>
+pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), ValidityError>
 where
     T: canonical::Serialize,
 {
     if tx.size() as u64 > tx_params.max_size {
-        Err(CheckError::TransactionSizeLimitExceeded)?;
+        Err(ValidityError::TransactionSizeLimitExceeded)?;
     }
 
     Ok(())
@@ -313,7 +313,7 @@ pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
     consensus_params: &ConsensusParameters,
-) -> Result<(), CheckError>
+) -> Result<(), ValidityError>
 where
     T: canonical::Serialize + Chargeable + field::Outputs,
 {
@@ -329,45 +329,45 @@ where
     check_size(tx, tx_params)?;
 
     if !tx.policies().is_valid() {
-        Err(CheckError::TransactionPoliciesAreInvalid)?
+        Err(ValidityError::TransactionPoliciesAreInvalid)?
     }
 
     if tx.policies().get(PolicyType::GasPrice).is_none() {
-        Err(CheckError::TransactionNoGasPricePolicy)?
+        Err(ValidityError::TransactionNoGasPricePolicy)?
     }
 
     if let Some(witness_limit) = tx.policies().get(PolicyType::WitnessLimit) {
         let witness_size = tx.witnesses().size_dynamic();
         if witness_size as u64 > witness_limit {
-            Err(CheckError::TransactionWitnessLimitExceeded)?
+            Err(ValidityError::TransactionWitnessLimitExceeded)?
         }
     }
 
     let max_gas = tx.max_gas(gas_costs, fee_params);
     if max_gas > tx_params.max_gas_per_tx {
-        Err(CheckError::TransactionMaxGasExceeded)?
+        Err(ValidityError::TransactionMaxGasExceeded)?
     }
 
     if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
         if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
-            Err(CheckError::TransactionMaxFeeLimitExceeded)?
+            Err(ValidityError::TransactionMaxFeeLimitExceeded)?
         }
     }
 
     if tx.maturity() > block_height {
-        Err(CheckError::TransactionMaturity)?;
+        Err(ValidityError::TransactionMaturity)?;
     }
 
     if tx.inputs().len() > tx_params.max_inputs as usize {
-        Err(CheckError::TransactionInputsMax)?
+        Err(ValidityError::TransactionInputsMax)?
     }
 
     if tx.outputs().len() > tx_params.max_outputs as usize {
-        Err(CheckError::TransactionOutputsMax)?
+        Err(ValidityError::TransactionOutputsMax)?
     }
 
     if tx.witnesses().len() > tx_params.max_witnesses as usize {
-        Err(CheckError::TransactionWitnessesMax)?
+        Err(ValidityError::TransactionWitnessesMax)?
     }
 
     let any_spendable_input = tx.inputs().iter().find(|input| match input {
@@ -381,7 +381,7 @@ where
     });
 
     if any_spendable_input.is_none() {
-        Err(CheckError::NoSpendableInput)?
+        Err(ValidityError::NoSpendableInput)?
     }
 
     tx.input_asset_ids_unique(base_asset_id)
@@ -404,7 +404,7 @@ where
                 .count()
                 > 1
             {
-                return Err(CheckError::TransactionOutputChangeAssetIdDuplicated(
+                return Err(ValidityError::TransactionOutputChangeAssetIdDuplicated(
                     *input_asset_id,
                 ))
             }
@@ -419,20 +419,20 @@ where
         .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
 
     if let Some(utxo_id) = next_duplicate(duplicated_utxo_id).copied() {
-        return Err(CheckError::DuplicateInputUtxoId { utxo_id })
+        return Err(ValidityError::DuplicateInputUtxoId { utxo_id })
     }
 
     // Check for duplicated input contract id
     let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
 
     if let Some(contract_id) = next_duplicate(duplicated_contract_id).copied() {
-        return Err(CheckError::DuplicateInputContractId { contract_id })
+        return Err(ValidityError::DuplicateInputContractId { contract_id })
     }
 
     // Check for duplicated input message id
     let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
     if let Some(message_id) = next_duplicate(duplicated_message_id) {
-        return Err(CheckError::DuplicateMessageInputId { message_id })
+        return Err(ValidityError::DuplicateMessageInputId { message_id })
     }
 
     // Validate the inputs without checking signature
@@ -459,7 +459,7 @@ where
                     .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
                 {
-                    return Err(CheckError::TransactionOutputChangeAssetIdNotFound(
+                    return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
                         *asset_id,
                     ))
                 }
@@ -470,7 +470,7 @@ where
                     .input_asset_ids(base_asset_id)
                     .any(|input_asset_id| input_asset_id == asset_id)
                 {
-                    return Err(CheckError::TransactionOutputCoinAssetIdNotFound(
+                    return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
                         *asset_id,
                     ))
                 }

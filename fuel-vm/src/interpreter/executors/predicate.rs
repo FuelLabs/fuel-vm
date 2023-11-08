@@ -1,11 +1,7 @@
 use crate::{
-    error::{
-        InterpreterError,
-        PredicateVerificationFailed,
-    },
+    error::PredicateVerificationFailed,
     interpreter::EcalHandler,
     prelude::{
-        CheckError,
         ExecutableTransaction,
         Interpreter,
     },
@@ -32,9 +28,7 @@ where
         let range = self
             .context
             .predicate()
-            .ok_or(InterpreterError::CheckError(
-                CheckError::PredicateVerificationFailed,
-            ))?
+            .expect("The predicate is not initialized")
             .program()
             .words();
 

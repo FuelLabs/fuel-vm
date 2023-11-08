@@ -62,7 +62,7 @@ fn gas_limit() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionMaxGasExceeded, err);
+    assert_eq!(ValidityError::TransactionMaxGasExceeded, err);
 }
 
 #[test]
@@ -99,7 +99,7 @@ fn maturity() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionMaturity, err);
+    assert_eq!(ValidityError::TransactionMaturity, err);
 
     let err = Transaction::create(
         0,
@@ -113,7 +113,7 @@ fn maturity() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionMaturity, err);
+    assert_eq!(ValidityError::TransactionMaturity, err);
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn script_set_witness_limit_for_non_empty_witness_fails() {
         .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(CheckError::TransactionWitnessLimitExceeded, err);
+    assert_eq!(ValidityError::TransactionWitnessLimitExceeded, err);
 }
 
 #[test]
@@ -228,7 +228,7 @@ fn create_set_witness_limit_for_non_empty_witness_fails() {
         .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(CheckError::TransactionWitnessLimitExceeded, err);
+    assert_eq!(ValidityError::TransactionWitnessLimitExceeded, err);
 }
 
 #[test]
@@ -265,7 +265,7 @@ fn script_set_max_fee_limit_fails() {
         .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(CheckError::TransactionMaxFeeLimitExceeded, err);
+    assert_eq!(ValidityError::TransactionMaxFeeLimitExceeded, err);
 }
 
 #[test]
@@ -302,7 +302,7 @@ fn create_set_max_fee_limit_fails() {
         .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(CheckError::TransactionMaxFeeLimitExceeded, err);
+    assert_eq!(ValidityError::TransactionMaxFeeLimitExceeded, err);
 }
 
 #[test]
@@ -416,7 +416,7 @@ fn max_iow() {
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionInputsMax, err);
+    assert_eq!(ValidityError::TransactionInputsMax, err);
 
     // Overflow outputs maximum and expect error
     let mut builder =
@@ -453,7 +453,7 @@ fn max_iow() {
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionOutputsMax, err);
+    assert_eq!(ValidityError::TransactionOutputsMax, err);
 
     // Overflow witnesses maximum and expect error
     let mut builder =
@@ -490,7 +490,7 @@ fn max_iow() {
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionWitnessesMax, err);
+    assert_eq!(ValidityError::TransactionWitnessesMax, err);
 }
 
 #[test]
@@ -528,7 +528,10 @@ fn output_change_asset_id() {
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionOutputChangeAssetIdDuplicated(a), err);
+    assert_eq!(
+        ValidityError::TransactionOutputChangeAssetIdDuplicated(a),
+        err
+    );
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_price(rng.gen())
@@ -543,7 +546,7 @@ fn output_change_asset_id() {
 
     assert!(matches!(
         err,
-        CheckError::TransactionOutputChangeAssetIdNotFound(asset_id) if asset_id == c
+        ValidityError::TransactionOutputChangeAssetIdNotFound(asset_id) if asset_id == c
     ));
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
@@ -559,7 +562,7 @@ fn output_change_asset_id() {
 
     assert!(matches!(
         err,
-        CheckError::TransactionOutputCoinAssetIdNotFound(asset_id) if asset_id == c
+        ValidityError::TransactionOutputCoinAssetIdNotFound(asset_id) if asset_id == c
     ));
 }
 
@@ -598,7 +601,7 @@ fn script() {
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(
-        CheckError::TransactionScriptOutputContractCreated { index: 0 },
+        ValidityError::TransactionScriptOutputContractCreated { index: 0 },
         err
     );
 
@@ -614,7 +617,7 @@ fn script() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionScriptLength, err);
+    assert_eq!(ValidityError::TransactionScriptLength, err);
 
     let err = TransactionBuilder::script(
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
@@ -628,7 +631,7 @@ fn script() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionScriptDataLength, err);
+    assert_eq!(ValidityError::TransactionScriptDataLength, err);
 }
 
 #[test]
@@ -679,7 +682,10 @@ fn create() {
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionCreateInputContract { index: 0 });
+    assert_eq!(
+        err,
+        ValidityError::TransactionCreateInputContract { index: 0 }
+    );
 
     let not_empty_data = vec![0x1];
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -704,7 +710,10 @@ fn create() {
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionCreateMessageData { index: 0 });
+    assert_eq!(
+        err,
+        ValidityError::TransactionCreateMessageData { index: 0 }
+    );
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
@@ -724,7 +733,7 @@ fn create() {
 
     assert_eq!(
         err,
-        CheckError::TransactionCreateOutputVariable { index: 0 }
+        ValidityError::TransactionCreateOutputVariable { index: 0 }
     );
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -754,7 +763,7 @@ fn create() {
 
     assert_eq!(
         err,
-        CheckError::TransactionOutputChangeAssetIdDuplicated(AssetId::BASE)
+        ValidityError::TransactionOutputChangeAssetIdDuplicated(AssetId::BASE)
     );
 
     let asset_id: AssetId = rng.gen();
@@ -786,7 +795,7 @@ fn create() {
 
     assert_eq!(
         err,
-        CheckError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
+        ValidityError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
     );
 
     let witness = generate_bytes(rng);
@@ -823,7 +832,7 @@ fn create() {
 
     assert_eq!(
         err,
-        CheckError::TransactionCreateOutputContractCreatedMultiple { index: 1 },
+        ValidityError::TransactionCreateOutputContractCreatedMultiple { index: 1 },
     );
 
     TransactionBuilder::create(
@@ -866,7 +875,7 @@ fn create() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionCreateBytecodeLen);
+    assert_eq!(err, ValidityError::TransactionCreateBytecodeLen);
 
     let err = Transaction::create(
         1,
@@ -888,7 +897,7 @@ fn create() {
     .check_without_signatures(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionCreateBytecodeWitnessIndex);
+    assert_eq!(err, ValidityError::TransactionCreateBytecodeWitnessIndex);
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
@@ -961,7 +970,7 @@ fn create() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(CheckError::TransactionCreateStorageSlotMax, err);
+    assert_eq!(ValidityError::TransactionCreateStorageSlotMax, err);
 }
 
 #[test]
@@ -1060,7 +1069,7 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
         .check(block_height, &params)
         .expect_err("Expected valid transaction");
 
-    assert_eq!(err, CheckError::TransactionSizeLimitExceeded);
+    assert_eq!(err, ValidityError::TransactionSizeLimitExceeded);
 }
 
 #[test]
@@ -1081,7 +1090,7 @@ fn mint() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionMintIncorrectOutputIndex);
+    assert_eq!(err, ValidityError::TransactionMintIncorrectOutputIndex);
 
     let err = TransactionBuilder::mint(
         block_height,
@@ -1099,7 +1108,7 @@ fn mint() {
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionMintNonBaseAsset);
+    assert_eq!(err, ValidityError::TransactionMintNonBaseAsset);
 
     let err = TransactionBuilder::mint(
         block_height,
@@ -1117,7 +1126,7 @@ fn mint() {
     .check(block_height.succ().unwrap(), &test_params())
     .expect_err("Expected erroneous transaction");
 
-    assert_eq!(err, CheckError::TransactionMintIncorrectBlockHeight);
+    assert_eq!(err, ValidityError::TransactionMintIncorrectBlockHeight);
 }
 
 #[test]

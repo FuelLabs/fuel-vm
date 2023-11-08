@@ -26,7 +26,6 @@ use fuel_tx::{
     field,
     output,
     Chargeable,
-    CheckError,
     ConsensusParameters,
     ContractParameters,
     Create,
@@ -41,6 +40,7 @@ use fuel_tx::{
     TransactionRepr,
     TxParameters,
     UniqueIdentifier,
+    ValidityError,
 };
 use fuel_types::{
     AssetId,
@@ -424,13 +424,13 @@ pub trait ExecutableTransaction:
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
-    ) -> Result<(), CheckError>
+    ) -> Result<(), ValidityError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
         let gas_refund = self
             .refund_fee(gas_costs, fee_params, used_gas)
-            .ok_or(CheckError::ArithmeticOverflow)?;
+            .ok_or(ValidityError::ArithmeticOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {
             // If revert, set base asset to initial balance and refund unused gas
@@ -442,7 +442,7 @@ pub trait ExecutableTransaction:
                 [base_asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
-                .ok_or(CheckError::ArithmeticOverflow),
+                .ok_or(ValidityError::ArithmeticOverflow),
 
             // If revert, reset any non-base asset to its initial balance
             Output::Change {
@@ -458,7 +458,7 @@ pub trait ExecutableTransaction:
             } if asset_id == base_asset_id => balances[asset_id]
                 .checked_add(gas_refund)
                 .map(|v| *amount = v)
-                .ok_or(CheckError::ArithmeticOverflow),
+                .ok_or(ValidityError::ArithmeticOverflow),
 
             // Set changes to the remainder provided balances
             Output::Change {

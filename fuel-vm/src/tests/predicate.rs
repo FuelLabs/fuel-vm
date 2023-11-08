@@ -204,7 +204,7 @@ async fn get_verifying_predicate() {
 async fn execute_gas_metered_predicates(
     predicates: Vec<Vec<Instruction>>,
 ) -> Result<u64, ()> {
-    const GAS_LIMIT: Word = 10000;
+    const GAS_LIMIT: Word = 20000;
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1_000;

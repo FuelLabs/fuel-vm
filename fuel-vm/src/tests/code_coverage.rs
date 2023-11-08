@@ -56,7 +56,7 @@ fn code_coverage() {
             Default::default(),
         )
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .finalize_checked(height);
 

@@ -116,7 +116,7 @@ pub struct TransactionBuilder<Tx> {
 impl TransactionBuilder<Script> {
     pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
         let tx = Script {
-            gas_limit: Default::default(),
+            script_gas_limit: Default::default(),
             script,
             script_data,
             policies: Policies::new().with_gas_price(0),
@@ -297,7 +297,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn gas_limit(&mut self, gas_limit: Word) -> &mut Self
+    pub fn script_gas_limit(&mut self, gas_limit: Word) -> &mut Self
     where
         Tx: field::ScriptGasLimit,
     {

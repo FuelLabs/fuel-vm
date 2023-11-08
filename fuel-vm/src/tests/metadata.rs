@@ -195,7 +195,7 @@ fn metadata() {
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(inputs[0].clone())
         .add_input(inputs[1].clone())
@@ -254,7 +254,7 @@ fn get_metadata_chain_id() {
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
@@ -353,7 +353,7 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .with_gas_costs(gas_costs)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),
@@ -889,7 +889,7 @@ fn get_transaction_fields() {
     let tx = builder
         .maturity(maturity)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
         .finalize_checked_basic(height);

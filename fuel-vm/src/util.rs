@@ -171,7 +171,7 @@ pub mod test_helpers {
     pub struct TestBuilder {
         rng: StdRng,
         gas_price: Word,
-        gas_limit: Word,
+        script_gas_limit: Word,
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
         block_height: BlockHeight,
@@ -184,7 +184,7 @@ pub mod test_helpers {
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
-                gas_limit: 100,
+                script_gas_limit: 100,
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
                 block_height: Default::default(),
@@ -204,7 +204,7 @@ pub mod test_helpers {
             let bytecode = script.into_iter().collect();
             self.builder = TransactionBuilder::script(bytecode, script_data);
             self.builder.gas_price(self.gas_price);
-            self.builder.script_gas_limit(self.gas_limit);
+            self.builder.script_gas_limit(self.script_gas_limit);
             self
         }
 
@@ -216,7 +216,7 @@ pub mod test_helpers {
 
         pub fn script_gas_limit(&mut self, limit: Word) -> &mut TestBuilder {
             self.builder.script_gas_limit(limit);
-            self.gas_limit = limit;
+            self.script_gas_limit = limit;
             self
         }
 

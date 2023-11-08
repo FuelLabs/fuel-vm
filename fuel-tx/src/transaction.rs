@@ -120,7 +120,7 @@ impl Transaction {
         let receipts_root = Bytes32::zeroed();
 
         Script {
-            gas_limit,
+            script_gas_limit: gas_limit,
             receipts_root,
             script,
             script_data,

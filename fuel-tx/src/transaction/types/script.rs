@@ -4,13 +4,13 @@ use crate::{
     transaction::{
         consensus_parameters::TxParameters,
         field::{
-            GasLimit,
             Inputs,
             Outputs,
             Policies as PoliciesField,
             ReceiptsRoot,
             Script as ScriptField,
             ScriptData,
+            ScriptGasLimit,
             Witnesses,
         },
         metadata::CommonMetadata,
@@ -218,19 +218,19 @@ impl crate::Cacheable for Script {
 mod field {
     use super::*;
 
-    impl GasLimit for Script {
+    impl ScriptGasLimit for Script {
         #[inline(always)]
-        fn gas_limit(&self) -> &Word {
+        fn script_gas_limit(&self) -> &Word {
             &self.gas_limit
         }
 
         #[inline(always)]
-        fn gas_limit_mut(&mut self) -> &mut Word {
+        fn script_gas_limit_mut(&mut self) -> &mut Word {
             &mut self.gas_limit
         }
 
         #[inline(always)]
-        fn gas_limit_offset_static() -> usize {
+        fn script_gas_limit_offset_static() -> usize {
             WORD_SIZE // `Transaction` enum discriminant
         }
     }
@@ -248,7 +248,7 @@ mod field {
 
         #[inline(always)]
         fn receipts_root_offset_static() -> usize {
-            Self::gas_limit_offset_static() + WORD_SIZE
+            Self::script_gas_limit_offset_static() + WORD_SIZE
                 + WORD_SIZE // Script size
                 + WORD_SIZE // Script data size
                 + WORD_SIZE // Policies size

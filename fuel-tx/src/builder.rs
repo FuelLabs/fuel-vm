@@ -81,12 +81,12 @@ where
         self.witnesses_mut().push(witness);
     }
 
-    /// Set the gas limit
-    fn set_gas_limit(&mut self, limit: Word)
+    /// Set the `Script`'s gas limit
+    fn set_script_gas_limit(&mut self, limit: Word)
     where
-        Self: field::GasLimit,
+        Self: field::ScriptGasLimit,
     {
-        *self.gas_limit_mut() = limit;
+        *self.script_gas_limit_mut() = limit;
     }
 }
 
@@ -299,9 +299,9 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
     pub fn gas_limit(&mut self, gas_limit: Word) -> &mut Self
     where
-        Tx: field::GasLimit,
+        Tx: field::ScriptGasLimit,
     {
-        self.tx.set_gas_limit(gas_limit);
+        self.tx.set_script_gas_limit(gas_limit);
 
         self
     }

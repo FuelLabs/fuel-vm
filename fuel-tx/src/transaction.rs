@@ -591,14 +591,14 @@ pub mod field {
         }
     }
 
-    pub trait GasLimit {
-        fn gas_limit(&self) -> &Word;
-        fn gas_limit_mut(&mut self) -> &mut Word;
-        fn gas_limit_offset(&self) -> usize {
-            Self::gas_limit_offset_static()
+    pub trait ScriptGasLimit {
+        fn script_gas_limit(&self) -> &Word;
+        fn script_gas_limit_mut(&mut self) -> &mut Word;
+        fn script_gas_limit_offset(&self) -> usize {
+            Self::script_gas_limit_offset_static()
         }
 
-        fn gas_limit_offset_static() -> usize;
+        fn script_gas_limit_offset_static() -> usize;
     }
 
     pub trait Maturity {

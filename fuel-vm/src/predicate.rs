@@ -46,17 +46,18 @@ mod tests {
         vec,
         vec::Vec,
     };
+    use core::iter;
     use fuel_asm::op;
-    use fuel_tx::TransactionBuilder;
+    use fuel_tx::{
+        field::ScriptGasLimit,
+        TransactionBuilder,
+    };
     use fuel_types::bytes;
     use rand::{
         rngs::StdRng,
         Rng,
         SeedableRng,
     };
-
-    use core::iter;
-    use fuel_tx::field::GasLimit;
 
     use crate::{
         checked_transaction::CheckPredicateParams,
@@ -148,7 +149,7 @@ mod tests {
                         program: Default::default()
                     },
                     tx.transaction().clone(),
-                    *tx.transaction().gas_limit()
+                    *tx.transaction().script_gas_limit()
                 )
                 .is_ok());
 

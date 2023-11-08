@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#622](https://github.com/FuelLabs/fuel-vm/pull/622): Divide `DependentCost` into "light" and "heavy" operations: Light operations consume `0 < x < 1` gas per unit, while heavy operations consume `x` gas per unit. This distinction provides more precision when calculating dependent costs.
 - [#618](https://github.com/FuelLabs/fuel-vm/pull/618): Transaction fees for `Create` now include the cost of metadata calculations, including: contract root calculation, state root calculation, and contract id calculation.
 - [#613](https://github.com/FuelLabs/fuel-vm/pull/613): Transaction fees now include the cost of signature verification for each input. For signed inputs, the cost of an EC recovery is charged. For predicate inputs, the cost of a BMT root of bytecode is charged. 
 - [#607](https://github.com/FuelLabs/fuel-vm/pull/607): The `Interpreter` expects the third generic argument during type definition that specifies the implementer of the `EcalHandler` trait for `ecal` opcode.

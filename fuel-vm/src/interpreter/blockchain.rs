@@ -106,8 +106,8 @@ where
         let mut gas_cost = self.gas_costs().ldc;
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `load_contract_code`.
-        self.gas_charge(gas_cost.base)?;
-        gas_cost.base = 0;
+        self.gas_charge(gas_cost.base())?;
+        gas_cost.set_base(0);
         let contract_max_size = self.contract_max_size();
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
@@ -262,8 +262,8 @@ where
         let mut gas_cost = self.gas_costs().csiz;
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `code_size`.
-        self.gas_charge(gas_cost.base)?;
-        gas_cost.base = 0;
+        self.gas_charge(gas_cost.base())?;
+        gas_cost.set_base(0);
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();

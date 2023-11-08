@@ -126,6 +126,10 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         self.storage
     }
 
+    pub fn storage(&self) -> &StorageType {
+        &self.storage
+    }
+
     // PRIVATE
 
     fn root_node(&self) -> &Node {
@@ -465,6 +469,8 @@ where
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
+        } else {
+            self.storage.remove(actual_leaf_node.hash())?;
         }
 
         // Merge side nodes
@@ -472,6 +478,10 @@ where
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
+        }
+
+        for node in path_nodes.iter().skip(1 /* leaf */) {
+            self.storage.remove(node.hash())?;
         }
 
         self.set_root_node(current_node);
@@ -922,6 +932,56 @@ mod test {
         let expected_root =
             "7e6643325042cfe0fc76626c043b97062af51c7e9fc56665f12b479034bce326";
         assert_eq!(hex::encode(root), expected_root);
+    }
+
+    #[test]
+    fn test_update_removes_old_entries() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+        let tenth_index = 9u32;
+
+        for i in 0_u32..tenth_index {
+            let key = key(i.to_be_bytes());
+            tree.update(key, b"DATA").unwrap();
+        }
+        let size_before_tenth = tree.storage().len();
+        let tenth_key = key(tenth_index.to_be_bytes());
+
+        // Given
+        tree.update(tenth_key, b"DATA").unwrap();
+        let size_after_tenth = tree.storage().len();
+        assert_ne!(size_after_tenth, size_before_tenth);
+
+        // When
+        tree.update(tenth_key, b"ANOTHER_DATA").unwrap();
+
+        // Then
+        assert_eq!(tree.storage().len(), size_after_tenth);
+    }
+
+    #[test]
+    fn test_delete_removes_path_entries() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+        let tenth_index = 9u32;
+
+        for i in 0_u32..tenth_index {
+            let key = key(i.to_be_bytes());
+            tree.update(key, b"DATA").unwrap();
+        }
+        let size_before_tenth = tree.storage().len();
+        let tenth_key = key(tenth_index.to_be_bytes());
+
+        // Given
+        tree.update(tenth_key, b"DATA").unwrap();
+        let size_after_tenth = tree.storage().len();
+        assert_ne!(size_after_tenth, size_before_tenth);
+
+        // When
+        tree.delete(tenth_key).unwrap();
+
+        // Then
+        assert_eq!(tree.storage().len(), size_before_tenth);
     }
 
     #[test]

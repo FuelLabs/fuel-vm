@@ -36,6 +36,10 @@ where
             map: Default::default(),
         }
     }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
 }
 
 impl<Type> StorageInspect<Type> for StorageMap<Type>

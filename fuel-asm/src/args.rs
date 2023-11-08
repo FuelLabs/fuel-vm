@@ -249,19 +249,19 @@ crate::enum_try_from! {
         WitnessData = 0x401,
 
         /// Set `$rA` to `tx.policies[$rB].policyTypes`
-        PolicyTypes = 0x501,
+        PolicyTypes = 0x500,
 
         /// Set `$rA` to `tx.policies[0x00].gasPrice`
-        PolicyGasPrice = 0x502,
+        PolicyGasPrice = 0x501,
 
         /// Set `$rA` to `tx.policies[count_ones(0b11 & tx.policyTypes) - 1].witnessLimit`
-        PolicyWitnessLimit = 0x504,
+        PolicyWitnessLimit = 0x502,
 
         /// Set `$rA` to `tx.policies[count_ones(0b111 & tx.policyTypes) - 1].maturity`
-        PolicyMaturity = 0x505,
+        PolicyMaturity = 0x503,
 
         /// Set `$rA` to `tx.policies[count_ones(0b1111 & tx.policyTypes) - 1].maxFee`
-        PolicyMaxFee = 0x506,
+        PolicyMaxFee = 0x504,
     },
     Immediate12
 }

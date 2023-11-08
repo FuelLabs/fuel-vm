@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     of some limits to the transaction to protect the user or specify some details regarding execution.
     This change makes the `GasPrice` and `Maturity` fields optional, allowing to save space in the future. 
     Also, this will enable us to support multidimensional prices later.
-    Renamed the `GasLimit` was renamed to `ScriptGasLimit`.
+    `GasLimit` was renamed to `ScriptGasLimit`.
     
     Along with this change, we introduced two new policies:
     - `WitnessLimit` - allows the limitation of the maximum size of witnesses in bytes for the contract. Because of the changes in the gas calculation model(the blockchain also charges the user for the witness data), the user should protect himself from the block producer or third parties blowing up witness data and draining the user's funds.

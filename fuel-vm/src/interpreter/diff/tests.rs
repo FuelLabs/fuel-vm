@@ -126,7 +126,7 @@ fn reset_vm_state_receipts() {
         Default::default(),
         Default::default(),
     );
-    b.receipts.push(receipt);
+    b.receipts.push(receipt).expect("not full");
     assert_ne!(a.receipts, b.receipts);
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     b.reset_vm_state(&diff);

@@ -570,7 +570,7 @@ where
 
             let receipt = Receipt::script_result(status, gas_used);
 
-            self.append_receipt(receipt);
+            self.append_receipt(receipt)?;
 
             if program.is_debug() {
                 self.debugger_set_last_state(program);

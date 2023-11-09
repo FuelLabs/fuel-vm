@@ -115,6 +115,8 @@ enum_from! {
         InvalidInstruction = 0x26,
         /// Memory outside $is..$ssp range is not executable
         MemoryNotExecutable = 0x27,
+        /// Receipt context is full
+        TooManyReceipts = 0x28,
     }
 }
 

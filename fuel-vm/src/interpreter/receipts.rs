@@ -3,12 +3,21 @@ use core::{
     mem,
     ops::Index,
 };
+use fuel_asm::PanicReason;
 
 use fuel_merkle::binary::root_calculator::MerkleRootCalculator as MerkleTree;
 use fuel_tx::Receipt;
 use fuel_types::{
     canonical::Serialize,
     Bytes32,
+};
+
+use crate::{
+    error::SimpleResult,
+    prelude::{
+        Bug,
+        BugVariant,
+    },
 };
 
 /// Receipts and the associated Merkle tree
@@ -19,10 +28,33 @@ pub struct ReceiptsCtx {
 }
 
 impl ReceiptsCtx {
-    /// Add a new receipt, updating the Merkle tree as well
-    pub fn push(&mut self, receipt: Receipt) {
+    /// The maximum number of receipts that can be stored in a single context.
+    /// https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#Receipts
+    pub const MAX_RECEIPTS: usize = u16::MAX as usize;
+
+    /// Add a new receipt, updating the Merkle tree as well.
+    /// Returns a panic if the context is full.
+    pub fn push(&mut self, receipt: Receipt) -> SimpleResult<()> {
+        if self.receipts.len() == Self::MAX_RECEIPTS {
+            return Err(Bug::new(BugVariant::ReceiptsCtxFull).into())
+        }
+
+        // Last two slots can be only used for ending the script,
+        // with a script result optinally preceded by a panic
+        if (self.receipts.len() == Self::MAX_RECEIPTS - 1
+            && !matches!(receipt, Receipt::ScriptResult { .. }))
+            || (self.receipts.len() == Self::MAX_RECEIPTS - 2
+                && !matches!(
+                    receipt,
+                    Receipt::ScriptResult { .. } | Receipt::Panic { .. }
+                ))
+        {
+            return Err(PanicReason::TooManyReceipts.into())
+        }
+
         self.receipts_tree.push(receipt.to_bytes().as_slice());
-        self.receipts.push(receipt)
+        self.receipts.push(receipt);
+        Ok(())
     }
 
     /// Reset the context to an empty state
@@ -83,11 +115,12 @@ impl PartialEq for ReceiptsCtx {
 
 impl Eq for ReceiptsCtx {}
 
+#[cfg(any(test, feature = "test-helpers"))]
 impl From<Vec<Receipt>> for ReceiptsCtx {
     fn from(receipts: Vec<Receipt>) -> Self {
         let mut ctx = Self::default();
         for receipt in receipts {
-            ctx.push(receipt)
+            ctx.push(receipt).expect("Too many receipts");
         }
         ctx
     }
@@ -158,7 +191,7 @@ mod tests {
         let mut ctx = ReceiptsCtx::default();
         let receipts = iter::repeat(create_receipt()).take(5);
         for receipt in receipts.clone() {
-            ctx.push(receipt)
+            ctx.push(receipt).expect("context not full");
         }
 
         let root = ctx.root();

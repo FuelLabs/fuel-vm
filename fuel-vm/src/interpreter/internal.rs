@@ -55,7 +55,7 @@ where
         update_memory_output(&mut self.tx, &mut self.memory, tx_offset, idx)
     }
 
-    pub(crate) fn append_receipt(&mut self, receipt: Receipt) {
+    pub(crate) fn append_receipt(&mut self, receipt: Receipt) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         append_receipt(
             AppendReceipt {
@@ -128,14 +128,14 @@ pub(crate) struct AppendReceipt<'vm> {
     pub memory: &'vm mut [u8; MEM_SIZE],
 }
 
-pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
+pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) -> SimpleResult<()> {
     let AppendReceipt {
         receipts,
         script,
         tx_offset,
         memory,
     } = input;
-    receipts.push(receipt);
+    receipts.push(receipt)?;
 
     if let Some(script) = script {
         let offset = tx_offset + script.receipts_root_offset();
@@ -151,6 +151,8 @@ pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) {
         // guaranteed to fit
         memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
     }
+
+    Ok(())
 }
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {

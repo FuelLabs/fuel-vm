@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Breaking
 
 - [#629](https://github.com/FuelLabs/fuel-vm/pull/629): Charge the user for VM initialization.
+- [#628](https://github.com/FuelLabs/fuel-vm/pull/628): Renamed `transaction::CheckError` to `transaction::ValidityError`.
+  Created a new `checked_transaction::CheckError` that combines `ValidityError`
+  and `PredicateVerificationFailed` errors into one. It allows the return of the
+  `PredicateVerificationFailed` to the end user instead of losing the reason why predicate verification failed.
 - [#623](https://github.com/FuelLabs/fuel-vm/pull/623):
   Added support for transaction policies. The `Script` and `Create`
   transactions received a new field, `policies`. Policies allow the addition

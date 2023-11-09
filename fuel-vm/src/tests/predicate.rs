@@ -21,6 +21,7 @@ use crate::{
 };
 
 use crate::checked_transaction::{
+    CheckError,
     CheckPredicateParams,
     CheckPredicates,
     EstimatePredicates,
@@ -552,18 +553,18 @@ async fn gas_used_by_predicates_more_than_limit() {
             .check_predicates_async::<TokioWithRayon>(&params)
             .await;
 
-        assert_eq!(
+        assert!(matches!(
             tx_with_predicate.unwrap_err(),
-            CheckError::PredicateVerificationFailed
-        );
+            CheckError::PredicateVerificationFailed(_)
+        ));
     }
 
     let tx_with_predicate = builder
         .finalize_checked_basic(Default::default())
         .check_predicates(&params);
 
-    assert_eq!(
+    assert!(matches!(
         tx_with_predicate.unwrap_err(),
-        CheckError::PredicateVerificationFailed
-    );
+        CheckError::PredicateVerificationFailed(_)
+    ));
 }

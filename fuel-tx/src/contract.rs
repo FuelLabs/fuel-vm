@@ -1,7 +1,7 @@
 use crate::{
-    CheckError,
     StorageSlot,
     Transaction,
+    ValidityError,
 };
 
 use derivative::Derivative;
@@ -172,12 +172,12 @@ impl AsMut<[u8]> for Contract {
 }
 
 impl TryFrom<&Transaction> for Contract {
-    type Error = CheckError;
+    type Error = ValidityError;
 
     fn try_from(tx: &Transaction) -> Result<Self, Self::Error> {
         match tx {
             Transaction::Create(create) => TryFrom::try_from(create),
-            _ => Err(CheckError::TransactionScriptOutputContractCreated { index: 0 }),
+            _ => Err(ValidityError::TransactionScriptOutputContractCreated { index: 0 }),
         }
     }
 }

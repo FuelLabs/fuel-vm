@@ -17,7 +17,6 @@ use crate::{
         },
     },
     Chargeable,
-    CheckError,
     ConsensusParameters,
     Contract,
     GasCosts,
@@ -25,6 +24,7 @@ use crate::{
     Output,
     StorageSlot,
     TransactionRepr,
+    ValidityError,
     Witness,
 };
 use derivative::Derivative;
@@ -67,7 +67,7 @@ pub struct CreateMetadata {
 
 impl CreateMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
-    pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, CheckError> {
+    pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, ValidityError> {
         use crate::transaction::metadata::CommonMetadata;
 
         let CommonMetadata {
@@ -195,7 +195,7 @@ impl Chargeable for Create {
 }
 
 impl FormatValidityChecks for Create {
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         use crate::UniqueIdentifier;
 
         let id = self.id(chain_id);
@@ -221,7 +221,7 @@ impl FormatValidityChecks for Create {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         let ConsensusParameters {
             contract_params,
             chain_id,
@@ -235,18 +235,18 @@ impl FormatValidityChecks for Create {
             .witnesses
             .get(self.bytecode_witness_index as usize)
             .map(|w| w.as_ref().len() as Word)
-            .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)?;
+            .ok_or(ValidityError::TransactionCreateBytecodeWitnessIndex)?;
 
         if bytecode_witness_len > contract_params.contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length
         {
-            return Err(CheckError::TransactionCreateBytecodeLen)
+            return Err(ValidityError::TransactionCreateBytecodeLen)
         }
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
         if self.storage_slots.len() as u64 > contract_params.max_storage_slots {
-            return Err(CheckError::TransactionCreateStorageSlotMax)
+            return Err(ValidityError::TransactionCreateStorageSlotMax)
         }
 
         // Verify storage slots are sorted
@@ -256,7 +256,7 @@ impl FormatValidityChecks for Create {
             .windows(2)
             .all(|s| s[0] < s[1])
         {
-            return Err(CheckError::TransactionCreateStorageSlotOrder)
+            return Err(ValidityError::TransactionCreateStorageSlotOrder)
         }
 
         self.inputs
@@ -264,10 +264,10 @@ impl FormatValidityChecks for Create {
             .enumerate()
             .try_for_each(|(index, input)| match input {
                 Input::Contract(_) => {
-                    Err(CheckError::TransactionCreateInputContract { index })
+                    Err(ValidityError::TransactionCreateInputContract { index })
                 }
                 Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
-                    Err(CheckError::TransactionCreateMessageData { index })
+                    Err(ValidityError::TransactionCreateMessageData { index })
                 }
                 _ => Ok(()),
             })?;
@@ -290,15 +290,15 @@ impl FormatValidityChecks for Create {
             .enumerate()
             .try_for_each(|(index, output)| match output {
                 Output::Contract(_) => {
-                    Err(CheckError::TransactionCreateOutputContract { index })
+                    Err(ValidityError::TransactionCreateOutputContract { index })
                 }
 
                 Output::Variable { .. } => {
-                    Err(CheckError::TransactionCreateOutputVariable { index })
+                    Err(ValidityError::TransactionCreateOutputVariable { index })
                 }
 
                 Output::Change { asset_id, .. } if asset_id != base_asset_id => {
-                    Err(CheckError::TransactionCreateOutputChangeNotBaseAsset { index })
+                    Err(ValidityError::TransactionCreateOutputChangeNotBaseAsset { index })
                 }
 
                 Output::ContractCreated {
@@ -308,7 +308,7 @@ impl FormatValidityChecks for Create {
                     || state_root != &state_root_calculated =>
                 {
                     Err(
-                        CheckError::TransactionCreateOutputContractCreatedDoesntMatch {
+                        ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
                             index,
                         },
                     )
@@ -318,7 +318,7 @@ impl FormatValidityChecks for Create {
                 // contract_id == &id && state_root == &storage_root
                 //  maybe move from `fuel-vm` to here
                 Output::ContractCreated { .. } if contract_created => {
-                    Err(CheckError::TransactionCreateOutputContractCreatedMultiple {
+                    Err(ValidityError::TransactionCreateOutputContractCreatedMultiple {
                         index,
                     })
                 }
@@ -341,7 +341,7 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(CreateMetadata::compute(self, chain_id)?);
         Ok(())
@@ -610,7 +610,7 @@ mod field {
 }
 
 impl TryFrom<&Create> for Contract {
-    type Error = CheckError;
+    type Error = ValidityError;
 
     fn try_from(tx: &Create) -> Result<Self, Self::Error> {
         let Create {
@@ -622,7 +622,7 @@ impl TryFrom<&Create> for Contract {
         witnesses
             .get(*bytecode_witness_index as usize)
             .map(|c| c.as_ref().into())
-            .ok_or(CheckError::TransactionCreateBytecodeWitnessIndex)
+            .ok_or(ValidityError::TransactionCreateBytecodeWitnessIndex)
     }
 }
 
@@ -657,7 +657,7 @@ mod tests {
             .check(0.into(), &ConsensusParameters::standard())
             .expect_err("Expected erroneous transaction");
 
-        assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
+        assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);
     }
 
     #[test]
@@ -677,6 +677,6 @@ mod tests {
         .check(0.into(), &ConsensusParameters::standard())
         .expect_err("Expected erroneous transaction");
 
-        assert_eq!(CheckError::TransactionCreateStorageSlotOrder, err);
+        assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);
     }
 }

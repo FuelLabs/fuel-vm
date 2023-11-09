@@ -63,10 +63,12 @@ pub mod create {
         Checked,
         IntoChecked,
     };
-    use crate::checked_transaction::NonRetryableFreeBalances;
+    use crate::checked_transaction::{
+        CheckError,
+        NonRetryableFreeBalances,
+    };
     use fuel_tx::{
         Cacheable,
-        CheckError,
         ConsensusParameters,
         Create,
         FormatValidityChecks,
@@ -130,9 +132,9 @@ pub mod mint {
         Checked,
         IntoChecked,
     };
+    use crate::checked_transaction::CheckError;
     use fuel_tx::{
         Cacheable,
-        CheckError,
         ConsensusParameters,
         FormatValidityChecks,
         Mint,
@@ -167,12 +169,12 @@ pub mod script {
         IntoChecked,
     };
     use crate::checked_transaction::{
+        CheckError,
         NonRetryableFreeBalances,
         RetryableAmount,
     };
     use fuel_tx::{
         Cacheable,
-        CheckError,
         ConsensusParameters,
         FormatValidityChecks,
         Script,

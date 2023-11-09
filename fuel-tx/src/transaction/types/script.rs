@@ -20,13 +20,13 @@ use crate::{
         },
         Chargeable,
     },
-    CheckError,
     ConsensusParameters,
     FeeParameters,
     GasCosts,
     Input,
     Output,
     TransactionRepr,
+    ValidityError,
     Witness,
 };
 use derivative::Derivative;
@@ -153,7 +153,7 @@ impl Chargeable for Script {
 }
 
 impl FormatValidityChecks for Script {
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         use crate::UniqueIdentifier;
 
         let id = self.id(chain_id);
@@ -175,15 +175,15 @@ impl FormatValidityChecks for Script {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         check_common_part(self, block_height, consensus_params)?;
         let script_params = consensus_params.script_params();
         if self.script.len() as u64 > script_params.max_script_length {
-            Err(CheckError::TransactionScriptLength)?;
+            Err(ValidityError::TransactionScriptLength)?;
         }
 
         if self.script_data.len() as u64 > script_params.max_script_data_length {
-            Err(CheckError::TransactionScriptDataLength)?;
+            Err(ValidityError::TransactionScriptDataLength)?;
         }
 
         self.outputs
@@ -191,7 +191,7 @@ impl FormatValidityChecks for Script {
             .enumerate()
             .try_for_each(|(index, output)| match output {
                 Output::ContractCreated { .. } => {
-                    Err(CheckError::TransactionScriptOutputContractCreated { index })
+                    Err(ValidityError::TransactionScriptOutputContractCreated { index })
                 }
                 _ => Ok(()),
             })?;
@@ -205,7 +205,7 @@ impl crate::Cacheable for Script {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ScriptMetadata {
             common: CommonMetadata::compute(self, chain_id),

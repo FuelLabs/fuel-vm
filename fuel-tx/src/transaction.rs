@@ -68,8 +68,8 @@ pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
 pub use validity::{
-    CheckError,
     FormatValidityChecks,
+    ValidityError,
 };
 
 #[cfg(feature = "alloc")]

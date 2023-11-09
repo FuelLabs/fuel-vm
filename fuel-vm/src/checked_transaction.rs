@@ -8,11 +8,11 @@
 #![allow(non_upper_case_globals)]
 
 use fuel_tx::{
-    CheckError,
     Create,
     Mint,
     Script,
     Transaction,
+    ValidityError,
 };
 use fuel_types::{
     BlockHeight,
@@ -170,6 +170,16 @@ impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
     fn borrow(&self) -> &Tx {
         self.transaction()
     }
+}
+
+/// The error can occur when transforming transactions into the `Checked` type.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum CheckError {
+    /// The transaction doesn't pass validity rules.
+    Validity(ValidityError),
+    /// The predicate verification failed.
+    PredicateVerificationFailed(PredicateVerificationFailed),
 }
 
 /// Performs checks for a transaction
@@ -605,6 +615,18 @@ impl IntoChecked for Transaction {
     }
 }
 
+impl From<ValidityError> for CheckError {
+    fn from(value: ValidityError) -> Self {
+        CheckError::Validity(value)
+    }
+}
+
+impl From<PredicateVerificationFailed> for CheckError {
+    fn from(value: PredicateVerificationFailed) -> Self {
+        CheckError::PredicateVerificationFailed(value)
+    }
+}
+
 #[cfg(feature = "random")]
 #[cfg(test)]
 mod tests {
@@ -619,9 +641,9 @@ mod tests {
             WitnessLimit,
             Witnesses,
         },
-        CheckError,
         Script,
         TransactionBuilder,
+        ValidityError,
     };
     use fuel_types::canonical::Serialize;
     use quickcheck::TestResult;
@@ -731,10 +753,10 @@ mod tests {
         // verify available balance was decreased by max fee
         assert!(matches!(
             err,
-            CheckError::InsufficientFeeAmount {
+            CheckError::Validity(ValidityError::InsufficientFeeAmount {
                 expected: _,
                 provided: 0
-            }
+            })
         ));
     }
 
@@ -769,10 +791,10 @@ mod tests {
         // verify available balance was decreased by max fee
         assert!(matches!(
             err,
-            CheckError::InsufficientFeeAmount {
+            CheckError::Validity(ValidityError::InsufficientFeeAmount {
                 expected: _,
                 provided: 0
-            }
+            })
         ));
     }
 
@@ -1319,7 +1341,10 @@ mod tests {
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
-        assert!(matches!(checked, CheckError::InsufficientFeeAmount { .. }));
+        assert!(matches!(
+            checked,
+            CheckError::Validity(ValidityError::InsufficientFeeAmount { .. })
+        ));
     }
 
     #[test]
@@ -1340,7 +1365,10 @@ mod tests {
             .expect_err("overflow expected");
 
         let provided = match err {
-            CheckError::InsufficientFeeAmount { provided, .. } => provided,
+            CheckError::Validity(ValidityError::InsufficientFeeAmount {
+                provided,
+                ..
+            }) => provided,
             _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
@@ -1366,7 +1394,10 @@ mod tests {
             .expect_err("overflow expected");
 
         let provided = match err {
-            CheckError::InsufficientFeeAmount { provided, .. } => provided,
+            CheckError::Validity(ValidityError::InsufficientFeeAmount {
+                provided,
+                ..
+            }) => provided,
             _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
@@ -1388,7 +1419,7 @@ mod tests {
             .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
-        assert_eq!(err, CheckError::ArithmeticOverflow);
+        assert_eq!(err, CheckError::Validity(ValidityError::ArithmeticOverflow));
     }
 
     #[test]
@@ -1406,7 +1437,7 @@ mod tests {
             .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
-        assert_eq!(err, CheckError::ArithmeticOverflow);
+        assert_eq!(err, CheckError::Validity(ValidityError::ArithmeticOverflow));
     }
 
     #[test]
@@ -1446,11 +1477,11 @@ mod tests {
             .expect_err("Expected valid transaction");
 
         assert_eq!(
-            CheckError::InsufficientInputAmount {
+            CheckError::Validity(ValidityError::InsufficientInputAmount {
                 asset: any_asset,
                 expected: input_amount + 1,
                 provided: input_amount
-            },
+            }),
             checked
         );
     }
@@ -1526,7 +1557,7 @@ mod tests {
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
-    ) -> Result<bool, CheckError> {
+    ) -> Result<bool, ValidityError> {
         fn gas_to_fee(gas: u64, price: u64, factor: u64) -> u128 {
             let prices_gas = gas as u128 * price as u128;
             let fee = prices_gas / factor as u128;
@@ -1557,7 +1588,7 @@ mod tests {
             .saturating_add(witness_limit_allowance);
         let max_fee: u64 = gas_to_fee(max_gas, tx.price(), fee_params.gas_price_factor)
             .try_into()
-            .map_err(|_| CheckError::ArithmeticOverflow)?;
+            .map_err(|_| ValidityError::ArithmeticOverflow)?;
 
         let result = max_fee == available_balances.fee.max_fee();
         Ok(result)
@@ -1568,7 +1599,7 @@ mod tests {
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
-    ) -> Result<bool, CheckError>
+    ) -> Result<bool, ValidityError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
@@ -1593,7 +1624,7 @@ mod tests {
         let rounded_fee = fee.saturating_add(fee_remainder);
         let min_fee: u64 = rounded_fee
             .try_into()
-            .map_err(|_| CheckError::ArithmeticOverflow)?;
+            .map_err(|_| ValidityError::ArithmeticOverflow)?;
 
         Ok(min_fee == available_balances.fee.min_fee())
     }

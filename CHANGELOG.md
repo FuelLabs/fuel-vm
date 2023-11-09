@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+#### Breaking
+
+- [#633](https://github.com/FuelLabs/fuel-vm/pull/633): Limit receipt count to `u16::MAX`.
+
 ## [Version 0.41.0]
 
 #### Breaking

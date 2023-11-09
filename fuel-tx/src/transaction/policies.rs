@@ -9,6 +9,7 @@ use fuel_types::{
     BlockHeight,
     Word,
 };
+use std::ops::Deref;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -126,7 +127,7 @@ impl Policies {
 
     /// Sets the `maturity` policy.
     pub fn with_maturity(mut self, maturity: BlockHeight) -> Self {
-        self.set(PolicyType::Maturity, Some(maturity.as_usize() as u64));
+        self.set(PolicyType::Maturity, Some(*maturity.deref() as u64));
         self
     }
 

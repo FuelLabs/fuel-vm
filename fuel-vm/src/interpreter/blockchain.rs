@@ -6,6 +6,7 @@ use super::{
     },
     gas::{
         dependent_gas_charge,
+        gas_charge,
         ProfileGas,
     },
     internal::{
@@ -318,8 +319,18 @@ where
         rb: RegisterId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
-        let (SystemRegisters { fp, pc, .. }, mut w) =
-            split_registers(&mut self.registers);
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let (
+            SystemRegisters {
+                cgas,
+                ggas,
+                is,
+                fp,
+                pc,
+                ..
+            },
+            mut w,
+        ) = split_registers(&mut self.registers);
         let (result, got_result) = w
             .get_mut_two(WriteRegKey::try_from(ra)?, WriteRegKey::try_from(rb)?)
             .ok_or(RuntimeError::Recoverable(
@@ -336,6 +347,12 @@ where
                 storage,
                 memory,
                 context,
+                profiler: &mut self.profiler,
+                new_storage_gas_per_byte,
+                current_contract: self.frames.last().map(|frame| frame.to()).copied(),
+                cgas,
+                ggas,
+                is: is.as_ref(),
                 fp: fp.as_ref(),
                 pc,
             },
@@ -373,8 +390,18 @@ where
         rb: RegisterId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
-        let (SystemRegisters { fp, pc, .. }, mut w) =
-            split_registers(&mut self.registers);
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let (
+            SystemRegisters {
+                cgas,
+                ggas,
+                is,
+                fp,
+                pc,
+                ..
+            },
+            mut w,
+        ) = split_registers(&mut self.registers);
         let exists = &mut w[WriteRegKey::try_from(rb)?];
         let Self {
             ref mut storage,
@@ -387,6 +414,12 @@ where
                 storage,
                 memory,
                 context,
+                profiler: &mut self.profiler,
+                new_storage_gas_per_byte,
+                current_contract: self.frames.last().map(|frame| frame.to()).copied(),
+                cgas,
+                ggas,
+                is: is.as_ref(),
                 fp: fp.as_ref(),
                 pc,
             },
@@ -403,8 +436,14 @@ where
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
+        let new_storage_per_byte = self.gas_costs().new_storage_per_byte;
         let contract_id = self.internal_contract().copied();
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (
+            SystemRegisters {
+                is, cgas, ggas, pc, ..
+            },
+            mut w,
+        ) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateWriteQWord::new(a, c, d)?;
@@ -414,7 +453,20 @@ where
             ..
         } = self;
 
-        state_write_qword(&contract_id?, storage, memory.as_mut(), pc, result, input)
+        state_write_qword(
+            &contract_id?,
+            storage,
+            memory.as_mut(),
+            &mut self.profiler,
+            new_storage_per_byte,
+            self.frames.last().map(|frame| frame.to()).copied(),
+            cgas,
+            ggas,
+            is.as_ref(),
+            pc,
+            result,
+            input,
+        )
     }
 
     pub(crate) fn timestamp(
@@ -846,6 +898,12 @@ pub(crate) struct StateWordCtx<'vm, S> {
     pub storage: &'vm mut S,
     pub memory: &'vm [u8; MEM_SIZE],
     pub context: &'vm Context,
+    pub profiler: &'vm mut Profiler,
+    pub new_storage_gas_per_byte: Word,
+    pub current_contract: Option<ContractId>,
+    pub cgas: RegMut<'vm, CGAS>,
+    pub ggas: RegMut<'vm, GGAS>,
+    pub is: Reg<'vm, IS>,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
 }
@@ -857,6 +915,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
         context,
         fp,
         pc,
+        ..
     }: StateWordCtx<S>,
     result: &mut Word,
     got_result: &mut Word,
@@ -890,6 +949,12 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         storage,
         memory,
         context,
+        profiler,
+        new_storage_gas_per_byte,
+        current_contract,
+        cgas,
+        ggas,
+        is,
         fp,
         pc,
     }: StateWordCtx<S>,
@@ -914,6 +979,22 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         .map_err(RuntimeError::Storage)?;
 
     *exists = result.is_some() as Word;
+
+    if result.is_none() {
+        // New data was written, charge gas for it
+        let profiler = ProfileGas {
+            pc: pc.as_ref(),
+            is,
+            current_contract,
+            profiler,
+        };
+        gas_charge(
+            cgas,
+            ggas,
+            profiler,
+            (Bytes32::LEN as u64) * new_storage_gas_per_byte,
+        )?;
+    }
 
     Ok(inc_pc(pc)?)
 }
@@ -1124,10 +1205,17 @@ impl StateWriteQWord {
     }
 }
 
-fn state_write_qword<S: InterpreterStorage>(
+#[allow(clippy::too_many_arguments)]
+fn state_write_qword<'vm, S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
     memory: &[u8; MEM_SIZE],
+    profiler: &'vm mut Profiler,
+    new_storage_gas_per_byte: Word,
+    current_contract: Option<ContractId>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
+    is: Reg<'vm, IS>,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,
@@ -1140,11 +1228,26 @@ fn state_write_qword<S: InterpreterStorage>(
         .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
         .collect();
 
-    let any_none = storage
+    let unset_count = storage
         .merkle_contract_state_insert_range(contract_id, destination_key, &values)
-        .map_err(RuntimeError::Storage)?
-        .is_some();
-    *result_register = any_none as Word;
+        .map_err(RuntimeError::Storage)?;
+    *result_register = (unset_count != 0) as Word;
+
+    if unset_count > 0 {
+        // New data was written, charge gas for it
+        let profiler = ProfileGas {
+            pc: pc.as_ref(),
+            is,
+            current_contract,
+            profiler,
+        };
+        gas_charge(
+            cgas,
+            ggas,
+            profiler,
+            (unset_count as u64) * (Bytes32::LEN as u64) * new_storage_gas_per_byte,
+        )?;
+    }
 
     inc_pc(pc)?;
 

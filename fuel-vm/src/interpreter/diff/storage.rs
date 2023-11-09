@@ -427,7 +427,7 @@ where
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<usize, Self::DataError> {
         self.0
             .merkle_contract_state_insert_range(contract, start_key, values)
     }

@@ -195,13 +195,13 @@ pub trait InterpreterStorage:
     ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
-    /// Returns None if any of the keys in the range were previously unset.
+    /// Returns the number of keys that were previously unset but are now set.
     fn merkle_contract_state_insert_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError>;
+    ) -> Result<usize, Self::DataError>;
 
     /// Remove a range of key-values from contract storage.
     /// Returns None if any of the keys in the range were already unset.
@@ -302,7 +302,7 @@ where
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError> {
+    ) -> Result<usize, Self::DataError> {
         <S as InterpreterStorage>::merkle_contract_state_insert_range(
             self.deref_mut(),
             contract,

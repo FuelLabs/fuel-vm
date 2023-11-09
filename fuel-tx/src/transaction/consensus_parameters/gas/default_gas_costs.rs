@@ -169,5 +169,6 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 412,
             units_per_gas: 1,
         },
+        new_storage_per_byte: 1,
     }
 }

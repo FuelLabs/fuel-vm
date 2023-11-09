@@ -1,35 +1,5 @@
 use crate::{
-    output,
-    ConsensusParameters,
-    Input,
-    Output,
-    Witness,
-};
-use core::hash::Hash;
-
-use fuel_types::{
-    canonical,
-    AssetId,
-    BlockHeight,
-};
-
-use crate::Transaction;
-
-use fuel_types::{
-    Address,
-    Bytes32,
-    ChainId,
-};
-
-use hashbrown::HashMap;
-use itertools::Itertools;
-
-mod error;
-
-#[cfg(test)]
-mod tests;
-
-use crate::{
+    field::Maturity,
     input::{
         coin::{
             CoinPredicate,
@@ -42,6 +12,8 @@ use crate::{
             MessageDataSigned,
         },
     },
+    output,
+    policies::PolicyType,
     transaction::{
         consensus_parameters::{
             PredicateParameters,
@@ -50,7 +22,30 @@ use crate::{
         field,
         Executable,
     },
+    Chargeable,
+    ConsensusParameters,
+    Input,
+    Output,
+    Transaction,
+    Witness,
 };
+use core::hash::Hash;
+use fuel_types::{
+    canonical,
+    canonical::Serialize,
+    Address,
+    BlockHeight,
+    Bytes32,
+    ChainId,
+};
+use hashbrown::HashMap;
+use itertools::Itertools;
+
+mod error;
+
+#[cfg(test)]
+mod tests;
+
 pub use error::CheckError;
 
 impl Input {
@@ -317,23 +312,49 @@ where
 pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
-    tx_params: &TxParameters,
-    predicate_params: &PredicateParameters,
-    base_asset_id: &AssetId,
+    consensus_params: &ConsensusParameters,
 ) -> Result<(), CheckError>
 where
-    T: field::GasPrice
-        + field::GasLimit
-        + field::Maturity
-        + field::Inputs
-        + field::Outputs
-        + field::Witnesses,
+    T: canonical::Serialize + Chargeable + field::Outputs,
 {
-    if tx.gas_limit() > &tx_params.max_gas_per_tx {
-        Err(CheckError::TransactionGasLimit)?
+    let ConsensusParameters {
+        tx_params,
+        predicate_params,
+        base_asset_id,
+        gas_costs,
+        fee_params,
+        ..
+    } = consensus_params;
+
+    check_size(tx, tx_params)?;
+
+    if !tx.policies().is_valid() {
+        Err(CheckError::TransactionPoliciesAreInvalid)?
     }
 
-    if tx.maturity() > &block_height {
+    if tx.policies().get(PolicyType::GasPrice).is_none() {
+        Err(CheckError::TransactionNoGasPricePolicy)?
+    }
+
+    if let Some(witness_limit) = tx.policies().get(PolicyType::WitnessLimit) {
+        let witness_size = tx.witnesses().size_dynamic();
+        if witness_size as u64 > witness_limit {
+            Err(CheckError::TransactionWitnessLimitExceeded)?
+        }
+    }
+
+    let max_gas = tx.max_gas(gas_costs, fee_params);
+    if max_gas > tx_params.max_gas_per_tx {
+        Err(CheckError::TransactionMaxGasExceeded)?
+    }
+
+    if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
+        if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
+            Err(CheckError::TransactionMaxFeeLimitExceeded)?
+        }
+    }
+
+    if tx.maturity() > block_height {
         Err(CheckError::TransactionMaturity)?;
     }
 

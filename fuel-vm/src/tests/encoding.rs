@@ -14,6 +14,7 @@ use rand::{
 };
 
 use core::fmt;
+use fuel_tx::policies::Policies;
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -212,71 +213,112 @@ fn transaction() {
 
     assert_encoding_correct(&[
         Transaction::script(
-            Word::MAX >> 1,
             Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             vec![0xfa],
             vec![0xfb, 0xfc],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
-            Word::MAX >> 1,
             Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             vec![],
             vec![0xfb, 0xfc],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
-            Word::MAX >> 1,
             Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             vec![0xfa],
             vec![],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
-            Word::MAX >> 1,
             Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             vec![],
             vec![],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
-            Word::MAX >> 1,
             Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             vec![],
             vec![],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
-            Word::MAX >> 1,
             Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             vec![],
             vec![],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![],
             vec![],
             vec![w.clone()],
         ),
         Transaction::script(
-            Word::MAX >> 1,
             Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             vec![],
             vec![],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![],
+        ),
+        Transaction::script(
+            Word::MAX >> 2,
+            vec![],
+            vec![],
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![],
+        ),
+        Transaction::script(
+            Word::MAX >> 2,
+            vec![],
+            vec![],
+            Policies::new(),
             vec![],
             vec![],
             vec![],
@@ -284,10 +326,12 @@ fn transaction() {
     ]);
     assert_encoding_correct(&[
         Transaction::create(
-            Word::MAX >> 1,
-            Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             0xba,
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             [0xdd; 32].into(),
             vec![],
             vec![i],
@@ -295,10 +339,12 @@ fn transaction() {
             vec![w.clone()],
         ),
         Transaction::create(
-            Word::MAX >> 1,
-            Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             0xba,
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             [0xdd; 32].into(),
             vec![],
             vec![],
@@ -306,10 +352,12 @@ fn transaction() {
             vec![w.clone()],
         ),
         Transaction::create(
-            Word::MAX >> 1,
-            Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             0xba,
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             [0xdd; 32].into(),
             vec![],
             vec![],
@@ -317,10 +365,32 @@ fn transaction() {
             vec![w],
         ),
         Transaction::create(
-            Word::MAX >> 1,
-            Word::MAX >> 2,
-            (u32::MAX >> 3).into(),
             0xba,
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            [0xdd; 32].into(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        ),
+        Transaction::create(
+            0xba,
+            Policies::new()
+                .with_gas_price(Word::MAX >> 1)
+                .with_max_fee(Word::MAX >> 5),
+            [0xdd; 32].into(),
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        ),
+        Transaction::create(
+            0xba,
+            Policies::new(),
             [0xdd; 32].into(),
             vec![],
             vec![],

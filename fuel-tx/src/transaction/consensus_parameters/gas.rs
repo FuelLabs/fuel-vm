@@ -593,7 +593,7 @@ impl GasCostsValues {
 }
 
 impl DependentCost {
-    /// Create costs that are all set to zero.
+    /// Create costs that make operations free.
     pub fn free() -> Self {
         Self::HeavyOperation {
             base: 0,
@@ -601,7 +601,7 @@ impl DependentCost {
         }
     }
 
-    /// Create costs that are all set to one.
+    /// Create costs that make operations cost `1`.
     pub fn unit() -> Self {
         Self::HeavyOperation {
             base: 1,

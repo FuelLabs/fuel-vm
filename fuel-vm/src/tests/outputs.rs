@@ -20,6 +20,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
+    policies::Policies,
     ConsensusParameters,
     Witness,
 };
@@ -136,10 +137,8 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let context = context.base_asset_id(base_asset_id);
     let bytecode_witness = 0;
     let mut create = Transaction::create(
-        gas_price,
-        Default::default(),
-        Default::default(),
         bytecode_witness,
+        Policies::new().with_gas_price(gas_price),
         salt,
         vec![],
         vec![],
@@ -225,7 +224,7 @@ fn change_is_reduced_by_external_transfer() {
     let change = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .coin_input(asset_id, input_amount)
         .contract_input(contract_id)
         .change_output(asset_id)
@@ -282,7 +281,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let change = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .coin_input(asset_id, input_amount)
         .contract_input(contract_id)
         .change_output(asset_id)
@@ -333,7 +332,7 @@ fn zero_amount_transfer_reverts() {
     let result = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .coin_input(asset_id, 0)
         .contract_input(contract_id)
         .change_output(asset_id)
@@ -388,7 +387,7 @@ fn zero_amount_transfer_out_reverts() {
     let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
@@ -449,7 +448,7 @@ fn variable_output_set_by_external_transfer_out() {
     let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
@@ -524,7 +523,7 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
     let result = TestBuilder::new(2322u64)
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .coin_input(asset_id, external_balance)
         .variable_output(asset_id)
         .change_output(asset_id)
@@ -614,7 +613,7 @@ fn variable_output_set_by_internal_contract_transfer_out() {
     let result = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .contract_input(contract_id)
         .variable_output(asset_id)
@@ -694,7 +693,7 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
     let result = test_context
         .start_script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .contract_input(contract_id)
         .variable_output(asset_id)

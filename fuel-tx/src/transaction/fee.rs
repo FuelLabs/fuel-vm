@@ -1,5 +1,9 @@
 use crate::{
     field,
+    field::{
+        GasPrice,
+        WitnessLimit,
+    },
     input::{
         coin::{
             CoinPredicate,
@@ -17,6 +21,7 @@ use crate::{
     Input,
 };
 use fuel_asm::Word;
+use fuel_types::canonical::Serialize;
 use hashbrown::HashSet;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -78,60 +83,6 @@ impl TransactionFee {
         balance.checked_sub(fee)
     }
 
-    /// Attempt to create a transaction fee from parameters and value arguments
-    ///
-    /// Will return `None` if arithmetic overflow occurs or `max_fee` less than `min_fee`.
-    pub fn checked_from_values(
-        params: &FeeParameters,
-        metered_bytes: Word,
-        gas_used_by_signature_checks: Word,
-        gas_used_by_metadata: Word,
-        gas_used_by_predicates: Word,
-        gas_limit: Word,
-        gas_price: Word,
-    ) -> Option<Self> {
-        let factor = params.gas_price_factor as u128;
-
-        let bytes_gas = params.gas_per_byte.checked_mul(metered_bytes)?;
-        let min_gas = bytes_gas
-            .checked_add(gas_used_by_signature_checks)?
-            .checked_add(gas_used_by_metadata)?
-            .checked_add(gas_used_by_predicates)?;
-        let max_gas = min_gas.checked_add(gas_limit)?;
-
-        let max_gas_to_pay = max_gas
-            .checked_mul(gas_price)
-            .and_then(|total| (total as u128).div_ceil(factor).try_into().ok());
-
-        let min_gas_to_pay = min_gas
-            .checked_mul(gas_price)
-            .and_then(|bytes| (bytes as u128).div_ceil(factor).try_into().ok());
-
-        min_gas_to_pay
-            .zip(max_gas_to_pay)
-            .map(|(min_gas_to_pay, max_gas_to_pay)| {
-                Self::new(min_gas_to_pay, max_gas_to_pay, min_gas, max_gas)
-            })
-    }
-
-    /// Attempt to calculate a gas as asset value, using the price factor defined in the
-    /// consensus parameters.
-    ///
-    /// Will return `None` if overflow occurs
-    pub fn gas_refund_value(
-        fee_params: &FeeParameters,
-        gas: Word,
-        price: Word,
-    ) -> Option<Word> {
-        let gas = gas as u128;
-        let price = price as u128;
-        let factor = fee_params.gas_price_factor as u128;
-
-        gas.checked_mul(price)
-            .map(|g| num_integer::div_floor(g, factor))
-            .and_then(|g| g.try_into().ok())
-    }
-
     /// Attempt to create a transaction fee from parameters and transaction internals
     ///
     /// Will return `None` if arithmetic overflow occurs.
@@ -141,57 +92,108 @@ impl TransactionFee {
         tx: &T,
     ) -> Option<Self>
     where
-        T: Chargeable + field::Inputs,
+        T: Chargeable,
     {
-        let metered_bytes = tx.metered_bytes_size() as Word;
-        let gas_used_by_metadata = tx.gas_used_by_metadata(gas_costs) as Word;
-        let gas_used_by_signature_checks = tx.gas_used_by_signature_checks(gas_costs);
-        let gas_used_by_predicates = tx.gas_used_by_predicates();
-        let gas_limit = tx.limit();
-        let gas_price = tx.price();
+        let min_gas = tx.min_gas(gas_costs, params);
+        let max_gas = tx.max_gas(gas_costs, params);
+        let min_fee = tx.min_fee(gas_costs, params).try_into().ok()?;
+        let max_fee = tx.max_fee(gas_costs, params).try_into().ok()?;
 
-        Self::checked_from_values(
-            params,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
+        if min_fee > max_fee {
+            return None
+        }
+
+        Some(Self::new(min_fee, max_fee, min_gas, max_gas))
     }
 }
 
-/// Means that the blockchain charges fee for the transaction.
-pub trait Chargeable {
-    /// Returns the gas price.
-    fn price(&self) -> Word;
+fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
+    let total_price = (gas as u128)
+        .checked_mul(gas_price as u128)
+        .expect("Impossible to overflow because multiplication of two `u64` <= `u128`");
+    total_price.div_ceil(factor as u128)
+}
 
-    /// Returns the gas limit.
-    fn limit(&self) -> Word;
+/// Means that the blockchain charges fee for the transaction.
+pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
+    /// Returns the gas price.
+    fn price(&self) -> Word {
+        self.gas_price()
+    }
+
+    /// Returns the minimum gas required to start transaction execution.
+    fn min_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
+        let bytes_gas = self.metered_bytes_size() as u64 * fee.gas_per_byte;
+        // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
+        // validity. In the production, the value always will be lower than
+        // `u64::MAX`.
+        self.gas_used_by_inputs(gas_costs)
+            .saturating_add(self.gas_used_by_metadata(gas_costs))
+            .saturating_add(bytes_gas)
+    }
+
+    /// Returns the maximum possible gas after the end of transaction execution.
+    ///
+    /// The function guarantees that the value is not less than [Self::min_gas].
+    fn max_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
+        let remaining_allowed_witness_gas = self
+            .witness_limit()
+            .saturating_sub(self.witnesses().size_dynamic() as u64)
+            .saturating_mul(fee.gas_per_byte);
+
+        self.min_gas(gas_costs, fee)
+            .saturating_add(remaining_allowed_witness_gas)
+    }
+
+    /// Returns the minimum fee required to start transaction execution.
+    fn min_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
+        gas_to_fee(
+            self.min_gas(gas_costs, fee),
+            self.price(),
+            fee.gas_price_factor,
+        )
+    }
+
+    /// Returns the maximum possible fee after the end of transaction execution.
+    ///
+    /// The function guarantees that the value is not less than [Self::min_fee].
+    fn max_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
+        gas_to_fee(
+            self.max_gas(gas_costs, fee),
+            self.price(),
+            fee.gas_price_factor,
+        )
+    }
+
+    /// Returns the fee amount that can be refunded back based on the `used_gas` and
+    /// current state of the transaction.
+    ///
+    /// Return `None` if overflow occurs.
+    fn refund_fee(
+        &self,
+        gas_costs: &GasCosts,
+        fee: &FeeParameters,
+        used_gas: Word,
+    ) -> Option<Word> {
+        // We've already charged the user for witnesses as part of the minimal gas and all
+        // execution required to validate transaction validity rules.
+        let min_gas = self.min_gas(gas_costs, fee);
+
+        let total_used_gas = min_gas.saturating_add(used_gas);
+        let used_fee = gas_to_fee(total_used_gas, self.price(), fee.gas_price_factor);
+
+        let refund = self.max_fee(gas_costs, fee).saturating_sub(used_fee);
+        // It is okay to saturate everywhere above because it only can decrease the value
+        // of `refund`. But here, because we need to return the amount we
+        // want to refund, we need to handle the overflow caused by the price.
+        refund.try_into().ok()
+    }
 
     /// Used for accounting purposes when charging byte based fees.
     fn metered_bytes_size(&self) -> usize;
 
-    /// Used for accounting purposes when charging for predicates.
-    fn gas_used_by_predicates(&self) -> Word
-    where
-        Self: field::Inputs,
-    {
-        let mut cumulative_predicate_gas: Word = 0;
-        for input in self.inputs() {
-            if let Some(predicate_gas_used) = input.predicate_gas_used() {
-                cumulative_predicate_gas =
-                    cumulative_predicate_gas.saturating_add(predicate_gas_used);
-            }
-        }
-        cumulative_predicate_gas
-    }
-
-    fn gas_used_by_signature_checks(&self, gas_costs: &GasCosts) -> Word
-    where
-        Self: field::Inputs,
-    {
+    /// Returns the gas used by the inputs.
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> Word {
         let mut witness_cache: HashSet<u8> = HashSet::new();
         self.inputs()
             .iter()
@@ -218,13 +220,24 @@ pub trait Chargeable {
                 | Input::MessageCoinSigned(_)
                 | Input::MessageDataSigned(_) => gas_costs.ecr1,
                 // Charge the cost of the contract root for predicate inputs
-                Input::CoinPredicate(CoinPredicate { predicate, .. })
+                Input::CoinPredicate(CoinPredicate {
+                    predicate,
+                    predicate_gas_used,
+                    ..
+                })
                 | Input::MessageCoinPredicate(MessageCoinPredicate {
-                    predicate, ..
+                    predicate,
+                    predicate_gas_used,
+                    ..
                 })
                 | Input::MessageDataPredicate(MessageDataPredicate {
-                    predicate, ..
-                }) => gas_costs.contract_root.resolve(predicate.len() as u64),
+                    predicate,
+                    predicate_gas_used,
+                    ..
+                }) => gas_costs
+                    .contract_root
+                    .resolve(predicate.len() as u64)
+                    .saturating_add(*predicate_gas_used),
                 // Charge nothing for all other inputs
                 _ => 0,
             })
@@ -233,222 +246,4 @@ pub trait Chargeable {
 
     /// Used for accounting purposes when charging for metadata creation.
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word;
-}
-
-#[cfg(test)]
-#[allow(clippy::cast_possible_truncation)]
-mod tests {
-    use crate::{
-        FeeParameters,
-        TransactionFee,
-        Word,
-    };
-
-    const PARAMS: FeeParameters = FeeParameters::DEFAULT
-        .with_gas_per_byte(2)
-        .with_gas_price_factor(3);
-
-    fn gas_to_fee(params: &FeeParameters, gas: u64, gas_price: Word) -> f64 {
-        let fee = gas * gas_price;
-        fee as f64 / params.gas_price_factor as f64
-    }
-
-    #[test]
-    fn base_fee_is_calculated_correctly() {
-        let metered_bytes = 5;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_metadata = 10;
-        let gas_used_by_predicates = 7;
-        let gas_limit = 7;
-        let gas_price = 11;
-
-        let params = PARAMS;
-        let fee = TransactionFee::checked_from_values(
-            &params,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .expect("failed to calculate fee");
-
-        let expected_max_gas = params.gas_per_byte * metered_bytes
-            + gas_used_by_signature_checks
-            + gas_used_by_metadata
-            + gas_used_by_predicates
-            + gas_limit;
-        let expected_max_fee =
-            gas_to_fee(&params, expected_max_gas, gas_price).ceil() as Word;
-        let expected_min_gas = params.gas_per_byte * metered_bytes
-            + gas_used_by_signature_checks
-            + gas_used_by_metadata
-            + gas_used_by_predicates;
-        let expected_min_fee =
-            gas_to_fee(&params, expected_min_gas, gas_price).ceil() as Word;
-
-        assert_eq!(expected_max_fee, fee.max_fee);
-        assert_eq!(expected_min_fee, fee.min_fee);
-    }
-
-    #[test]
-    fn base_fee_ceils() {
-        let metered_bytes = 5;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_metadata = 10;
-        let gas_used_by_predicates = 7;
-        let gas_limit = 7;
-        let gas_price = 11;
-        let params = PARAMS.with_gas_price_factor(10);
-        let fee = TransactionFee::checked_from_values(
-            &params,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .expect("failed to calculate fee");
-
-        let expected_max_gas = params.gas_per_byte * metered_bytes
-            + gas_used_by_signature_checks
-            + gas_used_by_metadata
-            + gas_used_by_predicates
-            + gas_limit;
-        let expected_max_fee = gas_to_fee(&params, expected_max_gas, gas_price);
-        let truncated = expected_max_fee as Word;
-        let expected_max_fee = expected_max_fee.ceil() as Word;
-        assert_ne!(truncated, fee.max_fee);
-        assert_eq!(expected_max_fee, fee.max_fee);
-
-        let expected_min_gas = params.gas_per_byte * metered_bytes
-            + gas_used_by_signature_checks
-            + gas_used_by_metadata
-            + gas_used_by_predicates;
-        let expected_min_fee = gas_to_fee(&params, expected_min_gas, gas_price);
-        let truncated = expected_min_fee as Word;
-        let expected_min_fee = expected_min_fee.ceil() as Word;
-        assert_ne!(truncated, fee.min_fee);
-        assert_eq!(expected_min_fee, fee.min_fee);
-    }
-
-    #[test]
-    fn base_fee_zeroes() {
-        let metered_bytes = 5;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_metadata = 10;
-        let gas_used_by_predicates = 7;
-        let gas_limit = 7;
-        let gas_price = 0;
-
-        let fee = TransactionFee::checked_from_values(
-            &PARAMS,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .expect("failed to calculate fee");
-
-        let expected = 0u64;
-
-        assert_eq!(expected, fee.max_fee);
-        assert_eq!(expected, fee.min_fee);
-    }
-
-    #[test]
-    fn base_fee_wont_overflow_on_bytes() {
-        let metered_bytes = Word::MAX;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_metadata = 10;
-        let gas_used_by_predicates = 7;
-        let gas_limit = 7;
-        let gas_price = 11;
-
-        let overflow = TransactionFee::checked_from_values(
-            &PARAMS,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .is_none();
-
-        assert!(overflow);
-    }
-
-    #[test]
-    fn base_fee_wont_overflow_on_gas_used_by_predicates() {
-        let metered_bytes = 5;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_metadata = 10;
-        let gas_used_by_predicates = Word::MAX;
-        let gas_limit = 7;
-        let gas_price = 11;
-
-        let overflow = TransactionFee::checked_from_values(
-            &PARAMS,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .is_none();
-
-        assert!(overflow);
-    }
-
-    #[test]
-    fn base_fee_wont_overflow_on_limit() {
-        let metered_bytes = 5;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_metadata = 10;
-        let gas_used_by_predicates = 7;
-        let gas_limit = Word::MAX;
-        let gas_price = 11;
-
-        let overflow = TransactionFee::checked_from_values(
-            &PARAMS,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .is_none();
-
-        assert!(overflow);
-    }
-
-    #[test]
-    fn base_fee_wont_overflow_on_price() {
-        let metered_bytes = 5;
-        let gas_used_by_signature_checks = 12;
-        let gas_used_by_metadata = 10;
-        let gas_used_by_predicates = 7;
-        let gas_limit = 7;
-        let gas_price = Word::MAX;
-
-        let overflow = TransactionFee::checked_from_values(
-            &PARAMS,
-            metered_bytes,
-            gas_used_by_signature_checks,
-            gas_used_by_metadata,
-            gas_used_by_predicates,
-            gas_limit,
-            gas_price,
-        )
-        .is_none();
-
-        assert!(overflow);
-    }
 }

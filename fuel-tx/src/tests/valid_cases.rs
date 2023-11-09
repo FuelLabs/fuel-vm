@@ -1,4 +1,4 @@
-use fuel_tx::{
+use crate::{
     ConsensusParameters,
     ContractParameters,
     FeeParameters,

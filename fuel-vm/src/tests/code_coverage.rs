@@ -50,13 +50,13 @@ fn code_coverage() {
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),
-            1,
+            2,
             Default::default(),
             rng.gen(),
             Default::default(),
         )
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .finalize_checked(height);
 

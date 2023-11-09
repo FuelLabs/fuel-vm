@@ -73,6 +73,7 @@ pub use transaction::{
     output,
     output::Output,
     output::OutputRepr,
+    policies,
     Cacheable,
     Chargeable,
     CheckError,

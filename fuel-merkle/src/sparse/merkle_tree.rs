@@ -425,6 +425,10 @@ where
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
 
+        if requested_leaf_node == actual_leaf_node {
+            return Ok(())
+        }
+
         // Build the tree upwards starting with the requested leaf node.
         let mut current_node = requested_leaf_node.clone();
 
@@ -954,6 +958,31 @@ mod test {
 
         // When
         tree.update(tenth_key, b"ANOTHER_DATA").unwrap();
+
+        // Then
+        assert_eq!(tree.storage().len(), size_after_tenth);
+    }
+
+    #[test]
+    fn test_update_with_the_same_value_does_not_remove_old_entries() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+        let tenth_index = 9u32;
+
+        for i in 0_u32..tenth_index {
+            let key = key(i.to_be_bytes());
+            tree.update(key, b"DATA").unwrap();
+        }
+        let size_before_tenth = tree.storage().len();
+        let tenth_key = key(tenth_index.to_be_bytes());
+
+        // Given
+        tree.update(tenth_key, b"DATA").unwrap();
+        let size_after_tenth = tree.storage().len();
+        assert_ne!(size_after_tenth, size_before_tenth);
+
+        // When
+        tree.update(tenth_key, b"DATA").unwrap();
 
         // Then
         assert_eq!(tree.storage().len(), size_after_tenth);

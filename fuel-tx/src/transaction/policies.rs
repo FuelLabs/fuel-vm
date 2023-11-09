@@ -1,3 +1,4 @@
+use core::ops::Deref;
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -9,7 +10,6 @@ use fuel_types::{
     BlockHeight,
     Word,
 };
-use std::ops::Deref;
 
 #[cfg(feature = "random")]
 use rand::{

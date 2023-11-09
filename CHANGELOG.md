@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- [#627](https://github.com/FuelLabs/fuel-vm/pull/627): Added removal of SMT nodes along the path during `update` operation.
+- [#627](https://github.com/FuelLabs/fuel-vm/pull/627): Added removal of obsolete SMT nodes along the path during `update` and `delete` operations.
 
 ## [Version 0.40.0]
 

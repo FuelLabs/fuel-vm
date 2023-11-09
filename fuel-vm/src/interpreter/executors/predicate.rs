@@ -45,7 +45,7 @@ where
                     if r == 1 {
                         return Ok(ProgramState::Return(r))
                     } else {
-                        return Err(PanicReason::ContractInstructionNotAllowed.into())
+                        return Err(PanicReason::PredicateReturnedNonOne.into())
                     }
                 }
 

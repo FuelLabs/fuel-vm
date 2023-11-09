@@ -227,8 +227,9 @@ async fn execute_gas_metered_predicates(
         );
     }
 
-    for predicate in predicates {
+    for predicate in predicates.iter() {
         let predicate: Vec<u8> = predicate
+            .clone()
             .into_iter()
             .flat_map(|op| u32::from(op).to_be_bytes())
             .collect();
@@ -241,7 +242,7 @@ async fn execute_gas_metered_predicates(
             AssetId::default(),
             rng.gen(),
             Default::default(),
-            GAS_LIMIT,
+            0,
             predicate,
             vec![],
         );
@@ -252,7 +253,6 @@ async fn execute_gas_metered_predicates(
     let mut transaction = builder.finalize();
 
     let params = CheckPredicateParams {
-        max_gas_per_tx: GAS_LIMIT,
         max_gas_per_predicate: GAS_LIMIT,
         ..Default::default()
     };

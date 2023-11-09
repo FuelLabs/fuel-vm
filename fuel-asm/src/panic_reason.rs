@@ -115,6 +115,10 @@ enum_from! {
         InvalidInstruction = 0x26,
         /// Memory outside $is..$ssp range is not executable
         MemoryNotExecutable = 0x27,
+        /// The policy is not set.
+        PolicyIsNotSet = 0x28,
+        /// The policy is not found across policies.
+        PolicyNotFound = 0x29,
     }
 }
 

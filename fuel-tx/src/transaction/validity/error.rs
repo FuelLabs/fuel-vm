@@ -88,7 +88,11 @@ pub enum CheckError {
     /// The transaction exceeded the size limit.
     TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded
-    TransactionGasLimit,
+    TransactionMaxGasExceeded,
+    TransactionMaxFeeLimitExceeded,
+    TransactionWitnessLimitExceeded,
+    TransactionPoliciesAreInvalid,
+    TransactionNoGasPricePolicy,
     TransactionMaturity,
     TransactionInputsMax,
     TransactionOutputsMax,

@@ -1,17 +1,39 @@
 #![allow(non_snake_case)]
 
+use crate::{
+    consts::*,
+    interpreter::{
+        InterpreterParams,
+        NotSupportedEcal,
+    },
+    prelude::*,
+    script_with_data_offset,
+    util::test_helpers::check_expected_reason_for_instructions,
+};
 use alloc::{
     vec,
     vec::Vec,
 };
-
-use fuel_asm::RegId;
+use fuel_asm::{
+    op,
+    Instruction,
+    PanicReason::{
+        ContractNotInInputs,
+        ExpectedUnallocatedStack,
+        MemoryOverflow,
+    },
+    RegId,
+};
 use fuel_crypto::{
     Hasher,
     SecretKey,
 };
 use fuel_tx::{
-    field::Outputs,
+    field::{
+        Outputs,
+        Script as ScriptField,
+    },
+    ConsensusParameters,
     Finalizable,
     Input,
     Output,
@@ -31,32 +53,6 @@ use rand::{
     Rng,
     SeedableRng,
 };
-
-use crate::{
-    consts::*,
-    prelude::*,
-};
-
-use crate::interpreter::{
-    InterpreterParams,
-    NotSupportedEcal,
-};
-
-use crate::script_with_data_offset;
-use fuel_asm::{
-    op,
-    Instruction,
-    PanicReason::{
-        ContractNotInInputs,
-        ExpectedUnallocatedStack,
-        MemoryOverflow,
-    },
-};
-use fuel_tx::{
-    field::Script as ScriptField,
-    ConsensusParameters,
-};
-use fuel_vm::util::test_helpers::check_expected_reason_for_instructions;
 
 const SET_STATUS_REG: u8 = 0x39;
 // log2(VM_MAX_MEM) - used to set a pointer to the memory boundary via SHL:
@@ -189,7 +185,7 @@ fn state_read_write() {
 
     let result = test_context
         .start_script(script.clone(), script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -229,7 +225,7 @@ fn state_read_write() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -482,7 +478,6 @@ fn ldc__load_len_of_target_contract<'a>(
     let tx_create_target =
         TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
             .maturity(maturity)
             .add_random_fee_input()
             .add_output(output0)
@@ -544,7 +539,7 @@ fn ldc__load_len_of_target_contract<'a>(
         vec![],
     )
     .gas_price(gas_price)
-    .gas_limit(gas_limit)
+    .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_input(input0.clone())
     .add_random_fee_input()
@@ -562,7 +557,7 @@ fn ldc__load_len_of_target_contract<'a>(
     let tx_deploy_loader =
         TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_input(input0)
             .add_random_fee_input()
@@ -626,7 +621,6 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output0)
@@ -643,7 +637,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         contract_id.to_vec(),
     )
     .gas_price(gas_price)
-    .gas_limit(gas_limit)
+    .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_random_fee_input()
     .finalize()
@@ -775,7 +769,7 @@ fn load_contract_code_out_of_contract_offset_over_length() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -834,7 +828,7 @@ fn code_copy_shorter_zero_padding() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -889,7 +883,7 @@ fn code_copy_out_of_contract_offset_over_length() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -1214,7 +1208,7 @@ fn check_receipts_for_program_call(
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -1515,7 +1509,7 @@ fn smo_instruction_works() {
 
         let mut tx = TransactionBuilder::script(script, script_data);
         tx.gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .maturity(maturity);
         // add inputs
         for (amount, data) in inputs {
@@ -1572,8 +1566,10 @@ fn smo_instruction_works() {
             panic!("expected script result")
         };
         // get refunded fee amount
-        let refund_amount =
-            TransactionFee::gas_refund_value(&fee_params, *gas_used, gas_price).unwrap();
+        let refund_amount = state
+            .tx()
+            .refund_fee(client.gas_costs(), &fee_params, *gas_used)
+            .unwrap();
 
         // check that refundable balances aren't converted into change on failed txs
         if !success {
@@ -1662,7 +1658,7 @@ fn timestamp_works() {
 
         let tx = TransactionBuilder::script(script, script_data)
             .gas_price(gas_price)
-            .gas_limit(gas_limit)
+            .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_random_fee_input()
             .finalize_checked(block_height);
@@ -1718,7 +1714,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(current_height);
@@ -1769,7 +1765,7 @@ fn block_hash_works(
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(current_height);
@@ -1809,7 +1805,7 @@ fn coinbase_works() {
 
     let tx = TransactionBuilder::script(script, script_data)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .finalize_checked(10.into());

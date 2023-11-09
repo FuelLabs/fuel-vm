@@ -11,21 +11,16 @@ use crate::{
     },
     consts::*,
     context::Context,
-    error::{
-        Bug,
-        InterpreterError,
-    },
+    error::InterpreterError,
     prelude::RuntimeError,
     storage::InterpreterStorage,
 };
 
 use fuel_asm::RegId;
+use fuel_tx::field::ScriptGasLimit;
 use fuel_types::Word;
 
-use crate::{
-    error::BugVariant::GlobalGasUnderflow,
-    interpreter::CheckedMetadata,
-};
+use crate::interpreter::CheckedMetadata;
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
@@ -115,13 +110,12 @@ where
 
         self.context = Context::Script { block_height };
 
-        let gas_used_by_predicates = checked.metadata().gas_used_by_predicates();
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
         let gas_limit = tx
-            .limit()
-            .checked_sub(gas_used_by_predicates)
-            .ok_or_else(|| Bug::new(GlobalGasUnderflow))?;
+            .as_script()
+            .map(|script| *script.script_gas_limit())
+            .unwrap_or_default();
 
         let initial_balances = metadata.balances();
         let runtime_balances = initial_balances.try_into()?;

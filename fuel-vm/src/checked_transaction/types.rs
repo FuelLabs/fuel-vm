@@ -72,10 +72,7 @@ pub mod create {
         FormatValidityChecks,
         TransactionFee,
     };
-    use fuel_types::{
-        BlockHeight,
-        Word,
-    };
+    use fuel_types::BlockHeight;
 
     /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -86,9 +83,6 @@ pub mod create {
         pub block_height: BlockHeight,
         /// The fees and gas usage
         pub fee: TransactionFee,
-        /// If predicates have been checked, this is how much gas checking them used.
-        /// This must be zero if the predicates have not been checked yet.
-        pub gas_used_by_predicates: Word,
     }
 
     impl IntoChecked for Create {
@@ -123,7 +117,6 @@ pub mod create {
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
                 fee,
-                gas_used_by_predicates: 0,
             };
 
             Ok(Checked::basic(self, metadata))
@@ -185,10 +178,7 @@ pub mod script {
         Script,
         TransactionFee,
     };
-    use fuel_types::{
-        BlockHeight,
-        Word,
-    };
+    use fuel_types::BlockHeight;
 
     /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -201,9 +191,6 @@ pub mod script {
         pub block_height: BlockHeight,
         /// The fees and gas usage
         pub fee: TransactionFee,
-        /// If predicates have been checked, this is how much gas checking them used.
-        /// This must be zero if the predicates have not been checked yet.
-        pub gas_used_by_predicates: Word,
     }
 
     impl IntoChecked for Script {
@@ -238,7 +225,6 @@ pub mod script {
                 },
                 block_height,
                 fee,
-                gas_used_by_predicates: 0,
             };
 
             Ok(Checked::basic(self, metadata))

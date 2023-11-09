@@ -1,9 +1,17 @@
+use crate::{
+    field::{
+        Inputs,
+        Script,
+        ScriptData,
+    },
+    policies::Policies,
+    *,
+};
 use fuel_asm::{
     op,
     PanicInstruction,
     PanicReason,
 };
-use fuel_tx::*;
 use fuel_tx_test_helpers::{
     generate_bytes,
     generate_nonempty_padded_bytes,
@@ -21,13 +29,6 @@ use rand::{
     Rng,
     RngCore,
     SeedableRng,
-};
-
-use crate::TxParameters;
-use fuel_tx::field::{
-    Inputs,
-    Script,
-    ScriptData,
 };
 use std::fmt;
 use strum::IntoEnumIterator;
@@ -270,70 +271,63 @@ fn transaction() {
     assert_encoding_correct(&[
         Transaction::script(
             rng.next_u64(),
-            rng.next_u64(),
+            rng.gen::<Witness>().into_inner(),
+            rng.gen::<Witness>().into_inner(),
             rng.gen(),
-            rng.gen::<Witness>().into_inner(),
-            rng.gen::<Witness>().into_inner(),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
-            rng.next_u64(),
-            rng.gen(),
             vec![],
             generate_bytes(rng),
+            rng.gen(),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
-            rng.next_u64(),
-            rng.gen(),
             rng.gen::<Witness>().into_inner(),
             vec![],
+            rng.gen(),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
-            rng.next_u64(),
+            vec![],
+            vec![],
             rng.gen(),
-            vec![],
-            vec![],
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
-            rng.next_u64(),
+            vec![],
+            vec![],
             rng.gen(),
-            vec![],
-            vec![],
             vec![],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
-            rng.next_u64(),
+            vec![],
+            vec![],
             rng.gen(),
-            vec![],
-            vec![],
             vec![],
             vec![],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
-            rng.next_u64(),
+            vec![],
+            vec![],
             rng.gen(),
-            vec![],
-            vec![],
             vec![],
             vec![],
             vec![],
@@ -341,8 +335,6 @@ fn transaction() {
     ]);
     assert_encoding_correct(&[
         Transaction::create(
-            rng.next_u64(),
-            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -352,8 +344,6 @@ fn transaction() {
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.next_u64(),
-            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -363,8 +353,6 @@ fn transaction() {
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.next_u64(),
-            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -374,8 +362,6 @@ fn transaction() {
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.next_u64(),
-            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -385,8 +371,6 @@ fn transaction() {
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.next_u64(),
-            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -396,8 +380,6 @@ fn transaction() {
             vec![w],
         ),
         Transaction::create(
-            rng.next_u64(),
-            TxParameters::DEFAULT.max_gas_per_tx,
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -421,7 +403,6 @@ fn create_input_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let gas_price = 100;
-    let gas_limit = 1000;
     let maturity = 10.into();
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
@@ -493,10 +474,10 @@ fn create_input_data_offset() {
                     inputs.push(input_message.clone());
 
                     let tx = Transaction::create(
-                        gas_price,
-                        gas_limit,
-                        maturity,
                         bytecode_witness_index,
+                        Policies::new()
+                            .with_maturity(maturity)
+                            .with_gas_price(gas_price),
                         salt,
                         storage_slot.clone(),
                         inputs,
@@ -613,11 +594,12 @@ fn script_input_coin_data_offset() {
                         inputs.push(input_coin.clone());
 
                         let tx = Transaction::script(
-                            gas_price,
                             gas_limit,
-                            maturity,
                             script.clone(),
                             script_data.clone(),
+                            Policies::new()
+                                .with_maturity(maturity)
+                                .with_gas_price(gas_price),
                             inputs,
                             outputs.clone(),
                             witnesses.clone(),

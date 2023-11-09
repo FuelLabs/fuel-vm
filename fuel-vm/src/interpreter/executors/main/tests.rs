@@ -41,7 +41,7 @@ fn estimate_gas_gives_proper_gas_used() {
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
     let coin_amount = 10_000_000;
@@ -69,7 +69,7 @@ fn estimate_gas_gives_proper_gas_used() {
         .gas_used()
         .expect("Should retrieve gas used");
 
-    builder.gas_limit(gas_without_predicate);
+    builder.script_gas_limit(gas_without_predicate);
 
     let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
         .into_iter()

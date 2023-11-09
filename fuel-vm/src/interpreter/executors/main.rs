@@ -56,6 +56,7 @@ use fuel_tx::{
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
+        ScriptGasLimit,
         StorageSlots,
     },
     input::{
@@ -65,10 +66,10 @@ use fuel_tx::{
             MessageDataPredicate,
         },
     },
-    Chargeable,
     Contract,
     Create,
     FeeParameters,
+    GasCosts,
     Input,
     Receipt,
     ScriptExecutionResult,
@@ -83,6 +84,7 @@ use fuel_types::{
 pub struct PredicatesChecked {
     gas_used: Word,
 }
+
 impl PredicatesChecked {
     pub fn gas_used(&self) -> Word {
         self.gas_used
@@ -170,9 +172,10 @@ where
     pub fn estimate_predicates(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
-    ) -> Result<(), PredicateVerificationFailed> {
-        Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
-        Ok(())
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
+        let predicates_checked =
+            Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
+        Ok(predicates_checked)
     }
 
     /// Initialize the VM with the provided transaction, check all predicates defined in
@@ -184,15 +187,18 @@ where
     pub async fn estimate_predicates_async<E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
-    ) -> Result<(), PredicateVerificationFailed>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
         E: ParallelExecutor,
     {
-        Self::run_predicate_async::<E>(PredicateRunKind::Estimating(transaction), params)
-            .await?;
+        let predicates_checked = Self::run_predicate_async::<E>(
+            PredicateRunKind::Estimating(transaction),
+            params,
+        )
+        .await?;
 
-        Ok(())
+        Ok(predicates_checked)
     }
 
     async fn run_predicate_async<E>(
@@ -205,7 +211,6 @@ where
     {
         let mut checks = vec![];
         let predicate_action = PredicateAction::from(&kind);
-        let max_gas_per_tx = params.max_gas_per_tx;
         let tx_offset = params.tx_offset;
 
         for index in 0..kind.tx().inputs().len() {
@@ -231,7 +236,7 @@ where
 
         let checks = E::execute_tasks(checks).await;
 
-        Self::finalize_check_predicate(kind, checks, predicate_action, max_gas_per_tx)
+        Self::finalize_check_predicate(kind, checks, params)
     }
 
     fn run_predicate(
@@ -257,12 +262,7 @@ where
             }
         }
 
-        Self::finalize_check_predicate(
-            kind,
-            checks,
-            predicate_action,
-            params.max_gas_per_tx,
-        )
+        Self::finalize_check_predicate(kind, checks, params)
     }
 
     fn check_predicate(
@@ -347,8 +347,7 @@ where
     fn finalize_check_predicate(
         mut kind: PredicateRunKind<Tx>,
         checks: Vec<Result<(Word, usize), PredicateVerificationFailed>>,
-        predicate_action: PredicateAction,
-        max_gas_per_tx: u64,
+        params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
         if let PredicateRunKind::Estimating(tx) = &mut kind {
             checks.iter().for_each(|result| {
@@ -375,26 +374,20 @@ where
                         }
                     }
                 }
-            })
+            });
+        }
+
+        let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
+        if max_gas > params.max_gas_per_tx {
+            return Err(
+                PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
+            );
         }
 
         let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {
             acc.checked_add(result.map(|(gas_used, _)| gas_used)?)
                 .ok_or(PredicateVerificationFailed::OutOfGas)
         })?;
-
-        match predicate_action {
-            PredicateAction::Verifying => {
-                if cumulative_gas_used > kind.tx().limit() {
-                    return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
-                }
-            }
-            PredicateAction::Estimating => {
-                if cumulative_gas_used > max_gas_per_tx {
-                    return Err(PredicateVerificationFailed::CumulativePredicateGasExceededTxGasLimit);
-                }
-            }
-        }
 
         Ok(PredicatesChecked {
             gas_used: cumulative_gas_used,
@@ -410,14 +403,10 @@ where
         create: &mut Create,
         storage: &mut S,
         initial_balances: InitialBalances,
+        gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
     ) -> Result<(), InterpreterError<S::DataError>> {
-        let remaining_gas = create
-            .limit()
-            .checked_sub(create.gas_used_by_predicates())
-            .ok_or(InterpreterError::Panic(PanicReason::OutOfGas))?;
-
         let metadata = create.metadata().as_ref();
         debug_assert!(
             metadata.is_some(),
@@ -459,10 +448,11 @@ where
             .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,
+            gas_costs,
             fee_params,
             base_asset_id,
             false,
-            remaining_gas,
+            0,
             &initial_balances,
             &RuntimeBalances::try_from(initial_balances.clone())?,
         )?;
@@ -486,6 +476,7 @@ where
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         // TODO: Remove `Create` from here
+        let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
         let state = if let Some(create) = self.tx.as_create_mut() {
@@ -493,6 +484,7 @@ where
                 create,
                 &mut self.storage,
                 self.initial_balances.clone(),
+                &gas_costs,
                 &fee_params,
                 &base_asset_id,
             )?;
@@ -511,24 +503,24 @@ where
                 return Err(InterpreterError::Panic(PanicReason::ContractNotFound))
             }
 
+            let gas_limit;
+            let is_empty_script;
             if let Some(script) = self.transaction().as_script() {
                 let offset = (self.tx_offset() + script.script_offset()) as Word;
+                gas_limit = *script.script_gas_limit();
+                is_empty_script = script.script().is_empty();
 
                 self.registers[RegId::PC] = offset;
                 self.registers[RegId::IS] = offset;
+            } else {
+                unreachable!("Only `Create` and `Script` transactions can be executed inside of the VM")
             }
 
             // TODO set tree balance
 
             // `Interpreter` supports only `Create` and `Script` transactions. It is not
             // `Create` -> it is `Script`.
-            let program = if !self
-                .transaction()
-                .as_script()
-                .expect("It should be `Script` transaction")
-                .script()
-                .is_empty()
-            {
+            let program = if !is_empty_script {
                 self.run_program()
             } else {
                 // Return `1` as successful execution.
@@ -537,9 +529,7 @@ where
                 Ok(ProgramState::Return(return_val))
             };
 
-            let gas_used = self
-                .transaction()
-                .limit()
+            let gas_used = gas_limit
                 .checked_sub(self.remaining_gas())
                 .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
@@ -582,14 +572,13 @@ where
             }
 
             let revert = matches!(program, ProgramState::Revert(_));
-            let remaining_gas = self.remaining_gas();
-            let fee_params = *self.fee_params();
             Self::finalize_outputs(
                 &mut self.tx,
+                &gas_costs,
                 &fee_params,
                 &base_asset_id,
                 revert,
-                remaining_gas,
+                gas_used,
                 &self.initial_balances,
                 &self.balances,
             )?;
@@ -697,12 +686,14 @@ where
         tx: Checked<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
         let (mut create, metadata) = tx.into();
+        let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,
             metadata.balances(),
+            &gas_costs,
             &fee_params,
             &base_asset_id,
         )?;

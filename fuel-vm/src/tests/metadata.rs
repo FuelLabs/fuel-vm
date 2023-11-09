@@ -26,6 +26,7 @@ use fuel_tx::{
         Script as ScriptField,
         Witnesses,
     },
+    policies::PoliciesBits,
     ConsensusParameters,
     Finalizable,
     Receipt,
@@ -85,7 +86,6 @@ fn metadata() {
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -137,7 +137,6 @@ fn metadata() {
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -196,7 +195,7 @@ fn metadata() {
 
     let tx = TransactionBuilder::script(script, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(inputs[0].clone())
         .add_input(inputs[1].clone())
@@ -255,7 +254,7 @@ fn get_metadata_chain_id() {
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
@@ -279,7 +278,9 @@ fn get_transaction_fields() {
     let mut client = MemoryClient::default();
 
     let gas_price = 1;
-    let gas_limit = 100_000_000;
+    let witness_limit = 1234;
+    let max_fee_limit = 4321;
+    let gas_limit = 10_000_000;
     let maturity = 50.into();
     let height = 122.into();
     let input = 10_000_000;
@@ -352,7 +353,7 @@ fn get_transaction_fields() {
         .maturity(maturity)
         .with_gas_costs(gas_costs)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),
@@ -473,7 +474,7 @@ fn get_transaction_fields() {
 
         op::movi(0x11, gas_price as Immediate18),
         op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptGasPrice),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyGasPrice),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -488,7 +489,25 @@ fn get_transaction_fields() {
 
         op::movi(0x19, 0x00),
         op::movi(0x11, *maturity as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptMaturity),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaturity),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, max_fee_limit as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaxFee),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, witness_limit as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyWitnessLimit),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, PoliciesBits::all().bits() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyTypes),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -506,7 +525,7 @@ fn get_transaction_fields() {
 
         op::movi(0x19, 0x00),
         op::movi(0x11, witnesses.len() as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptWitnessesCound),
+        op::gtf_args(0x10, 0x19, GTFArgs::ScriptWitnessesCount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -870,7 +889,9 @@ fn get_transaction_fields() {
     let tx = builder
         .maturity(maturity)
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
+        .witness_limit(witness_limit)
+        .max_fee_limit(max_fee_limit)
         .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);

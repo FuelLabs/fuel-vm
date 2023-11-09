@@ -64,7 +64,7 @@ fn backtrace() {
 
     let tx = test_context
         .start_script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_undefined)
         .contract_input(contract_call)
         .fee_input()

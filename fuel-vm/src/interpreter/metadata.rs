@@ -25,8 +25,10 @@ use fuel_tx::{
         Salt,
         Script as ScriptField,
         ScriptData,
+        ScriptGasLimit,
         StorageSlots,
     },
+    policies::PolicyType,
     Input,
     InputRepr,
     Output,
@@ -154,16 +156,34 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::Type => Tx::transaction_type(),
 
             // General
-            GTFArgs::ScriptGasPrice | GTFArgs::CreateGasPrice => tx.price(),
-            GTFArgs::ScriptGasLimit | GTFArgs::CreateGasLimit => tx.limit(),
-            GTFArgs::ScriptMaturity | GTFArgs::CreateMaturity => **tx.maturity() as Word,
+            GTFArgs::ScriptGasLimit => tx
+                .as_script()
+                .map(|script| *script.script_gas_limit())
+                .unwrap_or_default(),
+            GTFArgs::PolicyTypes => tx.policies().bits() as Word,
+            GTFArgs::PolicyGasPrice => tx
+                .policies()
+                .get(PolicyType::GasPrice)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyWitnessLimit => tx
+                .policies()
+                .get(PolicyType::WitnessLimit)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyMaturity => tx
+                .policies()
+                .get(PolicyType::Maturity)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyMaxFee => tx
+                .policies()
+                .get(PolicyType::MaxFee)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => {
                 tx.inputs().len() as Word
             }
             GTFArgs::ScriptOutputsCount | GTFArgs::CreateOutputsCount => {
                 tx.outputs().len() as Word
             }
-            GTFArgs::ScriptWitnessesCound | GTFArgs::CreateWitnessesCount => {
+            GTFArgs::ScriptWitnessesCount | GTFArgs::CreateWitnessesCount => {
                 tx.witnesses().len() as Word
             }
             GTFArgs::ScriptInputAtIndex | GTFArgs::CreateInputAtIndex => {

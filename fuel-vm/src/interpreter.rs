@@ -38,7 +38,6 @@ use fuel_tx::{
     Receipt,
     Script,
     Transaction,
-    TransactionFee,
     TransactionRepr,
     TxParameters,
     UniqueIdentifier,
@@ -360,8 +359,6 @@ pub trait ExecutableTransaction:
     + IntoChecked
     + EstimatePredicates
     + UniqueIdentifier
-    + field::Maturity
-    + field::Inputs
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
@@ -417,21 +414,23 @@ pub trait ExecutableTransaction:
     /// `initial_balances` contains the initial state of the free balances
     ///
     /// `balances` will contain the current state of the free balances
+    #[allow(clippy::too_many_arguments)]
     fn update_outputs<I>(
         &mut self,
         revert: bool,
-        remaining_gas: Word,
+        used_gas: Word,
         initial_balances: &InitialBalances,
         balances: &I,
+        gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
     ) -> Result<(), CheckError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
-        let gas_refund =
-            TransactionFee::gas_refund_value(fee_params, remaining_gas, self.price())
-                .ok_or(CheckError::ArithmeticOverflow)?;
+        let gas_refund = self
+            .refund_fee(gas_costs, fee_params, used_gas)
+            .ok_or(CheckError::ArithmeticOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {
             // If revert, set base asset to initial balance and refund unused gas
@@ -547,12 +546,6 @@ pub struct InitialBalances {
 pub trait CheckedMetadata {
     /// Returns the initial balances from the checked metadata of the transaction.
     fn balances(&self) -> InitialBalances;
-
-    /// Get gas used by predicates. Returns zero if the predicates haven't been checked.
-    fn gas_used_by_predicates(&self) -> Word;
-
-    /// Set gas used by predicates after checking them.
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word);
 }
 
 impl CheckedMetadata for ScriptCheckedMetadata {
@@ -562,14 +555,6 @@ impl CheckedMetadata for ScriptCheckedMetadata {
             retryable: Some(self.retryable_balance),
         }
     }
-
-    fn gas_used_by_predicates(&self) -> Word {
-        self.gas_used_by_predicates
-    }
-
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word) {
-        self.gas_used_by_predicates = gas_used;
-    }
 }
 
 impl CheckedMetadata for CreateCheckedMetadata {
@@ -578,14 +563,6 @@ impl CheckedMetadata for CreateCheckedMetadata {
             non_retryable: self.free_balances.clone(),
             retryable: None,
         }
-    }
-
-    fn gas_used_by_predicates(&self) -> Word {
-        self.gas_used_by_predicates
-    }
-
-    fn set_gas_used_by_predicates(&mut self, gas_used: Word) {
-        self.gas_used_by_predicates = gas_used;
     }
 }
 

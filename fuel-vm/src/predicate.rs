@@ -46,16 +46,18 @@ mod tests {
         vec,
         vec::Vec,
     };
+    use core::iter;
     use fuel_asm::op;
-    use fuel_tx::TransactionBuilder;
+    use fuel_tx::{
+        field::ScriptGasLimit,
+        TransactionBuilder,
+    };
     use fuel_types::bytes;
     use rand::{
         rngs::StdRng,
         Rng,
         SeedableRng,
     };
-
-    use core::iter;
 
     use crate::{
         checked_transaction::CheckPredicateParams,
@@ -88,7 +90,7 @@ mod tests {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
+            0,
             predicate.clone(),
             predicate_data.clone(),
         );
@@ -98,7 +100,7 @@ mod tests {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
+            0,
             predicate.clone(),
             predicate_data.clone(),
         );
@@ -108,7 +110,7 @@ mod tests {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
+            0,
             vec![0xff; 10],
             predicate.clone(),
             predicate_data,
@@ -147,7 +149,7 @@ mod tests {
                         program: Default::default()
                     },
                     tx.transaction().clone(),
-                    tx.transaction().limit()
+                    *tx.transaction().script_gas_limit()
                 )
                 .is_ok());
 
@@ -269,7 +271,6 @@ mod tests {
                 )
                 .add_input(input)
                 .gas_price(0)
-                .gas_limit(TxParameters::DEFAULT.max_gas_per_tx)
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
 

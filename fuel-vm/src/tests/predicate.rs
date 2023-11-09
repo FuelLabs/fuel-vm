@@ -27,7 +27,6 @@ use crate::checked_transaction::{
     ParallelExecutor,
 };
 use core::iter;
-use fuel_asm::PanicReason::OutOfGas;
 use fuel_tx::ConsensusParameters;
 
 pub struct TokioWithRayon;
@@ -97,7 +96,7 @@ where
 
     builder
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
@@ -113,17 +112,16 @@ where
 
     builder.add_input(input);
 
-    let transaction = builder.finalize();
-    let gas_costs = GasCosts::free();
+    let mut transaction = builder.finalize();
+    transaction
+        .estimate_predicates(&ConsensusParameters::standard().into())
+        .expect("Should estiamte predicate");
 
     let checked = transaction
         .into_checked_basic(height, &ConsensusParameters::standard())
         .expect("Should successfully convert into Checked");
 
-    let params = CheckPredicateParams {
-        gas_costs,
-        ..Default::default()
-    };
+    let params = CheckPredicateParams::default();
 
     let parallel_execution = {
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
@@ -142,7 +140,10 @@ where
             assert_eq!(p_gas_used, s_gas_used);
             true
         }
-        (Err(_), Err(_)) => false,
+        (Err(p_err), Err(s_err)) => {
+            assert_eq!(p_err, s_err);
+            false
+        }
         _ => panic!("Parallel and sequential execution should return the same result"),
     }
 }
@@ -206,15 +207,11 @@ async fn execute_gas_metered_predicates(
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_price = 1_000;
-    let gas_limit = 1_000_000;
     let script = vec![];
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(Default::default());
+    builder.gas_price(gas_price).maturity(Default::default());
 
     let coin_amount = 10_000_000;
 
@@ -339,153 +336,7 @@ async fn predicate_gas_metering() {
 }
 
 #[tokio::test]
-async fn gas_used_by_predicates_is_deducted_from_script_gas() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let gas_price = 1_000;
-    let gas_limit = 1_000_000;
-    let script = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
-    let script_data = vec![];
-    let params = CheckPredicateParams::default();
-
-    let mut builder = TransactionBuilder::script(script, script_data);
-    builder
-        .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .maturity(Default::default());
-
-    let coin_amount = 10_000_000;
-
-    builder.add_unsigned_coin_input(
-        SecretKey::random(rng),
-        rng.gen(),
-        coin_amount,
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-    );
-
-    // parallel version
-    let p_tx_without_predicate = {
-        builder
-            .clone()
-            .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params)
-            .await
-            .expect("Predicate check failed even if we don't have any predicates")
-    };
-
-    let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
-        .check_predicates(&params)
-        .expect("Predicate check failed even if we don't have any predicates");
-
-    let predicate: Vec<u8> = vec![
-        op::addi(0x20, 0x20, 1),
-        op::addi(0x20, 0x20, 1),
-        op::addi(0x20, 0x20, 1),
-        op::addi(0x20, 0x20, 1),
-        op::addi(0x20, 0x20, 1),
-        op::ret(RegId::ONE),
-    ]
-    .into_iter()
-    .flat_map(|op| u32::from(op).to_be_bytes())
-    .collect();
-    let owner = Input::predicate_owner(&predicate);
-    let input = Input::coin_predicate(
-        rng.gen(),
-        owner,
-        coin_amount,
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-        rng.gen(),
-        predicate,
-        vec![],
-    );
-
-    // add non-predicate input before and after predicate input
-    // to check that predicate verification only handles predicate inputs
-    builder.add_unsigned_coin_input(
-        SecretKey::random(rng),
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-    );
-
-    builder.add_input(input);
-
-    builder.add_unsigned_coin_input(
-        SecretKey::random(rng),
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        Default::default(),
-    );
-
-    let mut transaction = builder.finalize();
-    transaction
-        .estimate_predicates(&params)
-        .expect("Predicate estimation failed");
-
-    let checked = transaction
-        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
-        .expect("Should successfully create checked tranaction with predicate");
-
-    // parallel version
-    let (p_with_predicate, p_without_predicate) = {
-        let tx_with_predicate = checked
-            .clone()
-            .check_predicates_async::<TokioWithRayon>(&params)
-            .await
-            .expect("Predicate check failed");
-
-        let mut client = MemoryClient::default();
-        client.transact(tx_with_predicate);
-        let receipts_with_predicate =
-            client.receipts().expect("Expected receipts").to_vec();
-        client.transact(p_tx_without_predicate);
-        let receipts_without_predicate =
-            client.receipts().expect("Expected receipts").to_vec();
-
-        assert!(
-            receipts_with_predicate[1].gas_used()
-                > receipts_without_predicate[1].gas_used()
-        );
-
-        (
-            receipts_with_predicate[1].gas_used(),
-            receipts_without_predicate[1].gas_used(),
-        )
-    };
-
-    let tx_with_predicate = checked
-        .check_predicates(&params)
-        .expect("Predicate check failed");
-
-    let mut client = MemoryClient::default();
-    client.transact(tx_with_predicate);
-    let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
-    client.transact(tx_without_predicate);
-    let receipts_without_predicate =
-        client.receipts().expect("Expected receipts").to_vec();
-
-    assert!(
-        receipts_with_predicate[1].gas_used() > receipts_without_predicate[1].gas_used()
-    );
-
-    assert_eq!(p_with_predicate, receipts_with_predicate[1].gas_used());
-    assert_eq!(
-        p_without_predicate,
-        receipts_without_predicate[1].gas_used()
-    );
-}
-
-#[tokio::test]
-async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
+async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = CheckPredicateParams::default();
 
@@ -503,7 +354,7 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
     let coin_amount = 10_000_000;
@@ -541,7 +392,7 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
         .gas_used()
         .expect("Should retrieve gas used");
 
-    builder.gas_limit(gas_without_predicate);
+    builder.script_gas_limit(gas_without_predicate);
 
     let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
         .into_iter()
@@ -585,10 +436,10 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
         // No panic for transaction without gas limit
         assert_eq!(receipts_without_predicate[1].reason(), None);
-        // Panic with out of gas for transaction with predicate
+        // Don't panic with out of gas for transaction with predicate
         assert_eq!(
-            receipts_with_predicate[0].reason().unwrap().reason(),
-            &OutOfGas
+            receipts_with_predicate[1].result().unwrap(),
+            &ScriptExecutionResult::Success
         );
     }
 
@@ -601,10 +452,10 @@ async fn gas_used_by_predicates_causes_out_of_gas_during_script() {
 
     // No panic for transaction without gas limit
     assert_eq!(receipts_without_predicate[1].reason(), None);
-    // Panic with out of gas for transaction with predicate
+    // Don't panic with out of gas for transaction with predicate
     assert_eq!(
-        receipts_with_predicate[0].reason().unwrap().reason(),
-        &OutOfGas
+        receipts_with_predicate[1].result().unwrap(),
+        &ScriptExecutionResult::Success
     );
 }
 
@@ -628,7 +479,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
     let coin_amount = 10_000_000;
@@ -666,7 +517,7 @@ async fn gas_used_by_predicates_more_than_limit() {
         .gas_used()
         .expect("Should retrieve gas used");
 
-    builder.gas_limit(gas_without_predicate);
+    builder.script_gas_limit(gas_without_predicate);
 
     let predicate: Vec<u8> = vec![
         op::addi(0x20, 0x20, 1),

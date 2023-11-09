@@ -1,29 +1,26 @@
 use crate::{
-    transaction::validity::{
-        check_common_part,
-        check_size,
-        FormatValidityChecks,
-    },
-    ConsensusParameters,
-    GasCosts,
-};
-
-use crate::{
-    transaction::field::{
-        BytecodeLength,
-        BytecodeWitnessIndex,
-        GasLimit,
-        GasPrice,
-        Inputs,
-        Maturity,
-        Outputs,
-        Salt as SaltField,
-        StorageSlots,
-        Witnesses,
+    policies::Policies,
+    transaction::{
+        field::{
+            BytecodeLength,
+            BytecodeWitnessIndex,
+            Inputs,
+            Outputs,
+            Policies as PoliciesField,
+            Salt as SaltField,
+            StorageSlots,
+            Witnesses,
+        },
+        validity::{
+            check_common_part,
+            FormatValidityChecks,
+        },
     },
     Chargeable,
     CheckError,
+    ConsensusParameters,
     Contract,
+    GasCosts,
     Input,
     Output,
     StorageSlot,
@@ -34,6 +31,7 @@ use derivative::Derivative;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
+    canonical,
     BlockHeight,
     Bytes32,
     Bytes4,
@@ -112,11 +110,9 @@ impl CreateMetadata {
 #[canonical(prefix = TransactionRepr::Create)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
-    pub(crate) gas_price: Word,
-    pub(crate) gas_limit: Word,
-    pub(crate) maturity: BlockHeight,
     pub(crate) bytecode_length: Word,
     pub(crate) bytecode_witness_index: u8,
+    pub(crate) policies: Policies,
     pub(crate) storage_slots: Vec<StorageSlot>,
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
@@ -159,20 +155,9 @@ impl crate::UniqueIdentifier for Create {
 }
 
 impl Chargeable for Create {
-    fn price(&self) -> Word {
-        *GasPrice::gas_price(self)
-    }
-
-    fn limit(&self) -> Word {
-        *GasLimit::gas_limit(self)
-    }
-
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        // Just use the default serialized size for now until
-        // the compressed representation for accounting purposes
-        // is defined. Witness data should still be excluded.
-        self.witnesses_offset()
+        canonical::Serialize::size(self)
     }
 
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word {
@@ -183,16 +168,12 @@ impl Chargeable for Create {
             ..
         } = self;
 
-        let contract: Option<Contract> = witnesses
+        let contract_len = witnesses
             .get(*bytecode_witness_index as usize)
-            .map(|c| c.as_ref().into());
-
-        let contract_root_gas = contract
-            .map(|contract| {
-                let contract_len = contract.len() as Word;
-                gas_costs.contract_root.resolve(contract_len)
-            })
+            .map(|c| c.as_ref().len())
             .unwrap_or(0);
+
+        let contract_root_gas = gas_costs.contract_root.resolve(contract_len as Word);
         let state_root_length = storage_slots.len() as Word;
         let state_root_gas = gas_costs.state_root.resolve(state_root_length);
 
@@ -202,8 +183,14 @@ impl Chargeable for Create {
             + core::mem::size_of::<Bytes32>()
             + core::mem::size_of::<Bytes32>();
         let contract_id_gas = gas_costs.s256.resolve(contract_id_input_length as Word);
+        let bytes = canonical::Serialize::size(self);
+        // Gas required to calculate the `tx_id`.
+        let tx_id_gas = gas_costs.s256.resolve(bytes as u64);
 
-        contract_root_gas + state_root_gas + contract_id_gas
+        contract_root_gas
+            .saturating_add(state_root_gas)
+            .saturating_add(contract_id_gas)
+            .saturating_add(tx_id_gas)
     }
 }
 
@@ -236,23 +223,13 @@ impl FormatValidityChecks for Create {
         consensus_params: &ConsensusParameters,
     ) -> Result<(), CheckError> {
         let ConsensusParameters {
-            tx_params,
-            predicate_params,
             contract_params,
             chain_id,
             base_asset_id,
             ..
         } = consensus_params;
 
-        check_size(self, consensus_params.tx_params())?;
-
-        check_common_part(
-            self,
-            block_height,
-            tx_params,
-            predicate_params,
-            base_asset_id,
-        )?;
+        check_common_part(self, block_height, consensus_params)?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -376,57 +353,6 @@ mod field {
     use crate::field::StorageSlotRef;
     use fuel_types::canonical::Serialize;
 
-    impl GasPrice for Create {
-        #[inline(always)]
-        fn gas_price(&self) -> &Word {
-            &self.gas_price
-        }
-
-        #[inline(always)]
-        fn gas_price_mut(&mut self) -> &mut Word {
-            &mut self.gas_price
-        }
-
-        #[inline(always)]
-        fn gas_price_offset_static() -> usize {
-            WORD_SIZE // `Transaction` enum discriminant
-        }
-    }
-
-    impl GasLimit for Create {
-        #[inline(always)]
-        fn gas_limit(&self) -> &Word {
-            &self.gas_limit
-        }
-
-        #[inline(always)]
-        fn gas_limit_mut(&mut self) -> &mut Word {
-            &mut self.gas_limit
-        }
-
-        #[inline(always)]
-        fn gas_limit_offset_static() -> usize {
-            Self::gas_price_offset_static() + WORD_SIZE
-        }
-    }
-
-    impl Maturity for Create {
-        #[inline(always)]
-        fn maturity(&self) -> &BlockHeight {
-            &self.maturity
-        }
-
-        #[inline(always)]
-        fn maturity_mut(&mut self) -> &mut BlockHeight {
-            &mut self.maturity
-        }
-
-        #[inline(always)]
-        fn maturity_offset_static() -> usize {
-            Self::gas_limit_offset_static() + WORD_SIZE
-        }
-    }
-
     impl BytecodeLength for Create {
         #[inline(always)]
         fn bytecode_length(&self) -> &Word {
@@ -440,7 +366,7 @@ mod field {
 
         #[inline(always)]
         fn bytecode_length_offset_static() -> usize {
-            Self::maturity_offset_static() + WORD_SIZE
+            WORD_SIZE // `Transaction` enum discriminant
         }
     }
 
@@ -461,6 +387,20 @@ mod field {
         }
     }
 
+    impl PoliciesField for Create {
+        fn policies(&self) -> &Policies {
+            &self.policies
+        }
+
+        fn policies_mut(&mut self) -> &mut Policies {
+            &mut self.policies
+        }
+
+        fn policies_offset(&self) -> usize {
+            Self::salt_offset_static() + Salt::LEN
+        }
+    }
+
     impl SaltField for Create {
         #[inline(always)]
         fn salt(&self) -> &Salt {
@@ -475,6 +415,7 @@ mod field {
         #[inline(always)]
         fn salt_offset_static() -> usize {
             Self::bytecode_witness_index_offset_static() + WORD_SIZE
+                + WORD_SIZE // Policies size
                 + WORD_SIZE // Storage slots size
                 + WORD_SIZE // Inputs size
                 + WORD_SIZE // Outputs size
@@ -496,13 +437,13 @@ mod field {
         }
 
         #[inline(always)]
-        fn storage_slots_offset_static() -> usize {
-            Self::salt_offset_static() + Salt::LEN
+        fn storage_slots_offset(&self) -> usize {
+            self.policies_offset() + self.policies.size_dynamic()
         }
 
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
             if idx < self.storage_slots.len() {
-                Some(Self::storage_slots_offset_static() + idx * StorageSlot::SLOT_SIZE)
+                Some(self.storage_slots_offset() + idx * StorageSlot::SLOT_SIZE)
             } else {
                 None
             }
@@ -522,7 +463,7 @@ mod field {
 
         #[inline(always)]
         fn inputs_offset(&self) -> usize {
-            Self::storage_slots_offset_static()
+            self.storage_slots_offset()
                 + self.storage_slots.len() * StorageSlot::SLOT_SIZE
         }
 

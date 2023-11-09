@@ -248,7 +248,7 @@ crate::enum_try_from! {
         /// Set `$rA` to `Memory address of tx.witnesses[$rB].data`
         WitnessData = 0x401,
 
-        /// Set `$rA` to `tx.policies[$rB].policyTypes`
+        /// Set `$rA` to `tx.policyTypes`
         PolicyTypes = 0x500,
 
         /// Set `$rA` to `tx.policies[0x00].gasPrice`

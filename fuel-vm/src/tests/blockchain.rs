@@ -504,9 +504,8 @@ fn ldc__load_len_of_target_contract<'a>(
         let index = i as Immediate12;
         let value = *byte as Immediate12;
         load_contract.extend([
-            op::xor(reg_a, reg_a, reg_a),    // r[a] := 0
-            op::ori(reg_a, reg_a, value),    // r[a] := r[a] | value
-            op::sb(RegId::HP, reg_a, index), // m[$hp+index] := r[a] (=value)
+            op::movi(reg_a, value.try_into().unwrap()), // r[a] := r[a] | value
+            op::sb(RegId::HP, reg_a, index),            // m[$hp+index] := r[a] (=value)
         ]);
     }
 
@@ -905,9 +904,7 @@ fn code_copy_a_gt_vmmax_sub_d() {
 
     // test memory offset above reg_hp value
     let code_copy = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::addi(reg_a, reg_a, 1),
         op::ccp(reg_a, RegId::ZERO, RegId::ZERO, RegId::ZERO),
     ];
@@ -920,8 +917,7 @@ fn code_copy_b_plus_32_overflow() {
     let reg_a = 0x20;
     // test overflow add
     let code_copy = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
+        op::not(reg_a, RegId::ZERO),
         op::ccp(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
     ];
 
@@ -933,9 +929,7 @@ fn code_copy_b_gt_vm_max_ram() {
     let reg_a = 0x20;
     // test overflow add
     let code_copy = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31),
         op::ccp(RegId::ZERO, reg_a, RegId::ZERO, RegId::ZERO),
     ];
@@ -948,9 +942,7 @@ fn code_copy_c_gt_vm_max_ram() {
     let reg_a = 0x20;
     // test overflow add
     let code_copy = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::addi(reg_a, reg_a, 1),
         op::ccp(RegId::ZERO, RegId::ZERO, reg_a, RegId::ZERO),
     ];
@@ -964,11 +956,7 @@ fn code_root_a_plus_32_overflow() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
-        op::croo(reg_a, RegId::ZERO),
-    ];
+    let code_root = vec![op::not(reg_a, RegId::ZERO), op::croo(reg_a, RegId::ZERO)];
 
     check_expected_reason_for_instructions(code_root, MemoryOverflow);
 }
@@ -979,11 +967,7 @@ fn code_root_b_plus_32_overflow() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
-        op::croo(RegId::ZERO, reg_a),
-    ];
+    let code_root = vec![op::not(reg_a, RegId::ZERO), op::croo(RegId::ZERO, reg_a)];
 
     check_expected_reason_for_instructions(code_root, MemoryOverflow);
 }
@@ -995,9 +979,7 @@ fn code_root_a_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::croo(reg_a, RegId::ZERO),
     ];
@@ -1012,9 +994,7 @@ fn code_root_b_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::croo(RegId::ZERO, reg_a),
     ];
@@ -1028,11 +1008,7 @@ fn code_size_b_plus_32_overflow() {
     let reg_a = 0x20;
 
     // cover contract_id_end beyond max ram
-    let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
-        op::csiz(reg_a, reg_a),
-    ];
+    let code_root = vec![op::not(reg_a, RegId::ZERO), op::csiz(reg_a, reg_a)];
 
     check_expected_reason_for_instructions(code_root, MemoryOverflow);
 }
@@ -1044,9 +1020,7 @@ fn code_size_b_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let code_root = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::csiz(reg_a, reg_a),
     ];
@@ -1270,8 +1244,7 @@ fn state_r_word_b_plus_32_over() {
 
     // cover contract_id_end beyond max ram
     let state_read_word = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
+        op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::srw(reg_a, SET_STATUS_REG, reg_a),
     ];
@@ -1286,9 +1259,7 @@ fn state_r_word_b_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let state_read_word = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::srw(reg_a, SET_STATUS_REG, reg_a),
     ];
@@ -1303,8 +1274,7 @@ fn state_r_qword_a_plus_32_over() {
 
     // cover contract_id_end beyond max ram
     let state_read_qword = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
+        op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
@@ -1321,8 +1291,7 @@ fn state_r_qword_c_plus_32_over() {
     let state_read_qword = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
+        op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::srwq(RegId::HP, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
@@ -1337,9 +1306,7 @@ fn state_r_qword_a_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let state_read_qword = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::srwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
@@ -1357,9 +1324,7 @@ fn state_r_qword_c_over_max_ram() {
         op::movi(0x11, 100),
         op::aloc(0x11),
         op::move_(0x31, RegId::HP),
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::srwq(0x31, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
@@ -1374,8 +1339,7 @@ fn state_w_word_a_plus_32_over() {
 
     // cover contract_id_end beyond max ram
     let state_write_word = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
+        op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::sww(reg_a, SET_STATUS_REG, RegId::ZERO),
     ];
@@ -1390,9 +1354,7 @@ fn state_w_word_a_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let state_write_word = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::sww(reg_a, SET_STATUS_REG, RegId::ZERO),
     ];
@@ -1407,8 +1369,7 @@ fn state_w_qword_a_plus_32_over() {
 
     // cover contract_id_end beyond max ram
     let state_write_qword = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
+        op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::swwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
@@ -1423,8 +1384,7 @@ fn state_w_qword_b_plus_32_over() {
 
     // cover contract_id_end beyond max ram
     let state_write_qword = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::not(reg_a, reg_a),
+        op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31 as Immediate12),
         op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
@@ -1439,9 +1399,7 @@ fn state_w_qword_a_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let state_write_qword = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31),
         op::swwq(reg_a, SET_STATUS_REG, RegId::ZERO, RegId::ONE),
     ];
@@ -1456,9 +1414,7 @@ fn state_w_qword_b_over_max_ram() {
 
     // cover contract_id_end beyond max ram
     let state_write_qword = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31),
         op::swwq(RegId::ZERO, SET_STATUS_REG, reg_a, RegId::ONE),
     ];
@@ -1485,15 +1441,11 @@ fn message_output_b_gt_msg_len() {
 fn message_output_a_b_over() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
-    let reg_b = 0x21;
 
     // cover contract_id_end beyond max ram
     let message_output = vec![
-        op::xor(reg_a, reg_a, reg_a), // r[a] = 0
-        op::xor(reg_b, reg_b, reg_b), // r[b] = 0
-        op::not(reg_a, reg_a),        // r[a] = MAX
-        op::addi(reg_b, reg_b, 1),    // r[b] = 1
-        op::smo(reg_a, reg_b, RegId::ZERO, RegId::ZERO),
+        op::not(reg_a, RegId::ZERO), // r[a] = MAX
+        op::smo(reg_a, RegId::ONE, RegId::ZERO, RegId::ZERO),
     ];
 
     check_expected_reason_for_instructions(message_output, MemoryOverflow);
@@ -1503,16 +1455,11 @@ fn message_output_a_b_over() {
 fn message_output_a_b_gt_max_mem() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
-    let reg_b = 0x21;
 
     // cover contract_id_end beyond max ram
     let message_output = vec![
-        op::xor(reg_a, reg_a, reg_a),
-        op::xor(reg_b, reg_b, reg_b),
-        op::ori(reg_a, reg_a, 1),
-        op::slli(reg_a, reg_a, MAX_MEM_SHL),
-        op::addi(reg_b, reg_b, 1),
-        op::smo(reg_a, reg_b, RegId::ZERO, RegId::ZERO),
+        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
+        op::smo(reg_a, RegId::ONE, RegId::ZERO, RegId::ZERO),
     ];
 
     check_expected_reason_for_instructions(message_output, MemoryOverflow);

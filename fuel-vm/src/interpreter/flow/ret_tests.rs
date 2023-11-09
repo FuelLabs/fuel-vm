@@ -179,7 +179,7 @@ fn test_revert() {
     };
     let pc = 10;
     let is = 20;
-    revert(append, None, Reg::new(&pc), Reg::new(&is), 99);
+    revert(append, None, Reg::new(&pc), Reg::new(&is), 99).expect("should be ok");
     assert_eq!(
         *receipts.as_ref().last().unwrap(),
         Receipt::revert(ContractId::default(), 99, pc, is)

@@ -353,6 +353,10 @@ pub enum BugVariant {
     /// Refund cannot be computed in the current vm state.
     #[strum(message = "Refund cannot be computed in the current vm state.")]
     UncomputableRefund,
+
+    /// Receipts context is full, but there's an attempt to add more receipts.
+    #[strum(message = "Receipts context is full, cannot add new receipts.")]
+    ReceiptsCtxFull,
 }
 
 impl fmt::Display for BugVariant {

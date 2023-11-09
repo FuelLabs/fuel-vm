@@ -102,7 +102,7 @@ impl LogInput<'_> {
                 memory: self.memory,
             },
             receipt,
-        );
+        )?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -128,7 +128,7 @@ impl LogInput<'_> {
                 memory: self.memory,
             },
             receipt,
-        );
+        )?;
 
         Ok(inc_pc(self.pc)?)
     }

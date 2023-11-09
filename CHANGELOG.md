@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     - If the `max_fee > policies.max_fee`, then transaction will be rejected.
     - If the `witnessses_size > policies.witness_limit`, then transaction will be rejected.
     - GTF opcode changed its hardcoded constants for fields. It should be updated according to the values from the specification on the Sway side.
+- [#633](https://github.com/FuelLabs/fuel-vm/pull/633): Limit receipt count to `u16::MAX`.
 
 ### Fixed
 

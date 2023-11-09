@@ -10,35 +10,41 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
-- [#623](https://github.com/FuelLabs/fuel-vm/pull/623): 
-    Added support for transaction policies. The `Script` and `Create` 
-    transactions received a new field, `policies`. Policies allow the addition 
-    of some limits to the transaction to protect the user or specify some details regarding execution.
-    This change makes the `GasPrice` and `Maturity` fields optional, allowing to save space in the future. 
-    Also, this will enable us to support multidimensional prices later.
-    `GasLimit` was renamed to `ScriptGasLimit`.
-    
-    Along with this change, we introduced two new policies:
+- [#623](https://github.com/FuelLabs/fuel-vm/pull/623):
+  Added support for transaction policies. The `Script` and `Create`
+  transactions received a new field, `policies`. Policies allow the addition
+  of some limits to the transaction to protect the user or specify some details regarding execution.
+  This change makes the `GasPrice` and `Maturity` fields optional, allowing to save space in the future.
+  Also, this will enable us to support multidimensional prices later.
+  `GasLimit` was renamed to `ScriptGasLimit`.
+
+  Along with this change, we introduced two new policies:
     - `WitnessLimit` - allows the limitation of the maximum size of witnesses in bytes for the contract. Because of the changes in the gas calculation model(the blockchain also charges the user for the witness data), the user should protect himself from the block producer or third parties blowing up witness data and draining the user's funds.
     - `MaxFee` - allows the upper bound for the maximum fee that users agree to pay for the transaction.
 
-    This change brings the following modification to the gas model:
+  This change brings the following modification to the gas model:
     - The `ScriptGasLimit` only limits script execution. Previously, the `ScriptGasLimit` also limited the predicate execution time, instead predicate gas is now directly included into `min_fee`. So, it is not possible to use the `ScriptGasLimit` for transaction cost limitations. A new `MaxFee` policy is a way to do that. The `GasLimit` field was removed from the `Create` transaction because it only relates to the script execution (which the `Create` transaction doesn't have).
     - The blockchain charges the user for the size of witness data (before it was free). There is no separate price for the storage, so it uses gas to charge the user. This change affects `min_gas` and `min_fee` calculation.
     - A new policy called `WitnessLimit` also impacts the `max_gas` and `max_fee` calculation in addition to `ScriptGasLimit`(in the case of `Create` transaction only `WitnessLimit` affects the `max_gas` and `max_fee`).
     - The minimal gas also charges the user for transaction ID calculation.
-      
-    The change has the following modification to the transaction layout:
+
+  The change has the following modification to the transaction layout:
     - The `Create` transaction doesn't have the `ScriptGasLimit` field anymore. Because the `Create` transaction doesn't have any script to execute
     - The `Create` and `Script` transactions don't have explicit `maturity` and `gas_price` fields. Instead, these fields can be set via a new `policies` field.
     - The `Create` and `Script` transactions have a new `policies` field with a unique canonical serialization and deserialization for optimal space consumption.
-    
-    Other breaking changes caused by the change:
+
+  Other breaking changes caused by the change:
     - Each transaction requires setting the `GasPrice` policy.
     - Previously, `ScriptGasLimit` should be less than the `MAX_GAS_PER_TX` constant. After removing this field from the `Create` transaction, it is impossible to require it. Instead, it requires that `max_gas <= MAX_GAS_PER_TX` for any transaction. Consequently, any `Script` transaction that uses `MAX_GAS_PER_TX` as a `ScriptGasLimit` will always fail because of a new rule. Setting the estimated gas usage instead solves the problem.
     - If the `max_fee > policies.max_fee`, then transaction will be rejected.
     - If the `witnessses_size > policies.witness_limit`, then transaction will be rejected.
     - GTF opcode changed its hardcoded constants for fields. It should be updated according to the values from the specification on the Sway side.
+
+## [Version 0.41.0]
+
+#### Breaking
+
+- [#622](https://github.com/FuelLabs/fuel-vm/pull/622): Divide `DependentCost` into "light" and "heavy" operations: Light operations consume `0 < x < 1` gas per unit, while heavy operations consume `x` gas per unit. This distinction provides more precision when calculating dependent costs.
 
 ## [Version 0.40.0]
 
@@ -52,7 +58,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
-- [#622](https://github.com/FuelLabs/fuel-vm/pull/622): Divide `DependentCost` into "light" and "heavy" operations: Light operations consume `0 < x < 1` gas per unit, while heavy operations consume `x` gas per unit. This distinction provides more precision when calculating dependent costs.
 - [#618](https://github.com/FuelLabs/fuel-vm/pull/618): Transaction fees for `Create` now include the cost of metadata calculations, including: contract root calculation, state root calculation, and contract id calculation.
 - [#613](https://github.com/FuelLabs/fuel-vm/pull/613): Transaction fees now include the cost of signature verification for each input. For signed inputs, the cost of an EC recovery is charged. For predicate inputs, the cost of a BMT root of bytecode is charged. 
 - [#607](https://github.com/FuelLabs/fuel-vm/pull/607): The `Interpreter` expects the third generic argument during type definition that specifies the implementer of the `EcalHandler` trait for `ecal` opcode.

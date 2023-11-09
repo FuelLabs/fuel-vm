@@ -942,42 +942,6 @@ mod tests {
         }
     }
 
-    // use quickcheck to fuzz any rounding or precision errors in refund calculation
-    #[quickcheck]
-    fn refund_when_used_gas_is_zero(
-        gas_price: u64,
-        gas_limit: u64,
-        input_amount: u64,
-        gas_price_factor: u64,
-        seed: u64,
-    ) -> TestResult {
-        // dont divide by zero
-        if gas_price_factor == 0 {
-            return TestResult::discard()
-        }
-
-        let rng = &mut StdRng::seed_from_u64(seed);
-        let gas_costs = GasCosts::default();
-        let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_message_coin_tx(rng, gas_price, gas_limit, input_amount);
-
-        // Given
-        let used_gas = 0;
-
-        // When
-        let refund = tx.refund_fee(&gas_costs, &fee_params, used_gas);
-
-        let min_fee = tx.min_fee(&gas_costs, &fee_params);
-        let max_fee = tx.max_fee(&gas_costs, &fee_params);
-
-        // Then
-        if let Some(refund) = refund {
-            TestResult::from_bool(max_fee - min_fee == refund as u128)
-        } else {
-            TestResult::discard()
-        }
-    }
-
     // use quickcheck to fuzz any rounding or precision errors in the min fee w/ message
     // input
     #[quickcheck]

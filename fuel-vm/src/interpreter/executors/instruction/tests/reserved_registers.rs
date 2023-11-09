@@ -61,7 +61,6 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = Default::default();
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_limit(consensus_params.tx_params.max_gas_per_tx)
         .add_random_fee_input()
         .finalize();
 

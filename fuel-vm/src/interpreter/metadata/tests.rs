@@ -31,17 +31,19 @@ fn test_metadata() {
 #[test]
 fn test_get_transaction_field() {
     let mut pc = 4;
+    let tx = Script::default();
     let input = GTFInput {
-        tx: &Script::default(),
+        tx: &tx,
         tx_offset: 0,
         pc: RegMut::new(&mut pc),
     };
     let mut result = 1;
-    let imm = 2;
     let b = 0;
-    input.get_transaction_field(&mut result, b, imm).unwrap();
+    input
+        .get_transaction_field(&mut result, b, GTFArgs::ScriptGasLimit as Immediate12)
+        .unwrap();
     assert_eq!(pc, 8);
-    assert_eq!(result, 0);
+    assert_eq!(result, *tx.script_gas_limit());
 }
 
 #[test_case(Context::PredicateEstimation { program: Default::default() }, 2 => (); "can fetch inside predicate estimation")]

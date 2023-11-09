@@ -11,7 +11,10 @@ use crate::interpreter::{
     InitialBalances,
     RuntimeBalances,
 };
-use fuel_tx::FeeParameters;
+use fuel_tx::{
+    FeeParameters,
+    GasCosts,
+};
 use fuel_types::{
     AssetId,
     Word,
@@ -33,12 +36,14 @@ where
     /// The transaction validation is expected to halt in such case. Since the VM only
     /// accepts checked transactions - hence, validated - this case should be
     /// unreachable.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn finalize_outputs<Tx>(
         tx: &mut Tx,
+        gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
         revert: bool,
-        remaining_gas: Word,
+        used_gas: Word,
         initial_balances: &InitialBalances,
         balances: &RuntimeBalances,
     ) -> Result<(), RuntimeError<S::DataError>>
@@ -47,9 +52,10 @@ where
     {
         tx.update_outputs(
             revert,
-            remaining_gas,
+            used_gas,
             initial_balances,
             balances,
+            gas_costs,
             fee_params,
             base_asset_id,
         )

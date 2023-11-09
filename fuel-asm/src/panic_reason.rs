@@ -95,8 +95,9 @@ enum_from! {
         ExpectedOutputVariable = 0x1d,
         /// The expected context of the stack parent is internal.
         ExpectedParentInternalContext = 0x1e,
-        /// The jump instruction cannot move backwards in predicate verification.
-        IllegalJump = 0x1f,
+        /// The predicate returned non `1`. The `1` means successful verification
+        /// of the predicate, all other values means unsuccessful.
+        PredicateReturnedNonOne = 0x1f,
         /// The contract ID is already deployed and can't be overwritten.
         ContractIdAlreadyDeployed = 0x20,
         /// The loaded contract mismatch expectations.
@@ -115,13 +116,19 @@ enum_from! {
         InvalidInstruction = 0x26,
         /// Memory outside $is..$ssp range is not executable
         MemoryNotExecutable = 0x27,
+        /// The policy is not set.
+        PolicyIsNotSet = 0x28,
+        /// The policy is not found across policies.
+        PolicyNotFound = 0x29,
+        /// Receipt context is full
+        TooManyReceipts = 0x2a,
         /// Balance of a contract overflowed
-        BalanceOverflow = 0x28,
+        BalanceOverflow = 0x2b,
         /// Block height value is invalid, typically because it is too large
-        InvalidBlockHeight = 0x29,
+        InvalidBlockHeight = 0x2c,
         /// Attempt to use sequential memory instructions with too large slot count,
         /// typically because it cannot fit into usize
-        TooManySlots = 0x2a,
+        TooManySlots = 0x2d,
     }
 }
 

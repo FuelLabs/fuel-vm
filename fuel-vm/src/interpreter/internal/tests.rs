@@ -55,8 +55,8 @@ fn external_balance() {
 
     let tx = tx
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
-        .gas_limit(100)
+        .script_gas_limit(gas_limit)
+        .script_gas_limit(100)
         .maturity(maturity)
         .finalize_checked(height);
 
@@ -119,7 +119,7 @@ fn variable_output_updates_in_memory() {
     };
 
     let tx = TransactionBuilder::script(vec![], vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()

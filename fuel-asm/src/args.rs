@@ -50,218 +50,218 @@ crate::enum_try_from! {
         /// Set `$rA` to `tx.type`
         Type = 0x001,
 
-        /// Set `$rA` to `tx.gasPrice`
-        ScriptGasPrice = 0x002,
-
-        /// Set `$rA` to `tx.gasLimit`
-        ScriptGasLimit = 0x003,
-
-        /// Set `$rA` to `tx.maturity`
-        ScriptMaturity = 0x004,
+        /// Set `$rA` to `tx.scriptGasLimit`
+        ScriptGasLimit = 0x002,
 
         /// Set `$rA` to `tx.scriptLength`
-        ScriptLength = 0x005,
+        ScriptLength = 0x003,
 
         /// Set `$rA` to `tx.scriptDataLength`
-        ScriptDataLength = 0x006,
+        ScriptDataLength = 0x004,
 
         /// Set `$rA` to `tx.inputsCount`
-        ScriptInputsCount = 0x007,
+        ScriptInputsCount = 0x005,
 
         /// Set `$rA` to `tx.outputsCount`
-        ScriptOutputsCount = 0x008,
+        ScriptOutputsCount = 0x006,
 
         /// Set `$rA` to `tx.witnessesCount`
-        ScriptWitnessesCound = 0x009,
+        ScriptWitnessesCount = 0x007,
 
         /// Set `$rA` to `Memory address of tx.receiptsRoot`
-        ScriptReceiptsRoot = 0x00A,
+        ScriptReceiptsRoot = 0x008,
 
         /// Set `$rA` to `Memory address of tx.script`
-        Script = 0x00B,
+        Script = 0x009,
 
         /// Set `$rA` to `Memory address of tx.scriptData`
-        ScriptData = 0x00C,
+        ScriptData = 0x00A,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB]`
-        ScriptInputAtIndex = 0x00D,
+        ScriptInputAtIndex = 0x00B,
 
         /// Set `$rA` to `Memory address of t.outputs[$rB]`
-        ScriptOutputAtIndex = 0x00E,
+        ScriptOutputAtIndex = 0x00C,
 
         /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
-        ScriptWitnessAtIndex = 0x00F,
-
-        /// Set `$rA` to `tx.gasPrice`
-        CreateGasPrice = 0x010,
-
-        /// Set `$rA` to `tx.gasLimit`
-        CreateGasLimit = 0x011,
-
-        /// Set `$rA` to `tx.maturity`
-        CreateMaturity = 0x012,
+        ScriptWitnessAtIndex = 0x00D,
 
         /// Set `$rA` to `tx.bytecodeLength`
-        CreateBytecodeLength = 0x013,
+        CreateBytecodeLength = 0x100,
 
         /// Set `$rA` to `tx.bytecodeWitnessIndex`
-        CreateBytecodeWitnessIndex = 0x014,
+        CreateBytecodeWitnessIndex = 0x101,
 
         /// Set `$rA` to `tx.storageSlotsCount`
-        CreateStorageSlotsCount = 0x015,
+        CreateStorageSlotsCount = 0x102,
 
         /// Set `$rA` to `tx.inputsCount`
-        CreateInputsCount = 0x016,
+        CreateInputsCount = 0x103,
 
         /// Set `$rA` to `tx.outputsCount`
-        CreateOutputsCount = 0x017,
+        CreateOutputsCount = 0x104,
 
         /// Set `$rA` to `tx.witnessesCount`
-        CreateWitnessesCount = 0x018,
+        CreateWitnessesCount = 0x105,
 
         /// Set `$rA` to `Memory address of tx.salt`
-        CreateSalt = 0x019,
+        CreateSalt = 0x106,
 
         /// Set `$rA` to `Memory address of tx.storageSlots[$rB]`
-        CreateStorageSlotAtIndex = 0x01A,
+        CreateStorageSlotAtIndex = 0x107,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB]`
-        CreateInputAtIndex = 0x01B,
+        CreateInputAtIndex = 0x108,
 
         /// Set `$rA` to `Memory address of t.outputs[$rB]`
-        CreateOutputAtIndex = 0x01C,
+        CreateOutputAtIndex = 0x109,
 
         /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
-        CreateWitnessAtIndex = 0x01D,
+        CreateWitnessAtIndex = 0x10A,
 
         /// Set `$rA` to `tx.inputs[$rB].type`
-        InputType = 0x101,
+        InputType = 0x200,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].txID`
-        InputCoinTxId = 0x102,
+        InputCoinTxId = 0x201,
 
         /// Set `$rA` to `tx.inputs[$rB].outputIndex`
-        InputCoinOutputIndex = 0x103,
+        InputCoinOutputIndex = 0x202,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].owner`
-        InputCoinOwner = 0x104,
+        InputCoinOwner = 0x203,
 
         /// Set `$rA` to `tx.inputs[$rB].amount`
-        InputCoinAmount = 0x105,
+        InputCoinAmount = 0x204,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].asset_id`
-        InputCoinAssetId = 0x106,
+        InputCoinAssetId = 0x205,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].txPointer`
-        InputCoinTxPointer = 0x107,
+        InputCoinTxPointer = 0x206,
 
         /// Set `$rA` to `tx.inputs[$rB].witnessIndex`
-        InputCoinWitnessIndex = 0x108,
+        InputCoinWitnessIndex = 0x207,
 
         /// Set `$rA` to `tx.inputs[$rB].maturity`
-        InputCoinMaturity = 0x109,
+        InputCoinMaturity = 0x208,
 
         /// Set `$rA` to `tx.inputs[$rB].predicateLength`
-        InputCoinPredicateLength = 0x10A,
+        InputCoinPredicateLength = 0x209,
 
         /// Set `$rA` to `tx.inputs[$rB].predicateDataLength`
-        InputCoinPredicateDataLength = 0x10B,
+        InputCoinPredicateDataLength = 0x20A,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].predicate`
-        InputCoinPredicate = 0x10C,
+        InputCoinPredicate = 0x20B,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateData`
-        InputCoinPredicateData = 0x10D,
+        InputCoinPredicateData = 0x20C,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateGasUsed`
-        InputCoinPredicateGasUsed = 0x10E,
+        InputCoinPredicateGasUsed = 0x20D,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].txID`
-        InputContractTxId = 0x10F,
+        InputContractTxId = 0x220,
 
         /// Set `$rA` to `tx.inputs[$rB].outputIndex`
-        InputContractOutputIndex = 0x110,
+        InputContractOutputIndex = 0x221,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].balanceRoot`
-        InputContractBalanceRoot = 0x111,
+        InputContractBalanceRoot = 0x222,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].stateRoot`
-        InputContractStateRoot = 0x112,
+        InputContractStateRoot = 0x223,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].txPointer`
-        InputContractTxPointer = 0x113,
+        InputContractTxPointer = 0x224,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].contractID`
-        InputContractId = 0x114,
+        InputContractId = 0x225,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].sender`
-        InputMessageSender = 0x115,
+        InputMessageSender = 0x240,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].recipient`
-        InputMessageRecipient = 0x116,
+        InputMessageRecipient = 0x241,
 
         /// Set `$rA` to `tx.inputs[$rB].amount`
-        InputMessageAmount = 0x117,
+        InputMessageAmount = 0x242,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].nonce`
-        InputMessageNonce = 0x118,
+        InputMessageNonce = 0x243,
 
         /// Set `$rA` to `tx.inputs[$rB].witnessIndex`
-        InputMessageWitnessIndex = 0x119,
+        InputMessageWitnessIndex = 0x244,
 
         /// Set `$rA` to `tx.inputs[$rB].dataLength`
-        InputMessageDataLength = 0x11A,
+        InputMessageDataLength = 0x245,
 
         /// Set `$rA` to `tx.inputs[$rB].predicateLength`
-        InputMessagePredicateLength = 0x11B,
+        InputMessagePredicateLength = 0x246,
 
         /// Set `$rA` to `tx.inputs[$rB].predicateDataLength`
-        InputMessagePredicateDataLength = 0x11C,
+        InputMessagePredicateDataLength = 0x247,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].data`
-        InputMessageData = 0x11D,
+        InputMessageData = 0x248,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].predicate`
-        InputMessagePredicate = 0x11E,
+        InputMessagePredicate = 0x249,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateData`
-        InputMessagePredicateData = 0x11F,
+        InputMessagePredicateData = 0x24A,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateGasUsed`
-        InputMessagePredicateGasUsed = 0x120,
+        InputMessagePredicateGasUsed = 0x24B,
 
         /// Set `$rA` to `tx.outputs[$rB].type`
-        OutputType = 0x201,
+        OutputType = 0x300,
 
         /// Set `$rA` to `Memory address of tx.outputs[$rB].to`
-        OutputCoinTo = 0x202,
+        OutputCoinTo = 0x301,
 
         /// Set `$rA` to `tx.outputs[$rB].amount`
-        OutputCoinAmount = 0x203,
+        OutputCoinAmount = 0x302,
 
         /// Set `$rA` to `Memory address of tx.outputs[$rB].asset_id`
-        OutputCoinAssetId = 0x204,
+        OutputCoinAssetId = 0x303,
 
         /// Set `$rA` to `tx.outputs[$rB].inputIndex`
-        OutputContractInputIndex = 0x205,
+        OutputContractInputIndex = 0x304,
 
         /// Set `$rA` to `Memory address of tx.outputs[$rB].balanceRoot`
-        OutputContractBalanceRoot = 0x206,
+        OutputContractBalanceRoot = 0x305,
 
         /// Set `$rA` to `Memory address of tx.outputs[$rB].stateRoot`
-        OutputContractStateRoot = 0x207,
+        OutputContractStateRoot = 0x306,
 
         /// Set `$rA` to `Memory address of tx.outputs[$rB].contractID`
-        OutputContractCreatedContractId = 0x208,
+        OutputContractCreatedContractId = 0x307,
 
         /// Set `$rA` to `Memory address of tx.outputs[$rB].stateRoot`
-        OutputContractCreatedStateRoot = 0x209,
+        OutputContractCreatedStateRoot = 0x308,
 
         /// Set `$rA` to `tx.witnesses[$rB].dataLength`
-        WitnessDataLength = 0x301,
+        WitnessDataLength = 0x400,
 
         /// Set `$rA` to `Memory address of tx.witnesses[$rB].data`
-        WitnessData = 0x302,
+        WitnessData = 0x401,
+
+        /// Set `$rA` to `tx.policyTypes`
+        PolicyTypes = 0x500,
+
+        /// Set `$rA` to `tx.policies[0x00].gasPrice`
+        PolicyGasPrice = 0x501,
+
+        /// Set `$rA` to `tx.policies[count_ones(0b11 & tx.policyTypes) - 1].witnessLimit`
+        PolicyWitnessLimit = 0x502,
+
+        /// Set `$rA` to `tx.policies[count_ones(0b111 & tx.policyTypes) - 1].maturity`
+        PolicyMaturity = 0x503,
+
+        /// Set `$rA` to `tx.policies[count_ones(0b1111 & tx.policyTypes) - 1].maxFee`
+        PolicyMaxFee = 0x504,
     },
     Immediate12
 }
@@ -295,23 +295,18 @@ fn encode_gm_args() {
 fn encode_gtf_args() {
     let args = vec![
         GTFArgs::Type,
-        GTFArgs::ScriptGasPrice,
         GTFArgs::ScriptGasLimit,
-        GTFArgs::ScriptMaturity,
         GTFArgs::ScriptLength,
         GTFArgs::ScriptDataLength,
         GTFArgs::ScriptInputsCount,
         GTFArgs::ScriptOutputsCount,
-        GTFArgs::ScriptWitnessesCound,
+        GTFArgs::ScriptWitnessesCount,
         GTFArgs::ScriptReceiptsRoot,
         GTFArgs::Script,
         GTFArgs::ScriptData,
         GTFArgs::ScriptInputAtIndex,
         GTFArgs::ScriptOutputAtIndex,
         GTFArgs::ScriptWitnessAtIndex,
-        GTFArgs::CreateGasPrice,
-        GTFArgs::CreateGasLimit,
-        GTFArgs::CreateMaturity,
         GTFArgs::CreateBytecodeLength,
         GTFArgs::CreateBytecodeWitnessIndex,
         GTFArgs::CreateStorageSlotsCount,
@@ -366,6 +361,11 @@ fn encode_gtf_args() {
         GTFArgs::OutputContractCreatedStateRoot,
         GTFArgs::WitnessDataLength,
         GTFArgs::WitnessData,
+        GTFArgs::PolicyTypes,
+        GTFArgs::PolicyGasPrice,
+        GTFArgs::PolicyWitnessLimit,
+        GTFArgs::PolicyMaturity,
+        GTFArgs::PolicyMaxFee,
     ];
 
     args.into_iter().for_each(|a| {

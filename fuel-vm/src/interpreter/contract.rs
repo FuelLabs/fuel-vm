@@ -269,7 +269,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
                 memory: self.memory,
             },
             receipt,
-        );
+        )?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -341,7 +341,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
                 memory: self.memory,
             },
             receipt,
-        );
+        )?;
 
         Ok(inc_pc(self.pc)?)
     }

@@ -1,5 +1,25 @@
+use crate::{
+    input::{
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
+        contract::Contract,
+        message::{
+            MessageCoinPredicate,
+            MessageDataPredicate,
+        },
+    },
+    policies::Policies,
+    TxPointer,
+};
 use fuel_crypto::PublicKey;
 use fuel_types::{
+    canonical::{
+        Deserialize,
+        Error,
+        Serialize,
+    },
     Address,
     AssetId,
     BlockHeight,
@@ -8,6 +28,8 @@ use fuel_types::{
     Salt,
     Word,
 };
+use input::*;
+use output::*;
 
 use alloc::vec::{
     IntoIter,
@@ -24,6 +46,7 @@ mod validity;
 mod id;
 
 pub mod consensus_parameters;
+pub mod policies;
 
 pub use consensus_parameters::{
     ConsensusParameters,
@@ -37,40 +60,17 @@ pub use consensus_parameters::{
     ScriptParameters,
     TxParameters,
 };
-
 pub use fee::{
     Chargeable,
     TransactionFee,
-};
-use fuel_types::canonical::{
-    Deserialize,
-    Error,
-    Serialize,
 };
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
 pub use validity::{
-    CheckError,
     FormatValidityChecks,
+    ValidityError,
 };
-
-use crate::{
-    input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
-        contract::Contract,
-        message::{
-            MessageCoinPredicate,
-            MessageDataPredicate,
-        },
-    },
-    TxPointer,
-};
-use input::*;
-use output::*;
 
 #[cfg(feature = "alloc")]
 pub use id::Signable;
@@ -83,6 +83,7 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[allow(clippy::large_enum_variant)]
 pub enum Transaction {
     Script(Script),
     Create(Create),
@@ -108,11 +109,10 @@ impl Transaction {
     }
 
     pub const fn script(
-        gas_price: Word,
         gas_limit: Word,
-        maturity: BlockHeight,
         script: Vec<u8>,
         script_data: Vec<u8>,
+        policies: Policies,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
@@ -120,12 +120,11 @@ impl Transaction {
         let receipts_root = Bytes32::zeroed();
 
         Script {
-            gas_price,
-            gas_limit,
-            maturity,
+            script_gas_limit: gas_limit,
             receipts_root,
             script,
             script_data,
+            policies,
             inputs,
             outputs,
             witnesses,
@@ -134,10 +133,8 @@ impl Transaction {
     }
 
     pub fn create(
-        gas_price: Word,
-        gas_limit: Word,
-        maturity: BlockHeight,
         bytecode_witness_index: u8,
+        policies: Policies,
         salt: Salt,
         mut storage_slots: Vec<StorageSlot>,
         inputs: Vec<Input>,
@@ -156,11 +153,9 @@ impl Transaction {
         storage_slots.sort();
 
         Create {
-            gas_price,
-            gas_limit,
-            maturity,
             bytecode_length,
             bytecode_witness_index,
+            policies,
             salt,
             storage_slots,
             inputs,
@@ -539,6 +534,7 @@ pub mod field {
     use crate::{
         input,
         output,
+        policies,
         Input,
         Output,
         StorageSlot,
@@ -551,6 +547,7 @@ pub mod field {
         Word,
     };
 
+    use crate::policies::PolicyType;
     use alloc::vec::Vec;
     use core::ops::{
         Deref,
@@ -558,33 +555,88 @@ pub mod field {
     };
 
     pub trait GasPrice {
-        fn gas_price(&self) -> &Word;
-        fn gas_price_mut(&mut self) -> &mut Word;
-        fn gas_price_offset(&self) -> usize {
-            Self::gas_price_offset_static()
-        }
-
-        fn gas_price_offset_static() -> usize;
+        fn gas_price(&self) -> Word;
+        fn set_gas_price(&mut self, value: Word);
     }
 
-    pub trait GasLimit {
-        fn gas_limit(&self) -> &Word;
-        fn gas_limit_mut(&mut self) -> &mut Word;
-        fn gas_limit_offset(&self) -> usize {
-            Self::gas_limit_offset_static()
+    impl<T: Policies + ?Sized> GasPrice for T {
+        #[inline(always)]
+        fn gas_price(&self) -> Word {
+            self.policies()
+                .get(PolicyType::GasPrice)
+                .unwrap_or_default()
         }
 
-        fn gas_limit_offset_static() -> usize;
+        #[inline(always)]
+        fn set_gas_price(&mut self, price: Word) {
+            self.policies_mut().set(PolicyType::GasPrice, Some(price))
+        }
+    }
+
+    pub trait WitnessLimit {
+        fn witness_limit(&self) -> Word;
+        fn set_witness_limit(&mut self, value: Word);
+    }
+
+    impl<T: Policies + ?Sized> WitnessLimit for T {
+        #[inline(always)]
+        fn witness_limit(&self) -> Word {
+            self.policies().get(PolicyType::WitnessLimit).unwrap_or(0)
+        }
+
+        #[inline(always)]
+        fn set_witness_limit(&mut self, value: Word) {
+            self.policies_mut()
+                .set(PolicyType::WitnessLimit, Some(value))
+        }
+    }
+
+    pub trait ScriptGasLimit {
+        fn script_gas_limit(&self) -> &Word;
+        fn script_gas_limit_mut(&mut self) -> &mut Word;
+        fn script_gas_limit_offset(&self) -> usize {
+            Self::script_gas_limit_offset_static()
+        }
+
+        fn script_gas_limit_offset_static() -> usize;
     }
 
     pub trait Maturity {
-        fn maturity(&self) -> &BlockHeight;
-        fn maturity_mut(&mut self) -> &mut BlockHeight;
-        fn maturity_offset(&self) -> usize {
-            Self::maturity_offset_static()
+        fn maturity(&self) -> BlockHeight;
+        fn set_maturity(&mut self, value: BlockHeight);
+    }
+
+    impl<T: Policies + ?Sized> Maturity for T {
+        #[inline(always)]
+        fn maturity(&self) -> BlockHeight {
+            self.policies()
+                .get(PolicyType::Maturity)
+                .map(|value| u32::try_from(value).unwrap_or(u32::MAX).into())
+                .unwrap_or_default()
         }
 
-        fn maturity_offset_static() -> usize;
+        #[inline(always)]
+        fn set_maturity(&mut self, block_height: BlockHeight) {
+            self.policies_mut()
+                .set(PolicyType::Maturity, Some(block_height.as_usize() as u64))
+        }
+    }
+
+    pub trait MaxFeeLimit {
+        fn max_fee_limit(&self) -> Word;
+        fn set_max_fee_limit(&mut self, value: Word);
+    }
+
+    impl<T: Policies + ?Sized> MaxFeeLimit for T {
+        #[inline(always)]
+        fn max_fee_limit(&self) -> Word {
+            self.policies().get(PolicyType::MaxFee).unwrap_or(0)
+        }
+
+        #[inline(always)]
+        fn set_max_fee_limit(&mut self, value: Word) {
+            self.policies_mut().set(PolicyType::MaxFee, Some(value))
+        }
     }
 
     pub trait TxPointer {
@@ -647,6 +699,12 @@ pub mod field {
         fn script_data_offset(&self) -> usize;
     }
 
+    pub trait Policies {
+        fn policies(&self) -> &policies::Policies;
+        fn policies_mut(&mut self) -> &mut policies::Policies;
+        fn policies_offset(&self) -> usize;
+    }
+
     pub trait BytecodeLength {
         fn bytecode_length(&self) -> &Word;
         fn bytecode_length_mut(&mut self) -> &mut Word;
@@ -680,11 +738,7 @@ pub mod field {
     pub trait StorageSlots {
         fn storage_slots(&self) -> &Vec<StorageSlot>;
         fn storage_slots_mut(&mut self) -> StorageSlotRef;
-        fn storage_slots_offset(&self) -> usize {
-            Self::storage_slots_offset_static()
-        }
-
-        fn storage_slots_offset_static() -> usize;
+        fn storage_slots_offset(&self) -> usize;
 
         /// Returns the offset to the `StorageSlot` at `idx` index, if any.
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize>;
@@ -759,24 +813,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn metered_data_excludes_witnesses() {
+    fn metered_data_includes_witnesses() {
         // test script
         let script_with_no_witnesses = Transaction::script(
             Default::default(),
-            Default::default(),
-            Default::default(),
             vec![],
             vec![],
+            Default::default(),
             vec![],
             vec![],
             vec![],
         );
         let script_with_witnesses = Transaction::script(
             Default::default(),
-            Default::default(),
-            Default::default(),
             vec![],
             vec![],
+            Default::default(),
             vec![],
             vec![],
             vec![[0u8; 64].to_vec().into()],
@@ -785,13 +837,12 @@ mod tests {
         assert_eq!(
             script_with_witnesses.metered_bytes_size(),
             script_with_no_witnesses.metered_bytes_size()
+                + script_with_witnesses.witnesses.size_dynamic()
         );
         // test create
         let create_with_no_witnesses = Transaction::create(
-            Default::default(),
-            Default::default(),
-            Default::default(),
             0,
+            Default::default(),
             Default::default(),
             vec![],
             vec![],
@@ -799,10 +850,8 @@ mod tests {
             vec![],
         );
         let create_with_witnesses = Transaction::create(
-            Default::default(),
-            Default::default(),
-            Default::default(),
             0,
+            Default::default(),
             Default::default(),
             vec![],
             vec![],
@@ -812,6 +861,7 @@ mod tests {
         assert_eq!(
             create_with_witnesses.metered_bytes_size(),
             create_with_no_witnesses.metered_bytes_size()
+                + create_with_witnesses.witnesses.size_dynamic()
         );
     }
 }

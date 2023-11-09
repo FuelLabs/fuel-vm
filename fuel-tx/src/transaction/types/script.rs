@@ -1,31 +1,32 @@
 use crate::{
+    field::WitnessLimit,
+    policies::Policies,
     transaction::{
         consensus_parameters::TxParameters,
         field::{
-            GasLimit,
-            GasPrice,
             Inputs,
-            Maturity,
             Outputs,
+            Policies as PoliciesField,
             ReceiptsRoot,
             Script as ScriptField,
             ScriptData,
+            ScriptGasLimit,
             Witnesses,
         },
         metadata::CommonMetadata,
         validity::{
             check_common_part,
-            check_size,
             FormatValidityChecks,
         },
         Chargeable,
     },
-    CheckError,
     ConsensusParameters,
+    FeeParameters,
     GasCosts,
     Input,
     Output,
     TransactionRepr,
+    ValidityError,
     Witness,
 };
 use derivative::Derivative;
@@ -56,13 +57,12 @@ pub(crate) struct ScriptMetadata {
 #[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
-    pub(crate) gas_price: Word,
-    pub(crate) gas_limit: Word,
-    pub(crate) maturity: BlockHeight,
+    pub(crate) script_gas_limit: Word,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script: Vec<u8>,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,
+    pub(crate) policies: Policies,
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
@@ -81,11 +81,16 @@ impl Default for Script {
         let script = fuel_asm::op::ret(0x10).to_bytes().to_vec();
 
         Self {
-            gas_price: Default::default(),
-            gas_limit: TxParameters::DEFAULT.max_gas_per_tx,
-            maturity: Default::default(),
+            // We want to use any values much less than `max_gas_per_tx`
+            // to avoid the `TransactionMaxGasExceeded` error. For example,
+            // `max_gas_per_tx / 4`.
+            script_gas_limit: TxParameters::DEFAULT.max_gas_per_tx / 4,
             script,
             script_data: Default::default(),
+            policies: Policies::new()
+                .with_gas_price(0)
+                .with_maturity(0.into())
+                .with_witness_limit(10000),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -121,29 +126,34 @@ impl crate::UniqueIdentifier for Script {
 }
 
 impl Chargeable for Script {
-    fn price(&self) -> Word {
-        *GasPrice::gas_price(self)
-    }
+    #[inline(always)]
+    fn max_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> fuel_asm::Word {
+        // The basic implementation of the `max_gas` + `gas_limit`.
+        let remaining_allowed_witness = self
+            .witness_limit()
+            .saturating_sub(self.witnesses().size_dynamic() as u64)
+            .saturating_mul(fee.gas_per_byte);
 
-    fn limit(&self) -> Word {
-        *GasLimit::gas_limit(self)
+        self.min_gas(gas_costs, fee)
+            .saturating_add(remaining_allowed_witness)
+            .saturating_add(self.script_gas_limit)
     }
 
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        // Just use the default serialized size for now until
-        // the compressed representation for accounting purposes
-        // is defined. Witness data should still be excluded.
-        self.witnesses_offset()
+        Serialize::size(self)
     }
 
-    fn gas_used_by_metadata(&self, _gas_costs: &GasCosts) -> Word {
-        0
+    #[inline(always)]
+    fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
+        let bytes = Serialize::size(self);
+        // Gas required to calculate the `tx_id`.
+        gas_cost.s256.resolve(bytes as u64)
     }
 }
 
 impl FormatValidityChecks for Script {
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         use crate::UniqueIdentifier;
 
         let id = self.id(chain_id);
@@ -165,23 +175,15 @@ impl FormatValidityChecks for Script {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
-        check_size(self, consensus_params.tx_params())?;
-
-        check_common_part(
-            self,
-            block_height,
-            consensus_params.tx_params(),
-            consensus_params.predicate_params(),
-            consensus_params.base_asset_id(),
-        )?;
+    ) -> Result<(), ValidityError> {
+        check_common_part(self, block_height, consensus_params)?;
         let script_params = consensus_params.script_params();
         if self.script.len() as u64 > script_params.max_script_length {
-            Err(CheckError::TransactionScriptLength)?;
+            Err(ValidityError::TransactionScriptLength)?;
         }
 
         if self.script_data.len() as u64 > script_params.max_script_data_length {
-            Err(CheckError::TransactionScriptDataLength)?;
+            Err(ValidityError::TransactionScriptDataLength)?;
         }
 
         self.outputs
@@ -189,7 +191,7 @@ impl FormatValidityChecks for Script {
             .enumerate()
             .try_for_each(|(index, output)| match output {
                 Output::ContractCreated { .. } => {
-                    Err(CheckError::TransactionScriptOutputContractCreated { index })
+                    Err(ValidityError::TransactionScriptOutputContractCreated { index })
                 }
                 _ => Ok(()),
             })?;
@@ -203,7 +205,7 @@ impl crate::Cacheable for Script {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ScriptMetadata {
             common: CommonMetadata::compute(self, chain_id),
@@ -216,54 +218,20 @@ impl crate::Cacheable for Script {
 mod field {
     use super::*;
 
-    impl GasPrice for Script {
+    impl ScriptGasLimit for Script {
         #[inline(always)]
-        fn gas_price(&self) -> &Word {
-            &self.gas_price
+        fn script_gas_limit(&self) -> &Word {
+            &self.script_gas_limit
         }
 
         #[inline(always)]
-        fn gas_price_mut(&mut self) -> &mut Word {
-            &mut self.gas_price
+        fn script_gas_limit_mut(&mut self) -> &mut Word {
+            &mut self.script_gas_limit
         }
 
         #[inline(always)]
-        fn gas_price_offset_static() -> usize {
+        fn script_gas_limit_offset_static() -> usize {
             WORD_SIZE // `Transaction` enum discriminant
-        }
-    }
-
-    impl GasLimit for Script {
-        #[inline(always)]
-        fn gas_limit(&self) -> &Word {
-            &self.gas_limit
-        }
-
-        #[inline(always)]
-        fn gas_limit_mut(&mut self) -> &mut Word {
-            &mut self.gas_limit
-        }
-
-        #[inline(always)]
-        fn gas_limit_offset_static() -> usize {
-            Self::gas_price_offset_static() + WORD_SIZE
-        }
-    }
-
-    impl Maturity for Script {
-        #[inline(always)]
-        fn maturity(&self) -> &BlockHeight {
-            &self.maturity
-        }
-
-        #[inline(always)]
-        fn maturity_mut(&mut self) -> &mut BlockHeight {
-            &mut self.maturity
-        }
-
-        #[inline(always)]
-        fn maturity_offset_static() -> usize {
-            Self::gas_limit_offset_static() + WORD_SIZE
         }
     }
 
@@ -280,9 +248,10 @@ mod field {
 
         #[inline(always)]
         fn receipts_root_offset_static() -> usize {
-            Self::maturity_offset_static() + WORD_SIZE
+            Self::script_gas_limit_offset_static() + WORD_SIZE
                 + WORD_SIZE // Script size
                 + WORD_SIZE // Script data size
+                + WORD_SIZE // Policies size
                 + WORD_SIZE // Inputs size
                 + WORD_SIZE // Outputs size
                 + WORD_SIZE // Witnesses size
@@ -330,6 +299,23 @@ mod field {
         }
     }
 
+    impl PoliciesField for Script {
+        #[inline(always)]
+        fn policies(&self) -> &Policies {
+            &self.policies
+        }
+
+        #[inline(always)]
+        fn policies_mut(&mut self) -> &mut Policies {
+            &mut self.policies
+        }
+
+        #[inline(always)]
+        fn policies_offset(&self) -> usize {
+            self.script_data_offset() + bytes::padded_len(self.script_data.as_slice())
+        }
+    }
+
     impl Inputs for Script {
         #[inline(always)]
         fn inputs(&self) -> &Vec<Input> {
@@ -351,7 +337,7 @@ mod field {
                 return *inputs_offset
             }
 
-            self.script_data_offset() + bytes::padded_len(self.script_data.as_slice())
+            self.policies_offset() + self.policies.size_dynamic()
         }
 
         #[inline(always)]

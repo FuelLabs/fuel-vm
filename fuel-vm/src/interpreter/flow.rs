@@ -136,7 +136,7 @@ where
         input.ret_data(a, b)
     }
 
-    pub(crate) fn revert(&mut self, a: Word) {
+    pub(crate) fn revert(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
                 .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
@@ -171,7 +171,8 @@ where
         };
         self.panic_context = PanicContext::None;
 
-        self.append_receipt(receipt);
+        self.append_receipt(receipt)
+            .expect("Appending a panic receipt cannot fail");
     }
 }
 
@@ -226,7 +227,7 @@ impl RetCtx<'_> {
             set_frame_pointer(context, registers.fp_mut(), fp);
         }
 
-        append_receipt(self.append, receipt);
+        append_receipt(self.append, receipt)?;
 
         Ok(inc_pc(self.registers.pc_mut())?)
     }
@@ -260,7 +261,7 @@ pub(crate) fn revert(
     pc: Reg<PC>,
     is: Reg<IS>,
     a: Word,
-) {
+) -> SimpleResult<()> {
     let receipt = Receipt::revert(
         current_contract.unwrap_or_else(ContractId::zeroed),
         a,
@@ -268,7 +269,7 @@ pub(crate) fn revert(
         *is,
     );
 
-    append_receipt(append, receipt);
+    append_receipt(append, receipt)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -627,7 +628,7 @@ where
                 memory: self.memory.memory,
             },
             receipt,
-        );
+        )?;
 
         self.frames.push(frame);
 

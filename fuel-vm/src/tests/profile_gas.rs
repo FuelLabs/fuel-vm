@@ -39,12 +39,12 @@ fn profile_gas() {
                 .add_unsigned_coin_input(
                     SecretKey::random(rng),
                     rng.gen(),
-                    1,
+                    2,
                     Default::default(),
                     rng.gen(),
                     Default::default(),
                 )
-                .gas_limit(gas_limit)
+                .script_gas_limit(gas_limit)
                 .gas_price(gas_price)
                 .maturity(maturity)
                 .finalize_checked(height);

@@ -19,6 +19,10 @@ fn tx_with_signed_coin_snapshot() {
             predicate: Empty::new(),
             predicate_data: Empty::new(),
         }))
+        .gas_price(1)
+        .maturity(123.into())
+        .max_fee_limit(1000000)
+        .witness_limit(1000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
@@ -41,6 +45,9 @@ fn tx_with_predicate_coin_snapshot() {
             predicate: vec![3u8; 10],
             predicate_data: vec![4u8; 12],
         }))
+        .gas_price(1)
+        .maturity(123.into())
+        .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
@@ -58,6 +65,9 @@ fn tx_with_contract_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             contract_id: [5u8; 32].into(),
         }))
+        .gas_price(1)
+        .maturity(123.into())
+        .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
@@ -79,6 +89,10 @@ fn tx_with_signed_message_coin() {
             predicate: Empty::new(),
             predicate_data: Empty::new(),
         }))
+        .gas_price(1)
+        .maturity(123.into())
+        .max_fee_limit(1000000)
+        .witness_limit(1000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
@@ -100,6 +114,9 @@ fn tx_with_predicate_message_coin() {
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
         }))
+        .gas_price(1)
+        .maturity(123.into())
+        .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
@@ -121,6 +138,10 @@ fn tx_with_signed_message_data() {
             predicate: Empty::new(),
             predicate_data: Empty::new(),
         }))
+        .gas_price(1)
+        .maturity(123.into())
+        .max_fee_limit(1000000)
+        .witness_limit(1000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
@@ -142,6 +163,9 @@ fn tx_with_predicate_message_data() {
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
         }))
+        .gas_price(1)
+        .maturity(123.into())
+        .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();

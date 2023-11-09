@@ -622,7 +622,7 @@ where
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
 
-        append_receipt(self.append, receipt);
+        append_receipt(self.append, receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -660,7 +660,7 @@ where
 
         let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
 
-        append_receipt(self.append, receipt);
+        append_receipt(self.append, receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -1021,7 +1021,7 @@ where
                 memory: self.memory,
             },
             receipt,
-        );
+        )?;
 
         Ok(inc_pc(self.pc)?)
     }

@@ -4,8 +4,9 @@ use fuel_asm::{
     PanicInstruction,
     PanicReason,
     RawInstruction,
+    Word,
 };
-use fuel_tx::CheckError;
+use fuel_tx::ValidityError;
 
 use alloc::{
     format,
@@ -34,8 +35,8 @@ pub enum InterpreterError<StorageError> {
     #[display(fmt = "Execution error: {_0:?}")]
     Panic(PanicReason),
     /// The provided transaction isn't valid.
-    #[display(fmt = "Failed to check the transaction: {_0}")]
-    CheckError(CheckError),
+    #[display(fmt = "Failed to validate the transaction: {_0}")]
+    TransactionValidity(ValidityError),
     /// No transaction was initialized in the interpreter. It cannot provide
     /// state transitions.
     #[display(fmt = "Execution error")]
@@ -102,7 +103,9 @@ where
             Self::Storage(e) => InterpreterError::Storage(format!("{e:?}")),
             Self::PanicInstruction(e) => InterpreterError::PanicInstruction(*e),
             Self::Panic(e) => InterpreterError::Panic(*e),
-            Self::CheckError(e) => InterpreterError::CheckError(e.clone()),
+            Self::TransactionValidity(e) => {
+                InterpreterError::TransactionValidity(e.clone())
+            }
             Self::NoTransactionInitialized => InterpreterError::NoTransactionInitialized,
             Self::DebugStateNotInitialized => InterpreterError::DebugStateNotInitialized,
             Self::Bug(e) => InterpreterError::Bug(e.clone()),
@@ -120,9 +123,9 @@ impl<StorageError> From<RuntimeError<StorageError>> for InterpreterError<Storage
     }
 }
 
-impl<StorageError> From<CheckError> for InterpreterError<StorageError> {
-    fn from(error: CheckError) -> Self {
-        Self::CheckError(error)
+impl<StorageError> From<ValidityError> for InterpreterError<StorageError> {
+    fn from(error: ValidityError) -> Self {
+        Self::TransactionValidity(error)
     }
 }
 
@@ -134,7 +137,7 @@ where
         match (self, other) {
             (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
             (Self::Panic(s), Self::Panic(o)) => s == o,
-            (Self::CheckError(s), Self::CheckError(o)) => s == o,
+            (Self::TransactionValidity(s), Self::TransactionValidity(o)) => s == o,
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
             (Self::Storage(a), Self::Storage(b)) => a == b,
             (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
@@ -227,7 +230,8 @@ impl<StorageError> From<Infallible> for RuntimeError<StorageError> {
 }
 
 /// Predicates checking failed
-#[derive(Debug, PartialEq, derive_more::Display)]
+#[derive(Debug, Clone, PartialEq, derive_more::Display)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PredicateVerificationFailed {
     /// The predicate did not use the amount of gas provided
     #[display(fmt = "Predicate used less than the required amount of gas")]
@@ -244,9 +248,9 @@ pub enum PredicateVerificationFailed {
     /// The predicate gas used was not specified before execution
     #[display(fmt = "Predicate failed to evaluate")]
     GasNotSpecified,
-    /// The transaction doesn't contain enough gas to evaluate all predicates
-    #[display(fmt = "Insufficient gas available for all predicates")]
-    CumulativePredicateGasExceededTxGasLimit,
+    /// The transaction's `max_gas` is greater than the global gas limit.
+    #[display(fmt = "Transaction exceeds total gas allowance {_0:?}")]
+    TransactionExceedsTotalGasAllowance(Word),
     /// The cumulative gas overflowed the u64 accumulator
     #[display(fmt = "Cumulative gas computation overflowed the u64 accumulator")]
     GasOverflow,
@@ -264,15 +268,6 @@ pub enum PredicateVerificationFailed {
         fmt = "Predicate verification failed since it attempted to access storage"
     )]
     Storage,
-}
-
-impl From<PredicateVerificationFailed> for CheckError {
-    fn from(error: PredicateVerificationFailed) -> Self {
-        match error {
-            PredicateVerificationFailed::OutOfGas => CheckError::PredicateExhaustedGas,
-            _ => CheckError::PredicateVerificationFailed,
-        }
-    }
 }
 
 impl From<InterpreterError<predicate::StorageUnavailable>>
@@ -317,6 +312,7 @@ impl From<PanicOrBug> for PredicateVerificationFailed {
 
 /// Traceable bug variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumMessage)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BugVariant {
     /// Context gas increase has overflow
     #[strum(
@@ -352,6 +348,10 @@ pub enum BugVariant {
     /// Refund cannot be computed in the current vm state.
     #[strum(message = "Refund cannot be computed in the current vm state.")]
     UncomputableRefund,
+
+    /// Receipts context is full, but there's an attempt to add more receipts.
+    #[strum(message = "Receipts context is full, cannot add new receipts.")]
+    ReceiptsCtxFull,
 }
 
 impl fmt::Display for BugVariant {
@@ -370,6 +370,7 @@ impl fmt::Display for BugVariant {
 ///
 /// The bug it self is identified by the caller location.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[must_use]
 pub struct Bug {
     /// Source code location of the bug, in `path/to/file.rs:line:column` notation

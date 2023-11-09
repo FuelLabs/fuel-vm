@@ -600,7 +600,7 @@ where
                 self.gas_charge(self.gas_costs().rvrt)?;
                 let a = rvrt.unpack();
                 let ra = r!(a);
-                self.revert(ra);
+                self.revert(ra)?;
                 return Ok(ExecuteState::Revert(ra))
             }
 

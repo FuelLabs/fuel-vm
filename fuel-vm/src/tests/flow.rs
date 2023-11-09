@@ -29,7 +29,7 @@ fn can_execute_empty_script_transaction() {
 
     let result = test_context
         .start_script(empty_script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -88,7 +88,7 @@ fn code_copy() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -133,7 +133,7 @@ fn call() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -190,7 +190,7 @@ fn call_frame_code_offset() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -252,7 +252,7 @@ fn revert_from_call_immediately_ends_execution() {
     // initiate the call to the contract which reverts
     let result = test_context
         .start_script(script_ops, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -297,7 +297,7 @@ fn repeated_nested_calls() {
     // initiate the call to the contract which reverts
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -386,7 +386,7 @@ fn revert() {
     // initiate the call to the contract which reverts
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -424,7 +424,7 @@ fn revert() {
 
     let result = test_context
         .start_script(script, script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .contract_input(contract_id)
         .fee_input()
         .contract_output(&contract_id)
@@ -469,7 +469,7 @@ fn retd_from_top_of_heap() {
     let result = test_context
         .start_script(script, vec![])
         .gas_price(0)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 
@@ -500,7 +500,7 @@ fn logd_from_top_of_heap() {
     let result = test_context
         .start_script(script, vec![])
         .gas_price(0)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .fee_input()
         .execute();
 

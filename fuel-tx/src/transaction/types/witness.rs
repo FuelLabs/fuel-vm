@@ -4,9 +4,9 @@ use fuel_types::fmt_truncated_hex;
 use alloc::vec::Vec;
 
 use crate::{
-    CheckError,
     Input,
     TxId,
+    ValidityError,
 };
 use fuel_crypto::{
     Message,
@@ -49,9 +49,9 @@ impl Witness {
         &self,
         txhash: &TxId,
         witness_index: usize,
-    ) -> Result<fuel_types::Address, CheckError> {
+    ) -> Result<fuel_types::Address, ValidityError> {
         let bytes = <[u8; Signature::LEN]>::try_from(self.as_ref()).map_err(|_| {
-            CheckError::InputInvalidSignature {
+            ValidityError::InputInvalidSignature {
                 index: witness_index,
             }
         })?;
@@ -61,7 +61,7 @@ impl Witness {
 
         signature
             .recover(message)
-            .map_err(|_| CheckError::InputInvalidSignature {
+            .map_err(|_| ValidityError::InputInvalidSignature {
                 index: witness_index,
             })
             .map(|pk| Input::owner(&pk))

@@ -8,6 +8,8 @@ use fuel_tx::{
     ScriptExecutionResult,
 };
 
+use alloc::vec;
+
 use crate::interpreter::ReceiptsCtx;
 
 use super::test_helpers::run_script;

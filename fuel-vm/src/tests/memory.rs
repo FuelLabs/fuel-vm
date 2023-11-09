@@ -53,10 +53,9 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
 fn test_lw() {
     let ops = vec![
         op::movi(0x10, 8),
-        op::movi(0x11, 1),
         op::aloc(0x10),
         op::move_(0x10, RegId::HP),
-        op::sw(0x10, 0x11, 0),
+        op::sw(0x10, RegId::ONE, 0),
         op::lw(0x13, 0x10, 0),
         op::ret(RegId::ONE),
     ];
@@ -70,10 +69,9 @@ fn test_lw() {
 fn test_lw_unaglined() {
     let ops = vec![
         op::movi(0x10, 9),
-        op::movi(0x11, 1),
         op::aloc(0x10),
         op::move_(0x10, RegId::HP),
-        op::sw(0x10, 0x11, 0),
+        op::sw(0x10, RegId::ONE, 0),
         op::lw(0x13, 0x10, 0),
         op::ret(RegId::ONE),
     ];
@@ -87,10 +85,9 @@ fn test_lw_unaglined() {
 fn test_lb() {
     let ops = vec![
         op::movi(0x10, 8),
-        op::movi(0x11, 1),
         op::aloc(0x10),
         op::move_(0x10, RegId::HP),
-        op::sb(0x10, 0x11, 0),
+        op::sb(0x10, RegId::ONE, 0),
         op::lb(0x13, 0x10, 0),
         op::ret(RegId::ONE),
     ];

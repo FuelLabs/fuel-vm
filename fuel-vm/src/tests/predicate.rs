@@ -143,7 +143,6 @@ where
         }
         (Err(p_err), Err(s_err)) => {
             assert_eq!(p_err, s_err);
-            println!("{:?}", p_err);
             false
         }
         _ => panic!("Parallel and sequential execution should return the same result"),

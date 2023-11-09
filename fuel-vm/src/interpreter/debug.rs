@@ -74,7 +74,7 @@ fn breakpoint_script() {
     let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
@@ -146,7 +146,7 @@ fn single_stepping() {
     let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)

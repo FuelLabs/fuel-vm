@@ -245,7 +245,7 @@ pub enum PredicateVerificationFailed {
     /// The predicate gas used was not specified before execution
     #[display(fmt = "Predicate failed to evaluate")]
     GasNotSpecified,
-    /// The transaction `max_gas` more than global gas limit.
+    /// The transaction's `max_gas` is greater than the global gas limit.
     #[display(fmt = "Transaction exceeds total gas allowance {_0:?}")]
     TransactionExceedsTotalGasAllowance(Word),
     /// The cumulative gas overflowed the u64 accumulator

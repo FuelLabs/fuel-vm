@@ -78,7 +78,7 @@ impl PolicyType {
 /// The total number of policies.
 pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as usize;
 
-/// It is a container for managing policies.
+/// Container for managing policies.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Policies {

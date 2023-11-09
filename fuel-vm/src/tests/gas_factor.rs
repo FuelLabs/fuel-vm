@@ -34,7 +34,7 @@ fn gas_factor_rounds_correctly() {
         .with_fee_params(fee_params)
         .start_script(script, vec![])
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .coin_input(AssetId::default(), input)
         .change_output(AssetId::default())
         .build();

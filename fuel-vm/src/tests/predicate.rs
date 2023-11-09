@@ -96,7 +96,7 @@ where
 
     builder
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
@@ -142,7 +142,6 @@ where
         }
         (Err(p_err), Err(s_err)) => {
             assert_eq!(p_err, s_err);
-            println!("{:?}", p_err);
             false
         }
         _ => panic!("Parallel and sequential execution should return the same result"),
@@ -355,7 +354,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
     let coin_amount = 10_000_000;
@@ -393,7 +392,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         .gas_used()
         .expect("Should retrieve gas used");
 
-    builder.gas_limit(gas_without_predicate);
+    builder.script_gas_limit(gas_without_predicate);
 
     let predicate: Vec<u8> = vec![op::addi(0x20, 0x20, 1), op::ret(RegId::ONE)]
         .into_iter()
@@ -480,7 +479,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
         .gas_price(gas_price)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
     let coin_amount = 10_000_000;
@@ -518,7 +517,7 @@ async fn gas_used_by_predicates_more_than_limit() {
         .gas_used()
         .expect("Should retrieve gas used");
 
-    builder.gas_limit(gas_without_predicate);
+    builder.script_gas_limit(gas_without_predicate);
 
     let predicate: Vec<u8> = vec![
         op::addi(0x20, 0x20, 1),

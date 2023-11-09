@@ -41,6 +41,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     - If the `witnessses_size > policies.witness_limit`, then transaction will be rejected.
     - GTF opcode changed its hardcoded constants for fields. It should be updated according to the values from the specification on the Sway side.
 
+### Fixed
+
+- [#627](https://github.com/FuelLabs/fuel-vm/pull/627): Added removal of obsolete SMT nodes along the path during `update` and `delete` operations.
+
 ## [Version 0.41.0]
 
 #### Breaking

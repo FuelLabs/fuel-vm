@@ -130,6 +130,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         self.gas_used_by_inputs(gas_costs)
             .saturating_add(self.gas_used_by_metadata(gas_costs))
             .saturating_add(bytes_gas)
+            .saturating_add(gas_costs.vm_initialization)
     }
 
     /// Returns the maximum possible gas after the end of transaction execution.
@@ -237,7 +238,8 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 }) => gas_costs
                     .contract_root
                     .resolve(predicate.len() as u64)
-                    .saturating_add(*predicate_gas_used),
+                    .saturating_add(*predicate_gas_used)
+                    .saturating_add(gas_costs.vm_initialization),
                 // Charge nothing for all other inputs
                 _ => 0,
             })

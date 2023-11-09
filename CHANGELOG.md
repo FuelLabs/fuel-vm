@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#629](https://github.com/FuelLabs/fuel-vm/pull/629): Charge the user for VM initialization.
 - [#623](https://github.com/FuelLabs/fuel-vm/pull/623):
   Added support for transaction policies. The `Script` and `Create`
   transactions received a new field, `policies`. Policies allow the addition

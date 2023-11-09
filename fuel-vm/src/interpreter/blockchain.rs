@@ -30,7 +30,6 @@ use super::{
     RuntimeBalances,
 };
 use crate::{
-    arith::checked_add_word,
     call::CallFrame,
     constraints::{
         reg_key::*,
@@ -39,6 +38,7 @@ use crate::{
     },
     consts::*,
     context::Context,
+    convert,
     error::{
         IoResult,
         RuntimeError,
@@ -652,7 +652,7 @@ where
         let asset_id = contract_id.asset_id(sub_id);
 
         let balance = balance(self.storage, contract_id, &asset_id)?;
-        let balance = checked_add_word(balance, a)?;
+        let balance = balance.checked_add(a).ok_or(PanicReason::BalanceOverflow)?;
 
         self.storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
@@ -728,7 +728,7 @@ pub(crate) fn block_hash<S: InterpreterStorage>(
     b: Word,
 ) -> IoResult<(), S::DataError> {
     let height = u32::try_from(b)
-        .map_err(|_| PanicReason::ArithmeticOverflow)?
+        .map_err(|_| PanicReason::InvalidBlockHeight)?
         .into();
     let hash = storage.block_hash(height).map_err(RuntimeError::Storage)?;
 
@@ -926,7 +926,7 @@ pub(crate) fn timestamp<S: InterpreterStorage>(
     b: Word,
 ) -> IoResult<(), S::DataError> {
     let b = u32::try_from(b)
-        .map_err(|_| PanicReason::ArithmeticOverflow)?
+        .map_err(|_| PanicReason::InvalidBlockHeight)?
         .into();
     (b <= block_height)
         .then_some(())
@@ -1043,8 +1043,7 @@ impl StateReadQWord {
         num_slots: Word,
         ownership_registers: OwnershipRegisters,
     ) -> SimpleResult<Self> {
-        let num_slots =
-            usize::try_from(num_slots).map_err(|_| PanicReason::ArithmeticOverflow)?;
+        let num_slots = convert::to_usize(num_slots).ok_or(PanicReason::TooManySlots)?;
         let destination_address_memory_range = MemoryRange::new(
             destination_memory_address,
             Bytes32::LEN.saturating_mul(num_slots),
@@ -1167,8 +1166,9 @@ impl StateClearQWord {
         let start_storage_key_memory_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(
             start_storage_key_memory_address,
         )?;
-        let num_slots =
-            usize::try_from(num_slots).map_err(|_| PanicReason::ArithmeticOverflow)?;
+
+        let num_slots = convert::to_usize(num_slots).ok_or(PanicReason::TooManySlots)?;
+
         Ok(Self {
             start_storage_key_memory_range,
             num_slots,

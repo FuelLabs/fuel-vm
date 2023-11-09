@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Created a new `checked_transaction::CheckError` that combines `ValidityError`
   and `PredicateVerificationFailed` errors into one. It allows the return of the
   `PredicateVerificationFailed` to the end user instead of losing the reason why predicate verification failed.
+- [#625](https://github.com/FuelLabs/fuel-vm/pull/625): Use `ArithmeticError` only for arithmetic operations, and introduce new errors like `BalanceOverflow` for others. Whenever an error is internally caused by a type conversion to `usize`, so that an overflowing value wouldn't map to a valid index anyway, return the missing item error instead.
 - [#623](https://github.com/FuelLabs/fuel-vm/pull/623):
   Added support for transaction policies. The `Script` and `Create`
   transactions received a new field, `policies`. Policies allow the addition

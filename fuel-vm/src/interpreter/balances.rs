@@ -71,7 +71,7 @@ impl TryFrom<InitialBalances> for RuntimeBalances {
             let entry = balances.entry(retryable_amount.base_asset_id).or_default();
             *entry = entry
                 .checked_add(retryable_amount.amount)
-                .ok_or(ValidityError::ArithmeticOverflow)?;
+                .ok_or(ValidityError::BalanceOverflow)?;
         }
         Self::try_from_iter(balances)
     }
@@ -96,7 +96,7 @@ impl RuntimeBalances {
                     .entry(asset)
                     .or_insert_with(|| Balance::new(0, offset))
                     .checked_add(balance)
-                    .ok_or(ValidityError::ArithmeticOverflow)?;
+                    .ok_or(ValidityError::BalanceOverflow)?;
 
                 Ok(state)
             })
@@ -306,7 +306,7 @@ fn try_from_iter_wont_overflow() {
     let err =
         RuntimeBalances::try_from_iter(balances).expect_err("overflow set should fail");
 
-    assert_eq!(ValidityError::ArithmeticOverflow, err);
+    assert_eq!(ValidityError::BalanceOverflow, err);
 }
 
 #[test]

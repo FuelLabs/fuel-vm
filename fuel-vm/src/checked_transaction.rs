@@ -1419,7 +1419,7 @@ mod tests {
             .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
-        assert_eq!(err, CheckError::Validity(ValidityError::ArithmeticOverflow));
+        assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
     }
 
     #[test]
@@ -1437,7 +1437,7 @@ mod tests {
             .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
-        assert_eq!(err, CheckError::Validity(ValidityError::ArithmeticOverflow));
+        assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
     }
 
     #[test]
@@ -1588,7 +1588,7 @@ mod tests {
             .saturating_add(witness_limit_allowance);
         let max_fee: u64 = gas_to_fee(max_gas, tx.price(), fee_params.gas_price_factor)
             .try_into()
-            .map_err(|_| ValidityError::ArithmeticOverflow)?;
+            .map_err(|_| ValidityError::BalanceOverflow)?;
 
         let result = max_fee == available_balances.fee.max_fee();
         Ok(result)
@@ -1624,7 +1624,7 @@ mod tests {
         let rounded_fee = fee.saturating_add(fee_remainder);
         let min_fee: u64 = rounded_fee
             .try_into()
-            .map_err(|_| ValidityError::ArithmeticOverflow)?;
+            .map_err(|_| ValidityError::BalanceOverflow)?;
 
         Ok(min_fee == available_balances.fee.min_fee())
     }

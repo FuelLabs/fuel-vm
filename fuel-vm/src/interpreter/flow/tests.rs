@@ -359,9 +359,10 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
             .unwrap();
     }
     for (a, n) in storage_balance.iter() {
-        storage
+        let old_balance = storage
             .merkle_contract_asset_id_balance_insert(&ContractId::default(), a, *n)
             .unwrap();
+        assert!(old_balance.is_none());
     }
     let mut panic_context = PanicContext::None;
     let mut receipts = Default::default();

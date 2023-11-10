@@ -41,9 +41,10 @@ fn test_burn(
     let asset_id = contract_id.asset_id(&sub_id);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
-        storage
+        let old_balance = storage
             .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
             .unwrap();
+        assert!(old_balance.is_none());
     }
     let context = if external {
         Context::Script {
@@ -123,9 +124,10 @@ fn test_mint(
     let asset_id = contract_id.asset_id(&sub_id);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
-        storage
+        let old_balance = storage
             .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
             .unwrap();
+        assert!(old_balance.is_none());
     }
     let context = if external {
         Context::Script {
@@ -143,6 +145,8 @@ fn test_mint(
     let is = 0;
     const ORIGINAL_PC: Word = 4;
     let mut pc = ORIGINAL_PC;
+    let mut cgas = 10_000;
+    let mut ggas = 10_000;
     MintCtx {
         storage: &mut storage,
         context: &context,
@@ -152,6 +156,10 @@ fn test_mint(
             tx_offset: 0,
             memory: &mut memory,
         },
+        profiler: &mut Profiler::default(),
+        new_storage_gas_per_byte: 1,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),

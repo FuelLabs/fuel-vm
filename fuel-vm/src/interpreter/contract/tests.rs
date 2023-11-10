@@ -30,13 +30,14 @@ fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
         .copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    storage
+    let old_balance = storage
         .merkle_contract_asset_id_balance_insert(
             &contract_id,
             &AssetId::from([2u8; 32]),
             33,
         )
         .unwrap();
+    assert!(old_balance.is_none());
     let mut pc = 4;
 
     let mut panic_context = PanicContext::None;
@@ -102,13 +103,14 @@ fn test_transfer(
 
     let initial_recipient_contract_balance = 0;
     let initial_source_contract_balance = 60;
-    storage
+    let old_balance = storage
         .merkle_contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_source_contract_balance,
         )
         .unwrap();
+    assert!(old_balance.is_none());
 
     let context = if external {
         Context::Script {
@@ -238,13 +240,14 @@ fn test_transfer_output(
 
     let initial_contract_balance = 60;
 
-    storage
+    let old_balance = storage
         .merkle_contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_contract_balance,
         )
         .unwrap();
+    assert!(old_balance.is_none());
 
     let context = if external {
         Context::Script {
@@ -351,9 +354,10 @@ fn test_balance_increase(
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
-        storage
+        let old_balance = storage
             .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
+        assert!(old_balance.is_none());
     }
 
     let result = balance_increase(&mut storage, &contract_id, &asset_id, amount)?;
@@ -386,9 +390,10 @@ fn test_balance_decrease(
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
-        storage
+        let old_balance = storage
             .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
+        assert!(old_balance.is_none());
     }
 
     let result = balance_decrease(&mut storage, &contract_id, &asset_id, amount)?;

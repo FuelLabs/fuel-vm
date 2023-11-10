@@ -219,13 +219,14 @@ fn test_smo(
     let mut receipts = Default::default();
     let mut tx = Create::default();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    storage
+    let old_balance = storage
         .merkle_contract_asset_id_balance_insert(
             &ContractId::default(),
             &base_asset_id,
             initial_balance,
         )
         .unwrap();
+    assert!(old_balance.is_none());
     let mut balances = RuntimeBalances::try_from_iter([(base_asset_id, initial_balance)])
         .expect("Should be valid balance");
     let fp = 0;

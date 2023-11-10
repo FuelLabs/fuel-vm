@@ -1,3 +1,5 @@
+use core::mem::size_of;
+
 use super::{
     contract::{
         balance,
@@ -172,8 +174,18 @@ where
 
     pub(crate) fn mint(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
-        let (SystemRegisters { fp, pc, is, .. }, _) =
-            split_registers(&mut self.registers);
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let (
+            SystemRegisters {
+                cgas,
+                ggas,
+                fp,
+                pc,
+                is,
+                ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         MintCtx {
             storage: &mut self.storage,
             context: &self.context,
@@ -183,6 +195,10 @@ where
                 tx_offset,
                 memory: &mut self.memory,
             },
+            profiler: &mut self.profiler,
+            new_storage_gas_per_byte,
+            cgas,
+            ggas,
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -668,7 +684,8 @@ where
             .checked_sub(a)
             .ok_or(PanicReason::NotEnoughBalance)?;
 
-        self.storage
+        let _ = self
+            .storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
@@ -683,7 +700,11 @@ where
 struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
+    profiler: &'vm mut Profiler,
+    new_storage_gas_per_byte: Word,
     append: AppendReceipt<'vm>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
@@ -706,9 +727,27 @@ where
         let balance = balance(self.storage, contract_id, &asset_id)?;
         let balance = balance.checked_add(a).ok_or(PanicReason::BalanceOverflow)?;
 
-        self.storage
+        let old_value = self
+            .storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
+
+        if old_value.is_none() {
+            // New data was written, charge gas for it
+            let profiler = ProfileGas {
+                pc: self.pc.as_ref(),
+                is: self.is,
+                current_contract: Some(*contract_id),
+                profiler: self.profiler,
+            };
+            gas_charge(
+                self.cgas,
+                self.ggas,
+                profiler,
+                ((AssetId::LEN + size_of::<u64>()) as u64)
+                    * self.new_storage_gas_per_byte,
+            )?;
+        }
 
         let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
 

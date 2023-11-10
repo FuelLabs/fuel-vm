@@ -230,6 +230,7 @@ pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets>
     }
 
     /// Update the balance of an asset ID in a contract storage.
+    /// Returns the old balance, if any.
     fn merkle_contract_asset_id_balance_insert(
         &mut self,
         contract: &ContractId,

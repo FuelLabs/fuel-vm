@@ -1031,7 +1031,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
             cgas,
             ggas,
             profiler,
-            (Bytes32::LEN as u64) * new_storage_gas_per_byte,
+            (2 * Bytes32::LEN as u64) * new_storage_gas_per_byte,
         )?;
     }
 

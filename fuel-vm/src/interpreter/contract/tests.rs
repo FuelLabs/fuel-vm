@@ -89,6 +89,8 @@ fn test_transfer(
     // Arbitrary value
     let fp = 2048;
     let is = 0;
+    let mut cgas = 10_000;
+    let mut ggas = 10_000;
 
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[real_contract_id_offset as usize
@@ -143,8 +145,12 @@ fn test_transfer(
         context: &context,
         balances: &mut balances,
         receipts: &mut receipts,
+        profiler: &mut Default::default(),
+        new_storage_gas_per_byte: 1,
         tx: &mut tx,
         tx_offset: 0,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
     };
@@ -225,6 +231,8 @@ fn test_transfer_output(
     // Arbitrary value
     let fp = 2048;
     let is = 0;
+    let mut cgas = 10_000;
+    let mut ggas = 10_000;
 
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
 
@@ -291,8 +299,12 @@ fn test_transfer_output(
         context: &context,
         balances: &mut balances,
         receipts: &mut receipts,
+        profiler: &mut Default::default(),
+        new_storage_gas_per_byte: 1,
         tx: &mut tx,
         tx_offset,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
     };
@@ -360,9 +372,11 @@ fn test_balance_increase(
         assert!(old_balance.is_none());
     }
 
-    let result = balance_increase(&mut storage, &contract_id, &asset_id, amount)?;
-    let initial = initial.unwrap_or(0);
+    let (result, created_new_entry) =
+        balance_increase(&mut storage, &contract_id, &asset_id, amount)?;
 
+    assert!(initial.is_none() == created_new_entry);
+    let initial = initial.unwrap_or(0);
     assert_eq!(result, initial + amount);
 
     let result = storage

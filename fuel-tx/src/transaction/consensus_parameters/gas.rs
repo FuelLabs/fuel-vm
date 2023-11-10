@@ -321,7 +321,7 @@ pub struct GasCostsValues {
     // Non-opcode costs
     pub contract_root: DependentCost,
     pub state_root: DependentCost,
-    pub new_storage_per_byte: Word, // TODO: this is currently per slot
+    pub new_storage_per_byte: Word,
     pub vm_initialization: Word,
 }
 

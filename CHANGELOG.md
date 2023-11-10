@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     - If the `witnessses_size > policies.witness_limit`, then transaction will be rejected.
     - GTF opcode changed its hardcoded constants for fields. It should be updated according to the values from the specification on the Sway side.
 - [#633](https://github.com/FuelLabs/fuel-vm/pull/633): Limit receipt count to `u16::MAX`.
+- [#634](https://github.com/FuelLabs/fuel-vm/pull/634): Charge for storage per new byte written. Write opcodes now return the number of new storage slots created, instead of just a boolean on whether the value existed before.
 
 ### Fixed
 

@@ -744,7 +744,7 @@ where
                 self.cgas,
                 self.ggas,
                 profiler,
-                ((AssetId::LEN + size_of::<u64>()) as u64)
+                ((AssetId::LEN + WORD_SIZE) as u64)
                     * self.new_storage_gas_per_byte,
             )?;
         }

@@ -1283,6 +1283,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
             cgas,
             ggas,
             profiler,
+            // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
             (unset_count as u64) * (Bytes32::LEN as u64) * new_storage_gas_per_byte,
         )?;
     }

@@ -347,6 +347,75 @@ fn ldc__gas_cost_is_not_dependent_on_rC() {
 }
 
 #[test]
+fn state_write_charges_for_new_storage() {
+    let mut test_context = TestBuilder::new(2322u64);
+
+    let balance = 1000;
+    let gas_limit = 1_000_000;
+
+    let prelude = vec![
+        op::movi(0x14, 10), // The count for swwq
+        op::muli(0x15, 0x14, Bytes32::LEN as u16), // Slot space for swwq
+        op::aloc(0x15), // Allocate slots
+    ];
+
+    for operation in [
+        op::sww(RegId::HP, 0x12, RegId::ONE),
+        op::swwq(RegId::HP, 0x12, RegId::ONE, 0x14),
+    ] {
+        let [new_asset, existing_asset] = [true, false].map(|create_new_asset| {
+            let mut program = prelude.clone();
+
+            // Write before so the asset exists before measuring
+            if !create_new_asset {
+                program.push(operation);
+            }
+
+            // The write we're measuring
+            program.extend([
+                op::log(RegId::GGAS, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+                operation,
+                op::log(RegId::GGAS, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+                op::ret(RegId::ONE),
+            ]);
+
+            let contract_id =
+                test_context.setup_contract(program, None, None).contract_id;
+
+            let (script_call, _) = script_with_data_offset!(
+                data_offset,
+                vec![
+                    op::movi(0x10, data_offset as Immediate18),
+                    op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+                    op::ret(RegId::ONE),
+                ],
+                test_context.get_tx_params().tx_offset()
+            );
+            let script_call_data = Call::new(contract_id, 0, balance).to_bytes();
+
+            let result = test_context
+                .start_script(script_call.clone(), script_call_data)
+                .script_gas_limit(gas_limit)
+                .contract_input(contract_id)
+                .fee_input()
+                .contract_output(&contract_id)
+                .execute();
+
+            let mut gas_values = result.receipts().iter().filter_map(|v| match v {
+                Receipt::Log { ra, .. } => Some(ra),
+                _ => None,
+            });
+
+            let gas_before = gas_values.next().expect("Missing log receipt");
+            let gas_after = gas_values.next().expect("Missing log receipt");
+            gas_before - gas_after
+        });
+
+        assert!(new_asset > existing_asset);
+    }
+}
+
+#[test]
 fn ldc__offset_affects_read_code() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();

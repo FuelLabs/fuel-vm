@@ -28,7 +28,7 @@ fn input_coin_message_signature() {
     fn test<Tx: Buildable>(txs: &mut impl Iterator<Item = (Tx, Vec<SecretKey>)>) {
         let rng = &mut StdRng::seed_from_u64(8586);
 
-        fn check_inputs<Tx: Buildable>(tx: Tx) -> Result<(), CheckError> {
+        fn check_inputs<Tx: Buildable>(tx: Tx) -> Result<(), ValidityError> {
             let chain_id = ChainId::default();
             let txhash = tx.id(&chain_id);
             let outputs = tx.outputs();
@@ -57,7 +57,7 @@ fn input_coin_message_signature() {
             rng: &mut R,
             mut iter: I,
             f: F,
-        ) -> Result<(), CheckError>
+        ) -> Result<(), ValidityError>
         where
             R: Rng + CryptoRng,
             I: Iterator<Item = (Tx, Vec<SecretKey>)>,
@@ -160,7 +160,7 @@ fn coin_signed() {
         .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
-    assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err);
+    assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err);
 }
 
 #[test]
@@ -244,7 +244,7 @@ fn coin_predicate() {
     .err()
     .unwrap();
 
-    assert_eq!(CheckError::InputPredicateEmpty { index: 1 }, err);
+    assert_eq!(ValidityError::InputPredicateEmpty { index: 1 }, err);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
     let owner = (*Contract::root_from_code(&predicate)).into();
@@ -265,7 +265,7 @@ fn coin_predicate() {
     .err()
     .unwrap();
 
-    assert_eq!(CheckError::InputPredicateOwner { index: 1 }, err);
+    assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 }
 
 #[test]
@@ -291,7 +291,7 @@ fn contract() {
         .unwrap();
 
     assert_eq!(
-        CheckError::InputContractAssociatedOutputContract { index: 1 },
+        ValidityError::InputContractAssociatedOutputContract { index: 1 },
         err
     );
 
@@ -308,7 +308,7 @@ fn contract() {
         .unwrap();
 
     assert_eq!(
-        CheckError::InputContractAssociatedOutputContract { index: 1 },
+        ValidityError::InputContractAssociatedOutputContract { index: 1 },
         err
     );
 
@@ -325,7 +325,7 @@ fn contract() {
         .unwrap();
 
     assert_eq!(
-        CheckError::InputContractAssociatedOutputContract { index: 1 },
+        ValidityError::InputContractAssociatedOutputContract { index: 1 },
         err
     );
 }
@@ -373,7 +373,7 @@ fn message_metadata() {
         .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
-    assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
+    assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
     let recipient = Input::predicate_owner(&predicate);
@@ -392,7 +392,7 @@ fn message_metadata() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("Expected failure");
 
-    assert_eq!(CheckError::InputPredicateOwner { index: 1 }, err);
+    assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 
     let data = vec![0xff; PREDICATE_PARAMS.max_message_data_length as usize + 1];
 
@@ -414,7 +414,7 @@ fn message_metadata() {
     )
     .expect_err("expected max data length error");
 
-    assert_eq!(CheckError::InputMessageDataLength { index: 1 }, err,);
+    assert_eq!(ValidityError::InputMessageDataLength { index: 1 }, err,);
 
     let err = Input::message_data_predicate(
         rng.gen(),
@@ -429,7 +429,7 @@ fn message_metadata() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max data length error");
 
-    assert_eq!(CheckError::InputMessageDataLength { index: 1 }, err,);
+    assert_eq!(ValidityError::InputMessageDataLength { index: 1 }, err,);
 
     let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length as usize + 1];
 
@@ -446,7 +446,7 @@ fn message_metadata() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate length error");
 
-    assert_eq!(CheckError::InputPredicateLength { index: 1 }, err,);
+    assert_eq!(ValidityError::InputPredicateLength { index: 1 }, err,);
 
     let predicate_data =
         vec![0xff; PREDICATE_PARAMS.max_predicate_data_length as usize + 1];
@@ -464,7 +464,7 @@ fn message_metadata() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate data length error");
 
-    assert_eq!(CheckError::InputPredicateDataLength { index: 1 }, err,);
+    assert_eq!(ValidityError::InputPredicateDataLength { index: 1 }, err,);
 }
 
 #[test]
@@ -498,7 +498,7 @@ fn message_message_coin() {
         .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
-    assert_eq!(CheckError::InputWitnessIndexBounds { index: 0 }, err,);
+    assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err,);
 
     let mut predicate = generate_nonempty_padded_bytes(rng);
     let recipient = Input::predicate_owner(&predicate);
@@ -516,7 +516,7 @@ fn message_message_coin() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("Expected failure");
 
-    assert_eq!(CheckError::InputPredicateOwner { index: 1 }, err);
+    assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 
     let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length as usize + 1];
 
@@ -532,7 +532,7 @@ fn message_message_coin() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate length error");
 
-    assert_eq!(CheckError::InputPredicateLength { index: 1 }, err,);
+    assert_eq!(ValidityError::InputPredicateLength { index: 1 }, err,);
 
     let predicate_data =
         vec![0xff; PREDICATE_PARAMS.max_predicate_data_length as usize + 1];
@@ -549,7 +549,7 @@ fn message_message_coin() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect_err("expected max predicate data length error");
 
-    assert_eq!(CheckError::InputPredicateDataLength { index: 1 }, err,);
+    assert_eq!(ValidityError::InputPredicateDataLength { index: 1 }, err,);
 }
 
 #[test]
@@ -584,7 +584,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect_err("Expected checkable failure");
 
-    assert_eq!(err, CheckError::DuplicateInputUtxoId { utxo_id });
+    assert_eq!(err, ValidityError::DuplicateInputUtxoId { utxo_id });
 }
 
 #[test]
@@ -622,7 +622,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         )
         .expect_err("Expected checkable failure");
 
-    assert_eq!(err, CheckError::DuplicateMessageInputId { message_id });
+    assert_eq!(err, ValidityError::DuplicateMessageInputId { message_id });
 }
 
 #[test]
@@ -655,7 +655,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect_err("Expected checkable failure");
 
-    assert_eq!(err, CheckError::DuplicateInputContractId { contract_id });
+    assert_eq!(err, ValidityError::DuplicateInputContractId { contract_id });
 }
 
 #[test]

@@ -95,15 +95,16 @@ enum_from! {
         ExpectedOutputVariable = 0x1d,
         /// The expected context of the stack parent is internal.
         ExpectedParentInternalContext = 0x1e,
-        /// The jump instruction cannot move backwards in predicate verification.
-        IllegalJump = 0x1f,
+        /// The predicate returned non `1`. The `1` means successful verification
+        /// of the predicate, all other values means unsuccessful.
+        PredicateReturnedNonOne = 0x1f,
         /// The contract ID is already deployed and can't be overwritten.
         ContractIdAlreadyDeployed = 0x20,
         /// The loaded contract mismatch expectations.
         ContractMismatch = 0x21,
         /// Attempting to send message data longer than `MAX_MESSAGE_DATA_LENGTH`
         MessageDataTooLong = 0x22,
-        /// Mathimatically invalid arguments where given to an arithmetic instruction.
+        /// Mathematically invalid arguments where given to an arithmetic instruction.
         /// For instance, division by zero produces this.
         /// These errors are ignored using the UNSAFEMATH flag.
         ArithmeticError = 0x23,
@@ -119,6 +120,15 @@ enum_from! {
         PolicyIsNotSet = 0x28,
         /// The policy is not found across policies.
         PolicyNotFound = 0x29,
+        /// Receipt context is full
+        TooManyReceipts = 0x2a,
+        /// Balance of a contract overflowed
+        BalanceOverflow = 0x2b,
+        /// Block height value is invalid, typically because it is too large
+        InvalidBlockHeight = 0x2c,
+        /// Attempt to use sequential memory instructions with too large slot count,
+        /// typically because it cannot fit into usize
+        TooManySlots = 0x2d,
     }
 }
 

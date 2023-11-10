@@ -76,7 +76,6 @@ pub use transaction::{
     policies,
     Cacheable,
     Chargeable,
-    CheckError,
     ConsensusParameters,
     ContractParameters,
     Create,
@@ -98,6 +97,7 @@ pub use transaction::{
     TxId,
     TxParameters,
     UtxoId,
+    ValidityError,
     Witness,
 };
 

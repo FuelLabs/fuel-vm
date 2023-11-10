@@ -241,7 +241,7 @@ mod tests {
                 // Returning an invalid value
                 predicate_input!(vec![op::ret(0x0)]),
                 Err(PredicateVerificationFailed::Panic(
-                    PanicReason::ContractInstructionNotAllowed,
+                    PanicReason::PredicateReturnedNonOne,
                 )),
             ),
             (

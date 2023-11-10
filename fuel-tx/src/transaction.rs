@@ -68,8 +68,8 @@ pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
 pub use validity::{
-    CheckError,
     FormatValidityChecks,
+    ValidityError,
 };
 
 #[cfg(feature = "alloc")]
@@ -618,7 +618,7 @@ pub mod field {
         #[inline(always)]
         fn set_maturity(&mut self, block_height: BlockHeight) {
             self.policies_mut()
-                .set(PolicyType::Maturity, Some(block_height.as_usize() as u64))
+                .set(PolicyType::Maturity, Some(*block_height.deref() as u64))
         }
     }
 

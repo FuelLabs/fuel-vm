@@ -5,10 +5,11 @@ use fuel_types::{
     MessageId,
 };
 
+/// The error returned during the checking of the transaction's validity rules.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::Display)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
-pub enum CheckError {
+pub enum ValidityError {
     /// Transaction doesn't have spendable input message or coin.
     NoSpendableInput,
     InputWitnessIndexBounds {
@@ -131,11 +132,8 @@ pub enum CheckError {
         /// The total amount provided by coin inputs
         provided: u64,
     },
-    /// The user provided amounts for coins or gas prices that caused an arithmetic
-    /// overflow.
-    ArithmeticOverflow,
-    /// Predicate verification failed
-    PredicateVerificationFailed,
-    /// Predicate used all available gas
-    PredicateExhaustedGas,
+    /// The given coins is too large
+    BalanceOverflow,
+    /// The given gas costs is are too large
+    GasCostsCoinsOverflow,
 }

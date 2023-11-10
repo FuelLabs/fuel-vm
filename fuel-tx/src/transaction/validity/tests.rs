@@ -40,5 +40,5 @@ fn check_size_returns_transaction_size_limit_exceeded_for_invalid_size() {
 
     // Then
     let err = result.expect_err("Expected check_size to return err");
-    assert_eq!(err, CheckError::TransactionSizeLimitExceeded);
+    assert_eq!(err, ValidityError::TransactionSizeLimitExceeded);
 }

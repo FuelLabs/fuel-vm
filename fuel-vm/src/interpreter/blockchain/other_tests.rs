@@ -105,7 +105,7 @@ fn test_burn(
 #[test_case(false, 0, None, Word::MAX, [0; 32] => Ok(()); "Mint max from nothing")]
 #[test_case(false, 0, 0, Word::MAX, [0; 32] => Ok(()); "Mint max from zero")]
 #[test_case(true, 0, 100, 10, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't mint from external context")]
-#[test_case(false, 0, 1, Word::MAX, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::ArithmeticOverflow)); "Can't mint too much")]
+#[test_case(false, 0, 1, Word::MAX, [0; 32] => Err(RuntimeError::Recoverable(PanicReason::BalanceOverflow)); "Can't mint too much")]
 fn test_mint(
     external: bool,
     fp: Word,

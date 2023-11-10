@@ -161,6 +161,8 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 44,
             units_per_gas: 5,
         },
+
+        // Non-opcode costs
         contract_root: DependentCost::LightOperation {
             base: 75,
             units_per_gas: 1,
@@ -170,5 +172,6 @@ pub fn default_gas_costs() -> GasCostsValues {
             units_per_gas: 1,
         },
         new_storage_per_byte: 1,
+        vm_initialization: 2000,
     }
 }

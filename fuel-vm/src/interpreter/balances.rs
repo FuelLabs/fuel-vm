@@ -12,7 +12,7 @@ use fuel_asm::{
     RegId,
     Word,
 };
-use fuel_tx::CheckError;
+use fuel_tx::ValidityError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
@@ -63,15 +63,15 @@ pub struct RuntimeBalances {
 }
 
 impl TryFrom<InitialBalances> for RuntimeBalances {
-    type Error = CheckError;
+    type Error = ValidityError;
 
-    fn try_from(initial_balances: InitialBalances) -> Result<Self, CheckError> {
+    fn try_from(initial_balances: InitialBalances) -> Result<Self, ValidityError> {
         let mut balances: BTreeMap<_, _> = initial_balances.non_retryable.into();
         if let Some(retryable_amount) = initial_balances.retryable {
             let entry = balances.entry(retryable_amount.base_asset_id).or_default();
             *entry = entry
                 .checked_add(retryable_amount.amount)
-                .ok_or(CheckError::ArithmeticOverflow)?;
+                .ok_or(ValidityError::BalanceOverflow)?;
         }
         Self::try_from_iter(balances)
     }
@@ -82,7 +82,7 @@ impl RuntimeBalances {
     ///
     /// This will fail if, and only if, the provided asset/balance pair isn't consistent
     /// or a balance overflows.
-    pub fn try_from_iter<T>(iter: T) -> Result<Self, CheckError>
+    pub fn try_from_iter<T>(iter: T) -> Result<Self, ValidityError>
     where
         T: IntoIterator<Item = (AssetId, Word)>,
     {
@@ -96,7 +96,7 @@ impl RuntimeBalances {
                     .entry(asset)
                     .or_insert_with(|| Balance::new(0, offset))
                     .checked_add(balance)
-                    .ok_or(CheckError::ArithmeticOverflow)?;
+                    .ok_or(ValidityError::BalanceOverflow)?;
 
                 Ok(state)
             })
@@ -306,7 +306,7 @@ fn try_from_iter_wont_overflow() {
     let err =
         RuntimeBalances::try_from_iter(balances).expect_err("overflow set should fail");
 
-    assert_eq!(CheckError::ArithmeticOverflow, err);
+    assert_eq!(ValidityError::BalanceOverflow, err);
 }
 
 #[test]

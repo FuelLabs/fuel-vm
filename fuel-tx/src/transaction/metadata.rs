@@ -7,8 +7,8 @@ use fuel_types::{
 
 use crate::{
     field,
-    CheckError,
     UniqueIdentifier,
+    ValidityError,
 };
 
 /// Entity support metadata computation to cache results.
@@ -19,7 +19,7 @@ pub trait Cacheable {
     fn is_computed(&self) -> bool;
 
     /// Computes the cache for the entity.
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError>;
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError>;
 }
 
 impl Cacheable for super::Transaction {
@@ -31,7 +31,7 @@ impl Cacheable for super::Transaction {
         }
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         match self {
             Self::Script(script) => script.precompute(chain_id),
             Self::Create(create) => create.precompute(chain_id),

@@ -24,6 +24,7 @@ mod metadata;
 mod outputs;
 mod predicate;
 mod profile_gas;
+mod receipts;
 mod serde_profile;
 mod spec;
 mod validation;

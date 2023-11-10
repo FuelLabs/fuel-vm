@@ -8,10 +8,10 @@ use crate::{
             FormatValidityChecks,
         },
     },
-    CheckError,
     ConsensusParameters,
     TransactionRepr,
     TxPointer,
+    ValidityError,
 };
 use derivative::Derivative;
 use fuel_asm::Word;
@@ -88,7 +88,7 @@ impl crate::UniqueIdentifier for Mint {
 }
 
 impl FormatValidityChecks for Mint {
-    fn check_signatures(&self, _: &ChainId) -> Result<(), CheckError> {
+    fn check_signatures(&self, _: &ChainId) -> Result<(), ValidityError> {
         Ok(())
     }
 
@@ -96,20 +96,20 @@ impl FormatValidityChecks for Mint {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<(), CheckError> {
+    ) -> Result<(), ValidityError> {
         check_size(self, consensus_params.tx_params())?;
 
         if self.tx_pointer().block_height() != block_height {
-            return Err(CheckError::TransactionMintIncorrectBlockHeight)
+            return Err(ValidityError::TransactionMintIncorrectBlockHeight)
         }
 
         if self.output_contract.input_index != 0 {
-            return Err(CheckError::TransactionMintIncorrectOutputIndex)
+            return Err(ValidityError::TransactionMintIncorrectOutputIndex)
         }
 
         // It is temporary check until https://github.com/FuelLabs/fuel-core/issues/1205
         if self.mint_asset_id != consensus_params.base_asset_id {
-            return Err(CheckError::TransactionMintNonBaseAsset)
+            return Err(ValidityError::TransactionMintNonBaseAsset)
         }
 
         Ok(())
@@ -121,7 +121,7 @@ impl crate::Cacheable for Mint {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), CheckError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(MintMetadata::compute(self, chain_id));
         Ok(())

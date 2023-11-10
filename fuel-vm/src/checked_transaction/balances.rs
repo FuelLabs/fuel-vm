@@ -13,12 +13,12 @@ use fuel_tx::{
         },
     },
     Chargeable,
-    CheckError,
     FeeParameters,
     GasCosts,
     Input,
     Output,
     TransactionFee,
+    ValidityError,
 };
 use fuel_types::{
     AssetId,
@@ -32,7 +32,7 @@ pub(crate) fn initial_free_balances<T>(
     gas_costs: &GasCosts,
     params: &FeeParameters,
     base_asset_id: &AssetId,
-) -> Result<AvailableBalances, CheckError>
+) -> Result<AvailableBalances, ValidityError>
 where
     T: Chargeable + field::Inputs + field::Outputs,
 {
@@ -68,12 +68,12 @@ where
 
     // Deduct fee from base asset
     let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction)
-        .ok_or(CheckError::ArithmeticOverflow)?;
+        .ok_or(ValidityError::BalanceOverflow)?;
 
     let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
 
     *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
-        CheckError::InsufficientFeeAmount {
+        ValidityError::InsufficientFeeAmount {
             expected: fee.max_fee(),
             provided: *base_asset_balance,
         },
@@ -91,17 +91,16 @@ where
                 _ => None,
             })
     {
-        let balance = non_retryable_balances
-            .get_mut(asset_id)
-            .ok_or(CheckError::TransactionOutputCoinAssetIdNotFound(*asset_id))?;
-        *balance =
-            balance
-                .checked_sub(*amount)
-                .ok_or(CheckError::InsufficientInputAmount {
-                    asset: *asset_id,
-                    expected: *amount,
-                    provided: *balance,
-                })?;
+        let balance = non_retryable_balances.get_mut(asset_id).ok_or(
+            ValidityError::TransactionOutputCoinAssetIdNotFound(*asset_id),
+        )?;
+        *balance = balance.checked_sub(*amount).ok_or(
+            ValidityError::InsufficientInputAmount {
+                asset: *asset_id,
+                expected: *amount,
+                provided: *balance,
+            },
+        )?;
     }
 
     Ok(AvailableBalances {

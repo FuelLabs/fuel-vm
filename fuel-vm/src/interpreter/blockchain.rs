@@ -959,7 +959,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         pc,
     }: StateWordCtx<S>,
     a: Word,
-    exists: &mut Word,
+    created_new: &mut Word,
     c: Word,
 ) -> IoResult<(), S::DataError> {
     let key = CheckedMemConstLen::<{ Bytes32::LEN }>::new(a)?;
@@ -978,7 +978,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         .merkle_contract_state_insert(contract, key, &value)
         .map_err(RuntimeError::Storage)?;
 
-    *exists = result.is_some() as Word;
+    *created_new = result.is_none() as Word;
 
     if result.is_none() {
         // New data was written, charge gas for it
@@ -1231,7 +1231,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
     let unset_count = storage
         .merkle_contract_state_insert_range(contract_id, destination_key, &values)
         .map_err(RuntimeError::Storage)?;
-    *result_register = (unset_count != 0) as Word;
+    *result_register = unset_count as Word;
 
     if unset_count > 0 {
         // New data was written, charge gas for it

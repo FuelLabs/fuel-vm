@@ -121,13 +121,13 @@ fn test_state_read_word(
     Ok((result, got_result))
 }
 
-#[test_case(false, 0, false, 32 => Ok(0); "Nothing set")]
-#[test_case(false, 0, true, 32 => Ok(1); "Something set")]
+#[test_case(false, 0, false, 32 => Ok(1); "Nothing set")]
+#[test_case(false, 0, true, 32 => Ok(0); "Something set")]
 #[test_case(true, 0, false, 32 => Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext)); "Can't write state from external context")]
-#[test_case(false, 1, false, 32 => Ok(0); "Wrong contract id")]
-#[test_case(false, 0, false, 33 => Ok(0); "Wrong key")]
-#[test_case(false, 1, true, 32 => Ok(0); "Wrong contract id with existing")]
-#[test_case(false, 0, true, 33 => Ok(0); "Wrong key with existing")]
+#[test_case(false, 1, false, 32 => Ok(1); "Wrong contract id")]
+#[test_case(false, 0, false, 33 => Ok(1); "Wrong key")]
+#[test_case(false, 1, true, 32 => Ok(1); "Wrong contract id with existing")]
+#[test_case(false, 0, true, 33 => Ok(1); "Wrong key with existing")]
 #[test_case(true, 0, false, Word::MAX => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key")]
 #[test_case(true, 0, false, VM_MAX_RAM => Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow)); "Overflowing key ram")]
 fn test_state_write_word(

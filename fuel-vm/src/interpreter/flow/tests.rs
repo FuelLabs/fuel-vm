@@ -378,6 +378,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
         runtime_balances: &mut runtime_balances,
         storage: &mut storage,
         input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        new_storage_gas_per_byte: 0,
         receipts: &mut receipts,
         script: script.as_mut(),
         tx_offset: TxParameters::DEFAULT.tx_offset(),

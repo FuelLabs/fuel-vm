@@ -354,9 +354,9 @@ fn state_write_charges_for_new_storage() {
     let gas_limit = 1_000_000;
 
     let prelude = vec![
-        op::movi(0x14, 10), // The count for swwq
+        op::movi(0x14, 10),                        // The count for swwq
         op::muli(0x15, 0x14, Bytes32::LEN as u16), // Slot space for swwq
-        op::aloc(0x15), // Allocate slots
+        op::aloc(0x15),                            // Allocate slots
     ];
 
     for operation in [

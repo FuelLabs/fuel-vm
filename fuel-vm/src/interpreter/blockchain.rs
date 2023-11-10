@@ -744,8 +744,7 @@ where
                 self.cgas,
                 self.ggas,
                 profiler,
-                ((AssetId::LEN + WORD_SIZE) as u64)
-                    * self.new_storage_gas_per_byte,
+                ((AssetId::LEN + WORD_SIZE) as u64) * self.new_storage_gas_per_byte,
             )?;
         }
 
@@ -1284,7 +1283,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
             ggas,
             profiler,
             // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
-            (unset_count as u64) * ( 2 * Bytes32::LEN as u64) * new_storage_gas_per_byte,
+            (unset_count as u64) * (2 * Bytes32::LEN as u64) * new_storage_gas_per_byte,
         )?;
     }
 

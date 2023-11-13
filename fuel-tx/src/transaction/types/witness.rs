@@ -48,22 +48,17 @@ impl Witness {
     pub fn recover_witness(
         &self,
         txhash: &TxId,
-        witness_index: usize,
+        input_index: usize,
     ) -> Result<fuel_types::Address, ValidityError> {
-        let bytes = <[u8; Signature::LEN]>::try_from(self.as_ref()).map_err(|_| {
-            ValidityError::InputInvalidSignature {
-                index: witness_index,
-            }
-        })?;
+        let bytes = <[u8; Signature::LEN]>::try_from(self.as_ref())
+            .map_err(|_| ValidityError::InputInvalidSignature { index: input_index })?;
         let signature = Signature::from_bytes(bytes);
 
         let message = Message::from_bytes_ref(txhash);
 
         signature
             .recover(message)
-            .map_err(|_| ValidityError::InputInvalidSignature {
-                index: witness_index,
-            })
+            .map_err(|_| ValidityError::InputInvalidSignature { index: input_index })
             .map(|pk| Input::owner(&pk))
     }
 }

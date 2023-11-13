@@ -321,6 +321,7 @@ pub struct GasCostsValues {
     // Non-opcode costs
     pub contract_root: DependentCost,
     pub state_root: DependentCost,
+    pub new_storage_per_byte: Word,
     pub vm_initialization: Word,
 }
 
@@ -477,6 +478,7 @@ impl GasCostsValues {
             // Non-opcode costs
             contract_root: DependentCost::free(),
             state_root: DependentCost::free(),
+            new_storage_per_byte: 0,
             vm_initialization: 0,
         }
     }
@@ -594,6 +596,7 @@ impl GasCostsValues {
             // Non-opcode costs
             contract_root: DependentCost::unit(),
             state_root: DependentCost::unit(),
+            new_storage_per_byte: 1,
             vm_initialization: 1,
         }
     }

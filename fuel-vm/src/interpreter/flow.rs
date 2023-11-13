@@ -6,6 +6,7 @@ use super::{
     },
     gas::{
         dependent_gas_charge,
+        gas_charge,
         ProfileGas,
     },
     internal::{
@@ -388,6 +389,7 @@ where
             amount_of_gas_to_forward,
         };
         let mut gas_cost = self.gas_costs().call;
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
         // Charge only for the `base` execution.
         // We will charge for the frame size in the `prepare_call`.
         self.gas_charge(gas_cost.base())?;
@@ -410,6 +412,7 @@ where
                 input_contracts.iter(),
                 &mut self.panic_context,
             ),
+            new_storage_gas_per_byte,
             receipts: &mut self.receipts,
             script: self.tx.as_script_mut(),
             tx_offset: 0,
@@ -480,6 +483,7 @@ struct PrepareCallCtx<'vm, S, I> {
     context: &'vm mut Context,
     gas_cost: DependentCost,
     runtime_balances: &'vm mut RuntimeBalances,
+    new_storage_gas_per_byte: Word,
     storage: &'vm mut S,
     input_contracts: InputContracts<'vm, I>,
     receipts: &'vm mut ReceiptsCtx,
@@ -546,12 +550,29 @@ where
         self.input_contracts.check(call.to())?;
 
         // credit contract asset_id balance
-        balance_increase(
+        let (_, created_new_entry) = balance_increase(
             self.storage,
             call.to(),
             &asset_id,
             self.params.amount_of_coins_to_forward,
         )?;
+
+        if created_new_entry {
+            // If a new entry was created, we must charge gas for it
+            let profiler = ProfileGas {
+                pc: self.registers.system_registers.pc.as_ref(),
+                is: self.registers.system_registers.is.as_ref(),
+                current_contract: self.current_contract,
+                profiler: self.profiler,
+            };
+            gas_charge(
+                self.registers.system_registers.cgas.as_mut(),
+                self.registers.system_registers.ggas.as_mut(),
+                profiler,
+                // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
+                ((Bytes32::LEN + WORD_SIZE) as u64) * self.new_storage_gas_per_byte,
+            )?;
+        }
 
         let forward_gas_amount = cmp::min(
             *self.registers.system_registers.cgas,

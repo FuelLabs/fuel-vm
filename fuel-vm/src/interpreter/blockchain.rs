@@ -6,6 +6,7 @@ use super::{
     },
     gas::{
         dependent_gas_charge,
+        gas_charge,
         ProfileGas,
     },
     internal::{
@@ -171,8 +172,18 @@ where
 
     pub(crate) fn mint(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
-        let (SystemRegisters { fp, pc, is, .. }, _) =
-            split_registers(&mut self.registers);
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let (
+            SystemRegisters {
+                cgas,
+                ggas,
+                fp,
+                pc,
+                is,
+                ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         MintCtx {
             storage: &mut self.storage,
             context: &self.context,
@@ -182,6 +193,10 @@ where
                 tx_offset,
                 memory: &mut self.memory,
             },
+            profiler: &mut self.profiler,
+            new_storage_gas_per_byte,
+            cgas,
+            ggas,
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -332,7 +347,7 @@ where
             ..
         } = self;
         state_read_word(
-            StateWordCtx {
+            StateReadWordCtx {
                 storage,
                 memory,
                 context,
@@ -373,8 +388,18 @@ where
         rb: RegisterId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
-        let (SystemRegisters { fp, pc, .. }, mut w) =
-            split_registers(&mut self.registers);
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let (
+            SystemRegisters {
+                cgas,
+                ggas,
+                is,
+                fp,
+                pc,
+                ..
+            },
+            mut w,
+        ) = split_registers(&mut self.registers);
         let exists = &mut w[WriteRegKey::try_from(rb)?];
         let Self {
             ref mut storage,
@@ -383,10 +408,16 @@ where
             ..
         } = self;
         state_write_word(
-            StateWordCtx {
+            StateWriteWordCtx {
                 storage,
                 memory,
                 context,
+                profiler: &mut self.profiler,
+                new_storage_gas_per_byte,
+                current_contract: self.frames.last().map(|frame| frame.to()).copied(),
+                cgas,
+                ggas,
+                is: is.as_ref(),
                 fp: fp.as_ref(),
                 pc,
             },
@@ -403,8 +434,14 @@ where
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
+        let new_storage_per_byte = self.gas_costs().new_storage_per_byte;
         let contract_id = self.internal_contract().copied();
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (
+            SystemRegisters {
+                is, cgas, ggas, pc, ..
+            },
+            mut w,
+        ) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateWriteQWord::new(a, c, d)?;
@@ -414,7 +451,20 @@ where
             ..
         } = self;
 
-        state_write_qword(&contract_id?, storage, memory.as_mut(), pc, result, input)
+        state_write_qword(
+            &contract_id?,
+            storage,
+            memory.as_mut(),
+            &mut self.profiler,
+            new_storage_per_byte,
+            self.frames.last().map(|frame| frame.to()).copied(),
+            cgas,
+            ggas,
+            is.as_ref(),
+            pc,
+            result,
+            input,
+        )
     }
 
     pub(crate) fn timestamp(
@@ -616,7 +666,8 @@ where
             .checked_sub(a)
             .ok_or(PanicReason::NotEnoughBalance)?;
 
-        self.storage
+        let _ = self
+            .storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
@@ -631,7 +682,11 @@ where
 struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
+    profiler: &'vm mut Profiler,
+    new_storage_gas_per_byte: Word,
     append: AppendReceipt<'vm>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
@@ -654,9 +709,26 @@ where
         let balance = balance(self.storage, contract_id, &asset_id)?;
         let balance = balance.checked_add(a).ok_or(PanicReason::BalanceOverflow)?;
 
-        self.storage
+        let old_value = self
+            .storage
             .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
+
+        if old_value.is_none() {
+            // New data was written, charge gas for it
+            let profiler = ProfileGas {
+                pc: self.pc.as_ref(),
+                is: self.is,
+                current_contract: Some(*contract_id),
+                profiler: self.profiler,
+            };
+            gas_charge(
+                self.cgas,
+                self.ggas,
+                profiler,
+                ((AssetId::LEN + WORD_SIZE) as u64) * self.new_storage_gas_per_byte,
+            )?;
+        }
 
         let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
 
@@ -842,7 +914,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
     }
 }
 
-pub(crate) struct StateWordCtx<'vm, S> {
+pub(crate) struct StateReadWordCtx<'vm, S> {
     pub storage: &'vm mut S,
     pub memory: &'vm [u8; MEM_SIZE],
     pub context: &'vm Context,
@@ -851,13 +923,14 @@ pub(crate) struct StateWordCtx<'vm, S> {
 }
 
 pub(crate) fn state_read_word<S: InterpreterStorage>(
-    StateWordCtx {
+    StateReadWordCtx {
         storage,
         memory,
         context,
         fp,
         pc,
-    }: StateWordCtx<S>,
+        ..
+    }: StateReadWordCtx<S>,
     result: &mut Word,
     got_result: &mut Word,
     c: Word,
@@ -885,16 +958,36 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     Ok(inc_pc(pc)?)
 }
 
+pub(crate) struct StateWriteWordCtx<'vm, S> {
+    pub storage: &'vm mut S,
+    pub memory: &'vm [u8; MEM_SIZE],
+    pub context: &'vm Context,
+    pub profiler: &'vm mut Profiler,
+    pub new_storage_gas_per_byte: Word,
+    pub current_contract: Option<ContractId>,
+    pub cgas: RegMut<'vm, CGAS>,
+    pub ggas: RegMut<'vm, GGAS>,
+    pub is: Reg<'vm, IS>,
+    pub fp: Reg<'vm, FP>,
+    pub pc: RegMut<'vm, PC>,
+}
+
 pub(crate) fn state_write_word<S: InterpreterStorage>(
-    StateWordCtx {
+    StateWriteWordCtx {
         storage,
         memory,
         context,
+        profiler,
+        new_storage_gas_per_byte,
+        current_contract,
+        cgas,
+        ggas,
+        is,
         fp,
         pc,
-    }: StateWordCtx<S>,
+    }: StateWriteWordCtx<S>,
     a: Word,
-    exists: &mut Word,
+    created_new: &mut Word,
     c: Word,
 ) -> IoResult<(), S::DataError> {
     let key = CheckedMemConstLen::<{ Bytes32::LEN }>::new(a)?;
@@ -913,7 +1006,23 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         .merkle_contract_state_insert(contract, key, &value)
         .map_err(RuntimeError::Storage)?;
 
-    *exists = result.is_some() as Word;
+    *created_new = result.is_none() as Word;
+
+    if result.is_none() {
+        // New data was written, charge gas for it
+        let profiler = ProfileGas {
+            pc: pc.as_ref(),
+            is,
+            current_contract,
+            profiler,
+        };
+        gas_charge(
+            cgas,
+            ggas,
+            profiler,
+            (2 * Bytes32::LEN as u64) * new_storage_gas_per_byte,
+        )?;
+    }
 
     Ok(inc_pc(pc)?)
 }
@@ -1123,10 +1232,17 @@ impl StateWriteQWord {
     }
 }
 
-fn state_write_qword<S: InterpreterStorage>(
+#[allow(clippy::too_many_arguments)]
+fn state_write_qword<'vm, S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
     memory: &[u8; MEM_SIZE],
+    profiler: &'vm mut Profiler,
+    new_storage_gas_per_byte: Word,
+    current_contract: Option<ContractId>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
+    is: Reg<'vm, IS>,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateWriteQWord,
@@ -1139,11 +1255,27 @@ fn state_write_qword<S: InterpreterStorage>(
         .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
         .collect();
 
-    let any_none = storage
+    let unset_count = storage
         .merkle_contract_state_insert_range(contract_id, destination_key, &values)
-        .map_err(RuntimeError::Storage)?
-        .is_some();
-    *result_register = any_none as Word;
+        .map_err(RuntimeError::Storage)?;
+    *result_register = unset_count as Word;
+
+    if unset_count > 0 {
+        // New data was written, charge gas for it
+        let profiler = ProfileGas {
+            pc: pc.as_ref(),
+            is,
+            current_contract,
+            profiler,
+        };
+        gas_charge(
+            cgas,
+            ggas,
+            profiler,
+            // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
+            (unset_count as u64) * (2 * Bytes32::LEN as u64) * new_storage_gas_per_byte,
+        )?;
+    }
 
     inc_pc(pc)?;
 

@@ -381,7 +381,7 @@ where
         if max_gas > params.max_gas_per_tx {
             return Err(
                 PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
-            );
+            )
         }
 
         let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {

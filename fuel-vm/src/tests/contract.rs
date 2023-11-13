@@ -260,6 +260,71 @@ fn mint_burn() {
 }
 
 #[test]
+fn mint_consumes_gas_for_new_assets() {
+    let mut test_context = TestBuilder::new(2322u64);
+
+    let balance = 1000;
+    let gas_limit = 1_000_000;
+
+    let [new_asset, existing_asset] = [true, false].map(|create_new_asset| {
+        let mut program = vec![
+            op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
+            op::lw(0x10, 0x10, 0),
+            op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
+            op::lw(0x11, 0x11, 0),
+            // Allocate 32 bytes for the zeroed `sub_id`.
+            op::movi(0x15, Bytes32::LEN as u32),
+            op::aloc(0x15),
+        ];
+
+        // Mint some of the asset before to make the asset exist before the measured mint
+        if !create_new_asset {
+            program.push(op::mint(0x11, RegId::HP));
+        }
+
+        // The mint we're measuring
+        program.extend([
+            op::log(RegId::GGAS, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+            op::mint(0x11, RegId::HP),
+            op::log(RegId::GGAS, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+            op::ret(RegId::ONE),
+        ]);
+
+        let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+        let (script_call, _) = script_with_data_offset!(
+            data_offset,
+            vec![
+                op::movi(0x10, data_offset as Immediate18),
+                op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS),
+                op::ret(RegId::ONE),
+            ],
+            test_context.get_tx_params().tx_offset()
+        );
+        let script_call_data = Call::new(contract_id, 0, balance).to_bytes();
+
+        let result = test_context
+            .start_script(script_call.clone(), script_call_data)
+            .script_gas_limit(gas_limit)
+            .contract_input(contract_id)
+            .fee_input()
+            .contract_output(&contract_id)
+            .execute();
+
+        let mut gas_values = result.receipts().iter().filter_map(|v| match v {
+            Receipt::Log { ra, .. } => Some(ra),
+            _ => None,
+        });
+
+        let gas_before = gas_values.next().expect("Missing log receipt");
+        let gas_after = gas_values.next().expect("Missing log receipt");
+        gas_before - gas_after
+    });
+
+    assert!(new_asset > existing_asset);
+}
+
+#[test]
 fn call_increases_contract_asset_balance_and_balance_register() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 

@@ -1,6 +1,10 @@
 //! This module contains logic on contract management.
 
 use super::{
+    gas::{
+        gas_charge,
+        ProfileGas,
+    },
     internal::{
         append_receipt,
         external_asset_id_balance_sub,
@@ -31,6 +35,7 @@ use crate::{
         InputContracts,
         PanicContext,
     },
+    prelude::Profiler,
     storage::{
         ContractsAssetsStorage,
         ContractsRawCode,
@@ -51,6 +56,7 @@ use fuel_tx::{
 use fuel_types::{
     Address,
     AssetId,
+    Bytes32,
     ContractId,
 };
 
@@ -91,17 +97,31 @@ where
         b: Word,
         c: Word,
     ) -> IoResult<(), S::DataError> {
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
         let tx_offset = self.tx_offset();
-        let (SystemRegisters { fp, is, pc, .. }, _) =
-            split_registers(&mut self.registers);
+        let (
+            SystemRegisters {
+                cgas,
+                ggas,
+                fp,
+                is,
+                pc,
+                ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
             memory: &mut self.memory,
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
+            profiler: &mut self.profiler,
+            new_storage_gas_per_byte,
             tx: &mut self.tx,
             tx_offset,
+            cgas,
+            ggas,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
@@ -117,16 +137,30 @@ where
         d: Word,
     ) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
-        let (SystemRegisters { fp, is, pc, .. }, _) =
-            split_registers(&mut self.registers);
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let (
+            SystemRegisters {
+                cgas,
+                ggas,
+                fp,
+                is,
+                pc,
+                ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
             memory: &mut self.memory,
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
+            profiler: &mut self.profiler,
+            new_storage_gas_per_byte,
             tx: &mut self.tx,
             tx_offset,
+            cgas,
+            ggas,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
@@ -196,8 +230,12 @@ struct TransferCtx<'vm, S, Tx> {
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
+    profiler: &'vm mut Profiler,
+    new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
     tx_offset: usize,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
@@ -250,7 +288,24 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             external_asset_id_balance_sub(self.balances, self.memory, &asset_id, amount)?;
         }
         // credit destination contract
-        balance_increase(self.storage, &destination, &asset_id, amount)?;
+        let (_, created_new_entry) =
+            balance_increase(self.storage, &destination, &asset_id, amount)?;
+        if created_new_entry {
+            // If a new entry was created, we must charge gas for it
+            let profiler = ProfileGas {
+                pc: self.pc.as_ref(),
+                is: self.is,
+                current_contract: internal_context,
+                profiler: self.profiler,
+            };
+            gas_charge(
+                self.cgas,
+                self.ggas,
+                profiler,
+                // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
+                ((Bytes32::LEN + WORD_SIZE) as u64) * self.new_storage_gas_per_byte,
+            )?;
+        }
 
         let receipt = Receipt::transfer(
             internal_context.unwrap_or_default(),
@@ -375,12 +430,13 @@ where
 }
 
 /// Increase the asset balance for a contract.
+/// Returns new balance, and a boolean indicating if a new entry was created.
 pub fn balance_increase<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> IoResult<Word, S::Error>
+) -> IoResult<(Word, bool), S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
@@ -388,10 +444,12 @@ where
     let balance = balance
         .checked_add(amount)
         .ok_or(PanicReason::BalanceOverflow)?;
-    storage
+
+    let old_value = storage
         .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
-    Ok(balance)
+
+    Ok((balance, old_value.is_none()))
 }
 
 /// Decrease the asset balance for a contract.
@@ -408,7 +466,7 @@ where
     let balance = balance
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;
-    storage
+    let _ = storage
         .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
     Ok(balance)

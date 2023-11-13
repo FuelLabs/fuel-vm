@@ -160,7 +160,7 @@ impl InterpreterStorage for PredicateStorage {
         _contract: &ContractId,
         _start_key: &Bytes32,
         _values: &[Bytes32],
-    ) -> Result<Option<()>, StorageUnavailable> {
+    ) -> Result<usize, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 

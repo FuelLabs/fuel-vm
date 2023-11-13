@@ -417,8 +417,8 @@ impl InterpreterStorage for MemoryStorage {
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
-    ) -> Result<Option<()>, Self::DataError> {
-        let mut any_unset_key = false;
+    ) -> Result<usize, Self::DataError> {
+        let mut unset_count = 0;
         let values: Vec<_> = core::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
             if add_one(&mut n) {
@@ -430,12 +430,14 @@ impl InterpreterStorage for MemoryStorage {
         .zip(values)
         .map(|(key, value)| {
             let key = (contract, &Bytes32::from(key)).into();
-            any_unset_key |= !self.memory.contract_state.contains_key(&key);
+            if !self.memory.contract_state.contains_key(&key) {
+                unset_count += 1;
+            }
             (key, *value)
         })
         .collect();
         self.memory.contract_state.extend(values);
-        Ok((!any_unset_key).then_some(()))
+        Ok(unset_count)
     }
 
     fn merkle_contract_state_remove_range(

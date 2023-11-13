@@ -30,13 +30,14 @@ fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
         .copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    storage
+    let old_balance = storage
         .merkle_contract_asset_id_balance_insert(
             &contract_id,
             &AssetId::from([2u8; 32]),
             33,
         )
         .unwrap();
+    assert!(old_balance.is_none());
     let mut pc = 4;
 
     let mut panic_context = PanicContext::None;
@@ -88,6 +89,8 @@ fn test_transfer(
     // Arbitrary value
     let fp = 2048;
     let is = 0;
+    let mut cgas = 10_000;
+    let mut ggas = 10_000;
 
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[real_contract_id_offset as usize
@@ -102,13 +105,14 @@ fn test_transfer(
 
     let initial_recipient_contract_balance = 0;
     let initial_source_contract_balance = 60;
-    storage
+    let old_balance = storage
         .merkle_contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_source_contract_balance,
         )
         .unwrap();
+    assert!(old_balance.is_none());
 
     let context = if external {
         Context::Script {
@@ -141,8 +145,12 @@ fn test_transfer(
         context: &context,
         balances: &mut balances,
         receipts: &mut receipts,
+        profiler: &mut Default::default(),
+        new_storage_gas_per_byte: 1,
         tx: &mut tx,
         tx_offset: 0,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
     };
@@ -223,6 +231,8 @@ fn test_transfer_output(
     // Arbitrary value
     let fp = 2048;
     let is = 0;
+    let mut cgas = 10_000;
+    let mut ggas = 10_000;
 
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
 
@@ -238,13 +248,14 @@ fn test_transfer_output(
 
     let initial_contract_balance = 60;
 
-    storage
+    let old_balance = storage
         .merkle_contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_contract_balance,
         )
         .unwrap();
+    assert!(old_balance.is_none());
 
     let context = if external {
         Context::Script {
@@ -288,8 +299,12 @@ fn test_transfer_output(
         context: &context,
         balances: &mut balances,
         receipts: &mut receipts,
+        profiler: &mut Default::default(),
+        new_storage_gas_per_byte: 1,
         tx: &mut tx,
         tx_offset,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
     };
@@ -351,14 +366,17 @@ fn test_balance_increase(
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
-        storage
+        let old_balance = storage
             .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
+        assert!(old_balance.is_none());
     }
 
-    let result = balance_increase(&mut storage, &contract_id, &asset_id, amount)?;
-    let initial = initial.unwrap_or(0);
+    let (result, created_new_entry) =
+        balance_increase(&mut storage, &contract_id, &asset_id, amount)?;
 
+    assert!(initial.is_none() == created_new_entry);
+    let initial = initial.unwrap_or(0);
     assert_eq!(result, initial + amount);
 
     let result = storage
@@ -386,9 +404,10 @@ fn test_balance_decrease(
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
-        storage
+        let old_balance = storage
             .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
+        assert!(old_balance.is_none());
     }
 
     let result = balance_decrease(&mut storage, &contract_id, &asset_id, amount)?;

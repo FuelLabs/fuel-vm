@@ -500,7 +500,7 @@ where
                     false
                 }
             }) {
-                return Err(InterpreterError::Panic(PanicReason::ContractNotFound))
+                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))
             }
 
             let gas_limit;

@@ -93,7 +93,7 @@ impl Input {
                         .get(*witness_index as usize)
                         .ok_or(ValidityError::InputWitnessIndexBounds { index })?;
 
-                    witness.recover_witness(txhash, *witness_index as usize)
+                    witness.recover_witness(txhash, index)
                 };
 
                 // recover the address associated with a witness, using the cache if

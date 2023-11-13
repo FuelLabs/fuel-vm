@@ -570,7 +570,7 @@ where
                 self.registers.system_registers.ggas.as_mut(),
                 profiler,
                 // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
-                (2 * Bytes32::LEN as u64) * self.new_storage_gas_per_byte,
+                ((Bytes32::LEN + WORD_SIZE) as u64) * self.new_storage_gas_per_byte,
             )?;
         }
 

@@ -333,18 +333,8 @@ where
         rb: RegisterId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
-        let (
-            SystemRegisters {
-                cgas,
-                ggas,
-                is,
-                fp,
-                pc,
-                ..
-            },
-            mut w,
-        ) = split_registers(&mut self.registers);
+        let (SystemRegisters { fp, pc, .. }, mut w) =
+            split_registers(&mut self.registers);
         let (result, got_result) = w
             .get_mut_two(WriteRegKey::try_from(ra)?, WriteRegKey::try_from(rb)?)
             .ok_or(RuntimeError::Recoverable(
@@ -357,16 +347,10 @@ where
             ..
         } = self;
         state_read_word(
-            StateWordCtx {
+            StateReadWordCtx {
                 storage,
                 memory,
                 context,
-                profiler: &mut self.profiler,
-                new_storage_gas_per_byte,
-                current_contract: self.frames.last().map(|frame| frame.to()).copied(),
-                cgas,
-                ggas,
-                is: is.as_ref(),
                 fp: fp.as_ref(),
                 pc,
             },
@@ -424,7 +408,7 @@ where
             ..
         } = self;
         state_write_word(
-            StateWordCtx {
+            StateWriteWordCtx {
                 storage,
                 memory,
                 context,
@@ -930,29 +914,23 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
     }
 }
 
-pub(crate) struct StateWordCtx<'vm, S> {
+pub(crate) struct StateReadWordCtx<'vm, S> {
     pub storage: &'vm mut S,
     pub memory: &'vm [u8; MEM_SIZE],
     pub context: &'vm Context,
-    pub profiler: &'vm mut Profiler,
-    pub new_storage_gas_per_byte: Word,
-    pub current_contract: Option<ContractId>,
-    pub cgas: RegMut<'vm, CGAS>,
-    pub ggas: RegMut<'vm, GGAS>,
-    pub is: Reg<'vm, IS>,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
 }
 
 pub(crate) fn state_read_word<S: InterpreterStorage>(
-    StateWordCtx {
+    StateReadWordCtx {
         storage,
         memory,
         context,
         fp,
         pc,
         ..
-    }: StateWordCtx<S>,
+    }: StateReadWordCtx<S>,
     result: &mut Word,
     got_result: &mut Word,
     c: Word,
@@ -980,8 +958,22 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     Ok(inc_pc(pc)?)
 }
 
+pub(crate) struct StateWriteWordCtx<'vm, S> {
+    pub storage: &'vm mut S,
+    pub memory: &'vm [u8; MEM_SIZE],
+    pub context: &'vm Context,
+    pub profiler: &'vm mut Profiler,
+    pub new_storage_gas_per_byte: Word,
+    pub current_contract: Option<ContractId>,
+    pub cgas: RegMut<'vm, CGAS>,
+    pub ggas: RegMut<'vm, GGAS>,
+    pub is: Reg<'vm, IS>,
+    pub fp: Reg<'vm, FP>,
+    pub pc: RegMut<'vm, PC>,
+}
+
 pub(crate) fn state_write_word<S: InterpreterStorage>(
-    StateWordCtx {
+    StateWriteWordCtx {
         storage,
         memory,
         context,
@@ -993,7 +985,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
         is,
         fp,
         pc,
-    }: StateWordCtx<S>,
+    }: StateWriteWordCtx<S>,
     a: Word,
     created_new: &mut Word,
     c: Word,

@@ -85,7 +85,7 @@ fn test_state_read_word(
         let context = Context::Call {
             block_height: Default::default(),
         };
-        let input = StateWordCtx {
+        let input = StateWriteWordCtx {
             storage: &mut storage,
             memory: &mut memory,
             context: &context,
@@ -102,16 +102,10 @@ fn test_state_read_word(
     }
     let mut pc = 4;
 
-    let input = StateWordCtx {
+    let input = StateReadWordCtx {
         storage: &mut storage,
         memory: &mut memory,
         context: &context,
-        profiler: &mut Profiler::default(),
-        new_storage_gas_per_byte: 1,
-        current_contract: None,
-        cgas: RegMut::new(&mut cgas),
-        ggas: RegMut::new(&mut ggas),
-        is: Reg::new(&is),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
     };
@@ -161,7 +155,7 @@ fn test_state_write_word(
         let context = Context::Call {
             block_height: Default::default(),
         };
-        let input = StateWordCtx {
+        let input = StateWriteWordCtx {
             storage: &mut storage,
             memory: &mut memory,
             context: &context,
@@ -178,7 +172,7 @@ fn test_state_write_word(
     }
     let mut pc = 4;
 
-    let input = StateWordCtx {
+    let input = StateWriteWordCtx {
         storage: &mut storage,
         memory: &mut memory,
         context: &context,

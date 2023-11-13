@@ -1,4 +1,4 @@
-lockfileVersion: '6.0'
+lockfileVersion: '6.1'
 
 settings:
   autoInstallPeers: true
@@ -29,10 +29,6 @@ importers:
       turbo:
         specifier: ^1.10.9
         version: 1.10.9
-
-  packages/fuel-asm: {}
-
-  packages/fuel-types: {}
 
 packages:
 

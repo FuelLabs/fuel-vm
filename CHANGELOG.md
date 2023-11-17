@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#637](https://github.com/FuelLabs/fuel-vm/pull/637): Charge for the actual size of the contract in `ccp` opcode.
+
 ## [Version 0.42.0]
 
 ### Changed

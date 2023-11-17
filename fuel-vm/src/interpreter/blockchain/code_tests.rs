@@ -64,14 +64,8 @@ fn test_load_contract() -> IoResult<(), Infallible> {
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
-    assert_eq!(
-        cgas,
-        1000 - CONTRACT_SIZE /* price per byte */ - 13 // base price
-    );
-    assert_eq!(
-        ggas,
-        1000 - CONTRACT_SIZE /* price per byte */ - 13 // base price
-    );
+    assert_eq!(cgas, 1000 - CONTRACT_SIZE /* price per byte */);
+    assert_eq!(ggas, 1000 - CONTRACT_SIZE /* price per byte */);
 
     Ok(())
 }
@@ -128,14 +122,8 @@ fn test_code_copy() -> IoResult<(), Infallible> {
     };
     input.code_copy(dest_mem_address, contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
-    assert_eq!(
-        cgas,
-        1000 - CONTRACT_SIZE /* price per byte */ - 13 // base price
-    );
-    assert_eq!(
-        ggas,
-        1000 - CONTRACT_SIZE /* price per byte */ - 13 // base price
-    );
+    assert_eq!(cgas, 1000 - CONTRACT_SIZE /* price per byte */);
+    assert_eq!(ggas, 1000 - CONTRACT_SIZE /* price per byte */);
 
     Ok(())
 }

@@ -213,7 +213,7 @@ where
     ) -> IoResult<(), S::DataError> {
         let mut gas_cost = self.gas_costs().ccp;
         // Charge only for the `base` execution.
-        // We will charge for the contracts size in the `code_copy`.
+        // We will charge for the contract's size in the `code_copy`.
         self.gas_charge(gas_cost.base())?;
         gas_cost.set_base(0);
 

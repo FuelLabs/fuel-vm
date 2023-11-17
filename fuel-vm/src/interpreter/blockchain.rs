@@ -1,35 +1,3 @@
-use super::{
-    contract::{
-        balance,
-        balance_decrease,
-        contract_size,
-    },
-    gas::{
-        dependent_gas_charge,
-        gas_charge,
-        ProfileGas,
-    },
-    internal::{
-        append_receipt,
-        base_asset_balance_sub,
-        current_contract,
-        inc_pc,
-        internal_contract,
-        internal_contract_bounds,
-        tx_id,
-        AppendReceipt,
-    },
-    memory::{
-        copy_from_slice_zero_fill_noownerchecks,
-        read_bytes,
-        try_mem_write,
-        OwnershipRegisters,
-    },
-    ExecutableTransaction,
-    Interpreter,
-    MemoryRange,
-    RuntimeBalances,
-};
 use crate::{
     call::CallFrame,
     constraints::{
@@ -46,8 +14,38 @@ use crate::{
         SimpleResult,
     },
     interpreter::{
+        contract::{
+            balance,
+            balance_decrease,
+            contract_size,
+        },
+        gas::{
+            dependent_gas_charge_without_base,
+            gas_charge,
+            ProfileGas,
+        },
+        internal::{
+            append_receipt,
+            base_asset_balance_sub,
+            current_contract,
+            inc_pc,
+            internal_contract,
+            internal_contract_bounds,
+            tx_id,
+            AppendReceipt,
+        },
+        memory::{
+            copy_from_slice_zero_fill_noownerchecks,
+            read_bytes,
+            try_mem_write,
+            OwnershipRegisters,
+        },
         receipts::ReceiptsCtx,
+        ExecutableTransaction,
         InputContracts,
+        Interpreter,
+        MemoryRange,
+        RuntimeBalances,
     },
     prelude::Profiler,
     storage::{
@@ -104,11 +102,10 @@ where
         contract_offset: Word,
         length_unpadded: Word,
     ) -> IoResult<(), S::DataError> {
-        let mut gas_cost = self.gas_costs().ldc;
+        let gas_cost = self.gas_costs().ldc;
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `load_contract_code`.
         self.gas_charge(gas_cost.base())?;
-        gas_cost.set_base(0);
         let contract_max_size = self.contract_max_size();
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
@@ -211,11 +208,10 @@ where
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
-        let mut gas_cost = self.gas_costs().ccp;
+        let gas_cost = self.gas_costs().ccp;
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `code_copy`.
         self.gas_charge(gas_cost.base())?;
-        gas_cost.set_base(0);
 
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
@@ -295,11 +291,10 @@ where
         ra: RegisterId,
         b: Word,
     ) -> IoResult<(), S::DataError> {
-        let mut gas_cost = self.gas_costs().csiz;
+        let gas_cost = self.gas_costs().csiz;
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `code_size`.
         self.gas_charge(gas_cost.base())?;
-        gas_cost.set_base(0);
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
@@ -608,7 +603,7 @@ where
             current_contract: self.current_contract,
             profiler: self.profiler,
         };
-        dependent_gas_charge(
+        dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
             profiler,
@@ -812,7 +807,7 @@ where
             current_contract: self.current_contract,
             profiler: self.profiler,
         };
-        dependent_gas_charge(
+        dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
             profiler,
@@ -949,7 +944,13 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
             current_contract: self.current_contract,
             profiler: self.profiler,
         };
-        dependent_gas_charge(self.cgas, self.ggas, profiler, self.gas_cost, len)?;
+        dependent_gas_charge_without_base(
+            self.cgas,
+            self.ggas,
+            profiler,
+            self.gas_cost,
+            len,
+        )?;
         *result = len;
 
         Ok(inc_pc(self.pc)?)

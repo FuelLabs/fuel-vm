@@ -109,3 +109,68 @@ fn test_dependent_gas_charge(input: DepGasChargeInput) -> SimpleResult<GasCharge
             ggas: *ggas,
         })
 }
+
+#[test_case(
+    DepGasChargeInput{
+        input: GasChargeInput{cgas: 0, ggas: 0, dependent_factor: 0},
+        gas_cost: DependentCost::from_units_per_gas(0, 1)
+    } => Ok(GasChargeOutput{ cgas: 0, ggas: 0}); "zero"
+)]
+#[test_case(
+    DepGasChargeInput{
+        input: GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 0},
+        gas_cost: DependentCost::from_units_per_gas(1, 1)
+    } => Ok(GasChargeOutput{ cgas: 1, ggas: 1}); "even without base"
+)]
+#[test_case(
+    DepGasChargeInput{
+        input: GasChargeInput{cgas: 1, ggas: 1, dependent_factor: 1},
+        gas_cost: DependentCost::from_units_per_gas(1, 2)
+    } => Ok(GasChargeOutput{ cgas: 1, ggas: 1}); "just base with gas"
+)]
+#[test_case(
+    DepGasChargeInput{
+        input: GasChargeInput{cgas: 3, ggas: 3, dependent_factor: 8},
+        gas_cost: DependentCost::from_units_per_gas(1, 4)
+    } => Ok(GasChargeOutput{ cgas: 1, ggas: 1}); "base with gas and a unit"
+)]
+#[test_case(
+    DepGasChargeInput{
+        input: GasChargeInput{cgas: 3, ggas: 3, dependent_factor: 5},
+        gas_cost: DependentCost::from_units_per_gas(0, 4)
+    } => Ok(GasChargeOutput{ cgas: 2, ggas: 2}); "base with gas and a unit and left over"
+)]
+#[test_case(
+    DepGasChargeInput{
+        input: GasChargeInput{cgas: 0, ggas: 1, dependent_factor: 0},
+        gas_cost: DependentCost::from_units_per_gas(1, 1)
+    } => Ok(GasChargeOutput{ cgas: 0, ggas: 1}); "just base with no cgas"
+)]
+#[test_case(
+    DepGasChargeInput{
+        input: GasChargeInput{cgas: 5, ggas: 10, dependent_factor: 25},
+        gas_cost: DependentCost::from_units_per_gas(1, 4)
+    } => Err(PanicOrBug::Panic(PanicReason::OutOfGas)); "unit with not enough cgas"
+)]
+fn test_dependent_gas_charge_wihtout_base(
+    input: DepGasChargeInput,
+) -> SimpleResult<GasChargeOutput> {
+    let DepGasChargeInput { input, gas_cost } = input;
+    let GasChargeInput {
+        mut cgas,
+        mut ggas,
+        dependent_factor,
+    } = input;
+    let mut cgas = RegMut::new(&mut cgas);
+    let mut ggas = RegMut::new(&mut ggas);
+    dependent_gas_charge_without_base_inner(
+        cgas.as_mut(),
+        ggas.as_mut(),
+        gas_cost,
+        dependent_factor,
+    )
+    .map(|_| GasChargeOutput {
+        cgas: *cgas,
+        ggas: *ggas,
+    })
+}

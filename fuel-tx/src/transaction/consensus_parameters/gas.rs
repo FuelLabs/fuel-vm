@@ -650,7 +650,12 @@ impl DependentCost {
 
     pub fn resolve(&self, units: Word) -> Word {
         let base = self.base();
-        let dependent_value = match self {
+        let dependent_value = self.resolve_without_base(units);
+        base + dependent_value
+    }
+
+    pub fn resolve_without_base(&self, units: Word) -> Word {
+        match self {
             DependentCost::LightOperation { units_per_gas, .. } => {
                 // Apply the linear transformation f(x) = 1/m * x = x/m = where:
                 //   x is the number of units
@@ -663,8 +668,7 @@ impl DependentCost {
                 //   m is the gas per unit
                 units.saturating_mul(*gas_per_unit)
             }
-        };
-        base + dependent_value
+        }
     }
 }
 

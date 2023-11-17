@@ -763,9 +763,7 @@ where
 
             Instruction::CCP(ccp) => {
                 let (a, b, c, d) = ccp.unpack();
-                let len = r!(d);
-                self.dependent_gas_charge(self.gas_costs().ccp, len)?;
-                self.code_copy(r!(a), r!(b), r!(c), len)?;
+                self.code_copy(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::CROO(croo) => {

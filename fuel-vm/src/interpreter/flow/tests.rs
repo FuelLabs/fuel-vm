@@ -116,7 +116,7 @@ impl Default for Output {
             frames: vec![CallFrame::new(
                 Default::default(),
                 Default::default(),
-                make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]),
+                make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 20), (GGAS, 20)]),
                 10,
                 0,
                 0,
@@ -161,7 +161,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         context: Context::Script{ block_height: Default::default() },
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 0, cgas: 0, ggas: 10 },
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 0, cgas: 0, ggas: 20 },
         ..Default::default()
     })); "basic call working"
 )]
@@ -182,12 +182,12 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         script: Some(Default::default()),
         ..Default::default()
     } => using check_output({
-        let frame = CallFrame::new(ContractId::from([1u8; 32]), AssetId::from([2u8; 32]), make_reg(&[(HP, 1000), (SP, 200), (SSP, 200), (CGAS, 151), (GGAS, 181)]), 100, 4, 5);
+        let frame = CallFrame::new(ContractId::from([1u8; 32]), AssetId::from([2u8; 32]), make_reg(&[(HP, 1000), (SP, 200), (SSP, 200), (CGAS, 161), (GGAS, 191)]), 100, 4, 5);
         let receipt = Receipt::call(ContractId::zeroed(), ContractId::from([1u8; 32]), 20, AssetId::from([2u8; 32]), 30, 4, 5, 800, 800);
         let mut script = Script::default();
         *script.receipts_root_mut() = crypto::ephemeral_merkle_root([receipt.to_bytes()].into_iter());
         Ok(Output{
-            reg: RegInput{hp: 1000, sp: 904, ssp: 904, fp: 200, pc: 800, is: 800, bal: 20, cgas: 30, ggas: 181 },
+            reg: RegInput{hp: 1000, sp: 904, ssp: 904, fp: 200, pc: 800, is: 800, bal: 20, cgas: 30, ggas: 191 },
             receipts: vec![receipt].into(),
             frames: vec![frame.clone()],
             memory: CheckMem::Check(vec![(200, frame.into()), (2000, vec![2; 32]), (2032, Call::new(ContractId::from([1u8; 32]), 4, 5).into())]),
@@ -209,9 +209,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 0 },
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 10 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 0)]), 10, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]), 10, 0, 0)],
         ..Default::default()
     })); "transfers with enough balance external"
 )]
@@ -228,9 +228,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 10, ggas: 69 },
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 10, ggas: 79 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 10, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 19), (GGAS, 69)]), 10, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 29), (GGAS, 79)]), 10, 0, 0)],
         ..Default::default()
     })); "forwards gas"
 )]
@@ -247,9 +247,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 29, ggas: 69 },
-        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 29, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 69)]), 10, 0, 0)],
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 39, ggas: 79 },
+        receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 39, 0, 0, 700, 700)].into(),
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 79)]), 10, 0, 0)],
         ..Default::default()
     })); "the receipt shows forwarded gas correctly when limited by available gas"
 )]
@@ -266,9 +266,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
         storage_balance: [(AssetId::default(), 30)].into_iter().collect(),
         ..Default::default()
     } => using check_output(Ok(Output{
-        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 0 },
+        reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 10 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 0)]), 10, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]), 10, 0, 0)],
         ..Default::default()
     })); "transfers with enough balance internal"
 )]

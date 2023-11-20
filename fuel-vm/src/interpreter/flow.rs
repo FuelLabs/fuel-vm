@@ -1,28 +1,3 @@
-use super::{
-    contract::{
-        balance_decrease,
-        balance_increase,
-        contract_size,
-    },
-    gas::{
-        dependent_gas_charge,
-        gas_charge,
-        ProfileGas,
-    },
-    internal::{
-        append_receipt,
-        current_contract,
-        external_asset_id_balance_sub,
-        inc_pc,
-        internal_contract_or_default,
-        set_frame_pointer,
-        AppendReceipt,
-    },
-    ExecutableTransaction,
-    Interpreter,
-    MemoryRange,
-    RuntimeBalances,
-};
 use crate::{
     call::{
         Call,
@@ -40,9 +15,32 @@ use crate::{
         SimpleResult,
     },
     interpreter::{
+        contract::{
+            balance_decrease,
+            balance_increase,
+            contract_size,
+        },
+        gas::{
+            dependent_gas_charge_without_base,
+            gas_charge,
+            ProfileGas,
+        },
+        internal::{
+            append_receipt,
+            current_contract,
+            external_asset_id_balance_sub,
+            inc_pc,
+            internal_contract_or_default,
+            set_frame_pointer,
+            AppendReceipt,
+        },
         receipts::ReceiptsCtx,
+        ExecutableTransaction,
         InputContracts,
+        Interpreter,
+        MemoryRange,
         PanicContext,
+        RuntimeBalances,
     },
     prelude::{
         Bug,
@@ -388,12 +386,11 @@ where
             asset_id_mem_address,
             amount_of_gas_to_forward,
         };
-        let mut gas_cost = self.gas_costs().call;
+        let gas_cost = self.gas_costs().call;
         let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
         // Charge only for the `base` execution.
         // We will charge for the frame size in the `prepare_call`.
         self.gas_charge(gas_cost.base())?;
-        gas_cost.set_base(0);
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
@@ -522,7 +519,7 @@ where
             current_contract: self.current_contract,
             profiler: self.profiler,
         };
-        dependent_gas_charge(
+        dependent_gas_charge_without_base(
             self.registers.system_registers.cgas.as_mut(),
             self.registers.system_registers.ggas.as_mut(),
             profiler,

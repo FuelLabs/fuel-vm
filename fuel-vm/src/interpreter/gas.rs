@@ -74,6 +74,29 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     }
 }
 
+pub(crate) fn dependent_gas_charge_without_base(
+    mut cgas: RegMut<CGAS>,
+    ggas: RegMut<GGAS>,
+    mut profiler: ProfileGas<'_>,
+    gas_cost: DependentCost,
+    arg: Word,
+) -> SimpleResult<()> {
+    let cost =
+        dependent_gas_charge_without_base_inner(cgas.as_mut(), ggas, gas_cost, arg)?;
+    profiler.profile(cgas.as_ref(), cost);
+    Ok(())
+}
+
+fn dependent_gas_charge_without_base_inner(
+    cgas: RegMut<CGAS>,
+    ggas: RegMut<GGAS>,
+    gas_cost: DependentCost,
+    arg: Word,
+) -> Result<Word, PanicOrBug> {
+    let cost = gas_cost.resolve_without_base(arg);
+    gas_charge_inner(cgas, ggas, cost).map(|_| cost)
+}
+
 pub(crate) fn dependent_gas_charge(
     mut cgas: RegMut<CGAS>,
     ggas: RegMut<GGAS>,

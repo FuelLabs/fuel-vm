@@ -322,7 +322,7 @@ pub struct GasCostsValues {
     pub contract_root: DependentCost,
     pub state_root: DependentCost,
     pub new_storage_per_byte: Word,
-    pub vm_initialization: Word,
+    pub vm_initialization: DependentCost,
 }
 
 /// Dependent cost is a cost that depends on the number of units.
@@ -479,7 +479,7 @@ impl GasCostsValues {
             contract_root: DependentCost::free(),
             state_root: DependentCost::free(),
             new_storage_per_byte: 0,
-            vm_initialization: 0,
+            vm_initialization: DependentCost::free(),
         }
     }
 
@@ -597,7 +597,7 @@ impl GasCostsValues {
             contract_root: DependentCost::unit(),
             state_root: DependentCost::unit(),
             new_storage_per_byte: 1,
-            vm_initialization: 1,
+            vm_initialization: DependentCost::unit(),
         }
     }
 }

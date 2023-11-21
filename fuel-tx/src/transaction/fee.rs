@@ -123,14 +123,19 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
 
     /// Returns the minimum gas required to start transaction execution.
     fn min_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
-        let bytes_gas = self.metered_bytes_size() as u64 * fee.gas_per_byte;
+        let bytes_size = self.metered_bytes_size();
+
+        let vm_initialization_gas =
+            gas_costs.vm_initialization.resolve(bytes_size as Word);
+
+        let bytes_gas = bytes_size as u64 * fee.gas_per_byte;
         // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
         // validity. In the production, the value always will be lower than
         // `u64::MAX`.
         self.gas_used_by_inputs(gas_costs)
             .saturating_add(self.gas_used_by_metadata(gas_costs))
             .saturating_add(bytes_gas)
-            .saturating_add(gas_costs.vm_initialization)
+            .saturating_add(vm_initialization_gas)
     }
 
     /// Returns the maximum possible gas after the end of transaction execution.
@@ -235,11 +240,16 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                     predicate,
                     predicate_gas_used,
                     ..
-                }) => gas_costs
-                    .contract_root
-                    .resolve(predicate.len() as u64)
-                    .saturating_add(*predicate_gas_used)
-                    .saturating_add(gas_costs.vm_initialization),
+                }) => {
+                    let bytes_size = self.metered_bytes_size();
+                    let vm_initialization_gas =
+                        gas_costs.vm_initialization.resolve(bytes_size as Word);
+                    gas_costs
+                        .contract_root
+                        .resolve(predicate.len() as u64)
+                        .saturating_add(*predicate_gas_used)
+                        .saturating_add(vm_initialization_gas)
+                }
                 // Charge nothing for all other inputs
                 _ => 0,
             })

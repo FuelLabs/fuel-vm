@@ -1576,7 +1576,11 @@ mod tests {
         let min_gas = gas_used_by_bytes
             .saturating_add(gas_used_by_inputs)
             .saturating_add(gas_used_by_metadata)
-            .saturating_add(gas_costs.vm_initialization.resolve(tx.size() as u64));
+            .saturating_add(
+                gas_costs
+                    .vm_initialization
+                    .resolve(tx.metered_bytes_size() as u64),
+            );
 
         // use different division mechanism than impl
         let witness_limit_allowance = tx

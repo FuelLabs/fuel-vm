@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-####
+#### Breaking
 
 - [#640](https://github.com/FuelLabs/fuel-vm/pull/640): Update VM initialization cost to dependent cost; this is required because the time it takes to initialize the VM depends on the size of the transaction.
 

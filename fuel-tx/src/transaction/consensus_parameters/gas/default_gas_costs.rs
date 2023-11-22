@@ -172,9 +172,6 @@ pub fn default_gas_costs() -> GasCostsValues {
             units_per_gas: 1,
         },
         new_storage_per_byte: 1,
-        vm_initialization: DependentCost::HeavyOperation {
-            base: 2000,
-            gas_per_unit: 0,
-        },
+        vm_initialization: 2000,
     }
 }

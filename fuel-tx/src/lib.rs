@@ -6,7 +6,7 @@
 #![allow(clippy::wrong_self_convention)]
 #![deny(clippy::cast_possible_truncation)]
 #![deny(clippy::string_slice)]
-#![deny(unused_crate_dependencies)]
+// #![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
 // TODO: Add docs

@@ -168,6 +168,7 @@ impl Default for FeeParameters {
 
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct PredicateParameters {

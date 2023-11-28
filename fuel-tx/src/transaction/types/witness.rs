@@ -24,6 +24,7 @@ use rand::{
 
 #[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Witness {

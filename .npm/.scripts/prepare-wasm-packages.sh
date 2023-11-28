@@ -57,3 +57,4 @@ build_wasm_npm_pkg_for ()
 
 build_wasm_npm_pkg_for "fuel-asm"
 build_wasm_npm_pkg_for "fuel-types"
+build_wasm_npm_pkg_for "fuel-tx"

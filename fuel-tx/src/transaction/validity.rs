@@ -501,3 +501,64 @@ where
         iter.duplicates().next()
     }
 }
+
+#[cfg(feature = "typescript")]
+mod typescript {
+    use crate::{
+        PredicateParameters,
+        Witness,
+    };
+    use fuel_types::Bytes32;
+    use wasm_bindgen::JsValue;
+
+    use alloc::{
+        boxed::Box,
+        vec::Vec,
+    };
+
+    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub struct Input2(Box<crate::Input>);
+
+    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub struct Output2(Box<crate::Output>);
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn check_input(
+        input: &Input2,
+        index: usize,
+        txhash: &Bytes32,
+        outputs: Vec<JsValue>,
+        witnesses: Vec<JsValue>,
+        predicate_params: &PredicateParameters,
+        // recovery_cache: &mut Option<HashMap<u8, Address>>,
+    ) -> Result<(), JsValue /* ValidityError */> {
+        let outputs: Vec<crate::Output> = outputs
+            .into_iter()
+            .map(|v| serde_wasm_bindgen::from_value::<Output2>(v).map(|v| *v.0))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let witnesses: Vec<Witness> = witnesses
+            .into_iter()
+            .map(serde_wasm_bindgen::from_value::<Witness>)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        input
+            .0
+            .check(
+                index,
+                txhash,
+                &outputs,
+                &witnesses,
+                predicate_params,
+                &mut None,
+            )
+            .map_err(|err| {
+                serde_wasm_bindgen::to_value(&err)
+                    .expect("Unable to serialize ValidityError")
+            })
+    }
+}

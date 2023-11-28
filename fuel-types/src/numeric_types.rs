@@ -22,6 +22,9 @@ use rand::{
     Rng,
 };
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
 use crate::hex_val;
 
 macro_rules! key {

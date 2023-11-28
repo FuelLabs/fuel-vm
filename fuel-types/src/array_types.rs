@@ -334,7 +334,8 @@ macro_rules! key_methods {
             {
                 use serde::de::Error;
                 if deserializer.is_human_readable() {
-                    let s: String = serde::Deserialize::deserialize(deserializer)?;
+                    let s: alloc::string::String =
+                        serde::Deserialize::deserialize(deserializer)?;
                     s.parse().map_err(D::Error::custom)
                 } else {
                     let bytes = deserializer.deserialize_bytes(BytesVisitor {})?;

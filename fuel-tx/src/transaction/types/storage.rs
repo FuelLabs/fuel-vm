@@ -90,26 +90,14 @@ mod tests {
     use super::*;
     use rand::SeedableRng;
     use std::{
-        fs::{
-            remove_file,
-            File,
-        },
+        fs::File,
         path::PathBuf,
     };
 
     const FILE_PATH: &str = "storage-slots.json";
 
-    struct Cleanup;
-    impl Drop for Cleanup {
-        fn drop(&mut self) {
-            remove_file(FILE_PATH).expect("remove file");
-        }
-    }
-
     #[test]
     fn test_storage_slot_serialization() {
-        let _ = Cleanup;
-
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
         let value: Bytes32 = rng.gen();

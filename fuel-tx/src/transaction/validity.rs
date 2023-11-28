@@ -59,7 +59,7 @@ impl Input {
         recovery_cache: &mut Option<HashMap<u8, Address>>,
     ) -> Result<(), ValidityError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
-        self.check_signature(index, txhash, witnesses, recovery_cache)?;
+        // self.check_signature(index, txhash, witnesses, recovery_cache)?;
 
         Ok(())
     }
@@ -508,7 +508,7 @@ mod typescript {
         PredicateParameters,
         Witness,
     };
-    use fuel_types::Bytes32;
+    use fuel_types::{Bytes32, canonical::Deserialize};
     use wasm_bindgen::JsValue;
 
     use alloc::{
@@ -521,44 +521,57 @@ mod typescript {
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub struct Input2(Box<crate::Input>);
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[wasm_bindgen::prelude::wasm_bindgen]
-    pub struct Output2(Box<crate::Output>);
-
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn check_input(
-        input: &Input2,
-        index: usize,
-        txhash: &Bytes32,
-        outputs: Vec<JsValue>,
-        witnesses: Vec<JsValue>,
-        predicate_params: &PredicateParameters,
-        // recovery_cache: &mut Option<HashMap<u8, Address>>,
-    ) -> Result<(), JsValue /* ValidityError */> {
-        let outputs: Vec<crate::Output> = outputs
-            .into_iter()
-            .map(|v| serde_wasm_bindgen::from_value::<Output2>(v).map(|v| *v.0))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let witnesses: Vec<Witness> = witnesses
-            .into_iter()
-            .map(serde_wasm_bindgen::from_value::<Witness>)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        input
-            .0
-            .check(
-                index,
-                txhash,
-                &outputs,
-                &witnesses,
-                predicate_params,
-                &mut None,
-            )
-            .map_err(|err| {
-                serde_wasm_bindgen::to_value(&err)
-                    .expect("Unable to serialize ValidityError")
-            })
+    pub fn input_to_bytes(input: &Input2) -> Vec<u8> {
+        use fuel_types::canonical::Serialize;
+        input.0.to_bytes()
     }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_from_bytes(input: &[u8]) -> Option<Input2> {
+        use fuel_types::canonical::Deserialize;
+        crate::Input::from_bytes(&input).map(|v| Input2(Box::new(v))).ok()
+    }
+
+
+    // #[derive(Clone, Eq, Hash, PartialEq)]
+    // #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    // #[wasm_bindgen::prelude::wasm_bindgen]
+    // pub struct Output2(Box<crate::Output>);
+
+    // #[wasm_bindgen::prelude::wasm_bindgen]
+    // pub fn check_input(
+    //     input: &Input2,
+    //     index: usize,
+    //     txhash: &Bytes32,
+    //     outputs: Vec<JsValue>,
+    //     witnesses: Vec<JsValue>,
+    //     predicate_params: &PredicateParameters,
+    //     // recovery_cache: &mut Option<HashMap<u8, Address>>,
+    // ) -> Result<(), JsValue /* ValidityError */> {
+    //     let outputs: Vec<crate::Output> = outputs
+    //         .into_iter()
+    //         .map(|v| serde_wasm_bindgen::from_value::<Output2>(v).map(|v| *v.0))
+    //         .collect::<Result<Vec<_>, _>>()?;
+
+    //     let witnesses: Vec<Witness> = witnesses
+    //         .into_iter()
+    //         .map(serde_wasm_bindgen::from_value::<Witness>)
+    //         .collect::<Result<Vec<_>, _>>()?;
+
+    //     input
+    //         .0
+    //         .check(
+    //             index,
+    //             txhash,
+    //             &outputs,
+    //             &witnesses,
+    //             predicate_params,
+    //             &mut None,
+    //         )
+    //         .map_err(|err| {
+    //             serde_wasm_bindgen::to_value(&err)
+    //                 .expect("Unable to serialize ValidityError")
+    //         })
+    // }
 }

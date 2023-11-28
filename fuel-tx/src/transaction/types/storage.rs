@@ -1,18 +1,11 @@
 use fuel_types::{
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
-    Bytes32,
-    Bytes64,
+    canonical::{Deserialize, Serialize},
+    Bytes32, Bytes64,
 };
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{
-        Distribution,
-        Standard,
-    },
+    distributions::{Distribution, Standard},
     Rng,
 };
 
@@ -83,4 +76,34 @@ impl Ord for StorageSlot {
     fn cmp(&self, other: &Self) -> Ordering {
         self.key.cmp(&other.key)
     }
+}
+
+#[test]
+#[cfg(feature = "serde")]
+fn test_storage_slot_serialization() {
+    use std::fs::File;
+    use std::path::PathBuf;
+
+    use rand::SeedableRng;
+
+    let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
+
+    let key: Bytes32 = rng.gen();
+    let value: Bytes32 = rng.gen();
+
+    let slot = StorageSlot::new(key, value);
+    let slots = vec![slot.clone()];
+
+    // writes to file
+    let storage_slots_file =
+        File::create(PathBuf::from("storage-slots.json")).expect("create file");
+    let res = serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
+
+    // this fails
+    let storage_slots_file =
+        std::fs::File::open(PathBuf::from("storage-slots.json")).expect("open file");
+    let storage_slots: Vec<StorageSlot> =
+        serde_json::from_reader(storage_slots_file).expect("read file");
+
+    assert_eq!(storage_slots.len(), 1);
 }

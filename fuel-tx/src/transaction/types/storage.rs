@@ -99,11 +99,16 @@ fn test_storage_slot_serialization() {
         File::create(PathBuf::from("storage-slots.json")).expect("create file");
     let res = serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
 
+    // from string works
+    let slot_str = serde_json::to_string(&slots).expect("to string");
+    let storage_slots: Vec<StorageSlot> =
+        serde_json::from_str(&slot_str).expect("read from string");
+    assert_eq!(storage_slots.len(), 1);
+
     // this fails
     let storage_slots_file =
         std::fs::File::open(PathBuf::from("storage-slots.json")).expect("open file");
     let storage_slots: Vec<StorageSlot> =
         serde_json::from_reader(storage_slots_file).expect("read file");
-
     assert_eq!(storage_slots.len(), 1);
 }

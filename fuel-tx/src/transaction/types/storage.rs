@@ -102,20 +102,20 @@ fn test_storage_slot_serialization() {
     let slot = StorageSlot::new(key, value);
     let slots = vec![slot.clone()];
 
-    // writes to file
-    let storage_slots_file =
-        File::create(PathBuf::from("storage-slots.json")).expect("create file");
-    serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
-
-    // from string works
+    // `from_str` works
     let slot_str = serde_json::to_string(&slots).expect("to string");
     let storage_slots: Vec<StorageSlot> =
         serde_json::from_str(&slot_str).expect("read from string");
     assert_eq!(storage_slots.len(), 1);
 
-    // this fails
-    let storage_slots_file =
-        std::fs::File::open(PathBuf::from("storage-slots.json")).expect("open file");
+    let path = std::env::temp_dir().join(PathBuf::from("storage-slots.json"));
+
+    // writes to file works
+    let storage_slots_file = File::create(&path).expect("create file");
+    serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
+
+    // `from_reader` works
+    let storage_slots_file = File::open(&path).expect("open file");
     let storage_slots: Vec<StorageSlot> =
         serde_json::from_reader(storage_slots_file).expect("read file");
     assert_eq!(storage_slots.len(), 1);

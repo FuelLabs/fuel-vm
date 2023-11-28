@@ -1,11 +1,18 @@
 use fuel_types::{
-    canonical::{Deserialize, Serialize},
-    Bytes32, Bytes64,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
+    Bytes32,
+    Bytes64,
 };
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 
@@ -79,10 +86,11 @@ impl Ord for StorageSlot {
 }
 
 #[test]
-#[cfg(feature = "serde")]
 fn test_storage_slot_serialization() {
-    use std::fs::File;
-    use std::path::PathBuf;
+    use std::{
+        fs::File,
+        path::PathBuf,
+    };
 
     use rand::SeedableRng;
 
@@ -97,7 +105,7 @@ fn test_storage_slot_serialization() {
     // writes to file
     let storage_slots_file =
         File::create(PathBuf::from("storage-slots.json")).expect("create file");
-    let res = serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
+    serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
 
     // from string works
     let slot_str = serde_json::to_string(&slots).expect("to string");

@@ -38,6 +38,7 @@ quickcheck = "1.0"
 quickcheck_macros = "1.0"
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 rstest = "0.15"
+serde_json = { version = "1.0" }
 
 [features]
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]

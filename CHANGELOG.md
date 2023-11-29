@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.43.1]
+
 ### Fixed
 
 - [#643](https://github.com/FuelLabs/fuel-vm/pull/643): Fixed json deserialization of array fuel types from the file.

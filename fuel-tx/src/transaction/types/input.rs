@@ -895,3 +895,208 @@ impl Deserialize for Input {
 
 #[cfg(all(test, feature = "std"))]
 mod snapshot_tests;
+
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use super::*;
+
+    use crate::{
+        TxPointer,
+        UtxoId,
+    };
+    use fuel_types::{
+        Address,
+        AssetId,
+        BlockHeight,
+        Bytes32,
+        Word,
+    };
+
+    use alloc::{
+        boxed::Box,
+        vec::Vec,
+    };
+
+    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub struct Input2(#[wasm_bindgen(skip)] pub Box<crate::Input>);
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_to_bytes(input: &Input2) -> Vec<u8> {
+        use fuel_types::canonical::Serialize;
+        input.0.to_bytes()
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_from_bytes(input: &[u8]) -> Option<Input2> {
+        use fuel_types::canonical::Deserialize;
+        crate::Input::from_bytes(input)
+            .map(|v| Input2(Box::new(v)))
+            .ok()
+    }
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_coin_predicate(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        maturity: BlockHeight,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) -> Input2 {
+        Input2(Box::new(crate::Input::CoinPredicate(CoinPredicate {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index: Empty::new(),
+            maturity,
+            predicate_gas_used,
+            predicate,
+            predicate_data,
+        })))
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_coin_signed(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u8,
+        maturity: BlockHeight,
+    ) -> Input2 {
+        Input2(Box::new(crate::Input::CoinSigned(CoinSigned {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            maturity,
+            predicate_gas_used: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
+        })))
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_contract(
+        utxo_id: UtxoId,
+        balance_root: Bytes32,
+        state_root: Bytes32,
+        tx_pointer: TxPointer,
+        contract_id: ContractId,
+    ) -> Input2 {
+        Input2(Box::new(crate::Input::Contract(Contract {
+            utxo_id,
+            balance_root,
+            state_root,
+            tx_pointer,
+            contract_id,
+        })))
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_message_coin_signed(
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        nonce: Nonce,
+        witness_index: u8,
+    ) -> Input2 {
+        Input2(Box::new(crate::Input::MessageCoinSigned(
+            MessageCoinSigned {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                witness_index,
+                predicate_gas_used: Empty::new(),
+                data: Empty::new(),
+                predicate: Empty::new(),
+                predicate_data: Empty::new(),
+            },
+        )))
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_message_coin_predicate(
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        nonce: Nonce,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) -> Input2 {
+        Input2(Box::new(crate::Input::MessageCoinPredicate(
+            MessageCoinPredicate {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                witness_index: Empty::new(),
+                predicate_gas_used,
+                data: Empty::new(),
+                predicate,
+                predicate_data,
+            },
+        )))
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_message_data_signed(
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        nonce: Nonce,
+        witness_index: u8,
+        data: Vec<u8>,
+    ) -> Input2 {
+        Input2(Box::new(crate::Input::MessageDataSigned(
+            MessageDataSigned {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                witness_index,
+                data,
+                predicate: Empty::new(),
+                predicate_data: Empty::new(),
+                predicate_gas_used: Empty::new(),
+            },
+        )))
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn input_message_data_predicate(
+        sender: Address,
+        recipient: Address,
+        amount: Word,
+        nonce: Nonce,
+        predicate_gas_used: Word,
+        data: Vec<u8>,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) -> Input2 {
+        Input2(Box::new(crate::Input::MessageDataPredicate(
+            MessageDataPredicate {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                witness_index: Empty::new(),
+                predicate_gas_used,
+                data,
+                predicate,
+                predicate_data,
+            },
+        )))
+    }
+}

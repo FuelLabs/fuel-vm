@@ -28,8 +28,14 @@ use fuel_types::{
     Salt,
     Word,
 };
-use input::*;
-use output::*;
+use input::{
+    typescript as input_ts,
+    *,
+};
+use output::{
+    typescript as output_ts,
+    *,
+};
 
 use alloc::vec::{
     IntoIter,

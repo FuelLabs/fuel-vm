@@ -137,7 +137,3 @@ impl ContractIdExt for ContractId {
         self.asset_id(&Bytes32::zeroed())
     }
 }
-
-
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;

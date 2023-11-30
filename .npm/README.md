@@ -57,7 +57,8 @@ The above commands will give ready-to-publish packages inside `.npm/packages`.
 │   └── prepare-wasm-packages
 ├── packages
 │   ├── fuel-asm   # <—— package #1
-│   └── fuel-types # <—— package #2
+│   ├── fuel-types # <—— package #2
+│   └── ...
 └── package.json
 ```
 

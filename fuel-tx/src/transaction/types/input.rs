@@ -935,6 +935,7 @@ pub mod typescript {
             .map(|v| Input2(Box::new(v)))
             .ok()
     }
+
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub fn input_coin_predicate(
         utxo_id: UtxoId,

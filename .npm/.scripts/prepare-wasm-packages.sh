@@ -32,13 +32,14 @@ build_wasm_npm_pkg_for ()
 {
   NAME_DASHED=$1
   NAME_UNDERSCORED=$(echo "${NAME_DASHED}" | sed -e 's/-/_/g')
+  MORE_ARGS=$2
 
   PKG_DIR=${PKGS_DIR}/${NAME_DASHED}
 
   rm -rf ${PKG_DIR}/{src,dist}
 
   cd ${ROOT_DIR}
-  cargo rustc -p ${NAME_DASHED} --target wasm32-unknown-unknown --features typescript --crate-type=cdylib --release
+  cargo rustc -p ${NAME_DASHED} --target wasm32-unknown-unknown --features typescript --crate-type=cdylib --release $MORE_ARGS
   wasm-bindgen --typescript --target web ./target/wasm32-unknown-unknown/release/${NAME_UNDERSCORED}.wasm --out-dir ${PKG_DIR}/src
   wasm-opt ${PKG_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -o ${PKG_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -Oz
   cd ~-
@@ -57,4 +58,4 @@ build_wasm_npm_pkg_for ()
 
 build_wasm_npm_pkg_for "fuel-asm"
 build_wasm_npm_pkg_for "fuel-types"
-build_wasm_npm_pkg_for "fuel-tx"
+build_wasm_npm_pkg_for "fuel-tx" --no-default-features

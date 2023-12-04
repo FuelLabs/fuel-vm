@@ -111,7 +111,12 @@ fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
     let total_price = (gas as u128)
         .checked_mul(gas_price as u128)
         .expect("Impossible to overflow because multiplication of two `u64` <= `u128`");
-    total_price.div_ceil(factor as u128)
+
+    if total_price % (factor as u128) == 0 {
+        total_price / (factor as u128)
+    } else {
+        1u128 + total_price / (factor as u128) 
+    }
 }
 
 /// Means that the blockchain charges fee for the transaction.

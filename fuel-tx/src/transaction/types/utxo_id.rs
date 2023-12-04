@@ -119,6 +119,42 @@ impl str::FromStr for UtxoId {
     }
 }
 
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use super::*;
+
+    use wasm_bindgen::prelude::*;
+
+    use alloc::{format, vec::Vec, string::String};
+
+    #[wasm_bindgen]
+    impl UtxoId {
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new(value: &str) -> Result<UtxoId, js_sys::Error> {
+            use core::str::FromStr;
+            UtxoId::from_str(value).map_err(js_sys::Error::new)
+        }
+
+        #[wasm_bindgen]
+        pub fn to_string(&self) -> String {
+            format!("{:#x}", self)
+        }
+
+        #[wasm_bindgen]
+        pub fn to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            <Self as Serialize>::to_bytes(self)
+        }
+
+        #[wasm_bindgen]
+        pub fn from_bytes(utxo_id: &[u8]) -> Option<UtxoId> {
+            use fuel_types::canonical::Deserialize;
+            <Self as Deserialize>::from_bytes(utxo_id)
+                .ok()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

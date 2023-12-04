@@ -21,13 +21,14 @@ fuel-types = { workspace = true, default-features = false }
 getrandom = { version = "0.2", optional = true }
 hashbrown = { version = "0.14", optional = true }
 itertools = { version = "0.10", default-features = false, optional = true }
+js-sys = { version = "0.3", optional = true }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
+serde-wasm-bindgen = { version = "0.6", optional = true }
 strum = { version = "0.24", default-features = false, optional = true }
 strum_macros = { version = "0.24", optional = true }
 wasm-bindgen = { version = "0.2.88", optional = true }
-serde-wasm-bindgen = { version = "0.6", optional = true }
 wee_alloc = { version = "0.4.5", optional = true }
 
 [dev-dependencies]
@@ -47,7 +48,7 @@ rstest = "0.15"
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]
 builder = ["alloc", "internals"]
 internals = []
-typescript = ["alloc", "wee_alloc", "wasm-bindgen", "serde", "serde-wasm-bindgen", "getrandom/js", "fuel-types/typescript"]
+typescript = ["alloc", "wee_alloc", "js-sys", "wasm-bindgen", "serde", "serde-wasm-bindgen", "getrandom/js", "fuel-types/typescript"]
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde?/default", "hex/std"]
 alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "strum", "strum_macros"]

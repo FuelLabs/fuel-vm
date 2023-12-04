@@ -84,3 +84,43 @@ impl Ord for StorageSlot {
         self.key.cmp(&other.key)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rand::SeedableRng;
+    use std::{
+        fs::File,
+        path::PathBuf,
+    };
+
+    const FILE_PATH: &str = "storage-slots.json";
+
+    #[test]
+    fn test_storage_slot_serialization() {
+        let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
+        let key: Bytes32 = rng.gen();
+        let value: Bytes32 = rng.gen();
+
+        let slot = StorageSlot::new(key, value);
+        let slots = vec![slot.clone()];
+
+        // `from_str` works
+        let slot_str = serde_json::to_string(&slots).expect("to string");
+        let storage_slots: Vec<StorageSlot> =
+            serde_json::from_str(&slot_str).expect("read from string");
+        assert_eq!(storage_slots.len(), 1);
+
+        let path = std::env::temp_dir().join(PathBuf::from(FILE_PATH));
+
+        // writes to file works
+        let storage_slots_file = File::create(&path).expect("create file");
+        serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
+
+        // `from_reader` works
+        let storage_slots_file = File::open(&path).expect("open file");
+        let storage_slots: Vec<StorageSlot> =
+            serde_json::from_reader(storage_slots_file).expect("read file");
+        assert_eq!(storage_slots.len(), 1);
+    }
+}

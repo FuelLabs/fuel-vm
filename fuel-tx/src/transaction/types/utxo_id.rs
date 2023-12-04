@@ -125,7 +125,11 @@ pub mod typescript {
 
     use wasm_bindgen::prelude::*;
 
-    use alloc::{format, vec::Vec, string::String};
+    use alloc::{
+        format,
+        string::String,
+        vec::Vec,
+    };
 
     #[wasm_bindgen]
     impl UtxoId {
@@ -149,8 +153,7 @@ pub mod typescript {
         #[wasm_bindgen]
         pub fn from_bytes(utxo_id: &[u8]) -> Option<UtxoId> {
             use fuel_types::canonical::Deserialize;
-            <Self as Deserialize>::from_bytes(utxo_id)
-                .ok()
+            <Self as Deserialize>::from_bytes(utxo_id).ok()
         }
     }
 }

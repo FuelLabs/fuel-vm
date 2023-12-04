@@ -245,6 +245,8 @@ impl Output {
 
 #[cfg(feature = "typescript")]
 pub mod typescript {
+    use wasm_bindgen::prelude::*;
+
     use super::*;
 
     use fuel_types::{
@@ -256,64 +258,77 @@ pub mod typescript {
 
     use alloc::{
         boxed::Box,
+        format,
+        string::String,
         vec::Vec,
     };
 
     #[derive(Clone, Eq, Hash, PartialEq)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[wasm_bindgen::prelude::wasm_bindgen]
+    #[wasm_bindgen]
     pub struct Output2(#[wasm_bindgen(skip)] pub Box<crate::Output>);
 
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn output_to_bytes(input: &Output2) -> Vec<u8> {
-        use fuel_types::canonical::Serialize;
-        input.0.to_bytes()
-    }
+    #[wasm_bindgen]
+    impl Output2 {
+        #[cfg(feature = "serde")]
+        #[wasm_bindgen(js_name = toJSON)]
+        pub fn to_json(&self) -> String {
+            serde_json::to_string(&self.0).expect("unable to json format")
+        }
 
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn output_from_bytes(input: &[u8]) -> Option<Output2> {
-        use fuel_types::canonical::Deserialize;
-        crate::Output::from_bytes(input)
-            .map(|v| Output2(Box::new(v)))
-            .ok()
-    }
+        #[wasm_bindgen(js_name = toString)]
+        pub fn to_string(&self) -> String {
+            format!("{:?}", self.0)
+        }
 
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn output_coin(to: Address, amount: Word, asset_id: AssetId) -> Output2 {
-        Output2(Box::new(crate::Output::coin(to, amount, asset_id)))
-    }
+        #[wasm_bindgen]
+        pub fn to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            self.0.to_bytes()
+        }
 
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn output_contract(
-        input_index: u8,
-        balance_root: Bytes32,
-        state_root: Bytes32,
-    ) -> Output2 {
-        Output2(Box::new(crate::Output::contract(
-            input_index,
-            balance_root,
-            state_root,
-        )))
-    }
+        #[wasm_bindgen]
+        pub fn from_bytes(output: &[u8]) -> Option<Output2> {
+            use fuel_types::canonical::Deserialize;
+            crate::Output::from_bytes(output)
+                .map(|v| Output2(Box::new(v)))
+                .ok()
+        }
 
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn output_change(to: Address, amount: Word, asset_id: AssetId) -> Output2 {
-        Output2(Box::new(crate::Output::change(to, amount, asset_id)))
-    }
+        #[wasm_bindgen]
+        pub fn coin(to: Address, amount: Word, asset_id: AssetId) -> Output2 {
+            Output2(Box::new(crate::Output::coin(to, amount, asset_id)))
+        }
 
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn output_variable(to: Address, amount: Word, asset_id: AssetId) -> Output2 {
-        Output2(Box::new(crate::Output::variable(to, amount, asset_id)))
-    }
+        #[wasm_bindgen]
+        pub fn contract(
+            input_index: u8,
+            balance_root: Bytes32,
+            state_root: Bytes32,
+        ) -> Output2 {
+            Output2(Box::new(crate::Output::contract(
+                input_index,
+                balance_root,
+                state_root,
+            )))
+        }
 
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    pub fn output_contract_created(
-        contract_id: ContractId,
-        state_root: Bytes32,
-    ) -> Output2 {
-        Output2(Box::new(crate::Output::contract_created(
-            contract_id,
-            state_root,
-        )))
+        #[wasm_bindgen]
+        pub fn change(to: Address, amount: Word, asset_id: AssetId) -> Output2 {
+            Output2(Box::new(crate::Output::change(to, amount, asset_id)))
+        }
+
+        #[wasm_bindgen]
+        pub fn variable(to: Address, amount: Word, asset_id: AssetId) -> Output2 {
+            Output2(Box::new(crate::Output::variable(to, amount, asset_id)))
+        }
+
+        #[wasm_bindgen]
+        pub fn contract_created(contract_id: ContractId, state_root: Bytes32) -> Output2 {
+            Output2(Box::new(crate::Output::contract_created(
+                contract_id,
+                state_root,
+            )))
+        }
     }
 }

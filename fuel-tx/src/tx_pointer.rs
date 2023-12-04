@@ -100,6 +100,45 @@ impl str::FromStr for TxPointer {
     }
 }
 
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use super::*;
+
+    use wasm_bindgen::prelude::*;
+
+    use alloc::{
+        format,
+        string::String,
+        vec::Vec,
+    };
+
+    #[wasm_bindgen]
+    impl TxPointer {
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new(value: &str) -> Result<TxPointer, js_sys::Error> {
+            use core::str::FromStr;
+            TxPointer::from_str(value).map_err(js_sys::Error::new)
+        }
+
+        #[wasm_bindgen]
+        pub fn to_string(&self) -> String {
+            format!("{:#x}", self)
+        }
+
+        #[wasm_bindgen]
+        pub fn to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            <Self as Serialize>::to_bytes(self)
+        }
+
+        #[wasm_bindgen]
+        pub fn from_bytes(utxo_id: &[u8]) -> Option<TxPointer> {
+            use fuel_types::canonical::Deserialize;
+            <Self as Deserialize>::from_bytes(utxo_id).ok()
+        }
+    }
+}
+
 #[test]
 fn fmt_encode_decode() {
     use core::str::FromStr;

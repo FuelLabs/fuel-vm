@@ -28,13 +28,14 @@ use fuel_types::{
     Salt,
     Word,
 };
-use input::{
-    typescript as input_ts,
-    *,
-};
-use output::{
-    typescript as output_ts,
-    *,
+
+use input::*;
+use output::*;
+
+#[cfg(feature = "typescript")]
+use self::{
+    input::typescript as input_ts,
+    output::typescript as output_ts,
 };
 
 use alloc::vec::{

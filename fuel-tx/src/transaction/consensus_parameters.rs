@@ -369,6 +369,21 @@ impl Default for ContractParameters {
     }
 }
 
+#[cfg(feature = "typescript")]
+mod typescript {
+    use wasm_bindgen::prelude::*;
+
+    use super::PredicateParameters;
+
+    #[wasm_bindgen]
+    impl PredicateParameters {
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new() -> Self {
+            Self::DEFAULT
+        }
+    }
+}
+
 /// Arbitrary default consensus parameters. While best-efforts are made to adjust these to
 /// reasonable settings, they may not be useful for every network instantiation.
 #[deprecated(since = "0.12.2", note = "use `ConsensusParameters` instead.")]

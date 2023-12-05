@@ -24,8 +24,8 @@ itertools = { version = "0.10", default-features = false, optional = true }
 js-sys = { version = "0.3", optional = true }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"], optional = true }
-serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 serde-wasm-bindgen = { version = "0.6", optional = true }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"], optional = true }
 strum = { version = "0.24", default-features = false, optional = true }
 strum_macros = { version = "0.24", optional = true }
 wasm-bindgen = { version = "0.2.88", optional = true }

@@ -7,8 +7,8 @@ describe('fuel-tx [mjs]', () => {
     expect(tx.UtxoId).to.be.ok
     expect(tx.TxPointer).to.be.ok
     expect(tx.PredicateParameters).to.be.ok
-    expect(tx.Input2).to.be.ok
-    expect(tx.Output2).to.be.ok
+    expect(tx.Input).to.be.ok
+    expect(tx.Output).to.be.ok
   })
 
   it('should serialize and deserialize UtxoId correctly', () => {
@@ -28,7 +28,7 @@ describe('fuel-tx [mjs]', () => {
 
   it('should serialize and deserialize all input variants correctly', () => {
     [
-      tx.Input2.coin_predicate(
+      tx.Input.coin_predicate(
         new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
         tx.Address.zeroed(),
         BigInt(1234),
@@ -39,7 +39,7 @@ describe('fuel-tx [mjs]', () => {
         [1, 2, 3, 4],
         [5, 6, 7, 8],
       ),
-      tx.Input2.coin_signed(
+      tx.Input.coin_signed(
         new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
         tx.Address.zeroed(),
         BigInt(1234),
@@ -48,21 +48,21 @@ describe('fuel-tx [mjs]', () => {
         2,
         new tx.BlockHeight(5678),
       ),
-      tx.Input2.contract(
+      tx.Input.contract(
         new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
         tx.Bytes32.zeroed(),
         tx.Bytes32.zeroed(),
         new tx.TxPointer("0123456789ab"),
         tx.ContractId.zeroed(),
       ),
-      tx.Input2.message_coin_signed(
+      tx.Input.message_coin_signed(
         tx.Address.zeroed(),
         tx.Address.zeroed(),
         BigInt(1234),
         tx.Nonce.zeroed(),
         2,
       ),
-      tx.Input2.message_coin_predicate(
+      tx.Input.message_coin_predicate(
         tx.Address.zeroed(),
         tx.Address.zeroed(),
         BigInt(1234),
@@ -71,7 +71,7 @@ describe('fuel-tx [mjs]', () => {
         [1, 2, 3, 4],
         [5, 6, 7, 8],
       ),
-      tx.Input2.message_data_signed(
+      tx.Input.message_data_signed(
         tx.Address.zeroed(),
         tx.Address.zeroed(),
         BigInt(1234),
@@ -79,7 +79,7 @@ describe('fuel-tx [mjs]', () => {
         2,
         [1, 2, 3, 4],
       ),
-      tx.Input2.message_data_predicate(
+      tx.Input.message_data_predicate(
         tx.Address.zeroed(),
         tx.Address.zeroed(),
         BigInt(1234),
@@ -91,7 +91,7 @@ describe('fuel-tx [mjs]', () => {
       ),
     ].forEach(input => {
       let bytes = input.to_bytes();
-      let input2 = tx.Input2.from_bytes(bytes);
+      let input2 = tx.Input.from_bytes(bytes);
       expect(input.toString()).to.equal(input2.toString())
     })
   })
@@ -99,33 +99,33 @@ describe('fuel-tx [mjs]', () => {
 
   it('should serialize and deserialize all output variants correctly', () => {
     [
-      tx.Output2.coin(
+      tx.Output.coin(
         tx.Address.zeroed(),
         BigInt(1234),
         tx.AssetId.zeroed(),
       ),
-      tx.Output2.contract(
+      tx.Output.contract(
         2,
         tx.Bytes32.zeroed(),
         tx.Bytes32.zeroed(),
       ),
-      tx.Output2.change(
+      tx.Output.change(
         tx.Address.zeroed(),
         BigInt(1234),
         tx.AssetId.zeroed(),
       ),
-      tx.Output2.variable(
+      tx.Output.variable(
         tx.Address.zeroed(),
         BigInt(1234),
         tx.AssetId.zeroed(),
       ),
-      tx.Output2.contract_created(
+      tx.Output.contract_created(
         tx.ContractId.zeroed(),
         tx.Bytes32.zeroed(),
       ),
     ].forEach(output => {
       let bytes = output.to_bytes();
-      let output2 = tx.Output2.from_bytes(bytes);
+      let output2 = tx.Output.from_bytes(bytes);
       expect(output.toString()).to.equal(output2.toString())
     })
   })
@@ -150,7 +150,7 @@ describe('fuel-tx [mjs]', () => {
   }
 
   it('should validate input correctly', () => {
-    let input = tx.Input2.coin_signed(
+    let input = tx.Input.coin_signed(
       new tx.UtxoId("0xc49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2:18"),
       tx.Address.from_bytes(hexToByte("f1e92c42b90934aa6372e30bc568a326f6e66a1a0288595e6e3fbd392a4f3e6e")),
       10599410012256088338n,

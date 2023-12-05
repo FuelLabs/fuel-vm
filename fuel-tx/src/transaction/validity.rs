@@ -514,13 +514,13 @@ mod typescript {
     use alloc::vec::Vec;
 
     use crate::transaction::{
-        input_ts::Input2,
-        output_ts::Output2,
+        input_ts::Input,
+        output_ts::Output,
     };
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub fn check_input(
-        input: &Input2,
+        input: &Input,
         index: usize,
         txhash: &Bytes32,
         outputs: Vec<JsValue>,
@@ -530,7 +530,7 @@ mod typescript {
     ) -> Result<(), JsValue /* ValidityError */> {
         let outputs: Vec<crate::Output> = outputs
             .into_iter()
-            .map(|v| serde_wasm_bindgen::from_value::<Output2>(v).map(|v| *v.0))
+            .map(|v| serde_wasm_bindgen::from_value::<Output>(v).map(|v| *v.0))
             .collect::<Result<Vec<_>, _>>()?;
 
         let witnesses: Vec<Witness> = witnesses
@@ -556,13 +556,13 @@ mod typescript {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub fn check_output(
-        output: &Output2,
+        output: &Output,
         index: usize,
         inputs: Vec<JsValue>,
     ) -> Result<(), JsValue /* ValidityError */> {
         let inputs: Vec<crate::Input> = inputs
             .into_iter()
-            .map(|v| serde_wasm_bindgen::from_value::<Input2>(v).map(|v| *v.0))
+            .map(|v| serde_wasm_bindgen::from_value::<Input>(v).map(|v| *v.0))
             .collect::<Result<Vec<_>, _>>()?;
 
         output.0.check(index, &inputs).map_err(|err| {

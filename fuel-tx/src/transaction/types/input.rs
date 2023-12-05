@@ -924,10 +924,10 @@ pub mod typescript {
     #[derive(Clone, Eq, Hash, PartialEq)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[wasm_bindgen]
-    pub struct Input2(#[wasm_bindgen(skip)] pub Box<crate::Input>);
+    pub struct Input(#[wasm_bindgen(skip)] pub Box<crate::Input>);
 
     #[wasm_bindgen]
-    impl Input2 {
+    impl Input {
         #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
@@ -946,10 +946,10 @@ pub mod typescript {
         }
 
         #[wasm_bindgen]
-        pub fn from_bytes(input: &[u8]) -> Option<Input2> {
+        pub fn from_bytes(input: &[u8]) -> Option<Input> {
             use fuel_types::canonical::Deserialize;
             crate::Input::from_bytes(input)
-                .map(|v| Input2(Box::new(v)))
+                .map(|v| Input(Box::new(v)))
                 .ok()
         }
 
@@ -964,8 +964,8 @@ pub mod typescript {
             predicate_gas_used: Word,
             predicate: Vec<u8>,
             predicate_data: Vec<u8>,
-        ) -> Input2 {
-            Input2(Box::new(crate::Input::CoinPredicate(CoinPredicate {
+        ) -> Input {
+            Input(Box::new(crate::Input::CoinPredicate(CoinPredicate {
                 utxo_id,
                 owner,
                 amount,
@@ -988,8 +988,8 @@ pub mod typescript {
             tx_pointer: TxPointer,
             witness_index: u8,
             maturity: BlockHeight,
-        ) -> Input2 {
-            Input2(Box::new(crate::Input::CoinSigned(CoinSigned {
+        ) -> Input {
+            Input(Box::new(crate::Input::CoinSigned(CoinSigned {
                 utxo_id,
                 owner,
                 amount,
@@ -1010,8 +1010,8 @@ pub mod typescript {
             state_root: Bytes32,
             tx_pointer: TxPointer,
             contract_id: ContractId,
-        ) -> Input2 {
-            Input2(Box::new(crate::Input::Contract(Contract {
+        ) -> Input {
+            Input(Box::new(crate::Input::Contract(Contract {
                 utxo_id,
                 balance_root,
                 state_root,
@@ -1027,8 +1027,8 @@ pub mod typescript {
             amount: Word,
             nonce: Nonce,
             witness_index: u8,
-        ) -> Input2 {
-            Input2(Box::new(crate::Input::MessageCoinSigned(
+        ) -> Input {
+            Input(Box::new(crate::Input::MessageCoinSigned(
                 MessageCoinSigned {
                     sender,
                     recipient,
@@ -1052,8 +1052,8 @@ pub mod typescript {
             predicate_gas_used: Word,
             predicate: Vec<u8>,
             predicate_data: Vec<u8>,
-        ) -> Input2 {
-            Input2(Box::new(crate::Input::MessageCoinPredicate(
+        ) -> Input {
+            Input(Box::new(crate::Input::MessageCoinPredicate(
                 MessageCoinPredicate {
                     sender,
                     recipient,
@@ -1076,8 +1076,8 @@ pub mod typescript {
             nonce: Nonce,
             witness_index: u8,
             data: Vec<u8>,
-        ) -> Input2 {
-            Input2(Box::new(crate::Input::MessageDataSigned(
+        ) -> Input {
+            Input(Box::new(crate::Input::MessageDataSigned(
                 MessageDataSigned {
                     sender,
                     recipient,
@@ -1102,8 +1102,8 @@ pub mod typescript {
             data: Vec<u8>,
             predicate: Vec<u8>,
             predicate_data: Vec<u8>,
-        ) -> Input2 {
-            Input2(Box::new(crate::Input::MessageDataPredicate(
+        ) -> Input {
+            Input(Box::new(crate::Input::MessageDataPredicate(
                 MessageDataPredicate {
                     sender,
                     recipient,

@@ -24,7 +24,7 @@ use rand::{
     Rng,
 };
 
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", feature = "typescript"))]
 use alloc::format;
 
 use crate::hex_val;

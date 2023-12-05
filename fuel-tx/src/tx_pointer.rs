@@ -120,8 +120,8 @@ pub mod typescript {
             TxPointer::from_str(value).map_err(js_sys::Error::new)
         }
 
-        #[wasm_bindgen]
-        pub fn to_string(&self) -> String {
+        #[wasm_bindgen(js_name = to_string)]
+        pub fn typescript_to_string(&self) -> String {
             format!("{:#x}", self)
         }
 

@@ -935,7 +935,7 @@ pub mod typescript {
         }
 
         #[wasm_bindgen(js_name = toString)]
-        pub fn to_string(&self) -> String {
+        pub fn typescript_to_string(&self) -> String {
             format!("{:?}", self.0)
         }
 

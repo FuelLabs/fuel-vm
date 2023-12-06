@@ -40,7 +40,7 @@ build_wasm_npm_pkg_for ()
 
   cd ${ROOT_DIR}
   cargo rustc -p ${NAME_DASHED} --target wasm32-unknown-unknown --features typescript --crate-type=cdylib --profile web-release $MORE_ARGS
-  wasm-bindgen --typescript --target web ./target/wasm32-unknown-unknown/wasm-release/${NAME_UNDERSCORED}.wasm --out-dir ${PKG_DIR}/src
+  wasm-bindgen --typescript --target web ./target/wasm32-unknown-unknown/web-release/${NAME_UNDERSCORED}.wasm --out-dir ${PKG_DIR}/src
   wasm-opt ${PKG_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -o ${PKG_DIR}/src/${NAME_UNDERSCORED}_bg.wasm -Oz
   cd ~-
 

@@ -15,6 +15,7 @@ use fuel_types::{
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = InputContract))]
 pub struct Contract {
     pub utxo_id: UtxoId,
     pub balance_root: Bytes32,
@@ -52,6 +53,42 @@ impl Distribution<Contract> for Standard {
             state_root: rng.gen(),
             tx_pointer: rng.gen(),
             contract_id: rng.gen(),
+        }
+    }
+}
+
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use wasm_bindgen::prelude::*;
+
+    use super::*;
+
+    use crate::{
+        TxPointer,
+        UtxoId,
+    };
+    use fuel_types::{
+        Bytes32,
+        ContractId,
+    };
+
+    #[wasm_bindgen(js_class = InputContract)]
+    impl Contract {
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new(
+            utxo_id: UtxoId,
+            balance_root: Bytes32,
+            state_root: Bytes32,
+            tx_pointer: TxPointer,
+            contract_id: ContractId,
+        ) -> Self {
+            Self {
+                utxo_id,
+                balance_root,
+                state_root,
+                tx_pointer,
+                contract_id,
+            }
         }
     }
 }

@@ -9,6 +9,11 @@ describe('fuel-tx [mjs]', () => {
     expect(tx.PredicateParameters).to.be.ok
     expect(tx.Input).to.be.ok
     expect(tx.Output).to.be.ok
+    expect(tx.Script).to.be.ok
+    expect(tx.Create).to.be.ok
+    expect(tx.Mint).to.be.ok
+    expect(tx.Transaction).to.be.ok
+    expect(tx.Policies).to.be.ok
   })
 
   it('should serialize and deserialize UtxoId correctly', () => {
@@ -131,6 +136,55 @@ describe('fuel-tx [mjs]', () => {
   })
 
 
+  it('should serialize and deserialize all transaction variants correctly', () => {
+    [
+      [tx.Script, tx.Transaction.script(
+        1234n,
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        new tx.Policies(),
+        [],
+        [],
+        [],
+      )],
+      [tx.Create, tx.Transaction.create(
+        1,
+        new tx.Policies(),
+        tx.Salt.zeroed(),
+        [],
+        [],
+        [],
+        [],
+      )],
+      [tx.Mint, tx.Transaction.mint(
+        new tx.TxPointer("0123456789ab"),
+        new tx.InputContract(
+          new tx.UtxoId("0xc49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2:18"),
+          tx.Bytes32.zeroed(),
+          tx.Bytes32.zeroed(),
+          new tx.TxPointer("0123456789ab"),
+          tx.ContractId.zeroed(),
+        ),
+        new tx.OutputContract(
+          3,
+          tx.Bytes32.zeroed(),
+          tx.Bytes32.zeroed(),
+        ),
+        1234n,
+        tx.AssetId.zeroed(),
+      )],
+    ].forEach(([tx_variant_type, tx_variant]) => {
+      let bytes = tx_variant.to_bytes();
+      let tx_variant2 = tx_variant_type.from_bytes(bytes);
+      expect(tx_variant.toString()).to.equal(tx_variant2.toString())
+
+      let wrapped_tx = tx_variant.as_tx();
+      let tx_bytes = wrapped_tx.to_bytes();
+      let wrapped_tx2 = tx.Transaction.from_bytes(tx_bytes);
+      expect(wrapped_tx.toString()).to.equal(wrapped_tx2.toString())
+    })
+  })
+
   // Hex string to byte string conversion.
   const hexToBytes = hex => {
     if (hex.length % 2 != 0) {
@@ -138,7 +192,7 @@ describe('fuel-tx [mjs]', () => {
     }
     const lookup = "0123456789abcdef";
     let result = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < result.length; i+=1) {
+    for (let i = 0; i < result.length; i += 1) {
       let high = lookup.indexOf(hex[i * 2]);
       let low = lookup.indexOf(hex[i * 2 + 1]);
       if (high === -1 || low === -1) {
@@ -159,7 +213,7 @@ describe('fuel-tx [mjs]', () => {
       0,
       new tx.BlockHeight(0),
     );
-    
+
     tx.check_input(input, 0, tx.Bytes32.from_bytes(hexToBytes("108eae4147d2c1c86ef4c2ab7c9fe94126645c8d8737495a0574ef1518ae74d8")), [], [{ data: hexToBytes("7ce4de2225f041b7f9fec727343a501d99e5b7b58d33f3d4a2cf218d3489959bdec24d13770b5d3bb084b4dac3474f95153e6ecc98f6f0f8ca37a2897b9562ee") }], new tx.PredicateParameters());
   })
 

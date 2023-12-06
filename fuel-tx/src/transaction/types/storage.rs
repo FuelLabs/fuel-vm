@@ -20,6 +20,7 @@ use core::cmp::Ordering;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(Deserialize, Serialize)]
 pub struct StorageSlot {
     key: Bytes32,

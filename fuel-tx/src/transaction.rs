@@ -815,6 +815,165 @@ pub mod field {
     }
 }
 
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use wasm_bindgen::prelude::*;
+
+    use crate::{
+        transaction::{
+            input_ts::Input,
+            output_ts::Output,
+            Policies,
+        },
+        AssetId,
+        Create,
+        Mint,
+        Script,
+        Witness,
+        Word,
+    };
+    use alloc::{
+        boxed::Box,
+        format,
+        string::String,
+        vec::Vec,
+    };
+
+    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Transaction(#[wasm_bindgen(skip)] pub Box<crate::Transaction>);
+
+    #[wasm_bindgen]
+    impl Transaction {
+        #[cfg(feature = "serde")]
+        #[wasm_bindgen(js_name = toJSON)]
+        pub fn to_json(&self) -> String {
+            serde_json::to_string(&self.0).expect("unable to json format")
+        }
+
+        #[wasm_bindgen(js_name = toString)]
+        pub fn typescript_to_string(&self) -> String {
+            format!("{:?}", self.0)
+        }
+
+        #[wasm_bindgen(js_name = to_bytes)]
+        pub fn typescript_to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            self.0.to_bytes()
+        }
+
+        #[wasm_bindgen(js_name = from_bytes)]
+        pub fn typescript_from_bytes(value: &[u8]) -> Option<Transaction> {
+            use fuel_types::canonical::Deserialize;
+            crate::Transaction::from_bytes(value)
+                .map(|v| Transaction(Box::new(v)))
+                .ok()
+        }
+
+        #[wasm_bindgen]
+        pub fn script(
+            gas_limit: Word,
+            script: Vec<u8>,
+            script_data: Vec<u8>,
+            policies: Policies,
+            inputs: Vec<Input>,
+            outputs: Vec<Output>,
+            witnesses: Vec<Witness>,
+        ) -> Script {
+            crate::Transaction::script(
+                gas_limit,
+                script,
+                script_data,
+                policies,
+                inputs.into_iter().map(|v| *v.0).collect(),
+                outputs.into_iter().map(|v| *v.0).collect(),
+                witnesses,
+            )
+        }
+
+        #[wasm_bindgen]
+        pub fn create(
+            bytecode_witness_index: u8,
+            policies: Policies,
+            salt: crate::Salt,
+            storage_slots: Vec<crate::StorageSlot>,
+            inputs: Vec<Input>,
+            outputs: Vec<Output>,
+            witnesses: Vec<Witness>,
+        ) -> Create {
+            crate::Transaction::create(
+                bytecode_witness_index,
+                policies,
+                salt,
+                storage_slots,
+                inputs.into_iter().map(|v| *v.0).collect(),
+                outputs.into_iter().map(|v| *v.0).collect(),
+                witnesses,
+            )
+        }
+
+        pub fn mint(
+            tx_pointer: crate::TxPointer,
+            input_contract: crate::input::contract::Contract,
+            output_contract: crate::output::contract::Contract,
+            mint_amount: Word,
+            mint_asset_id: AssetId,
+        ) -> Mint {
+            Mint {
+                tx_pointer,
+                input_contract,
+                output_contract,
+                mint_amount,
+                mint_asset_id,
+                metadata: None,
+            }
+        }
+    }
+
+    #[duplicate::duplicate_item(
+        Type;
+        [ Script ];
+        [ Create ];
+        [ Mint ];
+    )]
+    #[wasm_bindgen]
+    impl Type {
+        #[wasm_bindgen(js_name = as_tx)]
+        pub fn typescript_wrap_tx(self) -> Transaction {
+            Transaction(Box::new(crate::Transaction::Type(self)))
+        }
+
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new() -> Type {
+            Type::default()
+        }
+
+        #[cfg(feature = "serde")]
+        #[wasm_bindgen(js_name = toJSON)]
+        pub fn to_json(&self) -> String {
+            serde_json::to_string(&self).expect("unable to json format")
+        }
+
+        #[wasm_bindgen(js_name = toString)]
+        pub fn typescript_to_string(&self) -> String {
+            format!("{:?}", self)
+        }
+
+        #[wasm_bindgen(js_name = to_bytes)]
+        pub fn typescript_to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            <Self as Serialize>::to_bytes(self)
+        }
+
+        #[wasm_bindgen(js_name = from_bytes)]
+        pub fn typescript_from_bytes(value: &[u8]) -> Option<Type> {
+            use fuel_types::canonical::Deserialize;
+            <Self as Deserialize>::from_bytes(value).ok()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

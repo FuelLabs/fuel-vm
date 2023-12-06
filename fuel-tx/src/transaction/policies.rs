@@ -82,6 +82,7 @@ pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as us
 /// Container for managing policies.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Policies {
     /// A bitmask that indicates what policies are set.
     bits: PoliciesBits,
@@ -268,6 +269,49 @@ impl Distribution<Policies> for Standard {
         }
 
         policies
+    }
+}
+
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use wasm_bindgen::prelude::*;
+
+    use crate::transaction::Policies;
+    use alloc::{
+        format,
+        string::String,
+        vec::Vec,
+    };
+
+    #[wasm_bindgen]
+    impl Policies {
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new() -> Policies {
+            Policies::default()
+        }
+
+        #[cfg(feature = "serde")]
+        #[wasm_bindgen(js_name = toJSON)]
+        pub fn to_json(&self) -> String {
+            serde_json::to_string(&self).expect("unable to json format")
+        }
+
+        #[wasm_bindgen(js_name = toString)]
+        pub fn typescript_to_string(&self) -> String {
+            format!("{:?}", self)
+        }
+
+        #[wasm_bindgen(js_name = to_bytes)]
+        pub fn typescript_to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            <Self as Serialize>::to_bytes(self)
+        }
+
+        #[wasm_bindgen(js_name = from_bytes)]
+        pub fn typescript_from_bytes(value: &[u8]) -> Option<Policies> {
+            use fuel_types::canonical::Deserialize;
+            <Self as Deserialize>::from_bytes(value).ok()
+        }
     }
 }
 

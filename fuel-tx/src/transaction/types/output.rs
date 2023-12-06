@@ -281,16 +281,16 @@ pub mod typescript {
             format!("{:?}", self.0)
         }
 
-        #[wasm_bindgen]
-        pub fn to_bytes(&self) -> Vec<u8> {
+        #[wasm_bindgen(js_name = to_bytes)]
+        pub fn typescript_to_bytes(&self) -> Vec<u8> {
             use fuel_types::canonical::Serialize;
             self.0.to_bytes()
         }
 
-        #[wasm_bindgen]
-        pub fn from_bytes(output: &[u8]) -> Option<Output> {
+        #[wasm_bindgen(js_name = from_bytes)]
+        pub fn typescript_from_bytes(value: &[u8]) -> Option<Output> {
             use fuel_types::canonical::Deserialize;
-            crate::Output::from_bytes(output)
+            crate::Output::from_bytes(value)
                 .map(|v| Output(Box::new(v)))
                 .ok()
         }

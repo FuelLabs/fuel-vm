@@ -6,10 +6,13 @@
 #![allow(clippy::wrong_self_convention)]
 #![deny(clippy::cast_possible_truncation)]
 #![deny(clippy::string_slice)]
-// #![deny(unused_crate_dependencies)]
+#![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
 // TODO: Add docs
+
+#[cfg(feature = "typescript")]
+use getrandom as _; // This is a dependency only to enable features
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

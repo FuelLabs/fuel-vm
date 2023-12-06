@@ -112,6 +112,12 @@ pub mod typescript {
 
     use super::Witness;
 
+    use alloc::{
+        format,
+        string::String,
+        vec::Vec,
+    };
+
     #[wasm_bindgen]
     impl Witness {
         #[cfg(feature = "serde")]
@@ -134,8 +140,7 @@ pub mod typescript {
         #[wasm_bindgen(js_name = from_bytes)]
         pub fn typescript_from_bytes(value: &[u8]) -> Option<Witness> {
             use fuel_types::canonical::Deserialize;
-            <Self as Deserialize>::from_bytes(value)
-                .ok()
+            <Self as Deserialize>::from_bytes(value).ok()
         }
     }
 }

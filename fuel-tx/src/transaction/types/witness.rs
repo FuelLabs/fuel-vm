@@ -105,3 +105,37 @@ impl Distribution<Witness> for Standard {
         data.into()
     }
 }
+
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use wasm_bindgen::prelude::*;
+
+    use super::Witness;
+
+    #[wasm_bindgen]
+    impl Witness {
+        #[cfg(feature = "serde")]
+        #[wasm_bindgen(js_name = toJSON)]
+        pub fn to_json(&self) -> String {
+            serde_json::to_string(&self.data).expect("unable to json format")
+        }
+
+        #[wasm_bindgen(js_name = toString)]
+        pub fn typescript_to_string(&self) -> String {
+            format!("{:?}", self.data)
+        }
+
+        #[wasm_bindgen(js_name = to_bytes)]
+        pub fn typescript_to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            self.to_bytes()
+        }
+
+        #[wasm_bindgen(js_name = from_bytes)]
+        pub fn typescript_from_bytes(value: &[u8]) -> Option<Witness> {
+            use fuel_types::canonical::Deserialize;
+            <Self as Deserialize>::from_bytes(value)
+                .ok()
+        }
+    }
+}

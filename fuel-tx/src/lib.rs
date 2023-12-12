@@ -11,9 +11,6 @@
 
 // TODO: Add docs
 
-#[cfg(feature = "typescript")]
-use getrandom as _; // This is a dependency only to enable features
-
 #[cfg(not(feature = "typescript"))]
 use duplicate as _; // This is only used with typescript feature
 

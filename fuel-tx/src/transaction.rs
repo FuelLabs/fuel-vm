@@ -931,47 +931,49 @@ pub mod typescript {
         }
     }
 
-    #[duplicate::duplicate_item(
-        Type;
-        [ Script ];
-        [ Create ];
-        [ Mint ];
-    )]
-    #[wasm_bindgen]
-    impl Type {
-        #[wasm_bindgen(js_name = as_tx)]
-        pub fn typescript_wrap_tx(self) -> Transaction {
-            Transaction(Box::new(crate::Transaction::Type(self)))
-        }
+    macro_rules! ts_methods {
+        ($t:ty, $tx:expr) => {
+            #[wasm_bindgen]
+            impl $t {
+                #[wasm_bindgen(js_name = as_tx)]
+                pub fn typescript_wrap_tx(self) -> Transaction {
+                    Transaction(Box::new($tx(self)))
+                }
 
-        #[wasm_bindgen(constructor)]
-        pub fn typescript_new() -> Type {
-            Type::default()
-        }
+                #[wasm_bindgen(constructor)]
+                pub fn typescript_new() -> $t {
+                    <$t>::default()
+                }
 
-        #[cfg(feature = "serde")]
-        #[wasm_bindgen(js_name = toJSON)]
-        pub fn to_json(&self) -> String {
-            serde_json::to_string(&self).expect("unable to json format")
-        }
+                #[cfg(feature = "serde")]
+                #[wasm_bindgen(js_name = toJSON)]
+                pub fn to_json(&self) -> String {
+                    serde_json::to_string(&self).expect("unable to json format")
+                }
 
-        #[wasm_bindgen(js_name = toString)]
-        pub fn typescript_to_string(&self) -> String {
-            format!("{:?}", self)
-        }
+                #[wasm_bindgen(js_name = toString)]
+                pub fn typescript_to_string(&self) -> String {
+                    format!("{:?}", self)
+                }
 
-        #[wasm_bindgen(js_name = to_bytes)]
-        pub fn typescript_to_bytes(&self) -> Vec<u8> {
-            use fuel_types::canonical::Serialize;
-            <Self as Serialize>::to_bytes(self)
-        }
+                #[wasm_bindgen(js_name = to_bytes)]
+                pub fn typescript_to_bytes(&self) -> Vec<u8> {
+                    use fuel_types::canonical::Serialize;
+                    <Self as Serialize>::to_bytes(self)
+                }
 
-        #[wasm_bindgen(js_name = from_bytes)]
-        pub fn typescript_from_bytes(value: &[u8]) -> Option<Type> {
-            use fuel_types::canonical::Deserialize;
-            <Self as Deserialize>::from_bytes(value).ok()
-        }
+                #[wasm_bindgen(js_name = from_bytes)]
+                pub fn typescript_from_bytes(value: &[u8]) -> Option<$t> {
+                    use fuel_types::canonical::Deserialize;
+                    <Self as Deserialize>::from_bytes(value).ok()
+                }
+            }
+        };
     }
+
+    ts_methods!(Script, crate::Transaction::Script);
+    ts_methods!(Create, crate::Transaction::Create);
+    ts_methods!(Mint, crate::Transaction::Mint);
 }
 
 #[cfg(test)]

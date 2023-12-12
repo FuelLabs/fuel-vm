@@ -11,9 +11,6 @@
 
 // TODO: Add docs
 
-#[cfg(not(feature = "typescript"))]
-use duplicate as _; // This is only used with typescript feature
-
 #[cfg(feature = "alloc")]
 extern crate alloc;
 extern crate core;

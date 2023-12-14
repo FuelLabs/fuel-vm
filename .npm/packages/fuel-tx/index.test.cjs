@@ -1,4 +1,6 @@
 const { expect } = require('chai')
+const path = require('node:path')
+const fs = require('node:fs')
 const tx = require('.')
 
 describe('fuel-tx [cjs]', () => {
@@ -225,5 +227,18 @@ describe('fuel-tx [cjs]', () => {
     );
 
     tx.check_output(output, 0, []);
+  })
+
+  it('should be able to deserialize snapshots', () => {
+    const snapshots = '../../../fuel-tx/src/transaction/types/input/snapshots';
+    fs.readdirSync(snapshots).forEach(file => {
+      fs.readFile(path.join(snapshots, file), 'utf8', (err, data) => {
+        expect(err).to.be.null;
+        let dataBytes = hexToBytes(data.split('---\n').at(-1).trim());
+        let inTx = tx.Transaction.from_bytes(dataBytes);
+        let serialized = inTx.to_bytes();
+        expect(serialized.toString()).to.eq(dataBytes.toString());
+     })
+    })
   })
 })

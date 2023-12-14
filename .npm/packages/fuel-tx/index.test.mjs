@@ -1,4 +1,6 @@
 import { expect } from 'chai'
+import * as path from 'node:path'
+import * as fs from 'node:fs'
 import * as tx from './dist/web/index.mjs'
 
 describe('fuel-tx [mjs]', () => {
@@ -225,5 +227,18 @@ describe('fuel-tx [mjs]', () => {
     );
 
     tx.check_output(output, 0, []);
+  })
+
+  it('should be able to deserialize snapshots', () => {
+    const snapshots = '../../../fuel-tx/src/transaction/types/input/snapshots';
+    fs.readdirSync(snapshots).forEach(file => {
+      fs.readFile(path.join(snapshots, file), 'utf8', (err, data) => {
+        expect(err).to.be.null;
+        let dataBytes = hexToBytes(data.split('---\n').at(-1).trim());
+        let inTx = tx.Transaction.from_bytes(dataBytes);
+        let serialized = inTx.to_bytes();
+        expect(serialized.toString()).to.eq(dataBytes.toString());
+      })
+    })
   })
 })

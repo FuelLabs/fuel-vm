@@ -308,9 +308,10 @@ pub mod typescript {
         }
 
         #[wasm_bindgen(js_name = from_bytes)]
-        pub fn typescript_from_bytes(value: &[u8]) -> Option<Policies> {
+        pub fn typescript_from_bytes(value: &[u8]) -> Result<Policies, js_sys::Error> {
             use fuel_types::canonical::Deserialize;
-            <Self as Deserialize>::from_bytes(value).ok()
+            <Self as Deserialize>::from_bytes(value)
+                .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
         }
     }
 }

@@ -511,7 +511,10 @@ mod typescript {
     use fuel_types::Bytes32;
     use wasm_bindgen::JsValue;
 
-    use alloc::vec::Vec;
+    use alloc::{
+        format,
+        vec::Vec,
+    };
 
     use crate::transaction::{
         input_ts::Input,
@@ -531,13 +534,13 @@ mod typescript {
             .into_iter()
             .map(|v| serde_wasm_bindgen::from_value::<Output>(v).map(|v| *v.0))
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| js_sys::Error::new(&err.to_string()))?;
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
 
         let witnesses: Vec<Witness> = witnesses
             .into_iter()
             .map(serde_wasm_bindgen::from_value::<Witness>)
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| js_sys::Error::new(&err.to_string()))?;
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
 
         input
             .0
@@ -549,7 +552,7 @@ mod typescript {
                 predicate_params,
                 &mut None,
             )
-            .map_err(|err| js_sys::Error::new(&err.to_string()))
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
     }
 
     #[wasm_bindgen::prelude::wasm_bindgen]
@@ -562,11 +565,11 @@ mod typescript {
             .into_iter()
             .map(|v| serde_wasm_bindgen::from_value::<Input>(v).map(|v| *v.0))
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| js_sys::Error::new(&err.to_string()))?;
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
 
         output
             .0
             .check(index, &inputs)
-            .map_err(|err| js_sys::Error::new(&err.to_string()))
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
     }
 }

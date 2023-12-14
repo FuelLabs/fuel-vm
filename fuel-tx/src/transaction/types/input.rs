@@ -946,11 +946,11 @@ pub mod typescript {
         }
 
         #[wasm_bindgen(js_name = from_bytes)]
-        pub fn typescript_from_bytes(value: &[u8]) -> Option<Input> {
+        pub fn typescript_from_bytes(value: &[u8]) -> Result<Input, js_sys::Error> {
             use fuel_types::canonical::Deserialize;
             crate::Input::from_bytes(value)
                 .map(|v| Input(Box::new(v)))
-                .ok()
+                .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
         }
 
         #[wasm_bindgen]

@@ -864,11 +864,11 @@ pub mod typescript {
         }
 
         #[wasm_bindgen(js_name = from_bytes)]
-        pub fn typescript_from_bytes(value: &[u8]) -> Option<Transaction> {
+        pub fn typescript_from_bytes(value: &[u8]) -> Result<Transaction, js_sys::Error> {
             use fuel_types::canonical::Deserialize;
             crate::Transaction::from_bytes(value)
                 .map(|v| Transaction(Box::new(v)))
-                .ok()
+                .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
         }
 
         #[wasm_bindgen]
@@ -963,9 +963,10 @@ pub mod typescript {
                 }
 
                 #[wasm_bindgen(js_name = from_bytes)]
-                pub fn typescript_from_bytes(value: &[u8]) -> Option<$t> {
+                pub fn typescript_from_bytes(value: &[u8]) -> Result<$t, js_sys::Error> {
                     use fuel_types::canonical::Deserialize;
-                    <Self as Deserialize>::from_bytes(value).ok()
+                    <Self as Deserialize>::from_bytes(value)
+                        .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
                 }
             }
         };

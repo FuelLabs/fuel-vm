@@ -138,9 +138,11 @@ pub mod typescript {
         }
 
         #[wasm_bindgen(js_name = from_bytes)]
-        pub fn typescript_from_bytes(value: &[u8]) -> Option<Witness> {
+        pub fn typescript_from_bytes(value: &[u8]) -> Result<Witness, js_sys::Error> {
+            use alloc::string::ToString;
             use fuel_types::canonical::Deserialize;
-            <Self as Deserialize>::from_bytes(value).ok()
+            <Self as Deserialize>::from_bytes(value)
+                .map_err(|e| js_sys::Error::new(&e.to_string()))
         }
     }
 }

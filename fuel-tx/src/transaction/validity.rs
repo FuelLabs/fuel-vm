@@ -526,17 +526,18 @@ mod typescript {
         outputs: Vec<JsValue>,
         witnesses: Vec<JsValue>,
         predicate_params: &PredicateParameters,
-        // recovery_cache: &mut Option<HashMap<u8, Address>>,
-    ) -> Result<(), JsValue /* ValidityError */> {
+    ) -> Result<(), js_sys::Error> {
         let outputs: Vec<crate::Output> = outputs
             .into_iter()
             .map(|v| serde_wasm_bindgen::from_value::<Output>(v).map(|v| *v.0))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| js_sys::Error::new(&err.to_string()))?;
 
         let witnesses: Vec<Witness> = witnesses
             .into_iter()
             .map(serde_wasm_bindgen::from_value::<Witness>)
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| js_sys::Error::new(&err.to_string()))?;
 
         input
             .0
@@ -548,10 +549,7 @@ mod typescript {
                 predicate_params,
                 &mut None,
             )
-            .map_err(|err| {
-                serde_wasm_bindgen::to_value(&err)
-                    .expect("Unable to serialize ValidityError")
-            })
+            .map_err(|err| js_sys::Error::new(&err.to_string()))
     }
 
     #[wasm_bindgen::prelude::wasm_bindgen]
@@ -559,14 +557,16 @@ mod typescript {
         output: &Output,
         index: usize,
         inputs: Vec<JsValue>,
-    ) -> Result<(), JsValue /* ValidityError */> {
+    ) -> Result<(), js_sys::Error> {
         let inputs: Vec<crate::Input> = inputs
             .into_iter()
             .map(|v| serde_wasm_bindgen::from_value::<Input>(v).map(|v| *v.0))
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| js_sys::Error::new(&err.to_string()))?;
 
-        output.0.check(index, &inputs).map_err(|err| {
-            serde_wasm_bindgen::to_value(&err).expect("Unable to serialize ValidityError")
-        })
+        output
+            .0
+            .check(index, &inputs)
+            .map_err(|err| js_sys::Error::new(&err.to_string()))
     }
 }

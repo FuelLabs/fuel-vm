@@ -18,6 +18,7 @@ use rand::{
 
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct UtxoId {
@@ -115,6 +116,47 @@ impl str::FromStr for UtxoId {
                 u8::from_str_radix(output_index, 16).map_err(|_| ERR)?,
             )
         })
+    }
+}
+
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use super::*;
+
+    use wasm_bindgen::prelude::*;
+
+    use alloc::{
+        format,
+        string::String,
+        vec::Vec,
+    };
+
+    #[wasm_bindgen]
+    impl UtxoId {
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new(value: &str) -> Result<UtxoId, js_sys::Error> {
+            use core::str::FromStr;
+            UtxoId::from_str(value).map_err(js_sys::Error::new)
+        }
+
+        #[wasm_bindgen(js_name = toString)]
+        pub fn typescript_to_string(&self) -> String {
+            format!("{:#x}", self)
+        }
+
+        #[wasm_bindgen(js_name = to_bytes)]
+        pub fn typescript_to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            <Self as Serialize>::to_bytes(self)
+        }
+
+        #[wasm_bindgen(js_name = from_bytes)]
+        pub fn typescript_from_bytes(value: &[u8]) -> Result<UtxoId, js_sys::Error> {
+            use fuel_types::canonical::Deserialize;
+
+            <Self as Deserialize>::from_bytes(value)
+                .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+        }
     }
 }
 

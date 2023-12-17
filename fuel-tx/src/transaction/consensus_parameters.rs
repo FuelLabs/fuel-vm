@@ -168,6 +168,7 @@ impl Default for FeeParameters {
 
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct PredicateParameters {
@@ -365,6 +366,21 @@ impl ContractParameters {
 impl Default for ContractParameters {
     fn default() -> Self {
         Self::DEFAULT
+    }
+}
+
+#[cfg(feature = "typescript")]
+mod typescript {
+    use wasm_bindgen::prelude::*;
+
+    use super::PredicateParameters;
+
+    #[wasm_bindgen]
+    impl PredicateParameters {
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new() -> Self {
+            Self::DEFAULT
+        }
     }
 }
 

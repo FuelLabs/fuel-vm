@@ -24,6 +24,9 @@ use rand::{
     Rng,
 };
 
+#[cfg(all(feature = "alloc", feature = "typescript"))]
+use alloc::format;
+
 use crate::hex_val;
 
 macro_rules! key {

@@ -22,6 +22,9 @@ use rand::{
     Rng,
 };
 
+#[cfg(all(feature = "alloc", feature = "typescript"))]
+use alloc::vec::Vec;
+
 use crate::hex_val;
 
 macro_rules! key {

@@ -242,3 +242,93 @@ impl Output {
         self.prepare_sign()
     }
 }
+
+#[cfg(feature = "typescript")]
+pub mod typescript {
+    use wasm_bindgen::prelude::*;
+
+    use super::*;
+
+    use fuel_types::{
+        Address,
+        AssetId,
+        Bytes32,
+        Word,
+    };
+
+    use alloc::{
+        boxed::Box,
+        format,
+        string::String,
+        vec::Vec,
+    };
+
+    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Output(#[wasm_bindgen(skip)] pub Box<crate::Output>);
+
+    #[wasm_bindgen]
+    impl Output {
+        #[cfg(feature = "serde")]
+        #[wasm_bindgen(js_name = toJSON)]
+        pub fn to_json(&self) -> String {
+            serde_json::to_string(&self.0).expect("unable to json format")
+        }
+
+        #[wasm_bindgen(js_name = toString)]
+        pub fn typescript_to_string(&self) -> String {
+            format!("{:?}", self.0)
+        }
+
+        #[wasm_bindgen(js_name = to_bytes)]
+        pub fn typescript_to_bytes(&self) -> Vec<u8> {
+            use fuel_types::canonical::Serialize;
+            self.0.to_bytes()
+        }
+
+        #[wasm_bindgen(js_name = from_bytes)]
+        pub fn typescript_from_bytes(value: &[u8]) -> Result<Output, js_sys::Error> {
+            use fuel_types::canonical::Deserialize;
+            crate::Output::from_bytes(value)
+                .map(|v| Output(Box::new(v)))
+                .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+        }
+
+        #[wasm_bindgen]
+        pub fn coin(to: Address, amount: Word, asset_id: AssetId) -> Output {
+            Output(Box::new(crate::Output::coin(to, amount, asset_id)))
+        }
+
+        #[wasm_bindgen]
+        pub fn contract(
+            input_index: u8,
+            balance_root: Bytes32,
+            state_root: Bytes32,
+        ) -> Output {
+            Output(Box::new(crate::Output::contract(
+                input_index,
+                balance_root,
+                state_root,
+            )))
+        }
+
+        #[wasm_bindgen]
+        pub fn change(to: Address, amount: Word, asset_id: AssetId) -> Output {
+            Output(Box::new(crate::Output::change(to, amount, asset_id)))
+        }
+
+        #[wasm_bindgen]
+        pub fn variable(to: Address, amount: Word, asset_id: AssetId) -> Output {
+            Output(Box::new(crate::Output::variable(to, amount, asset_id)))
+        }
+
+        #[wasm_bindgen]
+        pub fn contract_created(contract_id: ContractId, state_root: Bytes32) -> Output {
+            Output(Box::new(crate::Output::contract_created(
+                contract_id,
+                state_root,
+            )))
+        }
+    }
+}

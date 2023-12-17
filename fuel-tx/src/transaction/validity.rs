@@ -501,3 +501,75 @@ where
         iter.duplicates().next()
     }
 }
+
+#[cfg(feature = "typescript")]
+mod typescript {
+    use crate::{
+        PredicateParameters,
+        Witness,
+    };
+    use fuel_types::Bytes32;
+    use wasm_bindgen::JsValue;
+
+    use alloc::{
+        format,
+        vec::Vec,
+    };
+
+    use crate::transaction::{
+        input_ts::Input,
+        output_ts::Output,
+    };
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn check_input(
+        input: &Input,
+        index: usize,
+        txhash: &Bytes32,
+        outputs: Vec<JsValue>,
+        witnesses: Vec<JsValue>,
+        predicate_params: &PredicateParameters,
+    ) -> Result<(), js_sys::Error> {
+        let outputs: Vec<crate::Output> = outputs
+            .into_iter()
+            .map(|v| serde_wasm_bindgen::from_value::<Output>(v).map(|v| *v.0))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
+
+        let witnesses: Vec<Witness> = witnesses
+            .into_iter()
+            .map(serde_wasm_bindgen::from_value::<Witness>)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
+
+        input
+            .0
+            .check(
+                index,
+                txhash,
+                &outputs,
+                &witnesses,
+                predicate_params,
+                &mut None,
+            )
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn check_output(
+        output: &Output,
+        index: usize,
+        inputs: Vec<JsValue>,
+    ) -> Result<(), js_sys::Error> {
+        let inputs: Vec<crate::Input> = inputs
+            .into_iter()
+            .map(|v| serde_wasm_bindgen::from_value::<Input>(v).map(|v| *v.0))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
+
+        output
+            .0
+            .check(index, &inputs)
+            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+    }
+}

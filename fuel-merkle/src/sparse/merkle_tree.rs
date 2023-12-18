@@ -495,7 +495,6 @@ where
             self.storage.remove(node.hash())?;
         }
 
-        println!("ROOT: {:?}", current_node);
         self.set_root_node(current_node);
 
         Ok(())
@@ -1372,42 +1371,91 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        let mut l0 = vec![0u8; 32];
-        l0[28..32].copy_from_slice(b"\x00\x00\x00\x00");
-        let l0: Bytes32 = l0.try_into().unwrap();
-        println!("{}", hex::encode(l0));
-        let k0 = MerkleTreeKey::new_without_hash(l0);
+        let k0 = vec![0u8; 32];
+        let k0: Bytes32 = k0.try_into().unwrap();
         let v0 = sum(b"DATA");
-        tree.update(k0, &v0).expect("Expected successful update");
+        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+            .expect("Expected successful update");
 
-        let mut l1 = vec![0u8; 32];
-        l1[28..32].copy_from_slice(b"\x00\x00\x00\x01");
-        let l1: Bytes32 = l1.try_into().unwrap();
-        println!("{}", hex::encode(l1));
-        let k1 = MerkleTreeKey::new_without_hash(l1);
+        let mut k1 = vec![0u8; 32];
+        k1[0..1].copy_from_slice(&[0b01000000]);
+        let k1: Bytes32 = k1.try_into().unwrap();
         let v1 = sum(b"DATA");
-        tree.update(k1, &v1).expect("Expected successful update");
+        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+            .expect("Expected successful update");
 
-        let mut l2 = vec![0u8; 32];
-        l2[28..32].copy_from_slice(b"\x00\x00\x00\x04");
-        let l2: Bytes32 = l2.try_into().unwrap();
-        println!("{}", hex::encode(l2));
-        let k2 = MerkleTreeKey::new_without_hash(l2);
+        let mut k2 = vec![0u8; 32];
+        k2[0..1].copy_from_slice(&[0b01100000]);
+        let k2: Bytes32 = k2.try_into().unwrap();
         let v2 = sum(b"DATA");
-        tree.update(k2, &v2).expect("Expected successful update");
+        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+            .expect("Expected successful update");
 
-        let mut l3 = vec![0u8; 32];
-        l3[28..32].copy_from_slice(b"\x00\x00\x00\x02");
-        let l3: Bytes32 = l3.try_into().unwrap();
-        println!("{}", hex::encode(l3));
-        let k3 = MerkleTreeKey::new_without_hash(l3.clone());
+        let mut k3 = vec![0u8; 32];
+        k3[0..1].copy_from_slice(&[0b01001000]);
+        let k3: Bytes32 = k3.try_into().unwrap();
         let v3 = sum(b"DATA");
-        tree.update(k3, &v3).expect("Expected successful update");
+        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+            .expect("Expected successful update");
 
-        let (_, proof_set) = tree.generate_proof(l3).expect("Expected proof");
-        for (i, p) in proof_set.iter().enumerate() {
-            let h = hex::encode(p);
-            println!("{:03}: {}", i, h);
+        // 256            R
+        //               / \
+        // 255:         N3  \
+        //             /  \  \
+        // 254:       /   N2  \
+        //           /   /  \  \
+        // 253:     /   N1   \  \
+        //         /   /  \   \  \
+        // 252:   /   N0   \   \  \
+        // ...   /   / \    \   \  \
+        //   0: L0  L1 L3   P1  L2 P0
+        //      K0  K1 K3       K2
+
+        let l0 = Node::create_leaf(&k0, v0);
+        let l1 = Node::create_leaf(&k1, v1);
+        let l2 = Node::create_leaf(&k2, v2);
+        let l3 = Node::create_leaf(&k3, v3);
+        let n0 = Node::create_node(&l1, &l3, 252);
+        let n1 = Node::create_node(&n0, &Node::create_placeholder(), 253);
+        let n2 = Node::create_node(&n1, &l2, 254);
+        let n3 = Node::create_node(&l0, &n2, 255);
+        let r = Node::create_node(&n3, &Node::create_placeholder(), 256);
+
+        {
+            let (_, proof_set) = tree.generate_proof(k0).expect("Expected proof");
+            let expected_proof_set = [*n2.hash(), *Node::create_placeholder().hash()];
+            assert_eq!(proof_set, expected_proof_set);
+        }
+
+        {
+            let (_, proof_set) = tree.generate_proof(k1).expect("Expected proof");
+            let expected_proof_set = [
+                *l3.hash(),
+                *Node::create_placeholder().hash(),
+                *l2.hash(),
+                *l0.hash(),
+                *Node::create_placeholder().hash(),
+            ];
+            assert_eq!(proof_set, expected_proof_set);
+        }
+
+        {
+            let (_, proof_set) = tree.generate_proof(k2).expect("Expected proof");
+            let expected_proof_set =
+                [*n1.hash(), *l0.hash(), *Node::create_placeholder().hash()];
+            assert_eq!(proof_set, expected_proof_set);
+        }
+
+        {
+            let (_, proof_set) = tree.generate_proof(k3).expect("Expected proof");
+            let expected_proof_set = [
+                *l1.hash(),
+                *Node::create_placeholder().hash(),
+                *l2.hash(),
+                *l0.hash(),
+                *Node::create_placeholder().hash(),
+            ];
+            assert_eq!(proof_set, expected_proof_set);
         }
     }
 

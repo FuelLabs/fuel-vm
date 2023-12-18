@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.43.2]
+
 ### Changed
 
 - [#645](https://github.com/FuelLabs/fuel-vm/pull/645): Add wasm support for `fuel-tx` crate.

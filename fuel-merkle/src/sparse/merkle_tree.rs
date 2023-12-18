@@ -19,9 +19,12 @@ use crate::{
     },
 };
 
-use crate::sparse::branch::{
-    merge_branches,
-    Branch,
+use crate::{
+    common::ProofSet,
+    sparse::branch::{
+        merge_branches,
+        Branch,
+    },
 };
 use alloc::vec::Vec;
 use core::{
@@ -370,6 +373,7 @@ where
 
         let key = key.into();
         let leaf_node = Node::create_leaf(&key, data);
+        println!("Inserting {:?}", leaf_node);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
@@ -457,6 +461,7 @@ where
             if !actual_leaf_node.is_placeholder() {
                 current_node =
                     Node::create_node_on_path(path, &current_node, actual_leaf_node);
+                println!("{:?}", current_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -470,6 +475,7 @@ where
             for placeholder in placeholders {
                 current_node =
                     Node::create_node_on_path(path, &current_node, &placeholder);
+                println!("{:?}", current_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -480,6 +486,7 @@ where
         // Merge side nodes
         for side_node in side_nodes {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
+            println!("{:?}", current_node);
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
@@ -488,6 +495,7 @@ where
             self.storage.remove(node.hash())?;
         }
 
+        println!("ROOT: {:?}", current_node);
         self.set_root_node(current_node);
 
         Ok(())
@@ -557,6 +565,26 @@ where
         self.set_root_node(current_node);
 
         Ok(())
+    }
+}
+
+impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+where
+    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    StorageType: StorageInspect<TableType, Error = StorageError>,
+{
+    fn generate_proof<K: Into<Bytes32>>(
+        &self,
+        proof_key: K,
+    ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
+        let proof_key = proof_key.into();
+        let root = self.root();
+        let path_set = self
+            .path_set(proof_key)
+            .map(|(_path, side)| side.into_iter())?
+            .map(|node| node.hash().clone())
+            .collect::<Vec<_>>();
+        Ok((root, path_set))
     }
 }
 
@@ -1338,4 +1366,51 @@ mod test {
 
         assert_eq!(root, expected_root);
     }
+
+    #[test]
+    fn generate_proof_returns_proof_set_for_valid_key() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let mut l0 = vec![0u8; 32];
+        l0[28..32].copy_from_slice(b"\x00\x00\x00\x00");
+        let l0: Bytes32 = l0.try_into().unwrap();
+        println!("{}", hex::encode(l0));
+        let k0 = MerkleTreeKey::new_without_hash(l0);
+        let v0 = sum(b"DATA");
+        tree.update(k0, &v0).expect("Expected successful update");
+
+        let mut l1 = vec![0u8; 32];
+        l1[28..32].copy_from_slice(b"\x00\x00\x00\x01");
+        let l1: Bytes32 = l1.try_into().unwrap();
+        println!("{}", hex::encode(l1));
+        let k1 = MerkleTreeKey::new_without_hash(l1);
+        let v1 = sum(b"DATA");
+        tree.update(k1, &v1).expect("Expected successful update");
+
+        let mut l2 = vec![0u8; 32];
+        l2[28..32].copy_from_slice(b"\x00\x00\x00\x04");
+        let l2: Bytes32 = l2.try_into().unwrap();
+        println!("{}", hex::encode(l2));
+        let k2 = MerkleTreeKey::new_without_hash(l2);
+        let v2 = sum(b"DATA");
+        tree.update(k2, &v2).expect("Expected successful update");
+
+        let mut l3 = vec![0u8; 32];
+        l3[28..32].copy_from_slice(b"\x00\x00\x00\x02");
+        let l3: Bytes32 = l3.try_into().unwrap();
+        println!("{}", hex::encode(l3));
+        let k3 = MerkleTreeKey::new_without_hash(l3.clone());
+        let v3 = sum(b"DATA");
+        tree.update(k3, &v3).expect("Expected successful update");
+
+        let (_, proof_set) = tree.generate_proof(l3).expect("Expected proof");
+        for (i, p) in proof_set.iter().enumerate() {
+            let h = hex::encode(p);
+            println!("{:03}: {}", i, h);
+        }
+    }
+
+    #[test]
+    fn generate_proof_returns_error_for_invalid_key() {}
 }

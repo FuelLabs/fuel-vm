@@ -8,6 +8,7 @@ use fuel_types::Bytes32;
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Contract {
     /// Index of input contract.
     pub input_index: u8,
@@ -28,10 +29,7 @@ impl Contract {
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{
-        Distribution,
-        Standard,
-    },
+    distributions::{Distribution, Standard},
     Rng,
 };
 

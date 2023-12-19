@@ -606,6 +606,10 @@ mod test {
     };
     use fuel_storage::Mappable;
     use hex;
+    use rand::{
+        prelude::StdRng,
+        SeedableRng,
+    };
 
     fn random_bytes32<R>(rng: &mut R) -> Bytes32
     where
@@ -1367,7 +1371,7 @@ mod test {
     }
 
     #[test]
-    fn generate_proof_returns_proof_set_for_valid_key() {
+    fn generate_proof_returns_proof_set_key() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
@@ -1419,7 +1423,7 @@ mod test {
         let n1 = Node::create_node(&n0, &Node::create_placeholder(), 253);
         let n2 = Node::create_node(&n1, &l2, 254);
         let n3 = Node::create_node(&l0, &n2, 255);
-        let r = Node::create_node(&n3, &Node::create_placeholder(), 256);
+        let _r = Node::create_node(&n3, &Node::create_placeholder(), 256);
 
         {
             let (_, proof_set) = tree.generate_proof(k0).expect("Expected proof");
@@ -1457,8 +1461,13 @@ mod test {
             ];
             assert_eq!(proof_set, expected_proof_set);
         }
-    }
 
-    #[test]
-    fn generate_proof_returns_error_for_invalid_key() {}
+        {
+            // Test that supplying an arbitrary leaf produces a valid proof set
+            let k4 = [255u8; 32];
+            let (_, proof_set) = tree.generate_proof(k4).expect("Expected proof");
+            let expected_proof_set = [*n3.hash()];
+            assert_eq!(proof_set, expected_proof_set);
+        }
+    }
 }

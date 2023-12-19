@@ -35,6 +35,7 @@ macro_rules! key {
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]
+        #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);

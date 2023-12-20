@@ -570,12 +570,12 @@ where
 {
     pub fn generate_proof<K: Into<Bytes32>>(
         &self,
-        proof_key: K,
+        key: K,
     ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
-        let proof_key = proof_key.into();
+        let key = key.into();
         let root = self.root();
         let path_set = self
-            .path_set(proof_key)
+            .path_set(key)
             .map(|(_path, side)| side.into_iter())?
             .map(|node| node.hash().clone())
             .collect::<Vec<_>>();

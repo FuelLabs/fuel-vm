@@ -45,7 +45,7 @@ pub(crate) enum Node {
 }
 
 impl Node {
-    fn calculate_hash(
+    pub fn calculate_hash(
         prefix: &Prefix,
         bytes_lo: &Bytes32,
         bytes_hi: &Bytes32,

@@ -19,11 +19,15 @@ use crate::{
     },
 };
 
-use crate::{
-    common::ProofSet,
-    sparse::branch::{
+use crate::sparse::{
+    branch::{
         merge_branches,
         Branch,
+    },
+    proof::{
+        ExclusionProof,
+        InclusionProof,
+        Proof,
     },
 };
 use alloc::vec::Vec;
@@ -49,6 +53,9 @@ pub enum MerkleTreeError<StorageError> {
 
     #[display(fmt = "{}", _0)]
     ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
+
+    #[display(fmt = "Cannot generate proof")]
+    GenerateProofError,
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
@@ -571,15 +578,75 @@ where
     pub fn generate_proof<K: Into<Bytes32>>(
         &self,
         key: K,
-    ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
+    ) -> Result<Proof, MerkleTreeError<StorageError>> {
         let key = key.into();
         let root = self.root();
-        let path_set = self
-            .path_set(key)
-            .map(|(_path, side)| side.into_iter())?
-            .map(|node| node.hash().clone())
+        let (path_nodes, side_nodes) = self.path_set(key)?;
+        let actual_leaf = &path_nodes[0];
+        let proof_set = side_nodes
+            .into_iter()
+            .map(|side_node| side_node.hash().clone())
             .collect::<Vec<_>>();
-        Ok((root, path_set))
+        let proof = if key == *actual_leaf.leaf_key() {
+            let inclusion_proof = InclusionProof { root, proof_set };
+            Proof::InclusionProof(inclusion_proof)
+        } else {
+            let exclusion_proof = ExclusionProof {
+                root,
+                proof_set,
+                leaf_key: *actual_leaf.leaf_key(),
+                hash: *actual_leaf.hash(),
+            };
+            Proof::ExclusionProof(exclusion_proof)
+        };
+        Ok(proof)
+    }
+
+    pub fn generate_inclusion_proof<K: Into<Bytes32>>(
+        &self,
+        key: K,
+    ) -> Result<InclusionProof, MerkleTreeError<StorageError>> {
+        let key = key.into();
+        let root = self.root();
+        let (path_nodes, side_nodes) = self.path_set(key)?;
+        let actual_leaf = &path_nodes[0];
+        let proof_set = side_nodes
+            .into_iter()
+            .map(|side_node| side_node.hash().clone())
+            .collect::<Vec<_>>();
+        if key == *actual_leaf.leaf_key() {
+            let inclusion_proof = InclusionProof { root, proof_set };
+            Ok(inclusion_proof)
+        } else {
+            Err(MerkleTreeError::GenerateProofError)
+        }
+    }
+
+    pub fn generate_exclusion_proof<K: Into<Bytes32>>(
+        &self,
+        key: K,
+    ) -> Result<ExclusionProof, MerkleTreeError<StorageError>> {
+        let key = key.into();
+        let root = self.root();
+        let (path_nodes, side_nodes) = self.path_set(key)?;
+        let actual_leaf = &path_nodes[0];
+        println!("REQUESTED: {:?}", hex::encode(key));
+        println!("ACTUAL LEAF: {:?}", actual_leaf);
+        let proof_set = side_nodes
+            .into_iter()
+            .map(|side_node| side_node.hash().clone())
+            .collect::<Vec<_>>();
+        if key != *actual_leaf.leaf_key() {
+            let exclusion_proof = ExclusionProof {
+                root,
+                proof_set,
+                leaf_key: *actual_leaf.leaf_key(),
+                hash: *actual_leaf.hash(),
+            };
+            Ok(exclusion_proof)
+        } else {
+            Err(MerkleTreeError::GenerateProofError)
+        }
     }
 }
 
@@ -1414,15 +1481,15 @@ mod test {
         let n4 = Node::create_node(&n3, &Node::create_placeholder(), 256);
 
         {
-            let (root, proof_set) = tree.generate_proof(k0).expect("Expected proof");
+            let proof = tree.generate_proof(k0).expect("Expected proof");
             let expected_root = *n4.hash();
             let expected_proof_set = [*n2.hash(), *Node::create_placeholder().hash()];
-            assert_eq!(root, expected_root);
-            assert_eq!(proof_set, expected_proof_set);
+            assert_eq!(*proof.root(), expected_root);
+            assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
         {
-            let (root, proof_set) = tree.generate_proof(k1).expect("Expected proof");
+            let proof = tree.generate_proof(k1).expect("Expected proof");
             let expected_root = *n4.hash();
             let expected_proof_set = [
                 *l3.hash(),
@@ -1431,21 +1498,21 @@ mod test {
                 *l0.hash(),
                 *Node::create_placeholder().hash(),
             ];
-            assert_eq!(root, expected_root);
-            assert_eq!(proof_set, expected_proof_set);
+            assert_eq!(*proof.root(), expected_root);
+            assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
         {
-            let (root, proof_set) = tree.generate_proof(k2).expect("Expected proof");
+            let proof = tree.generate_proof(k2).expect("Expected proof");
             let expected_root = *n4.hash();
             let expected_proof_set =
                 [*n1.hash(), *l0.hash(), *Node::create_placeholder().hash()];
-            assert_eq!(root, expected_root);
-            assert_eq!(proof_set, expected_proof_set);
+            assert_eq!(*proof.root(), expected_root);
+            assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
         {
-            let (root, proof_set) = tree.generate_proof(k3).expect("Expected proof");
+            let proof = tree.generate_proof(k3).expect("Expected proof");
             let expected_root = *n4.hash();
             let expected_proof_set = [
                 *l1.hash(),
@@ -1454,19 +1521,19 @@ mod test {
                 *l0.hash(),
                 *Node::create_placeholder().hash(),
             ];
-            assert_eq!(root, expected_root);
-            assert_eq!(proof_set, expected_proof_set);
+            assert_eq!(*proof.root(), expected_root);
+            assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
         {
             // Test that supplying an arbitrary leaf "outside" the range of
             // leaves produces a valid proof set
             let k4 = [255u8; 32];
-            let (root, proof_set) = tree.generate_proof(k4).expect("Expected proof");
+            let proof = tree.generate_proof(k4).expect("Expected proof");
             let expected_root = *n4.hash();
             let expected_proof_set = [*n3.hash()];
-            assert_eq!(root, expected_root);
-            assert_eq!(proof_set, expected_proof_set);
+            assert_eq!(*proof.root(), expected_root);
+            assert_eq!(*proof.proof_set(), expected_proof_set);
         }
     }
 }

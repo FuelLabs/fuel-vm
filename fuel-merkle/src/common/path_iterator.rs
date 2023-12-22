@@ -94,6 +94,7 @@ where
     pub fn new(root: &T, leaf_key: T::Key) -> Self {
         let initial = (Ok(root.clone()), Ok(root.clone()));
 
+        #[rustfmt::skip]
         // The initial offset from the most significant bit (MSB).
         //
         // The offset from the MSB indicates which bit to read when deducing the
@@ -116,25 +117,25 @@ where
         // With an 8-bit key and heights 1 through 7:
         //
         // Height Depth
-        // 7      0                        127                    Offset = Bits - Height =
-        // 8 - 7 = 1                                 / \
+        // 7      0                        127                    Offset = Bits - Height = 8 - 7 = 1
+        //                                 / \
         //                                /   \
         // ...                          ...   ...
         //                              /       \
         //                             /         \
-        // 3       4                  07         247              Offset = Bits - Height =
-        // 8 - 3 = 5                           /  \        / \
+        // 3      4                   07         247              Offset = Bits - Height = 8 - 3 = 5
+        //                           /  \        / \
         //                          /    \     ...  \
         //                         /      \          \
         //                        /        \          \
         //                       /          \          \
         //                      /            \          \
-        // 2       5          03              11        251       Offset = Bits - Height =
-        // 8 - 2 = 6                   /  \            /  \       / \
+        // 2      5           03              11        251       Offset = Bits - Height = 8 - 2 = 6
+        //                   /  \            /  \       / \
         //                  /    \          /    \    ...  \
-        // 1       6      01      05      09      13       253    Offset = Bits - Height =
-        // 8 - 1 = 7               /  \    /  \    /  \    /  \      / \
-        // 0       7    00  02  04  06  08  10  12  14   252 254
+        // 1      6       01      05      09      13       253    Offset = Bits - Height = 8 - 1 = 7
+        //               /  \    /  \    /  \    /  \      / \
+        // 0      7     00  02  04  06  08  10  12  14   252 254
         //              00  01  02  03  04  05  06  07   126 127
         //
         let initial_offset = T::key_size_in_bits() - root.height();

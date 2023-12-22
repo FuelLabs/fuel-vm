@@ -1,12 +1,12 @@
 use crate::{
     common::{
         Bytes32,
-        ProofSet,
         StorageMap,
     },
     sparse::{
         self,
         merkle_tree::MerkleTreeKey,
+        proof::Proof,
         Primitive,
     },
     storage::{
@@ -179,10 +179,7 @@ impl MerkleTree {
         self.tree.root()
     }
 
-    pub fn generate_proof<K: Into<Bytes32>>(
-        &self,
-        key: K,
-    ) -> Option<(Bytes32, ProofSet)> {
+    pub fn generate_proof<K: Into<Bytes32>>(&self, key: K) -> Option<Proof> {
         self.tree.generate_proof(key).ok()
     }
 }

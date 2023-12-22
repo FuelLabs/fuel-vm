@@ -6,29 +6,38 @@ use crate::{
         },
         Bytes32,
         Prefix,
-        ProofSet,
     },
-    sparse::Node,
+    sparse::{
+        empty_sum,
+        proof::{
+            ExclusionProof,
+            InclusionProof,
+            Proof,
+        },
+        Node,
+    },
 };
 
-pub fn _verify<T: AsRef<[u8]>>(
-    _key: &Bytes32,
-    _value: &T,
-    _root: &Bytes32,
-    _proof_set: &ProofSet,
-) -> bool {
-    true
+pub fn verify<T: AsRef<[u8]>>(key: &Bytes32, value: &T, proof: Proof) -> bool {
+    match proof {
+        Proof::InclusionProof(proof) => verify_inclusion(key, value, proof),
+        Proof::ExclusionProof(proof) => {
+            value.as_ref() == empty_sum() && verify_exclusion(key, proof)
+        }
+    }
 }
 
 pub fn verify_inclusion<T: AsRef<[u8]>>(
     key: &Bytes32,
     value: &T,
-    root: &Bytes32,
-    proof_set: &ProofSet,
+    proof: InclusionProof,
 ) -> bool {
+    let InclusionProof { root, proof_set } = proof;
+
     let leaf = Node::create_leaf(key, value);
     let path = leaf.leaf_key();
     let mut current = *leaf.hash();
+
     for (i, side_hash) in proof_set.iter().enumerate() {
         let index = proof_set.len() - 1 - i;
         let prefix = Prefix::Node;
@@ -37,7 +46,35 @@ pub fn verify_inclusion<T: AsRef<[u8]>>(
             Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
         };
     }
-    current == *root
+
+    current == root
+}
+
+pub fn verify_exclusion(key: &Bytes32, proof: ExclusionProof) -> bool {
+    let ExclusionProof {
+        root,
+        proof_set,
+        leaf_key,
+        hash,
+    } = proof;
+
+    if *key == leaf_key {
+        return false;
+    }
+
+    let path = leaf_key;
+    let mut current = hash;
+
+    for (i, side_hash) in proof_set.iter().enumerate() {
+        let index = proof_set.len() - 1 - i;
+        let prefix = Prefix::Node;
+        current = match path.get_instruction(index as u32).unwrap() {
+            Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
+            Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
+        };
+    }
+
+    current == root
 }
 
 #[cfg(test)]
@@ -49,10 +86,10 @@ mod test {
         },
         sparse::{
             hash::sum,
-            verify::verify_inclusion,
+            verify::verify,
+            zero_sum,
             MerkleTree,
             MerkleTreeKey,
-            Node,
             Primitive,
         },
     };
@@ -122,8 +159,8 @@ mod test {
         //   0: L0  L1  L3  P1  L2  P0
         //      K0  K1  K3      K2
 
-        let (root, proof_set) = tree.generate_proof(k2).unwrap();
-        let inclusion = verify_inclusion(&k2, &v2, &root, &proof_set);
+        let proof = tree.generate_proof(k2).unwrap();
+        let inclusion = verify(&k2, &v2, proof);
         assert!(inclusion);
     }
 
@@ -169,14 +206,17 @@ mod test {
         //   0: L0  L1  L3  P1  L2  P0
         //      K0  K1  K3      K2
 
-        let (root, proof_set) = tree.generate_proof(k2).unwrap();
-        let erroneous_v = random_bytes32(&mut rng);
-        let inclusion = verify_inclusion(&k2, &erroneous_v, &root, &proof_set);
+        // When
+        let proof = tree.generate_proof(k2).unwrap();
+
+        // Then
+        let erroneous_value = random_bytes32(&mut rng);
+        let inclusion = verify(&k2, &erroneous_value, proof);
         assert!(!inclusion);
     }
 
     #[test]
-    fn verify_inclusion_test() {
+    fn verify_proof_for_existing_key_and_correct_value_returns_true() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
@@ -193,8 +233,102 @@ mod test {
             tree.update(MerkleTreeKey::new(key), &value).unwrap();
         }
 
-        let (root, proof_set) = tree.generate_proof(key).unwrap();
-        let inclusion = verify_inclusion(&key, &value, &root, &proof_set);
-        assert!(inclusion);
+        let proof = tree.generate_proof(key).unwrap();
+        let v = verify(&key, &value, proof);
+        assert!(v);
+    }
+
+    #[test]
+    fn verify_proof_for_existing_key_and_incorrect_value_returns_false() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
+
+        let key = random_bytes32(&mut rng);
+        let value = random_bytes32(&mut rng);
+        tree.update(MerkleTreeKey::new_without_hash(key), &value)
+            .unwrap();
+
+        for _ in 0..1_000 {
+            let key = random_bytes32(&mut rng);
+            let value = random_bytes32(&mut rng);
+            tree.update(MerkleTreeKey::new(key), &value).unwrap();
+        }
+
+        let proof = tree.generate_proof(key).unwrap();
+        let value = random_bytes32(&mut rng);
+        let v = verify(&key, &value, proof);
+        assert!(!v);
+    }
+
+    #[test]
+    fn verify_proof_for_existing_key_and_placeholder_value_returns_false() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
+
+        let key = random_bytes32(&mut rng);
+        let value = random_bytes32(&mut rng);
+        tree.update(MerkleTreeKey::new_without_hash(key), &value)
+            .unwrap();
+
+        for _ in 0..1_000 {
+            let key = random_bytes32(&mut rng);
+            let value = random_bytes32(&mut rng);
+            tree.update(MerkleTreeKey::new(key), &value).unwrap();
+        }
+
+        let proof = tree.generate_proof(key).unwrap();
+        let v = verify(&key, zero_sum(), proof);
+        assert!(!v);
+    }
+
+    #[test]
+    fn verify_proof_for_nonexistent_key_and_placeholder_value_returns_true() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
+
+        for _ in 0..1_000 {
+            let key = random_bytes32(&mut rng);
+            let value = random_bytes32(&mut rng);
+            tree.update(MerkleTreeKey::new(key), &value).unwrap();
+        }
+
+        // Should verify non-inclusion
+        let key = random_bytes32(&mut rng);
+        let value = zero_sum();
+
+        let proof = tree.generate_proof(key).unwrap();
+        let v = verify(&key, value, proof);
+        assert!(v);
+    }
+
+    #[test]
+    fn verify_proof_for_nonexistent_key_and_incorrect_value_returns_false() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
+
+        for _ in 0..1_000 {
+            let key = random_bytes32(&mut rng);
+            let value = random_bytes32(&mut rng);
+            tree.update(MerkleTreeKey::new(key), &value).unwrap();
+        }
+
+        // For a random key, the probability of inclusion is negligible, and we
+        // can assume that this key is not included. The correct value for this
+        // key is, therefore, the zero sum. Verifying a proof against this tree
+        // and random value will fail.
+        let key = random_bytes32(&mut rng);
+        let value = random_bytes32(&mut rng);
+
+        let proof = tree.generate_proof(key).unwrap();
+        let v = verify(&key, &value, proof);
+        assert!(!v);
     }
 }

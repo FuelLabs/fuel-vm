@@ -215,7 +215,10 @@ impl Node {
     }
 
     pub fn is_placeholder(&self) -> bool {
-        &Self::Placeholder == self
+        match self {
+            Node::Node { hash, .. } => *hash == *zero_sum(),
+            Node::Placeholder => true,
+        }
     }
 
     pub fn hash(&self) -> &Bytes32 {

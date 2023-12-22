@@ -139,7 +139,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
 
     // PRIVATE
 
-    fn root_node(&self) -> &Node {
+    pub(crate) fn root_node(&self) -> &Node {
         &self.root_node
     }
 

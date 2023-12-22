@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-pub fn verify<T: AsRef<[u8]>>(key: &Bytes32, value: &T, proof: Proof) -> bool {
+pub fn verify<K: Into<Bytes32>, V: AsRef<[u8]>>(key: K, value: &V, proof: Proof) -> bool {
     match proof {
         Proof::InclusionProof(proof) => verify_inclusion(key, value, proof),
         Proof::ExclusionProof(proof) => {
@@ -27,14 +27,15 @@ pub fn verify<T: AsRef<[u8]>>(key: &Bytes32, value: &T, proof: Proof) -> bool {
     }
 }
 
-fn verify_inclusion<T: AsRef<[u8]>>(
-    key: &Bytes32,
-    value: &T,
+fn verify_inclusion<K: Into<Bytes32>, V: AsRef<[u8]>>(
+    key: K,
+    value: &V,
     proof: InclusionProof,
 ) -> bool {
     let InclusionProof { root, proof_set } = proof;
 
-    let leaf = Node::create_leaf(key, value);
+    let key: Bytes32 = key.into();
+    let leaf = Node::create_leaf(&key, value);
     let path = leaf.leaf_key();
     let mut current = *leaf.hash();
 
@@ -50,7 +51,7 @@ fn verify_inclusion<T: AsRef<[u8]>>(
     current == root
 }
 
-fn verify_exclusion(key: &Bytes32, proof: ExclusionProof) -> bool {
+fn verify_exclusion<K: Into<Bytes32>>(key: K, proof: ExclusionProof) -> bool {
     let ExclusionProof {
         root,
         proof_set,
@@ -58,7 +59,8 @@ fn verify_exclusion(key: &Bytes32, proof: ExclusionProof) -> bool {
         hash,
     } = proof;
 
-    if *key == leaf_key {
+    let key: Bytes32 = key.into();
+    if key == leaf_key {
         return false;
     }
 
@@ -94,6 +96,7 @@ mod test {
         },
     };
     use fuel_storage::Mappable;
+
     use rand::{
         prelude::StdRng,
         SeedableRng,
@@ -160,7 +163,7 @@ mod test {
         //      K0  K1  K3      K2
 
         let proof = tree.generate_proof(k2).unwrap();
-        let inclusion = verify(&k2, &v2, proof);
+        let inclusion = verify(k2, &v2, proof);
         assert!(inclusion);
     }
 
@@ -208,7 +211,7 @@ mod test {
 
         let proof = tree.generate_proof(k2).unwrap();
         let erroneous_value = random_bytes32(&mut rng);
-        let inclusion = verify(&k2, &erroneous_value, proof);
+        let inclusion = verify(k2, &erroneous_value, proof);
         assert!(!inclusion);
     }
 
@@ -231,7 +234,7 @@ mod test {
         }
 
         let proof = tree.generate_proof(key).unwrap();
-        let v = verify(&key, &value, proof);
+        let v = verify(key, &value, proof);
         assert!(v);
     }
 
@@ -255,7 +258,7 @@ mod test {
 
         let proof = tree.generate_proof(key).unwrap();
         let value = random_bytes32(&mut rng);
-        let v = verify(&key, &value, proof);
+        let v = verify(key, &value, proof);
         assert!(!v);
     }
 
@@ -278,7 +281,7 @@ mod test {
         }
 
         let proof = tree.generate_proof(key).unwrap();
-        let v = verify(&key, zero_sum(), proof);
+        let v = verify(key, zero_sum(), proof);
         assert!(!v);
     }
 
@@ -300,7 +303,7 @@ mod test {
         let value = zero_sum();
 
         let proof = tree.generate_proof(key).unwrap();
-        let v = verify(&key, value, proof);
+        let v = verify(key, value, proof);
         assert!(v);
     }
 
@@ -325,7 +328,7 @@ mod test {
         let value = random_bytes32(&mut rng);
 
         let proof = tree.generate_proof(key).unwrap();
-        let v = verify(&key, &value, proof);
+        let v = verify(key, &value, proof);
         assert!(!v);
     }
 }

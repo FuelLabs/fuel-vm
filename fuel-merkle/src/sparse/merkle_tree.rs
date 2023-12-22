@@ -613,6 +613,7 @@ mod test {
         sparse::{
             empty_sum,
             hash::sum,
+            proof::Proof,
             MerkleTree,
             MerkleTreeError,
             MerkleTreeKey,
@@ -1383,7 +1384,7 @@ mod test {
     }
 
     #[test]
-    fn generate_proof_returns_proof_set_key() {
+    fn generate_proof_returns_proof_set_for_given_key() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
@@ -1488,5 +1489,70 @@ mod test {
             assert_eq!(*proof.root(), expected_root);
             assert_eq!(*proof.proof_set(), expected_proof_set);
         }
+    }
+
+    #[test]
+    fn generate_proof_returns_inclusion_proof_for_included_key() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let k0 = [0u8; 32];
+        let v0 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+            .expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01000000;
+        let v1 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+            .expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01100000;
+        let v2 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+            .expect("Expected successful update");
+
+        let mut k3 = [0u8; 32];
+        k3[0] = 0b01001000;
+        let v3 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+            .expect("Expected successful update");
+
+        let proof = tree.generate_proof(k1).expect("Expected proof");
+        assert!(matches!(proof, Proof::InclusionProof(_)));
+    }
+
+    #[test]
+    fn generate_proof_returns_exclusion_proof_for_non_included_key() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let k0 = [0u8; 32];
+        let v0 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+            .expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01000000;
+        let v1 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+            .expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01100000;
+        let v2 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+            .expect("Expected successful update");
+
+        let mut k3 = [0u8; 32];
+        k3[0] = 0b01001000;
+        let v3 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+            .expect("Expected successful update");
+
+        let k4 = [255u8; 32];
+        let proof = tree.generate_proof(k4).expect("Expected proof");
+        assert!(matches!(proof, Proof::ExclusionProof(_)));
     }
 }

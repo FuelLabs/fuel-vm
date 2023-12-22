@@ -27,7 +27,7 @@ pub fn verify<T: AsRef<[u8]>>(key: &Bytes32, value: &T, proof: Proof) -> bool {
     }
 }
 
-pub fn verify_inclusion<T: AsRef<[u8]>>(
+fn verify_inclusion<T: AsRef<[u8]>>(
     key: &Bytes32,
     value: &T,
     proof: InclusionProof,
@@ -50,7 +50,7 @@ pub fn verify_inclusion<T: AsRef<[u8]>>(
     current == root
 }
 
-pub fn verify_exclusion(key: &Bytes32, proof: ExclusionProof) -> bool {
+fn verify_exclusion(key: &Bytes32, proof: ExclusionProof) -> bool {
     let ExclusionProof {
         root,
         proof_set,
@@ -206,10 +206,7 @@ mod test {
         //   0: L0  L1  L3  P1  L2  P0
         //      K0  K1  K3      K2
 
-        // When
         let proof = tree.generate_proof(k2).unwrap();
-
-        // Then
         let erroneous_value = random_bytes32(&mut rng);
         let inclusion = verify(&k2, &erroneous_value, proof);
         assert!(!inclusion);
@@ -323,7 +320,7 @@ mod test {
         // For a random key, the probability of inclusion is negligible, and we
         // can assume that this key is not included. The correct value for this
         // key is, therefore, the zero sum. Verifying a proof against this tree
-        // and random value will fail.
+        // and a random key-value will fail.
         let key = random_bytes32(&mut rng);
         let value = random_bytes32(&mut rng);
 

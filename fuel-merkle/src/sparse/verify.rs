@@ -39,9 +39,9 @@ pub fn verify_inclusion<T: AsRef<[u8]>>(
     let mut current = *leaf.hash();
 
     for (i, side_hash) in proof_set.iter().enumerate() {
-        let index = proof_set.len() - 1 - i;
+        let index = (proof_set.len() - 1 - i) as u32;
         let prefix = Prefix::Node;
-        current = match path.get_instruction(index as u32).unwrap() {
+        current = match path.get_instruction(index).unwrap() {
             Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
             Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
         };
@@ -66,9 +66,9 @@ pub fn verify_exclusion(key: &Bytes32, proof: ExclusionProof) -> bool {
     let mut current = hash;
 
     for (i, side_hash) in proof_set.iter().enumerate() {
-        let index = proof_set.len() - 1 - i;
+        let index = (proof_set.len() - 1 - i) as u32;
         let prefix = Prefix::Node;
-        current = match path.get_instruction(index as u32).unwrap() {
+        current = match path.get_instruction(index).unwrap() {
             Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
             Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
         };

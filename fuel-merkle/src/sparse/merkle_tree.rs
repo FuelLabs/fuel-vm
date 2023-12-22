@@ -585,7 +585,7 @@ where
         let actual_leaf = &path_nodes[0];
         let proof_set = side_nodes
             .into_iter()
-            .map(|side_node| side_node.hash().clone())
+            .map(|side_node| side_node.hash())
             .collect::<Vec<_>>();
         let proof = if key == *actual_leaf.leaf_key() {
             let inclusion_proof = InclusionProof { root, proof_set };
@@ -600,53 +600,6 @@ where
             Proof::ExclusionProof(exclusion_proof)
         };
         Ok(proof)
-    }
-
-    pub fn generate_inclusion_proof<K: Into<Bytes32>>(
-        &self,
-        key: K,
-    ) -> Result<InclusionProof, MerkleTreeError<StorageError>> {
-        let key = key.into();
-        let root = self.root();
-        let (path_nodes, side_nodes) = self.path_set(key)?;
-        let actual_leaf = &path_nodes[0];
-        let proof_set = side_nodes
-            .into_iter()
-            .map(|side_node| side_node.hash().clone())
-            .collect::<Vec<_>>();
-        if key == *actual_leaf.leaf_key() {
-            let inclusion_proof = InclusionProof { root, proof_set };
-            Ok(inclusion_proof)
-        } else {
-            Err(MerkleTreeError::GenerateProofError)
-        }
-    }
-
-    pub fn generate_exclusion_proof<K: Into<Bytes32>>(
-        &self,
-        key: K,
-    ) -> Result<ExclusionProof, MerkleTreeError<StorageError>> {
-        let key = key.into();
-        let root = self.root();
-        let (path_nodes, side_nodes) = self.path_set(key)?;
-        let actual_leaf = &path_nodes[0];
-        println!("REQUESTED: {:?}", hex::encode(key));
-        println!("ACTUAL LEAF: {:?}", actual_leaf);
-        let proof_set = side_nodes
-            .into_iter()
-            .map(|side_node| side_node.hash().clone())
-            .collect::<Vec<_>>();
-        if key != *actual_leaf.leaf_key() {
-            let exclusion_proof = ExclusionProof {
-                root,
-                proof_set,
-                leaf_key: *actual_leaf.leaf_key(),
-                hash: *actual_leaf.hash(),
-            };
-            Ok(exclusion_proof)
-        } else {
-            Err(MerkleTreeError::GenerateProofError)
-        }
     }
 }
 

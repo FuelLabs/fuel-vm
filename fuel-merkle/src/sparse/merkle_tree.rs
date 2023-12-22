@@ -53,9 +53,6 @@ pub enum MerkleTreeError<StorageError> {
 
     #[display(fmt = "{}", _0)]
     ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
-
-    #[display(fmt = "Cannot generate proof")]
-    GenerateProofError,
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {

@@ -585,7 +585,7 @@ where
         let actual_leaf = &path_nodes[0];
         let proof_set = side_nodes
             .into_iter()
-            .map(|side_node| side_node.hash())
+            .map(|side_node| *side_node.hash())
             .collect::<Vec<_>>();
         let proof = if key == *actual_leaf.leaf_key() {
             let inclusion_proof = InclusionProof { root, proof_set };

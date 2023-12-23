@@ -1,17 +1,12 @@
-use crate::{
-    common::{
-        Bytes32,
-        ProofSet,
-    },
-    sparse::Node,
+use crate::common::{
+    Bytes32,
+    ProofSet,
 };
 use core::{
     fmt,
     fmt::{
         Debug,
-        Display,
         Formatter,
-        Pointer,
     },
 };
 
@@ -62,7 +57,7 @@ impl Debug for InclusionProof {
 pub struct ExclusionProof {
     pub root: Bytes32,
     pub proof_set: ProofSet,
-    pub leaf_key: Bytes32,
+    pub path: Bytes32,
     pub hash: Bytes32,
 }
 
@@ -77,7 +72,7 @@ impl Debug for ExclusionProof {
         f.debug_struct("ExclusionProof")
             .field("Root", &hex::encode(self.root))
             .field("Proof Set", &proof_set)
-            .field("Leaf key", &hex::encode(self.leaf_key))
+            .field("Path", &hex::encode(self.path))
             .field("Hash", &hex::encode(self.hash))
             .finish()
     }

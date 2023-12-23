@@ -55,16 +55,14 @@ fn verify_exclusion<K: Into<Bytes32>>(key: K, proof: ExclusionProof) -> bool {
     let ExclusionProof {
         root,
         proof_set,
-        leaf_key,
+        path,
         hash,
     } = proof;
 
-    let key: Bytes32 = key.into();
-    if key == leaf_key {
+    if key.into() != path {
         return false;
     }
 
-    let path = leaf_key;
     let mut current = hash;
 
     for (i, side_hash) in proof_set.iter().enumerate() {
@@ -97,7 +95,6 @@ mod test {
     };
     use fuel_storage::Mappable;
 
-    use crate::sparse::Node;
     use rand::{
         prelude::StdRng,
         SeedableRng,
@@ -213,78 +210,6 @@ mod test {
         let proof = tree.generate_proof(k2).unwrap();
         let erroneous_value = random_bytes32(&mut rng);
         let inclusion = verify(k2, &erroneous_value, proof);
-        assert!(!inclusion);
-    }
-
-    #[test]
-    fn verify_121212() {
-        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
-        let mut storage = StorageMap::<TestTable>::new();
-        let mut tree = MerkleTree::new(&mut storage);
-
-        let k0 = [0u8; 32];
-        let v0 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
-            .expect("Expected successful update");
-
-        let mut k1 = [0u8; 32];
-        k1[0] = 0b01000000;
-        let v1 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
-            .expect("Expected successful update");
-
-        let mut k2 = [0u8; 32];
-        k2[0] = 0b01100000;
-        let v2 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
-            .expect("Expected successful update");
-
-        let mut k3 = [0u8; 32];
-        k3[0] = 0b01001000;
-        let v3 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
-            .expect("Expected successful update");
-
-        // 256:           N4
-        //               /  \
-        // 255:         N3   \
-        //             /  \   \
-        // 254:       /   N2   \
-        //           /   /  \   \
-        // 253:     /   N1   \   \
-        //         /   /  \   \   \
-        // 252:   /   N0   \   \   \
-        // ...   /   /  \   \   \   \
-        //   0: L0  L1  L3  P1  L2  P0
-        //      K0  K1  K3      K2
-
-        let l0 = Node::create_leaf(&k0, v0);
-        let l1 = Node::create_leaf(&k1, v1);
-        let l2 = Node::create_leaf(&k2, v2);
-        let l3 = Node::create_leaf(&k3, v3);
-        let n0 = Node::create_node(&l1, &l3, 252);
-        let n1 = Node::create_node(&n0, &Node::create_placeholder(), 253);
-        let n2 = Node::create_node(&n1, &l2, 254);
-        let n3 = Node::create_node(&l0, &n2, 255);
-        let n4 = Node::create_node(&n3, &Node::create_placeholder(), 256);
-
-        dbg!(l0);
-        dbg!(l1);
-        dbg!(l2);
-        dbg!(l3);
-        dbg!(n0);
-        dbg!(n1);
-        dbg!(n2);
-        dbg!(n3);
-        dbg!(n4);
-
-        let mut key = [0u8; 32];
-        key[0] = 0b01010000;
-
-        let proof = tree.generate_proof(key).unwrap();
-        dbg!(&proof);
-        let value = zero_sum();
-        let inclusion = verify(key, value, proof);
         assert!(!inclusion);
     }
 
@@ -444,6 +369,58 @@ mod test {
 
         println!("Key 1: {:?}", key_1);
         println!("Key 2: {:?}", key_2);
+
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        tree.update(key_1, &value_1).unwrap();
+        tree.update(key_2, &value_2).unwrap();
+        println!("ROOT: {}", hex::encode(tree.root()));
+        // dbg!(&tree);
+        let proof = tree.generate_proof(key).unwrap();
+        dbg!(&proof);
+        let v = verify(key, &value, proof);
+        assert!(v);
+    }
+
+    #[test]
+    fn dbg_test_2() {
+        let key_values = [
+            (
+                MerkleTreeKey::new_without_hash([
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ]),
+                [
+                    151u8, 44, 98, 30, 142, 24, 102, 96, 91, 217, 46, 67, 31, 208, 144,
+                    2, 132, 120, 217, 233, 233, 166, 243, 103, 37, 163, 251, 3, 28, 185,
+                    228, 40,
+                ],
+            ),
+            (
+                MerkleTreeKey::new_without_hash([
+                    0b01000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                ]),
+                [
+                    230u8, 222, 202, 193, 33, 80, 171, 107, 112, 3, 183, 110, 219, 76,
+                    33, 35, 4, 135, 201, 165, 155, 127, 188, 148, 226, 178, 47, 97, 30,
+                    166, 103, 74,
+                ],
+            ),
+        ];
+        let (key_1, value_1) = key_values[0];
+        let (key_2, value_2) = key_values[1];
+
+        let key = MerkleTreeKey::new_without_hash([
+            128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0,
+        ]);
+        let value = zero_sum();
+
+        println!("Key 1: {:?}", key_1);
+        println!("Key 2: {:?}", key_2);
+        println!("KEY: {:?}", key);
 
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);

@@ -13,7 +13,6 @@ use crate::{
 };
 use fuel_storage::Mappable;
 use proptest::{
-    prelude::ProptestConfig,
     prop_assert,
     prop_compose,
     proptest,
@@ -23,7 +22,6 @@ use rand::{
     rngs::StdRng,
     SeedableRng,
 };
-use std::io::Bytes;
 
 #[derive(Debug)]
 struct TestTable;
@@ -47,8 +45,6 @@ prop_compose! {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(20))]
-
     #[test]
     fn generate_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree()) {
         let mut rng = StdRng::seed_from_u64(0xBAADF00D);
@@ -67,26 +63,6 @@ proptest! {
             let value = zero_sum();
             let proof = tree.generate_proof(key).expect("Infallible");
             let verification = verify(key, value, proof.clone());
-            if !verification {
-                for key in keys {
-                    println!("{:?}", key);
-                }
-
-                println!("Verification failed: {}", verification);
-                dbg!(proof);
-
-                println!("{:?}", key);
-                println!("VALUE {}", hex::encode(value));
-                println!();
-                println!();
-                println!();
-            } else {
-                println!("SUCCESS");
-                dbg!(proof);
-                println!();
-                println!();
-                println!();
-            }
             prop_assert!(verification)
         }
     }

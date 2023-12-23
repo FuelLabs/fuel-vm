@@ -38,7 +38,6 @@ use core::{
     fmt::{
         Debug,
         Formatter,
-        Write,
     },
     iter,
     marker::PhantomData,
@@ -70,7 +69,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 
 /// The safe Merkle tree storage key prevents Merkle tree structure manipulations.
 /// The type contains only one constructor that hashes the storage key.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 // #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Arbitrary)]
 pub struct MerkleTreeKey(Bytes32);
@@ -116,16 +115,11 @@ impl MerkleTreeKey {
     }
 }
 
-// impl Debug for MerkleTreeKey {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-//         // f.write_str("MerkleTreeKey(")?;
-//         // for b in self.0 {
-//         //     f.write_str(&format!("{:08b}", b))?;
-//         // }
-//         // f.write_str(")")
-//         f.write_str(&format!("MerkleTreeKey({})", hex::encode(self.0)))
-//     }
-// }
+impl Debug for MerkleTreeKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&format!("MerkleTreeKey({})", hex::encode(self.0)))
+    }
+}
 
 impl From<MerkleTreeKey> for Bytes32 {
     fn from(value: MerkleTreeKey) -> Self {
@@ -600,22 +594,58 @@ where
         &self,
         key: K,
     ) -> Result<Proof, MerkleTreeError<StorageError>> {
-        let key = key.into();
+        let path = key.into();
         let root = self.root();
-        let (path_nodes, side_nodes) = self.path_set(key)?;
+        let (path_nodes, side_nodes) = self.path_set(path)?;
+        // Identify the closest leaf that is included in the tree to the
+        // requested leaf. The closest leaf, as returned by the path set
+        // corresponding to the requested leaf, will be the requested leaf
+        // itself, a different leaf than requested, or a placeholder.
+        //
+        // If the closest leaf is the requested leaf, then the requested leaf is
+        // included in the tree, and we are requesting an inclusion proof.
+        // Otherwise (i.e, the closest leaf is either another leaf or a
+        // placeholder), the requested leaf is not in the tree, and we are
+        // requesting an exclusion proof.
+        //
         let actual_leaf = &path_nodes[0];
         let proof_set = side_nodes
             .into_iter()
             .map(|side_node| *side_node.hash())
             .collect::<Vec<_>>();
-        let proof = if key == *actual_leaf.leaf_key() {
+        let proof = if path == *actual_leaf.leaf_key() {
+            // If the requested key is part of the tree, build an inclusion
+            // proof.
             let inclusion_proof = InclusionProof { root, proof_set };
             Proof::InclusionProof(inclusion_proof)
         } else {
+            // If the requested key is not part of the tree, we are verifying
+            // that the given key is a placeholder, and we must build an
+            // exclusion proof. When building an exclusion proof, the requested
+            // leaf is unset and is currently a placeholder. The path to this
+            // placeholder is designated by the requested leaf's key.
+            //
+            // If the closest leaf is a real leaf, and not a placeholder, we can
+            // build the root upwards using this leaf's key and value.
+            //
+            // If the closest leaf is a placeholder, it has a leaf key and a
+            // placeholder value (the zero sum). The leaf key of this
+            // placeholder leaf is unknown (since placeholders do not store
+            // their leaf key), and by extension, the path from the root to the
+            // placeholder is also unknown.
+            //
+            // However, in both cases, the path defined by the requested
+            // placeholder is sufficiently close: All branches stemming from the
+            // point where the paths of the requested placeholder and closest
+            // leaf diverge are saturated with the closest leaf's hash. In the
+            // case where the closest leaf is a placeholder, this hash is simply
+            // the zero sum. The hash of any placeholder under this point of
+            // divergence equates to this hash.
+            //
             let exclusion_proof = ExclusionProof {
                 root,
                 proof_set,
-                leaf_key: *actual_leaf.leaf_key(),
+                path,
                 hash: *actual_leaf.hash(),
             };
             Proof::ExclusionProof(exclusion_proof)

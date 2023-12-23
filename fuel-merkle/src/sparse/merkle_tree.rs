@@ -19,6 +19,8 @@ use crate::{
     },
 };
 
+use proptest_derive::Arbitrary;
+
 use crate::sparse::{
     branch::{
         merge_branches,
@@ -33,6 +35,11 @@ use crate::sparse::{
 use alloc::vec::Vec;
 use core::{
     cmp,
+    fmt::{
+        Debug,
+        Formatter,
+        Write,
+    },
     iter,
     marker::PhantomData,
 };
@@ -63,7 +70,9 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 
 /// The safe Merkle tree storage key prevents Merkle tree structure manipulations.
 /// The type contains only one constructor that hashes the storage key.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+// #[cfg(any(test, feature = "test-helpers"))]
+#[derive(Arbitrary)]
 pub struct MerkleTreeKey(Bytes32);
 
 impl MerkleTreeKey {
@@ -106,6 +115,17 @@ impl MerkleTreeKey {
         unsafe { Self::convert(storage_key) }
     }
 }
+
+// impl Debug for MerkleTreeKey {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+//         // f.write_str("MerkleTreeKey(")?;
+//         // for b in self.0 {
+//         //     f.write_str(&format!("{:08b}", b))?;
+//         // }
+//         // f.write_str(")")
+//         f.write_str(&format!("MerkleTreeKey({})", hex::encode(self.0)))
+//     }
+// }
 
 impl From<MerkleTreeKey> for Bytes32 {
     fn from(value: MerkleTreeKey) -> Self {
@@ -377,6 +397,7 @@ where
 
         let key = key.into();
         let leaf_node = Node::create_leaf(&key, data);
+        // dbg!(&leaf_node);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
@@ -464,6 +485,7 @@ where
             if !actual_leaf_node.is_placeholder() {
                 current_node =
                     Node::create_node_on_path(path, &current_node, actual_leaf_node);
+                // dbg!(&current_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -477,6 +499,7 @@ where
             for placeholder in placeholders {
                 current_node =
                     Node::create_node_on_path(path, &current_node, &placeholder);
+                // dbg!(&current_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -487,6 +510,7 @@ where
         // Merge side nodes
         for side_node in side_nodes {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
+            // dbg!(&current_node);
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }

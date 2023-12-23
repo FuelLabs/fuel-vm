@@ -36,11 +36,11 @@ impl Mappable for TestTable {
 }
 
 prop_compose! {
-    fn random_tree()(key_values: Vec<(Bytes32, Bytes32)>) -> (Vec<(Bytes32, Bytes32)>, MerkleTree<TestTable, StorageMap<TestTable>>) {
+    fn random_tree()(key_values: Vec<(MerkleTreeKey, Bytes32)>) -> (Vec<(MerkleTreeKey, Bytes32)>, MerkleTree<TestTable, StorageMap<TestTable>>) {
         let storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(storage);
         for (key, value) in key_values.iter() {
-            tree.update(MerkleTreeKey::new(key), value).unwrap();
+            tree.update(key.clone(), value).unwrap();
         }
         (key_values, tree)
     }
@@ -52,17 +52,16 @@ proptest! {
     #[test]
     fn generate_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree()) {
         let mut rng = StdRng::seed_from_u64(0xBAADF00D);
-        if let Some((key, value)) = key_values.choose(&mut rng) {
-            let key = MerkleTreeKey::new(key);
+        if let Some((key, value)) = key_values.choose(&mut rng).cloned() {
             let proof = tree.generate_proof(key).expect("Infallible");
-            let verification = verify(key, value, proof);
+            let verification = verify(key, &value, proof);
             prop_assert!(verification)
         }
     }
 
     #[test]
-    fn generate_proof_and_verify_with_valid_placeholder_returns_true((key_values, tree) in random_tree(), key: Bytes32) {
-        let (keys, _values): (Vec<Bytes32>, Vec<Bytes32>) = key_values.into_iter().unzip();
+    fn generate_proof_and_verify_with_valid_placeholder_returns_true((key_values, tree) in random_tree(), key: MerkleTreeKey) {
+        let (keys, _values): (Vec<_>, Vec<_>) = key_values.into_iter().unzip();
         // Ensure the random key is not already included in the tree
         if keys.iter().find(|k| **k == key).is_none() {
             let value = zero_sum();
@@ -70,25 +69,13 @@ proptest! {
             let verification = verify(key, value, proof.clone());
             if !verification {
                 for key in keys {
-                    print!("LEAF: ");
-                    let k: Bytes32 = key.clone().into();
-                    for b in k {
-                        print!("{:08b}", b);
-                    }
-                    println!()
+                    println!("{:?}", key);
                 }
 
                 println!("Verification failed: {}", verification);
                 dbg!(proof);
-                // println!("KEY {}", hex::encode::<Bytes32>(key.into()));
 
-                print!("KEY: ");
-                let k: Bytes32 = key.clone().into();
-                for b in k {
-                    print!("{:08b}", b);
-                }
-                println!();
-
+                println!("{:?}", key);
                 println!("VALUE {}", hex::encode(value));
                 println!();
                 println!();

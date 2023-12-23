@@ -43,7 +43,7 @@ impl Debug for InclusionProof {
         let proof_set = self
             .proof_set
             .iter()
-            .map(|bytes| hex::encode(bytes))
+            .map(hex::encode)
             .collect::<Vec<String>>();
         let proof_set = format!("[{}]", proof_set.join(", "));
         f.debug_struct("InclusionProof")
@@ -66,7 +66,7 @@ impl Debug for ExclusionProof {
         let proof_set = self
             .proof_set
             .iter()
-            .map(|bytes| hex::encode(bytes))
+            .map(hex::encode)
             .collect::<Vec<String>>();
         let proof_set = format!("[{}]", proof_set.join(", "));
         f.debug_struct("ExclusionProof")

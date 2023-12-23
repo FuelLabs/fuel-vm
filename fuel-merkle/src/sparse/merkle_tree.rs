@@ -30,7 +30,10 @@ use crate::sparse::{
         Proof,
     },
 };
-use alloc::vec::Vec;
+use alloc::{
+    format,
+    vec::Vec,
+};
 use core::{
     cmp,
     fmt::{

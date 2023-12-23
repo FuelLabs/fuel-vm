@@ -388,7 +388,6 @@ where
 
         let key = key.into();
         let leaf_node = Node::create_leaf(&key, data);
-        // dbg!(&leaf_node);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
@@ -476,7 +475,6 @@ where
             if !actual_leaf_node.is_placeholder() {
                 current_node =
                     Node::create_node_on_path(path, &current_node, actual_leaf_node);
-                // dbg!(&current_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -490,7 +488,6 @@ where
             for placeholder in placeholders {
                 current_node =
                     Node::create_node_on_path(path, &current_node, &placeholder);
-                // dbg!(&current_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -501,7 +498,6 @@ where
         // Merge side nodes
         for side_node in side_nodes {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
-            // dbg!(&current_node);
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }

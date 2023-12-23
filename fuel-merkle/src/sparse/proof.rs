@@ -2,6 +2,11 @@ use crate::common::{
     Bytes32,
     ProofSet,
 };
+use alloc::{
+    format,
+    string::String,
+    vec::Vec,
+};
 use core::{
     fmt,
     fmt::{

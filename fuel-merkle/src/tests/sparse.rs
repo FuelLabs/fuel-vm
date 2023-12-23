@@ -38,7 +38,7 @@ prop_compose! {
         let storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(storage);
         for (key, value) in key_values.iter() {
-            tree.update(key.clone(), value).unwrap();
+            tree.update(*key, value).unwrap();
         }
         (key_values, tree)
     }
@@ -59,7 +59,7 @@ proptest! {
     fn generate_proof_and_verify_with_valid_placeholder_returns_true((key_values, tree) in random_tree(), key: MerkleTreeKey) {
         let (keys, _values): (Vec<_>, Vec<_>) = key_values.into_iter().unzip();
         // Ensure the random key is not already included in the tree
-        if keys.iter().find(|k| **k == key).is_none() {
+        if !keys.iter().any(|k| *k == key) {
             let value = zero_sum();
             let proof = tree.generate_proof(key).expect("Infallible");
             let verification = verify(key, value, proof.clone());

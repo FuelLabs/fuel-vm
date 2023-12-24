@@ -68,7 +68,7 @@ proptest! {
     }
 
     #[test]
-    fn generate_proof_and_verify_with_invalid_key_value_key_returns_false((_, tree) in random_tree(), key: Bytes32, value: Bytes32) {
+    fn generate_proof_and_verify_with_invalid_key_value_returns_false((_, tree) in random_tree(), key: Bytes32, value: Bytes32) {
         let key = MerkleTreeKey::new(key);
         let proof = tree.generate_proof(key).expect("Infallible");
         let verification = verify(key, &value, proof);

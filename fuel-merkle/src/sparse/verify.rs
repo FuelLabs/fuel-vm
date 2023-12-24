@@ -215,10 +215,9 @@ mod test {
 
     #[test]
     fn verify_proof_for_existing_key_and_correct_value_returns_true() {
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
-
-        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
 
         let key = random_bytes32(&mut rng);
         let value = random_bytes32(&mut rng);
@@ -238,10 +237,9 @@ mod test {
 
     #[test]
     fn verify_proof_for_existing_key_and_incorrect_value_returns_false() {
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
-
-        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
 
         let key = random_bytes32(&mut rng);
         let value = random_bytes32(&mut rng);
@@ -262,10 +260,9 @@ mod test {
 
     #[test]
     fn verify_proof_for_existing_key_and_placeholder_value_returns_false() {
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
-
-        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
 
         let key = random_bytes32(&mut rng);
         let value = random_bytes32(&mut rng);
@@ -285,10 +282,9 @@ mod test {
 
     #[test]
     fn verify_proof_for_nonexistent_key_and_placeholder_value_returns_true() {
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
-
-        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
 
         for _ in 0..1_000 {
             let key = random_bytes32(&mut rng);
@@ -307,10 +303,9 @@ mod test {
 
     #[test]
     fn verify_proof_for_nonexistent_key_and_incorrect_value_returns_false() {
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
-
-        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
 
         for _ in 0..1_000 {
             let key = random_bytes32(&mut rng);

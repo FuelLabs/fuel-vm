@@ -20,7 +20,7 @@ use super::{
 };
 
 /// ECAL opcode handler
-pub trait EcalHandler: Default + Clone + Copy
+pub trait EcalHandler: Default + Clone
 where
     Self: Sized,
 {

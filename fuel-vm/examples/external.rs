@@ -117,7 +117,7 @@ fn example_file_read() {
     assert_eq!(read_bytes, expected_bytes);
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct CounterEcal {
     counter: u64,
 }

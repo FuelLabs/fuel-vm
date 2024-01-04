@@ -12,6 +12,10 @@ use std::{
         SeekFrom,
     },
     path::PathBuf,
+    sync::{
+        Arc,
+        Mutex,
+    },
 };
 
 use fuel_asm::{
@@ -29,7 +33,10 @@ use fuel_tx::{
 };
 use fuel_vm::{
     error::SimpleResult,
-    interpreter::EcalHandler,
+    interpreter::{
+        EcalHandler,
+        NotSupportedEcal,
+    },
     prelude::{
         Interpreter,
         IntoChecked,
@@ -178,7 +185,74 @@ fn example_counter() {
     assert_eq!(*rd, 8);
 }
 
+#[derive(Debug, Clone)]
+pub struct SharedCounterEcal {
+    counter: Arc<Mutex<u64>>,
+}
+
+impl EcalHandler for SharedCounterEcal {
+    fn ecal<S, Tx>(
+        vm: &mut Interpreter<S, Tx, Self>,
+        a: RegId,
+        _b: RegId,
+        _c: RegId,
+        _d: RegId,
+    ) -> SimpleResult<()> {
+        let mut counter = vm.ecal_state().counter.lock().expect("poisoned");
+        let old_value = *counter;
+        *counter += 1;
+        drop(counter);
+        vm.registers_mut()[a] = old_value;
+        vm.gas_charge(1)?;
+        Ok(())
+    }
+}
+
+fn example_shared_counter() {
+    let vm: Interpreter<MemoryStorage, Script, SharedCounterEcal> =
+        Interpreter::<_, _, NotSupportedEcal>::with_memory_storage().with_ecal(
+            SharedCounterEcal {
+                counter: Arc::new(Mutex::new(5)),
+            },
+        );
+
+    let script_data: Vec<u8> = file!().bytes().collect();
+    let script = vec![
+        op::ecal(0x20, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ecal(0x21, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ecal(0x22, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ecal(0x23, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::log(0x20, 0x21, 0x22, 0x23),
+        op::ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect();
+
+    let mut client = MemoryClient::from_txtor(vm.into());
+    let consensus_params = ConsensusParameters::standard();
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(0)
+        .script_gas_limit(1_000_000)
+        .maturity(Default::default())
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(Default::default(), &consensus_params)
+        .expect("failed to generate a checked tx");
+    client.transact(tx);
+    let receipts = client.receipts().expect("Expected receipts");
+
+    let Receipt::Log { ra, rb, rc, rd, .. } = receipts.first().unwrap() else {
+        panic!("Expected a log receipt");
+    };
+
+    assert_eq!(*ra, 5);
+    assert_eq!(*rb, 6);
+    assert_eq!(*rc, 7);
+    assert_eq!(*rd, 8);
+}
+
 fn main() {
     example_file_read();
     example_counter();
+    example_shared_counter();
 }

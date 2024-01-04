@@ -85,7 +85,7 @@ impl<S, Tx, Ecal> Default for Interpreter<S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
         Interpreter::<S, Tx, Ecal>::with_storage(
@@ -112,7 +112,7 @@ where
 impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///

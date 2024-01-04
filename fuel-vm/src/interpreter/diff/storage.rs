@@ -97,7 +97,7 @@ where
             panic_context: self.panic_context,
             profiler: self.profiler,
             interpreter_params: self.interpreter_params,
-            _ecal_handler: core::marker::PhantomData::<Ecal>,
+            ecal_state: self.ecal_state,
         }
     }
 
@@ -171,7 +171,7 @@ where
             panic_context: self.panic_context,
             profiler: self.profiler,
             interpreter_params: self.interpreter_params,
-            _ecal_handler: core::marker::PhantomData::<Ecal>,
+            ecal_state: self.ecal_state,
         }
     }
 

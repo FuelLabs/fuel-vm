@@ -78,7 +78,7 @@ impl EcalHandler for FileReadEcal {
     }
 }
 
-fn main() {
+fn example_file_read() {
     let vm: Interpreter<MemoryStorage, Script, FileReadEcal> =
         Interpreter::with_memory_storage();
 
@@ -115,4 +115,70 @@ fn main() {
     let read_bytes = data.as_ref().unwrap();
     let expected_bytes = &fs::read(file!()).expect("Couldn't read")[4..12];
     assert_eq!(read_bytes, expected_bytes);
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CounterEcal {
+    counter: u64,
+}
+
+impl EcalHandler for CounterEcal {
+    fn ecal<S, Tx>(
+        vm: &mut Interpreter<S, Tx, Self>,
+        a: RegId,
+        _b: RegId,
+        _c: RegId,
+        _d: RegId,
+    ) -> SimpleResult<()> {
+        vm.registers_mut()[a] = vm.ecal_state().counter;
+        vm.ecal_state_mut().counter += 1;
+        vm.gas_charge(1)?;
+        Ok(())
+    }
+}
+
+fn example_counter() {
+    let mut vm: Interpreter<MemoryStorage, Script, CounterEcal> =
+        Interpreter::with_memory_storage();
+
+    vm.ecal_state_mut().counter = 5;
+
+    let script_data: Vec<u8> = file!().bytes().collect();
+    let script = vec![
+        op::ecal(0x20, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ecal(0x21, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ecal(0x22, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ecal(0x23, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::log(0x20, 0x21, 0x22, 0x23),
+        op::ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect();
+
+    let mut client = MemoryClient::from_txtor(vm.into());
+    let consensus_params = ConsensusParameters::standard();
+    let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(0)
+        .script_gas_limit(1_000_000)
+        .maturity(Default::default())
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(Default::default(), &consensus_params)
+        .expect("failed to generate a checked tx");
+    client.transact(tx);
+    let receipts = client.receipts().expect("Expected receipts");
+
+    let Receipt::Log { ra, rb, rc, rd, .. } = receipts.first().unwrap() else {
+        panic!("Expected a log receipt");
+    };
+
+    assert_eq!(*ra, 5);
+    assert_eq!(*rb, 6);
+    assert_eq!(*rc, 7);
+    assert_eq!(*rd, 8);
+}
+
+fn main() {
+    example_file_read();
+    example_counter();
 }

@@ -243,6 +243,7 @@ impl<S, Tx, Ecal> AsRef<Interpreter<S, Tx, Ecal>> for Transactor<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
+    Ecal: EcalHandler,
 {
     fn as_ref(&self) -> &Interpreter<S, Tx, Ecal> {
         &self.interpreter

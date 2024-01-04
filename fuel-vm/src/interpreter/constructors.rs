@@ -28,6 +28,7 @@ use crate::profiler::Profiler;
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: Default,
+    Ecal: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -51,7 +52,7 @@ where
             profiler: Profiler::default(),
             interpreter_params,
             panic_context: PanicContext::None,
-            _ecal_handler: core::marker::PhantomData::<Ecal>,
+            ecal_state: Ecal::default(),
         }
     }
 }

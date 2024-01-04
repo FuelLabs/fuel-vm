@@ -88,4 +88,14 @@ where
             Ok(())
         }
     }
+
+    /// Read access to the ECAL state
+    pub fn ecal_state(&self) -> &Ecal {
+        &self.ecal_state
+    }
+
+    /// Write access to the ECAL state
+    pub fn ecal_state_mut(&mut self) -> &mut Ecal {
+        &mut self.ecal_state
+    }
 }

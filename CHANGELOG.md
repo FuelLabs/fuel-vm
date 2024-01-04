@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+#### Breaking
+
+- [#653](https://github.com/FuelLabs/fuel-vm/pull/653): `ECAL` opcode handler can now hold internal state, and requires `Default` impl for initialization.
+
 ## [Version 0.43.2]
 
 ### Changed

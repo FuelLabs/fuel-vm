@@ -98,28 +98,4 @@ where
     pub fn ecal_state_mut(&mut self) -> &mut Ecal {
         &mut self.ecal_state
     }
-
-    /// Replace the ECAL state and handler.
-    /// Useful when the handler does not implement `Default`.
-    pub fn with_ecal<NewEcal: EcalHandler>(
-        self,
-        new_handler: NewEcal,
-    ) -> Interpreter<S, Tx, NewEcal> {
-        Interpreter {
-            registers: self.registers,
-            memory: self.memory,
-            frames: self.frames,
-            receipts: self.receipts,
-            tx: self.tx,
-            initial_balances: self.initial_balances,
-            storage: self.storage,
-            debugger: self.debugger,
-            context: self.context,
-            balances: self.balances,
-            profiler: self.profiler,
-            interpreter_params: self.interpreter_params,
-            panic_context: self.panic_context,
-            ecal_state: new_handler,
-        }
-    }
 }

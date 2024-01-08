@@ -57,6 +57,41 @@ where
     }
 }
 
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    Tx: Default,
+{
+    /// Create a new interpreter instance out of a storage implementation.
+    ///
+    /// If the provided storage implements
+    /// [`crate::storage::InterpreterStorage`], the returned interpreter
+    /// will provide full functionality.
+    pub fn with_storage_and_ecal(
+        storage: S,
+        interpreter_params: InterpreterParams,
+        ecal_state: Ecal,
+    ) -> Self {
+        Self {
+            registers: [0; VM_REGISTER_COUNT],
+            memory: vec![0; MEM_SIZE]
+                .try_into()
+                .expect("Failed to allocate memory"),
+            frames: vec![],
+            receipts: Default::default(),
+            tx: Default::default(),
+            initial_balances: Default::default(),
+            storage,
+            debugger: Debugger::default(),
+            context: Context::default(),
+            balances: RuntimeBalances::default(),
+            profiler: Profiler::default(),
+            interpreter_params,
+            panic_context: PanicContext::None,
+            ecal_state,
+        }
+    }
+}
+
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
@@ -119,5 +154,22 @@ where
     /// It will have full capabilities.
     pub fn with_memory_storage() -> Self {
         Self::default()
+    }
+}
+
+impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
+where
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+{
+    /// Create a new storage with a provided in-memory storage.
+    ///
+    /// It will have full capabilities.
+    pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
+        Interpreter::<MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
+            Default::default(),
+            InterpreterParams::default(),
+            ecal,
+        )
     }
 }

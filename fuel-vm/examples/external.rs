@@ -33,10 +33,7 @@ use fuel_tx::{
 };
 use fuel_vm::{
     error::SimpleResult,
-    interpreter::{
-        EcalHandler,
-        NotSupportedEcal,
-    },
+    interpreter::EcalHandler,
     prelude::{
         Interpreter,
         IntoChecked,
@@ -210,11 +207,9 @@ impl EcalHandler for SharedCounterEcal {
 
 fn example_shared_counter() {
     let vm: Interpreter<MemoryStorage, Script, SharedCounterEcal> =
-        Interpreter::<_, _, NotSupportedEcal>::with_memory_storage().with_ecal(
-            SharedCounterEcal {
-                counter: Arc::new(Mutex::new(5)),
-            },
-        );
+        Interpreter::with_memory_storage_and_ecal(SharedCounterEcal {
+            counter: Arc::new(Mutex::new(5)),
+        });
 
     let script_data: Vec<u8> = file!().bytes().collect();
     let script = vec![

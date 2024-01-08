@@ -99,7 +99,7 @@ where
 impl<Tx, Ecal> Interpreter<(), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     /// Create a new interpreter without a storage backend.
     ///

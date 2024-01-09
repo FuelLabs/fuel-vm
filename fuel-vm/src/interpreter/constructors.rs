@@ -36,24 +36,7 @@ where
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
     pub fn with_storage(storage: S, interpreter_params: InterpreterParams) -> Self {
-        Self {
-            registers: [0; VM_REGISTER_COUNT],
-            memory: vec![0; MEM_SIZE]
-                .try_into()
-                .expect("Failed to allocate memory"),
-            frames: vec![],
-            receipts: Default::default(),
-            tx: Default::default(),
-            initial_balances: Default::default(),
-            storage,
-            debugger: Debugger::default(),
-            context: Context::default(),
-            balances: RuntimeBalances::default(),
-            profiler: Profiler::default(),
-            interpreter_params,
-            panic_context: PanicContext::None,
-            ecal_state: Ecal::default(),
-        }
+        Self::with_storage_and_ecal(storage, interpreter_params, Ecal::default())
     }
 }
 

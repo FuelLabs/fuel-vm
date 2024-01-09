@@ -128,7 +128,7 @@ pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
-    _ecal_handler: core::marker::PhantomData<Ecal>,
+    ecal_state: Ecal,
 }
 
 /// Interpreter parameters

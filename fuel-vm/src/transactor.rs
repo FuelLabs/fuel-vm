@@ -49,11 +49,11 @@ where
     error: Option<InterpreterError<S::DataError>>,
 }
 
-impl<'a, S, Tx, Ecal> Transactor<S, Tx, Ecal>
+impl<S, Tx, Ecal> Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     /// Transactor constructor
     pub fn new(storage: S, interpreter_params: InterpreterParams) -> Self {
@@ -66,7 +66,13 @@ where
             error: None,
         }
     }
-
+}
+impl<'a, S, Tx, Ecal> Transactor<S, Tx, Ecal>
+where
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+{
     /// State transition representation after the execution of a transaction.
     ///
     /// Will be `None` if the last transaction resulted in a VM panic, or if no
@@ -243,6 +249,7 @@ impl<S, Tx, Ecal> AsRef<Interpreter<S, Tx, Ecal>> for Transactor<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
+    Ecal: EcalHandler,
 {
     fn as_ref(&self) -> &Interpreter<S, Tx, Ecal> {
         &self.interpreter
@@ -273,7 +280,7 @@ impl<S, Tx, Ecal> Default for Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
         Self::new(S::default(), InterpreterParams::default())

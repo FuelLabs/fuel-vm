@@ -600,23 +600,22 @@ impl IntoChecked for Transaction {
                 let (transaction, metadata) = script
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
-                Some((transaction.into(), metadata.into()))
+                Ok((transaction.into(), metadata.into()))
             }
             Transaction::Create(create) => {
                 let (transaction, metadata) = create
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
-                Some((transaction.into(), metadata.into()))
+                Ok((transaction.into(), metadata.into()))
             }
             Transaction::Mint(mint) => {
                 let (transaction, metadata) = mint
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
-                Some((transaction.into(), metadata.into()))
+                Ok((transaction.into(), metadata.into()))
             }
-            _ => None,
+            _ => Err(CheckError::UnknownVariant(format!("{:?}", self))),
         }
-        .ok_or(CheckError::UnknownVariant(format!("{:?}", &self)))
         .map(|(transaction, metadata)| Checked::basic(transaction, metadata))
     }
 }

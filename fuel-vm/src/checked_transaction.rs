@@ -385,6 +385,7 @@ impl EstimatePredicates for Transaction {
             Transaction::Script(script) => script.estimate_predicates(params),
             Transaction::Create(create) => create.estimate_predicates(params),
             Transaction::Mint(_) => Ok(()),
+            _ => unreachable!(),
         }
     }
 
@@ -400,6 +401,7 @@ impl EstimatePredicates for Transaction {
                 create.estimate_predicates_async::<E>(params).await
             }
             Transaction::Mint(_) => Ok(()),
+            _ => unreachable!(),
         }
     }
 }
@@ -511,6 +513,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Script(_), _) => unreachable!(),
             (Transaction::Create(_), _) => unreachable!(),
             (Transaction::Mint(_), _) => unreachable!(),
+            (_, _) => unreachable!(),
         }
     }
 }
@@ -609,6 +612,7 @@ impl IntoChecked for Transaction {
                     .into();
                 (transaction.into(), metadata.into())
             }
+            _ => unreachable!(),
         };
 
         Ok(Checked::basic(transaction, metadata))

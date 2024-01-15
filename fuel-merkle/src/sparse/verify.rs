@@ -214,6 +214,20 @@ mod test {
     }
 
     #[test]
+    fn verify_proof_from_empty_tree_returns_false() {
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
+        let mut storage = StorageMap::<TestTable>::new();
+        let tree = MerkleTree::new(&mut storage);
+
+        let key = random_bytes32(&mut rng);
+        let value = random_bytes32(&mut rng);
+
+        let proof = tree.generate_proof(key).unwrap();
+        let v = verify(key, &value, proof);
+        assert!(!v);
+    }
+
+    #[test]
     fn verify_proof_for_existing_key_and_correct_value_returns_true() {
         let mut rng = StdRng::seed_from_u64(0xBAADF00D);
         let mut storage = StorageMap::<TestTable>::new();

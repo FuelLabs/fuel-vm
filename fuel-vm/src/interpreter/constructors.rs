@@ -28,6 +28,7 @@ use crate::profiler::Profiler;
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: Default,
+    Ecal: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -35,6 +36,24 @@ where
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
     pub fn with_storage(storage: S, interpreter_params: InterpreterParams) -> Self {
+        Self::with_storage_and_ecal(storage, interpreter_params, Ecal::default())
+    }
+}
+
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    Tx: Default,
+{
+    /// Create a new interpreter instance out of a storage implementation.
+    ///
+    /// If the provided storage implements
+    /// [`crate::storage::InterpreterStorage`], the returned interpreter
+    /// will provide full functionality.
+    pub fn with_storage_and_ecal(
+        storage: S,
+        interpreter_params: InterpreterParams,
+        ecal_state: Ecal,
+    ) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
             memory: vec![0; MEM_SIZE]
@@ -51,7 +70,7 @@ where
             profiler: Profiler::default(),
             interpreter_params,
             panic_context: PanicContext::None,
-            _ecal_handler: core::marker::PhantomData::<Ecal>,
+            ecal_state,
         }
     }
 }
@@ -84,7 +103,7 @@ impl<S, Tx, Ecal> Default for Interpreter<S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
         Interpreter::<S, Tx, Ecal>::with_storage(
@@ -98,7 +117,7 @@ where
 impl<Tx, Ecal> Interpreter<(), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     /// Create a new interpreter without a storage backend.
     ///
@@ -111,12 +130,29 @@ where
 impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///
     /// It will have full capabilities.
     pub fn with_memory_storage() -> Self {
         Self::default()
+    }
+}
+
+impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
+where
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+{
+    /// Create a new storage with a provided in-memory storage.
+    ///
+    /// It will have full capabilities.
+    pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
+        Interpreter::<MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
+            Default::default(),
+            InterpreterParams::default(),
+            ecal,
+        )
     }
 }

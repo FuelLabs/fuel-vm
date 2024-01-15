@@ -6,9 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-# Added
+### Added
 
 - [#648](https://github.com/FuelLabs/fuel-vm/pull/648): Added support for generating proofs for Sparse Merkle Trees (SMTs) and verifying them. Proofs can be used to attest to the inclusion (Inclusion Proof) or exclusion (Exclusion Proof) of data from the set.
+
+#### Changed
+
+- [#653](https://github.com/FuelLabs/fuel-vm/pull/653): `ECAL` opcode handler can now hold internal state.
+
+#### Breaking
+
+- [#654](https://github.com/FuelLabs/fuel-vm/pull/654): Make public types versionable by making non-exhaustive.
 
 ## [Version 0.43.2]
 

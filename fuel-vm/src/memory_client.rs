@@ -45,14 +45,16 @@ impl<Ecal: EcalHandler> AsMut<MemoryStorage> for MemoryClient<Ecal> {
     }
 }
 
-impl<Ecal: EcalHandler> MemoryClient<Ecal> {
+impl<Ecal: EcalHandler + Default> MemoryClient<Ecal> {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(storage: MemoryStorage, interpreter_params: InterpreterParams) -> Self {
         Self {
             transactor: Transactor::new(storage, interpreter_params),
         }
     }
+}
 
+impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn from_txtor(transactor: Transactor<MemoryStorage, Script, Ecal>) -> Self {
         Self { transactor }
@@ -121,7 +123,7 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     }
 }
 
-impl<Ecal: EcalHandler> From<MemoryStorage> for MemoryClient<Ecal> {
+impl<Ecal: EcalHandler + Default> From<MemoryStorage> for MemoryClient<Ecal> {
     fn from(s: MemoryStorage) -> Self {
         Self::new(s, InterpreterParams::default())
     }

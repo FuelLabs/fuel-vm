@@ -180,6 +180,8 @@ pub enum CheckError {
     Validity(ValidityError),
     /// The predicate verification failed.
     PredicateVerificationFailed(PredicateVerificationFailed),
+    /// Transaction is of an unknown variant
+    UnknownVariant(alloc::string::String),
 }
 
 /// Performs checks for a transaction
@@ -385,6 +387,7 @@ impl EstimatePredicates for Transaction {
             Transaction::Script(script) => script.estimate_predicates(params),
             Transaction::Create(create) => create.estimate_predicates(params),
             Transaction::Mint(_) => Ok(()),
+            _ => Err(CheckError::UnknownVariant(alloc::format!("{:?}", &self))),
         }
     }
 
@@ -400,6 +403,7 @@ impl EstimatePredicates for Transaction {
                 create.estimate_predicates_async::<E>(params).await
             }
             Transaction::Mint(_) => Ok(()),
+            _ => Err(CheckError::UnknownVariant(alloc::format!("{:?}", &self))),
         }
     }
 }
@@ -511,6 +515,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Script(_), _) => unreachable!(),
             (Transaction::Create(_), _) => unreachable!(),
             (Transaction::Mint(_), _) => unreachable!(),
+            (_, _) => unreachable!(),
         }
     }
 }
@@ -590,28 +595,28 @@ impl IntoChecked for Transaction {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError> {
-        let (transaction, metadata) = match self {
+        match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
-                (transaction.into(), metadata.into())
+                Ok((transaction.into(), metadata.into()))
             }
             Transaction::Create(create) => {
                 let (transaction, metadata) = create
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
-                (transaction.into(), metadata.into())
+                Ok((transaction.into(), metadata.into()))
             }
             Transaction::Mint(mint) => {
                 let (transaction, metadata) = mint
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
-                (transaction.into(), metadata.into())
+                Ok((transaction.into(), metadata.into()))
             }
-        };
-
-        Ok(Checked::basic(transaction, metadata))
+            _ => Err(CheckError::UnknownVariant(alloc::format!("{:?}", self))),
+        }
+        .map(|(transaction, metadata)| Checked::basic(transaction, metadata))
     }
 }
 

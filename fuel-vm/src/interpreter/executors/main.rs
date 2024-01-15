@@ -626,7 +626,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
-    Ecal: EcalHandler,
+    Ecal: EcalHandler + Default,
 {
     /// Allocate internally a new instance of [`Interpreter`] with the provided
     /// storage, initialize it with the provided transaction and return the
@@ -644,7 +644,15 @@ where
                 StateTransition::new(state, interpreter.tx, interpreter.receipts.into())
             })
     }
+}
 
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
+    Ecal: EcalHandler,
+{
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
     /// of the interpreter and will avoid unnecessary copy with the data

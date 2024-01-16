@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Changed
 
 - [#653](https://github.com/FuelLabs/fuel-vm/pull/653): `ECAL` opcode handler can now hold internal state.
+- [#657](https://github.com/FuelLabs/fuel-vm/pull/657): Add debugger methods to remove or replace all breakpoints at once.
 
 #### Breaking
 

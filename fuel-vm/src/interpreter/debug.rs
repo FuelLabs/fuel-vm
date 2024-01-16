@@ -22,9 +22,22 @@ where
         self.debugger.set_single_stepping(single_stepping)
     }
 
+    /// Clear all set breakpoints.
+    pub fn clear_breakpoints(&mut self) {
+        self.debugger.clear_breakpoints();
+    }
+
     /// Set a new breakpoint for the provided location.
     pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {
         self.debugger.set_breakpoint(breakpoint)
+    }
+
+    /// Overwrite all breakpoints with a new set of breakpoints.
+    pub fn overwrite_breakpoints(&mut self, breakpoints: &[Breakpoint]) {
+        self.debugger.clear_breakpoints();
+        for bp in breakpoints {
+            self.debugger.set_breakpoint(*bp);
+        }
     }
 
     /// Remove a previously set breakpoint.

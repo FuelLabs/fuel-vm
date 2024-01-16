@@ -17,11 +17,6 @@ use proptest::{
     prop_compose,
     proptest,
 };
-use rand::{
-    prelude::SliceRandom,
-    rngs::StdRng,
-    SeedableRng,
-};
 
 #[derive(Debug)]
 struct TestTable;
@@ -46,9 +41,10 @@ prop_compose! {
 
 proptest! {
     #[test]
-    fn generate_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree()) {
-        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
-        if let Some((key, value)) = key_values.choose(&mut rng).cloned() {
+    fn generate_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree(), arb_num: usize) {
+        if (key_values.len() > 0) {
+            let index = arb_num % key_values.len();
+            let (key, value) = key_values[index];
             let proof = tree.generate_proof(key).expect("Infallible");
             let verification = verify(key, &value, proof);
             prop_assert!(verification)

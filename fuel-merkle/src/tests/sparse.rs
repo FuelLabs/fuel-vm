@@ -42,7 +42,7 @@ prop_compose! {
 proptest! {
     #[test]
     fn generate_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree(), arb_num: usize) {
-        if (key_values.len() > 0) {
+        if !key_values.is_empty() {
             let index = arb_num % key_values.len();
             let (key, value) = key_values[index];
             let proof = tree.generate_proof(key).expect("Infallible");

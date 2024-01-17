@@ -1,4 +1,8 @@
-pub mod hash_generic;
-pub mod merkle_tree_generic;
-pub mod node_generic;
-pub mod primitive_generic;
+pub mod branch;
+pub mod hash;
+pub mod merkle_tree;
+pub mod node;
+pub mod primitive;
+
+pub(crate) use node::Node;
+pub(crate) use primitive::Primitive;

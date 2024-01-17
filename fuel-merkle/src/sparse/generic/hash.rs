@@ -22,8 +22,8 @@ where
 {
     let mut hash = Hash::new();
     hash.update(data);
-    let h = hash.finalize();
-    let mut vec = h.as_slice().to_vec();
+    let hash = hash.finalize();
+    let mut vec = hash.as_slice().to_vec();
     vec.truncate(N);
     vec.try_into().unwrap()
 }

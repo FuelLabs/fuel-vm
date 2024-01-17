@@ -5,12 +5,12 @@ use crate::{
         AsPathIterator,
     },
     sparse::generic::{
-        node_generic::{
+        node::{
             Node,
             StorageNode,
             StorageNodeError,
         },
-        primitive_generic::Primitive,
+        primitive::Primitive,
     },
     storage::{
         Mappable,
@@ -24,7 +24,13 @@ use crate::{
         Bytes,
         Bytes32,
     },
-    sparse::generic::hash_generic::zero_sum,
+    sparse::generic::{
+        branch::{
+            merge_branches,
+            Branch,
+        },
+        hash::zero_sum,
+    },
 };
 use alloc::vec::Vec;
 use core::{
@@ -236,150 +242,150 @@ where
     >,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    //     /// Build a sparse Merkle tree from a set of key-value pairs. This is
-    //     /// equivalent to creating an empty sparse Merkle tree and sequentially
-    //     /// calling [update](Self::update) for each key-value pair. This constructor
-    //     /// is more performant than calling individual sequential updates and is the
-    //     /// preferred approach when the key-values are known upfront. Leaves can be
-    //     /// appended to the returned tree using `update` to further accumulate leaf
-    //     /// data.
-    //     pub fn from_set<B, I, D>(
-    //         mut storage: StorageType,
-    //         set: I,
-    //     ) -> Result<Self, StorageError>
-    //     where
-    //         I: Iterator<Item = (B, D)>,
-    //         B: Into<Bytes32>,
-    //         D: AsRef<[u8]>,
-    //     {
-    //         let sorted = set
-    //             .into_iter()
-    //             .map(|(k, v)| (k.into(), v))
-    //             .collect::<alloc::collections::BTreeMap<Bytes32, D>>();
-    //         let mut branches = sorted
-    //             .iter()
-    //             .filter(|(_, value)| !value.as_ref().is_empty())
-    //             .map(|(key, data)| Node::create_leaf(key, data))
-    //             .map(Into::<Branch>::into)
-    //             .collect::<Vec<_>>();
-    //
-    //         for branch in branches.iter() {
-    //             let leaf = &branch.node;
-    //             storage.insert(leaf.hash(), &leaf.as_ref().into())?;
-    //         }
-    //
-    //         if branches.is_empty() {
-    //             let tree = Self::new(storage);
-    //             return Ok(tree)
-    //         }
-    //
-    //         if branches.len() == 1 {
-    //             let leaf = branches.pop().expect("Expected at least 1 leaf").node;
-    //             let mut tree = Self::new(storage);
-    //             tree.set_root_node(leaf);
-    //             return Ok(tree)
-    //         }
-    //
-    //         let mut nodes = Vec::<Branch>::with_capacity(branches.len());
-    //         let mut proximities = Vec::<u32>::with_capacity(branches.len());
-    //
-    //         // Building the tree starts by merging all leaf nodes where possible.
-    //         // Given a set of leaf nodes sorted left to right (i.e., keys are sorted
-    //         // in lexical order), we scan the leaf set right to left, and analyze a
-    //         // moving window of three leaves: a center (or "current") leaf, its left
-    //         // neighbor, and its right neighbor.
-    //         //
-    //         // When merging leaf nodes, we analyze this three-node window to
-    //         // determine if the condition for merging is met: When the current node
-    //         // is closer to its right neighbor than it is to its left neighbor, we
-    //         // merge the current node with its right neighbor. The merged node then
-    //         // becomes the center of the window, and we must check the merge
-    //         // condition again. We calculate proximity using the common path length
-    //         // between two nodes, which is also the depth of their shared ancestor
-    //         // in the tree.
-    //         //
-    //         // This three-node window is centered around a current node, and moves
-    //         // leftward: At the next iteration, the current node is now the right
-    //         // node, the left node is now the current node, and so on. When we have
-    //         // checked all windows, we know that we have merged all leaf nodes where
-    //         // possible.
-    //         while let Some(left) = branches.pop() {
-    //             if let Some(current) = nodes.last() {
-    //                 let left_proximity = current.node.common_path_length(&left.node);
-    //                 while {
-    //                     // The current node's proximity to its right neighbor was
-    //                     // stored previously. We now compare the distances between
-    //                     // the current node's left and right neighbors. If, and only
-    //                     // if, the current node is closer to its right neighbor, we
-    //                     // merge these nodes to form an ancestor node. We then
-    //                     // reform the window, using the ancestor node in the center,
-    //                     // to check if we must merge again.
-    //                     //
-    //                     // If the current node is closer to its left, we do not have
-    //                     // enough information to merge nodes, and we must continue
-    //                     // scanning the leaf set leftwards to find a configuration
-    //                     // that satisfies the merge condition.
-    //                     if let Some(right_proximity) = proximities.last() {
-    //                         *right_proximity > left_proximity
-    //                     } else {
-    //                         false
-    //                     }
-    //                 } {
-    //                     // The current node is closer to its right neighbor than its
-    //                     // left neighbor. We now merge the current node with its
-    //                     // right neighbor.
-    //                     let current =
-    //                         nodes.pop().expect("Expected current node to be present");
-    //                     let right = nodes.pop().expect("Expected right node to be
-    // present");                     let merged = merge_branches(&mut storage,
-    // current, right)?;                     nodes.push(merged);
-    //
-    //                     // Now that the current node and its right neighbour are
-    //                     // merged, the distance between them has collapsed and their
-    //                     // proximity is no longer needed.
-    //                     proximities.pop();
-    //                 }
-    //                 proximities.push(left_proximity);
-    //             }
-    //             nodes.push(left);
-    //         }
-    //
-    //         // Where possible, all the leaves have been merged. The remaining leaves
-    //         // and nodes are stacked in order of height descending. This means that
-    //         // they are also ordered with the leftmost leaves at the top and the
-    //         // rightmost nodes at the bottom. We can iterate through the stack and
-    //         // merge them left to right.
-    //         let top = {
-    //             let mut node = nodes
-    //                 .pop()
-    //                 .expect("Nodes stack must have at least 1 element");
-    //             while let Some(next) = nodes.pop() {
-    //                 node = merge_branches(&mut storage, node, next)?;
-    //             }
-    //             node
-    //         };
-    //
-    //         // Lastly, all leaves and nodes are merged into one. The resulting node
-    //         // may still be an ancestor node below the root. To calculate the final
-    //         // root, we merge placeholder nodes along the path until the resulting
-    //         // node has the final height and forms the root node.
-    //         let mut node = top.node;
-    //         let path = top.bits;
-    //         let height = node.height();
-    //         let depth = Node::max_height() - height;
-    //         let placeholders = iter::repeat(Node::create_placeholder()).take(depth as
-    // usize);         for placeholder in placeholders {
-    //             node = Node::create_node_on_path(&path, &node, &placeholder);
-    //             storage.insert(node.hash(), &node.as_ref().into())?;
-    //         }
-    //
-    //         let tree = Self {
-    //             root_node: node,
-    //             storage,
-    //             phantom_table: Default::default(),
-    //         };
-    //         Ok(tree)
-    //     }
+    /// Build a sparse Merkle tree from a set of key-value pairs. This is
+    /// equivalent to creating an empty sparse Merkle tree and sequentially
+    /// calling [update](Self::update) for each key-value pair. This constructor
+    /// is more performant than calling individual sequential updates and is the
+    /// preferred approach when the key-values are known upfront. Leaves can be
+    /// appended to the returned tree using `update` to further accumulate leaf
+    /// data.
+    pub fn from_set<B, I, D>(
+        mut storage: StorageType,
+        set: I,
+    ) -> Result<Self, StorageError>
+    where
+        I: Iterator<Item = (B, D)>,
+        B: Into<Bytes<KEY_SIZE>>,
+        D: AsRef<[u8]>,
+    {
+        let sorted = set
+            .into_iter()
+            .map(|(k, v)| (k.into(), v))
+            .collect::<alloc::collections::BTreeMap<Bytes<KEY_SIZE>, D>>();
+        let mut branches = sorted
+            .iter()
+            .filter(|(_, value)| !value.as_ref().is_empty())
+            .map(|(key, data)| Node::create_leaf(key, data))
+            .map(Into::<Branch<KEY_SIZE>>::into)
+            .collect::<Vec<_>>();
+
+        for branch in branches.iter() {
+            let leaf = &branch.node;
+            storage.insert(leaf.hash(), &leaf.as_ref().into())?;
+        }
+
+        if branches.is_empty() {
+            let tree = Self::new(storage);
+            return Ok(tree)
+        }
+
+        if branches.len() == 1 {
+            let leaf = branches.pop().expect("Expected at least 1 leaf").node;
+            let mut tree = Self::new(storage);
+            tree.set_root_node(leaf);
+            return Ok(tree)
+        }
+
+        let mut nodes = Vec::<Branch<KEY_SIZE>>::with_capacity(branches.len());
+        let mut proximities = Vec::<u32>::with_capacity(branches.len());
+
+        // Building the tree starts by merging all leaf nodes where possible.
+        // Given a set of leaf nodes sorted left to right (i.e., keys are sorted
+        // in lexical order), we scan the leaf set right to left, and analyze a
+        // moving window of three leaves: a center (or "current") leaf, its left
+        // neighbor, and its right neighbor.
+        //
+        // When merging leaf nodes, we analyze this three-node window to
+        // determine if the condition for merging is met: When the current node
+        // is closer to its right neighbor than it is to its left neighbor, we
+        // merge the current node with its right neighbor. The merged node then
+        // becomes the center of the window, and we must check the merge
+        // condition again. We calculate proximity using the common path length
+        // between two nodes, which is also the depth of their shared ancestor
+        // in the tree.
+        //
+        // This three-node window is centered around a current node, and moves
+        // leftward: At the next iteration, the current node is now the right
+        // node, the left node is now the current node, and so on. When we have
+        // checked all windows, we know that we have merged all leaf nodes where
+        // possible.
+        while let Some(left) = branches.pop() {
+            if let Some(current) = nodes.last() {
+                let left_proximity = current.node.common_path_length(&left.node);
+                while {
+                    // The current node's proximity to its right neighbor was
+                    // stored previously. We now compare the distances between
+                    // the current node's left and right neighbors. If, and only
+                    // if, the current node is closer to its right neighbor, we
+                    // merge these nodes to form an ancestor node. We then
+                    // reform the window, using the ancestor node in the center,
+                    // to check if we must merge again.
+                    //
+                    // If the current node is closer to its left, we do not have
+                    // enough information to merge nodes, and we must continue
+                    // scanning the leaf set leftwards to find a configuration
+                    // that satisfies the merge condition.
+                    if let Some(right_proximity) = proximities.last() {
+                        *right_proximity > left_proximity
+                    } else {
+                        false
+                    }
+                } {
+                    // The current node is closer to its right neighbor than its
+                    // left neighbor. We now merge the current node with its
+                    // right neighbor.
+                    let current =
+                        nodes.pop().expect("Expected current node to be present");
+                    let right = nodes.pop().expect("Expected right node to be present");
+                    let merged = merge_branches(&mut storage, current, right)?;
+                    nodes.push(merged);
+
+                    // Now that the current node and its right neighbour are
+                    // merged, the distance between them has collapsed and their
+                    // proximity is no longer needed.
+                    proximities.pop();
+                }
+                proximities.push(left_proximity);
+            }
+            nodes.push(left);
+        }
+
+        // Where possible, all the leaves have been merged. The remaining leaves
+        // and nodes are stacked in order of height descending. This means that
+        // they are also ordered with the leftmost leaves at the top and the
+        // rightmost nodes at the bottom. We can iterate through the stack and
+        // merge them left to right.
+        let top = {
+            let mut node = nodes
+                .pop()
+                .expect("Nodes stack must have at least 1 element");
+            while let Some(next) = nodes.pop() {
+                node = merge_branches(&mut storage, node, next)?;
+            }
+            node
+        };
+
+        // Lastly, all leaves and nodes are merged into one. The resulting node
+        // may still be an ancestor node below the root. To calculate the final
+        // root, we merge placeholder nodes along the path until the resulting
+        // node has the final height and forms the root node.
+        let mut node = top.node;
+        let path = top.bits;
+        let height = node.height();
+        let depth = Node::<KEY_SIZE>::max_height() - height;
+        let placeholders = iter::repeat(Node::create_placeholder()).take(depth as usize);
+        for placeholder in placeholders {
+            node = Node::create_node_on_path(&path, &node, &placeholder);
+            storage.insert(node.hash(), &node.as_ref().into())?;
+        }
+
+        let tree = Self {
+            root_node: node,
+            storage,
+            phantom_table: Default::default(),
+        };
+        Ok(tree)
+    }
 
     pub fn update(
         &mut self,
@@ -600,7 +606,7 @@ mod test {
             Bytes,
             StorageMap,
         },
-        sparse::generic::hash_generic::{
+        sparse::generic::hash::{
             sum,
             zero_sum,
         },
@@ -608,22 +614,24 @@ mod test {
     use fuel_storage::Mappable;
     use hex;
 
-    // fn random_bytes<R>(n: usize, rng: &mut R) -> Bytes32
-    // where
-    //     R: rand::Rng + ?Sized,
-    // {
-    //     let mut bytes = vec![0u8; n];
-    //     rng.fill(&mut bytes);
-    //     bytes.try_into().unwrap()
-    // }
+    fn random_bytes<R, const SZ: usize>(rng: &mut R) -> Bytes<SZ>
+    where
+        R: rand::Rng + ?Sized,
+    {
+        let mut bytes = [0u8; SZ];
+        for byte in bytes.as_mut() {
+            *byte = rng.gen();
+        }
+        bytes
+    }
 
     #[derive(Debug)]
     struct TestTable;
 
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
-        type OwnedKey = Bytes<4>;
-        type OwnedValue = Primitive<4>;
+        type OwnedKey = Bytes<32>;
+        type OwnedValue = Primitive<32>;
         type Value = Self::OwnedValue;
     }
 
@@ -1196,7 +1204,7 @@ mod test {
 
         // Overwrite the root key-value with an invalid primitive to create a
         // DeserializeError.
-        let primitive = (0xff, 0xff, [0xff; 4], [0xff; 4]);
+        let primitive = (0xff, 0xff, [0xff; 32], [0xff; 32]);
         storage.insert(&root, &primitive).unwrap();
 
         let err = MerkleTree::load(&mut storage, &root)
@@ -1204,165 +1212,165 @@ mod test {
         assert!(matches!(err, MerkleTreeError::DeserializeError(_)));
     }
 
-    // #[test]
-    // fn test_from_set_yields_expected_root() {
-    //     let rng = &mut rand::thread_rng();
-    //     let gen = || {
-    //         Some((
-    //             MerkleTreeKey::new_without_hash(random_bytes32(rng)),
-    //             random_bytes32(rng),
-    //         ))
-    //     };
-    //     let data = std::iter::from_fn(gen).take(1_000).collect::<Vec<_>>();
-    //
-    //     let expected_root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let mut tree = MerkleTree::new(&mut storage);
-    //         let input = data.clone();
-    //         for (key, value) in input.into_iter() {
-    //             tree.update(key, &value).unwrap();
-    //         }
-    //         tree.root()
-    //     };
-    //
-    //     let root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
-    //         tree.root()
-    //     };
-    //
-    //     assert_eq!(root, expected_root);
-    // }
-    //
-    // #[test]
-    // fn test_from_empty_set_yields_expected_root() {
-    //     let rng = &mut rand::thread_rng();
-    //     let gen = || {
-    //         Some((
-    //             MerkleTreeKey::new_without_hash(random_bytes32(rng)),
-    //             random_bytes32(rng),
-    //         ))
-    //     };
-    //     let data = std::iter::from_fn(gen).take(0).collect::<Vec<_>>();
-    //
-    //     let expected_root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let mut tree = MerkleTree::new(&mut storage);
-    //         let input = data.clone();
-    //         for (key, value) in input.into_iter() {
-    //             tree.update(key, &value).unwrap();
-    //         }
-    //         tree.root()
-    //     };
-    //
-    //     let root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
-    //         tree.root()
-    //     };
-    //
-    //     assert_eq!(root, expected_root);
-    // }
-    //
-    // #[test]
-    // fn test_from_unit_set_yields_expected_root() {
-    //     let rng = &mut rand::thread_rng();
-    //     let gen = || {
-    //         Some((
-    //             MerkleTreeKey::new_without_hash(random_bytes32(rng)),
-    //             random_bytes32(rng),
-    //         ))
-    //     };
-    //     let data = std::iter::from_fn(gen).take(1).collect::<Vec<_>>();
-    //
-    //     let expected_root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let mut tree = MerkleTree::new(&mut storage);
-    //         let input = data.clone();
-    //         for (key, value) in input.into_iter() {
-    //             tree.update(key, &value).unwrap();
-    //         }
-    //         tree.root()
-    //     };
-    //
-    //     let root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
-    //         tree.root()
-    //     };
-    //
-    //     assert_eq!(root, expected_root);
-    // }
-    //
-    // #[test]
-    // fn test_from_set_with_duplicate_keys_yields_expected_root() {
-    //     let rng = &mut rand::thread_rng();
-    //     let keys = [
-    //         key(b"\x00\x00\x00\x00"),
-    //         key(b"\x00\x00\x00\x01"),
-    //         key(b"\x00\x00\x00\x02"),
-    //     ];
-    //     let data = [
-    //         (keys[0], random_bytes32(rng)),
-    //         (keys[1], random_bytes32(rng)),
-    //         (keys[2], random_bytes32(rng)),
-    //         (keys[0], random_bytes32(rng)),
-    //         (keys[1], random_bytes32(rng)),
-    //         (keys[2], random_bytes32(rng)),
-    //     ];
-    //
-    //     let expected_root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let mut tree = MerkleTree::new(&mut storage);
-    //         let input = data;
-    //         for (key, value) in input.into_iter() {
-    //             tree.update(key, &value).unwrap();
-    //         }
-    //         tree.root()
-    //     };
-    //
-    //     let root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
-    //         tree.root()
-    //     };
-    //
-    //     assert_eq!(root, expected_root);
-    // }
-    //
-    // #[test]
-    // fn test_from_set_with_empty_data_yields_expected_root() {
-    //     let rng = &mut rand::thread_rng();
-    //     let keys = [
-    //         key(b"\x00\x00\x00\x00"),
-    //         key(b"\x00\x00\x00\x01"),
-    //         key(b"\x00\x00\x00\x02"),
-    //     ];
-    //     let data = [
-    //         (keys[0], random_bytes32(rng).to_vec()),
-    //         (keys[1], random_bytes32(rng).to_vec()),
-    //         (keys[2], random_bytes32(rng).to_vec()),
-    //         (keys[0], b"".to_vec()),
-    //         (keys[1], b"".to_vec()),
-    //         (keys[2], b"".to_vec()),
-    //     ];
-    //
-    //     let expected_root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let mut tree = MerkleTree::new(&mut storage);
-    //         let input = data.clone();
-    //         for (key, value) in input.into_iter() {
-    //             tree.update(key, &value).unwrap();
-    //         }
-    //         tree.root()
-    //     };
-    //
-    //     let root = {
-    //         let mut storage = StorageMap::<TestTable>::new();
-    //         let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
-    //         tree.root()
-    //     };
-    //
-    //     assert_eq!(root, expected_root);
-    // }
+    #[test]
+    fn test_from_set_yields_expected_root() {
+        let rng = &mut rand::thread_rng();
+        let gen = || {
+            Some((
+                MerkleTreeKey::new_without_hash(random_bytes::<_, 32>(rng)),
+                random_bytes::<_, 32>(rng),
+            ))
+        };
+        let data = std::iter::from_fn(gen).take(1_000).collect::<Vec<_>>();
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let input = data.clone();
+            for (key, value) in input.into_iter() {
+                tree.update(key, &value).unwrap();
+            }
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_from_empty_set_yields_expected_root() {
+        let rng = &mut rand::thread_rng();
+        let gen = || {
+            Some((
+                MerkleTreeKey::new_without_hash(random_bytes::<_, 32>(rng)),
+                random_bytes::<_, 32>(rng),
+            ))
+        };
+        let data = std::iter::from_fn(gen).take(0).collect::<Vec<_>>();
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let input = data.clone();
+            for (key, value) in input.into_iter() {
+                tree.update(key, &value).unwrap();
+            }
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_from_unit_set_yields_expected_root() {
+        let rng = &mut rand::thread_rng();
+        let gen = || {
+            Some((
+                MerkleTreeKey::new_without_hash(random_bytes::<_, 32>(rng)),
+                random_bytes::<_, 32>(rng),
+            ))
+        };
+        let data = std::iter::from_fn(gen).take(1).collect::<Vec<_>>();
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let input = data.clone();
+            for (key, value) in input.into_iter() {
+                tree.update(key, &value).unwrap();
+            }
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_from_set_with_duplicate_keys_yields_expected_root() {
+        let rng = &mut rand::thread_rng();
+        let keys = [
+            key(b"\x00\x00\x00\x00"),
+            key(b"\x00\x00\x00\x01"),
+            key(b"\x00\x00\x00\x02"),
+        ];
+        let data = [
+            (keys[0], random_bytes::<_, 32>(rng)),
+            (keys[1], random_bytes::<_, 32>(rng)),
+            (keys[2], random_bytes::<_, 32>(rng)),
+            (keys[0], random_bytes::<_, 32>(rng)),
+            (keys[1], random_bytes::<_, 32>(rng)),
+            (keys[2], random_bytes::<_, 32>(rng)),
+        ];
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let input = data;
+            for (key, value) in input.into_iter() {
+                tree.update(key, &value).unwrap();
+            }
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn test_from_set_with_empty_data_yields_expected_root() {
+        let rng = &mut rand::thread_rng();
+        let keys = [
+            key(b"\x00\x00\x00\x00"),
+            key(b"\x00\x00\x00\x01"),
+            key(b"\x00\x00\x00\x02"),
+        ];
+        let data = [
+            (keys[0], random_bytes::<_, 32>(rng).to_vec()),
+            (keys[1], random_bytes::<_, 32>(rng).to_vec()),
+            (keys[2], random_bytes::<_, 32>(rng).to_vec()),
+            (keys[0], b"".to_vec()),
+            (keys[1], b"".to_vec()),
+            (keys[2], b"".to_vec()),
+        ];
+
+        let expected_root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let mut tree = MerkleTree::new(&mut storage);
+            let input = data.clone();
+            for (key, value) in input.into_iter() {
+                tree.update(key, &value).unwrap();
+            }
+            tree.root()
+        };
+
+        let root = {
+            let mut storage = StorageMap::<TestTable>::new();
+            let tree = MerkleTree::from_set(&mut storage, data.into_iter()).unwrap();
+            tree.root()
+        };
+
+        assert_eq!(root, expected_root);
+    }
 }

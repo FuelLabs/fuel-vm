@@ -15,11 +15,11 @@ use crate::{
         Prefix,
     },
     sparse::generic::{
-        hash_generic::{
+        hash::{
             sum,
             zero_sum,
         },
-        primitive_generic::Primitive,
+        primitive::Primitive,
     },
     storage::{
         Mappable,

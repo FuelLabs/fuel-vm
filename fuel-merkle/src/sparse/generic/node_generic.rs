@@ -14,7 +14,7 @@ use crate::{
         },
         Prefix,
     },
-    sparse::{
+    sparse::generic::{
         hash_generic::{
             sum,
             zero_sum,
@@ -27,10 +27,7 @@ use crate::{
     },
 };
 
-use crate::{
-    common::Bytes,
-    sparse::hash::Hash,
-};
+use crate::common::Bytes;
 use core::{
     cmp,
     fmt,
@@ -97,8 +94,8 @@ impl<const N: usize> Node<N> {
     }
 
     pub fn create_node(left_child: &Node<N>, right_child: &Node<N>, height: u32) -> Self {
-        let bytes_lo = left_child.hash();
-        let bytes_hi = right_child.hash();
+        let bytes_lo = *left_child.hash();
+        let bytes_hi = *right_child.hash();
         Self::Node {
             hash: Self::calculate_hash(&Prefix::Node, &bytes_lo, &bytes_hi),
             height,
@@ -180,16 +177,16 @@ impl<const N: usize> Node<N> {
         }
     }
 
-    pub fn bytes_lo(&self) -> Bytes<N> {
+    pub fn bytes_lo(&self) -> &Bytes<N> {
         match self {
-            Node::Node { bytes_lo, .. } => *bytes_lo,
+            Node::Node { bytes_lo, .. } => bytes_lo,
             Node::Placeholder => zero_sum(),
         }
     }
 
-    pub fn bytes_hi(&self) -> Bytes<N> {
+    pub fn bytes_hi(&self) -> &Bytes<N> {
         match self {
-            Node::Node { bytes_hi, .. } => *bytes_hi,
+            Node::Node { bytes_hi, .. } => bytes_hi,
             Node::Placeholder => zero_sum(),
         }
     }
@@ -202,22 +199,22 @@ impl<const N: usize> Node<N> {
         self.prefix() == Prefix::Node
     }
 
-    pub fn leaf_key(&self) -> Bytes<N> {
+    pub fn leaf_key(&self) -> &Bytes<N> {
         assert!(self.is_leaf());
         self.bytes_lo()
     }
 
-    pub fn leaf_data(&self) -> Bytes<N> {
+    pub fn leaf_data(&self) -> &Bytes<N> {
         assert!(self.is_leaf());
         self.bytes_hi()
     }
 
-    pub fn left_child_key(&self) -> Bytes<N> {
+    pub fn left_child_key(&self) -> &Bytes<N> {
         assert!(self.is_node());
         self.bytes_lo()
     }
 
-    pub fn right_child_key(&self) -> Bytes<N> {
+    pub fn right_child_key(&self) -> &Bytes<N> {
         assert!(self.is_node());
         self.bytes_hi()
     }
@@ -226,29 +223,29 @@ impl<const N: usize> Node<N> {
         &Self::Placeholder == self
     }
 
-    pub fn hash(&self) -> Bytes<N> {
+    pub fn hash(&self) -> &Bytes<N> {
         match self {
-            Node::Node { hash, .. } => *hash,
+            Node::Node { hash, .. } => hash,
             Node::Placeholder => zero_sum(),
         }
     }
 }
 
-impl<const KeySize: usize> AsRef<Node<KeySize>> for Node<KeySize> {
-    fn as_ref(&self) -> &Node<KeySize> {
+impl<const KEY_SIZE: usize> AsRef<Node<KEY_SIZE>> for Node<KEY_SIZE> {
+    fn as_ref(&self) -> &Node<KEY_SIZE> {
         self
     }
 }
 
-impl<const KeySize: usize> NodeTrait for Node<KeySize> {
-    type Key = Bytes<KeySize>;
+impl<const KEY_SIZE: usize> NodeTrait for Node<KEY_SIZE> {
+    type Key = Bytes<KEY_SIZE>;
 
     fn height(&self) -> u32 {
         Node::height(self)
     }
 
     fn leaf_key(&self) -> Self::Key {
-        Node::leaf_key(self)
+        *Node::leaf_key(self)
     }
 
     fn is_leaf(&self) -> bool {
@@ -260,7 +257,7 @@ impl<const KeySize: usize> NodeTrait for Node<KeySize> {
     }
 }
 
-impl<const KeySize: usize> fmt::Debug for Node<KeySize> {
+impl<const KEY_SIZE: usize> fmt::Debug for Node<KEY_SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {
             f.debug_struct("Node (Internal)")
@@ -280,14 +277,14 @@ impl<const KeySize: usize> fmt::Debug for Node<KeySize> {
     }
 }
 
-pub(crate) struct StorageNode<'storage, const KeySize: usize, TableType, StorageType> {
+pub(crate) struct StorageNode<'storage, const KEY_SIZE: usize, TableType, StorageType> {
     storage: &'storage StorageType,
-    node: Node<KeySize>,
+    node: Node<KEY_SIZE>,
     phantom_table: PhantomData<TableType>,
 }
 
-impl<const KeySize: usize, TableType, StorageType> Clone
-    for StorageNode<'_, KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType> Clone
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
 {
     fn clone(&self) -> Self {
         Self {
@@ -298,10 +295,10 @@ impl<const KeySize: usize, TableType, StorageType> Clone
     }
 }
 
-impl<'s, const KeySize: usize, TableType, StorageType>
-    StorageNode<'s, KeySize, TableType, StorageType>
+impl<'s, const KEY_SIZE: usize, TableType, StorageType>
+    StorageNode<'s, KEY_SIZE, TableType, StorageType>
 {
-    pub fn new(storage: &'s StorageType, node: Node<KeySize>) -> Self {
+    pub fn new(storage: &'s StorageType, node: Node<KEY_SIZE>) -> Self {
         Self {
             node,
             storage,
@@ -310,29 +307,29 @@ impl<'s, const KeySize: usize, TableType, StorageType>
     }
 }
 
-impl<const KeySize: usize, TableType, StorageType>
-    StorageNode<'_, KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType>
+    StorageNode<'_, KEY_SIZE, TableType, StorageType>
 {
-    pub fn hash(&self) -> Bytes<KeySize> {
+    pub fn hash(&self) -> &Bytes<KEY_SIZE> {
         self.node.hash()
     }
 
-    pub fn into_node(self) -> Node<KeySize> {
+    pub fn into_node(self) -> Node<KEY_SIZE> {
         self.node
     }
 }
 
-impl<const KeySize: usize, TableType, StorageType> NodeTrait
-    for StorageNode<'_, KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType> NodeTrait
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
 {
-    type Key = Bytes<KeySize>;
+    type Key = Bytes<KEY_SIZE>;
 
     fn height(&self) -> u32 {
         self.node.height()
     }
 
     fn leaf_key(&self) -> Self::Key {
-        self.node.leaf_key()
+        *self.node.leaf_key()
     }
 
     fn is_leaf(&self) -> bool {
@@ -352,14 +349,14 @@ pub enum StorageNodeError<StorageError> {
     DeserializeError(DeserializeError),
 }
 
-impl<const KeySize: usize, TableType, StorageType> ParentNodeTrait
-    for StorageNode<'_, KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType> ParentNodeTrait
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
 where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<
-        Key = Bytes<KeySize>,
-        Value = Primitive<KeySize>,
-        OwnedValue = Primitive<KeySize>,
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
     >,
 {
     type Error = StorageNodeError<StorageType::Error>;
@@ -376,7 +373,7 @@ where
             .storage
             .get(&key)
             .map_err(StorageNodeError::StorageError)?
-            .ok_or(ChildError::ChildNotFound(key))?;
+            .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
             .into_owned()
             .try_into()
@@ -396,7 +393,7 @@ where
             .storage
             .get(&key)
             .map_err(StorageNodeError::StorageError)?
-            .ok_or(ChildError::ChildNotFound(key))?;
+            .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
             .into_owned()
             .try_into()
@@ -405,14 +402,14 @@ where
     }
 }
 
-impl<const KeySize: usize, TableType, StorageType> fmt::Debug
-    for StorageNode<'_, KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType> fmt::Debug
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
 where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<
-        Key = Bytes<KeySize>,
-        Value = Primitive<KeySize>,
-        OwnedValue = Primitive<KeySize>,
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
     >,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -751,7 +748,7 @@ mod test_storage_node {
             .left_child()
             .expect_err("Expected left_child() to return Error; got Ok");
 
-        let key = storage_node.into_node().left_child_key();
+        let key = *storage_node.into_node().left_child_key();
         assert!(matches!(
             err,
             ChildError::ChildNotFound(k) if k == key
@@ -771,7 +768,7 @@ mod test_storage_node {
             .right_child()
             .expect_err("Expected right_child() to return Error; got Ok");
 
-        let key = storage_node.into_node().right_child_key();
+        let key = *storage_node.into_node().right_child_key();
         assert!(matches!(
             err,
             ChildError::ChildNotFound(k) if k == key

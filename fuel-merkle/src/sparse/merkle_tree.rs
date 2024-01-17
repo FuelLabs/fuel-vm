@@ -6,7 +6,6 @@ use crate::{
         Bytes32,
     },
     sparse::{
-        empty_sum,
         primitive::Primitive,
         Node,
         StorageNode,
@@ -19,9 +18,12 @@ use crate::{
     },
 };
 
-use crate::sparse::branch::{
-    merge_branches,
-    Branch,
+use crate::sparse::{
+    branch::{
+        merge_branches,
+        Branch,
+    },
+    zero_sum,
 };
 use alloc::vec::Vec;
 use core::{
@@ -115,7 +117,7 @@ pub struct MerkleTree<TableType, StorageType> {
 
 impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     pub const fn empty_root() -> &'static Bytes32 {
-        empty_sum()
+        zero_sum()
     }
 
     pub fn root(&self) -> Bytes32 {
@@ -568,8 +570,10 @@ mod test {
             StorageMap,
         },
         sparse::{
-            empty_sum,
-            hash::sum,
+            hash::{
+                sum,
+                zero_sum,
+            },
             MerkleTree,
             MerkleTreeError,
             MerkleTreeKey,
@@ -1128,10 +1132,10 @@ mod test {
     #[test]
     fn test_load_returns_an_empty_tree_for_empty_sum_root() {
         let mut storage = StorageMap::<TestTable>::new();
-        let tree = MerkleTree::load(&mut storage, empty_sum()).unwrap();
+        let tree = MerkleTree::load(&mut storage, zero_sum()).unwrap();
         let root = tree.root();
 
-        assert_eq!(root, *empty_sum());
+        assert_eq!(root, *zero_sum());
     }
 
     #[test]

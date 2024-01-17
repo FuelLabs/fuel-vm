@@ -4,7 +4,7 @@ use crate::{
         node::ChildError,
         AsPathIterator,
     },
-    sparse::{
+    sparse::generic::{
         node_generic::{
             Node,
             StorageNode,
@@ -19,9 +19,12 @@ use crate::{
     },
 };
 
-use crate::common::{
-    Bytes,
-    Bytes32,
+use crate::{
+    common::{
+        Bytes,
+        Bytes32,
+    },
+    sparse::generic::hash_generic::zero_sum,
 };
 use alloc::vec::Vec;
 use core::{
@@ -31,16 +34,16 @@ use core::{
 };
 
 fn truncate<const N: usize>(bytes: &[u8]) -> Bytes<N> {
-    (&bytes[0..N]).clone().try_into().unwrap()
+    (&bytes[0..N]).try_into().unwrap()
 }
 
 #[derive(Debug, Clone, derive_more::Display)]
-pub enum MerkleTreeError<const KeySize: usize, StorageError> {
+pub enum MerkleTreeError<const KEY_SIZE: usize, StorageError> {
     #[display(
         fmt = "cannot load node with key {}; the key is not found in storage",
         "hex::encode(_0)"
     )]
-    LoadError(Bytes<KeySize>),
+    LoadError(Bytes<KEY_SIZE>),
 
     #[display(fmt = "{}", _0)]
     StorageError(StorageError),
@@ -49,13 +52,13 @@ pub enum MerkleTreeError<const KeySize: usize, StorageError> {
     DeserializeError(DeserializeError),
 
     #[display(fmt = "{}", _0)]
-    ChildError(ChildError<Bytes<KeySize>, StorageNodeError<StorageError>>),
+    ChildError(ChildError<Bytes<KEY_SIZE>, StorageNodeError<StorageError>>),
 }
 
-impl<const KeySize: usize, StorageError> From<StorageError>
-    for MerkleTreeError<KeySize, StorageError>
+impl<const KEY_SIZE: usize, StorageError> From<StorageError>
+    for MerkleTreeError<KEY_SIZE, StorageError>
 {
-    fn from(err: StorageError) -> MerkleTreeError<KeySize, StorageError> {
+    fn from(err: StorageError) -> MerkleTreeError<KEY_SIZE, StorageError> {
         MerkleTreeError::StorageError(err)
     }
 }
@@ -113,21 +116,21 @@ impl<const N: usize> From<MerkleTreeKey<N>> for Bytes<N> {
 }
 
 #[derive(Debug)]
-pub struct MerkleTree<const KeySize: usize, TableType, StorageType> {
-    root_node: Node<KeySize>,
+pub struct MerkleTree<const KEY_SIZE: usize, TableType, StorageType> {
+    root_node: Node<KEY_SIZE>,
     storage: StorageType,
     phantom_table: PhantomData<TableType>,
 }
 
-impl<const KeySize: usize, TableType, StorageType>
-    MerkleTree<KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType>
+    MerkleTree<KEY_SIZE, TableType, StorageType>
 {
-    pub fn empty_root() -> Bytes<KeySize> {
-        vec![0; KeySize].try_into().unwrap()
+    pub fn empty_root() -> &'static Bytes<KEY_SIZE> {
+        zero_sum()
     }
 
-    pub fn root(&self) -> Bytes<KeySize> {
-        self.root_node().hash()
+    pub fn root(&self) -> Bytes<KEY_SIZE> {
+        *self.root_node().hash()
     }
 
     pub fn into_storage(self) -> StorageType {
@@ -140,23 +143,23 @@ impl<const KeySize: usize, TableType, StorageType>
 
     // PRIVATE
 
-    fn root_node(&self) -> &Node<KeySize> {
+    fn root_node(&self) -> &Node<KEY_SIZE> {
         &self.root_node
     }
 
-    fn set_root_node(&mut self, node: Node<KeySize>) {
-        debug_assert!(node.is_leaf() || node.height() == Node::<KeySize>::max_height());
+    fn set_root_node(&mut self, node: Node<KEY_SIZE>) {
+        debug_assert!(node.is_leaf() || node.height() == Node::<KEY_SIZE>::max_height());
         self.root_node = node;
     }
 }
 
-impl<const KeySize: usize, TableType, StorageType, StorageError>
-    MerkleTree<KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType, StorageError>
+    MerkleTree<KEY_SIZE, TableType, StorageType>
 where
     TableType: Mappable<
-        Key = Bytes<KeySize>,
-        Value = Primitive<KeySize>,
-        OwnedValue = Primitive<KeySize>,
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
     >,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
@@ -170,9 +173,9 @@ where
 
     pub fn load(
         storage: StorageType,
-        root: &Bytes<KeySize>,
-    ) -> Result<Self, MerkleTreeError<KeySize, StorageError>> {
-        if *root == Self::empty_root() {
+        root: &Bytes<KEY_SIZE>,
+    ) -> Result<Self, MerkleTreeError<KEY_SIZE, StorageError>> {
+        if root == Self::empty_root() {
             let tree = Self::new(storage);
             Ok(tree)
         } else {
@@ -195,14 +198,14 @@ where
 
     fn path_set(
         &self,
-        leaf_key: Bytes<KeySize>,
+        leaf_key: Bytes<KEY_SIZE>,
     ) -> Result<
-        (Vec<Node<KeySize>>, Vec<Node<KeySize>>),
-        MerkleTreeError<KeySize, StorageError>,
+        (Vec<Node<KEY_SIZE>>, Vec<Node<KEY_SIZE>>),
+        MerkleTreeError<KEY_SIZE, StorageError>,
     > {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
-        let (mut path_nodes, mut side_nodes): (Vec<Node<KeySize>>, Vec<Node<KeySize>>) =
+        let (mut path_nodes, mut side_nodes): (Vec<Node<KEY_SIZE>>, Vec<Node<KEY_SIZE>>) =
             root_storage_node
                 .as_path_iter(leaf_key)
                 .map(|(path_node, side_node)| {
@@ -211,7 +214,7 @@ where
                         side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
                     ))
                 })
-                .collect::<Result<Vec<_>, MerkleTreeError<KeySize, StorageError>>>()?
+                .collect::<Result<Vec<_>, MerkleTreeError<KEY_SIZE, StorageError>>>()?
                 .into_iter()
                 .unzip();
         path_nodes.reverse();
@@ -223,13 +226,13 @@ where
     }
 }
 
-impl<const KeySize: usize, TableType, StorageType, StorageError>
-    MerkleTree<KeySize, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType, StorageError>
+    MerkleTree<KEY_SIZE, TableType, StorageType>
 where
     TableType: Mappable<
-        Key = Bytes<KeySize>,
-        Value = Primitive<KeySize>,
-        OwnedValue = Primitive<KeySize>,
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
     >,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
@@ -380,9 +383,9 @@ where
 
     pub fn update(
         &mut self,
-        key: MerkleTreeKey<KeySize>,
+        key: MerkleTreeKey<KEY_SIZE>,
         data: &[u8],
-    ) -> Result<(), MerkleTreeError<KeySize, StorageError>> {
+    ) -> Result<(), MerkleTreeError<KEY_SIZE, StorageError>> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
             // given key.
@@ -411,20 +414,20 @@ where
 
     pub fn delete(
         &mut self,
-        key: MerkleTreeKey<KeySize>,
-    ) -> Result<(), MerkleTreeError<KeySize, StorageError>> {
-        if self.root() == Self::empty_root() {
+        key: MerkleTreeKey<KEY_SIZE>,
+    ) -> Result<(), MerkleTreeError<KEY_SIZE, StorageError>> {
+        if self.root() == *Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
             return Ok(())
         }
 
         let key = key.into();
-        let (path_nodes, side_nodes): (Vec<Node<KeySize>>, Vec<Node<KeySize>>) =
+        let (path_nodes, side_nodes): (Vec<Node<KEY_SIZE>>, Vec<Node<KEY_SIZE>>) =
             self.path_set(key)?;
 
         match path_nodes.get(0) {
-            Some(node) if node.leaf_key() == key => {
+            Some(node) if node.leaf_key() == &key => {
                 self.delete_with_path_set(
                     &key,
                     path_nodes.as_slice(),
@@ -441,9 +444,9 @@ where
 
     fn update_with_path_set(
         &mut self,
-        requested_leaf_node: &Node<KeySize>,
-        path_nodes: &[Node<KeySize>],
-        side_nodes: &[Node<KeySize>],
+        requested_leaf_node: &Node<KEY_SIZE>,
+        path_nodes: &[Node<KEY_SIZE>],
+        side_nodes: &[Node<KEY_SIZE>],
     ) -> Result<(), StorageError> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
@@ -479,7 +482,7 @@ where
             // Merge leaves
             if !actual_leaf_node.is_placeholder() {
                 current_node =
-                    Node::create_node_on_path(&path, &current_node, actual_leaf_node);
+                    Node::create_node_on_path(path, &current_node, actual_leaf_node);
                 self.storage
                     .insert(&current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -492,7 +495,7 @@ where
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {
                 current_node =
-                    Node::create_node_on_path(&path, &current_node, &placeholder);
+                    Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
                     .insert(&current_node.hash(), &current_node.as_ref().into())?;
             }
@@ -502,7 +505,7 @@ where
 
         // Merge side nodes
         for side_node in side_nodes {
-            current_node = Node::create_node_on_path(&path, &current_node, side_node);
+            current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
                 .insert(&current_node.hash(), &current_node.as_ref().into())?;
         }
@@ -518,9 +521,9 @@ where
 
     fn delete_with_path_set(
         &mut self,
-        requested_leaf_key: &Bytes<KeySize>,
-        path_nodes: &[Node<KeySize>],
-        side_nodes: &[Node<KeySize>],
+        requested_leaf_key: &Bytes<KEY_SIZE>,
+        path_nodes: &[Node<KEY_SIZE>],
+        side_nodes: &[Node<KEY_SIZE>],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
             self.storage.remove(&node.hash())?;
@@ -597,7 +600,7 @@ mod test {
             Bytes,
             StorageMap,
         },
-        sparse::hash_generic::{
+        sparse::generic::hash_generic::{
             sum,
             zero_sum,
         },
@@ -624,7 +627,7 @@ mod test {
         type Value = Self::OwnedValue;
     }
 
-    fn key<const KeySize: usize, B: AsRef<[u8]>>(data: B) -> MerkleTreeKey<KeySize> {
+    fn key<const KEY_SIZE: usize, B: AsRef<[u8]>>(data: B) -> MerkleTreeKey<KEY_SIZE> {
         MerkleTreeKey::new_without_hash(sum(data.as_ref()))
     }
 
@@ -1068,7 +1071,7 @@ mod test {
         let leaf_1_data = b"DATA_1";
         let leaf_1 = Node::create_leaf(&leaf_1_key.0, leaf_1_data);
 
-        let leaf_2_key = MerkleTreeKey::new_without_hash(leaf_1.hash());
+        let leaf_2_key = MerkleTreeKey::new_without_hash(*leaf_1.hash());
         let leaf_2_data = b"DATA_2";
         let leaf_2 = Node::create_leaf(&leaf_2_key.0, leaf_2_data);
 
@@ -1155,7 +1158,7 @@ mod test {
         let tree = MerkleTree::load(&mut storage, &zero_sum()).unwrap();
         let root = tree.root();
 
-        assert_eq!(root, zero_sum());
+        assert_eq!(root, *zero_sum());
     }
 
     #[test]

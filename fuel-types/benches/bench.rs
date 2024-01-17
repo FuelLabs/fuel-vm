@@ -125,7 +125,7 @@ pub fn criterion_benchmark2(c: &mut Criterion) {
         let original = black_box(Bytes64::from([1u8; 64]));
         b.iter(|| {
             let serialized = black_box(bincode::serialize(&original)).unwrap();
-            let _: Bytes32 = black_box(bincode::deserialize(&serialized)).unwrap();
+            let _: Bytes64 = black_box(bincode::deserialize(&serialized)).unwrap();
         });
     });
 
@@ -141,7 +141,7 @@ pub fn criterion_benchmark2(c: &mut Criterion) {
         let original = black_box(Bytes64::from([1u8; 64]));
         b.iter(|| {
             let serialized = black_box(postcard::to_stdvec(&original)).unwrap();
-            let _: Bytes32 = black_box(postcard::from_bytes(&serialized)).unwrap();
+            let _: Bytes64 = black_box(postcard::from_bytes(&serialized)).unwrap();
         });
     });
 
@@ -158,7 +158,7 @@ pub fn criterion_benchmark2(c: &mut Criterion) {
         let original = black_box(Bytes64::from([1u8; 64]));
         b.iter(|| {
             let serialized = black_box(original.to_bytes());
-            let _: Bytes32 =
+            let _: Bytes64 =
                 black_box(canonical::Deserialize::from_bytes(&serialized)).unwrap();
         });
     });

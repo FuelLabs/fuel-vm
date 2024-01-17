@@ -404,7 +404,8 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
         Ok(result)
     }
 
-    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+    #[cfg(feature = "alloc")]
+    fn visit_byte_buf<E>(self, v: alloc::vec::Vec<u8>) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {

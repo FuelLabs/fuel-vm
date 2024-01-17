@@ -13,10 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Changed
 
 - [#653](https://github.com/FuelLabs/fuel-vm/pull/653): `ECAL` opcode handler can now hold internal state.
+- [#657](https://github.com/FuelLabs/fuel-vm/pull/657): Add debugger methods to remove or replace all breakpoints at once.
 
 #### Breaking
 
 - [#654](https://github.com/FuelLabs/fuel-vm/pull/654): Make public types versionable by making non-exhaustive.
+- [#658](https://github.com/FuelLabs/fuel-vm/pull/658): Make `key!`-generated types like `Address`, `AssetId`, `ContractId` and `Bytes32` consume one less byte when serialized with a binary serde serializer like postcard.
 
 ## [Version 0.43.2]
 

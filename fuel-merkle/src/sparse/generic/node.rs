@@ -441,7 +441,7 @@ mod test_node {
             PrefixError,
         },
         sparse::{
-            hash::sum,
+            generic::hash::sum,
             zero_sum,
             Node,
             Primitive,
@@ -452,13 +452,13 @@ mod test_node {
         let mut buffer = [0; 65];
         buffer[0..1].clone_from_slice(Prefix::Leaf.as_ref());
         buffer[1..33].clone_from_slice(key);
-        buffer[33..65].clone_from_slice(&sum(data));
+        buffer[33..65].clone_from_slice(&sum::<_, 32>(data));
         sum(buffer)
     }
 
     #[test]
     fn test_create_leaf_returns_a_valid_leaf() {
-        let leaf = Node::create_leaf(&sum(b"LEAF"), [1u8; 32]);
+        let leaf = Node::<32>::create_leaf(&sum(b"LEAF"), [1u8; 32]);
         assert_eq!(leaf.is_leaf(), true);
         assert_eq!(leaf.is_node(), false);
         assert_eq!(leaf.height(), 0);
@@ -488,7 +488,7 @@ mod test_node {
 
     #[test]
     fn test_create_placeholder_returns_a_placeholder_node() {
-        let node = Node::create_placeholder();
+        let node = Node::<32>::create_placeholder();
         assert_eq!(node.is_placeholder(), true);
         assert_eq!(node.hash(), zero_sum());
     }
@@ -497,7 +497,7 @@ mod test_node {
     fn test_create_leaf_from_primitive_returns_a_valid_leaf() {
         let primitive = (0, Prefix::Leaf as u8, [0xff; 32], [0xff; 32]);
 
-        let node: Node = primitive.try_into().unwrap();
+        let node: Node<32> = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), true);
         assert_eq!(node.is_node(), false);
         assert_eq!(node.height(), 0);
@@ -510,7 +510,7 @@ mod test_node {
     fn test_create_node_from_primitive_returns_a_valid_node() {
         let primitive = (255, Prefix::Node as u8, [0xff; 32], [0xff; 32]);
 
-        let node: Node = primitive.try_into().unwrap();
+        let node: Node<32> = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), false);
         assert_eq!(node.is_node(), true);
         assert_eq!(node.height(), 255);
@@ -570,9 +570,9 @@ mod test_node {
     fn test_leaf_hash_returns_expected_hash_value() {
         let mut expected_buffer = [0u8; 65];
         expected_buffer[0..1].clone_from_slice(Prefix::Leaf.as_ref());
-        expected_buffer[1..33].clone_from_slice(&sum(b"LEAF"));
-        expected_buffer[33..65].clone_from_slice(&sum([1u8; 32]));
-        let expected_value = sum(expected_buffer);
+        expected_buffer[1..33].clone_from_slice(&sum::<_, 32>(b"LEAF"));
+        expected_buffer[33..65].clone_from_slice(&sum::<_, 32>([1u8; 32]));
+        let expected_value = sum::<_, 32>(expected_buffer);
 
         let node = Node::create_leaf(&sum(b"LEAF"), [1u8; 32]);
         let value = *node.hash();
@@ -590,7 +590,7 @@ mod test_node {
             .clone_from_slice(&leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]));
         expected_buffer[33..65]
             .clone_from_slice(&leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]));
-        let expected_value = sum(expected_buffer);
+        let expected_value = sum::<_, 32>(expected_buffer);
 
         let left_child = Node::create_leaf(&sum(b"LEFT CHILD"), [1u8; 32]);
         let right_child = Node::create_leaf(&sum(b"RIGHT CHILD"), [1u8; 32]);
@@ -621,7 +621,7 @@ mod test_storage_node {
             StorageMap,
         },
         sparse::{
-            hash::sum,
+            generic::hash::sum,
             Primitive,
         },
         storage::{

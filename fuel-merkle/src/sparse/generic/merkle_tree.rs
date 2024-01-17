@@ -644,7 +644,8 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let tree = MerkleTree::new(&mut storage);
         let root = tree.root();
-        let expected_root = "00000000";
+        let expected_root =
+            "0000000000000000000000000000000000000000000000000000000000000000";
         assert_eq!(hex::encode(root), expected_root);
     }
 

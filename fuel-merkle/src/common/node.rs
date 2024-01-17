@@ -1,7 +1,4 @@
-use crate::common::{
-    Bytes32,
-    Bytes8,
-};
+use crate::common::Bytes;
 
 use alloc::string::String;
 use core::{
@@ -61,15 +58,23 @@ where
     }
 }
 
-impl KeyFormatting for Bytes8 {
-    type PrettyType = u64;
+// impl KeyFormatting for Bytes8 {
+//     type PrettyType = u64;
+//
+//     fn pretty(&self) -> Self::PrettyType {
+//         u64::from_be_bytes(*self)
+//     }
+// }
+//
+// impl KeyFormatting for Bytes32 {
+//     type PrettyType = String;
+//
+//     fn pretty(&self) -> Self::PrettyType {
+//         hex::encode(self)
+//     }
+// }
 
-    fn pretty(&self) -> Self::PrettyType {
-        u64::from_be_bytes(*self)
-    }
-}
-
-impl KeyFormatting for Bytes32 {
+impl<const N: usize> KeyFormatting for Bytes<N> {
     type PrettyType = String;
 
     fn pretty(&self) -> Self::PrettyType {

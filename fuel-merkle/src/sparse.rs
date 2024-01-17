@@ -19,6 +19,11 @@ pub use merkle_tree::{
 pub use primitive::Primitive;
 pub mod in_memory;
 
+mod hash_generic;
+mod merkle_tree_generic;
+mod node_generic;
+mod primitive_generic;
+
 use crate::common::Bytes32;
 
 pub const fn empty_sum() -> &'static Bytes32 {

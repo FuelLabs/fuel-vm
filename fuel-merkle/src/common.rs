@@ -31,6 +31,17 @@ pub type Bytes4 = [u8; 4];
 pub type Bytes8 = [u8; 8];
 pub type Bytes16 = [u8; 16];
 pub type Bytes32 = [u8; 32];
+pub type Bytes<const N: usize> = [u8; N];
+
+pub trait Zero {
+    fn zero() -> Self;
+}
+
+impl<const N: usize> Zero for [u8; N] {
+    fn zero() -> Self {
+        [0u8; N]
+    }
+}
 
 use alloc::vec::Vec;
 pub type ProofSet = Vec<Bytes32>;

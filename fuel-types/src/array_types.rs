@@ -316,6 +316,7 @@ macro_rules! key_methods {
 
         #[cfg(feature = "serde")]
         impl serde::Serialize for $i {
+            #[inline(always)]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: serde::Serializer,
@@ -326,7 +327,7 @@ macro_rules! key_methods {
                     serializer.serialize_str(&format!("{:x}", &self))
                 } else {
                     // Fixed-size arrays are tuples in serde data model
-                    let mut arr = serializer.serialize_tuple(self.0.len())?;
+                    let mut arr = serializer.serialize_tuple($s)?;
                     for elem in &self.0 {
                         arr.serialize_element(elem)?;
                     }
@@ -337,6 +338,7 @@ macro_rules! key_methods {
 
         #[cfg(feature = "serde")]
         impl<'de> serde::Deserialize<'de> for $i {
+            #[inline(always)]
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,
@@ -398,6 +400,7 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
         write!(formatter, "an array of {S} bytes")
     }
 
+    #[inline(always)]
     fn visit_borrowed_bytes<E>(self, items: &'de [u8]) -> Result<Self::Value, E> {
         let mut result = [0u8; S];
         result.copy_from_slice(items);
@@ -405,6 +408,7 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
     }
 
     #[cfg(feature = "alloc")]
+    #[inline(always)]
     fn visit_byte_buf<E>(self, v: alloc::vec::Vec<u8>) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
@@ -412,6 +416,7 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
         self.visit_borrowed_bytes(v.as_slice())
     }
 
+    #[inline(always)]
     fn visit_seq<A>(self, mut value: A) -> Result<Self::Value, A::Error>
     where
         A: serde::de::SeqAccess<'de>,

@@ -341,47 +341,13 @@ macro_rules! key_methods {
             where
                 D: serde::Deserializer<'de>,
             {
-                use serde::de::{
-                    self,
-                    Error,
-                    Visitor,
-                };
+                use serde::de::Error;
                 if deserializer.is_human_readable() {
                     let s: alloc::string::String =
                         serde::Deserialize::deserialize(deserializer)?;
                     s.parse().map_err(D::Error::custom)
                 } else {
-                    /// This is what serde needs to deserialize a fixed-size array
-                    pub struct ArrayVisitor;
-                    impl<'de> Visitor<'de> for ArrayVisitor {
-                        type Value = [u8; $s];
-
-                        fn expecting(
-                            &self,
-                            formatter: &mut fmt::Formatter,
-                        ) -> fmt::Result {
-                            formatter.write_str("a byte array")
-                        }
-
-                        fn visit_seq<A>(
-                            self,
-                            mut value: A,
-                        ) -> Result<Self::Value, A::Error>
-                        where
-                            A: de::SeqAccess<'de>,
-                        {
-                            let mut arr = [0u8; $s];
-                            for (i, elem) in arr.iter_mut().enumerate() {
-                                *elem = value
-                                    .next_element()?
-                                    .ok_or_else(|| de::Error::invalid_length(i, &self))?;
-                            }
-                            Ok(arr)
-                        }
-                    }
-                    let arr = deserializer.deserialize_tuple($s, ArrayVisitor)?;
-
-                    Ok(Self(arr))
+                    deserializer.deserialize_tuple($s, ArrayVisitor).map(Self)
                 }
             }
         }
@@ -422,10 +388,10 @@ impl From<u64> for Nonce {
 
 /// A visitor for deserializing a fixed-size byte array.
 #[cfg(feature = "serde")]
-struct BytesVisitor<const S: usize>;
+struct ArrayVisitor<const S: usize>;
 
 #[cfg(feature = "serde")]
-impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
+impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
     type Value = [u8; S];
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -436,6 +402,26 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
         let mut result = [0u8; S];
         result.copy_from_slice(items);
         Ok(result)
+    }
+
+    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        self.visit_borrowed_bytes(v.as_slice())
+    }
+
+    fn visit_seq<A>(self, mut value: A) -> Result<Self::Value, A::Error>
+    where
+        A: serde::de::SeqAccess<'de>,
+    {
+        let mut arr = [0u8; S];
+        for (i, elem) in arr.iter_mut().enumerate() {
+            *elem = value
+                .next_element()?
+                .ok_or_else(|| serde::de::Error::invalid_length(i, &self))?;
+        }
+        Ok(arr)
     }
 }
 

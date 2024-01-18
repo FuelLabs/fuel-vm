@@ -321,10 +321,16 @@ macro_rules! key_methods {
                 S: serde::Serializer,
             {
                 use alloc::format;
+                use serde::ser::SerializeTuple;
                 if serializer.is_human_readable() {
                     serializer.serialize_str(&format!("{:x}", &self))
                 } else {
-                    serializer.serialize_bytes(&self.0)
+                    // Fixed-size arrays are tuples in serde data model
+                    let mut arr = serializer.serialize_tuple(self.0.len())?;
+                    for elem in &self.0 {
+                        arr.serialize_element(elem)?;
+                    }
+                    arr.end()
                 }
             }
         }
@@ -335,14 +341,47 @@ macro_rules! key_methods {
             where
                 D: serde::Deserializer<'de>,
             {
-                use serde::de::Error;
+                use serde::de::{
+                    self,
+                    Error,
+                    Visitor,
+                };
                 if deserializer.is_human_readable() {
                     let s: alloc::string::String =
                         serde::Deserialize::deserialize(deserializer)?;
                     s.parse().map_err(D::Error::custom)
                 } else {
-                    let bytes = deserializer.deserialize_bytes(BytesVisitor {})?;
-                    Ok(Self(bytes))
+                    /// This is what serde needs to deserialize a fixed-size array
+                    pub struct ArrayVisitor;
+                    impl<'de> Visitor<'de> for ArrayVisitor {
+                        type Value = [u8; $s];
+
+                        fn expecting(
+                            &self,
+                            formatter: &mut fmt::Formatter,
+                        ) -> fmt::Result {
+                            formatter.write_str("a byte array")
+                        }
+
+                        fn visit_seq<A>(
+                            self,
+                            mut value: A,
+                        ) -> Result<Self::Value, A::Error>
+                        where
+                            A: de::SeqAccess<'de>,
+                        {
+                            let mut arr = [0u8; $s];
+                            for (i, elem) in arr.iter_mut().enumerate() {
+                                *elem = value
+                                    .next_element()?
+                                    .ok_or_else(|| de::Error::invalid_length(i, &self))?;
+                            }
+                            Ok(arr)
+                        }
+                    }
+                    let arr = deserializer.deserialize_tuple($s, ArrayVisitor)?;
+
+                    Ok(Self(arr))
                 }
             }
         }
@@ -432,8 +471,7 @@ mod tests_serde {
         let original: Address = rng.gen();
         let serialized = postcard::to_stdvec(&original).expect("Serialization failed");
         let expected_vec = original.0.to_vec();
-        assert_eq!(serialized[0], 32);
-        assert_eq!(&serialized[1..], &expected_vec);
+        assert_eq!(&serialized, &expected_vec);
         let recreated: Address =
             postcard::from_bytes(&serialized).expect("Deserialization failed");
         assert_eq!(original, recreated);

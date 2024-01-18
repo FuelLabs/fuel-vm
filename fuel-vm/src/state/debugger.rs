@@ -43,6 +43,11 @@ impl Debugger {
     }
 
     /// Set a new breakpoint in the provided location.
+    pub fn clear_breakpoints(&mut self) {
+        self.breakpoints.clear();
+    }
+
+    /// Set a new breakpoint in the provided location.
     pub fn set_breakpoint(&mut self, breakpoint: Breakpoint) {
         self.is_active = true;
         let contract = *breakpoint.contract();

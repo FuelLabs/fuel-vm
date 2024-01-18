@@ -5,7 +5,7 @@ use crate::{
         Prefix,
         PrefixError,
     },
-    sparse::generic::node::Node,
+    sparse::generic::Node,
 };
 
 /// **Leaf buffer:**

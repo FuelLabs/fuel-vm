@@ -15,7 +15,6 @@ use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
 use sha2::Sha256;
 
-
 type Hash = Sha256;
 
 pub fn sum(data: &[u8]) -> Bytes32 {

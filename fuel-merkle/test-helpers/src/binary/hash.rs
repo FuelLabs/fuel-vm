@@ -1,7 +1,6 @@
 use digest::Digest;
 use sha2::Sha256 as Hash;
 
-
 pub type Data = [u8; 32];
 
 const NODE: u8 = 0x01;

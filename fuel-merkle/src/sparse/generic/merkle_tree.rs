@@ -84,9 +84,7 @@ impl<const N: usize> MerkleTreeKey<N> {
         use digest::Digest;
         let mut hash = sha2::Sha256::new();
         hash.update(storage_key.as_ref());
-        let hash: Bytes32 = hash
-            .finalize()
-            .into();
+        let hash: Bytes32 = hash.finalize().into();
         let truncated = truncate::<N>(&hash);
         Self(truncated)
     }

@@ -3,16 +3,13 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use std::{
-    convert::TryInto,
-    sync::OnceLock,
-};
+use once_cell::sync::OnceCell;
 
 use digest::Digest;
 use sha2::Sha256 as Hash;
 
 pub fn zero_sum<const N: usize>() -> &'static [u8; N] {
-    static ZERO: OnceLock<Vec<u8>> = OnceLock::new();
+    static ZERO: OnceCell<Vec<u8>> = OnceCell::new();
     ZERO.get_or_init(|| vec![0; N])
         .as_slice()
         .try_into()

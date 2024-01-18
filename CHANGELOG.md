@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Changed
 
+- [#660](https://github.com/FuelLabs/fuel-vm/pull/660): Added generic argument to the sparse Merkle tree to allow users to define the key space. The default export sparse Merkle tree is defined as the 32 byte SMT to ensure compatability. 
 - [#653](https://github.com/FuelLabs/fuel-vm/pull/653): `ECAL` opcode handler can now hold internal state.
 - [#657](https://github.com/FuelLabs/fuel-vm/pull/657): Add debugger methods to remove or replace all breakpoints at once.
 

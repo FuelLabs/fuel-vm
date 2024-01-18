@@ -441,9 +441,13 @@ mod test_node {
             PrefixError,
         },
         sparse::{
-            generic::hash::sum,
-            zero_sum,
-            Node,
+            generic::{
+                hash::{
+                    sum,
+                    zero_sum,
+                },
+                Node,
+            },
             Primitive,
         },
     };

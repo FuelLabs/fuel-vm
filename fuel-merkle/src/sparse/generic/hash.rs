@@ -3,14 +3,14 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use once_cell::sync::OnceCell;
+use once_cell::race::OnceBox;
 
 use digest::Digest;
 use sha2::Sha256 as Hash;
 
 pub fn zero_sum<const N: usize>() -> &'static [u8; N] {
-    static ZERO: OnceCell<Vec<u8>> = OnceCell::new();
-    ZERO.get_or_init(|| vec![0; N])
+    static ZERO: OnceBox<Vec<u8>> = OnceBox::new();
+    ZERO.get_or_init(|| Box::new(vec![0; N]))
         .as_slice()
         .try_into()
         .expect("Expected valid zero sum")

@@ -86,8 +86,7 @@ impl<const N: usize> MerkleTreeKey<N> {
         hash.update(storage_key.as_ref());
         let hash: Bytes32 = hash
             .finalize()
-            .try_into()
-            .expect("`sha2::Sha256` can't fail during hashing");
+            .into();
         let truncated = truncate::<N>(&hash);
         Self(truncated)
     }
@@ -402,7 +401,7 @@ where
         let key = key.into();
         let leaf_node = Node::create_leaf(&key, data);
         self.storage
-            .insert(&leaf_node.hash(), &leaf_node.as_ref().into())?;
+            .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
@@ -432,7 +431,7 @@ where
         let (path_nodes, side_nodes): (Vec<Node<KEY_SIZE>>, Vec<Node<KEY_SIZE>>) =
             self.path_set(key)?;
 
-        match path_nodes.get(0) {
+        match path_nodes.first() {
             Some(node) if node.leaf_key() == &key => {
                 self.delete_with_path_set(
                     &key,
@@ -490,7 +489,7 @@ where
                 current_node =
                     Node::create_node_on_path(path, &current_node, actual_leaf_node);
                 self.storage
-                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                    .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
 
             // Merge placeholders
@@ -503,21 +502,21 @@ where
                 current_node =
                     Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
-                    .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                    .insert(current_node.hash(), &current_node.as_ref().into())?;
             }
         } else {
-            self.storage.remove(&actual_leaf_node.hash())?;
+            self.storage.remove(actual_leaf_node.hash())?;
         }
 
         // Merge side nodes
         for side_node in side_nodes {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
 
         for node in path_nodes.iter().skip(1 /* leaf */) {
-            self.storage.remove(&node.hash())?;
+            self.storage.remove(node.hash())?;
         }
 
         self.set_root_node(current_node);
@@ -532,7 +531,7 @@ where
         side_nodes: &[Node<KEY_SIZE>],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
-            self.storage.remove(&node.hash())?;
+            self.storage.remove(node.hash())?;
         }
 
         let path = requested_leaf_key;
@@ -574,7 +573,7 @@ where
                     current_node =
                         Node::create_node_on_path(path, &current_node, side_node);
                     self.storage
-                        .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                        .insert(current_node.hash(), &current_node.as_ref().into())?;
                 }
             }
         }
@@ -583,7 +582,7 @@ where
         for side_node in side_nodes_iter {
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
-                .insert(&current_node.hash(), &current_node.as_ref().into())?;
+                .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
 
         self.set_root_node(current_node);
@@ -1088,7 +1087,7 @@ mod test {
         tree.update(leaf_1_key, leaf_1_data).unwrap();
         assert_eq!(
             tree.storage
-                .get(&leaf_2.hash())
+                .get(leaf_2.hash())
                 .unwrap()
                 .unwrap()
                 .into_owned(),
@@ -1096,7 +1095,7 @@ mod test {
         );
         assert_eq!(
             tree.storage
-                .get(&leaf_1.hash())
+                .get(leaf_1.hash())
                 .unwrap()
                 .unwrap()
                 .into_owned(),
@@ -1164,7 +1163,7 @@ mod test {
     #[test]
     fn test_load_returns_an_empty_tree_for_empty_sum_root() {
         let mut storage = StorageMap::<TestTable>::new();
-        let tree = MerkleTree::load(&mut storage, &zero_sum()).unwrap();
+        let tree = MerkleTree::load(&mut storage, zero_sum()).unwrap();
         let root = tree.root();
 
         assert_eq!(root, *zero_sum());

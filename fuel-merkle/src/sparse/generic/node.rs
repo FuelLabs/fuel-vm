@@ -159,7 +159,7 @@ impl<const N: usize> Node<N> {
         if self.is_placeholder() || other.is_placeholder() {
             0
         } else {
-            self.leaf_key().common_path_length(&other.leaf_key())
+            self.leaf_key().common_path_length(other.leaf_key())
         }
     }
 
@@ -371,7 +371,7 @@ where
         }
         let primitive = self
             .storage
-            .get(&key)
+            .get(key)
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
@@ -391,7 +391,7 @@ where
         }
         let primitive = self
             .storage
-            .get(&key)
+            .get(key)
             .map_err(StorageNodeError::StorageError)?
             .ok_or(ChildError::ChildNotFound(*key))?;
         Ok(primitive
@@ -648,13 +648,13 @@ mod test_storage_node {
         let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), [1u8; 32]);
-        let _ = s.insert(&leaf_0.hash(), &leaf_0.as_ref().into());
+        let _ = s.insert(leaf_0.hash(), &leaf_0.as_ref().into());
 
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), [1u8; 32]);
-        let _ = s.insert(&leaf_1.hash(), &leaf_1.as_ref().into());
+        let _ = s.insert(leaf_1.hash(), &leaf_1.as_ref().into());
 
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
-        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
+        let _ = s.insert(node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.left_child().unwrap();
@@ -667,13 +667,13 @@ mod test_storage_node {
         let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), [1u8; 32]);
-        let _ = s.insert(&leaf_0.hash(), &leaf_0.as_ref().into());
+        let _ = s.insert(leaf_0.hash(), &leaf_0.as_ref().into());
 
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), [1u8; 32]);
-        let _ = s.insert(&leaf_1.hash(), &leaf_1.as_ref().into());
+        let _ = s.insert(leaf_1.hash(), &leaf_1.as_ref().into());
 
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
-        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
+        let _ = s.insert(node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.right_child().unwrap();
@@ -686,10 +686,10 @@ mod test_storage_node {
         let mut s = StorageMap::<TestTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), [1u8; 32]);
-        let _ = s.insert(&leaf.hash(), &leaf.as_ref().into());
+        let _ = s.insert(leaf.hash(), &leaf.as_ref().into());
 
         let node_0 = Node::create_node(&Node::create_placeholder(), &leaf, 1);
-        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
+        let _ = s.insert(node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.left_child().unwrap();
@@ -702,10 +702,10 @@ mod test_storage_node {
         let mut s = StorageMap::<TestTable>::new();
 
         let leaf = Node::create_leaf(&sum(b"Goodbye World"), [1u8; 32]);
-        let _ = s.insert(&leaf.hash(), &leaf.as_ref().into());
+        let _ = s.insert(leaf.hash(), &leaf.as_ref().into());
 
         let node_0 = Node::create_node(&leaf, &Node::create_placeholder(), 1);
-        let _ = s.insert(&node_0.hash(), &node_0.as_ref().into());
+        let _ = s.insert(node_0.hash(), &node_0.as_ref().into());
 
         let storage_node = StorageNode::new(&s, node_0);
         let child = storage_node.right_child().unwrap();
@@ -784,7 +784,7 @@ mod test_storage_node {
         let mut s = StorageMap::<TestTable>::new();
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), [1u8; 32]);
-        let _ = s.insert(&leaf_0.hash(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
+        let _ = s.insert(leaf_0.hash(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), [1u8; 32]);
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 
@@ -807,7 +807,7 @@ mod test_storage_node {
 
         let leaf_0 = Node::create_leaf(&sum(b"Hello World"), [1u8; 32]);
         let leaf_1 = Node::create_leaf(&sum(b"Goodbye World"), [1u8; 32]);
-        let _ = s.insert(&leaf_1.hash(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
+        let _ = s.insert(leaf_1.hash(), &(0xff, 0xff, [0xff; 32], [0xff; 32]));
         let node_0 = Node::create_node(&leaf_0, &leaf_1, 1);
 
         let storage_node = StorageNode::new(&s, node_0);

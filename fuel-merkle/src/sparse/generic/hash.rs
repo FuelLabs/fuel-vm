@@ -1,12 +1,15 @@
 use crate::common::Bytes;
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use std::{
     convert::TryInto,
     sync::OnceLock,
 };
 
 use digest::Digest;
-use sha2::Sha256;
-pub(crate) type Hash = Sha256;
+use sha2::Sha256 as Hash;
 
 pub fn zero_sum<const N: usize>() -> &'static [u8; N] {
     static ZERO: OnceLock<Vec<u8>> = OnceLock::new();

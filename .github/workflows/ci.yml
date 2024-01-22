@@ -137,6 +137,7 @@ jobs:
       - rustfmt
       - cargo
       - cargo-toml-fmt-check
+      - publish-check
     runs-on: ubuntu-latest
     steps:
       - run: true
@@ -153,7 +154,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
 
       - name: Publish crate check
-        uses: katyo/publish-crates@v2
+        uses: xgreenx/publish-crates@v1
         with:
           dry-run: true
 
@@ -161,7 +162,6 @@ jobs:
     # Only do this job if publishing a release and all checks pass.
     needs:
       - verifications-complete
-      - publish-check
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
 
@@ -178,7 +178,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
 
       - name: Publish crate
-        uses: katyo/publish-crates@v2
+        uses: xgreenx/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 

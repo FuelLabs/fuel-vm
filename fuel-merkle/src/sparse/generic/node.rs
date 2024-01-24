@@ -12,13 +12,14 @@ use crate::{
             Instruction,
             Path,
         },
-        Bytes32,
         Prefix,
     },
-    sparse::{
-        hash::sum,
-        zero_sum,
-        Primitive,
+    sparse::generic::{
+        hash::{
+            sum,
+            zero_sum,
+        },
+        primitive::Primitive,
     },
     storage::{
         Mappable,
@@ -26,47 +27,51 @@ use crate::{
     },
 };
 
+use crate::common::Bytes;
 use core::{
     cmp,
     fmt,
     marker::PhantomData,
 };
+use digest::Digest;
 
 #[derive(Clone, PartialEq, Eq)]
-pub(crate) enum Node {
+pub(crate) enum Node<const N: usize> {
     Node {
-        hash: Bytes32,
+        hash: Bytes<N>,
         height: u32,
         prefix: Prefix,
-        bytes_lo: Bytes32,
-        bytes_hi: Bytes32,
+        bytes_lo: Bytes<N>,
+        bytes_hi: Bytes<N>,
     },
     Placeholder,
 }
 
-impl Node {
+impl<const N: usize> Node<N> {
     fn calculate_hash(
         prefix: &Prefix,
-        bytes_lo: &Bytes32,
-        bytes_hi: &Bytes32,
-    ) -> Bytes32 {
-        use digest::Digest;
+        bytes_lo: &Bytes<N>,
+        bytes_hi: &Bytes<N>,
+    ) -> Bytes<N> {
         let mut hash = sha2::Sha256::new();
         hash.update(prefix);
         hash.update(bytes_lo);
         hash.update(bytes_hi);
-        hash.finalize().try_into().unwrap()
+        let h = hash.finalize();
+        let mut vec = h.to_vec();
+        vec.truncate(N);
+        vec.try_into().unwrap()
     }
 
     pub fn max_height() -> u32 {
-        Node::key_size_in_bits()
+        Node::<N>::key_size_in_bits()
     }
 
     pub fn new(
         height: u32,
         prefix: Prefix,
-        bytes_lo: Bytes32,
-        bytes_hi: Bytes32,
+        bytes_lo: Bytes<N>,
+        bytes_hi: Bytes<N>,
     ) -> Self {
         Self::Node {
             hash: Self::calculate_hash(&prefix, &bytes_lo, &bytes_hi),
@@ -77,7 +82,7 @@ impl Node {
         }
     }
 
-    pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes32, data: D) -> Self {
+    pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes<N>, data: D) -> Self {
         let bytes_hi = sum(data);
         Self::Node {
             hash: Self::calculate_hash(&Prefix::Leaf, key, &bytes_hi),
@@ -88,7 +93,7 @@ impl Node {
         }
     }
 
-    pub fn create_node(left_child: &Node, right_child: &Node, height: u32) -> Self {
+    pub fn create_node(left_child: &Node<N>, right_child: &Node<N>, height: u32) -> Self {
         let bytes_lo = *left_child.hash();
         let bytes_hi = *right_child.hash();
         Self::Node {
@@ -102,8 +107,8 @@ impl Node {
 
     pub fn create_node_on_path(
         path: &dyn Path,
-        path_node: &Node,
-        side_node: &Node,
+        path_node: &Node<N>,
+        side_node: &Node<N>,
     ) -> Self {
         if path_node.is_leaf() && side_node.is_leaf() {
             // When joining two leaves, the joined node is found where the paths
@@ -112,7 +117,7 @@ impl Node {
             // leaves.
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node);
-            let parent_height = Node::max_height() - parent_depth;
+            let parent_height = Node::<N>::max_height() - parent_depth;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)
@@ -127,7 +132,7 @@ impl Node {
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
             let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
-            let parent_depth = Node::max_height() - parent_height;
+            let parent_depth = Node::<N>::max_height() - parent_height;
             match path.get_instruction(parent_depth).unwrap() {
                 Instruction::Left => {
                     Node::create_node(path_node, side_node, parent_height)
@@ -143,7 +148,7 @@ impl Node {
         Self::Placeholder
     }
 
-    pub fn common_path_length(&self, other: &Node) -> u32 {
+    pub fn common_path_length(&self, other: &Node<N>) -> u32 {
         debug_assert!(self.is_leaf());
         debug_assert!(other.is_leaf());
 
@@ -172,14 +177,14 @@ impl Node {
         }
     }
 
-    pub fn bytes_lo(&self) -> &Bytes32 {
+    pub fn bytes_lo(&self) -> &Bytes<N> {
         match self {
             Node::Node { bytes_lo, .. } => bytes_lo,
             Node::Placeholder => zero_sum(),
         }
     }
 
-    pub fn bytes_hi(&self) -> &Bytes32 {
+    pub fn bytes_hi(&self) -> &Bytes<N> {
         match self {
             Node::Node { bytes_hi, .. } => bytes_hi,
             Node::Placeholder => zero_sum(),
@@ -194,22 +199,22 @@ impl Node {
         self.prefix() == Prefix::Node
     }
 
-    pub fn leaf_key(&self) -> &Bytes32 {
+    pub fn leaf_key(&self) -> &Bytes<N> {
         assert!(self.is_leaf());
         self.bytes_lo()
     }
 
-    pub fn leaf_data(&self) -> &Bytes32 {
+    pub fn leaf_data(&self) -> &Bytes<N> {
         assert!(self.is_leaf());
         self.bytes_hi()
     }
 
-    pub fn left_child_key(&self) -> &Bytes32 {
+    pub fn left_child_key(&self) -> &Bytes<N> {
         assert!(self.is_node());
         self.bytes_lo()
     }
 
-    pub fn right_child_key(&self) -> &Bytes32 {
+    pub fn right_child_key(&self) -> &Bytes<N> {
         assert!(self.is_node());
         self.bytes_hi()
     }
@@ -218,7 +223,7 @@ impl Node {
         &Self::Placeholder == self
     }
 
-    pub fn hash(&self) -> &Bytes32 {
+    pub fn hash(&self) -> &Bytes<N> {
         match self {
             Node::Node { hash, .. } => hash,
             Node::Placeholder => zero_sum(),
@@ -226,14 +231,14 @@ impl Node {
     }
 }
 
-impl AsRef<Node> for Node {
-    fn as_ref(&self) -> &Node {
+impl<const KEY_SIZE: usize> AsRef<Node<KEY_SIZE>> for Node<KEY_SIZE> {
+    fn as_ref(&self) -> &Node<KEY_SIZE> {
         self
     }
 }
 
-impl NodeTrait for Node {
-    type Key = Bytes32;
+impl<const KEY_SIZE: usize> NodeTrait for Node<KEY_SIZE> {
+    type Key = Bytes<KEY_SIZE>;
 
     fn height(&self) -> u32 {
         Node::height(self)
@@ -252,7 +257,7 @@ impl NodeTrait for Node {
     }
 }
 
-impl fmt::Debug for Node {
+impl<const KEY_SIZE: usize> fmt::Debug for Node<KEY_SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {
             f.debug_struct("Node (Internal)")
@@ -272,13 +277,15 @@ impl fmt::Debug for Node {
     }
 }
 
-pub(crate) struct StorageNode<'storage, TableType, StorageType> {
+pub(crate) struct StorageNode<'storage, const KEY_SIZE: usize, TableType, StorageType> {
     storage: &'storage StorageType,
-    node: Node,
+    node: Node<KEY_SIZE>,
     phantom_table: PhantomData<TableType>,
 }
 
-impl<TableType, StorageType> Clone for StorageNode<'_, TableType, StorageType> {
+impl<const KEY_SIZE: usize, TableType, StorageType> Clone
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
+{
     fn clone(&self) -> Self {
         Self {
             storage: self.storage,
@@ -288,8 +295,10 @@ impl<TableType, StorageType> Clone for StorageNode<'_, TableType, StorageType> {
     }
 }
 
-impl<'s, TableType, StorageType> StorageNode<'s, TableType, StorageType> {
-    pub fn new(storage: &'s StorageType, node: Node) -> Self {
+impl<'s, const KEY_SIZE: usize, TableType, StorageType>
+    StorageNode<'s, KEY_SIZE, TableType, StorageType>
+{
+    pub fn new(storage: &'s StorageType, node: Node<KEY_SIZE>) -> Self {
         Self {
             node,
             storage,
@@ -298,18 +307,22 @@ impl<'s, TableType, StorageType> StorageNode<'s, TableType, StorageType> {
     }
 }
 
-impl<TableType, StorageType> StorageNode<'_, TableType, StorageType> {
-    pub fn hash(&self) -> &Bytes32 {
+impl<const KEY_SIZE: usize, TableType, StorageType>
+    StorageNode<'_, KEY_SIZE, TableType, StorageType>
+{
+    pub fn hash(&self) -> &Bytes<KEY_SIZE> {
         self.node.hash()
     }
 
-    pub fn into_node(self) -> Node {
+    pub fn into_node(self) -> Node<KEY_SIZE> {
         self.node
     }
 }
 
-impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageType> {
-    type Key = Bytes32;
+impl<const KEY_SIZE: usize, TableType, StorageType> NodeTrait
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
+{
+    type Key = Bytes<KEY_SIZE>;
 
     fn height(&self) -> u32 {
         self.node.height()
@@ -336,10 +349,15 @@ pub enum StorageNodeError<StorageError> {
     DeserializeError(DeserializeError),
 }
 
-impl<TableType, StorageType> ParentNodeTrait for StorageNode<'_, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType> ParentNodeTrait
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
 where
     StorageType: StorageInspect<TableType>,
-    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
+    >,
 {
     type Error = StorageNodeError<StorageType::Error>;
 
@@ -384,10 +402,15 @@ where
     }
 }
 
-impl<TableType, StorageType> fmt::Debug for StorageNode<'_, TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType> fmt::Debug
+    for StorageNode<'_, KEY_SIZE, TableType, StorageType>
 where
     StorageType: StorageInspect<TableType>,
-    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
+    >,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {
@@ -418,9 +441,13 @@ mod test_node {
             PrefixError,
         },
         sparse::{
-            hash::sum,
-            zero_sum,
-            Node,
+            generic::{
+                hash::{
+                    sum,
+                    zero_sum,
+                },
+                Node,
+            },
             Primitive,
         },
     };
@@ -429,13 +456,13 @@ mod test_node {
         let mut buffer = [0; 65];
         buffer[0..1].clone_from_slice(Prefix::Leaf.as_ref());
         buffer[1..33].clone_from_slice(key);
-        buffer[33..65].clone_from_slice(&sum(data));
+        buffer[33..65].clone_from_slice(&sum::<_, 32>(data));
         sum(buffer)
     }
 
     #[test]
     fn test_create_leaf_returns_a_valid_leaf() {
-        let leaf = Node::create_leaf(&sum(b"LEAF"), [1u8; 32]);
+        let leaf = Node::<32>::create_leaf(&sum(b"LEAF"), [1u8; 32]);
         assert_eq!(leaf.is_leaf(), true);
         assert_eq!(leaf.is_node(), false);
         assert_eq!(leaf.height(), 0);
@@ -465,7 +492,7 @@ mod test_node {
 
     #[test]
     fn test_create_placeholder_returns_a_placeholder_node() {
-        let node = Node::create_placeholder();
+        let node = Node::<32>::create_placeholder();
         assert_eq!(node.is_placeholder(), true);
         assert_eq!(node.hash(), zero_sum());
     }
@@ -474,7 +501,7 @@ mod test_node {
     fn test_create_leaf_from_primitive_returns_a_valid_leaf() {
         let primitive = (0, Prefix::Leaf as u8, [0xff; 32], [0xff; 32]);
 
-        let node: Node = primitive.try_into().unwrap();
+        let node: Node<32> = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), true);
         assert_eq!(node.is_node(), false);
         assert_eq!(node.height(), 0);
@@ -487,7 +514,7 @@ mod test_node {
     fn test_create_node_from_primitive_returns_a_valid_node() {
         let primitive = (255, Prefix::Node as u8, [0xff; 32], [0xff; 32]);
 
-        let node: Node = primitive.try_into().unwrap();
+        let node: Node<32> = primitive.try_into().unwrap();
         assert_eq!(node.is_leaf(), false);
         assert_eq!(node.is_node(), true);
         assert_eq!(node.height(), 255);
@@ -547,9 +574,9 @@ mod test_node {
     fn test_leaf_hash_returns_expected_hash_value() {
         let mut expected_buffer = [0u8; 65];
         expected_buffer[0..1].clone_from_slice(Prefix::Leaf.as_ref());
-        expected_buffer[1..33].clone_from_slice(&sum(b"LEAF"));
-        expected_buffer[33..65].clone_from_slice(&sum([1u8; 32]));
-        let expected_value = sum(expected_buffer);
+        expected_buffer[1..33].clone_from_slice(&sum::<_, 32>(b"LEAF"));
+        expected_buffer[33..65].clone_from_slice(&sum::<_, 32>([1u8; 32]));
+        let expected_value = sum::<_, 32>(expected_buffer);
 
         let node = Node::create_leaf(&sum(b"LEAF"), [1u8; 32]);
         let value = *node.hash();
@@ -567,7 +594,7 @@ mod test_node {
             .clone_from_slice(&leaf_hash(&sum(b"LEFT CHILD"), &[1u8; 32]));
         expected_buffer[33..65]
             .clone_from_slice(&leaf_hash(&sum(b"RIGHT CHILD"), &[1u8; 32]));
-        let expected_value = sum(expected_buffer);
+        let expected_value = sum::<_, 32>(expected_buffer);
 
         let left_child = Node::create_leaf(&sum(b"LEFT CHILD"), [1u8; 32]);
         let right_child = Node::create_leaf(&sum(b"RIGHT CHILD"), [1u8; 32]);
@@ -580,6 +607,12 @@ mod test_node {
 
 #[cfg(test)]
 mod test_storage_node {
+    use super::{
+        Node,
+        StorageNode,
+        StorageNodeError,
+    };
+
     use crate::{
         common::{
             error::DeserializeError,
@@ -592,11 +625,8 @@ mod test_storage_node {
             StorageMap,
         },
         sparse::{
-            hash::sum,
-            node::StorageNodeError,
-            Node,
+            generic::hash::sum,
             Primitive,
-            StorageNode,
         },
         storage::{
             Mappable,

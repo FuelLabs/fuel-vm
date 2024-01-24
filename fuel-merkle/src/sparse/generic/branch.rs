@@ -1,9 +1,9 @@
 use crate::{
     common::{
         path::ComparablePath,
-        Bytes32,
+        Bytes,
     },
-    sparse::{
+    sparse::generic::{
         Node,
         Primitive,
     },
@@ -15,13 +15,13 @@ use fuel_storage::{
 
 use core::iter;
 
-pub(crate) struct Branch {
-    pub bits: Bytes32,
-    pub node: Node,
+pub(crate) struct Branch<const KEY_SIZE: usize> {
+    pub bits: Bytes<KEY_SIZE>,
+    pub node: Node<KEY_SIZE>,
 }
 
-impl From<Node> for Branch {
-    fn from(leaf: Node) -> Self {
+impl<const KEY_SIZE: usize> From<Node<KEY_SIZE>> for Branch<KEY_SIZE> {
+    fn from(leaf: Node<KEY_SIZE>) -> Self {
         Self {
             bits: *leaf.leaf_key(),
             node: leaf,
@@ -29,18 +29,22 @@ impl From<Node> for Branch {
     }
 }
 
-pub(crate) fn merge_branches<Storage, Table>(
+pub(crate) fn merge_branches<const KEY_SIZE: usize, Storage, Table>(
     storage: &mut Storage,
-    mut left_branch: Branch,
-    mut right_branch: Branch,
-) -> Result<Branch, Storage::Error>
+    mut left_branch: Branch<KEY_SIZE>,
+    mut right_branch: Branch<KEY_SIZE>,
+) -> Result<Branch<KEY_SIZE>, Storage::Error>
 where
     Storage: StorageMutate<Table>,
-    Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    Table: Mappable<
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
+    >,
 {
     let branch = if left_branch.node.is_leaf() && right_branch.node.is_leaf() {
         let parent_depth = left_branch.node.common_path_length(&right_branch.node);
-        let parent_height = Node::max_height() - parent_depth;
+        let parent_height = Node::<KEY_SIZE>::max_height() - parent_depth;
         let node =
             Node::create_node(&left_branch.node, &right_branch.node, parent_height);
         Branch {
@@ -49,7 +53,7 @@ where
         }
     } else {
         let ancestor_depth = left_branch.bits.common_path_length(&right_branch.bits);
-        let ancestor_height = Node::max_height() - ancestor_depth;
+        let ancestor_height = Node::<KEY_SIZE>::max_height() - ancestor_depth;
         if right_branch.node.is_node() {
             let mut current_node = right_branch.node;
             let path = right_branch.bits;

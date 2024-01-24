@@ -22,7 +22,7 @@ pub fn node_sum(lhs_fee: u64, lhs_data: &[u8], rhs_fee: u64, rhs_data: &[u8]) ->
     hash.update(lhs_data);
     hash.update(rhs_fee.to_be_bytes());
     hash.update(rhs_data);
-    hash.finalize().try_into().unwrap()
+    hash.finalize().into()
 }
 
 // Merkle tree hash of a list with one entry
@@ -32,5 +32,5 @@ pub fn leaf_sum(fee: u64, data: &[u8]) -> Bytes32 {
     hash.update(Prefix::Leaf);
     hash.update(fee.to_be_bytes());
     hash.update(data);
-    hash.finalize().try_into().unwrap()
+    hash.finalize().into()
 }

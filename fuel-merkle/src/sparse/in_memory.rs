@@ -5,7 +5,7 @@ use crate::{
     },
     sparse::{
         self,
-        merkle_tree::MerkleTreeKey,
+        MerkleTreeKey,
         Primitive,
     },
     storage::{
@@ -188,7 +188,7 @@ impl Default for MerkleTree {
 #[cfg(test)]
 mod test {
     use super::*;
-    use sparse::hash::sum;
+    use sparse::generic::hash::sum;
 
     fn key(data: &[u8]) -> MerkleTreeKey {
         MerkleTreeKey::new_without_hash(sum(data))

@@ -85,7 +85,7 @@ proptest! {
 
 proptest! {
     #[test]
-    fn verify_excluded_key_create_false_positive((key_values, tree) in random_tree(), arb_num: usize, random_key: MerkleTreeKey) {
+    fn verify_excluded_key_cannot_create_false_positive((key_values, tree) in random_tree(), arb_num: usize, random_key: MerkleTreeKey) {
         if !key_values.is_empty() {
             let index = arb_num % key_values.len();
             let (key, value) = key_values[index];

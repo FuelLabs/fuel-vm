@@ -83,6 +83,7 @@ pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as us
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 pub struct Policies {
     /// A bitmask that indicates what policies are set.
     bits: PoliciesBits,

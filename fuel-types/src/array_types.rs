@@ -38,6 +38,7 @@ macro_rules! key {
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]
+        #[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
@@ -60,6 +61,7 @@ macro_rules! key_with_big_array {
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]
+        #[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);

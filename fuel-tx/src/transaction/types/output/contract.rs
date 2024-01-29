@@ -8,13 +8,16 @@ use fuel_types::Bytes32;
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = OutputContract))]
 pub struct Contract {
     /// Index of input contract.
     pub input_index: u8,
     /// Root of amount of coins owned by contract after transaction execution.
+    #[da_compress(skip)]
     pub balance_root: Bytes32,
     /// State root of contract after transaction execution.
+    #[da_compress(skip)]
     pub state_root: Bytes32,
 }
 

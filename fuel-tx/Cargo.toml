@@ -28,6 +28,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"], 
 strum = { version = "0.24", default-features = false, optional = true }
 strum_macros = { version = "0.24", optional = true }
 wasm-bindgen = { version = "0.2.88", optional = true }
+fuel-core-compression = { path = "../../fuel-core/crates/compression" }
 
 [dev-dependencies]
 bincode = { workspace = true }

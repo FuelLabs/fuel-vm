@@ -15,12 +15,17 @@ use fuel_types::{
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = InputContract))]
 pub struct Contract {
     pub utxo_id: UtxoId,
+    #[da_compress(skip)]
     pub balance_root: Bytes32,
+    #[da_compress(skip)]
     pub state_root: Bytes32,
+    #[da_compress(skip)]
     pub tx_pointer: TxPointer,
+    #[da_compress(skip)]
     pub contract_id: ContractId,
 }
 

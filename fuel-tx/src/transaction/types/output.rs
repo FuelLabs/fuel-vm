@@ -1,9 +1,6 @@
 use fuel_crypto::Hasher;
 use fuel_types::{
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
+    canonical,
     Address,
     AssetId,
     Bytes32,
@@ -23,7 +20,8 @@ pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Deserialize, Serialize)]
+#[derive(canonical::Deserialize, canonical::Serialize)]
+#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 #[non_exhaustive]
 pub enum Output {
     Coin {
@@ -36,13 +34,17 @@ pub enum Output {
 
     Change {
         to: Address,
+        #[da_compress(skip)]
         amount: Word,
         asset_id: AssetId,
     },
 
     Variable {
+        #[da_compress(skip)]
         to: Address,
+        #[da_compress(skip)]
         amount: Word,
+        #[da_compress(skip)]
         asset_id: AssetId,
     },
 
@@ -199,7 +201,7 @@ impl Output {
             Output::Contract(contract) => contract.prepare_sign(),
 
             Output::Change { amount, .. } => {
-                mem::take(amount);
+                *amount = 0;
             }
 
             Output::Variable {
@@ -208,9 +210,9 @@ impl Output {
                 asset_id,
                 ..
             } => {
-                mem::take(to);
-                mem::take(amount);
-                mem::take(asset_id);
+                *to = Address::default();
+                *amount = 0;
+                *asset_id = AssetId::default();
             }
 
             _ => (),
@@ -221,7 +223,7 @@ impl Output {
     pub fn prepare_init_script(&mut self) {
         match self {
             Output::Change { amount, .. } => {
-                mem::take(amount);
+                *amount = 0;
             }
 
             Output::Variable {
@@ -229,9 +231,9 @@ impl Output {
                 amount,
                 asset_id,
             } => {
-                mem::take(to);
-                mem::take(amount);
-                mem::take(asset_id);
+                *to = Address::default();
+                *amount = 0;
+                *asset_id = AssetId::default();
             }
 
             _ => (),

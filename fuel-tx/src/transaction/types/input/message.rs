@@ -65,6 +65,7 @@ pub mod specifications {
     /// is not consumed and can be used later until successful execution.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageData<Signed> {
@@ -144,19 +145,23 @@ pub mod specifications {
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 pub struct Message<Specification>
 where
     Specification: MessageSpecification,
 {
     /// The sender from the L1 chain.
+    #[da_compress(registry = "Address")]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
+    #[da_compress(registry = "Address")]
     pub recipient: Address,
     pub amount: Word,
     pub nonce: Nonce,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[da_compress(skip)]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,

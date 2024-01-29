@@ -181,6 +181,7 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 #[non_exhaustive]
 pub enum Input {
     CoinSigned(CoinSigned),

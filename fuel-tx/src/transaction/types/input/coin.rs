@@ -97,13 +97,16 @@ impl CoinSpecification for Full {
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 pub struct Coin<Specification>
 where
     Specification: CoinSpecification,
 {
     pub utxo_id: UtxoId,
+    #[da_compress(registry = "Address")]
     pub owner: Address,
     pub amount: Word,
+    #[da_compress(registry = "AssetId")]
     pub asset_id: AssetId,
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]

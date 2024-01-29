@@ -106,7 +106,7 @@ proptest! {
     #[test]
     fn verify_included_key_cannot_create_false_positive((_, tree) in random_tree(), random_key: MerkleTreeKey, value: Bytes32) {
         if value != *empty_sum() {
-            let mut proof = tree.generate_proof(key).expect("Infallible");
+            let mut proof = tree.generate_proof(random_key).expect("Infallible");
 
             // Verify that the key corresponds to the zero sum. Because the key
             // is not included in the tree, verification should succeed.

@@ -122,4 +122,27 @@ proptest! {
             prop_assert!(!verification);
         }
     }
+
+
+    // Bug: Is that proof of inclusion or proof of exclusion? It looks like a proof of
+    // exclusion while the value is included.
+    #[test]
+    fn verify_included_key_can_produce_exclusion_proof((_, mut tree) in random_tree(), random_key: MerkleTreeKey, value: Bytes32) {
+        if value != *empty_sum() {
+            let root_before = tree.root();
+            tree.update(random_key, empty_sum()).expect("Should update key without error");
+            let root_after = tree.root();
+            assert_ne!(root_before, root_after);
+
+            let mut proof = tree.generate_proof(random_key).expect("Infallible");
+            assert_eq!(proof.root, root_after);
+            proof.proof_set.clear();
+            proof.initial_hash = Some(proof.root);
+
+            // Verify that the key corresponds to the zero sum. Because the key
+            // is not included in the tree, verification should succeed.
+            let verification = verify(random_key.clone(), empty_sum(), proof.clone());
+            prop_assert!(!verification);
+        }
+    }
 }

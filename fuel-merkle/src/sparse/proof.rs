@@ -1,84 +1,79 @@
-use crate::common::{
-    Bytes32,
-    ProofSet,
-};
-use alloc::{
-    format,
-    string::String,
-    vec::Vec,
-};
-use core::{
-    fmt,
-    fmt::{
-        Debug,
-        Formatter,
+use crate::{
+    common::{
+        path::{
+            Instruction,
+            Path,
+        },
+        Bytes32,
+        Prefix,
+        ProofSet,
+    },
+    sparse::{
+        empty_sum,
+        Node,
     },
 };
+use core::fmt::Debug;
 
-#[derive(Debug, Clone)]
-pub enum Proof {
-    InclusionProof(InclusionProof),
-    ExclusionProof(ExclusionProof),
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Proof {
+    pub root: Bytes32,
+    pub proof_set: ProofSet,
+    /// The hash that is used as the initial value when accumulating hashes to
+    /// reconstruct the root. An exclusion proof must provide an initial hash
+    /// originating from proof generation. If it is not provided, the proof is
+    /// invalid. Conversely, an inclusion proof should not provide an initial
+    /// hash, as this value is determined by the key-value undergoing proving.
+    pub initial_hash: Option<Bytes32>,
 }
 
 impl Proof {
     pub fn root(&self) -> &Bytes32 {
-        match self {
-            Proof::InclusionProof(InclusionProof { root, .. }) => root,
-            Proof::ExclusionProof(ExclusionProof { root, .. }) => root,
-        }
+        &self.root
     }
 
     pub fn proof_set(&self) -> &ProofSet {
-        match self {
-            Proof::InclusionProof(InclusionProof { proof_set, .. }) => proof_set,
-            Proof::ExclusionProof(ExclusionProof { proof_set, .. }) => proof_set,
+        &self.proof_set
+    }
+
+    pub fn is_inclusion(&self) -> bool {
+        self.initial_hash.is_none()
+    }
+
+    pub fn is_exclusion(&self) -> bool {
+        !self.is_inclusion()
+    }
+
+    pub fn verify<K: Into<Bytes32>, V: AsRef<[u8]>>(&self, key: K, value: &V) -> bool {
+        let Proof {
+            root,
+            proof_set,
+            initial_hash,
+        } = self;
+        let key: Bytes32 = key.into();
+        let mut current;
+
+        if value.as_ref() == empty_sum() {
+            // Exclusion proof
+            if self.is_inclusion() {
+                return false;
+            }
+            current = initial_hash.expect("Expected initial hash")
+        } else {
+            // Inclusion proof
+            let leaf = Node::create_leaf(&key, value);
+            current = *leaf.hash();
         }
-    }
-}
 
-#[derive(Clone)]
-pub struct InclusionProof {
-    pub root: Bytes32,
-    pub proof_set: ProofSet,
-}
+        for (i, side_hash) in proof_set.iter().enumerate() {
+            let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
+            let prefix = Prefix::Node;
+            current = match key.get_instruction(index).expect("Infallible") {
+                Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
+                Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
+            };
+        }
 
-impl Debug for InclusionProof {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let proof_set = self
-            .proof_set
-            .iter()
-            .map(hex::encode)
-            .collect::<Vec<String>>();
-        let proof_set = format!("[{}]", proof_set.join(", "));
-        f.debug_struct("InclusionProof")
-            .field("Root", &hex::encode(self.root))
-            .field("Proof Set", &proof_set)
-            .finish()
-    }
-}
-
-#[derive(Clone)]
-pub struct ExclusionProof {
-    pub root: Bytes32,
-    pub proof_set: ProofSet,
-    pub path: Bytes32,
-    pub hash: Bytes32,
-}
-
-impl Debug for ExclusionProof {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let proof_set = self
-            .proof_set
-            .iter()
-            .map(hex::encode)
-            .collect::<Vec<String>>();
-        let proof_set = format!("[{}]", proof_set.join(", "));
-        f.debug_struct("ExclusionProof")
-            .field("Root", &hex::encode(self.root))
-            .field("Proof Set", &proof_set)
-            .field("Path", &hex::encode(self.path))
-            .field("Hash", &hex::encode(self.hash))
-            .finish()
+        current == *root
     }
 }

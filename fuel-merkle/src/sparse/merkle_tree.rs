@@ -24,11 +24,7 @@ use crate::sparse::{
         merge_branches,
         Branch,
     },
-    proof::{
-        ExclusionProof,
-        InclusionProof,
-        Proof,
-    },
+    proof::Proof,
 };
 use alloc::{
     format,
@@ -124,6 +120,13 @@ impl Debug for MerkleTreeKey {
 impl From<MerkleTreeKey> for Bytes32 {
     fn from(value: MerkleTreeKey) -> Self {
         value.0
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl From<Bytes32> for MerkleTreeKey {
+    fn from(value: Bytes32) -> Self {
+        Self::new_without_hash(value)
     }
 }
 
@@ -612,8 +615,13 @@ where
         let proof = if path == *actual_leaf.leaf_key() {
             // If the requested key is part of the tree, build an inclusion
             // proof.
-            let inclusion_proof = InclusionProof { root, proof_set };
-            Proof::InclusionProof(inclusion_proof)
+            //
+            let initial_hash = None;
+            Proof {
+                root,
+                proof_set,
+                initial_hash,
+            }
         } else {
             // If the requested key is not part of the tree, we are verifying
             // that the given key is a placeholder, and we must build an
@@ -638,13 +646,12 @@ where
             // the zero sum. The hash of any placeholder under this point of
             // divergence equates to this hash.
             //
-            let exclusion_proof = ExclusionProof {
+            let initial_hash = Some(*actual_leaf.hash());
+            Proof {
                 root,
                 proof_set,
-                path,
-                hash: *actual_leaf.hash(),
-            };
-            Proof::ExclusionProof(exclusion_proof)
+                initial_hash,
+            }
         };
         Ok(proof)
     }
@@ -660,7 +667,6 @@ mod test {
         sparse::{
             empty_sum,
             hash::sum,
-            proof::Proof,
             MerkleTree,
             MerkleTreeError,
             MerkleTreeKey,
@@ -1567,7 +1573,7 @@ mod test {
             .expect("Expected successful update");
 
         let proof = tree.generate_proof(k1).expect("Expected proof");
-        assert!(matches!(proof, Proof::InclusionProof(_)));
+        assert!(proof.is_inclusion());
     }
 
     #[test]
@@ -1600,6 +1606,6 @@ mod test {
 
         let k4 = [255u8; 32];
         let proof = tree.generate_proof(k4).expect("Expected proof");
-        assert!(matches!(proof, Proof::ExclusionProof(_)));
+        assert!(proof.is_exclusion());
     }
 }

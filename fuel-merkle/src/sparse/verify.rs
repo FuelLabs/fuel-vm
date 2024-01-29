@@ -1,80 +1,10 @@
 use crate::{
-    common::{
-        path::{
-            Instruction,
-            Path,
-        },
-        Bytes32,
-        Prefix,
-    },
-    sparse::{
-        empty_sum,
-        proof::{
-            ExclusionProof,
-            InclusionProof,
-            Proof,
-        },
-        Node,
-    },
+    common::Bytes32,
+    sparse::proof::Proof,
 };
 
 pub fn verify<K: Into<Bytes32>, V: AsRef<[u8]>>(key: K, value: &V, proof: Proof) -> bool {
-    match proof {
-        Proof::InclusionProof(proof) => verify_inclusion(key, value, proof),
-        Proof::ExclusionProof(proof) => {
-            value.as_ref() == empty_sum() && verify_exclusion(key, proof)
-        }
-    }
-}
-
-fn verify_inclusion<K: Into<Bytes32>, V: AsRef<[u8]>>(
-    key: K,
-    value: &V,
-    proof: InclusionProof,
-) -> bool {
-    let InclusionProof { root, proof_set } = proof;
-
-    let key: Bytes32 = key.into();
-    let leaf = Node::create_leaf(&key, value);
-    let path = leaf.leaf_key();
-    let mut current = *leaf.hash();
-
-    for (i, side_hash) in proof_set.iter().enumerate() {
-        let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
-        let prefix = Prefix::Node;
-        current = match path.get_instruction(index).unwrap() {
-            Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
-            Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
-        };
-    }
-
-    current == root
-}
-
-fn verify_exclusion<K: Into<Bytes32>>(key: K, proof: ExclusionProof) -> bool {
-    let ExclusionProof {
-        root,
-        proof_set,
-        path,
-        hash,
-    } = proof;
-
-    if key.into() != path {
-        return false;
-    }
-
-    let mut current = hash;
-
-    for (i, side_hash) in proof_set.iter().enumerate() {
-        let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
-        let prefix = Prefix::Node;
-        current = match path.get_instruction(index).unwrap() {
-            Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
-            Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
-        };
-    }
-
-    current == root
+    proof.verify(key, value)
 }
 
 #[cfg(test)]
@@ -301,9 +231,9 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for _ in 0..1_000 {
-            let key = random_bytes32(&mut rng);
+            let key = random_bytes32(&mut rng).into();
             let value = random_bytes32(&mut rng);
-            tree.update(MerkleTreeKey::new(key), &value).unwrap();
+            tree.update(key, &value).unwrap();
         }
 
         // Should verify non-inclusion
@@ -322,9 +252,9 @@ mod test {
         let mut tree = MerkleTree::new(&mut storage);
 
         for _ in 0..1_000 {
-            let key = random_bytes32(&mut rng);
+            let key = random_bytes32(&mut rng).into();
             let value = random_bytes32(&mut rng);
-            tree.update(MerkleTreeKey::new(key), &value).unwrap();
+            tree.update(key, &value).unwrap();
         }
 
         // For a random key, the probability of inclusion is negligible, and we
@@ -336,6 +266,31 @@ mod test {
 
         let proof = tree.generate_proof(key).unwrap();
         let v = verify(key, &value, proof);
+        assert!(!v);
+    }
+
+    #[test]
+    fn verify_unrelated_proof_for_key_value_returns_false() {
+        let mut rng = StdRng::seed_from_u64(0xBAADF00D);
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let key_1 = random_bytes32(&mut rng).into();
+        let value_1 = random_bytes32(&mut rng);
+        tree.update(key_1, &value_1).unwrap();
+
+        let key_2 = random_bytes32(&mut rng).into();
+        let value_2 = random_bytes32(&mut rng);
+        tree.update(key_2, &value_2).unwrap();
+
+        for _ in 0..1_000 {
+            let key = random_bytes32(&mut rng).into();
+            let value = random_bytes32(&mut rng);
+            tree.update(key, &value).unwrap();
+        }
+
+        let proof = tree.generate_proof(key_1).unwrap();
+        let v = verify(key_2, &value_2, proof);
         assert!(!v);
     }
 }

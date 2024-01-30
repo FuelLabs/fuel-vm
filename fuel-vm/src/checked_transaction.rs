@@ -387,7 +387,6 @@ impl EstimatePredicates for Transaction {
             Transaction::Script(script) => script.estimate_predicates(params),
             Transaction::Create(create) => create.estimate_predicates(params),
             Transaction::Mint(_) => Ok(()),
-            _ => Err(CheckError::UnknownVariant(alloc::format!("{:?}", &self))),
         }
     }
 
@@ -403,7 +402,6 @@ impl EstimatePredicates for Transaction {
                 create.estimate_predicates_async::<E>(params).await
             }
             Transaction::Mint(_) => Ok(()),
-            _ => Err(CheckError::UnknownVariant(alloc::format!("{:?}", &self))),
         }
     }
 }
@@ -515,7 +513,6 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Script(_), _) => unreachable!(),
             (Transaction::Create(_), _) => unreachable!(),
             (Transaction::Mint(_), _) => unreachable!(),
-            (_, _) => unreachable!(),
         }
     }
 }
@@ -614,7 +611,6 @@ impl IntoChecked for Transaction {
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
-            _ => Err(CheckError::UnknownVariant(alloc::format!("{:?}", self))),
         }
         .map(|(transaction, metadata)| Checked::basic(transaction, metadata))
     }

@@ -181,7 +181,6 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[non_exhaustive]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),

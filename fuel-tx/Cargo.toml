@@ -31,10 +31,10 @@ wasm-bindgen = { version = "0.2.88", optional = true }
 
 [dev-dependencies]
 bincode = { workspace = true }
-fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
+fuel-crypto = { path = "../fuel-crypto", default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["builder", "random", "serde"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
-fuel-types = { workspace = true, default-features = false, features = ["random"] }
+fuel-types = { path = "../fuel-types", default-features = false, features = ["random"] }
 hex = { version = "0.4", default-features = false }
 insta = "1.0"
 quickcheck = "1.0"

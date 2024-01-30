@@ -11,7 +11,7 @@ repository = { workspace = true }
 description = "Atomic types of the FuelVM."
 
 [dependencies]
-fuel-derive = { path = "../fuel-derive" }
+fuel-derive = { workspace = true }
 hex = { version = "0.4", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }

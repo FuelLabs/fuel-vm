@@ -13,7 +13,7 @@ description = "Fuel Merkle tree libraries."
 [dependencies]
 derive_more = { version = "0.99", default-features = false, features = ["display"] }
 digest = { version = "0.10", default-features = false }
-fuel-storage = { path = "../fuel-storage", default-features = false }
+fuel-storage = { workspace = true, default-features = false }
 hashbrown = "0.13"
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", default-features = false, optional = true }

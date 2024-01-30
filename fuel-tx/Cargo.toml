@@ -14,10 +14,10 @@ description = "FuelVM transaction."
 bitflags = { workspace = true }
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"], optional = true }
 derive_more = { version = "0.99", default-features = false, features = ["display"] }
-fuel-asm = { workspace = true, default-features = false }
-fuel-crypto = { workspace = true, default-features = false }
-fuel-merkle = { workspace = true, default-features = false, optional = true }
-fuel-types = { workspace = true, default-features = false }
+fuel-asm = { path = "../fuel-asm", default-features = false }
+fuel-crypto = { path = "../fuel-crypto", default-features = false }
+fuel-merkle = { path = "../fuel-merkle", default-features = false, optional = true }
+fuel-types = { path = "../fuel-types", default-features = false }
 hashbrown = { version = "0.14", optional = true }
 itertools = { version = "0.10", default-features = false, optional = true }
 js-sys = { version = "0.3", optional = true }
@@ -31,10 +31,10 @@ wasm-bindgen = { version = "0.2.88", optional = true }
 
 [dev-dependencies]
 bincode = { workspace = true }
-fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
+fuel-crypto = { path = "../fuel-crypto", default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["builder", "random", "serde"] }
 fuel-tx-test-helpers = { path = "test-helpers" }
-fuel-types = { workspace = true, default-features = false, features = ["random"] }
+fuel-types = { path = "../fuel-types", default-features = false, features = ["random"] }
 hex = { version = "0.4", default-features = false }
 insta = "1.0"
 quickcheck = "1.0"

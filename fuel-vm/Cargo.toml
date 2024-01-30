@@ -22,7 +22,7 @@ ethnum = "1.3"
 fuel-asm = { path = "../fuel-asm", default-features = false }
 fuel-crypto = { path = "../fuel-crypto", default-features = false }
 fuel-merkle = { path = "../fuel-merkle", default-features = false }
-fuel-storage = { path = "../fuel-storage" }
+fuel-storage = { path = "../fuel-storage", default-features = false }
 fuel-tx = { path = "../fuel-tx", default-features = false }
 fuel-types = { path = "../fuel-types", default-features = false }
 hashbrown = "0.14"

@@ -69,10 +69,7 @@ impl MerkleTreeKey {
         use digest::Digest;
         let mut hash = sha2::Sha256::new();
         hash.update(storage_key.as_ref());
-        let hash = hash
-            .finalize()
-            .try_into()
-            .expect("`sha2::Sha256` can't fail during hashing");
+        let hash = hash.finalize().into();
 
         Self(hash)
     }
@@ -400,7 +397,7 @@ where
         let key = key.into();
         let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(key)?;
 
-        match path_nodes.get(0) {
+        match path_nodes.first() {
             Some(node) if node.leaf_key() == &key => {
                 self.delete_with_path_set(
                     &key,

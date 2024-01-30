@@ -14,14 +14,13 @@ use rand::seq::IteratorRandom;
 use rand_pcg::Pcg64;
 use rand_seeder::Seeder;
 use sha2::Sha256;
-use std::convert::TryInto;
 
 type Hash = Sha256;
 
 pub fn sum(data: &[u8]) -> Bytes32 {
     let mut hash = Hash::new();
     hash.update(data);
-    hash.finalize().try_into().unwrap()
+    hash.finalize().into()
 }
 
 fn generate_test(

@@ -180,8 +180,6 @@ pub enum CheckError {
     Validity(ValidityError),
     /// The predicate verification failed.
     PredicateVerificationFailed(PredicateVerificationFailed),
-    /// Transaction is of an unknown variant
-    UnknownVariant(alloc::string::String),
 }
 
 /// Performs checks for a transaction

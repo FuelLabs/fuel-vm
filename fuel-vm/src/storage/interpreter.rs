@@ -161,7 +161,7 @@ pub trait InterpreterStorage:
         &self,
         id: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, Vec<u8>>>, Self::DataError> {
         StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
@@ -170,8 +170,8 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-        value: &Bytes32,
-    ) -> Result<Option<Bytes32>, Self::DataError> {
+        value: &Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, Self::DataError> {
         StorageMutate::<ContractsState>::insert(self, &(contract, key).into(), value)
     }
 

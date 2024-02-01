@@ -67,7 +67,7 @@ impl Mappable for ContractsState {
     type OwnedKey = ContractsStateKey;
     type OwnedValue = Self::Value;
     /// The table value is hash of the value.
-    type Value = Bytes32;
+    type Value = Vec<u8>;
 }
 
 /// The macro defines a new type of double storage key. It is a merge of the two types

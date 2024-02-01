@@ -306,7 +306,7 @@ impl StorageInspect<ContractsState> for MemoryStorage {
     fn get(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Infallible> {
+    ) -> Result<Option<Cow<'_, Vec<u8>>>, Infallible> {
         Ok(self.memory.contract_state.get(key).map(Cow::Borrowed))
     }
 
@@ -322,15 +322,15 @@ impl StorageMutate<ContractsState> for MemoryStorage {
     fn insert(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-        value: &Bytes32,
-    ) -> Result<Option<Bytes32>, Infallible> {
+        value: &Vec<u8>,
+    ) -> Result<Option<Vec<u8>>, Infallible> {
         Ok(self.memory.contract_state.insert(*key, *value))
     }
 
     fn remove(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Bytes32>, Infallible> {
+    ) -> Result<Option<Vec<u8>>, Infallible> {
         Ok(self.memory.contract_state.remove(key))
     }
 }

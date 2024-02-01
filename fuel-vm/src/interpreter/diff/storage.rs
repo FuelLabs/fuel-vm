@@ -27,7 +27,7 @@ use super::{
 #[derive(Debug)]
 /// The set of state changes that are recorded.
 pub(super) enum StorageDelta {
-    State(MappableDelta<ContractsStateKey, Bytes32>),
+    State(MappableDelta<ContractsStateKey, Vec<u8>>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
     Info(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableDelta<ContractId, Contract>),
@@ -36,7 +36,7 @@ pub(super) enum StorageDelta {
 /// The set of states that are recorded.
 #[derive(Debug, Clone)]
 pub(super) enum StorageState {
-    State(MappableState<ContractsStateKey, Bytes32>),
+    State(MappableState<ContractsStateKey, Vec<u8>>),
     Assets(MappableState<ContractsAssetKey, u64>),
     Info(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableState<ContractId, Contract>),
@@ -446,13 +446,13 @@ where
 impl StorageType for ContractsState {
     fn record_insert(
         key: &Self::Key,
-        value: &Bytes32,
-        existing: Option<Bytes32>,
+        value: &Vec<u8>,
+        existing: Option<Vec<u8>>,
     ) -> StorageDelta {
         StorageDelta::State(MappableDelta::Insert(*key, *value, existing))
     }
 
-    fn record_remove(key: &Self::Key, value: Bytes32) -> StorageDelta {
+    fn record_remove(key: &Self::Key, value: Vec<u8>) -> StorageDelta {
         StorageDelta::State(MappableDelta::Remove(*key, value))
     }
 }

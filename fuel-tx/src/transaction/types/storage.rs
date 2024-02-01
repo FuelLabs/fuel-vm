@@ -24,13 +24,13 @@ use core::cmp::Ordering;
 #[derive(Deserialize, Serialize)]
 pub struct StorageSlot {
     key: Bytes32,
-    value: Bytes32,
+    value: Vec<u8>,
 }
 
 impl StorageSlot {
     pub const SLOT_SIZE: usize = Bytes32::LEN + Bytes32::LEN;
 
-    pub const fn new(key: Bytes32, value: Bytes32) -> Self {
+    pub const fn new(key: Bytes32, value: Vec<u8>) -> Self {
         StorageSlot { key, value }
     }
 
@@ -38,31 +38,31 @@ impl StorageSlot {
         &self.key
     }
 
-    pub const fn value(&self) -> &Bytes32 {
+    pub const fn value(&self) -> &Vec<u8> {
         &self.value
     }
 }
 
-impl From<&StorageSlot> for Bytes64 {
-    fn from(s: &StorageSlot) -> Self {
-        let mut buf = [0u8; StorageSlot::SLOT_SIZE];
-
-        buf[..Bytes32::LEN].copy_from_slice(s.key.as_ref());
-        buf[Bytes32::LEN..].copy_from_slice(s.value.as_ref());
-
-        buf.into()
-    }
-}
-
-impl From<&Bytes64> for StorageSlot {
-    fn from(b: &Bytes64) -> Self {
-        let key = <Bytes32 as Deserialize>::from_bytes(&b[..Bytes32::LEN])
-            .expect("Infallible deserialization");
-        let value = <Bytes32 as Deserialize>::from_bytes(&b[Bytes32::LEN..])
-            .expect("Infallible deserialization");
-        Self::new(key, value)
-    }
-}
+// impl From<&StorageSlot> for Bytes64 {
+//     fn from(s: &StorageSlot) -> Self {
+//         let mut buf = [0u8; StorageSlot::SLOT_SIZE];
+//
+//         buf[..Bytes32::LEN].copy_from_slice(s.key.as_ref());
+//         buf[Bytes32::LEN..].copy_from_slice(s.value.as_ref());
+//
+//         buf.into()
+//     }
+// }
+//
+// impl From<&Bytes64> for StorageSlot {
+//     fn from(b: &Bytes64) -> Self {
+//         let key = <Bytes32 as Deserialize>::from_bytes(&b[..Bytes32::LEN])
+//             .expect("Infallible deserialization");
+//         let value = <Bytes32 as Deserialize>::from_bytes(&b[Bytes32::LEN..])
+//             .expect("Infallible deserialization");
+//         Self::new(key, value)
+//     }
+// }
 
 #[cfg(feature = "random")]
 impl Distribution<StorageSlot> for Standard {

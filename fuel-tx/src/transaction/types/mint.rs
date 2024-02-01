@@ -49,14 +49,14 @@ impl MintMetadata {
 /// by it.
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.
-    #[da_compress(skip)]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub(crate) tx_pointer: TxPointer,
     /// The `Input::Contract` that assets are minted to.
     pub(crate) input_contract: input::contract::Contract,
@@ -65,12 +65,12 @@ pub struct Mint {
     /// The amount of funds minted.
     pub(crate) mint_amount: Word,
     /// The asset IDs corresponding to the minted amount.
-    #[da_compress(registry = "AssetId")]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
     pub(crate) mint_asset_id: AssetId,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
-    #[da_compress(skip)]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub(crate) metadata: Option<MintMetadata>,
 }
 

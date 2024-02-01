@@ -11,6 +11,8 @@ use crate::{
 };
 use alloc::vec::Vec;
 use derivative::Derivative;
+#[cfg(feature = "da-compression")]
+use fuel_compression::Compactable;
 use fuel_types::{
     Address,
     AssetId,
@@ -31,6 +33,14 @@ mod private {
 }
 
 /// Specifies the coin based on the usage context. See [`Coin`].
+#[cfg(feature = "da-compression")]
+pub trait CoinSpecification: private::Seal {
+    type Witness: AsField<u8> + Compactable + Clone;
+    type Predicate: AsField<Vec<u8>> + Compactable + Clone;
+    type PredicateData: AsField<Vec<u8>> + Compactable + Clone;
+    type PredicateGasUsed: AsField<Word> + Compactable + Clone;
+}
+#[cfg(not(feature = "da-compression"))]
 pub trait CoinSpecification: private::Seal {
     type Witness: AsField<u8>;
     type Predicate: AsField<Vec<u8>>;
@@ -40,6 +50,7 @@ pub trait CoinSpecification: private::Seal {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 pub struct Signed;
 
 impl CoinSpecification for Signed {
@@ -51,6 +62,7 @@ impl CoinSpecification for Signed {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 pub struct Predicate;
 
 impl CoinSpecification for Predicate {
@@ -96,17 +108,17 @@ impl CoinSpecification for Full {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 pub struct Coin<Specification>
 where
-    Specification: CoinSpecification,
+    Specification: CoinSpecification + Clone,
 {
     pub utxo_id: UtxoId,
-    #[da_compress(registry = "Address")]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
     pub owner: Address,
     pub amount: Word,
-    #[da_compress(registry = "AssetId")]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
     pub asset_id: AssetId,
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]
@@ -122,7 +134,7 @@ where
 
 impl<Specification> Coin<Specification>
 where
-    Specification: CoinSpecification,
+    Specification: CoinSpecification + Clone,
 {
     /// The "Note" section from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.

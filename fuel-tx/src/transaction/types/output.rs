@@ -1,6 +1,9 @@
 use fuel_crypto::Hasher;
 use fuel_types::{
-    canonical,
+    canonical::{
+        self,
+        Serialize as _,
+    },
     Address,
     AssetId,
     Bytes32,
@@ -8,8 +11,6 @@ use fuel_types::{
     Nonce,
     Word,
 };
-
-use core::mem;
 
 mod consts;
 pub mod contract;
@@ -20,31 +21,35 @@ pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(canonical::Deserialize, canonical::Serialize)]
-#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 #[non_exhaustive]
 pub enum Output {
     Coin {
+        #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
         to: Address,
         amount: Word,
+        #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
         asset_id: AssetId,
     },
 
     Contract(Contract),
 
     Change {
+        #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
         to: Address,
-        #[da_compress(skip)]
+        #[cfg_attr(feature = "da-compression", da_compress(skip))]
         amount: Word,
+        #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
         asset_id: AssetId,
     },
 
     Variable {
-        #[da_compress(skip)]
+        #[cfg_attr(feature = "da-compression", da_compress(skip))]
         to: Address,
-        #[da_compress(skip)]
+        #[cfg_attr(feature = "da-compression", da_compress(skip))]
         amount: Word,
-        #[da_compress(skip)]
+        #[cfg_attr(feature = "da-compression", da_compress(skip))]
         asset_id: AssetId,
     },
 

@@ -4,6 +4,8 @@ use crate::{
 };
 use alloc::vec::Vec;
 use derivative::Derivative;
+#[cfg(feature = "da-compression")]
+use fuel_compression::Compactable;
 use fuel_types::{
     Address,
     MessageId,
@@ -30,6 +32,36 @@ mod private {
 }
 
 /// Specifies the message based on the usage context. See [`Message`].
+#[cfg(feature = "da-compression")]
+pub trait MessageSpecification: private::Seal {
+    type Data: AsField<Vec<u8>>
+        + Compactable
+        + Clone
+        + serde::Serialize
+        + for<'a> serde::Deserialize<'a>;
+    type Predicate: AsField<Vec<u8>>
+        + Compactable
+        + Clone
+        + serde::Serialize
+        + for<'a> serde::Deserialize<'a>;
+    type PredicateData: AsField<Vec<u8>>
+        + Compactable
+        + Clone
+        + serde::Serialize
+        + for<'a> serde::Deserialize<'a>;
+    type PredicateGasUsed: AsField<Word>
+        + Compactable
+        + Clone
+        + serde::Serialize
+        + for<'a> serde::Deserialize<'a>
+        + Default;
+    type Witness: AsField<u8>
+        + Compactable
+        + Clone
+        + serde::Serialize
+        + for<'a> serde::Deserialize<'a>;
+}
+#[cfg(not(feature = "da-compression"))]
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>;
     type Predicate: AsField<Vec<u8>>;
@@ -50,12 +82,14 @@ pub mod specifications {
     /// `witnesses` vector of the [`crate::Transaction`].
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
     pub struct Signed;
 
     /// The type means that the message is not signed, and the `owner` is a `predicate`
     /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
     pub struct Predicate;
 
     /// The retrayable message metadata. It is a message that can't be used as a coin to
@@ -65,7 +99,6 @@ pub mod specifications {
     /// is not consumed and can be used later until successful execution.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageData<Signed> {
@@ -144,24 +177,24 @@ pub mod specifications {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[derive(fuel_core_compression::Serialize, fuel_core_compression::Deserialize)]
 pub struct Message<Specification>
 where
-    Specification: MessageSpecification,
+    Specification: MessageSpecification + Clone,
 {
     /// The sender from the L1 chain.
-    #[da_compress(registry = "Address")]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
-    #[da_compress(registry = "Address")]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
     pub recipient: Address,
     pub amount: Word,
     pub nonce: Nonce,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     #[derivative(Debug(format_with = "fmt_as_field"))]
-    #[da_compress(skip)]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,
@@ -173,7 +206,7 @@ where
 
 impl<Specification> Message<Specification>
 where
-    Specification: MessageSpecification,
+    Specification: MessageSpecification + Clone,
 {
     pub fn prepare_sign(&mut self) {
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {

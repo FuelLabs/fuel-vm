@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "fuel-asm",
+    "fuel-compression",
     "fuel-crypto",
     "fuel-merkle",
     "fuel-storage",
@@ -22,6 +23,7 @@ version = "0.44.0"
 
 [workspace.dependencies]
 fuel-asm = { version = "0.44.0", path = "fuel-asm", default-features = false }
+fuel-compression = { version = "0.44.0", path = "fuel-compression", default-features = false }
 fuel-crypto = { version = "0.44.0", path = "fuel-crypto", default-features = false }
 fuel-derive = { version = "0.44.0", path = "fuel-derive", default-features = false }
 fuel-merkle = { version = "0.44.0", path = "fuel-merkle", default-features = false }

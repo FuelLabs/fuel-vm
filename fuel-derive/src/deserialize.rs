@@ -4,7 +4,7 @@ use quote::{
     quote,
 };
 
-use crate::attribute::{
+use crate::canonical_attribute::{
     should_skip_field,
     should_skip_field_binding,
     StructAttrs,

@@ -19,7 +19,6 @@ pub use merkle_tree::{
 pub use primitive::Primitive;
 pub mod in_memory;
 pub mod proof;
-pub mod verify;
 
 use crate::common::Bytes32;
 

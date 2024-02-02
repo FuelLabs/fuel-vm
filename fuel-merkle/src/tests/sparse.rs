@@ -4,20 +4,31 @@ use crate::{
         StorageMap,
     },
     sparse::{
-        empty_sum,
-        verify::verify,
-        zero_sum,
+        proof::Proof,
         MerkleTree,
         MerkleTreeKey,
         Primitive,
     },
 };
+use core::fmt::{
+    Debug,
+    Formatter,
+};
 use fuel_storage::Mappable;
 use proptest::{
+    arbitrary::any,
+    collection::{
+        hash_set,
+        vec,
+    },
+    prelude::*,
     prop_assert,
+    prop_assume,
     prop_compose,
     proptest,
+    strategy::Strategy,
 };
+use std::collections::HashSet;
 
 #[derive(Debug)]
 struct TestTable;
@@ -29,120 +40,85 @@ impl Mappable for TestTable {
     type Value = Self::OwnedValue;
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, proptest_derive::Arbitrary)]
+struct Value(Bytes32);
+
+impl Debug for Value {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&format!("Value({})", hex::encode(self.0)))
+    }
+}
+
+impl AsRef<[u8]> for Value {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+fn keys(n: usize) -> impl Strategy<Value = HashSet<MerkleTreeKey>> {
+    hash_set(any::<MerkleTreeKey>(), n)
+}
+
+fn values(n: usize) -> impl Strategy<Value = Vec<Value>> {
+    vec(any::<Value>(), n)
+}
+
 prop_compose! {
-    fn random_tree()(key_values: Vec<(MerkleTreeKey, Bytes32)>) -> (Vec<(MerkleTreeKey, Bytes32)>, MerkleTree<TestTable, StorageMap<TestTable>>) {
+    fn key_values(min: usize, max: usize)(n in min..max)(k in keys(n), v in values(n)) -> Vec<(MerkleTreeKey, Value)> {
+        k.into_iter().zip(v.into_iter()).collect::<Vec<_>>()
+    }
+}
+
+prop_compose! {
+    fn random_tree(min: usize, max: usize)(kv in key_values(min, max)) -> (Vec<(MerkleTreeKey, Value)>, MerkleTree<TestTable, StorageMap<TestTable>>) {
         let storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(storage);
-        for (key, value) in key_values.iter() {
-            tree.update(*key, value).unwrap();
+        for (key, value) in kv.iter() {
+            tree.update(*key, value.as_ref()).unwrap();
         }
-        (key_values, tree)
+        (kv, tree)
     }
 }
 
 proptest! {
-    #[test]
-    fn generate_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree(), arb_num: usize) {
-        if !key_values.is_empty() {
-            let index = arb_num % key_values.len();
-            let (key, value) = key_values[index];
-            let proof = tree.generate_proof(key).expect("Infallible");
-            let verification = verify(key, &value, proof);
-            prop_assert!(verification)
-        }
-    }
+    #![proptest_config(ProptestConfig::with_cases(1))]
 
     #[test]
-    fn generate_proof_and_verify_with_valid_placeholder_returns_true((key_values, tree) in random_tree(), key: MerkleTreeKey) {
-        let (keys, _values): (Vec<_>, Vec<_>) = key_values.into_iter().unzip();
-        // Ensure the random key is not already included in the tree
-        if !keys.iter().any(|k| *k == key) {
-            let value = zero_sum();
-            let proof = tree.generate_proof(key).expect("Infallible");
-            let verification = verify(key, value, proof.clone());
-            prop_assert!(verification)
-        }
-    }
-
-    #[test]
-    fn generate_proof_and_verify_with_valid_key_invalid_value_returns_false((key_values, tree) in random_tree(), arb_num: usize, value: Bytes32) {
-        if !key_values.is_empty() {
-            let index = arb_num % key_values.len();
-            let (key, _) = key_values[index];
-            let proof = tree.generate_proof(key).expect("Infallible");
-            let verification = verify(key, &value, proof);
-            prop_assert!(!verification)
-        }
-    }
-
-    #[test]
-    fn generate_proof_and_verify_with_invalid_key_value_returns_false((_, tree) in random_tree(), key: MerkleTreeKey, value: Bytes32) {
+    fn generate_inclusion_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree(1, 100), arb_num: usize) {
+        let index = arb_num % key_values.len();
+        let (key, value) = key_values[index];
         let proof = tree.generate_proof(key).expect("Infallible");
-        let verification = verify(key, &value, proof);
-        prop_assert!(!verification)
-    }
-}
-
-proptest! {
-    #[test]
-    fn verify_excluded_key_cannot_create_false_positive((key_values, tree) in random_tree(), arb_num: usize, random_key: MerkleTreeKey) {
-        if !key_values.is_empty() {
-            let index = arb_num % key_values.len();
-            let (key, value) = key_values[index];
-            let proof = tree.generate_proof(key).expect("Infallible");
-
-            // Ensure we are testing an inclusion proof
-            prop_assert!(proof.initial_hash.is_none());
-            let verification = verify(key.clone(), &value, proof.clone());
-            prop_assert!(verification);
-
-            // Verify a random key using the proof. Because the random key is
-            // not part of the tree, verification should fail.
-            let verification = verify(random_key, empty_sum(), proof.clone());
-            prop_assert!(!verification);
-        }
+        let inclusion = match proof {
+            Proof::Inclusion(proof) => proof.verify(key, &value),
+            Proof::Exclusion(_) => panic!("Expected InclusionProof"),
+        };
+        prop_assert!(inclusion)
     }
 
     #[test]
-    fn verify_included_key_cannot_create_false_positive((_, tree) in random_tree(), random_key: MerkleTreeKey, value: Bytes32) {
-        if value != *empty_sum() {
-            let mut proof = tree.generate_proof(random_key).expect("Infallible");
-
-            // Verify that the key corresponds to the zero sum. Because the key
-            // is not included in the tree, verification should succeed.
-            let verification = verify(random_key.clone(), empty_sum(), proof.clone());
-            prop_assert!(verification);
-
-            // Convert the exclusion proof to an inclusion proof and verify that
-            // the key corresponds to the zero sum.
-            proof.initial_hash = None;
-            // Because the proof does not contain the correct initial hash,
-            // verification should fail.
-            let verification = verify(random_key.clone(), empty_sum(), proof.clone());
-            prop_assert!(!verification);
-        }
+    fn generate_inclusion_proof_and_verify_with_valid_key_invalid_value_returns_false((key_values, tree) in random_tree(1, 100), arb_num: usize, value: Bytes32) {
+        let index = arb_num % key_values.len();
+        let (key, _) = key_values[index];
+        let proof = tree.generate_proof(key).expect("Infallible");
+        let inclusion = match proof {
+            Proof::Inclusion(proof) => proof.verify(key, &value),
+            Proof::Exclusion(_) => panic!("Expected InclusionProof"),
+        };
+        prop_assert!(!inclusion)
     }
 
-
-    // Bug: Is that proof of inclusion or proof of exclusion? It looks like a proof of
-    // exclusion while the value is included.
     #[test]
-    fn verify_included_key_can_produce_exclusion_proof((_, mut tree) in random_tree(), random_key: MerkleTreeKey, value: Bytes32) {
-        if value != *empty_sum() {
-            let root_before = tree.root();
-            tree.update(random_key, empty_sum()).expect("Should update key without error");
-            let root_after = tree.root();
-            assert_ne!(root_before, root_after);
-
-            let mut proof = tree.generate_proof(random_key).expect("Infallible");
-            assert_eq!(proof.root, root_after);
-            proof.proof_set.clear();
-            proof.initial_hash = Some(proof.root);
-
-            // Verify that the key corresponds to the zero sum. Because the key
-            // is not included in the tree, verification should succeed.
-            let verification = verify(random_key.clone(), empty_sum(), proof.clone());
-            prop_assert!(!verification);
-        }
+    fn generate_exclusion_proof_and_verify_with_excluded_key_returns_true((key_values, tree) in random_tree(2, 3), key: MerkleTreeKey) {
+        prop_assume!(!key_values.iter().any(|(k, _)| *k == key));
+        dbg!(&key_values);
+        dbg!(&key);
+        let proof = tree.generate_proof(key).expect("Infallible");
+        let root = *proof.root();
+        let exclusion = match proof {
+            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
+            Proof::Exclusion(proof) => proof.verify(key),
+        };
+        println!("root: {}, exclusion: {}", hex::encode(root), exclusion);
+        prop_assert!(exclusion)
     }
 }

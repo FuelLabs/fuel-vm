@@ -24,7 +24,11 @@ use crate::sparse::{
         merge_branches,
         Branch,
     },
-    proof::Proof,
+    proof::{
+        ExclusionProof,
+        InclusionProof,
+        Proof,
+    },
 };
 use alloc::{
     format,
@@ -66,7 +70,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 
 /// The safe Merkle tree storage key prevents Merkle tree structure manipulations.
 /// The type contains only one constructor that hashes the storage key.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct MerkleTreeKey(Bytes32);
 
@@ -156,7 +160,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
 
     // PRIVATE
 
-    fn root_node(&self) -> &Node {
+    pub fn root_node(&self) -> &Node {
         &self.root_node
     }
 
@@ -396,6 +400,7 @@ where
         let leaf_node = Node::create_leaf(&key, data);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
+        dbg!(&leaf_node);
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
@@ -483,6 +488,7 @@ where
                     Node::create_node_on_path(path, &current_node, actual_leaf_node);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
+                dbg!("merged", &current_node);
             }
 
             // Merge placeholders
@@ -496,6 +502,7 @@ where
                     Node::create_node_on_path(path, &current_node, &placeholder);
                 self.storage
                     .insert(current_node.hash(), &current_node.as_ref().into())?;
+                dbg!("placeholder", &current_node);
             }
         } else {
             self.storage.remove(actual_leaf_node.hash())?;
@@ -506,6 +513,7 @@ where
             current_node = Node::create_node_on_path(path, &current_node, side_node);
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
+            dbg!("sidenode", &current_node);
         }
 
         for node in path_nodes.iter().skip(1 /* leaf */) {
@@ -615,43 +623,16 @@ where
         let proof = if path == *actual_leaf.leaf_key() {
             // If the requested key is part of the tree, build an inclusion
             // proof.
-            //
-            let initial_hash = None;
-            Proof {
-                root,
-                proof_set,
-                initial_hash,
-            }
+            let inclusion_proof = InclusionProof { root, proof_set };
+            Proof::Inclusion(inclusion_proof)
         } else {
             // If the requested key is not part of the tree, we are verifying
             // that the given key is a placeholder, and we must build an
             // exclusion proof. When building an exclusion proof, the requested
             // leaf is unset and is currently a placeholder. The path to this
             // placeholder is designated by the requested leaf's key.
-            //
-            // If the closest leaf is a real leaf, and not a placeholder, we can
-            // build the root upwards using this leaf's key and value.
-            //
-            // If the closest leaf is a placeholder, it has a leaf key and a
-            // placeholder value (the zero sum). The leaf key of this
-            // placeholder leaf is unknown (since placeholders do not store
-            // their leaf key), and by extension, the path from the root to the
-            // placeholder is also unknown.
-            //
-            // However, in both cases, the path defined by the requested
-            // placeholder is sufficiently close: All branches stemming from the
-            // point where the paths of the requested placeholder and closest
-            // leaf diverge are saturated with the closest leaf's hash. In the
-            // case where the closest leaf is a placeholder, this hash is simply
-            // the zero sum. The hash of any placeholder under this point of
-            // divergence equates to this hash.
-            //
-            let initial_hash = Some(*actual_leaf.hash());
-            Proof {
-                root,
-                proof_set,
-                initial_hash,
-            }
+            let exclusion_proof = ExclusionProof { root, proof_set };
+            Proof::Exclusion(exclusion_proof)
         };
         Ok(proof)
     }

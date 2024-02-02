@@ -542,4 +542,156 @@ mod test {
         };
         assert!(exclusion);
     }
+
+    #[test]
+    fn verify_exclusion_proof_3() {
+        fn decode(value: &str) -> Bytes32 {
+            hex::decode(value).unwrap().try_into().unwrap()
+        }
+
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        let key =
+            decode("6603ffdf22b977cd650aa16838417ff339b628ae459a74e5b3b7ccb343b6fbc9");
+        let value =
+            decode("ff3e2001c9dd742c18670e5392cde1ef5d593b2d7c7c7a93f0f6eb51c9c10187");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("10430dc4ba7036f41a18577e988e915722c29b8d54912b91aac2ac9d601fd405");
+        let value =
+            decode("aa3641fe890a9b56ee95f977fc14a2c5b589846ed70d21c749fbe4bd4177b1ea");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("e4c31a34ce63bc3e7d2dd35e11e5625b2b989b23415fe147f778738913b2ae11");
+        let value =
+            decode("bf17ef4e8cc11af18e0da1121c60040ca5e39291085656ecace45009b2aa8984");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("064a6caab4228341b28968781e25a3cf4cc26f051427517b6fc9fcc887c58037");
+        let value =
+            decode("d3dccbde050f4f4dfee6872441cfa7fba4cbfc971cddf6ced23f264ddb0dc225");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("df558542db6c4e288a5ae2d27cdee1b5f77b6a2fd75d7bdbd111449d37a872cc");
+        let value =
+            decode("34b72f0db3dd5d6665189492e8bcec945da83fb5097d28a4802d959431a45b01");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("45854545df868a8f0f362dca6c9cf47df1c6876806245ddadf63f1106d1acb31");
+        let value =
+            decode("2b01f9b8ea40f595f2fb512a4e9761a597a82943f1c5b1bc9d7e782612802bed");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("c6e07d829f4cf89ba59e5b59f1df66247359d9fdf93b501f6922d985d9297e5e");
+        let value =
+            decode("865f3498278e570e21af613379fffdf0e91b0e9cd6996ec0d14bececcdb05b44");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("9f94bce62ddf444ca02f8723ed6ba05d2087a4b442f546aa9d982134ea13b91d");
+        let value =
+            decode("3c76b62db0193a1bbfed2eef076b142655f03ad141cd4d5e6f0a6c65e6cf9f52");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("fcea8f34f900981fdd0cd034da015981a5f9b0a7c4e0e2f86531f6d669fbcb8e");
+        let value =
+            decode("f7f38bcfeb365a23e174515eab4dcf0bbc17946dd80d3c6c1f310a6e203d13bc");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("bfaf55f9fe3fa4c664361482f0b02dcfc96f23b6fecc381cbd00f95527a81321");
+        let value =
+            decode("a41d3de6edb6a2502537863feb2040a22c0770de1eeebe368e5cc0a5af2f31d5");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("14aa8541c9c58b402cb5fa4ab484f97a311ec7ee5e8a8c854596c76579801a19");
+        let value =
+            decode("d1fcb2786b61b9d48732a8c33826f4a99be3f562d53fa31867edd08f7f16d69c");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("63f3447ae1c7e709f2ebdf635121b1bfab252f172cb86f408e9224a4c5d87f52");
+        let value =
+            decode("ed5620d0b0dcaa3d1842f137cd0044774afb56339f23361959600381e04c49bc");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("751a9f07cf411b194d1b903d83cd8ba7ad10e4f303d86cf1e50ff4630212b752");
+        let value =
+            decode("20e1c45433d19cdd82506cb25d0a8b9e874bd0ff16bf155cb7322df267518854");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("f5d152ac2b89fa9f6aa5f5990f111f054e88c9a92a7aa8a1b23254e8d99cc007");
+        let value =
+            decode("9d062871a9f6e0ed1dd0b45aaefba4ca3ae8577e3b02fdc6c4021220df59374a");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("e21aa74c3640da62ab60748cd641100318d67d597913069373dad0db260823fa");
+        let value =
+            decode("b7fb238e1c189279017ad61ea1281b9538818aa653a8039e9ff953c174db3e81");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("c95d30db00f7f25159a4c16b5713e7f61e9bde1584f5faa248adf9995715873c");
+        let value =
+            decode("634169ebbc9d6c09c7763bc025be9184e3fda02a1e8e5f79902b5d9b351c107c");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("13dbf8a70310af5b581b4922cb3bb31986aaf8301fd477daa06801ad8fbf8bc4");
+        let value =
+            decode("4956fd3d76089f550f82e163e1db34cdc5327fe60a4f4df3e95b8bd2a7c4258b");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("a35e417bd00099324ded7c5a077271bfd0726379f3fabbba77b3a87656a0c272");
+        let value =
+            decode("d23ee247bc7ef3dedc6e63eca4363e5a2047c85c2f1104ba6703cc8c4dec36a0");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("3082d3ea0bfc4184ccb2d7f36a174e210fc388c15469172f4de0ee415f14eefb");
+        let value =
+            decode("1997e1fe595f3ac732e166089b95253403cf6ff9416a0e69d1e2aba30511fe2b");
+        tree.update(key.into(), &value).unwrap();
+
+        let key =
+            decode("85c1ba9c4c9ffdb4e6627f5a63f6714cd8f5b40141929ba9895bf79ae33b6fcc");
+        let value =
+            decode("771f14eb90ce6187e4486a56808f56e28f56d934646a2fe3c4785525eed8ea85");
+        tree.update(key.into(), &value).unwrap();
+
+        dbg!(tree.root_node());
+
+        let key: MerkleTreeKey =
+            decode("c1d60be1664856f5a6e6be46b0c796f8780c6144cbd4cb50ef4365470c4999cf")
+                .into();
+
+        let proof = tree.generate_proof(key).unwrap();
+        dbg!(proof
+            .proof_set()
+            .iter()
+            .map(|p| hex::encode(p))
+            .collect::<Vec<_>>());
+        let exclusion = match proof {
+            Proof::Exclusion(proof) => {
+                let ExclusionProof { root, proof_set } = proof;
+                let proof = ExclusionProof { root, proof_set };
+                proof.verify(key)
+            }
+            Proof::Inclusion(_) => panic!("Expected InclusionProof"),
+        };
+        assert!(exclusion);
+    }
 }

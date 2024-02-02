@@ -108,7 +108,7 @@ proptest! {
     }
 
     #[test]
-    fn generate_exclusion_proof_and_verify_with_excluded_key_returns_true((key_values, tree) in random_tree(2, 3), key: MerkleTreeKey) {
+    fn generate_exclusion_proof_and_verify_with_excluded_key_returns_true((key_values, tree) in random_tree(2, 100), key: MerkleTreeKey) {
         prop_assume!(!key_values.iter().any(|(k, _)| *k == key));
         dbg!(&key_values);
         dbg!(&key);

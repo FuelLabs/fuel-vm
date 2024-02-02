@@ -418,7 +418,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<alloc::borrow::Cow<Vec<u8>>>>, Self::DataError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
 
@@ -426,7 +426,7 @@ where
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Bytes32],
+        values: &[Vec<u8>],
     ) -> Result<usize, Self::DataError> {
         self.0
             .merkle_contract_state_insert_range(contract, start_key, values)

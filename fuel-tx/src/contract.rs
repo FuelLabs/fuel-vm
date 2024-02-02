@@ -105,12 +105,9 @@ impl Contract {
     where
         I: Iterator<Item = &'a StorageSlot>,
     {
-        let root = SparseMerkleTree::root_from_set(storage_slots.map(|slot| {
-            (
-                MerkleTreeKey::new(*slot.key().deref()),
-                *slot.value().deref(),
-            )
-        }));
+        let storage_slots = storage_slots
+            .map(|slot| (MerkleTreeKey::new(*slot.key().deref()), slot.value()));
+        let root = SparseMerkleTree::root_from_set(storage_slots);
 
         root.into()
     }

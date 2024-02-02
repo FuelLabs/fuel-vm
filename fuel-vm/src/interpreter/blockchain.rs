@@ -1231,7 +1231,7 @@ fn state_read_qword<S: InterpreterStorage>(
             Some(bytes) => **bytes,
             None => {
                 all_set = false;
-                *Bytes32::zeroed()
+                Default::default()
             }
         })
         .collect();

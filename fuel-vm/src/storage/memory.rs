@@ -47,7 +47,7 @@ use super::interpreter::ContractsAssetsStorage;
 struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
-    contract_state: BTreeMap<ContractsStateKey, Bytes32>,
+    contract_state: BTreeMap<ContractsStateKey, Vec<u8>>,
     contract_code_root: BTreeMap<ContractId, (Salt, Bytes32)>,
 }
 
@@ -82,7 +82,7 @@ impl MemoryStorage {
     /// Iterate over all contract state in storage
     pub fn all_contract_state(
         &self,
-    ) -> impl Iterator<Item = (&ContractsStateKey, &Bytes32)> {
+    ) -> impl Iterator<Item = (&ContractsStateKey, &Vec<u8>)> {
         self.memory.contract_state.iter()
     }
 
@@ -91,8 +91,8 @@ impl MemoryStorage {
         &self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Cow<'_, Bytes32> {
-        const DEFAULT_STATE: Bytes32 = Bytes32::zeroed();
+    ) -> Cow<'_, Vec<u8>> {
+        const DEFAULT_STATE: Vec<u8> = Default::default();
 
         self.storage::<ContractsState>()
             .get(&(contract, key).into())
@@ -380,7 +380,7 @@ impl InterpreterStorage for MemoryStorage {
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<Vec<u8>>>>, Self::DataError> {
         let start: ContractsStateKey = (id, start_key).into();
         let end: ContractsStateKey = (id, &Bytes32::new([u8::MAX; 32])).into();
         let mut iter = self.memory.contract_state.range(start..end);
@@ -416,7 +416,7 @@ impl InterpreterStorage for MemoryStorage {
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Bytes32],
+        values: &[Vec<u8>],
     ) -> Result<usize, Self::DataError> {
         let mut unset_count = 0;
         let values: Vec<_> = core::iter::successors(Some(**start_key), |n| {

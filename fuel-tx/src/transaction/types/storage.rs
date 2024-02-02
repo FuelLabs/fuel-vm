@@ -69,7 +69,7 @@ impl Distribution<StorageSlot> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StorageSlot {
         StorageSlot {
             key: rng.gen(),
-            value: rng.gen(),
+            value: rng.gen::<Bytes32>().to_vec(),
         }
     }
 }
@@ -101,7 +101,7 @@ mod tests {
     fn test_storage_slot_serialization() {
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let value: Bytes32 = rng.gen();
+        let value = rng.gen::<Bytes32>().to_vec();
 
         let slot = StorageSlot::new(key, value);
         let slots = vec![slot.clone()];

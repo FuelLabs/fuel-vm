@@ -61,6 +61,7 @@ use fuel_tx::{
     ContractIdExt,
     DependentCost,
     Receipt,
+    StorageData,
 };
 use fuel_types::{
     bytes,
@@ -1041,7 +1042,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = ContractId::from_bytes_ref(contract.read(memory));
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let mut value = Vec::<u8>::default();
+    let mut value = vec![0; 32];
 
     value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
@@ -1231,7 +1232,7 @@ fn state_read_qword<S: InterpreterStorage>(
             Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                Default::default()
+                vec![0; 32]
             }
         })
         .collect();

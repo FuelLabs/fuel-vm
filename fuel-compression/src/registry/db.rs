@@ -3,6 +3,7 @@ use super::{
     Table,
 };
 
+/// Registry database needs these behaviors
 pub trait RegistryDb {
     /// Get next key for the given table. This is where the next write should start at.
     /// The result of this function is just a suggestion, and the caller may choose to

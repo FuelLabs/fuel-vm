@@ -23,6 +23,7 @@ use crate::{
     Key,
 };
 
+/// Context for compaction, i.e. converting data to reference-based format
 #[must_use]
 pub struct CompactionContext<'a, R> {
     /// The registry
@@ -102,13 +103,16 @@ impl<'a, R: RegistryDb> CompactionContext<'a, R> {
 
 /// Convert data to reference-based format
 pub trait Compactable {
+    /// The compacted type with references
     type Compact: Clone + Serialize + for<'a> Deserialize<'a>;
 
     /// Count max number of each key type, for upper limit of overwritten keys
     fn count(&self) -> CountPerTable;
 
+    /// Convert to compacted format
     fn compact<R: RegistryDb>(&self, ctx: &mut CompactionContext<R>) -> Self::Compact;
 
+    /// Convert from compacted format
     fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> Self;
 }
 

@@ -18,8 +18,12 @@ mod _private {
     pub trait Seal {}
 }
 
+/// Table in the registry
 pub trait Table: _private::Seal {
+    /// Unique name of the table
     const NAME: &'static str;
+
+    /// The type stored in the table
     type Type: PartialEq + Default + Serialize + for<'de> Deserialize<'de>;
 }
 
@@ -40,6 +44,7 @@ pub mod access {
 macro_rules! tables {
     // $index muse use increasing numbers starting from zero
     ($($name:ident: $ty:ty),*$(,)?) => {
+        /// Marker struct for each table type
         pub mod tables {
             $(
                 /// Specifies the table to use for a given key.
@@ -58,6 +63,7 @@ macro_rules! tables {
         /// One counter per table
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
         #[allow(non_snake_case)] // The field names match table type names eactly
+        #[allow(missing_docs)] // Makes no sense to document the fields
         #[non_exhaustive]
         pub struct CountPerTable {
             $(pub $name: usize),*
@@ -101,6 +107,7 @@ macro_rules! tables {
         /// One key value per table
         #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         #[allow(non_snake_case)] // The field names match table type names eactly
+        #[allow(missing_docs)] // Makes no sense to document the fields
         #[non_exhaustive]
         pub struct KeyPerTable {
             $(pub $name: Key<tables::$name>),*
@@ -152,16 +159,19 @@ macro_rules! tables {
         /// Registeration changes per table
         #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
         #[allow(non_snake_case)] // The field names match table type names eactly
+        #[allow(missing_docs)] // Makes no sense to document the fields
         #[non_exhaustive]
         pub struct ChangesPerTable {
             $(pub $name: WriteTo<tables::$name>),*
         }
 
         impl ChangesPerTable {
+            /// Is the changeset empty for all tables?
             pub fn is_empty(&self) -> bool {
                 true $(&& self.$name.values.is_empty())*
             }
 
+            /// Create a new changeset with the given start keys
             pub fn from_start_keys(start_keys: KeyPerTable) -> Self {
                 Self {
                     $($name: WriteTo {

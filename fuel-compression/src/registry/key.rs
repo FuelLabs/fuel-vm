@@ -109,10 +109,12 @@ impl<T: Table> Key<T> {
     /// This is the first writable key.
     pub const ZERO: Self = Self(RawKey::ZERO, PhantomData);
 
+    /// Obtain untyped key.
     pub fn raw(&self) -> RawKey {
         self.0
     }
 
+    /// Construct from untyped key.
     pub fn from_raw(raw: RawKey) -> Self {
         Self(raw, PhantomData)
     }

@@ -63,7 +63,6 @@ where
                 retryable_balance += *amount;
             }
             Input::Contract(_) => {}
-            _ => {}
         }
     }
 

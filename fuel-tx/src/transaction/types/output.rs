@@ -23,7 +23,6 @@ pub use repr::OutputRepr;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(canonical::Deserialize, canonical::Serialize)]
-#[non_exhaustive]
 pub enum Output {
     Coin {
         #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]

@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.45.0]
+
+### Changed
+#### Breaking
+
+- [#668](https://github.com/FuelLabs/fuel-vm/pull/668): Remove `non_exhaustive` from versionable types for security reasons
+
 ## [Version 0.44.0]
 
 #### Changed

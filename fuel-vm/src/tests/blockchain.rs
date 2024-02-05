@@ -295,7 +295,7 @@ fn ldc__load_external_contract_code() {
         true,
     );
 
-    if let Receipt::LogData { digest, .. } = receipts.get(0).expect("No receipt") {
+    if let Receipt::LogData { digest, .. } = receipts.first().expect("No receipt") {
         let mut code = program.into_inner();
         code.extend([0; 4]);
         assert_eq!(digest, &Hasher::hash(&code), "Loaded code digest incorrect");
@@ -573,8 +573,8 @@ fn ldc__load_len_of_target_contract<'a>(
         let index = i as Immediate12;
         let value = *byte as Immediate12;
         load_contract.extend([
-            op::movi(reg_a, value.try_into().unwrap()), // r[a] := r[a] | value
-            op::sb(RegId::HP, reg_a, index),            // m[$hp+index] := r[a] (=value)
+            op::movi(reg_a, value.into()),   // r[a] := r[a] | value
+            op::sb(RegId::HP, reg_a, index), // m[$hp+index] := r[a] (=value)
         ]);
     }
 
@@ -719,7 +719,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         reason,
         contract_id: actual_contract_id,
         ..
-    } = receipts.get(0).expect("No receipt")
+    } = receipts.first().expect("No receipt")
     {
         assert_eq!(
             &expected_reason,

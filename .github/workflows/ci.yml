@@ -156,6 +156,8 @@ jobs:
         uses: xgreenx/publish-crates@v1
         with:
           dry-run: true
+          check-repo: false
+          ignore-unpublished-changes: true
 
   publish:
     # Only do this job if publishing a release and all checks pass.

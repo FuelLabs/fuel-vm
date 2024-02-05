@@ -4,7 +4,6 @@ use fuel_types::{
         Serialize,
     },
     Bytes32,
-    Bytes64,
 };
 
 #[cfg(feature = "random")]
@@ -18,19 +17,21 @@ use rand::{
 
 use core::cmp::Ordering;
 
+pub type StorageData = Vec<u8>;
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(Deserialize, Serialize)]
 pub struct StorageSlot {
     key: Bytes32,
-    value: Vec<u8>,
+    value: StorageData,
 }
 
 impl StorageSlot {
     pub const SLOT_SIZE: usize = Bytes32::LEN + Bytes32::LEN;
 
-    pub const fn new(key: Bytes32, value: Vec<u8>) -> Self {
+    pub const fn new(key: Bytes32, value: StorageData) -> Self {
         StorageSlot { key, value }
     }
 
@@ -38,7 +39,7 @@ impl StorageSlot {
         &self.key
     }
 
-    pub const fn value(&self) -> &Vec<u8> {
+    pub const fn value(&self) -> &StorageData {
         &self.value
     }
 }
@@ -63,6 +64,12 @@ impl StorageSlot {
 //         Self::new(key, value)
 //     }
 // }
+
+impl From<&(Bytes32, StorageData)> for StorageSlot {
+    fn from((key, value): &(Bytes32, StorageData)) -> Self {
+        Self::new(*key, value.clone())
+    }
+}
 
 #[cfg(feature = "random")]
 impl Distribution<StorageSlot> for Standard {

@@ -636,12 +636,13 @@ mod tests {
     #[test]
     fn storage_slots_sorting() {
         // Test that storage slots must be sorted correctly
-        let mut slot_data = [0u8; 64];
+        let mut slot_data = ([0u8; 32], vec![0u8; 32]);
 
         let storage_slots = (0..10u64)
             .map(|i| {
-                slot_data[..8].copy_from_slice(&i.to_be_bytes());
-                StorageSlot::from(&slot_data.into())
+                slot_data.0[..8].copy_from_slice(&i.to_be_bytes());
+                let (key, value) = slot_data.clone();
+                StorageSlot::from(&(key.into(), value))
             })
             .collect::<Vec<StorageSlot>>();
 
@@ -664,8 +665,8 @@ mod tests {
     #[test]
     fn storage_slots_no_duplicates() {
         let storage_slots = vec![
-            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
-            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
+            StorageSlot::new(Bytes32::zeroed(), Default::default()),
+            StorageSlot::new(Bytes32::zeroed(), Default::default()),
         ];
 
         let err = crate::TransactionBuilder::create(

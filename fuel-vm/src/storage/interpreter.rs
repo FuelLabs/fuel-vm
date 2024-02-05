@@ -10,6 +10,7 @@ use fuel_storage::{
 };
 use fuel_tx::{
     Contract,
+    StorageData,
     StorageSlot,
 };
 use fuel_types::{
@@ -161,7 +162,7 @@ pub trait InterpreterStorage:
         &self,
         id: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Cow<'_, Vec<u8>>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, StorageData>>, Self::DataError> {
         StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
@@ -170,8 +171,8 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-        value: &Vec<u8>,
-    ) -> Result<Option<Vec<u8>>, Self::DataError> {
+        value: &StorageData,
+    ) -> Result<Option<StorageData>, Self::DataError> {
         StorageMutate::<ContractsState>::insert(self, &(contract, key).into(), value)
     }
 
@@ -180,7 +181,7 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Vec<u8>>, Self::DataError> {
+    ) -> Result<Option<StorageData>, Self::DataError> {
         StorageMutate::<ContractsState>::remove(self, &(contract, key).into())
     }
 
@@ -192,7 +193,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<Vec<u8>>>>, Self::DataError>;
+    ) -> Result<Vec<Option<Cow<StorageData>>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns the number of keys that were previously unset but are now set.
@@ -200,7 +201,7 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Vec<u8>],
+        values: &[StorageData],
     ) -> Result<usize, Self::DataError>;
 
     /// Remove a range of key-values from contract storage.
@@ -289,7 +290,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<Vec<u8>>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<StorageData>>>, Self::DataError> {
         <S as InterpreterStorage>::merkle_contract_state_range(
             self.deref(),
             id,
@@ -302,7 +303,7 @@ where
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Vec<u8>],
+        values: &[StorageData],
     ) -> Result<usize, Self::DataError> {
         <S as InterpreterStorage>::merkle_contract_state_insert_range(
             self.deref_mut(),

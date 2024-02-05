@@ -23,7 +23,10 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::Contract;
+use fuel_tx::{
+    Contract,
+    StorageData,
+};
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -47,7 +50,7 @@ use super::interpreter::ContractsAssetsStorage;
 struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
-    contract_state: BTreeMap<ContractsStateKey, Vec<u8>>,
+    contract_state: BTreeMap<ContractsStateKey, StorageData>,
     contract_code_root: BTreeMap<ContractId, (Salt, Bytes32)>,
 }
 
@@ -82,7 +85,7 @@ impl MemoryStorage {
     /// Iterate over all contract state in storage
     pub fn all_contract_state(
         &self,
-    ) -> impl Iterator<Item = (&ContractsStateKey, &Vec<u8>)> {
+    ) -> impl Iterator<Item = (&ContractsStateKey, &StorageData)> {
         self.memory.contract_state.iter()
     }
 
@@ -91,13 +94,13 @@ impl MemoryStorage {
         &self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Cow<'_, Vec<u8>> {
-        const DEFAULT_STATE: Vec<u8> = Default::default();
+    ) -> Cow<'_, StorageData> {
+        const DEFAULT_STATE: StorageData = Vec::new();
 
         self.storage::<ContractsState>()
             .get(&(contract, key).into())
             .expect("Infallible")
-            .unwrap_or(Cow::Borrowed(&DEFAULT_STATE))
+            .unwrap_or(Cow::Owned(DEFAULT_STATE))
     }
 
     /// Set the transacted state to the memory state.
@@ -306,7 +309,7 @@ impl StorageInspect<ContractsState> for MemoryStorage {
     fn get(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Cow<'_, Vec<u8>>>, Infallible> {
+    ) -> Result<Option<Cow<'_, <ContractsState as Mappable>::Value>>, Infallible> {
         Ok(self.memory.contract_state.get(key).map(Cow::Borrowed))
     }
 
@@ -322,15 +325,15 @@ impl StorageMutate<ContractsState> for MemoryStorage {
     fn insert(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-        value: &Vec<u8>,
-    ) -> Result<Option<Vec<u8>>, Infallible> {
-        Ok(self.memory.contract_state.insert(*key, *value))
+        value: &<ContractsState as Mappable>::Value,
+    ) -> Result<Option<<ContractsState as Mappable>::Value>, Infallible> {
+        Ok(self.memory.contract_state.insert(*key, value.clone()))
     }
 
     fn remove(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Infallible> {
+    ) -> Result<Option<StorageData>, Infallible> {
         Ok(self.memory.contract_state.remove(key))
     }
 }
@@ -380,7 +383,7 @@ impl InterpreterStorage for MemoryStorage {
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<Vec<u8>>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<StorageData>>>, Self::DataError> {
         let start: ContractsStateKey = (id, start_key).into();
         let end: ContractsStateKey = (id, &Bytes32::new([u8::MAX; 32])).into();
         let mut iter = self.memory.contract_state.range(start..end);
@@ -416,7 +419,7 @@ impl InterpreterStorage for MemoryStorage {
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Vec<u8>],
+        values: &[StorageData],
     ) -> Result<usize, Self::DataError> {
         let mut unset_count = 0;
         let values: Vec<_> = core::iter::successors(Some(**start_key), |n| {
@@ -433,7 +436,7 @@ impl InterpreterStorage for MemoryStorage {
             if !self.memory.contract_state.contains_key(&key) {
                 unset_count += 1;
             }
-            (key, *value)
+            (key, value.clone())
         })
         .collect();
         self.memory.contract_state.extend(values);
@@ -495,23 +498,23 @@ mod tests {
         ]
     }
 
-    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some(Bytes32::zeroed())])]
-    #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<Bytes32>>::with_capacity(0))]
+    #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some(Default::default())])]
+    #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<StorageData>>::with_capacity(0))]
     #[test_case(&[], &[0u8; 32], 1 => vec![None])]
     #[test_case(&[], &[1u8; 32], 1 => vec![None])]
     #[test_case(&[&[0u8; 32]], &key(1), 2 => vec![None, None])]
-    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some(Bytes32::zeroed()), None, Some(Bytes32::zeroed())])]
-    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some(Bytes32::zeroed())])]
+    #[test_case(&[&key(1), &key(3)], &[0u8; 32], 4 => vec![None, Some(Default::default()), None, Some(Default::default())])]
+    #[test_case(&[&[0u8; 32], &key(1)], &[0u8; 32], 1 => vec![Some(Default::default())])]
     fn test_contract_state_range(
         store: &[&[u8; 32]],
         start: &[u8; 32],
         range: usize,
-    ) -> Vec<Option<Bytes32>> {
+    ) -> Vec<Option<StorageData>> {
         let mut mem = MemoryStorage::default();
         for k in store {
             mem.memory.contract_state.insert(
                 (&ContractId::default(), &(**k).into()).into(),
-                Bytes32::zeroed(),
+                Default::default(),
             );
         }
         mem.merkle_contract_state_range(&ContractId::default(), &(*start).into(), range)

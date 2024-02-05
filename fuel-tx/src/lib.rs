@@ -90,6 +90,7 @@ pub use transaction::{
     PredicateParameters,
     Script,
     ScriptParameters,
+    StorageData,
     StorageSlot,
     Transaction,
     TransactionFee,

@@ -182,10 +182,7 @@ impl TryFrom<&Transaction> for Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fuel_types::{
-        bytes::WORD_SIZE,
-        Bytes64,
-    };
+    use fuel_types::bytes::WORD_SIZE;
     use itertools::Itertools;
     use quickcheck_macros::quickcheck;
     use rand::{
@@ -234,9 +231,8 @@ mod tests {
 
     #[rstest]
     fn state_root_snapshot(
-        #[values(Vec::new(), vec![Bytes64::new([1u8; 64])])] state_slot_bytes: Vec<
-            Bytes64,
-        >,
+        #[values(Vec::new(), vec![ (Bytes32::new([1u8; 32]), vec![1u8; 32]) ] )]
+        state_slot_bytes: Vec<(Bytes32, Vec<u8>)>,
     ) {
         let slots: Vec<StorageSlot> =
             state_slot_bytes.iter().map(Into::into).collect_vec();

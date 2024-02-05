@@ -356,11 +356,12 @@ fn tx_offset_create() {
                         .storage_slots_offset_at(idx)
                         .expect("tx with slots contains offsets");
 
-                    let bytes =
-                        Bytes64::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes64::LEN])
+                    let key =
+                        Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN])
                             .unwrap();
+                    let value = bytes[Bytes32::LEN..].to_vec();
 
-                    let slot_p = StorageSlot::from(bytes);
+                    let slot_p = StorageSlot::from(&(*key, value));
 
                     assert_eq!(slot, &slot_p);
                 });

@@ -10,7 +10,10 @@ mod witness;
 pub use create::Create;
 pub use mint::Mint;
 pub use script::Script;
-pub use storage::StorageSlot;
+pub use storage::{
+    StorageData,
+    StorageSlot,
+};
 pub use utxo_id::UtxoId;
 pub use witness::Witness;
 

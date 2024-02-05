@@ -1228,7 +1228,7 @@ fn state_read_qword<S: InterpreterStorage>(
         .map_err(RuntimeError::Storage)?
         .into_iter()
         .flat_map(|bytes| match bytes {
-            Some(bytes) => **bytes,
+            Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
                 Default::default()
@@ -1295,7 +1295,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
 
     let values: Vec<_> = memory[input.source_address_memory_range.usizes()]
         .chunks_exact(Bytes32::LEN)
-        .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
+        .flat_map(|chunk| Some(chunk.to_vec()))
         .collect();
 
     let unset_count = storage

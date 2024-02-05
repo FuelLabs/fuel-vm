@@ -1,7 +1,10 @@
 //! Storage backend implementations.
 
 use fuel_storage::Mappable;
-use fuel_tx::Contract;
+use fuel_tx::{
+    Contract,
+    StorageData,
+};
 use fuel_types::{
     AssetId,
     Bytes32,
@@ -67,7 +70,7 @@ impl Mappable for ContractsState {
     type OwnedKey = ContractsStateKey;
     type OwnedValue = Self::Value;
     /// The table value is hash of the value.
-    type Value = Vec<u8>;
+    type Value = StorageData;
 }
 
 /// The macro defines a new type of double storage key. It is a merge of the two types

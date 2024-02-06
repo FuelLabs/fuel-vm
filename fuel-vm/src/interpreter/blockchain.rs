@@ -61,7 +61,6 @@ use fuel_tx::{
     ContractIdExt,
     DependentCost,
     Receipt,
-    StorageData,
 };
 use fuel_types::{
     bytes,

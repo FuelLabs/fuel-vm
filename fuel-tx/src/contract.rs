@@ -21,10 +21,7 @@ use fuel_types::{
 };
 
 use alloc::vec::Vec;
-use core::{
-    iter,
-    ops::Deref,
-};
+use core::iter;
 
 /// The target size of Merkle tree leaves in bytes. Contract code will will be divided
 /// into chunks of this size and pushed to the Merkle tree.
@@ -106,9 +103,9 @@ impl Contract {
         I: Iterator<Item = &'a StorageSlot>,
     {
         let storage_slots = storage_slots
-            .map(|slot| (MerkleTreeKey::new(*slot.key().deref()), slot.value()));
+            .map(|slot| (*slot.key(), slot.value()))
+            .map(|(key, data)| (MerkleTreeKey::new(key), data));
         let root = SparseMerkleTree::root_from_set(storage_slots);
-
         root.into()
     }
 
@@ -182,6 +179,7 @@ impl TryFrom<&Transaction> for Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::StorageData;
     use fuel_types::bytes::WORD_SIZE;
     use itertools::Itertools;
     use quickcheck_macros::quickcheck;
@@ -232,7 +230,7 @@ mod tests {
     #[rstest]
     fn state_root_snapshot(
         #[values(Vec::new(), vec![ (Bytes32::new([1u8; 32]), vec![1u8; 32]) ] )]
-        state_slot_bytes: Vec<(Bytes32, Vec<u8>)>,
+        state_slot_bytes: Vec<(Bytes32, StorageData)>,
     ) {
         let slots: Vec<StorageSlot> =
             state_slot_bytes.iter().map(Into::into).collect_vec();

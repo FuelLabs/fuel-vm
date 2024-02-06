@@ -29,6 +29,7 @@ use rand::{
     Rng,
     SeedableRng,
 };
+use std::mem::size_of;
 
 // Assert everything is tested. If some of these bools fails, just increase the number of
 // cases
@@ -356,11 +357,12 @@ fn tx_offset_create() {
                         .storage_slots_offset_at(idx)
                         .expect("tx with slots contains offsets");
 
-                    let key =
-                        Bytes32::from_bytes_ref_checked(&bytes[ofs..ofs + Bytes32::LEN])
-                            .unwrap();
-                    let value = bytes[Bytes32::LEN..].to_vec();
-
+                    let key_range = ofs..ofs + Bytes32::LEN;
+                    let key = Bytes32::from_bytes_ref_checked(&bytes[key_range.clone()])
+                        .unwrap();
+                    let value_range_start = key_range.end + size_of::<u64>();
+                    let value_range = value_range_start..value_range_start + Bytes32::LEN;
+                    let value = bytes[value_range].to_vec();
                     let slot_p = StorageSlot::from(&(*key, value));
 
                     assert_eq!(slot, &slot_p);

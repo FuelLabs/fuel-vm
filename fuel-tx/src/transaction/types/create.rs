@@ -444,7 +444,13 @@ mod field {
 
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
             if idx < self.storage_slots.len() {
-                Some(self.storage_slots_offset() + idx * StorageSlot::SLOT_SIZE)
+                let storage_slots_size: usize = self
+                    .storage_slots
+                    .iter()
+                    .take(idx)
+                    .map(|slot| slot.size())
+                    .sum();
+                Some(self.storage_slots_offset() + storage_slots_size)
             } else {
                 None
             }
@@ -464,8 +470,9 @@ mod field {
 
         #[inline(always)]
         fn inputs_offset(&self) -> usize {
-            self.storage_slots_offset()
-                + self.storage_slots.len() * StorageSlot::SLOT_SIZE
+            let storage_slots_size: usize =
+                self.storage_slots.iter().map(|slot| slot.size()).sum();
+            self.storage_slots_offset() + storage_slots_size
         }
 
         #[inline(always)]

@@ -54,7 +54,10 @@ use crate::{
         InterpreterStorage,
     },
 };
-use alloc::vec::Vec;
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use fuel_asm::PanicReason;
 use fuel_storage::StorageSize;
 use fuel_tx::{

@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+#### Breaking
+
+- [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized Contract state by changing the storage slot data type to a vector of bytes (`Vec<u8>`).  
+
 ## [Version 0.45.0]
 
 ### Changed

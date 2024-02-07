@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use fuel_types::{
     canonical::{
         Deserialize,

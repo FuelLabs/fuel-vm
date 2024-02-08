@@ -1,24 +1,10 @@
 use crate::prelude::{
-    Bug,
-    BugVariant,
-    ExecutableTransaction,
-    Interpreter,
-    InterpreterStorage,
-    RuntimeError,
+    Bug, BugVariant, ExecutableTransaction, Interpreter, InterpreterStorage, RuntimeError,
 };
 
-use crate::interpreter::{
-    InitialBalances,
-    RuntimeBalances,
-};
-use fuel_tx::{
-    FeeParameters,
-    GasCosts,
-};
-use fuel_types::{
-    AssetId,
-    Word,
-};
+use crate::interpreter::{InitialBalances, RuntimeBalances};
+use fuel_tx::{FeeParameters, GasCosts};
+use fuel_types::{AssetId, Word};
 
 impl<S, T, Ecal> Interpreter<S, T, Ecal>
 where
@@ -46,6 +32,7 @@ where
         used_gas: Word,
         initial_balances: &InitialBalances,
         balances: &RuntimeBalances,
+        gas_price: Word,
     ) -> Result<(), RuntimeError<S::DataError>>
     where
         Tx: ExecutableTransaction,
@@ -58,6 +45,7 @@ where
             gas_costs,
             fee_params,
             base_asset_id,
+            gas_price,
         )
         .map_err(|e| Bug::new(BugVariant::UncomputableRefund).with_message(e))?;
 

@@ -1,83 +1,33 @@
 #[cfg(test)]
 mod tests;
 
-use alloc::{
-    vec,
-    vec::Vec,
-};
+use alloc::{vec, vec::Vec};
 
 use crate::{
-    checked_transaction::{
-        Checked,
-        IntoChecked,
-        ParallelExecutor,
-    },
+    checked_transaction::{Checked, IntoChecked, ParallelExecutor},
     context::Context,
-    error::{
-        Bug,
-        InterpreterError,
-        PredicateVerificationFailed,
-    },
+    error::{Bug, InterpreterError, PredicateVerificationFailed},
     interpreter::{
-        CheckedMetadata,
-        EcalHandler,
-        ExecutableTransaction,
-        InitialBalances,
-        Interpreter,
-        RuntimeBalances,
+        CheckedMetadata, EcalHandler, ExecutableTransaction, InitialBalances,
+        Interpreter, RuntimeBalances,
     },
     predicate::RuntimePredicate,
-    prelude::{
-        BugVariant,
-        RuntimeError,
-    },
-    state::{
-        ExecuteState,
-        ProgramState,
-        StateTransition,
-        StateTransitionRef,
-    },
-    storage::{
-        InterpreterStorage,
-        PredicateStorage,
-    },
+    prelude::{BugVariant, RuntimeError},
+    state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef},
+    storage::{InterpreterStorage, PredicateStorage},
 };
 
-use crate::{
-    checked_transaction::CheckPredicateParams,
-    interpreter::InterpreterParams,
-};
-use fuel_asm::{
-    PanicReason,
-    RegId,
-};
+use crate::{checked_transaction::CheckPredicateParams, interpreter::InterpreterParams};
+use fuel_asm::{PanicReason, RegId};
 use fuel_tx::{
-    field::{
-        ReceiptsRoot,
-        Salt,
-        Script as ScriptField,
-        ScriptGasLimit,
-        StorageSlots,
-    },
+    field::{ReceiptsRoot, Salt, Script as ScriptField, ScriptGasLimit, StorageSlots},
     input::{
         coin::CoinPredicate,
-        message::{
-            MessageCoinPredicate,
-            MessageDataPredicate,
-        },
+        message::{MessageCoinPredicate, MessageDataPredicate},
     },
-    Contract,
-    Create,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Receipt,
-    ScriptExecutionResult,
+    Contract, Create, FeeParameters, GasCosts, Input, Receipt, ScriptExecutionResult,
 };
-use fuel_types::{
-    AssetId,
-    Word,
-};
+use fuel_types::{AssetId, Word};
 
 /// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]
@@ -289,7 +239,7 @@ where
                 ..
             }) => {
                 if !Input::is_predicate_owner_valid(address, predicate) {
-                    return Err(PredicateVerificationFailed::InvalidOwner)
+                    return Err(PredicateVerificationFailed::InvalidOwner);
                 }
             }
             _ => {}
@@ -308,7 +258,7 @@ where
                     if let Some(x) = tx.inputs()[index].predicate_gas_used() {
                         x
                     } else {
-                        return Err(PredicateVerificationFailed::GasNotSpecified)
+                        return Err(PredicateVerificationFailed::GasNotSpecified);
                     };
 
                 vm.init_predicate(context, tx, available_gas)?;
@@ -333,11 +283,11 @@ where
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
                 result?;
-                return Err(PredicateVerificationFailed::False)
+                return Err(PredicateVerificationFailed::False);
             }
 
             if vm.remaining_gas() != 0 {
-                return Err(PredicateVerificationFailed::GasMismatch)
+                return Err(PredicateVerificationFailed::GasMismatch);
             }
         }
 
@@ -381,7 +331,7 @@ where
         if max_gas > params.max_gas_per_tx {
             return Err(
                 PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
-            )
+            );
         }
 
         let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {
@@ -406,6 +356,7 @@ where
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
+        gas_price: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let metadata = create.metadata().as_ref();
         debug_assert!(
@@ -440,7 +391,7 @@ where
         {
             return Err(InterpreterError::Panic(
                 PanicReason::ContractIdAlreadyDeployed,
-            ))
+            ));
         }
 
         storage
@@ -455,6 +406,7 @@ where
             0,
             &initial_balances,
             &RuntimeBalances::try_from(initial_balances.clone())?,
+            gas_price,
         )?;
         Ok(())
     }
@@ -474,7 +426,10 @@ where
         Ok(())
     }
 
-    pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
+    pub(crate) fn run(
+        &mut self,
+        gas_price: Word,
+    ) -> Result<ProgramState, InterpreterError<S::DataError>> {
         // TODO: Remove `Create` from here
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
@@ -487,6 +442,7 @@ where
                 &gas_costs,
                 &fee_params,
                 &base_asset_id,
+                gas_price,
             )?;
             self.update_transaction_outputs()?;
             ProgramState::Return(1)
@@ -500,7 +456,7 @@ where
                     false
                 }
             }) {
-                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))
+                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
             }
 
             let gas_limit;
@@ -581,6 +537,7 @@ where
                 gas_used,
                 &self.initial_balances,
                 &self.balances,
+                gas_price,
             )?;
             self.update_transaction_outputs()?;
 
@@ -602,19 +559,23 @@ where
             if in_call {
                 // Only reverts should terminate execution from a call context
                 if let ExecuteState::Revert(r) = state {
-                    return Ok(ProgramState::Revert(r))
+                    return Ok(ProgramState::Revert(r));
                 }
             } else {
                 match state {
                     ExecuteState::Return(r) => return Ok(ProgramState::Return(r)),
 
-                    ExecuteState::ReturnData(d) => return Ok(ProgramState::ReturnData(d)),
+                    ExecuteState::ReturnData(d) => {
+                        return Ok(ProgramState::ReturnData(d))
+                    }
 
                     ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
 
                     ExecuteState::Proceed => (),
 
-                    ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
+                    ExecuteState::DebugEvent(d) => {
+                        return Ok(ProgramState::RunProgram(d))
+                    }
                 }
             }
         }
@@ -635,10 +596,11 @@ where
         storage: S,
         tx: Checked<Tx>,
         params: InterpreterParams,
+        gas_price: Word,
     ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
         let mut interpreter = Self::with_storage(storage, params);
         interpreter
-            .transact(tx)
+            .transact(tx, gas_price)
             .map(ProgramState::from)
             .map(|state| {
                 StateTransition::new(state, interpreter.tx, interpreter.receipts.into())
@@ -660,8 +622,9 @@ where
     pub fn transact(
         &mut self,
         tx: Checked<Tx>,
+        gas_price: Word,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
-        let state_result = self.init_script(tx).and_then(|_| self.run());
+        let state_result = self.init_script(tx).and_then(|_| self.run(gas_price));
 
         #[cfg(feature = "profile-any")]
         {
@@ -692,6 +655,7 @@ where
     pub fn deploy(
         &mut self,
         tx: Checked<Create>,
+        gas_price: Word,
     ) -> Result<Create, InterpreterError<S::DataError>> {
         let (mut create, metadata) = tx.into();
         let gas_costs = self.gas_costs().clone();
@@ -704,6 +668,7 @@ where
             &gas_costs,
             &fee_params,
             &base_asset_id,
+            gas_price,
         )?;
         Ok(create)
     }

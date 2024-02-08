@@ -5,10 +5,7 @@ pub use self::{
     script::CheckedMetadata as ScriptCheckedMetadata,
 };
 use alloc::collections::BTreeMap;
-use fuel_types::{
-    AssetId,
-    Word,
-};
+use fuel_types::{AssetId, Word};
 
 /// The spendable unrestricted initial assets.
 /// More information about it in the specification:
@@ -56,23 +53,12 @@ impl core::ops::Deref for RetryableAmount {
 /// For [`fuel_tx::Create`]
 pub mod create {
     use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
-        Checked,
-        IntoChecked,
+        balances::{initial_free_balances, AvailableBalances},
+        Checked, IntoChecked,
     };
-    use crate::checked_transaction::{
-        CheckError,
-        NonRetryableFreeBalances,
-    };
+    use crate::checked_transaction::{CheckError, NonRetryableFreeBalances};
     use fuel_tx::{
-        Cacheable,
-        ConsensusParameters,
-        Create,
-        FormatValidityChecks,
-        TransactionFee,
+        Cacheable, ConsensusParameters, Create, FormatValidityChecks, TransactionFee,
     };
     use fuel_types::BlockHeight;
 
@@ -94,10 +80,11 @@ pub mod create {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
+            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.check_without_signatures(block_height, consensus_params, gas_price)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
@@ -109,6 +96,7 @@ pub mod create {
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
                 consensus_params.base_asset_id(),
+                gas_price,
             )?;
             assert_eq!(
                 retryable_balance, 0,
@@ -128,17 +116,9 @@ pub mod create {
 
 /// For [`fuel_tx::Mint`]
 pub mod mint {
-    use super::super::{
-        Checked,
-        IntoChecked,
-    };
+    use super::super::{Checked, IntoChecked};
     use crate::checked_transaction::CheckError;
-    use fuel_tx::{
-        Cacheable,
-        ConsensusParameters,
-        FormatValidityChecks,
-        Mint,
-    };
+    use fuel_tx::{Cacheable, ConsensusParameters, FormatValidityChecks, Mint};
     use fuel_types::BlockHeight;
 
     impl IntoChecked for Mint {
@@ -148,10 +128,11 @@ pub mod mint {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
+            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.check_without_signatures(block_height, consensus_params, gas_price)?;
 
             Ok(Checked::basic(self, ()))
         }
@@ -161,24 +142,14 @@ pub mod mint {
 /// For [`fuel_tx::Script`]
 pub mod script {
     use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
-        Checked,
-        IntoChecked,
+        balances::{initial_free_balances, AvailableBalances},
+        Checked, IntoChecked,
     };
     use crate::checked_transaction::{
-        CheckError,
-        NonRetryableFreeBalances,
-        RetryableAmount,
+        CheckError, NonRetryableFreeBalances, RetryableAmount,
     };
     use fuel_tx::{
-        Cacheable,
-        ConsensusParameters,
-        FormatValidityChecks,
-        Script,
-        TransactionFee,
+        Cacheable, ConsensusParameters, FormatValidityChecks, Script, TransactionFee,
     };
     use fuel_types::BlockHeight;
 
@@ -202,10 +173,11 @@ pub mod script {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
+            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.check_without_signatures(block_height, consensus_params, gas_price)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
@@ -217,6 +189,7 @@ pub mod script {
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
                 consensus_params.base_asset_id(),
+                gas_price,
             )?;
 
             let metadata = CheckedMetadata {

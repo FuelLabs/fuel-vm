@@ -1,24 +1,14 @@
 use crate::{
     field,
-    field::{
-        GasPrice,
-        WitnessLimit,
-    },
+    field::WitnessLimit,
     input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
+        coin::{CoinPredicate, CoinSigned},
         message::{
-            MessageCoinPredicate,
-            MessageCoinSigned,
-            MessageDataPredicate,
+            MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate,
             MessageDataSigned,
         },
     },
-    FeeParameters,
-    GasCosts,
-    Input,
+    FeeParameters, GasCosts, Input,
 };
 use fuel_asm::Word;
 use fuel_types::canonical::Serialize;
@@ -90,17 +80,18 @@ impl TransactionFee {
         gas_costs: &GasCosts,
         params: &FeeParameters,
         tx: &T,
+        gas_price: Word,
     ) -> Option<Self>
     where
         T: Chargeable,
     {
         let min_gas = tx.min_gas(gas_costs, params);
         let max_gas = tx.max_gas(gas_costs, params);
-        let min_fee = tx.min_fee(gas_costs, params).try_into().ok()?;
-        let max_fee = tx.max_fee(gas_costs, params).try_into().ok()?;
+        let min_fee = tx.min_fee(gas_costs, params, gas_price).try_into().ok()?;
+        let max_fee = tx.max_fee(gas_costs, params, gas_price).try_into().ok()?;
 
         if min_fee > max_fee {
-            return None
+            return None;
         }
 
         Some(Self::new(min_fee, max_fee, min_gas, max_gas))
@@ -116,11 +107,6 @@ fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
 
 /// Means that the blockchain charges fee for the transaction.
 pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
-    /// Returns the gas price.
-    fn price(&self) -> Word {
-        self.gas_price()
-    }
-
     /// Returns the minimum gas required to start transaction execution.
     fn min_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
         let bytes_size = self.metered_bytes_size();
@@ -152,10 +138,15 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     }
 
     /// Returns the minimum fee required to start transaction execution.
-    fn min_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
+    fn min_fee(
+        &self,
+        gas_costs: &GasCosts,
+        fee: &FeeParameters,
+        gas_price: Word,
+    ) -> u128 {
         gas_to_fee(
             self.min_gas(gas_costs, fee),
-            self.price(),
+            gas_price,
             fee.gas_price_factor,
         )
     }
@@ -163,10 +154,15 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     /// Returns the maximum possible fee after the end of transaction execution.
     ///
     /// The function guarantees that the value is not less than [Self::min_fee].
-    fn max_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
+    fn max_fee(
+        &self,
+        gas_costs: &GasCosts,
+        fee: &FeeParameters,
+        gas_price: Word,
+    ) -> u128 {
         gas_to_fee(
             self.max_gas(gas_costs, fee),
-            self.price(),
+            gas_price,
             fee.gas_price_factor,
         )
     }
@@ -180,15 +176,18 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         gas_costs: &GasCosts,
         fee: &FeeParameters,
         used_gas: Word,
+        gas_price: Word,
     ) -> Option<Word> {
         // We've already charged the user for witnesses as part of the minimal gas and all
         // execution required to validate transaction validity rules.
         let min_gas = self.min_gas(gas_costs, fee);
 
         let total_used_gas = min_gas.saturating_add(used_gas);
-        let used_fee = gas_to_fee(total_used_gas, self.price(), fee.gas_price_factor);
+        let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor);
 
-        let refund = self.max_fee(gas_costs, fee).saturating_sub(used_fee);
+        let refund = self
+            .max_fee(gas_costs, fee, gas_price)
+            .saturating_sub(used_fee);
         // It is okay to saturate everywhere above because it only can decrease the value
         // of `refund`. But here, because we need to return the amount we
         // want to refund, we need to handle the overflow caused by the price.

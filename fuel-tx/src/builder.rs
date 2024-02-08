@@ -1,61 +1,24 @@
 use crate::{
-    input,
-    output,
+    input, output,
     transaction::{
         field,
-        field::{
-            BytecodeLength,
-            BytecodeWitnessIndex,
-            GasPrice,
-            Maturity,
-            Witnesses,
-        },
-        Chargeable,
-        Create,
-        Executable,
-        Script,
+        field::{BytecodeLength, BytecodeWitnessIndex, Maturity, Tip, Witnesses},
+        Chargeable, Create, Executable, Script,
     },
-    ConsensusParameters,
-    ContractParameters,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Mint,
-    Output,
-    PredicateParameters,
-    ScriptParameters,
-    StorageSlot,
-    Transaction,
-    TxParameters,
-    TxPointer,
-    Witness,
+    ConsensusParameters, ContractParameters, FeeParameters, GasCosts, Input, Mint,
+    Output, PredicateParameters, ScriptParameters, StorageSlot, Transaction,
+    TxParameters, TxPointer, Witness,
 };
 
-use crate::{
-    Cacheable,
-    Signable,
-};
+use crate::{Cacheable, Signable};
 
 use crate::{
-    field::{
-        MaxFeeLimit,
-        WitnessLimit,
-    },
+    field::{MaxFeeLimit, WitnessLimit},
     policies::Policies,
 };
-use alloc::{
-    collections::BTreeMap,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, vec::Vec};
 use fuel_crypto::SecretKey;
-use fuel_types::{
-    AssetId,
-    BlockHeight,
-    ChainId,
-    Nonce,
-    Salt,
-    Word,
-};
+use fuel_types::{AssetId, BlockHeight, ChainId, Nonce, Salt, Word};
 
 pub trait BuildableAloc
 where
@@ -119,7 +82,7 @@ impl TransactionBuilder<Script> {
             script_gas_limit: Default::default(),
             script,
             script_data,
-            policies: Policies::new().with_gas_price(0),
+            policies: Policies::new(),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -148,7 +111,7 @@ impl TransactionBuilder<Create> {
             bytecode_witness_index: Default::default(),
             salt,
             storage_slots,
-            policies: Policies::new().with_gas_price(0),
+            policies: Policies::new(),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -291,9 +254,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self.sign_keys.keys()
     }
 
-    pub fn gas_price(&mut self, gas_price: Word) -> &mut Self {
-        self.tx.set_gas_price(gas_price);
-
+    pub fn tip(&mut self, tip: Word) -> &mut Self {
+        self.tx.set_tip(tip);
         self
     }
 
@@ -357,10 +319,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
     #[cfg(feature = "rand")]
     pub fn add_random_fee_input(&mut self) -> &mut Self {
-        use rand::{
-            Rng,
-            SeedableRng,
-        };
+        use rand::{Rng, SeedableRng};
         let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
         self.add_unsigned_coin_input(
             SecretKey::random(&mut rng),

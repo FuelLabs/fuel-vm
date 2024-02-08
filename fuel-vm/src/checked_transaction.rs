@@ -7,26 +7,11 @@
 
 #![allow(non_upper_case_globals)]
 
-use fuel_tx::{
-    Create,
-    Mint,
-    Script,
-    Transaction,
-    ValidityError,
-};
-use fuel_types::{
-    BlockHeight,
-    ChainId,
-};
+use fuel_tx::{Create, Mint, Script, Transaction, ValidityError};
+use fuel_types::{BlockHeight, ChainId};
 
-use alloc::{
-    boxed::Box,
-    vec::Vec,
-};
-use core::{
-    borrow::Borrow,
-    future::Future,
-};
+use alloc::{boxed::Box, vec::Vec};
+use core::{borrow::Borrow, future::Future};
 
 use fuel_tx::ConsensusParameters;
 
@@ -36,10 +21,7 @@ pub mod types;
 
 pub use types::*;
 
-use crate::{
-    error::PredicateVerificationFailed,
-    prelude::*,
-};
+use crate::{error::PredicateVerificationFailed, prelude::*};
 
 bitflags::bitflags! {
     /// Possible types of transaction checks.
@@ -192,12 +174,13 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
         let check_predicate_params = consensus_params.into();
-        self.into_checked_basic(block_height, consensus_params)?
+        self.into_checked_basic(block_height, consensus_params, gas_price)?
             .check_signatures(&consensus_params.chain_id)?
             .check_predicates(&check_predicate_params)
     }
@@ -207,6 +190,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<Checked<Self>, CheckError>;
 }
 
@@ -589,23 +573,24 @@ impl IntoChecked for Transaction {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<Checked<Self>, CheckError> {
         match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic(block_height, consensus_params, gas_price)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Transaction::Create(create) => {
                 let (transaction, metadata) = create
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic(block_height, consensus_params, gas_price)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Transaction::Mint(mint) => {
                 let (transaction, metadata) = mint
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic(block_height, consensus_params, gas_price)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
@@ -635,23 +620,13 @@ mod tests {
     use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{
-        field::{
-            ScriptGasLimit,
-            WitnessLimit,
-            Witnesses,
-        },
-        Script,
-        TransactionBuilder,
-        ValidityError,
+        field::{ScriptGasLimit, WitnessLimit, Witnesses},
+        Script, TransactionBuilder, ValidityError,
     };
     use fuel_types::canonical::Serialize;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
-    use rand::{
-        rngs::StdRng,
-        Rng,
-        SeedableRng,
-    };
+    use rand::{rngs::StdRng, Rng, SeedableRng};
 
     fn params(factor: u64) -> ConsensusParameters {
         ConsensusParameters::new(
@@ -812,7 +787,7 @@ mod tests {
 
         // dont divide by zero
         if gas_price_factor == 0 {
-            return TestResult::discard()
+            return TestResult::discard();
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
@@ -852,7 +827,7 @@ mod tests {
 
         // dont divide by zero
         if gas_price_factor == 0 {
-            return TestResult::discard()
+            return TestResult::discard();
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
@@ -888,7 +863,7 @@ mod tests {
     ) -> TestResult {
         // dont divide by zero
         if gas_price_factor == 0 {
-            return TestResult::discard()
+            return TestResult::discard();
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
@@ -916,7 +891,7 @@ mod tests {
     ) -> TestResult {
         // dont divide by zero
         if gas_price_factor == 0 {
-            return TestResult::discard()
+            return TestResult::discard();
         }
 
         let rng = &mut StdRng::seed_from_u64(seed);
@@ -955,7 +930,7 @@ mod tests {
 
         // dont divide by zero
         if gas_price_factor == 0 {
-            return TestResult::discard()
+            return TestResult::discard();
         }
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();

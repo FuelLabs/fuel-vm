@@ -2,35 +2,15 @@
 
 use crate::{
     backtrace::Backtrace,
-    checked_transaction::{
-        Checked,
-        IntoChecked,
-    },
+    checked_transaction::{Checked, IntoChecked},
     error::InterpreterError,
-    interpreter::{
-        CheckedMetadata,
-        EcalHandler,
-        ExecutableTransaction,
-        Interpreter,
-    },
-    state::{
-        ProgramState,
-        StateTransition,
-        StateTransitionRef,
-    },
+    interpreter::{CheckedMetadata, EcalHandler, ExecutableTransaction, Interpreter},
+    state::{ProgramState, StateTransition, StateTransitionRef},
     storage::InterpreterStorage,
 };
 
-use crate::interpreter::{
-    InterpreterParams,
-    NotSupportedEcal,
-};
-use fuel_tx::{
-    Create,
-    GasCosts,
-    Receipt,
-    Script,
-};
+use crate::interpreter::{InterpreterParams, NotSupportedEcal};
+use fuel_tx::{Create, GasCosts, Receipt, Script};
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -189,8 +169,9 @@ where
     pub fn deploy(
         &mut self,
         checked: Checked<Create>,
+        gas_price: u64,
     ) -> Result<Create, InterpreterError<S::DataError>> {
-        self.interpreter.deploy(checked)
+        self.interpreter.deploy(checked, gas_price)
     }
 }
 
@@ -202,8 +183,8 @@ where
     Ecal: EcalHandler,
 {
     /// Execute a transaction, and return the new state of the transactor
-    pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
-        match self.interpreter.transact(tx) {
+    pub fn transact(&mut self, tx: Checked<Tx>, gas_price: u64) -> &mut Self {
+        match self.interpreter.transact(tx, gas_price) {
             Ok(s) => {
                 self.program_state.replace(s.into());
                 self.error.take();

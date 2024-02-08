@@ -1,53 +1,19 @@
 //! [`Interpreter`] implementation
 
 use crate::{
-    call::CallFrame,
-    checked_transaction::CheckPredicateParams,
-    constraints::reg_key::*,
-    consts::*,
-    context::Context,
-    error::SimpleResult,
-    state::Debugger,
+    call::CallFrame, checked_transaction::CheckPredicateParams, constraints::reg_key::*,
+    consts::*, context::Context, error::SimpleResult, state::Debugger,
 };
-use alloc::{
-    borrow::ToOwned,
-    vec::Vec,
-};
-use core::{
-    mem,
-    ops::Index,
-};
+use alloc::{borrow::ToOwned, vec::Vec};
+use core::{mem, ops::Index};
 
-use fuel_asm::{
-    Flags,
-    PanicReason,
-};
+use fuel_asm::{Flags, PanicReason};
 use fuel_tx::{
-    field,
-    output,
-    Chargeable,
-    ConsensusParameters,
-    ContractParameters,
-    Create,
-    Executable,
-    FeeParameters,
-    GasCosts,
-    Output,
-    PredicateParameters,
-    Receipt,
-    Script,
-    Transaction,
-    TransactionRepr,
-    TxParameters,
-    UniqueIdentifier,
-    ValidityError,
+    field, output, Chargeable, ConsensusParameters, ContractParameters, Create,
+    Executable, FeeParameters, GasCosts, Output, PredicateParameters, Receipt, Script,
+    Transaction, TransactionRepr, TxParameters, UniqueIdentifier, ValidityError,
 };
-use fuel_types::{
-    AssetId,
-    ChainId,
-    ContractId,
-    Word,
-};
+use fuel_types::{AssetId, ChainId, ContractId, Word};
 
 mod alu;
 mod balances;
@@ -76,19 +42,12 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
-pub use ecal::{
-    EcalHandler,
-    PredicateErrorEcal,
-};
+pub use ecal::{EcalHandler, PredicateErrorEcal};
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
-    CreateCheckedMetadata,
-    EstimatePredicates,
-    IntoChecked,
-    NonRetryableFreeBalances,
-    RetryableAmount,
-    ScriptCheckedMetadata,
+    CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances,
+    RetryableAmount, ScriptCheckedMetadata,
 };
 
 use self::memory::Memory;
@@ -388,7 +347,7 @@ pub trait ExecutableTransaction:
         output: Output,
     ) -> SimpleResult<()> {
         if !output.is_variable() {
-            return Err(PanicReason::ExpectedOutputVariable.into())
+            return Err(PanicReason::ExpectedOutputVariable.into());
         }
 
         // TODO increase the error granularity for this case - create a new variant of
@@ -424,12 +383,13 @@ pub trait ExecutableTransaction:
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
+        gas_price: Word,
     ) -> Result<(), ValidityError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
         let gas_refund = self
-            .refund_fee(gas_costs, fee_params, used_gas)
+            .refund_fee(gas_costs, fee_params, used_gas, gas_price)
             .ok_or(ValidityError::GasCostsCoinsOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {

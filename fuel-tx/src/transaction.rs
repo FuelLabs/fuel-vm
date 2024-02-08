@@ -1,47 +1,25 @@
 use crate::{
     input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
+        coin::{CoinPredicate, CoinSigned},
         contract::Contract,
-        message::{
-            MessageCoinPredicate,
-            MessageDataPredicate,
-        },
+        message::{MessageCoinPredicate, MessageDataPredicate},
     },
     policies::Policies,
     TxPointer,
 };
 use fuel_crypto::PublicKey;
 use fuel_types::{
-    canonical::{
-        Deserialize,
-        Error,
-        Serialize,
-    },
-    Address,
-    AssetId,
-    BlockHeight,
-    Bytes32,
-    Nonce,
-    Salt,
-    Word,
+    canonical::{Deserialize, Error, Serialize},
+    Address, AssetId, BlockHeight, Bytes32, Nonce, Salt, Word,
 };
 
 use input::*;
 use output::*;
 
 #[cfg(feature = "typescript")]
-use self::{
-    input::typescript as input_ts,
-    output::typescript as output_ts,
-};
+use self::{input::typescript as input_ts, output::typescript as output_ts};
 
-use alloc::vec::{
-    IntoIter,
-    Vec,
-};
+use alloc::vec::{IntoIter, Vec};
 use itertools::Itertools;
 
 mod fee;
@@ -56,28 +34,14 @@ pub mod consensus_parameters;
 pub mod policies;
 
 pub use consensus_parameters::{
-    ConsensusParameters,
-    ContractParameters,
-    DependentCost,
-    FeeParameters,
-    GasCosts,
-    GasCostsValues,
-    GasUnit,
-    PredicateParameters,
-    ScriptParameters,
-    TxParameters,
+    ConsensusParameters, ContractParameters, DependentCost, FeeParameters, GasCosts,
+    GasCostsValues, GasUnit, PredicateParameters, ScriptParameters, TxParameters,
 };
-pub use fee::{
-    Chargeable,
-    TransactionFee,
-};
+pub use fee::{Chargeable, TransactionFee};
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
-pub use validity::{
-    FormatValidityChecks,
-    ValidityError,
-};
+pub use validity::{FormatValidityChecks, ValidityError};
 
 #[cfg(feature = "alloc")]
 pub use id::Signable;
@@ -538,45 +502,27 @@ impl Deserialize for Transaction {
 /// The module contains traits for each possible field in the `Transaction`. Those traits
 /// can be used to write generic code based on the different combinations of the fields.
 pub mod field {
-    use crate::{
-        input,
-        output,
-        policies,
-        Input,
-        Output,
-        StorageSlot,
-        Witness,
-    };
-    use fuel_types::{
-        AssetId,
-        BlockHeight,
-        Bytes32,
-        Word,
-    };
+    use crate::{input, output, policies, Input, Output, StorageSlot, Witness};
+    use fuel_types::{AssetId, BlockHeight, Bytes32, Word};
 
     use crate::policies::PolicyType;
     use alloc::vec::Vec;
-    use core::ops::{
-        Deref,
-        DerefMut,
-    };
+    use core::ops::{Deref, DerefMut};
 
-    pub trait GasPrice {
-        fn gas_price(&self) -> Word;
-        fn set_gas_price(&mut self, value: Word);
+    pub trait Tip {
+        fn tip(&self) -> Word;
+        fn set_tip(&mut self, value: Word);
     }
 
-    impl<T: Policies + ?Sized> GasPrice for T {
+    impl<T: Policies + ?Sized> Tip for T {
         #[inline(always)]
-        fn gas_price(&self) -> Word {
-            self.policies()
-                .get(PolicyType::GasPrice)
-                .unwrap_or_default()
+        fn tip(&self) -> Word {
+            self.policies().get(PolicyType::Tip).unwrap_or_default()
         }
 
         #[inline(always)]
-        fn set_gas_price(&mut self, price: Word) {
-            self.policies_mut().set(PolicyType::GasPrice, Some(price))
+        fn set_tip(&mut self, price: Word) {
+            self.policies_mut().set(PolicyType::Tip, Some(price))
         }
     }
 
@@ -820,24 +766,10 @@ pub mod typescript {
     use wasm_bindgen::prelude::*;
 
     use crate::{
-        transaction::{
-            input_ts::Input,
-            output_ts::Output,
-            Policies,
-        },
-        AssetId,
-        Create,
-        Mint,
-        Script,
-        Witness,
-        Word,
+        transaction::{input_ts::Input, output_ts::Output, Policies},
+        AssetId, Create, Mint, Script, Witness, Word,
     };
-    use alloc::{
-        boxed::Box,
-        format,
-        string::String,
-        vec::Vec,
-    };
+    use alloc::{boxed::Box, format, string::String, vec::Vec};
 
     #[derive(Clone, Eq, Hash, PartialEq)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

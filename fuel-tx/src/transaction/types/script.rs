@@ -4,41 +4,20 @@ use crate::{
     transaction::{
         consensus_parameters::TxParameters,
         field::{
-            Inputs,
-            Outputs,
-            Policies as PoliciesField,
-            ReceiptsRoot,
-            Script as ScriptField,
-            ScriptData,
-            ScriptGasLimit,
-            Witnesses,
+            Inputs, Outputs, Policies as PoliciesField, ReceiptsRoot,
+            Script as ScriptField, ScriptData, ScriptGasLimit, Witnesses,
         },
         metadata::CommonMetadata,
-        validity::{
-            check_common_part,
-            FormatValidityChecks,
-        },
+        validity::{check_common_part, FormatValidityChecks},
         Chargeable,
     },
-    ConsensusParameters,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Output,
-    TransactionRepr,
-    ValidityError,
-    Witness,
+    ConsensusParameters, FeeParameters, GasCosts, Input, Output, TransactionRepr,
+    ValidityError, Witness,
 };
 use derivative::Derivative;
 use fuel_types::{
-    bytes,
-    bytes::WORD_SIZE,
-    canonical::Serialize,
-    fmt_truncated_hex,
-    BlockHeight,
-    Bytes32,
-    ChainId,
-    Word,
+    bytes, bytes::WORD_SIZE, canonical::Serialize, fmt_truncated_hex, BlockHeight,
+    Bytes32, ChainId, Word,
 };
 
 #[cfg(feature = "alloc")]
@@ -89,7 +68,6 @@ impl Default for Script {
             script,
             script_data: Default::default(),
             policies: Policies::new()
-                .with_gas_price(0)
                 .with_maturity(0.into())
                 .with_witness_limit(10000),
             inputs: Default::default(),
@@ -104,7 +82,7 @@ impl Default for Script {
 impl crate::UniqueIdentifier for Script {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
-            return id
+            return id;
         }
 
         let mut clone = self.clone();
@@ -176,8 +154,9 @@ impl FormatValidityChecks for Script {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<(), ValidityError> {
-        check_common_part(self, block_height, consensus_params)?;
+        check_common_part(self, block_height, consensus_params, gas_price)?;
         let script_params = consensus_params.script_params();
         if self.script.len() as u64 > script_params.max_script_length {
             Err(ValidityError::TransactionScriptLength)?;
@@ -293,7 +272,7 @@ mod field {
                 script_data_offset, ..
             }) = &self.metadata
             {
-                return *script_data_offset
+                return *script_data_offset;
             }
 
             self.script_offset() + bytes::padded_len(self.script.as_slice())
@@ -335,7 +314,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *inputs_offset
+                return *inputs_offset;
             }
 
             self.policies_offset() + self.policies.size_dynamic()
@@ -351,7 +330,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_offset_at.get(idx).cloned()
+                return inputs_offset_at.get(idx).cloned();
             }
 
             if idx < self.inputs.len() {
@@ -380,7 +359,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None)
+                return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None);
             }
 
             self.inputs().get(idx).and_then(|input| {
@@ -412,7 +391,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *outputs_offset
+                return *outputs_offset;
             }
 
             self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
@@ -428,7 +407,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return outputs_offset_at.get(idx).cloned()
+                return outputs_offset_at.get(idx).cloned();
             }
 
             if idx < self.outputs.len() {
@@ -468,7 +447,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *witnesses_offset
+                return *witnesses_offset;
             }
 
             self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
@@ -485,7 +464,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return witnesses_offset_at.get(idx).cloned()
+                return witnesses_offset_at.get(idx).cloned();
             }
 
             if idx < self.witnesses.len() {

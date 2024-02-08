@@ -1,29 +1,15 @@
 use fuel_tx::{
     field,
     input::{
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
+        coin::{CoinPredicate, CoinSigned},
         message::{
-            MessageCoinPredicate,
-            MessageCoinSigned,
-            MessageDataPredicate,
+            MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate,
             MessageDataSigned,
         },
     },
-    Chargeable,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Output,
-    TransactionFee,
-    ValidityError,
+    Chargeable, FeeParameters, GasCosts, Input, Output, TransactionFee, ValidityError,
 };
-use fuel_types::{
-    AssetId,
-    Word,
-};
+use fuel_types::{AssetId, Word};
 
 use alloc::collections::BTreeMap;
 
@@ -32,6 +18,7 @@ pub(crate) fn initial_free_balances<T>(
     gas_costs: &GasCosts,
     params: &FeeParameters,
     base_asset_id: &AssetId,
+    gas_price: u64,
 ) -> Result<AvailableBalances, ValidityError>
 where
     T: Chargeable + field::Inputs + field::Outputs,
@@ -67,7 +54,7 @@ where
     }
 
     // Deduct fee from base asset
-    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction)
+    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction, gas_price)
         .ok_or(ValidityError::BalanceOverflow)?;
 
     let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();

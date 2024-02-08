@@ -192,12 +192,13 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
         let check_predicate_params = consensus_params.into();
-        self.into_checked_basic(block_height, consensus_params)?
+        self.into_checked_basic(block_height, consensus_params, gas_price)?
             .check_signatures(&consensus_params.chain_id)?
             .check_predicates(&check_predicate_params)
     }
@@ -207,6 +208,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<Checked<Self>, CheckError>;
 }
 

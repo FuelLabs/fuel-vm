@@ -424,12 +424,13 @@ pub trait ExecutableTransaction:
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
+        gas_price: u64,
     ) -> Result<(), ValidityError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
         let gas_refund = self
-            .refund_fee(gas_costs, fee_params, used_gas)
+            .refund_fee(gas_costs, fee_params, used_gas, gas_price)
             .ok_or(ValidityError::GasCostsCoinsOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {

@@ -638,6 +638,7 @@ mod tests {
     fn storage_slots_sorting() {
         // Test that storage slots must be sorted correctly
         let mut slot_data = [0u8; 64];
+        let arb_gas_price = 0;
 
         let storage_slots = (0..10u64)
             .map(|i| {
@@ -656,7 +657,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), &ConsensusParameters::standard())
+            .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);
@@ -668,6 +669,7 @@ mod tests {
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
         ];
+        let arb_gas_price = 0;
 
         let err = crate::TransactionBuilder::create(
             vec![].into(),
@@ -676,7 +678,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), &ConsensusParameters::standard())
+        .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);

@@ -130,13 +130,17 @@ impl<Tx: IntoChecked + UniqueIdentifier> Checked<Tx> {
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx: IntoChecked + Default> Default for Checked<Tx>
+impl<Tx: IntoChecked + Default> Checked<Tx>
 where
     Checked<Tx>: CheckPredicates,
 {
-    fn default() -> Self {
+    fn default_with_gas_price(gas_price: u64) -> Self {
         Tx::default()
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                gas_price,
+            )
             .expect("default tx should produce a valid fully checked transaction")
     }
 }

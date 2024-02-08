@@ -101,15 +101,15 @@ fn example_file_read() {
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
+    let arb_gas_price = 0;
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, arb_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx);
+    client.transact(tx, arb_gas_price);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::LogData { data, .. } = receipts.first().unwrap() else {
@@ -161,15 +161,15 @@ fn example_counter() {
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
+    let arb_gas_price = 0;
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, arb_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx);
+    client.transact(tx, arb_gas_price);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::Log { ra, rb, rc, rd, .. } = receipts.first().unwrap() else {
@@ -225,15 +225,15 @@ fn example_shared_counter() {
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
+    let arb_gas_price = 0;
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, arb_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx);
+    client.transact(tx, arb_gas_price);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::Log { ra, rb, rc, rd, .. } = receipts.first().unwrap() else {

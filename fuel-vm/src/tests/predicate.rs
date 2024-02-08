@@ -95,10 +95,7 @@ where
 
     let mut builder = TransactionBuilder::script(script, script_data);
 
-    builder
-        .gas_price(gas_price)
-        .script_gas_limit(gas_limit)
-        .maturity(maturity);
+    builder.script_gas_limit(gas_limit).maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
         builder.add_unsigned_coin_input(
@@ -119,7 +116,7 @@ where
         .expect("Should estiamte predicate");
 
     let checked = transaction
-        .into_checked_basic(height, &ConsensusParameters::standard())
+        .into_checked_basic(height, &ConsensusParameters::standard(), gas_price)
         .expect("Should successfully convert into Checked");
 
     let params = CheckPredicateParams::default();
@@ -212,7 +209,7 @@ async fn execute_gas_metered_predicates(
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder.gas_price(gas_price).maturity(Default::default());
+    builder.maturity(Default::default());
 
     let coin_amount = 10_000_000;
 
@@ -281,7 +278,11 @@ async fn execute_gas_metered_predicates(
     transaction.estimate_predicates(&params).map_err(|_| ())?;
 
     let tx = transaction
-        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
+        .into_checked_basic(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            gas_price,
+        )
         .expect("Should successfully create checked tranaction with predicate");
 
     let seq_gas_used = Interpreter::<PredicateStorage, _>::check_predicates(&tx, &params)

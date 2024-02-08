@@ -362,7 +362,7 @@ fn encode_gtf_args() {
         GTFArgs::WitnessDataLength,
         GTFArgs::WitnessData,
         GTFArgs::PolicyTypes,
-        GTFArgs::PolicyGasPrice,
+        GTFArgs::PolicyTip,
         GTFArgs::PolicyWitnessLimit,
         GTFArgs::PolicyMaturity,
         GTFArgs::PolicyMaxFee,

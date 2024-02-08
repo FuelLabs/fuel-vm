@@ -141,6 +141,7 @@ fn input_coin_message_signature() {
 #[test]
 fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
+    let arb_gas_price = 0;
 
     let mut tx = Script::default();
 
@@ -157,7 +158,11 @@ fn coin_signed() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &ConsensusParameters::standard())
+        .check(
+            block_height,
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err);

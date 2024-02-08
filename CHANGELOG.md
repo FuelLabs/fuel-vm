@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Breaking
+
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Remove `GasPrice` policy
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `gas_price` field to transaction execution
+
+### Changed
+
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `Tip` policy
+
 ## [Version 0.45.0]
 
 ### Changed

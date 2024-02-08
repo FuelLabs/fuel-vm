@@ -97,7 +97,6 @@ impl FormatValidityChecks for Mint {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError> {
         check_size(self, consensus_params.tx_params())?;
 

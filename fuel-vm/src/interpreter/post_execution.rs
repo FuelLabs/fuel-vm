@@ -46,7 +46,6 @@ where
         used_gas: Word,
         initial_balances: &InitialBalances,
         balances: &RuntimeBalances,
-        gas_price: u64,
     ) -> Result<(), RuntimeError<S::DataError>>
     where
         Tx: ExecutableTransaction,
@@ -59,7 +58,6 @@ where
             gas_costs,
             fee_params,
             base_asset_id,
-            gas_price,
         )
         .map_err(|e| Bug::new(BugVariant::UncomputableRefund).with_message(e))?;
 

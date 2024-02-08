@@ -136,7 +136,7 @@ impl ConsensusParameters {
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct FeeParameters {
     /// Factor to convert between gas and transaction assets value.
-    // pub gas_price_factor: u64,
+    pub gas_price_factor: u64,
     /// A fixed ratio linking metered bytes to gas price
     pub gas_per_byte: u64,
 }
@@ -144,15 +144,15 @@ pub struct FeeParameters {
 impl FeeParameters {
     /// Default consensus parameters with settings suggested in fuel-specs
     pub const DEFAULT: Self = Self {
-        // gas_price_factor: 1_000_000_000,
+        gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
     };
 
-    // /// Replace the gas price factor with the given argument
-    // pub const fn with_gas_price_factor(mut self, gas_price_factor: u64) -> Self {
-    //     self.gas_price_factor = gas_price_factor;
-    //     self
-    // }
+    /// Replace the gas price factor with the given argument
+    pub const fn with_gas_price_factor(mut self, gas_price_factor: u64) -> Self {
+        self.gas_price_factor = gas_price_factor;
+        self
+    }
 
     pub const fn with_gas_per_byte(mut self, gas_per_byte: u64) -> Self {
         self.gas_per_byte = gas_per_byte;
@@ -420,7 +420,7 @@ pub mod default_parameters {
 
     pub const MAX_GAS_PER_PREDICATE: u64 =
         PredicateParameters::DEFAULT.max_gas_per_predicate;
-    // pub const GAS_PRICE_FACTOR: u64 = FeeParameters::DEFAULT.gas_price_factor;
+    pub const GAS_PRICE_FACTOR: u64 = FeeParameters::DEFAULT.gas_price_factor;
     pub const GAS_PER_BYTE: u64 = FeeParameters::DEFAULT.gas_per_byte;
 
     pub const CHAIN_ID: ChainId = ChainId::new(0);

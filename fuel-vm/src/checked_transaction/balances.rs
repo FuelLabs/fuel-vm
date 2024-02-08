@@ -32,7 +32,6 @@ pub(crate) fn initial_free_balances<T>(
     gas_costs: &GasCosts,
     params: &FeeParameters,
     base_asset_id: &AssetId,
-    gas_price: u64,
 ) -> Result<AvailableBalances, ValidityError>
 where
     T: Chargeable + field::Inputs + field::Outputs,
@@ -68,7 +67,7 @@ where
     }
 
     // Deduct fee from base asset
-    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction, gas_price)
+    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction)
         .ok_or(ValidityError::BalanceOverflow)?;
 
     let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();

@@ -246,9 +246,8 @@ pub trait FormatValidityChecks {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError> {
-        self.check_without_signatures(block_height, consensus_params, gas_price)?;
+        self.check_without_signatures(block_height, consensus_params)?;
         self.check_signatures(&consensus_params.chain_id())?;
 
         Ok(())
@@ -264,7 +263,6 @@ pub trait FormatValidityChecks {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError>;
 }
 
@@ -281,17 +279,16 @@ impl FormatValidityChecks for Transaction {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError> {
         match self {
             Transaction::Script(script) => {
-                script.check_without_signatures(block_height, consensus_params, gas_price)
+                script.check_without_signatures(block_height, consensus_params)
             }
             Transaction::Create(create) => {
-                create.check_without_signatures(block_height, consensus_params, gas_price)
+                create.check_without_signatures(block_height, consensus_params)
             }
             Transaction::Mint(mint) => {
-                mint.check_without_signatures(block_height, consensus_params, gas_price)
+                mint.check_without_signatures(block_height, consensus_params)
             }
         }
     }
@@ -316,7 +313,6 @@ pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
     consensus_params: &ConsensusParameters,
-    gas_price: u64,
 ) -> Result<(), ValidityError>
 where
     T: canonical::Serialize + Chargeable + field::Outputs,
@@ -353,7 +349,7 @@ where
     }
 
     if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
-        if tx.max_fee(gas_costs, fee_params, gas_price) > max_fee_limit as u128 {
+        if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
             Err(ValidityError::TransactionMaxFeeLimitExceeded)?
         }
     }

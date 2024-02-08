@@ -222,7 +222,6 @@ impl FormatValidityChecks for Create {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError> {
         let ConsensusParameters {
             contract_params,
@@ -231,7 +230,7 @@ impl FormatValidityChecks for Create {
             ..
         } = consensus_params;
 
-        check_common_part(self, block_height, consensus_params, gas_price)?;
+        check_common_part(self, block_height, consensus_params)?;
 
         let bytecode_witness_len = self
             .witnesses

@@ -176,9 +176,8 @@ impl FormatValidityChecks for Script {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError> {
-        check_common_part(self, block_height, consensus_params, gas_price)?;
+        check_common_part(self, block_height, consensus_params)?;
         let script_params = consensus_params.script_params();
         if self.script.len() as u64 > script_params.max_script_length {
             Err(ValidityError::TransactionScriptLength)?;

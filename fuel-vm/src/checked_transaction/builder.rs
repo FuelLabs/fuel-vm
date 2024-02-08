@@ -1,8 +1,17 @@
 //! Extension trait for [`fuel_tx::TransactionBuilder`]
 
-use super::{Checked, IntoChecked};
-use crate::{checked_transaction::CheckPredicates, prelude::*};
-use fuel_tx::{Finalizable, TransactionBuilder};
+use super::{
+    Checked,
+    IntoChecked,
+};
+use crate::{
+    checked_transaction::CheckPredicates,
+    prelude::*,
+};
+use fuel_tx::{
+    Finalizable,
+    TransactionBuilder,
+};
 use fuel_types::BlockHeight;
 
 /// Extension trait for [`fuel_tx::TransactionBuilder`] adding finalization methods

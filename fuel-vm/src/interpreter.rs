@@ -1,19 +1,53 @@
 //! [`Interpreter`] implementation
 
 use crate::{
-    call::CallFrame, checked_transaction::CheckPredicateParams, constraints::reg_key::*,
-    consts::*, context::Context, error::SimpleResult, state::Debugger,
+    call::CallFrame,
+    checked_transaction::CheckPredicateParams,
+    constraints::reg_key::*,
+    consts::*,
+    context::Context,
+    error::SimpleResult,
+    state::Debugger,
 };
-use alloc::{borrow::ToOwned, vec::Vec};
-use core::{mem, ops::Index};
+use alloc::{
+    borrow::ToOwned,
+    vec::Vec,
+};
+use core::{
+    mem,
+    ops::Index,
+};
 
-use fuel_asm::{Flags, PanicReason};
-use fuel_tx::{
-    field, output, Chargeable, ConsensusParameters, ContractParameters, Create,
-    Executable, FeeParameters, GasCosts, Output, PredicateParameters, Receipt, Script,
-    Transaction, TransactionRepr, TxParameters, UniqueIdentifier, ValidityError,
+use fuel_asm::{
+    Flags,
+    PanicReason,
 };
-use fuel_types::{AssetId, ChainId, ContractId, Word};
+use fuel_tx::{
+    field,
+    output,
+    Chargeable,
+    ConsensusParameters,
+    ContractParameters,
+    Create,
+    Executable,
+    FeeParameters,
+    GasCosts,
+    Output,
+    PredicateParameters,
+    Receipt,
+    Script,
+    Transaction,
+    TransactionRepr,
+    TxParameters,
+    UniqueIdentifier,
+    ValidityError,
+};
+use fuel_types::{
+    AssetId,
+    ChainId,
+    ContractId,
+    Word,
+};
 
 mod alu;
 mod balances;
@@ -42,12 +76,19 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
-pub use ecal::{EcalHandler, PredicateErrorEcal};
+pub use ecal::{
+    EcalHandler,
+    PredicateErrorEcal,
+};
 pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
-    CreateCheckedMetadata, EstimatePredicates, IntoChecked, NonRetryableFreeBalances,
-    RetryableAmount, ScriptCheckedMetadata,
+    CreateCheckedMetadata,
+    EstimatePredicates,
+    IntoChecked,
+    NonRetryableFreeBalances,
+    RetryableAmount,
+    ScriptCheckedMetadata,
 };
 
 use self::memory::Memory;

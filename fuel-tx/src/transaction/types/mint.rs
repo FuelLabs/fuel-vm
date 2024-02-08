@@ -1,14 +1,26 @@
 use crate::{
-    input, output,
+    input,
+    output,
     transaction::{
         field::TxPointer as TxPointerField,
-        validity::{check_size, FormatValidityChecks},
+        validity::{
+            check_size,
+            FormatValidityChecks,
+        },
     },
-    ConsensusParameters, TransactionRepr, TxPointer, ValidityError,
+    ConsensusParameters,
+    TransactionRepr,
+    TxPointer,
+    ValidityError,
 };
 use derivative::Derivative;
 use fuel_asm::Word;
-use fuel_types::{bytes::WORD_SIZE, AssetId, BlockHeight, Bytes32};
+use fuel_types::{
+    bytes::WORD_SIZE,
+    AssetId,
+    BlockHeight,
+    Bytes32,
+};
 
 use fuel_types::ChainId;
 
@@ -120,7 +132,12 @@ impl crate::Cacheable for Mint {
 
 mod field {
     use super::*;
-    use crate::field::{InputContract, MintAmount, MintAssetId, OutputContract};
+    use crate::field::{
+        InputContract,
+        MintAmount,
+        MintAssetId,
+        OutputContract,
+    };
 
     impl TxPointerField for Mint {
         #[inline(always)]

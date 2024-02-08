@@ -5,7 +5,10 @@ pub use self::{
     script::CheckedMetadata as ScriptCheckedMetadata,
 };
 use alloc::collections::BTreeMap;
-use fuel_types::{AssetId, Word};
+use fuel_types::{
+    AssetId,
+    Word,
+};
 
 /// The spendable unrestricted initial assets.
 /// More information about it in the specification:
@@ -53,12 +56,23 @@ impl core::ops::Deref for RetryableAmount {
 /// For [`fuel_tx::Create`]
 pub mod create {
     use super::super::{
-        balances::{initial_free_balances, AvailableBalances},
-        Checked, IntoChecked,
+        balances::{
+            initial_free_balances,
+            AvailableBalances,
+        },
+        Checked,
+        IntoChecked,
     };
-    use crate::checked_transaction::{CheckError, NonRetryableFreeBalances};
+    use crate::checked_transaction::{
+        CheckError,
+        NonRetryableFreeBalances,
+    };
     use fuel_tx::{
-        Cacheable, ConsensusParameters, Create, FormatValidityChecks, TransactionFee,
+        Cacheable,
+        ConsensusParameters,
+        Create,
+        FormatValidityChecks,
+        TransactionFee,
     };
     use fuel_types::BlockHeight;
 
@@ -116,9 +130,17 @@ pub mod create {
 
 /// For [`fuel_tx::Mint`]
 pub mod mint {
-    use super::super::{Checked, IntoChecked};
+    use super::super::{
+        Checked,
+        IntoChecked,
+    };
     use crate::checked_transaction::CheckError;
-    use fuel_tx::{Cacheable, ConsensusParameters, FormatValidityChecks, Mint};
+    use fuel_tx::{
+        Cacheable,
+        ConsensusParameters,
+        FormatValidityChecks,
+        Mint,
+    };
     use fuel_types::BlockHeight;
 
     impl IntoChecked for Mint {
@@ -142,14 +164,24 @@ pub mod mint {
 /// For [`fuel_tx::Script`]
 pub mod script {
     use super::super::{
-        balances::{initial_free_balances, AvailableBalances},
-        Checked, IntoChecked,
+        balances::{
+            initial_free_balances,
+            AvailableBalances,
+        },
+        Checked,
+        IntoChecked,
     };
     use crate::checked_transaction::{
-        CheckError, NonRetryableFreeBalances, RetryableAmount,
+        CheckError,
+        NonRetryableFreeBalances,
+        RetryableAmount,
     };
     use fuel_tx::{
-        Cacheable, ConsensusParameters, FormatValidityChecks, Script, TransactionFee,
+        Cacheable,
+        ConsensusParameters,
+        FormatValidityChecks,
+        Script,
+        TransactionFee,
     };
     use fuel_types::BlockHeight;
 

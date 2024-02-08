@@ -1,19 +1,48 @@
-use super::{internal::inc_pc, ExecutableTransaction, Interpreter};
+use super::{
+    internal::inc_pc,
+    ExecutableTransaction,
+    Interpreter,
+};
 use crate::{
-    call::CallFrame, constraints::reg_key::*, consts::*, context::Context, convert,
+    call::CallFrame,
+    constraints::reg_key::*,
+    consts::*,
+    context::Context,
+    convert,
     error::SimpleResult,
 };
 
-use fuel_asm::{GMArgs, GTFArgs, PanicReason, RegId};
+use fuel_asm::{
+    GMArgs,
+    GTFArgs,
+    PanicReason,
+    RegId,
+};
 use fuel_tx::{
     field::{
-        BytecodeLength, BytecodeWitnessIndex, ReceiptsRoot, Salt, Script as ScriptField,
-        ScriptData, ScriptGasLimit, StorageSlots,
+        BytecodeLength,
+        BytecodeWitnessIndex,
+        ReceiptsRoot,
+        Salt,
+        Script as ScriptField,
+        ScriptData,
+        ScriptGasLimit,
+        StorageSlots,
     },
     policies::PolicyType,
-    Input, InputRepr, Output, OutputRepr, UtxoId,
+    Input,
+    InputRepr,
+    Output,
+    OutputRepr,
+    UtxoId,
 };
-use fuel_types::{ChainId, Immediate12, Immediate18, RegisterId, Word};
+use fuel_types::{
+    ChainId,
+    Immediate12,
+    Immediate18,
+    RegisterId,
+    Word,
+};
 
 #[cfg(test)]
 mod tests;

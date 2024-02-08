@@ -1,12 +1,22 @@
 use core::ops::Deref;
 use fuel_types::{
-    canonical::{Deserialize, Error, Input, Output, Serialize},
-    BlockHeight, Word,
+    canonical::{
+        Deserialize,
+        Error,
+        Input,
+        Output,
+        Serialize,
+    },
+    BlockHeight,
+    Word,
 };
 
 #[cfg(feature = "random")]
 use rand::{
-    distributions::{Distribution, Standard},
+    distributions::{
+        Distribution,
+        Standard,
+    },
     Rng,
 };
 
@@ -267,7 +277,11 @@ pub mod typescript {
     use wasm_bindgen::prelude::*;
 
     use crate::transaction::Policies;
-    use alloc::{format, string::String, vec::Vec};
+    use alloc::{
+        format,
+        string::String,
+        vec::Vec,
+    };
 
     #[wasm_bindgen]
     impl Policies {

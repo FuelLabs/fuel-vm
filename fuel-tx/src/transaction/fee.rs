@@ -2,13 +2,20 @@ use crate::{
     field,
     field::WitnessLimit,
     input::{
-        coin::{CoinPredicate, CoinSigned},
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
         message::{
-            MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate,
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
             MessageDataSigned,
         },
     },
-    FeeParameters, GasCosts, Input,
+    FeeParameters,
+    GasCosts,
+    Input,
 };
 use fuel_asm::Word;
 use fuel_types::canonical::Serialize;

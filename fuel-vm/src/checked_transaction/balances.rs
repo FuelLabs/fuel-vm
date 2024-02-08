@@ -1,15 +1,29 @@
 use fuel_tx::{
     field,
     input::{
-        coin::{CoinPredicate, CoinSigned},
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
         message::{
-            MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate,
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
             MessageDataSigned,
         },
     },
-    Chargeable, FeeParameters, GasCosts, Input, Output, TransactionFee, ValidityError,
+    Chargeable,
+    FeeParameters,
+    GasCosts,
+    Input,
+    Output,
+    TransactionFee,
+    ValidityError,
 };
-use fuel_types::{AssetId, Word};
+use fuel_types::{
+    AssetId,
+    Word,
+};
 
 use alloc::collections::BTreeMap;
 

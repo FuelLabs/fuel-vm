@@ -1,10 +1,24 @@
 use crate::prelude::{
-    Bug, BugVariant, ExecutableTransaction, Interpreter, InterpreterStorage, RuntimeError,
+    Bug,
+    BugVariant,
+    ExecutableTransaction,
+    Interpreter,
+    InterpreterStorage,
+    RuntimeError,
 };
 
-use crate::interpreter::{InitialBalances, RuntimeBalances};
-use fuel_tx::{FeeParameters, GasCosts};
-use fuel_types::{AssetId, Word};
+use crate::interpreter::{
+    InitialBalances,
+    RuntimeBalances,
+};
+use fuel_tx::{
+    FeeParameters,
+    GasCosts,
+};
+use fuel_types::{
+    AssetId,
+    Word,
+};
 
 impl<S, T, Ecal> Interpreter<S, T, Ecal>
 where

@@ -4,20 +4,41 @@ use crate::{
     transaction::{
         consensus_parameters::TxParameters,
         field::{
-            Inputs, Outputs, Policies as PoliciesField, ReceiptsRoot,
-            Script as ScriptField, ScriptData, ScriptGasLimit, Witnesses,
+            Inputs,
+            Outputs,
+            Policies as PoliciesField,
+            ReceiptsRoot,
+            Script as ScriptField,
+            ScriptData,
+            ScriptGasLimit,
+            Witnesses,
         },
         metadata::CommonMetadata,
-        validity::{check_common_part, FormatValidityChecks},
+        validity::{
+            check_common_part,
+            FormatValidityChecks,
+        },
         Chargeable,
     },
-    ConsensusParameters, FeeParameters, GasCosts, Input, Output, TransactionRepr,
-    ValidityError, Witness,
+    ConsensusParameters,
+    FeeParameters,
+    GasCosts,
+    Input,
+    Output,
+    TransactionRepr,
+    ValidityError,
+    Witness,
 };
 use derivative::Derivative;
 use fuel_types::{
-    bytes, bytes::WORD_SIZE, canonical::Serialize, fmt_truncated_hex, BlockHeight,
-    Bytes32, ChainId, Word,
+    bytes,
+    bytes::WORD_SIZE,
+    canonical::Serialize,
+    fmt_truncated_hex,
+    BlockHeight,
+    Bytes32,
+    ChainId,
+    Word,
 };
 
 #[cfg(feature = "alloc")]

@@ -1,23 +1,42 @@
 use crate::{
     field::Maturity,
     input::{
-        coin::{CoinPredicate, CoinSigned},
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
         message::{
-            MessageCoinPredicate, MessageCoinSigned, MessageDataPredicate,
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
             MessageDataSigned,
         },
     },
     output,
     policies::PolicyType,
     transaction::{
-        consensus_parameters::{PredicateParameters, TxParameters},
-        field, Executable,
+        consensus_parameters::{
+            PredicateParameters,
+            TxParameters,
+        },
+        field,
+        Executable,
     },
-    Chargeable, ConsensusParameters, Input, Output, Transaction, Witness,
+    Chargeable,
+    ConsensusParameters,
+    Input,
+    Output,
+    Transaction,
+    Witness,
 };
 use core::hash::Hash;
 use fuel_types::{
-    canonical, canonical::Serialize, Address, BlockHeight, Bytes32, ChainId,
+    canonical,
+    canonical::Serialize,
+    Address,
+    BlockHeight,
+    Bytes32,
+    ChainId,
 };
 use hashbrown::HashMap;
 use itertools::Itertools;
@@ -485,13 +504,22 @@ where
 
 #[cfg(feature = "typescript")]
 mod typescript {
-    use crate::{PredicateParameters, Witness};
+    use crate::{
+        PredicateParameters,
+        Witness,
+    };
     use fuel_types::Bytes32;
     use wasm_bindgen::JsValue;
 
-    use alloc::{format, vec::Vec};
+    use alloc::{
+        format,
+        vec::Vec,
+    };
 
-    use crate::transaction::{input_ts::Input, output_ts::Output};
+    use crate::transaction::{
+        input_ts::Input,
+        output_ts::Output,
+    };
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub fn check_input(

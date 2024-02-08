@@ -2,15 +2,35 @@
 
 use crate::{
     backtrace::Backtrace,
-    checked_transaction::{Checked, IntoChecked},
+    checked_transaction::{
+        Checked,
+        IntoChecked,
+    },
     error::InterpreterError,
-    interpreter::{CheckedMetadata, EcalHandler, ExecutableTransaction, Interpreter},
-    state::{ProgramState, StateTransition, StateTransitionRef},
+    interpreter::{
+        CheckedMetadata,
+        EcalHandler,
+        ExecutableTransaction,
+        Interpreter,
+    },
+    state::{
+        ProgramState,
+        StateTransition,
+        StateTransitionRef,
+    },
     storage::InterpreterStorage,
 };
 
-use crate::interpreter::{InterpreterParams, NotSupportedEcal};
-use fuel_tx::{Create, GasCosts, Receipt, Script};
+use crate::interpreter::{
+    InterpreterParams,
+    NotSupportedEcal,
+};
+use fuel_tx::{
+    Create,
+    GasCosts,
+    Receipt,
+    Script,
+};
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on

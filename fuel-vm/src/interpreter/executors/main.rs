@@ -1,33 +1,83 @@
 #[cfg(test)]
 mod tests;
 
-use alloc::{vec, vec::Vec};
+use alloc::{
+    vec,
+    vec::Vec,
+};
 
 use crate::{
-    checked_transaction::{Checked, IntoChecked, ParallelExecutor},
+    checked_transaction::{
+        Checked,
+        IntoChecked,
+        ParallelExecutor,
+    },
     context::Context,
-    error::{Bug, InterpreterError, PredicateVerificationFailed},
+    error::{
+        Bug,
+        InterpreterError,
+        PredicateVerificationFailed,
+    },
     interpreter::{
-        CheckedMetadata, EcalHandler, ExecutableTransaction, InitialBalances,
-        Interpreter, RuntimeBalances,
+        CheckedMetadata,
+        EcalHandler,
+        ExecutableTransaction,
+        InitialBalances,
+        Interpreter,
+        RuntimeBalances,
     },
     predicate::RuntimePredicate,
-    prelude::{BugVariant, RuntimeError},
-    state::{ExecuteState, ProgramState, StateTransition, StateTransitionRef},
-    storage::{InterpreterStorage, PredicateStorage},
+    prelude::{
+        BugVariant,
+        RuntimeError,
+    },
+    state::{
+        ExecuteState,
+        ProgramState,
+        StateTransition,
+        StateTransitionRef,
+    },
+    storage::{
+        InterpreterStorage,
+        PredicateStorage,
+    },
 };
 
-use crate::{checked_transaction::CheckPredicateParams, interpreter::InterpreterParams};
-use fuel_asm::{PanicReason, RegId};
+use crate::{
+    checked_transaction::CheckPredicateParams,
+    interpreter::InterpreterParams,
+};
+use fuel_asm::{
+    PanicReason,
+    RegId,
+};
 use fuel_tx::{
-    field::{ReceiptsRoot, Salt, Script as ScriptField, ScriptGasLimit, StorageSlots},
+    field::{
+        ReceiptsRoot,
+        Salt,
+        Script as ScriptField,
+        ScriptGasLimit,
+        StorageSlots,
+    },
     input::{
         coin::CoinPredicate,
-        message::{MessageCoinPredicate, MessageDataPredicate},
+        message::{
+            MessageCoinPredicate,
+            MessageDataPredicate,
+        },
     },
-    Contract, Create, FeeParameters, GasCosts, Input, Receipt, ScriptExecutionResult,
+    Contract,
+    Create,
+    FeeParameters,
+    GasCosts,
+    Input,
+    Receipt,
+    ScriptExecutionResult,
 };
-use fuel_types::{AssetId, Word};
+use fuel_types::{
+    AssetId,
+    Word,
+};
 
 /// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]
@@ -565,17 +615,13 @@ where
                 match state {
                     ExecuteState::Return(r) => return Ok(ProgramState::Return(r)),
 
-                    ExecuteState::ReturnData(d) => {
-                        return Ok(ProgramState::ReturnData(d))
-                    }
+                    ExecuteState::ReturnData(d) => return Ok(ProgramState::ReturnData(d)),
 
                     ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
 
                     ExecuteState::Proceed => (),
 
-                    ExecuteState::DebugEvent(d) => {
-                        return Ok(ProgramState::RunProgram(d))
-                    }
+                    ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
                 }
             }
         }

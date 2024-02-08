@@ -7,11 +7,26 @@
 
 #![allow(non_upper_case_globals)]
 
-use fuel_tx::{Create, Mint, Script, Transaction, ValidityError};
-use fuel_types::{BlockHeight, ChainId};
+use fuel_tx::{
+    Create,
+    Mint,
+    Script,
+    Transaction,
+    ValidityError,
+};
+use fuel_types::{
+    BlockHeight,
+    ChainId,
+};
 
-use alloc::{boxed::Box, vec::Vec};
-use core::{borrow::Borrow, future::Future};
+use alloc::{
+    boxed::Box,
+    vec::Vec,
+};
+use core::{
+    borrow::Borrow,
+    future::Future,
+};
 
 use fuel_tx::ConsensusParameters;
 
@@ -21,7 +36,10 @@ pub mod types;
 
 pub use types::*;
 
-use crate::{error::PredicateVerificationFailed, prelude::*};
+use crate::{
+    error::PredicateVerificationFailed,
+    prelude::*,
+};
 
 bitflags::bitflags! {
     /// Possible types of transaction checks.
@@ -620,13 +638,23 @@ mod tests {
     use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{
-        field::{ScriptGasLimit, WitnessLimit, Witnesses},
-        Script, TransactionBuilder, ValidityError,
+        field::{
+            ScriptGasLimit,
+            WitnessLimit,
+            Witnesses,
+        },
+        Script,
+        TransactionBuilder,
+        ValidityError,
     };
     use fuel_types::canonical::Serialize;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
-    use rand::{rngs::StdRng, Rng, SeedableRng};
+    use rand::{
+        rngs::StdRng,
+        Rng,
+        SeedableRng,
+    };
 
     fn params(factor: u64) -> ConsensusParameters {
         ConsensusParameters::new(

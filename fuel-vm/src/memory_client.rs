@@ -1,12 +1,24 @@
 //! In-memory client implementation
 
 use crate::{
-    backtrace::Backtrace, checked_transaction::Checked, state::StateTransitionRef,
-    storage::MemoryStorage, transactor::Transactor,
+    backtrace::Backtrace,
+    checked_transaction::Checked,
+    state::StateTransitionRef,
+    storage::MemoryStorage,
+    transactor::Transactor,
 };
 
-use crate::interpreter::{EcalHandler, InterpreterParams, NotSupportedEcal};
-use fuel_tx::{Create, GasCosts, Receipt, Script};
+use crate::interpreter::{
+    EcalHandler,
+    InterpreterParams,
+    NotSupportedEcal,
+};
+use fuel_tx::{
+    Create,
+    GasCosts,
+    Receipt,
+    Script,
+};
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.

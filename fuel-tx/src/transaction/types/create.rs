@@ -2,18 +2,43 @@ use crate::{
     policies::Policies,
     transaction::{
         field::{
-            BytecodeLength, BytecodeWitnessIndex, Inputs, Outputs,
-            Policies as PoliciesField, Salt as SaltField, StorageSlots, Witnesses,
+            BytecodeLength,
+            BytecodeWitnessIndex,
+            Inputs,
+            Outputs,
+            Policies as PoliciesField,
+            Salt as SaltField,
+            StorageSlots,
+            Witnesses,
         },
-        validity::{check_common_part, FormatValidityChecks},
+        validity::{
+            check_common_part,
+            FormatValidityChecks,
+        },
     },
-    Chargeable, ConsensusParameters, Contract, GasCosts, Input, Output, StorageSlot,
-    TransactionRepr, ValidityError, Witness,
+    Chargeable,
+    ConsensusParameters,
+    Contract,
+    GasCosts,
+    Input,
+    Output,
+    StorageSlot,
+    TransactionRepr,
+    ValidityError,
+    Witness,
 };
 use derivative::Derivative;
 use fuel_types::{
-    bytes, bytes::WORD_SIZE, canonical, BlockHeight, Bytes32, Bytes4, ChainId,
-    ContractId, Salt, Word,
+    bytes,
+    bytes::WORD_SIZE,
+    canonical,
+    BlockHeight,
+    Bytes32,
+    Bytes4,
+    ChainId,
+    ContractId,
+    Salt,
+    Word,
 };
 
 #[cfg(feature = "alloc")]

@@ -85,12 +85,11 @@ fn metadata() {
     let output = Output::contract_created(contract_metadata, state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
-        .gas_price(gas_price)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, gas_price)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::from(&consensus_params);
@@ -98,7 +97,7 @@ fn metadata() {
     // Deploy the contract into the blockchain
     assert!(
         Transactor::<_, _>::new(&mut storage, interpreter_params.clone())
-            .transact(tx)
+            .transact(tx, gas_price)
             .is_success()
     );
 
@@ -136,17 +135,16 @@ fn metadata() {
     let output = Output::contract_created(contract_call, state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
-        .gas_price(gas_price)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, gas_price)
         .expect("failed to check tx");
 
     assert!(
         Transactor::<_, _>::new(&mut storage, interpreter_params.clone())
-            .transact(tx)
+            .transact(tx, gas_price)
             .is_success()
     );
 
@@ -194,7 +192,6 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(inputs[0].clone())
@@ -203,11 +200,11 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, gas_price)
         .expect("failed to check tx");
 
     let receipts = Transactor::<_, _>::new(&mut storage, interpreter_params)
-        .transact(tx)
+        .transact(tx, gas_price)
         .receipts()
         .expect("Failed to transact")
         .to_owned();
@@ -233,6 +230,7 @@ fn metadata() {
 fn get_metadata_chain_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_limit = 1_000_000;
+    let gas_price = 1;
     let height = BlockHeight::default();
 
     let chain_id: ChainId = rng.gen();
@@ -258,10 +256,10 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, gas_price)
         .unwrap();
 
-    let receipts = client.transact(script);
+    let receipts = client.transact(script, gas_price);
 
     if let Receipt::Return { val, .. } = receipts[0].clone() {
         assert_eq!(val, *chain_id);
@@ -298,9 +296,9 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
-    client.deploy(tx);
+    client.deploy(tx, gas_price);
 
     let predicate = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];
@@ -352,7 +350,6 @@ fn get_transaction_fields() {
         .prepare_script(true)
         .maturity(maturity)
         .with_gas_costs(gas_costs)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
@@ -394,7 +391,7 @@ fn get_transaction_fields() {
             maturity,
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -888,13 +885,12 @@ fn get_transaction_fields() {
 
     let tx = builder
         .maturity(maturity)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
-        .finalize_checked_basic(height);
+        .finalize_checked_basic(height, gas_price);
 
-    let receipts = client.transact(tx);
+    let receipts = client.transact(tx, gas_price);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));

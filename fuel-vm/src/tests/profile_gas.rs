@@ -45,9 +45,8 @@ fn profile_gas() {
                     Default::default(),
                 )
                 .script_gas_limit(gas_limit)
-                .gas_price(gas_price)
                 .maturity(maturity)
-                .finalize_checked(height);
+                .finalize_checked(height, gas_price);
 
         let output = GasProfiler::default();
 
@@ -58,7 +57,7 @@ fn profile_gas() {
                 .into(),
         );
 
-        let receipts = client.transact(tx_deploy);
+        let receipts = client.transact(tx_deploy, gas_price);
 
         if let Some(Receipt::ScriptResult { result, .. }) = receipts.last() {
             if count == case_out_of_gas {

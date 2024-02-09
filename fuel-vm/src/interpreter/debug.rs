@@ -71,6 +71,7 @@ fn breakpoint_script() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
+    let arb_gas_price = 1;
     let height = Default::default();
 
     let script = [
@@ -90,7 +91,7 @@ fn breakpoint_script() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, arb_gas_price)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -115,7 +116,7 @@ fn breakpoint_script() {
     suite.iter().for_each(|(b, _)| vm.set_breakpoint(*b));
 
     let state = vm
-        .transact(tx)
+        .transact(tx, arb_gas_price)
         .map(ProgramState::from)
         .expect("Failed to execute script!");
 
@@ -143,6 +144,8 @@ fn single_stepping() {
 
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
+    let arb_gas_price = 1;
+
     let gas_limit = 1_000_000;
     let height = Default::default();
 
@@ -162,13 +165,13 @@ fn single_stepping() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, arb_gas_price)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);
 
     let mut state = vm
-        .transact(tx)
+        .transact(tx, arb_gas_price)
         .map(ProgramState::from)
         .expect("Failed to execute script!");
 

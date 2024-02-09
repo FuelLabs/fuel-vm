@@ -475,9 +475,7 @@ fn create_input_data_offset() {
 
                     let tx = Transaction::create(
                         bytecode_witness_index,
-                        Policies::new()
-                            .with_maturity(maturity)
-                            .with_gas_price(gas_price),
+                        Policies::new().with_maturity(maturity),
                         salt,
                         storage_slot.clone(),
                         inputs,
@@ -597,9 +595,7 @@ fn script_input_coin_data_offset() {
                             gas_limit,
                             script.clone(),
                             script_data.clone(),
-                            Policies::new()
-                                .with_maturity(maturity)
-                                .with_gas_price(gas_price),
+                            Policies::new().with_maturity(maturity),
                             inputs,
                             outputs.clone(),
                             witnesses.clone(),

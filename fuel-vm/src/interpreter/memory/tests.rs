@@ -15,6 +15,7 @@ use test_case::test_case;
 #[test]
 fn memcopy() {
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+    let arb_gas_price = 1;
 
     let consensus_params = ConsensusParameters {
         tx_params,
@@ -31,7 +32,7 @@ fn memcopy() {
         .finalize();
 
     let tx = tx
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, arb_gas_price)
         .expect("default tx should produce a valid checked transaction");
 
     vm.init_script(tx).expect("Failed to init VM");
@@ -84,11 +85,17 @@ fn memcopy() {
 
 #[test]
 fn memrange() {
+    let arb_gas_price = 1;
+
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &ConsensusParameters::standard())
+        .into_checked(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect("Empty script should be valid");
     let mut vm = Interpreter::<_, _>::with_memory_storage();
     vm.init_script(tx).expect("Failed to init VM");
@@ -113,12 +120,17 @@ fn memrange() {
 #[test]
 fn stack_alloc_ownership() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let arb_gas_price = 1;
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &ConsensusParameters::standard())
+        .into_checked(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect("Empty script should be valid");
     vm.init_script(tx).expect("Failed to init VM");
 

@@ -50,7 +50,7 @@ fn prevent_contract_id_redeployment() {
 
     let mut create = Transaction::create(
         Default::default(),
-        Policies::new().with_gas_price(gas_price),
+        Policies::new(),
         salt,
         vec![],
         vec![],
@@ -74,16 +74,16 @@ fn prevent_contract_id_redeployment() {
     let consensus_params = ConsensusParameters::standard();
 
     let create = create
-        .into_checked_basic(1.into(), &consensus_params)
+        .into_checked_basic(1.into(), &consensus_params, gas_price)
         .expect("failed to generate checked tx");
 
     // deploy contract
     client
-        .deploy(create.clone())
+        .deploy(create.clone(), gas_price)
         .expect("First create should be executed");
     let mut txtor: Transactor<_, _> = client.into();
     // second deployment should fail
-    let result = txtor.deploy(create).unwrap_err();
+    let result = txtor.deploy(create, gas_price).unwrap_err();
     assert_eq!(
         result,
         InterpreterError::Panic(PanicReason::ContractIdAlreadyDeployed)

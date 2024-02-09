@@ -55,10 +55,9 @@ fn code_coverage() {
             rng.gen(),
             Default::default(),
         )
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     #[derive(Clone, Default)]
     struct ProfilingOutput {
@@ -85,7 +84,7 @@ fn code_coverage() {
             .into(),
     );
 
-    let receipts = client.transact(tx_script);
+    let receipts = client.transact(tx_script, gas_price);
 
     if let Some(Receipt::ScriptResult { result, .. }) = receipts.last() {
         assert!(matches!(result, ScriptExecutionResult::Success));

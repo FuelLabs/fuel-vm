@@ -263,7 +263,11 @@ async fn execute_gas_metered_predicates(
             .map_err(|_| ())?;
 
         let tx = async_tx
-            .into_checked_basic(Default::default(), &ConsensusParameters::standard())
+            .into_checked_basic(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                gas_price,
+            )
             .expect("Should successfully create checked tranaction with predicate");
 
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
@@ -355,7 +359,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
@@ -374,20 +377,20 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let _ = builder
             .clone()
-            .finalize_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default(), gas_price)
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default(), gas_price)
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
 
-    client.transact(tx_without_predicate);
+    client.transact(tx_without_predicate, gas_price);
     let receipts_without_predicate =
         client.receipts().expect("Expected receipts").to_vec();
     let gas_without_predicate = receipts_without_predicate[1]
@@ -421,7 +424,11 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         .expect("Predicate estimation failed");
 
     let checked = transaction
-        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
+        .into_checked_basic(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            gas_price,
+        )
         .expect("Should successfully create checked tranaction with predicate");
 
     // parallel version
@@ -432,7 +439,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
             .await
             .expect("Predicate check failed");
 
-        client.transact(tx_with_predicate);
+        client.transact(tx_with_predicate, gas_price);
         let receipts_with_predicate =
             client.receipts().expect("Expected receipts").to_vec();
 
@@ -449,7 +456,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         .check_predicates(&params)
         .expect("Predicate check failed");
 
-    client.transact(tx_with_predicate);
+    client.transact(tx_with_predicate, gas_price);
     let receipts_with_predicate = client.receipts().expect("Expected receipts").to_vec();
 
     // No panic for transaction without gas limit
@@ -480,7 +487,6 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
@@ -499,20 +505,20 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let _ = builder
             .clone()
-            .finalize_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default(), gas_price)
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default(), gas_price)
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
 
-    client.transact(tx_without_predicate);
+    client.transact(tx_without_predicate, gas_price);
     let receipts_without_predicate =
         client.receipts().expect("Expected receipts").to_vec();
     let gas_without_predicate = receipts_without_predicate[1]
@@ -550,7 +556,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let tx_with_predicate = builder
             .clone()
-            .finalize_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default(), gas_price)
             .check_predicates_async::<TokioWithRayon>(&params)
             .await;
 
@@ -561,7 +567,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     }
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default(), gas_price)
         .check_predicates(&params);
 
     assert!(matches!(

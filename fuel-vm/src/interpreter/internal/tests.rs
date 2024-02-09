@@ -54,11 +54,10 @@ fn external_balance() {
     });
 
     let tx = tx
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -100,6 +99,8 @@ fn external_balance() {
 fn variable_output_updates_in_memory() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
+    let arb_gas_price = 1;
+
     let consensus_params = ConsensusParameters::standard();
     let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
@@ -123,7 +124,7 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, arb_gas_price)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");

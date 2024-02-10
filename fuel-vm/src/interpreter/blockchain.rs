@@ -895,13 +895,13 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
 
         self.input_contracts.check(contract_id)?;
 
-        let (_, root) = self
+        let root = self
             .storage
-            .storage_contract_root(contract_id)
+            .storage_contract(contract_id)
             .transpose()
             .ok_or(PanicReason::ContractNotFound)?
             .map_err(RuntimeError::Storage)?
-            .into_owned();
+            .root();
 
         try_mem_write(a, root.as_ref(), self.owner, self.memory)?;
 

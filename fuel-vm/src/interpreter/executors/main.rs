@@ -444,7 +444,7 @@ where
         }
 
         storage
-            .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
+            .deploy_contract_with_id(salt, storage_slots, &contract, &id)
             .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,

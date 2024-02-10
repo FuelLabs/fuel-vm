@@ -1,6 +1,7 @@
 //! Trait definitions for storage backend
 
 use fuel_storage::{
+    Mappable,
     MerkleRootStorage,
     StorageAsRef,
     StorageInspect,
@@ -29,6 +30,7 @@ use crate::{
     storage::{
         ContractsAssets,
         ContractsInfo,
+        ContractsInfoType,
         ContractsRawCode,
         ContractsState,
     },
@@ -81,11 +83,12 @@ pub trait InterpreterStorage:
         salt: &Salt,
         slots: &[StorageSlot],
         contract: &Contract,
-        root: &Bytes32,
         id: &ContractId,
     ) -> Result<(), Self::DataError> {
         self.storage_contract_insert(id, contract)?;
-        self.storage_contract_root_insert(id, salt, root)?;
+
+        let info = ContractsInfoType::V1(*salt);
+        self.storage_contract_info_insert(id, &info)?;
 
         // On the `fuel-core` side it is done in more optimal way
         slots.iter().try_for_each(|s| {
@@ -137,24 +140,43 @@ pub trait InterpreterStorage:
         self.storage::<ContractsRawCode>().contains_key(id)
     }
 
-    /// Fetch a previously inserted salt+root tuple from the chain state for a
-    /// given contract.
-    fn storage_contract_root(
+    /// Fetch a previously inserted contract's info
+    fn storage_contract_info(
         &self,
         id: &ContractId,
-    ) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, <ContractsInfo as Mappable>::Value>>, Self::DataError>
+    {
         StorageInspect::<ContractsInfo>::get(self, id)
     }
 
-    /// Append the salt+root of a contract that was appended to the chain.
-    fn storage_contract_root_insert(
+    /// Append the contract's info that was appended to the chain.
+    fn storage_contract_info_insert(
         &mut self,
         id: &ContractId,
-        salt: &Salt,
-        root: &Bytes32,
-    ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
-        StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
+        info: &<ContractsInfo as Mappable>::Value,
+    ) -> Result<Option<<ContractsInfo as Mappable>::Value>, Self::DataError> {
+        StorageMutate::<ContractsInfo>::insert(self, id, info)
     }
+
+    // /// Fetch a previously inserted salt+root tuple from the chain state for a
+    // /// given contract.
+    // fn storage_contract_root(
+    //     &self,
+    //     id: &ContractId,
+    // ) -> Result<Option<Cow<'_, <ContractsInfo as Mappable>::Value>>, Self::DataError>
+    // {
+    //     StorageInspect::<ContractsInfo>::get(self, id)
+    // }
+
+    // /// Append the salt+root of a contract that was appended to the chain.
+    // fn storage_contract_root_insert(
+    //     &mut self,
+    //     id: &ContractId,
+    //     salt: &Salt,
+    //     root: &Bytes32,
+    // ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
+    //     StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
+    // }
 
     /// Fetch the value form a key-value mapping in a contract storage.
     fn merkle_contract_state(

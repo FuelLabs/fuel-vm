@@ -264,13 +264,13 @@ fn test_code_root() {
     .expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
-    storage
-        .storage_contract_root_insert(
-            &ContractId::from([3u8; 32]),
-            &Salt::from([5u8; 32]),
-            &Bytes32::from([6u8; 32]),
-        )
-        .unwrap();
+    // storage
+    //     .storage_contract_root_insert(
+    //         &ContractId::from([3u8; 32]),
+    //         &Salt::from([5u8; 32]),
+    //         &Bytes32::from([6u8; 32]),
+    //     )
+    //     .unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,

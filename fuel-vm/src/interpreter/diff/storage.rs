@@ -29,7 +29,7 @@ use super::{
 pub(super) enum StorageDelta {
     State(MappableDelta<ContractsStateKey, Bytes32>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
-    Info(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
+    Info(MappableDelta<ContractId, <ContractsInfo as Mappable>::Value>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
 
@@ -38,7 +38,7 @@ pub(super) enum StorageDelta {
 pub(super) enum StorageState {
     State(MappableState<ContractsStateKey, Bytes32>),
     Assets(MappableState<ContractsAssetKey, u64>),
-    Info(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
+    Info(MappableState<ContractId, <ContractsInfo as Mappable>::Value>),
     RawCode(MappableState<ContractId, Contract>),
 }
 
@@ -474,15 +474,15 @@ impl StorageType for ContractsAssets {
 impl StorageType for ContractsInfo {
     fn record_insert(
         key: &ContractId,
-        value: &(fuel_types::Salt, Bytes32),
-        existing: Option<(fuel_types::Salt, Bytes32)>,
+        value: &<ContractsInfo as Mappable>::Value,
+        existing: Option<<ContractsInfo as Mappable>::Value>,
     ) -> StorageDelta {
-        StorageDelta::Info(MappableDelta::Insert(*key, *value, existing))
+        StorageDelta::Info(MappableDelta::Insert(*key, value.clone(), existing))
     }
 
     fn record_remove(
         key: &ContractId,
-        value: (fuel_types::Salt, Bytes32),
+        value: <ContractsInfo as Mappable>::Value,
     ) -> StorageDelta {
         StorageDelta::Info(MappableDelta::Remove(*key, value))
     }

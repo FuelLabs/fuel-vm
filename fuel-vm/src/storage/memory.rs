@@ -48,7 +48,7 @@ struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
     contract_state: BTreeMap<ContractsStateKey, Bytes32>,
-    contract_code_root: BTreeMap<ContractId, (Salt, Bytes32)>,
+    contract_code_root: BTreeMap<ContractId, <ContractsInfo as Mappable>::Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -222,7 +222,7 @@ impl StorageInspect<ContractsInfo> for MemoryStorage {
     fn get(
         &self,
         key: &ContractId,
-    ) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Infallible> {
+    ) -> Result<Option<Cow<'_, <ContractsInfo as Mappable>::Value>>, Infallible> {
         Ok(self.memory.contract_code_root.get(key).map(Cow::Borrowed))
     }
 
@@ -235,15 +235,15 @@ impl StorageMutate<ContractsInfo> for MemoryStorage {
     fn insert(
         &mut self,
         key: &ContractId,
-        value: &(Salt, Bytes32),
-    ) -> Result<Option<(Salt, Bytes32)>, Infallible> {
-        Ok(self.memory.contract_code_root.insert(*key, *value))
+        value: &<ContractsInfo as Mappable>::Value,
+    ) -> Result<Option<<ContractsInfo as Mappable>::Value>, Infallible> {
+        Ok(self.memory.contract_code_root.insert(*key, value.clone()))
     }
 
     fn remove(
         &mut self,
         key: &ContractId,
-    ) -> Result<Option<(Salt, Bytes32)>, Infallible> {
+    ) -> Result<Option<<ContractsInfo as Mappable>::Value>, Infallible> {
         Ok(self.memory.contract_code_root.remove(key))
     }
 }

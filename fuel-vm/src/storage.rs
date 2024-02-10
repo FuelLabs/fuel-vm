@@ -34,13 +34,18 @@ impl Mappable for ContractsRawCode {
 /// The storage table for contract's additional information as salt, root hash, etc.
 pub struct ContractsInfo;
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum ContractsInfoType {
+    /// V1
+    /// `Salt` - the salt used during creation of the contract for uniqueness.
+    V1(Salt),
+}
+
 impl Mappable for ContractsInfo {
     type Key = Self::OwnedKey;
     type OwnedKey = ContractId;
     type OwnedValue = Self::Value;
-    /// `Salt` - is the salt used during creation of the contract for uniques.
-    /// `Bytes32` - is the root hash of the contract's code.
-    type Value = (Salt, Bytes32);
+    type Value = ContractsInfoType;
 }
 
 /// The storage table for contract's assets balances.

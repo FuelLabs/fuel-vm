@@ -12,6 +12,7 @@ use core::{
 use super::*;
 use crate::interpreter::PanicContext;
 use fuel_storage::StorageAsMut;
+use fuel_tx::Contract;
 use fuel_types::Salt;
 use test_case::test_case;
 
@@ -264,13 +265,13 @@ fn test_code_root() {
     .expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
-    // storage
-    //     .storage_contract_root_insert(
-    //         &ContractId::from([3u8; 32]),
-    //         &Salt::from([5u8; 32]),
-    //         &Bytes32::from([6u8; 32]),
-    //     )
-    //     .unwrap();
+    let mut data = alloc::vec![0xffu8; 512];
+    let contract: Contract = data.into();
+    let root = contract.root();
+    storage
+        .storage_contract_insert(&contract_id, &contract)
+        .expect("Failed to insert contract");
+
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -290,7 +291,7 @@ fn test_code_root() {
     .code_root(20, 0)
     .unwrap();
     assert_eq!(pc, 8);
-    assert_eq!(memory[20..20 + 32], [6u8; 32]);
+    assert_eq!(memory[20..20 + 32], *root.as_slice());
 
     let owner = OwnershipRegisters {
         sp: 1000,

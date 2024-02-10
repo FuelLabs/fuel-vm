@@ -70,7 +70,7 @@ fn maturity() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();
-    let arb_gas_price = 0;
+    let arb_gas_price = 1;
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(block_height)

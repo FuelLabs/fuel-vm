@@ -37,7 +37,7 @@ impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
 
 #[test]
 fn noop_ecal() {
-    let arb_gas_price = 0;
+    let zero_gas_price = 0;
     let script = vec![
         op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(RegId::ONE),
@@ -55,9 +55,9 @@ fn noop_ecal() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, arb_gas_price)
+        .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, arb_gas_price);
+    client.transact(tx, zero_gas_price);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() else {
@@ -100,7 +100,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 #[test]
 fn provide_ecal_fn() {
     let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
-    let arb_gas_price = 0;
+    let zero_gas_price = 0;
 
     let script_data = [
         2u64.to_be_bytes(),
@@ -131,9 +131,9 @@ fn provide_ecal_fn() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, arb_gas_price)
+        .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, arb_gas_price);
+    client.transact(tx, zero_gas_price);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::Log { ra, rb, .. } = receipts.first().unwrap() else {

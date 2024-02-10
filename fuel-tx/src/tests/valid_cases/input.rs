@@ -141,7 +141,7 @@ fn input_coin_message_signature() {
 #[test]
 fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let arb_gas_price = 0;
+    let arb_gas_price = 1;
 
     let mut tx = Script::default();
 
@@ -338,6 +338,7 @@ fn contract() {
 #[test]
 fn message_metadata() {
     let rng = &mut StdRng::seed_from_u64(8586);
+    let arb_gas_price = 1;
 
     let txhash: Bytes32 = rng.gen();
 
@@ -374,7 +375,6 @@ fn message_metadata() {
     tx.add_input(fee_input);
 
     let block_height = rng.gen();
-    let arb_gas_price = 0;
     let err = tx
         .check(
             block_height,
@@ -481,7 +481,7 @@ fn message_metadata() {
 fn message_message_coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let arb_gas_price = 0;
+    let arb_gas_price = 1;
 
     let txhash: Bytes32 = rng.gen();
 
@@ -572,7 +572,7 @@ fn message_message_coin() {
 fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let utxo_id = rng.gen();
-    let arb_gas_price = 0;
+    let arb_gas_price = 1;
 
     let a = Input::coin_signed(
         utxo_id,

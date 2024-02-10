@@ -587,7 +587,7 @@ pub mod test_helpers {
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
-        let arb_gas_price = 0;
+        let zero_gas_price = 0;
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
@@ -608,10 +608,10 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height, arb_gas_price);
+            .finalize_checked(height, zero_gas_price);
 
         client
-            .deploy(contract_deployer, arb_gas_price)
+            .deploy(contract_deployer, zero_gas_price)
             .expect("valid contract deployment");
 
         // call deployed contract
@@ -643,13 +643,13 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, arb_gas_price);
+            .finalize_checked(height, zero_gas_price);
 
         check_reason_for_transaction(
             client,
             tx_deploy_loader,
             expected_reason,
-            arb_gas_price,
+            zero_gas_price,
         );
     }
 

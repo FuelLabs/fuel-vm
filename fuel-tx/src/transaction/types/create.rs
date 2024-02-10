@@ -638,7 +638,7 @@ mod tests {
     fn storage_slots_sorting() {
         // Test that storage slots must be sorted correctly
         let mut slot_data = [0u8; 64];
-        let arb_gas_price = 0;
+        let arb_gas_price = 1;
 
         let storage_slots = (0..10u64)
             .map(|i| {
@@ -669,7 +669,7 @@ mod tests {
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
         ];
-        let arb_gas_price = 0;
+        let arb_gas_price = 1;
 
         let err = crate::TransactionBuilder::create(
             vec![].into(),

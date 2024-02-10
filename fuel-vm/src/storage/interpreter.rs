@@ -158,26 +158,6 @@ pub trait InterpreterStorage:
         StorageMutate::<ContractsInfo>::insert(self, id, info)
     }
 
-    // /// Fetch a previously inserted salt+root tuple from the chain state for a
-    // /// given contract.
-    // fn storage_contract_root(
-    //     &self,
-    //     id: &ContractId,
-    // ) -> Result<Option<Cow<'_, <ContractsInfo as Mappable>::Value>>, Self::DataError>
-    // {
-    //     StorageInspect::<ContractsInfo>::get(self, id)
-    // }
-
-    // /// Append the salt+root of a contract that was appended to the chain.
-    // fn storage_contract_root_insert(
-    //     &mut self,
-    //     id: &ContractId,
-    //     salt: &Salt,
-    //     root: &Bytes32,
-    // ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
-    //     StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
-    // }
-
     /// Fetch the value form a key-value mapping in a contract storage.
     fn merkle_contract_state(
         &self,

@@ -1526,7 +1526,7 @@ mod tests {
     #[test]
     fn basic_check_marks_basic_flag() {
         let block_height = 1.into();
-        let arb_gas_price = 1;
+        let arb_gas_price = 0;
 
         let tx = Transaction::default_test_tx();
         // Sets Checks::Basic

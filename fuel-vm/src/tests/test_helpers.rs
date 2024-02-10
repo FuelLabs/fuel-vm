@@ -26,7 +26,7 @@ pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
 pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
-    let arb_gas_price = 1;
+    let arb_gas_price = 0;
 
     let consensus_params = ConsensusParameters::standard();
 

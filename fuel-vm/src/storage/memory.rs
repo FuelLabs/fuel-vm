@@ -28,7 +28,6 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
-    Salt,
     Word,
 };
 use itertools::Itertools;

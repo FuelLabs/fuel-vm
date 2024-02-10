@@ -13,7 +13,6 @@ use super::*;
 use crate::interpreter::PanicContext;
 use fuel_storage::StorageAsMut;
 use fuel_tx::Contract;
-use fuel_types::Salt;
 use test_case::test_case;
 
 #[test_case(false, 0, None, 0, [0; 32] => Ok(()); "Burn nothing")]
@@ -265,7 +264,7 @@ fn test_code_root() {
     .expect_err("Contract is not found");
     assert_eq!(pc, 4);
 
-    let mut data = alloc::vec![0xffu8; 512];
+    let data = alloc::vec![0xffu8; 512];
     let contract: Contract = data.into();
     let root = contract.root();
     storage

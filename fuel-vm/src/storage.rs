@@ -31,14 +31,24 @@ impl Mappable for ContractsRawCode {
     type Value = [u8];
 }
 
-/// The storage table for contract's additional information as salt, root hash, etc.
+/// The storage table for contract's additional information
 pub struct ContractsInfo;
 
+/// The versioned type to describe additional contract information.
 #[derive(Debug, Clone, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum ContractsInfoType {
-    /// V1
-    /// `Salt` - the salt used during creation of the contract for uniqueness.
+    /// V1: the salt used during creation of the contract for uniqueness.
     V1(Salt),
+}
+
+impl ContractsInfoType {
+    /// Get the contract's salt
+    pub fn salt(&self) -> &Salt {
+        match self {
+            ContractsInfoType::V1(salt) => salt,
+        }
+    }
 }
 
 impl Mappable for ContractsInfo {

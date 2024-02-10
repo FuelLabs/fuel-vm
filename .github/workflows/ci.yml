@@ -16,8 +16,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.73.0
-  NIGHTLY_RUST_VERSION: nightly-2023-10-29
+  RUST_VERSION: 1.75.0
+  NIGHTLY_RUST_VERSION: nightly-2024-02-07
 
 jobs:
   check-changelog:

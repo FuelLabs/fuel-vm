@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Introduce a new enum `ContractsInfoType` to store versioned non-protocol-level Contract information in the `ContractsInfo` table.  
+
 ## [Version 0.45.0]
 
 ### Changed

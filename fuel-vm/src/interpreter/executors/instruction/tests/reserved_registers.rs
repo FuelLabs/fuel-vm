@@ -24,7 +24,7 @@ use quickcheck_macros::quickcheck;
 // Ensure none of the opcodes can write to reserved registers
 #[quickcheck]
 fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
-    let arb_gas_price = 1;
+    let zero_gas_price = 0;
 
     let random_instruction = match Instruction::try_from(raw_random_instruction) {
         Ok(inst) => inst,
@@ -67,7 +67,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .finalize();
 
     let tx = tx
-        .into_checked(block_height, &consensus_params, arb_gas_price)
+        .into_checked(block_height, &consensus_params, zero_gas_price)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");

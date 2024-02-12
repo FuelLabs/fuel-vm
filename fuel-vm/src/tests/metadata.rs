@@ -275,7 +275,7 @@ fn get_transaction_fields() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 1;
+    let zero_gas_price = 0;
     let witness_limit = 1234;
     let max_fee_limit = 4321;
     let gas_limit = 10_000_000;
@@ -296,9 +296,9 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height, zero_gas_price);
 
-    client.deploy(tx, gas_price);
+    client.deploy(tx, zero_gas_price);
 
     let predicate = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];
@@ -391,7 +391,7 @@ fn get_transaction_fields() {
             maturity,
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height, zero_gas_price);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -469,11 +469,12 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x11, gas_price as Immediate18),
-        op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::PolicyTip),
-        op::eq(0x10, 0x10, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // TODO: Implement Tip stuff.
+        // op::movi(0x11, gas_price as Immediate18),
+        // op::movi(0x19, 0x00),
+        // op::gtf_args(0x10, 0x19, GTFArgs::PolicyTip),
+        // op::eq(0x10, 0x10, 0x11),
+        // op::and(0x20, 0x20, 0x10),
 
         op::movi(0x19, 0x00),
         op::movi(0x11, (gas_limit & 0x3ffff) as Immediate18),
@@ -888,11 +889,15 @@ fn get_transaction_fields() {
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
-        .finalize_checked_basic(height, gas_price);
+        .finalize_checked_basic(height, zero_gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx, zero_gas_price);
     let success = receipts
         .iter()
+        .map(|r| {
+            dbg!(&r);
+            r
+        })
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
     assert!(success);

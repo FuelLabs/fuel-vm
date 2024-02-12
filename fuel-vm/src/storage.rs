@@ -36,7 +36,7 @@ pub struct ContractsInfo;
 
 /// The versioned type to describe additional contract information.
 #[derive(Debug, Clone, Eq, PartialEq)]
-#[non_exhaustive]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ContractsInfoType {
     /// V1: the salt used during creation of the contract for uniqueness.
     V1(Salt),

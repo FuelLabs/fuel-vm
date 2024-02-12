@@ -11,7 +11,7 @@ repository = { workspace = true }
 description = "FuelVM interpreter."
 
 [dependencies]
-anyhow = { version = "1.0", optional = true }
+anyhow = { workspace = true, optional = true }
 async-trait = "0.1"
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 bitflags = { workspace = true }
@@ -65,6 +65,6 @@ profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
-da-compression = ["fuel-compression", "fuel-tx/da-compression"]
+da-compression = ["dep:anyhow", "fuel-compression", "fuel-tx/da-compression"]
 serde = ["dep:serde", "hashbrown/serde", "fuel-asm/serde", "fuel-types/serde", "fuel-tx/serde", "fuel-merkle/serde", "backtrace?/serde"]
 test-helpers = ["fuel-tx/builder", "alloc", "random", "dep:anyhow", "fuel-crypto/test-helpers", "fuel-compression/test-helpers"]

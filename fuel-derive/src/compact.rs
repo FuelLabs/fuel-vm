@@ -107,7 +107,7 @@ fn construct_compact(
                 FieldAttrs::Skip => quote! {},
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as Compactable>::compact(&#binding, ctx);
+                        let #cname = <#ty as Compactable>::compact(&#binding, ctx)?;
                     }
                 }
                 FieldAttrs::Registry(registry) => {
@@ -120,7 +120,7 @@ fn construct_compact(
                     quote! {
                         let #cname: #cty = ctx.to_key(
                             <tables::#reg_ident as Table>::Type::from(#binding.clone())
-                        );
+                        )?;
                     }
                 }
             }
@@ -175,7 +175,7 @@ fn construct_decompact(
                 },
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as Compactable>::decompact(#binding, reg);
+                        let #cname = <#ty as Compactable>::decompact(#binding, reg)?;
                     }
                 }
                 FieldAttrs::Registry(registry) => {
@@ -183,7 +183,7 @@ fn construct_decompact(
                     quote! {
                         let raw: <tables::#reg_ident as Table>::Type = reg.read(
                             #binding
-                        );
+                        )?;
                         let #cname = raw.into();
                     }
                 }
@@ -354,12 +354,12 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
                 match self { #count_per_variant }
             }
 
-            fn compact<R: RegistryDb>(&self, ctx: &mut CompactionContext<R>) -> Self::Compact {
-                match self { #construct_per_variant }
+            fn compact<R: RegistryDb>(&self, ctx: &mut CompactionContext<R>) -> anyhow::Result<Self::Compact> {
+                Ok(match self { #construct_per_variant })
             }
 
-            fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> Self {
-                match compact { #decompact_per_variant }
+            fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self> {
+                Ok(match compact { #decompact_per_variant })
             }
         }
     });

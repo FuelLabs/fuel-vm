@@ -22,6 +22,7 @@ repository = "https://github.com/FuelLabs/fuel-vm"
 version = "0.45.0"
 
 [workspace.dependencies]
+anyhow = "1.0"
 fuel-asm = { version = "0.45.0", path = "fuel-asm", default-features = false }
 fuel-compression = { version = "0.45.0", path = "fuel-compression", default-features = false }
 fuel-crypto = { version = "0.45.0", path = "fuel-crypto", default-features = false }

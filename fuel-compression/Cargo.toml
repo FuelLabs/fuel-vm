@@ -11,6 +11,7 @@ repository = { workspace = true }
 description = "Compression and decompression of Fuel blocks for DA storage."
 
 [dependencies]
+anyhow = { workspace = true }
 fuel-derive = { workspace = true }
 postcard = { version = "1.0", features = ["use-std"] }
 serde = { version = "1.0", features = ["derive"] }

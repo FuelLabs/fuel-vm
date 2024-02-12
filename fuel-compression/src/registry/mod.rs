@@ -139,10 +139,10 @@ macro_rules! tables {
             }
         )*
 
-        pub fn next_keys<R: RegistryDb>(reg: &mut R) -> KeyPerTable {
-            KeyPerTable {
-                $( $name: reg.next_key(), )*
-            }
+        pub fn next_keys<R: RegistryDb>(reg: &mut R) -> anyhow::Result<KeyPerTable> {
+            Ok(KeyPerTable {
+                $( $name: reg.next_key()?, )*
+            })
         }
 
         /// Used to add together keys and counts to deterimine possible overwrite range
@@ -182,10 +182,11 @@ macro_rules! tables {
             }
 
             /// Apply changes to the registry db
-            pub fn apply_to_registry<R: RegistryDb>(&self, reg: &mut R) {
+            pub fn apply_to_registry<R: RegistryDb>(&self, reg: &mut R) -> anyhow::Result<()> {
                 $(
-                    reg.batch_write(self.$name.start_key, self.$name.values.clone());
+                    reg.batch_write(self.$name.start_key, self.$name.values.clone())?;
                 )*
+                Ok(())
             }
         }
 

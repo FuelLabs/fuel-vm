@@ -16,23 +16,30 @@ pub struct InMemoryRegistry {
 }
 
 impl RegistryDb for InMemoryRegistry {
-    fn next_key<T: Table>(&self) -> Key<T> {
-        Key::from_raw(self.next_keys.get(T::NAME).copied().unwrap_or(RawKey::ZERO))
+    fn next_key<T: Table>(&self) -> anyhow::Result<Key<T>> {
+        Ok(Key::from_raw(
+            self.next_keys.get(T::NAME).copied().unwrap_or(RawKey::ZERO),
+        ))
     }
 
-    fn read<T: Table>(&self, key: Key<T>) -> T::Type {
+    fn read<T: Table>(&self, key: Key<T>) -> anyhow::Result<T::Type> {
         if key == Key::DEFAULT_VALUE {
-            return T::Type::default();
+            return Ok(T::Type::default());
         }
 
-        self.storage
+        Ok(self
+            .storage
             .get(T::NAME)
             .and_then(|table| table.get(&key.raw()))
             .map(|bytes| postcard::from_bytes(bytes).expect("Invalid value in registry"))
-            .unwrap_or_default()
+            .unwrap_or_default())
     }
 
-    fn batch_write<T: Table>(&mut self, start_key: Key<T>, values: Vec<T::Type>) {
+    fn batch_write<T: Table>(
+        &mut self,
+        start_key: Key<T>,
+        values: Vec<T::Type>,
+    ) -> anyhow::Result<()> {
         let empty = values.is_empty();
         if !empty && start_key == Key::DEFAULT_VALUE {
             panic!("Cannot write to the default value key");
@@ -50,24 +57,32 @@ impl RegistryDb for InMemoryRegistry {
         if !empty {
             self.next_keys.insert(T::NAME, key);
         }
+        Ok(())
     }
 
-    fn index_lookup<T: Table>(&self, value: &T::Type) -> Option<Key<T>> {
+    fn index_lookup<T: Table>(&self, value: &T::Type) -> anyhow::Result<Option<Key<T>>> {
         if *value == T::Type::default() {
-            return Some(Key::DEFAULT_VALUE);
+            return Ok(Some(Key::DEFAULT_VALUE));
         }
 
         let needle = postcard::to_stdvec(value).unwrap();
         let mut prefix = needle.clone();
         prefix.truncate(32);
-        if let Some(cand) = self.index.get(T::NAME)?.get(&prefix).copied() {
-            let cand_val = self.storage.get(T::NAME)?.get(&cand)?;
-            if *cand_val == needle {
-                return Some(Key::from_raw(cand));
+
+        if let Some(cand) = self
+            .index
+            .get(T::NAME)
+            .and_then(|s| s.get(&prefix))
+            .copied()
+        {
+            if let Some(cand_val) = self.storage.get(T::NAME).and_then(|s| s.get(&cand)) {
+                if *cand_val == needle {
+                    return Ok(Some(Key::from_raw(cand)));
+                }
             }
         }
 
-        None
+        Ok(None)
     }
 }
 

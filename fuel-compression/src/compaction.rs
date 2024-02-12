@@ -1,4 +1,7 @@
-use std::marker::PhantomData;
+use std::{
+    marker::PhantomData,
+    mem::MaybeUninit,
+};
 
 use serde::{
     Deserialize,
@@ -44,8 +47,8 @@ impl<'a, R: RegistryDb> CompactionContext<'a, R> {
     pub fn run<C: Compactable>(
         reg: &'a mut R,
         target: C,
-    ) -> (C::Compact, ChangesPerTable) {
-        let start_keys = next_keys(reg);
+    ) -> anyhow::Result<(C::Compact, ChangesPerTable)> {
+        let start_keys = next_keys(reg)?;
         let next_keys = start_keys;
         let key_limits = target.count();
         let safe_keys_start = add_keys(next_keys, key_limits);
@@ -58,16 +61,16 @@ impl<'a, R: RegistryDb> CompactionContext<'a, R> {
             changes: ChangesPerTable::from_start_keys(start_keys),
         };
 
-        let compacted = target.compact(&mut ctx);
-        ctx.changes.apply_to_registry(ctx.reg);
-        (compacted, ctx.changes)
+        let compacted = target.compact(&mut ctx)?;
+        ctx.changes.apply_to_registry(ctx.reg)?;
+        Ok((compacted, ctx.changes))
     }
 }
 
 impl<'a, R: RegistryDb> CompactionContext<'a, R> {
     /// Convert a value to a key
     /// If necessary, store the value in the changeset and allocate a new key.
-    pub fn to_key<T: Table>(&mut self, value: T::Type) -> Key<T>
+    pub fn to_key<T: Table>(&mut self, value: T::Type) -> anyhow::Result<Key<T>>
     where
         KeyPerTable: access::AccessCopy<T, Key<T>>,
         KeyPerTable: access::AccessMut<T, Key<T>>,
@@ -79,16 +82,16 @@ impl<'a, R: RegistryDb> CompactionContext<'a, R> {
             <ChangesPerTable as AccessRef<T, WriteTo<T>>>::get(&self.changes)
                 .lookup_value(&value)
         {
-            return key;
+            return Ok(key);
         }
 
         // Check if the registry contains this value already
-        if let Some(key) = self.reg.index_lookup::<T>(&value) {
+        if let Some(key) = self.reg.index_lookup::<T>(&value)? {
             let start: Key<T> = self.start_keys.value();
             let end: Key<T> = self.safe_keys_start.value();
             // Check if the value is in the possibly-overwritable range
             if !key.is_between(start, end) {
-                return key;
+                return Ok(key);
             }
         }
         // Allocate a new key for this
@@ -97,7 +100,7 @@ impl<'a, R: RegistryDb> CompactionContext<'a, R> {
         <ChangesPerTable as access::AccessMut<T, WriteTo<T>>>::get_mut(&mut self.changes)
             .values
             .push(value);
-        key
+        Ok(key)
     }
 }
 
@@ -110,10 +113,15 @@ pub trait Compactable {
     fn count(&self) -> CountPerTable;
 
     /// Convert to compacted format
-    fn compact<R: RegistryDb>(&self, ctx: &mut CompactionContext<R>) -> Self::Compact;
+    fn compact<R: RegistryDb>(
+        &self,
+        ctx: &mut CompactionContext<R>,
+    ) -> anyhow::Result<Self::Compact>;
 
     /// Convert from compacted format
-    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> Self;
+    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self>
+    where
+        Self: Sized;
 }
 
 macro_rules! identity_compaction {
@@ -128,12 +136,15 @@ macro_rules! identity_compaction {
             fn compact<R: RegistryDb>(
                 &self,
                 _ctx: &mut CompactionContext<R>,
-            ) -> Self::Compact {
-                *self
+            ) -> anyhow::Result<Self::Compact> {
+                Ok(*self)
             }
 
-            fn decompact<R: RegistryDb>(compact: Self::Compact, _reg: &R) -> Self {
-                compact
+            fn decompact<R: RegistryDb>(
+                compact: Self::Compact,
+                _reg: &R,
+            ) -> anyhow::Result<Self> {
+                Ok(compact)
             }
         }
     };
@@ -150,6 +161,25 @@ pub struct ArrayWrapper<const S: usize, T: Serialize + for<'a> Deserialize<'a>>(
     #[serde(with = "serde_big_array::BigArray")] pub [T; S],
 );
 
+// TODO: use try_map when stabilized: https://github.com/rust-lang/rust/issues/79711
+#[allow(unsafe_code)]
+fn try_map_array<const S: usize, T, R, E, F: FnMut(T) -> Result<R, E>>(
+    arr: [T; S],
+    mut f: F,
+) -> Result<[R; S], E> {
+    // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
+    // which do not require initialization.
+    let mut tmp: [MaybeUninit<R>; S] = unsafe { MaybeUninit::uninit().assume_init() };
+
+    // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
+    for (i, v) in arr.into_iter().enumerate() {
+        tmp[i] = MaybeUninit::new(f(v)?);
+    }
+
+    // SAFETY: Everything element is initialized.
+    Ok(tmp.map(|v| unsafe { v.assume_init() }))
+}
+
 impl<const S: usize, T> Compactable for [T; S]
 where
     T: Compactable + Clone + Serialize + for<'a> Deserialize<'a>,
@@ -164,12 +194,19 @@ where
         count
     }
 
-    fn compact<R: RegistryDb>(&self, ctx: &mut CompactionContext<R>) -> Self::Compact {
-        ArrayWrapper(self.clone().map(|item| item.compact(ctx)))
+    fn compact<R: RegistryDb>(
+        &self,
+        ctx: &mut CompactionContext<R>,
+    ) -> anyhow::Result<Self::Compact> {
+        Ok(ArrayWrapper(try_map_array(self.clone(), |v: T| {
+            v.compact(ctx)
+        })?))
     }
 
-    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> Self {
-        compact.0.map(|item| T::decompact(item, reg))
+    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self> {
+        Ok(try_map_array(compact.0, |v: T::Compact| {
+            T::decompact(v, reg)
+        })?)
     }
 }
 
@@ -187,11 +224,14 @@ where
         count
     }
 
-    fn compact<R: RegistryDb>(&self, ctx: &mut CompactionContext<R>) -> Self::Compact {
+    fn compact<R: RegistryDb>(
+        &self,
+        ctx: &mut CompactionContext<R>,
+    ) -> anyhow::Result<Self::Compact> {
         self.iter().map(|item| item.compact(ctx)).collect()
     }
 
-    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> Self {
+    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self> {
         compact
             .into_iter()
             .map(|item| T::decompact(item, reg))
@@ -206,12 +246,18 @@ impl<T> Compactable for PhantomData<T> {
         CountPerTable::default()
     }
 
-    fn compact<R: RegistryDb>(&self, _ctx: &mut CompactionContext<R>) -> Self::Compact {
-        ()
+    fn compact<R: RegistryDb>(
+        &self,
+        _ctx: &mut CompactionContext<R>,
+    ) -> anyhow::Result<Self::Compact> {
+        Ok(())
     }
 
-    fn decompact<R: RegistryDb>(_compact: Self::Compact, _reg: &R) -> Self {
-        Self
+    fn decompact<R: RegistryDb>(
+        _compact: Self::Compact,
+        _reg: &R,
+    ) -> anyhow::Result<Self> {
+        Ok(Self)
     }
 }
 

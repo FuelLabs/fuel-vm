@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn inputs_are_validated() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let arb_gas_price = 1;
+        let zero_gas_price = 0;
 
         let height = 1.into();
         let predicate_data =
@@ -274,7 +274,7 @@ mod tests {
                 )
                 .add_input(input)
                 .add_random_fee_input()
-                .finalize_checked_basic(height, arb_gas_price);
+                .finalize_checked_basic(height, zero_gas_price);
 
                 let result = Interpreter::<PredicateStorage, Script>::check_predicates(
                     &tx,

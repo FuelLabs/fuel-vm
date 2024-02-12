@@ -230,7 +230,7 @@ fn metadata() {
 fn get_metadata_chain_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_limit = 1_000_000;
-    let gas_price = 1;
+    let zero_gas_price = 0;
     let height = BlockHeight::default();
 
     let chain_id: ChainId = rng.gen();
@@ -256,10 +256,10 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params, zero_gas_price)
         .unwrap();
 
-    let receipts = client.transact(script, gas_price);
+    let receipts = client.transact(script, zero_gas_price);
 
     if let Receipt::Return { val, .. } = receipts[0].clone() {
         assert_eq!(val, *chain_id);

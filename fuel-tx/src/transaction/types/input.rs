@@ -13,6 +13,8 @@ use core::{
     fmt,
     fmt::Formatter,
 };
+#[cfg(feature = "da-compression")]
+use fuel_compression::Compactable;
 use fuel_crypto::{
     Hasher,
     PublicKey,
@@ -100,6 +102,32 @@ impl<Type: Deserialize> Deserialize for Empty<Type> {
     }
 }
 
+#[cfg(feature = "da-compression")]
+impl<T> Compactable for Empty<T>
+where
+    T: Compactable,
+{
+    type Compact = ();
+
+    fn count(&self) -> fuel_compression::CountPerTable {
+        Default::default()
+    }
+
+    fn compact<R: fuel_compression::RegistryDb>(
+        &self,
+        _: &mut fuel_compression::CompactionContext<R>,
+    ) -> anyhow::Result<Self::Compact> {
+        Ok(())
+    }
+
+    fn decompact<R: fuel_compression::RegistryDb>(
+        _: Self::Compact,
+        _: &R,
+    ) -> anyhow::Result<Self> {
+        Ok(Self(Default::default()))
+    }
+}
+
 impl<Type> AsFieldFmt for Empty<Type> {
     fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
         f.write_str("Empty")
@@ -181,6 +209,7 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),

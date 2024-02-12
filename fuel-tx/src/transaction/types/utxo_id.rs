@@ -20,6 +20,7 @@ use rand::{
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct UtxoId {
     /// transaction id
@@ -27,6 +28,29 @@ pub struct UtxoId {
     /// output index
     output_index: u8,
 }
+
+// const _: () = {
+//     impl fuel_compression::Compactable for UtxoId {
+//         type Compact = ();
+
+//         fn count(&self) -> fuel_compression::CountPerTable {
+//             todo!()
+//         }
+
+//         fn compact<R>(&self, ctx: &mut fuel_compression::CompactionContext<R>) ->
+// Self::Compact         where
+//             R: fuel_compression::db::RegistryRead +
+// fuel_compression::db::RegistryWrite + fuel_compression::db::RegistryIndex {
+//             todo!()
+//         }
+
+//         fn decompact<R>(compact: Self::Compact, reg: &R) -> Self
+//         where
+//             R: fuel_compression::db::RegistryRead {
+//             todo!()
+//         }
+//     }
+// };
 
 impl UtxoId {
     pub const LEN: usize = TxId::LEN + 8;

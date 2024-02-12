@@ -101,6 +101,9 @@ pub use transaction::{
     Witness,
 };
 
+#[cfg(feature = "da-compression")]
+pub use transaction::CompactTransaction;
+
 pub use transaction::{
     Signable,
     UniqueIdentifier,

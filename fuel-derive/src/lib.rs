@@ -3,14 +3,17 @@
 #![deny(unused_must_use, missing_docs)]
 
 extern crate proc_macro;
-mod attribute;
+mod canonical_attribute;
+mod compact;
 mod deserialize;
 mod serialize;
 
 use self::{
+    compact::compact_derive,
     deserialize::deserialize_derive,
     serialize::serialize_derive,
 };
+
 synstructure::decl_derive!(
     [Deserialize, attributes(canonical)] =>
     /// Derives `Deserialize` trait for the given `struct` or `enum`.
@@ -20,4 +23,9 @@ synstructure::decl_derive!(
     [Serialize, attributes(canonical)] =>
     /// Derives `Serialize` trait for the given `struct` or `enum`.
     serialize_derive
+);
+synstructure::decl_derive!(
+    [Compact, attributes(da_compress)] =>
+    /// Derives `Compact` trait for the given `struct` or `enum`.
+    compact_derive
 );

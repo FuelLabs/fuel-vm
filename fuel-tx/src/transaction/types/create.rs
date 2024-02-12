@@ -106,6 +106,7 @@ impl CreateMetadata {
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Create)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
@@ -120,6 +121,7 @@ pub struct Create {
     pub(crate) witnesses: Vec<Witness>,
     pub(crate) salt: Salt,
     #[cfg_attr(feature = "serde", serde(skip))]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
     pub(crate) metadata: Option<CreateMetadata>,

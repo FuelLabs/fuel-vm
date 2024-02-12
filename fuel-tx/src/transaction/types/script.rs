@@ -55,11 +55,13 @@ pub(crate) struct ScriptMetadata {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
     pub(crate) script_gas_limit: Word,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "ScriptCode"))]
     pub(crate) script: Vec<u8>,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,
@@ -69,6 +71,7 @@ pub struct Script {
     pub(crate) witnesses: Vec<Witness>,
     pub(crate) receipts_root: Bytes32,
     #[cfg_attr(feature = "serde", serde(skip))]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
     pub(crate) metadata: Option<ScriptMetadata>,

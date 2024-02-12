@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "fuel-asm",
+    "fuel-compression",
     "fuel-crypto",
     "fuel-merkle",
     "fuel-storage",
@@ -21,7 +22,9 @@ repository = "https://github.com/FuelLabs/fuel-vm"
 version = "0.45.0"
 
 [workspace.dependencies]
+anyhow = "1.0"
 fuel-asm = { version = "0.45.0", path = "fuel-asm", default-features = false }
+fuel-compression = { version = "0.45.0", path = "fuel-compression", default-features = false }
 fuel-crypto = { version = "0.45.0", path = "fuel-crypto", default-features = false }
 fuel-derive = { version = "0.45.0", path = "fuel-derive", default-features = false }
 fuel-merkle = { version = "0.45.0", path = "fuel-merkle", default-features = false }

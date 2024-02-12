@@ -99,7 +99,7 @@ fn external_balance() {
 fn variable_output_updates_in_memory() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
-    let arb_gas_price = 1;
+    let zero_gas_price = 0;
 
     let consensus_params = ConsensusParameters::standard();
     let mut vm = Interpreter::<_, _>::with_storage(
@@ -124,7 +124,7 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params, arb_gas_price)
+        .into_checked(height, &consensus_params, zero_gas_price)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");

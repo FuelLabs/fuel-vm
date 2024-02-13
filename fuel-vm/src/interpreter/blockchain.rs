@@ -571,7 +571,7 @@ where
         let fp = *self.fp;
 
         if ssp != sp {
-            return Err(PanicReason::ExpectedUnallocatedStack.into());
+            return Err(PanicReason::ExpectedUnallocatedStack.into())
         }
 
         let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
@@ -584,11 +584,11 @@ where
 
         if dst_range.end as Word >= *self.hp {
             // Would make stack and heap overlap
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
 
         if length > self.contract_max_size {
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
 
         self.input_contracts.check(&contract_id)?;
@@ -793,7 +793,7 @@ where
             .owner
             .has_ownership_range(&MemoryRange::new(dst_addr, length)?)
         {
-            return Err(PanicReason::MemoryOverflow.into());
+            return Err(PanicReason::MemoryOverflow.into())
         }
 
         self.input_contracts.check(&contract_id)?;

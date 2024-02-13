@@ -27,8 +27,15 @@ use fuel_asm::{
     RawInstruction,
     RegId,
 };
-use fuel_types::Word;
+use fuel_types::{
+    ContractId,
+    Word,
+};
 
+use crate::{
+    constraints::CheckedMemConstLen,
+    interpreter::contract::contract_size,
+};
 use core::ops::Div;
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
@@ -767,8 +774,13 @@ where
             }
 
             Instruction::CROO(croo) => {
-                self.gas_charge(self.gas_costs().croo)?;
                 let (a, b) = croo.unpack();
+                let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(r!(b))?;
+                let contract_id =
+                    ContractId::from_bytes_ref(contract_id.read(&self.memory));
+                let code_size = contract_size(&self.storage, &contract_id)? as Word;
+                let gas_cost = self.gas_costs().croo.resolve(code_size);
+                self.gas_charge(gas_cost)?;
                 self.code_root(r!(a), r!(b))?;
             }
 

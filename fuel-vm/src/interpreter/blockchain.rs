@@ -571,7 +571,7 @@ where
         let fp = *self.fp;
 
         if ssp != sp {
-            return Err(PanicReason::ExpectedUnallocatedStack.into())
+            return Err(PanicReason::ExpectedUnallocatedStack.into());
         }
 
         let contract_id = ContractId::from(read_bytes(self.memory, contract_id_addr)?);
@@ -584,11 +584,11 @@ where
 
         if dst_range.end as Word >= *self.hp {
             // Would make stack and heap overlap
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         if length > self.contract_max_size {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         self.input_contracts.check(&contract_id)?;
@@ -793,7 +793,7 @@ where
             .owner
             .has_ownership_range(&MemoryRange::new(dst_addr, length)?)
         {
-            return Err(PanicReason::MemoryOverflow.into())
+            return Err(PanicReason::MemoryOverflow.into());
         }
 
         self.input_contracts.check(&contract_id)?;
@@ -890,7 +890,6 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
     {
         MemoryRange::new(a, Bytes32::LEN)?;
         let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
-
         let contract_id = ContractId::from_bytes_ref(contract_id.read(self.memory));
 
         self.input_contracts.check(contract_id)?;
@@ -1126,7 +1125,7 @@ where
         )?;
 
         if self.msg_data_len > self.max_message_data_length {
-            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong))
+            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
         }
 
         let msg_data_range = MemoryRange::new(self.msg_data_ptr, self.msg_data_len)?;

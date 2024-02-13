@@ -1,7 +1,6 @@
 //! Trait definitions for storage backend
 
 use fuel_storage::{
-    Mappable,
     MerkleRootStorage,
     StorageAsRef,
     StorageInspect,
@@ -18,7 +17,6 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
-    Salt,
     Word,
 };
 
@@ -29,8 +27,6 @@ use crate::{
     },
     storage::{
         ContractsAssets,
-        ContractsInfo,
-        ContractsInfoType,
         ContractsRawCode,
         ContractsState,
     },
@@ -50,7 +46,6 @@ pub trait InterpreterStorage:
     StorageMutate<ContractsRawCode, Error = Self::DataError>
     + StorageSize<ContractsRawCode, Error = Self::DataError>
     + StorageRead<ContractsRawCode, Error = Self::DataError>
-    + StorageMutate<ContractsInfo, Error = Self::DataError>
     + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
@@ -80,15 +75,11 @@ pub trait InterpreterStorage:
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
         &mut self,
-        salt: &Salt,
         slots: &[StorageSlot],
         contract: &Contract,
         id: &ContractId,
     ) -> Result<(), Self::DataError> {
         self.storage_contract_insert(id, contract)?;
-
-        let info = ContractsInfoType::V1(*salt);
-        self.storage_contract_info_insert(id, &info)?;
 
         // On the `fuel-core` side it is done in more optimal way
         slots.iter().try_for_each(|s| {
@@ -138,24 +129,6 @@ pub trait InterpreterStorage:
     /// Check if a provided contract exists in the chain.
     fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, Self::DataError> {
         self.storage::<ContractsRawCode>().contains_key(id)
-    }
-
-    /// Fetch a previously inserted contract's info
-    fn storage_contract_info(
-        &self,
-        id: &ContractId,
-    ) -> Result<Option<Cow<'_, <ContractsInfo as Mappable>::Value>>, Self::DataError>
-    {
-        StorageInspect::<ContractsInfo>::get(self, id)
-    }
-
-    /// Append the contract's info that was appended to the chain.
-    fn storage_contract_info_insert(
-        &mut self,
-        id: &ContractId,
-        info: &<ContractsInfo as Mappable>::Value,
-    ) -> Result<Option<<ContractsInfo as Mappable>::Value>, Self::DataError> {
-        StorageMutate::<ContractsInfo>::insert(self, id, info)
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.

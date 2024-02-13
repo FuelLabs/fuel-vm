@@ -289,7 +289,7 @@ where
                 ..
             }) => {
                 if !Input::is_predicate_owner_valid(address, predicate) {
-                    return Err(PredicateVerificationFailed::InvalidOwner)
+                    return Err(PredicateVerificationFailed::InvalidOwner);
                 }
             }
             _ => {}
@@ -308,7 +308,7 @@ where
                     if let Some(x) = tx.inputs()[index].predicate_gas_used() {
                         x
                     } else {
-                        return Err(PredicateVerificationFailed::GasNotSpecified)
+                        return Err(PredicateVerificationFailed::GasNotSpecified);
                     };
 
                 vm.init_predicate(context, tx, available_gas)?;
@@ -333,11 +333,11 @@ where
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
                 result?;
-                return Err(PredicateVerificationFailed::False)
+                return Err(PredicateVerificationFailed::False);
             }
 
             if vm.remaining_gas() != 0 {
-                return Err(PredicateVerificationFailed::GasMismatch)
+                return Err(PredicateVerificationFailed::GasMismatch);
             }
         }
 
@@ -381,7 +381,7 @@ where
         if max_gas > params.max_gas_per_tx {
             return Err(
                 PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
-            )
+            );
         }
 
         let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {
@@ -440,11 +440,11 @@ where
         {
             return Err(InterpreterError::Panic(
                 PanicReason::ContractIdAlreadyDeployed,
-            ))
+            ));
         }
 
         storage
-            .deploy_contract_with_id(salt, storage_slots, &contract, &id)
+            .deploy_contract_with_id(storage_slots, &contract, &id)
             .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,
@@ -500,7 +500,7 @@ where
                     false
                 }
             }) {
-                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))
+                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
             }
 
             let gas_limit;
@@ -602,7 +602,7 @@ where
             if in_call {
                 // Only reverts should terminate execution from a call context
                 if let ExecuteState::Revert(r) = state {
-                    return Ok(ProgramState::Revert(r))
+                    return Ok(ProgramState::Revert(r));
                 }
             } else {
                 match state {

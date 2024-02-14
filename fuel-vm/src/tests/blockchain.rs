@@ -1047,7 +1047,7 @@ fn code_root_a_plus_32_overflow() {
         .deploy(contract_deployer)
         .expect("valid contract deployment");
 
-    let count = ContractId::LEN as Immediate12 + 64;
+    let count = ContractId::LEN as Immediate12;
     let reg_a = 0x20;
     let reg_contract = 0x21;
 
@@ -1111,7 +1111,7 @@ fn code_root_a_over_max_ram() {
         .deploy(contract_deployer)
         .expect("valid contract deployment");
 
-    let count = ContractId::LEN as Immediate12 + 64;
+    let count = ContractId::LEN as Immediate12;
     let reg_a = 0x20;
     let reg_contract = 0x21;
 

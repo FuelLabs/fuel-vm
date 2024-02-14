@@ -442,7 +442,7 @@ fn add_one(a: &mut [u8; 32]) -> bool {
         let left = u128::from_be_bytes(a[..16].try_into().unwrap());
         let (left, of) = left.overflowing_add(1);
         a[..16].copy_from_slice(&left.to_be_bytes()[..]);
-        return of;
+        return of
     }
     false
 }

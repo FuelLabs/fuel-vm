@@ -8,7 +8,10 @@ use crate::{
     },
     prelude::*,
     script_with_data_offset,
-    util::test_helpers::check_expected_reason_for_instructions,
+    util::test_helpers::{
+        check_expected_reason_for_instructions,
+        check_expected_reason_for_instructions_with_client,
+    },
 };
 use alloc::{
     vec,
@@ -1021,13 +1024,55 @@ fn code_copy_c_gt_vm_max_ram() {
 
 #[test]
 fn code_root_a_plus_32_overflow() {
-    // Then deploy another contract that attempts to read the first one
+    let mut client = MemoryClient::default();
+    let tx_params = TxParameters::default();
+    let height = Default::default();
+    let instructions = vec![op::noop(), op::noop(), op::noop()];
+    let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
+
+    let salt = Default::default();
+    let code_root = Contract::root_from_code(contract.as_ref());
+    let storage_slots = vec![];
+    let state_root = Contract::initial_state_root(storage_slots.iter());
+    let contract_id =
+        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+
+    let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+        .with_tx_params(tx_params)
+        .add_output(Output::contract_created(contract_id, state_root))
+        .add_random_fee_input()
+        .finalize_checked(height);
+
+    client
+        .deploy(contract_deployer)
+        .expect("valid contract deployment");
+
+    let count = ContractId::LEN as Immediate12 + 64;
     let reg_a = 0x20;
+    let reg_contract = 0x21;
+
+    let mut contract_root = vec![
+        op::ori(reg_contract, reg_contract, count),
+        op::aloc(reg_contract),
+    ];
+    for (i, byte) in contract_id.as_ref().iter().enumerate() {
+        let index = i as Immediate12;
+        let value = *byte as Immediate12;
+        contract_root.extend([
+            op::movi(reg_contract, value.into()),
+            op::sb(RegId::HP, reg_contract, index),
+        ]);
+    }
+    contract_root.push(op::move_(reg_contract, RegId::HP));
 
     // cover contract_id_end beyond max ram
-    let code_root = vec![op::not(reg_a, RegId::ZERO), op::croo(reg_a, RegId::ZERO)];
+    contract_root.extend([op::not(reg_a, RegId::ZERO), op::croo(reg_a, reg_contract)]);
 
-    check_expected_reason_for_instructions(code_root, MemoryOverflow);
+    check_expected_reason_for_instructions_with_client(
+        client,
+        contract_root,
+        MemoryOverflow,
+    );
 }
 
 #[test]
@@ -1043,17 +1088,59 @@ fn code_root_b_plus_32_overflow() {
 
 #[test]
 fn code_root_a_over_max_ram() {
-    // Then deploy another contract that attempts to read the first one
+    let mut client = MemoryClient::default();
+    let tx_params = TxParameters::default();
+    let height = Default::default();
+    let instructions = vec![op::noop(), op::noop(), op::noop()];
+    let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
+
+    let salt = Default::default();
+    let code_root = Contract::root_from_code(contract.as_ref());
+    let storage_slots = vec![];
+    let state_root = Contract::initial_state_root(storage_slots.iter());
+    let contract_id =
+        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
+
+    let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+        .with_tx_params(tx_params)
+        .add_output(Output::contract_created(contract_id, state_root))
+        .add_random_fee_input()
+        .finalize_checked(height);
+
+    client
+        .deploy(contract_deployer)
+        .expect("valid contract deployment");
+
+    let count = ContractId::LEN as Immediate12 + 64;
     let reg_a = 0x20;
+    let reg_contract = 0x21;
+
+    let mut contract_root = vec![
+        op::ori(reg_contract, reg_contract, count),
+        op::aloc(reg_contract),
+    ];
+    for (i, byte) in contract_id.as_ref().iter().enumerate() {
+        let index = i as Immediate12;
+        let value = *byte as Immediate12;
+        contract_root.extend([
+            op::movi(reg_contract, value.into()),
+            op::sb(RegId::HP, reg_contract, index),
+        ]);
+    }
+    contract_root.push(op::move_(reg_contract, RegId::HP));
 
     // cover contract_id_end beyond max ram
-    let code_root = vec![
+    contract_root.extend([
         op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
         op::subi(reg_a, reg_a, 31 as Immediate12),
-        op::croo(reg_a, RegId::ZERO),
-    ];
+        op::croo(reg_a, reg_contract),
+    ]);
 
-    check_expected_reason_for_instructions(code_root, MemoryOverflow);
+    check_expected_reason_for_instructions_with_client(
+        client,
+        contract_root,
+        MemoryOverflow,
+    );
 }
 
 #[test]

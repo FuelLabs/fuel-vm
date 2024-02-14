@@ -886,6 +886,7 @@ fn get_transaction_fields() {
     });
 
     let tx = builder
+        .tip(1)
         .maturity(maturity)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
@@ -899,9 +900,7 @@ fn get_transaction_fields() {
             dbg!(&r);
             r
         })
-        // TODO: Should rA be 1? Or does rA not matter?
-        // .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
-        .any(|r| matches!(r, Receipt::Log{ .. } ));
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
     assert!(success);
 }

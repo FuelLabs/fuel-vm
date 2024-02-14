@@ -395,6 +395,7 @@ fn transaction() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
     )]);
 }
 

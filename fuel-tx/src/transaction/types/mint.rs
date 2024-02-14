@@ -64,6 +64,8 @@ pub struct Mint {
     pub(crate) mint_amount: Word,
     /// The asset IDs corresponding to the minted amount.
     pub(crate) mint_asset_id: AssetId,
+    /// Gas Price used for current block
+    pub(crate) gas_price: Word,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]

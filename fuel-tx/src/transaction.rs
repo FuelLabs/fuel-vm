@@ -178,6 +178,7 @@ impl Transaction {
         output_contract: output::contract::Contract,
         mint_amount: Word,
         mint_asset_id: AssetId,
+        gas_price: Word,
     ) -> Mint {
         Mint {
             tx_pointer,
@@ -185,6 +186,7 @@ impl Transaction {
             output_contract,
             mint_amount,
             mint_asset_id,
+            gas_price,
             metadata: None,
         }
     }

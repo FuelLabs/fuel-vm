@@ -31,6 +31,7 @@ fn gas_factor_rounds_correctly() {
         .collect();
 
     let transaction = TestBuilder::new(2322u64)
+        .gas_price(gas_price)
         .with_fee_params(fee_params)
         .start_script(script, vec![])
         .script_gas_limit(gas_limit)
@@ -50,6 +51,7 @@ fn gas_factor_rounds_correctly() {
 
     let consensus_params = ConsensusParameters {
         fee_params,
+        gas_costs,
         ..ConsensusParameters::standard()
     };
 

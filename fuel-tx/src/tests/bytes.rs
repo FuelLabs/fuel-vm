@@ -402,7 +402,6 @@ fn transaction() {
 fn create_input_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let gas_price = 100;
     let maturity = 10.into();
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
@@ -526,7 +525,6 @@ fn create_input_data_offset() {
 fn script_input_coin_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let gas_price = 100;
     let gas_limit = 1000;
     let maturity = 10.into();
 

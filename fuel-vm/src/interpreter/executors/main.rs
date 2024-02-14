@@ -440,7 +440,7 @@ where
         {
             return Err(InterpreterError::Panic(
                 PanicReason::ContractIdAlreadyDeployed,
-            ));
+            ))
         }
 
         storage

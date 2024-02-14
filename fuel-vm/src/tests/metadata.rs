@@ -278,6 +278,7 @@ fn get_transaction_fields() {
     let zero_gas_price = 0;
     let witness_limit = 1234;
     let max_fee_limit = 4321;
+    let tip = 4321;
     let gas_limit = 10_000_000;
     let maturity = 50.into();
     let height = 122.into();
@@ -469,13 +470,11 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        // TODO: Implement Tip stuff.
-        //   https://github.com/FuelLabs/fuel-vm/issues/664
-        // op::movi(0x11, gas_price as Immediate18),
-        // op::movi(0x19, 0x00),
-        // op::gtf_args(0x10, 0x19, GTFArgs::PolicyTip),
-        // op::eq(0x10, 0x10, 0x11),
-        // op::and(0x20, 0x20, 0x10),
+        op::movi(0x11, tip as Immediate18),
+        op::movi(0x19, 0x00),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyTip),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
 
         op::movi(0x19, 0x00),
         op::movi(0x11, (gas_limit & 0x3ffff) as Immediate18),
@@ -886,7 +885,7 @@ fn get_transaction_fields() {
     });
 
     let tx = builder
-        .tip(1)
+        .tip(tip)
         .maturity(maturity)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)

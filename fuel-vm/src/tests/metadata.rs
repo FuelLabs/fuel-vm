@@ -895,10 +895,6 @@ fn get_transaction_fields() {
     let receipts = client.transact(tx, zero_gas_price);
     let success = receipts
         .iter()
-        .map(|r| {
-            dbg!(&r);
-            r
-        })
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
     assert!(success);

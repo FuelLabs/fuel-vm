@@ -876,7 +876,7 @@ fn create() {
 
     let err = Transaction::create(
         1,
-        rng.gen(),
+        Default::default(),
         rng.gen(),
         vec![],
         vec![Input::coin_signed(

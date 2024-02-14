@@ -272,6 +272,11 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
+        let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
+        let contract_id = ContractId::from_bytes_ref(contract_id.read(&self.memory));
+        let code_size = contract_size(&self.storage, contract_id)? as Word;
+        let gas_cost = self.gas_costs().croo.resolve(code_size);
+        self.gas_charge(gas_cost)?;
         let owner = self.ownership_registers();
         CodeRootCtx {
             memory: &mut self.memory,

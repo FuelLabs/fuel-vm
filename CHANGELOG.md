@@ -59,6 +59,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#676](https://github.com/FuelLabs/fuel-vm/pull/676) Add `gas_price` to `Mint` transaction
 - [#629](https://github.com/FuelLabs/fuel-vm/pull/629): Charge the user for VM initialization.
 - [#628](https://github.com/FuelLabs/fuel-vm/pull/628): Renamed `transaction::CheckError` to `transaction::ValidityError`.
   Created a new `checked_transaction::CheckError` that combines `ValidityError`

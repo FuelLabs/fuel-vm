@@ -272,21 +272,33 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
-        let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
-        let contract_id = ContractId::from_bytes_ref(contract_id.read(&self.memory));
-        let code_size = contract_size(&self.storage, contract_id)? as Word;
-        let gas_cost = self.gas_costs().croo.resolve(code_size);
-        self.gas_charge(gas_cost)?;
+        let gas_cost = self.gas_costs().croo;
+        self.gas_charge(gas_cost.base())?;
+        let current_contract =
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
+                .copied();
         let owner = self.ownership_registers();
+        let (
+            SystemRegisters {
+                cgas, ggas, pc, is, ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         CodeRootCtx {
             memory: &mut self.memory,
+            storage: &mut self.storage,
+            gas_cost,
+            profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
-            storage: &self.storage,
+            current_contract,
+            cgas,
+            ggas,
             owner,
-            pc: self.registers.pc_mut(),
+            pc,
+            is: is.as_ref(),
         }
         .code_root(a, b)
     }
@@ -881,11 +893,17 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 }
 
 struct CodeRootCtx<'vm, S, I> {
-    memory: &'vm mut [u8; MEM_SIZE],
-    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
+    memory: &'vm mut [u8; MEM_SIZE],
+    gas_cost: DependentCost,
+    profiler: &'vm mut Profiler,
+    input_contracts: InputContracts<'vm, I>,
+    current_contract: Option<ContractId>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
+    is: Reg<'vm, IS>,
 }
 
 impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
@@ -895,10 +913,25 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
     {
         MemoryRange::new(a, Bytes32::LEN)?;
         let contract_id = CheckedMemConstLen::<{ ContractId::LEN }>::new(b)?;
+
         let contract_id = ContractId::from_bytes_ref(contract_id.read(self.memory));
 
         self.input_contracts.check(contract_id)?;
 
+        let len = contract_size(self.storage, contract_id)? as Word;
+        let profiler = ProfileGas {
+            pc: self.pc.as_ref(),
+            is: self.is,
+            current_contract: self.current_contract,
+            profiler: self.profiler,
+        };
+        dependent_gas_charge_without_base(
+            self.cgas,
+            self.ggas,
+            profiler,
+            self.gas_cost,
+            len,
+        )?;
         let root = self
             .storage
             .storage_contract(contract_id)

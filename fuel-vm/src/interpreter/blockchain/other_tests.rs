@@ -251,14 +251,23 @@ fn test_code_root() {
         },
     };
     let mut pc = 4;
+    let is = 0;
+    let mut cgas = 0;
+    let mut ggas = 0;
     let input_contracts = [contract_id];
     let mut panic_context = PanicContext::None;
     let _ = CodeRootCtx {
         memory: &mut memory,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         storage: &storage,
+        gas_cost: DependentCost::free(),
+        profiler: &mut Default::default(),
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        current_contract: None,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         owner,
         pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
     }
     .code_root(20, 0)
     .expect_err("Contract is not found");
@@ -282,10 +291,16 @@ fn test_code_root() {
     };
     CodeRootCtx {
         memory: &mut memory,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         storage: &storage,
+        gas_cost: DependentCost::free(),
+        profiler: &mut Default::default(),
+        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        current_contract: None,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         owner,
         pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
     }
     .code_root(20, 0)
     .unwrap();
@@ -303,10 +318,16 @@ fn test_code_root() {
     };
     let _ = CodeRootCtx {
         memory: &mut memory,
-        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
         storage: &storage,
+        gas_cost: DependentCost::free(),
+        profiler: &mut Default::default(),
+        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
+        current_contract: None,
+        cgas: RegMut::new(&mut cgas),
+        ggas: RegMut::new(&mut ggas),
         owner,
         pc: RegMut::new(&mut pc),
+        is: Reg::new(&is),
     }
     .code_root(20, 0)
     .expect_err("Contract is not in inputs");

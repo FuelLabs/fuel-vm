@@ -16,6 +16,7 @@ use std::convert::TryInto;
 const CONTRACT_LEN: usize = 512;
 const INITIAL_GAS: Word = 1_000_000;
 
+// Subset of SystemRegisters used during CROO tests
 struct SystemRegisters {
     pc: Word,
     is: Word,

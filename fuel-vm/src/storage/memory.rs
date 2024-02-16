@@ -95,7 +95,7 @@ impl MemoryStorage {
         contract: &ContractId,
         key: &Bytes32,
     ) -> Cow<'_, StorageData> {
-        const DEFAULT_STATE: StorageData = StorageData(vec![]);
+        const DEFAULT_STATE: StorageData = StorageData(alloc::vec![]);
 
         self.storage::<ContractsState>()
             .get(&(contract, key).into())
@@ -355,6 +355,81 @@ impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
     }
 }
 
+impl StorageWrite<ContractsState> for MemoryStorage {
+    fn write(
+        &mut self,
+        key: &<ContractsState as Mappable>::Key,
+        buf: Vec<u8>,
+    ) -> Result<usize, Infallible> {
+        let size = buf.len();
+        self.memory
+            .contract_state
+            .insert(*key, StorageData::from(buf));
+        Ok(size)
+    }
+
+    fn replace(
+        &mut self,
+        key: &<ContractsState as Mappable>::Key,
+        buf: Vec<u8>,
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    where
+        Self: StorageSize<ContractsState>,
+    {
+        let size = buf.len();
+        let last = self
+            .memory
+            .contract_state
+            .insert(*key, StorageData::from(buf));
+        Ok((size, last.map(Vec::from)))
+    }
+
+    fn take(
+        &mut self,
+        key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self.memory.contract_state.remove(key).map(Vec::from))
+    }
+}
+
+impl StorageSize<ContractsState> for MemoryStorage {
+    fn size_of_value(
+        &self,
+        key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<usize>, Infallible> {
+        Ok(self
+            .memory
+            .contract_state
+            .get(key)
+            .map(|c| c.as_ref().len()))
+    }
+}
+
+impl StorageRead<ContractsState> for MemoryStorage {
+    fn read(
+        &self,
+        key: &<ContractsState as Mappable>::Key,
+        buf: &mut [u8],
+    ) -> Result<Option<usize>, Self::Error> {
+        Ok(self.memory.contract_state.get(key).map(|c| {
+            let len = buf.len().min(c.as_ref().len());
+            buf.copy_from_slice(&c.as_ref()[..len]);
+            len
+        }))
+    }
+
+    fn read_alloc(
+        &self,
+        key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self
+            .memory
+            .contract_state
+            .get(key)
+            .map(|c| c.as_ref().to_vec()))
+    }
+}
+
 impl ContractsAssetsStorage for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {
@@ -422,8 +497,10 @@ impl InterpreterStorage for MemoryStorage {
         start_key: &Bytes32,
         values: &[StorageData],
     ) -> Result<usize, Self::DataError> {
+        let storage: &mut dyn StorageWrite<ContractsState, Error = Self::DataError> =
+            self;
         let mut unset_count = 0;
-        let values: Vec<_> = core::iter::successors(Some(**start_key), |n| {
+        core::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
             if add_one(&mut n) {
                 None
@@ -432,15 +509,13 @@ impl InterpreterStorage for MemoryStorage {
             }
         })
         .zip(values)
-        .map(|(key, value)| {
-            let key = (contract, &Bytes32::from(key)).into();
-            if !self.memory.contract_state.contains_key(&key) {
+        .try_for_each(|(key, value)| {
+            let key: ContractsStateKey = (contract, &Bytes32::from(key)).into();
+            if !storage.contains_key(&key)? {
                 unset_count += 1;
             }
-            (key, value.clone())
-        })
-        .collect();
-        self.memory.contract_state.extend(values);
+            storage.write(&key, value.clone().into()).map(|_| ())
+        })?;
         Ok(unset_count)
     }
 

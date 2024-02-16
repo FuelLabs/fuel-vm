@@ -144,9 +144,7 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
         &mut self,
         key: &Type::Key,
         buf: Vec<u8>,
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
-    where
-        Self: StorageSize<Type>;
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>;
 
     /// Removes a value from the storage and returning it without deserializing it.
     fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;

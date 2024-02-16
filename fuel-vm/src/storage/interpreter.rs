@@ -90,7 +90,7 @@ pub trait InterpreterStorage:
 
         // On the `fuel-core` side it is done in more optimal way
         slots.iter().try_for_each(|s| {
-            self.merkle_contract_state_insert(id, s.key(), s.value().as_ref())
+            self.merkle_contract_state_insert(id, s.key(), s.value())
                 .map(|_| ())
         })
     }
@@ -171,9 +171,15 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-        value: &[u8],
+        value: &StorageData,
     ) -> Result<Option<StorageData>, Self::DataError> {
-        StorageMutate::<ContractsState>::insert(self, &(contract, key).into(), value)
+        // StorageWrite::<ContractsState>::write(self, &(contract, key).into(),
+        // value.into())
+        StorageMutate::<ContractsState>::insert(
+            self,
+            &(contract, key).into(),
+            value.as_ref(),
+        )
     }
 
     /// Remove a key-value mapping from a contract storage.

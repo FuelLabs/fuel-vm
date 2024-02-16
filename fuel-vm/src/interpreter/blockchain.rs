@@ -1046,7 +1046,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
     let result = storage
-        .merkle_contract_state_insert(contract, key, value.as_ref())
+        .merkle_contract_state_insert(contract, key, &value)
         .map_err(RuntimeError::Storage)?;
 
     *created_new = result.is_none() as Word;

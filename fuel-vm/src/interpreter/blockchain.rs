@@ -76,6 +76,8 @@ use fuel_types::{
 #[cfg(test)]
 mod code_tests;
 #[cfg(test)]
+mod croo_tests;
+#[cfg(test)]
 mod other_tests;
 #[cfg(test)]
 mod smo_tests;

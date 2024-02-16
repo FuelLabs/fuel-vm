@@ -12,7 +12,6 @@ use core::{
 use super::*;
 use crate::interpreter::PanicContext;
 use fuel_storage::StorageAsMut;
-use fuel_tx::Contract;
 use test_case::test_case;
 
 #[test_case(false, 0, None, 0, [0; 32] => Ok(()); "Burn nothing")]
@@ -233,104 +232,6 @@ fn test_coinbase() {
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
     assert_eq!(pc, 8);
     assert_eq!(memory[20..20 + 32], [0u8; 32]);
-}
-
-#[test]
-fn test_code_root() {
-    let contract_id = ContractId::new([3u8; ContractId::LEN]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    let mut pc = 4;
-    let is = 0;
-    let mut cgas = 0;
-    let mut ggas = 0;
-    let input_contracts = [contract_id];
-    let mut panic_context = PanicContext::None;
-    let _ = CodeRootCtx {
-        memory: &mut memory,
-        storage: &storage,
-        gas_cost: DependentCost::free(),
-        profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
-        current_contract: None,
-        cgas: RegMut::new(&mut cgas),
-        ggas: RegMut::new(&mut ggas),
-        owner,
-        pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
-    }
-    .code_root(20, 0)
-    .expect_err("Contract is not found");
-    assert_eq!(pc, 4);
-
-    let data = alloc::vec![0xffu8; 512];
-    let contract: Contract = data.into();
-    let root = contract.root();
-    storage
-        .storage_contract_insert(&contract_id, &contract)
-        .expect("Failed to insert contract");
-
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    CodeRootCtx {
-        memory: &mut memory,
-        storage: &storage,
-        gas_cost: DependentCost::free(),
-        profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
-        current_contract: None,
-        cgas: RegMut::new(&mut cgas),
-        ggas: RegMut::new(&mut ggas),
-        owner,
-        pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
-    }
-    .code_root(20, 0)
-    .unwrap();
-    assert_eq!(pc, 8);
-    assert_eq!(memory[20..20 + 32], *root.as_slice());
-
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    let _ = CodeRootCtx {
-        memory: &mut memory,
-        storage: &storage,
-        gas_cost: DependentCost::free(),
-        profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
-        current_contract: None,
-        cgas: RegMut::new(&mut cgas),
-        ggas: RegMut::new(&mut ggas),
-        owner,
-        pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
-    }
-    .code_root(20, 0)
-    .expect_err("Contract is not in inputs");
 }
 
 #[test]

@@ -658,7 +658,7 @@ impl DependentCost {
         match self {
             DependentCost::LightOperation { units_per_gas, .. } => {
                 // Apply the linear transformation:
-                // f(x) = 1/m * x = x/m
+                //   f(x) = 1/m * x = x/m
                 // where:
                 //   x is the number of units
                 //   1/m is the gas_per_unit
@@ -666,7 +666,7 @@ impl DependentCost {
             }
             DependentCost::HeavyOperation { gas_per_unit, .. } => {
                 // Apply the linear transformation:
-                // f(x) = mx
+                //   f(x) = mx
                 // where:
                 //   x is the number of units
                 //   m is the gas per unit

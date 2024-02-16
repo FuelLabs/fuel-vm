@@ -1042,7 +1042,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = ContractId::from_bytes_ref(contract.read(memory));
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let mut value = StorageData::default();
+    let mut value = StorageData::from(*Bytes32::zeroed());
     value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
     let result = storage

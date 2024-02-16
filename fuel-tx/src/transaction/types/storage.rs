@@ -4,9 +4,9 @@ use fuel_types::{
         Deserialize,
         Serialize,
     },
+    fmt_truncated_hex,
     Bytes32,
 };
-
 #[cfg(feature = "random")]
 use rand::{
     distributions::{
@@ -17,8 +17,73 @@ use rand::{
 };
 
 use core::cmp::Ordering;
+use derivative::Derivative;
 
-pub type StorageData = Vec<u8>;
+#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
+#[derivative(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct StorageData(
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] pub Vec<u8>,
+);
+
+impl From<Vec<u8>> for StorageData {
+    fn from(c: Vec<u8>) -> Self {
+        Self(c)
+    }
+}
+
+impl<const N: usize> From<[u8; N]> for StorageData {
+    fn from(c: [u8; N]) -> Self {
+        Self(c.into())
+    }
+}
+
+impl From<&[u8]> for StorageData {
+    fn from(c: &[u8]) -> Self {
+        Self(c.into())
+    }
+}
+
+impl From<&mut [u8]> for StorageData {
+    fn from(c: &mut [u8]) -> Self {
+        Self(c.into())
+    }
+}
+
+impl From<StorageData> for Vec<u8> {
+    fn from(c: StorageData) -> Vec<u8> {
+        c.0
+    }
+}
+
+impl AsRef<[u8]> for StorageData {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl AsMut<[u8]> for StorageData {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.0.as_mut()
+    }
+}
+
+#[cfg(feature = "random")]
+impl Distribution<StorageData> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StorageData {
+        StorageData(rng.gen::<Bytes32>().to_vec())
+    }
+}
+
+impl IntoIterator for StorageData {
+    type IntoIter = alloc::vec::IntoIter<Self::Item>;
+    type Item = u8;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -58,7 +123,7 @@ impl Distribution<StorageSlot> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StorageSlot {
         StorageSlot {
             key: rng.gen(),
-            value: rng.gen::<Bytes32>().to_vec(),
+            value: rng.gen::<StorageData>(),
         }
     }
 }
@@ -93,7 +158,7 @@ mod tests {
     fn test_storage_slot_serialization() {
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let value = rng.gen::<Bytes32>().to_vec();
+        let value = rng.gen::<StorageData>();
 
         let slot = StorageSlot::new(key, value);
         let slots = vec![slot.clone()];
@@ -124,7 +189,7 @@ mod tests {
         let mut value = [0u8; 128];
         rng.fill_bytes(&mut value);
 
-        let slot = StorageSlot::new(key, value.to_vec());
+        let slot = StorageSlot::new(key, value.into());
 
         let slot_bytes = slot.to_bytes();
 
@@ -149,7 +214,7 @@ mod tests {
         let mut value = [0u8; 128];
         rng.fill_bytes(&mut value);
 
-        let slot = StorageSlot::new(key, value.to_vec());
+        let slot = StorageSlot::new(key, value.into());
         let size = slot.size();
         let expected_size = 32 + 8 + 128; // Key + u64 (data size) + Data
         assert_eq!(size, expected_size);

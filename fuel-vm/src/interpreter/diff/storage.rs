@@ -190,7 +190,7 @@ where
                             StorageMutate::<ContractsState>::insert(
                                 &mut self.storage,
                                 key,
-                                value,
+                                value.as_ref(),
                             )
                             .unwrap();
                         }
@@ -419,7 +419,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<Vec<u8>>>>, Self::DataError> {
+    ) -> Result<Vec<Option<alloc::borrow::Cow<StorageData>>>, Self::DataError> {
         self.0.merkle_contract_state_range(id, start_key, range)
     }
 
@@ -427,7 +427,7 @@ where
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Vec<u8>],
+        values: &[StorageData],
     ) -> Result<usize, Self::DataError> {
         self.0
             .merkle_contract_state_insert_range(contract, start_key, values)
@@ -447,10 +447,10 @@ where
 impl StorageType for ContractsState {
     fn record_insert(
         key: &Self::Key,
-        value: &StorageData,
+        value: &[u8],
         existing: Option<StorageData>,
     ) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Insert(*key, value.clone(), existing))
+        StorageDelta::State(MappableDelta::Insert(*key, value.into(), existing))
     }
 
     fn record_remove(key: &Self::Key, value: StorageData) -> StorageDelta {

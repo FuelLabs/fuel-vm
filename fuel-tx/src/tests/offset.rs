@@ -362,7 +362,7 @@ fn tx_offset_create() {
                         .unwrap();
                     let value_range_start = key_range.end + size_of::<u64>();
                     let value_range = value_range_start..value_range_start + Bytes32::LEN;
-                    let value = bytes[value_range].to_vec();
+                    let value = bytes[value_range].into();
                     let slot_p = StorageSlot::from(&(*key, value));
 
                     assert_eq!(slot, &slot_p);

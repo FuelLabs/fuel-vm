@@ -54,16 +54,14 @@ use crate::{
         InterpreterStorage,
     },
 };
-use alloc::{
-    vec,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use fuel_asm::PanicReason;
 use fuel_storage::StorageSize;
 use fuel_tx::{
     ContractIdExt,
     DependentCost,
     Receipt,
+    StorageData,
 };
 use fuel_types::{
     bytes,
@@ -992,7 +990,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
         .map_err(RuntimeError::Storage)?
         .map(|bytes| {
             Word::from_be_bytes(
-                bytes[..8]
+                bytes.as_ref().as_ref()[..8]
                     .try_into()
                     .expect("8 bytes can be converted to a Word"),
             )
@@ -1044,12 +1042,11 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = ContractId::from_bytes_ref(contract.read(memory));
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let mut value = vec![0; 32];
-
-    value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
+    let mut value = StorageData::default();
+    value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
     let result = storage
-        .merkle_contract_state_insert(contract, key, &value)
+        .merkle_contract_state_insert(contract, key, value.as_ref())
         .map_err(RuntimeError::Storage)?;
 
     *created_new = result.is_none() as Word;
@@ -1234,7 +1231,7 @@ fn state_read_qword<S: InterpreterStorage>(
             Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                vec![0; 32]
+                StorageData::from(*Bytes32::zeroed())
             }
         })
         .collect();
@@ -1298,7 +1295,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
 
     let values: Vec<_> = memory[input.source_address_memory_range.usizes()]
         .chunks_exact(Bytes32::LEN)
-        .flat_map(|chunk| Some(chunk.to_vec()))
+        .flat_map(|chunk| Some(chunk.to_vec().into()))
         .collect();
 
     let unset_count = storage

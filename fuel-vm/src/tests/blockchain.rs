@@ -197,7 +197,10 @@ fn state_read_write() {
         .contract_state(&contract_id, &key);
 
     // Assert the state of `key` is mutated to `val`
-    assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
+    assert_eq!(
+        &val.to_be_bytes()[..],
+        &state.as_ref().as_ref()[..WORD_SIZE]
+    );
 
     // Expect the correct receipt
     assert_eq!(receipts[1].ra().expect("Register value expected"), val);
@@ -260,11 +263,11 @@ fn state_read_write() {
     bytes[24..].copy_from_slice(&p.to_be_bytes());
 
     // Assert the state is correct
-    let bytes = bytes.to_vec();
+    let data = StorageData::from(bytes);
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
-    assert_eq!(bytes, state.into_owned());
+    assert_eq!(data, state.into_owned());
 }
 
 #[test]

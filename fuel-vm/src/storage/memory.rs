@@ -95,7 +95,7 @@ impl MemoryStorage {
         contract: &ContractId,
         key: &Bytes32,
     ) -> Cow<'_, StorageData> {
-        const DEFAULT_STATE: StorageData = Vec::new();
+        const DEFAULT_STATE: StorageData = StorageData(vec![]);
 
         self.storage::<ContractsState>()
             .get(&(contract, key).into())
@@ -309,7 +309,8 @@ impl StorageInspect<ContractsState> for MemoryStorage {
     fn get(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Cow<'_, <ContractsState as Mappable>::Value>>, Infallible> {
+    ) -> Result<Option<Cow<'_, <ContractsState as Mappable>::OwnedValue>>, Infallible>
+    {
         Ok(self.memory.contract_state.get(key).map(Cow::Borrowed))
     }
 
@@ -326,8 +327,8 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         value: &<ContractsState as Mappable>::Value,
-    ) -> Result<Option<<ContractsState as Mappable>::Value>, Infallible> {
-        Ok(self.memory.contract_state.insert(*key, value.clone()))
+    ) -> Result<Option<<ContractsState as Mappable>::OwnedValue>, Infallible> {
+        Ok(self.memory.contract_state.insert(*key, value.into()))
     }
 
     fn remove(

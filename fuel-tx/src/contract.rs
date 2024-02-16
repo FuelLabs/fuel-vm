@@ -229,7 +229,7 @@ mod tests {
 
     #[rstest]
     fn state_root_snapshot(
-        #[values(Vec::new(), vec![ (Bytes32::new([1u8; 32]), vec![1u8; 32]) ] )]
+        #[values(Vec::new(), vec![ (Bytes32::new([1u8; 32]), [1u8; 32].into()) ] )]
         state_slot_bytes: Vec<(Bytes32, StorageData)>,
     ) {
         let slots: Vec<StorageSlot> =

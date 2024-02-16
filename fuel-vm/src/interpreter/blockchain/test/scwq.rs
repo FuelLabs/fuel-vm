@@ -24,7 +24,7 @@ struct SCWQInput {
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 1).unwrap(),
-        storage_slots: vec![(key(27), vec![8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
     } => (vec![], true)
     ; "Clear single storage slot"
@@ -32,7 +32,7 @@ struct SCWQInput {
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), vec![8; 32]), (key(28), vec![9; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(28), data(&[9; 32]))],
         memory: mem(&[&key(27)]),
     } => (vec![], true)
     ; "Clear multiple existing storage slots"
@@ -56,17 +56,17 @@ struct SCWQInput {
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), vec![8; 32]), (key(29), vec![8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(29), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![(key(29), vec![8; 32])], false)
+    } => (vec![(key(29), vec![8; 32].into())], false)
     ; "Clear storage slots with some previously set"
 )]
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), vec![8; 32]), (key(26), vec![8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(26), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![(key(26), vec![8; 32])], false)
+    } => (vec![(key(26), vec![8; 32].into())], false)
     ; "Clear storage slots with some previously set before the key"
 )]
 fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], StorageData)>, bool) {
@@ -80,7 +80,10 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], StorageData)>, bo
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
-            .insert(&(&ContractId::default(), &Bytes32::new(k)).into(), &v)
+            .insert(
+                &(&ContractId::default(), &Bytes32::new(k)).into(),
+                v.as_ref(),
+            )
             .unwrap();
     }
 

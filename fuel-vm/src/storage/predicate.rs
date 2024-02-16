@@ -21,6 +21,7 @@ use fuel_storage::{
     StorageRead,
     StorageSize,
 };
+use fuel_tx::StorageData;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -151,7 +152,7 @@ impl InterpreterStorage for PredicateStorage {
         _id: &ContractId,
         _start_key: &Bytes32,
         _range: usize,
-    ) -> Result<Vec<Option<Cow<Vec<u8>>>>, StorageUnavailable> {
+    ) -> Result<Vec<Option<Cow<StorageData>>>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 
@@ -159,7 +160,7 @@ impl InterpreterStorage for PredicateStorage {
         &mut self,
         _contract: &ContractId,
         _start_key: &Bytes32,
-        _values: &[Vec<u8>],
+        _values: &[StorageData],
     ) -> Result<usize, StorageUnavailable> {
         Err(StorageUnavailable)
     }

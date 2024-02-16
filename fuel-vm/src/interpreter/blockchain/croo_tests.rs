@@ -12,7 +12,6 @@ use fuel_tx::{
 };
 
 use alloc::vec;
-use std::convert::TryInto;
 
 const CONTRACT_LEN: usize = 512;
 const INITIAL_GAS: Word = 1_000_000;
@@ -74,8 +73,8 @@ fn test_code_root() {
         mut cgas,
         mut ggas,
     } = initialize_system_registers();
-    let croo_address = 0xFF as Word;
-    let croo_range = croo_address as usize..croo_address as usize + 32;
+    let croo_address = 0xFFusize;
+    let croo_range = croo_address..croo_address + 32;
 
     let input_contracts = [contract_id];
     let mut panic_context = PanicContext::None;
@@ -94,7 +93,7 @@ fn test_code_root() {
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),
     }
-    .code_root(croo_address, 0)
+    .code_root(croo_address as Word, 0)
     .unwrap();
 
     // Then
@@ -127,8 +126,8 @@ fn test_code_root_contract_not_found() {
         mut cgas,
         mut ggas,
     } = initialize_system_registers();
-    let croo_address = 0xFFu64;
-    let croo_range = croo_address as usize..croo_address as usize + 32;
+    let croo_address = 0xFFusize;
+    let croo_range = croo_address..croo_address + 32;
 
     let input_contracts = [contract_id];
     let mut panic_context = PanicContext::None;
@@ -147,7 +146,7 @@ fn test_code_root_contract_not_found() {
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),
     }
-    .code_root(croo_address, 0)
+    .code_root(croo_address as Word, 0)
     .expect_err("Contract is not found");
 
     // Then
@@ -174,8 +173,8 @@ fn test_code_root_contract_not_in_inputs() {
         mut cgas,
         mut ggas,
     } = initialize_system_registers();
-    let croo_address = 0xFFu64;
-    let croo_range = croo_address as usize..croo_address as usize + 32;
+    let croo_address = 0xFFusize;
+    let croo_range = croo_address..croo_address + 32;
 
     let input_contracts = [];
     let mut panic_context = PanicContext::None;

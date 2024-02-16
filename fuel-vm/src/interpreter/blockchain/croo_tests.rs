@@ -11,6 +11,7 @@ use fuel_tx::{
     GasCosts,
 };
 
+use alloc::vec;
 use std::convert::TryInto;
 
 const CONTRACT_LEN: usize = 512;

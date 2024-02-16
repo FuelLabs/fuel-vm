@@ -130,12 +130,13 @@ impl<Tx: IntoChecked + UniqueIdentifier> Checked<Tx> {
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx: IntoChecked + Default> Checked<Tx>
+impl<Tx: IntoChecked + Default> Default for Checked<Tx>
 where
     Checked<Tx>: CheckPredicates,
 {
     /// Creates a default checked transaction with a given gas price.
-    pub fn default_with_gas_price(gas_price: u64) -> Self {
+    fn default() -> Self {
+        let gas_price = 0;
         Tx::default()
             .into_checked(
                 Default::default(),

@@ -134,9 +134,25 @@ impl<Tx: IntoChecked + Default> Default for Checked<Tx>
 where
     Checked<Tx>: CheckPredicates,
 {
-    /// Creates a default checked transaction with a given gas price.
     fn default() -> Self {
         let gas_price = 0;
+        Tx::default()
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                gas_price,
+            )
+            .expect("default tx should produce a valid fully checked transaction")
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl<Tx: IntoChecked + Default> Checked<Tx>
+where
+    Checked<Tx>: CheckPredicates,
+{
+    /// Creates a default checked transaction with a given gas price.
+    pub fn default_with_gas_price(gas_price: u64) -> Self {
         Tx::default()
             .into_checked(
                 Default::default(),
@@ -826,6 +842,7 @@ mod tests {
     // input
     #[quickcheck]
     fn max_fee_coin_input(
+        gas_price: u64,
         gas_limit: u64,
         witness_limit: u64,
         input_amount: u64,
@@ -852,7 +869,8 @@ mod tests {
             predicate_gas_used,
         );
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        if let Ok(valid) =
+            is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
         {
             TestResult::from_bool(valid)
         } else {
@@ -864,6 +882,7 @@ mod tests {
     // input
     #[quickcheck]
     fn min_fee_coin_input(
+        gas_price: u64,
         gas_limit: u64,
         witness_limit: u64,
         input_amount: u64,
@@ -889,7 +908,8 @@ mod tests {
             predicate_gas_used,
         );
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        if let Ok(valid) =
+            is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
         {
             TestResult::from_bool(valid)
         } else {
@@ -901,6 +921,7 @@ mod tests {
     // input
     #[quickcheck]
     fn max_fee_message_input(
+        gas_price: u64,
         gas_limit: u64,
         input_amount: u64,
         gas_price_factor: u64,
@@ -917,7 +938,8 @@ mod tests {
         let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_max_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        if let Ok(valid) =
+            is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
         {
             TestResult::from_bool(valid)
         } else {
@@ -1594,6 +1616,7 @@ mod tests {
 
     fn is_valid_max_fee(
         tx: &Script,
+        gas_price: u64,
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
@@ -1605,14 +1628,12 @@ mod tests {
             fee + fee_remainder
         }
 
-        let arb_gas_price = 1;
-
         let available_balances = balances::initial_free_balances(
             tx,
             gas_costs,
             fee_params,
             base_asset_id,
-            arb_gas_price,
+            gas_price,
         )?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let gas_used_by_bytes = fee_params
@@ -1637,10 +1658,9 @@ mod tests {
         let max_gas = min_gas
             .saturating_add(*tx.script_gas_limit())
             .saturating_add(witness_limit_allowance);
-        let max_fee: u64 =
-            gas_to_fee(max_gas, arb_gas_price, fee_params.gas_price_factor)
-                .try_into()
-                .map_err(|_| ValidityError::BalanceOverflow)?;
+        let max_fee: u64 = gas_to_fee(max_gas, gas_price, fee_params.gas_price_factor)
+            .try_into()
+            .map_err(|_| ValidityError::BalanceOverflow)?;
 
         let result = max_fee == available_balances.fee.max_fee();
         Ok(result)

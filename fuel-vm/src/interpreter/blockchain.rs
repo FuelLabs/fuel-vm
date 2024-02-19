@@ -152,7 +152,7 @@ where
             storage: &mut self.storage,
             context: &self.context,
             memory: &self.memory,
-            append: &mut self.receipts,
+            receipts: &mut self.receipts,
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -643,7 +643,7 @@ struct BurnCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
     memory: &'vm [u8; MEM_SIZE],
-    append: &'vm mut ReceiptsCtx,
+    receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
@@ -674,7 +674,7 @@ where
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
 
-        self.append.push(receipt)?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }

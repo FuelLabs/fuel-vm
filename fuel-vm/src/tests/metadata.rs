@@ -562,13 +562,6 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptReceiptsRoot),
-        op::movi(0x11, cases[3].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, script_offset as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::Script),

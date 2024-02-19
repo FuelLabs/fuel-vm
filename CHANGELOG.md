@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+#### Breaking
+
+- [#678](https://github.com/FuelLabs/fuel-vm/pull/678): Zero malleable fields before execution. Remove some now-obsolete GTF getters. Don't update `tx.receiptsRoot` after pushing receipts, and do it after execution instead.
+
 ## [Version 0.45.0]
 
 ### Changed

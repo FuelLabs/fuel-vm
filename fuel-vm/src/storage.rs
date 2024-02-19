@@ -9,7 +9,6 @@ use fuel_types::{
     AssetId,
     Bytes32,
     ContractId,
-    Salt,
     Word,
 };
 
@@ -32,18 +31,6 @@ impl Mappable for ContractsRawCode {
     type OwnedKey = ContractId;
     type OwnedValue = Contract;
     type Value = [u8];
-}
-
-/// The storage table for contract's additional information as salt, root hash, etc.
-pub struct ContractsInfo;
-
-impl Mappable for ContractsInfo {
-    type Key = Self::OwnedKey;
-    type OwnedKey = ContractId;
-    type OwnedValue = Self::Value;
-    /// `Salt` - is the salt used during creation of the contract for uniques.
-    /// `Bytes32` - is the root hash of the contract's code.
-    type Value = (Salt, Bytes32);
 }
 
 /// The storage table for contract's assets balances.

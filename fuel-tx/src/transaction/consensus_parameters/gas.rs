@@ -216,7 +216,6 @@ pub struct GasCostsValues {
     pub cb: Word,
     pub cfei: Word,
     pub cfsi: Word,
-    pub croo: Word,
     pub div: Word,
     pub divi: Word,
     pub eck1: Word,
@@ -301,6 +300,7 @@ pub struct GasCostsValues {
     // Dependent
     pub call: DependentCost,
     pub ccp: DependentCost,
+    pub croo: DependentCost,
     pub csiz: DependentCost,
     pub k256: DependentCost,
     pub ldc: DependentCost,
@@ -380,7 +380,6 @@ impl GasCostsValues {
             cb: 0,
             cfei: 0,
             cfsi: 0,
-            croo: 0,
             div: 0,
             divi: 0,
             eck1: 0,
@@ -459,6 +458,7 @@ impl GasCostsValues {
             xori: 0,
             call: DependentCost::free(),
             ccp: DependentCost::free(),
+            croo: DependentCost::free(),
             csiz: DependentCost::free(),
             k256: DependentCost::free(),
             ldc: DependentCost::free(),
@@ -498,7 +498,6 @@ impl GasCostsValues {
             cb: 1,
             cfei: 1,
             cfsi: 1,
-            croo: 1,
             div: 1,
             divi: 1,
             eck1: 1,
@@ -577,6 +576,7 @@ impl GasCostsValues {
             xori: 1,
             call: DependentCost::unit(),
             ccp: DependentCost::unit(),
+            croo: DependentCost::unit(),
             csiz: DependentCost::unit(),
             k256: DependentCost::unit(),
             ldc: DependentCost::unit(),
@@ -657,13 +657,17 @@ impl DependentCost {
     pub fn resolve_without_base(&self, units: Word) -> Word {
         match self {
             DependentCost::LightOperation { units_per_gas, .. } => {
-                // Apply the linear transformation f(x) = 1/m * x = x/m = where:
+                // Apply the linear transformation:
+                //   f(x) = 1/m * x = x/m
+                // where:
                 //   x is the number of units
                 //   1/m is the gas_per_unit
                 units.saturating_div(*units_per_gas)
             }
             DependentCost::HeavyOperation { gas_per_unit, .. } => {
-                // Apply the linear transformation f(x) = mx, where:
+                // Apply the linear transformation:
+                //   f(x) = mx
+                // where:
                 //   x is the number of units
                 //   m is the gas per unit
                 units.saturating_mul(*gas_per_unit)

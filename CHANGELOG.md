@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 #### Breaking
 
-- [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized Contract state by changing the storage slot data type to a vector of bytes (`Vec<u8>`).  
+- [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized Contract state by changing the storage slot data type to a vector of bytes (`Vec<u8>`).
+- [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Removed `ContractsInfo` table. Contract salts and roots are no longer stored in on-chain data.
+- [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Opcode `CROO` now calculates the given contract's root on demand. `CROO` has therefore been changed to a `DependentCost` gas cost.
 
 ## [Version 0.45.0]
 

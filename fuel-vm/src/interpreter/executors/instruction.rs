@@ -767,7 +767,6 @@ where
             }
 
             Instruction::CROO(croo) => {
-                self.gas_charge(self.gas_costs().croo)?;
                 let (a, b) = croo.unpack();
                 self.code_root(r!(a), r!(b))?;
             }

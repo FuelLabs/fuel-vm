@@ -3,7 +3,6 @@ use crate::{
     storage::{
         ContractsAssetKey,
         ContractsAssets,
-        ContractsInfo,
         ContractsRawCode,
         ContractsState,
         ContractsStateKey,
@@ -31,7 +30,6 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
-    Salt,
     Word,
 };
 use itertools::Itertools;
@@ -51,7 +49,6 @@ struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
     contract_state: BTreeMap<ContractsStateKey, StorageData>,
-    contract_code_root: BTreeMap<ContractId, (Salt, Bytes32)>,
 }
 
 #[derive(Debug, Clone)]
@@ -214,38 +211,6 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
         Ok(self.memory.contracts.get(key).map(|c| c.as_ref().to_vec()))
-    }
-}
-
-impl StorageInspect<ContractsInfo> for MemoryStorage {
-    type Error = Infallible;
-
-    fn get(
-        &self,
-        key: &ContractId,
-    ) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Infallible> {
-        Ok(self.memory.contract_code_root.get(key).map(Cow::Borrowed))
-    }
-
-    fn contains_key(&self, key: &ContractId) -> Result<bool, Infallible> {
-        Ok(self.memory.contract_code_root.contains_key(key))
-    }
-}
-
-impl StorageMutate<ContractsInfo> for MemoryStorage {
-    fn insert(
-        &mut self,
-        key: &ContractId,
-        value: &(Salt, Bytes32),
-    ) -> Result<Option<(Salt, Bytes32)>, Infallible> {
-        Ok(self.memory.contract_code_root.insert(*key, *value))
-    }
-
-    fn remove(
-        &mut self,
-        key: &ContractId,
-    ) -> Result<Option<(Salt, Bytes32)>, Infallible> {
-        Ok(self.memory.contract_code_root.remove(key))
     }
 }
 

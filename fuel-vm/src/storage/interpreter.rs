@@ -18,7 +18,6 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
-    Salt,
     Word,
 };
 
@@ -29,7 +28,6 @@ use crate::{
     },
     storage::{
         ContractsAssets,
-        ContractsInfo,
         ContractsRawCode,
         ContractsState,
     },
@@ -49,7 +47,6 @@ pub trait InterpreterStorage:
     StorageMutate<ContractsRawCode, Error = Self::DataError>
     + StorageSize<ContractsRawCode, Error = Self::DataError>
     + StorageRead<ContractsRawCode, Error = Self::DataError>
-    + StorageMutate<ContractsInfo, Error = Self::DataError>
     + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
@@ -79,14 +76,11 @@ pub trait InterpreterStorage:
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
         &mut self,
-        salt: &Salt,
         slots: &[StorageSlot],
         contract: &Contract,
-        root: &Bytes32,
         id: &ContractId,
     ) -> Result<(), Self::DataError> {
         self.storage_contract_insert(id, contract)?;
-        self.storage_contract_root_insert(id, salt, root)?;
 
         // On the `fuel-core` side it is done in more optimal way
         slots.iter().try_for_each(|s| {
@@ -136,25 +130,6 @@ pub trait InterpreterStorage:
     /// Check if a provided contract exists in the chain.
     fn storage_contract_exists(&self, id: &ContractId) -> Result<bool, Self::DataError> {
         self.storage::<ContractsRawCode>().contains_key(id)
-    }
-
-    /// Fetch a previously inserted salt+root tuple from the chain state for a
-    /// given contract.
-    fn storage_contract_root(
-        &self,
-        id: &ContractId,
-    ) -> Result<Option<Cow<'_, (Salt, Bytes32)>>, Self::DataError> {
-        StorageInspect::<ContractsInfo>::get(self, id)
-    }
-
-    /// Append the salt+root of a contract that was appended to the chain.
-    fn storage_contract_root_insert(
-        &mut self,
-        id: &ContractId,
-        salt: &Salt,
-        root: &Bytes32,
-    ) -> Result<Option<(Salt, Bytes32)>, Self::DataError> {
-        StorageMutate::<ContractsInfo>::insert(self, id, &(*salt, *root))
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.

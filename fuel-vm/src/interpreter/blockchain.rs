@@ -77,6 +77,8 @@ use fuel_types::{
 #[cfg(test)]
 mod code_tests;
 #[cfg(test)]
+mod croo_tests;
+#[cfg(test)]
 mod other_tests;
 #[cfg(test)]
 mod smo_tests;
@@ -273,16 +275,33 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
+        let gas_cost = self.gas_costs().croo;
+        self.gas_charge(gas_cost.base())?;
+        let current_contract =
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
+                .copied();
         let owner = self.ownership_registers();
+        let (
+            SystemRegisters {
+                cgas, ggas, pc, is, ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         CodeRootCtx {
             memory: &mut self.memory,
+            storage: &mut self.storage,
+            gas_cost,
+            profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
-            storage: &self.storage,
+            current_contract,
+            cgas,
+            ggas,
             owner,
-            pc: self.registers.pc_mut(),
+            pc,
+            is: is.as_ref(),
         }
         .code_root(a, b)
     }
@@ -877,11 +896,17 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 }
 
 struct CodeRootCtx<'vm, S, I> {
-    memory: &'vm mut [u8; MEM_SIZE],
-    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
+    memory: &'vm mut [u8; MEM_SIZE],
+    gas_cost: DependentCost,
+    profiler: &'vm mut Profiler,
+    input_contracts: InputContracts<'vm, I>,
+    current_contract: Option<ContractId>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
+    is: Reg<'vm, IS>,
 }
 
 impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
@@ -896,13 +921,27 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
 
         self.input_contracts.check(contract_id)?;
 
-        let (_, root) = self
+        let len = contract_size(self.storage, contract_id)? as Word;
+        let profiler = ProfileGas {
+            pc: self.pc.as_ref(),
+            is: self.is,
+            current_contract: self.current_contract,
+            profiler: self.profiler,
+        };
+        dependent_gas_charge_without_base(
+            self.cgas,
+            self.ggas,
+            profiler,
+            self.gas_cost,
+            len,
+        )?;
+        let root = self
             .storage
-            .storage_contract_root(contract_id)
+            .storage_contract(contract_id)
             .transpose()
             .ok_or(PanicReason::ContractNotFound)?
             .map_err(RuntimeError::Storage)?
-            .into_owned();
+            .root();
 
         try_mem_write(a, root.as_ref(), self.owner, self.memory)?;
 
@@ -1126,7 +1165,7 @@ where
         )?;
 
         if self.msg_data_len > self.max_message_data_length {
-            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong))
+            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
         }
 
         let msg_data_range = MemoryRange::new(self.msg_data_ptr, self.msg_data_len)?;

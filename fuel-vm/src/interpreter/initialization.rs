@@ -15,9 +15,8 @@ use crate::{
     prelude::RuntimeError,
     storage::InterpreterStorage,
 };
-
 use fuel_asm::RegId;
-use fuel_tx::field::ScriptGasLimit;
+use fuel_tx::field::{ScriptGasLimit, ReceiptsRoot};
 use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
@@ -30,11 +29,20 @@ where
     /// Initialize the VM with a given transaction
     fn init_inner(
         &mut self,
-        tx: Tx,
+        mut tx: Tx,
         initial_balances: InitialBalances,
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
+        if let Some(s) = tx.as_script_mut() {
+            *s.receipts_root_mut() = Default::default();
+        }
+        tx.inputs_mut()
+            .iter_mut()
+            .for_each(fuel_tx::Input::prepare_init_execute);
+        tx.outputs_mut()
+            .iter_mut()
+            .for_each(fuel_tx::Output::prepare_init_execute);
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
@@ -79,12 +87,10 @@ where
     pub fn init_predicate(
         &mut self,
         context: Context,
-        mut tx: Tx,
+        tx: Tx,
         gas_limit: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
         self.context = context;
-        tx.prepare_init_predicate();
-
         let initial_balances: InitialBalances = Default::default();
         let runtime_balances = initial_balances.clone().try_into()?;
         Ok(self.init_inner(tx, initial_balances, runtime_balances, gas_limit)?)
@@ -95,8 +101,8 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,
-    Tx: ExecutableTransaction + core::fmt::Debug,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata + core::fmt::Debug,
+    Tx: ExecutableTransaction,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM with a given transaction, backed by a storage provider that
     /// allows execution of contract opcodes.
@@ -110,8 +116,7 @@ where
 
         self.context = Context::Script { block_height };
 
-        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
-        tx.prepare_init_script();
+        let (tx, metadata): (Tx, Tx::Metadata) = checked.into();
 
         let gas_limit = tx
             .as_script()

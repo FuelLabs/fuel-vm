@@ -22,6 +22,7 @@ where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {
+    /// Verify a predicate that has been initialized already
     pub(crate) fn verify_predicate(
         &mut self,
     ) -> Result<ProgramState, PredicateVerificationFailed> {

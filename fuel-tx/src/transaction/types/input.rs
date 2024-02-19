@@ -737,10 +737,6 @@ impl Input {
         }
     }
 
-    /// Empties fields that should be zero during the execution.
-    pub(crate) fn prepare_execute(&mut self) {
-        self.prepare_sign(); // This currently does the same thing
-    }
 
     pub fn compute_message_id(
         sender: &Address,
@@ -775,9 +771,9 @@ impl Input {
         owner == &Self::predicate_owner(predicate)
     }
 
-    /// Prepare the output for VM predicate execution
-    pub fn prepare_init_predicate(&mut self) {
-        self.prepare_sign()
+    /// Prepare the output for script or predicate execution
+    pub fn prepare_init_execute(&mut self) {
+        self.prepare_sign(); // This currently does the same thing
     }
 }
 

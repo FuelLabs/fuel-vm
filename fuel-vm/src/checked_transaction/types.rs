@@ -206,7 +206,6 @@ pub mod script {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
-            self.prepare_execute();
 
             // validate fees and compute free balances
             let AvailableBalances {

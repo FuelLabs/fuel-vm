@@ -103,8 +103,6 @@ impl<T> Buildable for T where T: BuildableSet {}
 pub struct TransactionBuilder<Tx> {
     tx: Tx,
 
-    should_prepare_script: bool,
-    should_prepare_predicate: bool,
     params: ConsensusParameters,
 
     // We take the key by reference so this lib won't have the responsibility to properly
@@ -126,12 +124,7 @@ impl TransactionBuilder<Script> {
             receipts_root: Default::default(),
             metadata: None,
         };
-
-        let mut slf = Self::with_tx(tx);
-
-        slf.prepare_script(true);
-
-        slf
+        Self::with_tx(tx)
     }
 }
 
@@ -188,14 +181,10 @@ impl TransactionBuilder<Mint> {
 
 impl<Tx> TransactionBuilder<Tx> {
     fn with_tx(tx: Tx) -> Self {
-        let should_prepare_script = false;
-        let should_prepare_predicate = false;
         let sign_keys = BTreeMap::new();
 
         Self {
             tx,
-            should_prepare_script,
-            should_prepare_predicate,
             params: ConsensusParameters::standard(),
             sign_keys,
         }
@@ -277,16 +266,6 @@ impl<Tx> TransactionBuilder<Tx> {
 }
 
 impl<Tx: Buildable> TransactionBuilder<Tx> {
-    pub fn prepare_script(&mut self, should_prepare_script: bool) -> &mut Self {
-        self.should_prepare_script = should_prepare_script;
-        self
-    }
-
-    pub fn prepare_predicate(&mut self, should_prepare_predicate: bool) -> &mut Self {
-        self.should_prepare_predicate = should_prepare_predicate;
-        self
-    }
-
     pub fn sign_keys(&self) -> impl Iterator<Item = &SecretKey> {
         self.sign_keys.keys()
     }
@@ -435,19 +414,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         *witness_index
     }
 
-    fn prepare_finalize(&mut self) {
-        if self.should_prepare_predicate {
-            self.tx.prepare_init_predicate();
-        }
-
-        if self.should_prepare_script {
-            self.tx.prepare_init_script();
-        }
-    }
-
     fn finalize_inner(&mut self) -> Tx {
-        self.prepare_finalize();
-
         let mut tx = core::mem::take(&mut self.tx);
 
         self.sign_keys
@@ -461,8 +428,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     pub fn finalize_without_signature_inner(&mut self) -> Tx {
-        self.prepare_finalize();
-
         let mut tx = core::mem::take(&mut self.tx);
 
         tx.precompute(&self.get_chain_id())

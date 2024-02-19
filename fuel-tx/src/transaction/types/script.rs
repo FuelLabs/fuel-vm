@@ -103,14 +103,14 @@ impl Default for Script {
 
 impl Script {
     /// Prepare script for execution by clearing malleable fields.
-    pub fn prepare_execute(&mut self) {
+    pub fn prepare_init_execute(&mut self) {
         *self.receipts_root_mut() = Default::default();
         self.inputs_mut()
             .iter_mut()
-            .for_each(Input::prepare_execute);
+            .for_each(Input::prepare_init_execute);
         self.outputs_mut()
             .iter_mut()
-            .for_each(Output::prepare_execute);
+            .for_each(Output::prepare_init_execute);
     }
 }
 

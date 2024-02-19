@@ -33,15 +33,6 @@ impl Contract {
         self.state_root = Default::default();
         self.tx_pointer = Default::default();
     }
-
-    /// The "Note" section from the specification:
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
-    pub fn prepare_execute(&mut self) {
-        self.utxo_id = Default::default();
-        self.balance_root = Default::default();
-        self.state_root = Default::default();
-        self.tx_pointer = Default::default();
-    }
 }
 
 #[cfg(feature = "random")]

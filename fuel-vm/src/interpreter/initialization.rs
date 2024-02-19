@@ -95,8 +95,8 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,
-    Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata,
+    Tx: ExecutableTransaction + core::fmt::Debug,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata + core::fmt::Debug,
 {
     /// Initialize the VM with a given transaction, backed by a storage provider that
     /// allows execution of contract opcodes.
@@ -112,6 +112,7 @@ where
 
         let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
         tx.prepare_init_script();
+
         let gas_limit = tx
             .as_script()
             .map(|script| *script.script_gas_limit())

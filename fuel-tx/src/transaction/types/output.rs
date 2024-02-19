@@ -216,6 +216,11 @@ impl Output {
         }
     }
 
+    /// Empties fields that should be zero during the execution
+    pub(crate) fn prepare_execute(&mut self) {
+        self.prepare_sign(); // Currently does the same thing
+    }
+
     /// Prepare the output for VM initialization for script execution
     pub fn prepare_init_script(&mut self) {
         match self {

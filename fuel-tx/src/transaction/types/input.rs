@@ -737,6 +737,11 @@ impl Input {
         }
     }
 
+    /// Empties fields that should be zero during the execution.
+    pub(crate) fn prepare_execute(&mut self) {
+        self.prepare_sign(); // This currently does the same thing
+    }
+
     pub fn compute_message_id(
         sender: &Address,
         recipient: &Address,

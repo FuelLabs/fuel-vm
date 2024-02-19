@@ -6,12 +6,10 @@ use super::{
         ProfileGas,
     },
     internal::{
-        append_receipt,
         external_asset_id_balance_sub,
         inc_pc,
         internal_contract,
         set_variable_output,
-        AppendReceipt,
     },
     memory::read_bytes,
     ExecutableTransaction,
@@ -316,15 +314,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             *self.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -388,15 +378,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             *self.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }

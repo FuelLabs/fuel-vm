@@ -22,7 +22,6 @@ use fuel_tx::{
     field::{
         BytecodeLength,
         BytecodeWitnessIndex,
-        ReceiptsRoot,
         Salt,
         Script as ScriptField,
         ScriptData,
@@ -575,9 +574,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     }
                     (Some(script), None, GTFArgs::ScriptDataLength) => {
                         script.script_data().len() as Word
-                    }
-                    (Some(script), None, GTFArgs::ScriptReceiptsRoot) => {
-                        (ofs + script.receipts_root_offset()) as Word
                     }
                     (Some(script), None, GTFArgs::Script) => {
                         (ofs + script.script_offset()) as Word

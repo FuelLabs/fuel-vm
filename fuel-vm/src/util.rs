@@ -459,8 +459,8 @@ pub mod test_helpers {
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
-            Tx: ExecutableTransaction,
-            <Tx as IntoChecked>::Metadata: CheckedMetadata,
+            Tx: ExecutableTransaction + core::fmt::Debug,
+            <Tx as IntoChecked>::Metadata: CheckedMetadata + core::fmt::Debug,
             Ecal: crate::interpreter::EcalHandler,
         {
             self.storage.set_block_height(self.block_height);

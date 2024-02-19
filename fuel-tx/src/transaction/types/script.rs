@@ -101,6 +101,19 @@ impl Default for Script {
     }
 }
 
+impl Script {
+    /// Prepare script for execution by clearing malleable fields.
+    pub fn prepare_execute(&mut self) {
+        *self.receipts_root_mut() = Default::default();
+        self.inputs_mut()
+            .iter_mut()
+            .for_each(Input::prepare_execute);
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(Output::prepare_execute);
+    }
+}
+
 impl crate::UniqueIdentifier for Script {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
@@ -117,6 +130,8 @@ impl crate::UniqueIdentifier for Script {
             .iter_mut()
             .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
+
+        println!("Tx to bytes {:?}", clone.to_bytes());
 
         crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }

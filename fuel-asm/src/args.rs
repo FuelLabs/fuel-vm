@@ -68,9 +68,6 @@ crate::enum_try_from! {
         /// Set `$rA` to `tx.witnessesCount`
         ScriptWitnessesCount = 0x007,
 
-        /// Set `$rA` to `Memory address of tx.receiptsRoot`
-        ScriptReceiptsRoot = 0x008,
-
         /// Set `$rA` to `Memory address of tx.script`
         Script = 0x009,
 
@@ -301,7 +298,6 @@ fn encode_gtf_args() {
         GTFArgs::ScriptInputsCount,
         GTFArgs::ScriptOutputsCount,
         GTFArgs::ScriptWitnessesCount,
-        GTFArgs::ScriptReceiptsRoot,
         GTFArgs::Script,
         GTFArgs::ScriptData,
         GTFArgs::ScriptInputAtIndex,

@@ -595,7 +595,7 @@ pub mod test_helpers {
         );
     }
 
-    fn check_expected_reason_for_instructions_with_client(
+    pub fn check_expected_reason_for_instructions_with_client(
         mut client: MemoryClient,
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,

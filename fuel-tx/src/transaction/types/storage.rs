@@ -1,4 +1,3 @@
-use alloc::vec::Vec;
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -16,6 +15,10 @@ use rand::{
     Rng,
 };
 
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use core::cmp::Ordering;
 use derivative::Derivative;
 use fuel_types::canonical::{

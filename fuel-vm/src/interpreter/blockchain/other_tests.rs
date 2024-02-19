@@ -12,7 +12,6 @@ use core::{
 use super::*;
 use crate::interpreter::PanicContext;
 use fuel_storage::StorageAsMut;
-use fuel_types::Salt;
 use test_case::test_case;
 
 #[test_case(false, 0, None, 0, [0; 32] => Ok(()); "Burn nothing")]
@@ -233,83 +232,6 @@ fn test_coinbase() {
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
     assert_eq!(pc, 8);
     assert_eq!(memory[20..20 + 32], [0u8; 32]);
-}
-
-#[test]
-fn test_code_root() {
-    let contract_id = ContractId::new([3u8; ContractId::LEN]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    let mut pc = 4;
-    let input_contracts = [contract_id];
-    let mut panic_context = PanicContext::None;
-    let _ = CodeRootCtx {
-        memory: &mut memory,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
-        storage: &storage,
-        owner,
-        pc: RegMut::new(&mut pc),
-    }
-    .code_root(20, 0)
-    .expect_err("Contract is not found");
-    assert_eq!(pc, 4);
-
-    storage
-        .storage_contract_root_insert(
-            &ContractId::from([3u8; 32]),
-            &Salt::from([5u8; 32]),
-            &Bytes32::from([6u8; 32]),
-        )
-        .unwrap();
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    CodeRootCtx {
-        memory: &mut memory,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
-        storage: &storage,
-        owner,
-        pc: RegMut::new(&mut pc),
-    }
-    .code_root(20, 0)
-    .unwrap();
-    assert_eq!(pc, 8);
-    assert_eq!(memory[20..20 + 32], [6u8; 32]);
-
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    let _ = CodeRootCtx {
-        memory: &mut memory,
-        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
-        storage: &storage,
-        owner,
-        pc: RegMut::new(&mut pc),
-    }
-    .code_root(20, 0)
-    .expect_err("Contract is not in inputs");
 }
 
 #[test]

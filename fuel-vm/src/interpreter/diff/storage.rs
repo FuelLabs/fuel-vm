@@ -29,7 +29,6 @@ use super::{
 pub(super) enum StorageDelta {
     State(MappableDelta<ContractsStateKey, Bytes32>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
-    Info(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
 
@@ -38,7 +37,6 @@ pub(super) enum StorageDelta {
 pub(super) enum StorageState {
     State(MappableState<ContractsStateKey, Bytes32>),
     Assets(MappableState<ContractsAssetKey, u64>),
-    Info(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableState<ContractId, Contract>),
 }
 
@@ -114,10 +112,6 @@ where
             from: HashMap::new(),
             to: HashMap::new(),
         };
-        let mut contracts_info = Delta {
-            from: HashMap::new(),
-            to: HashMap::new(),
-        };
         let mut contracts_raw_code = Delta {
             from: HashMap::new(),
             to: HashMap::new(),
@@ -131,16 +125,12 @@ where
                 StorageDelta::Assets(delta) => {
                     mappable_delta_to_hashmap(&mut contracts_assets, delta)
                 }
-                StorageDelta::Info(delta) => {
-                    mappable_delta_to_hashmap(&mut contracts_info, delta)
-                }
                 StorageDelta::RawCode(delta) => {
                     mappable_delta_to_hashmap(&mut contracts_raw_code, delta)
                 }
             }
         }
         storage_state_to_changes(&mut diff, contracts_state, StorageState::State);
-        storage_state_to_changes(&mut diff, contracts_info, StorageState::Info);
         storage_state_to_changes(&mut diff, contracts_assets, StorageState::Assets);
         storage_state_to_changes(&mut diff, contracts_raw_code, StorageState::RawCode);
         diff
@@ -197,16 +187,6 @@ where
                     StorageState::Assets(MappableState { key, value }) => {
                         if let Some(value) = value {
                             StorageMutate::<ContractsAssets>::insert(
-                                &mut self.storage,
-                                key,
-                                value,
-                            )
-                            .unwrap();
-                        }
-                    }
-                    StorageState::Info(MappableState { key, value }) => {
-                        if let Some(value) = value {
-                            StorageMutate::<ContractsInfo>::insert(
                                 &mut self.storage,
                                 key,
                                 value,
@@ -468,23 +448,6 @@ impl StorageType for ContractsAssets {
 
     fn record_remove(key: &Self::Key, value: u64) -> StorageDelta {
         StorageDelta::Assets(MappableDelta::Remove(*key, value))
-    }
-}
-
-impl StorageType for ContractsInfo {
-    fn record_insert(
-        key: &ContractId,
-        value: &(fuel_types::Salt, Bytes32),
-        existing: Option<(fuel_types::Salt, Bytes32)>,
-    ) -> StorageDelta {
-        StorageDelta::Info(MappableDelta::Insert(*key, *value, existing))
-    }
-
-    fn record_remove(
-        key: &ContractId,
-        value: (fuel_types::Salt, Bytes32),
-    ) -> StorageDelta {
-        StorageDelta::Info(MappableDelta::Remove(*key, value))
     }
 }
 

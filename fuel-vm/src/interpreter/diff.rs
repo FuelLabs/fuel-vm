@@ -37,7 +37,6 @@ use crate::{
     context::Context,
     storage::{
         ContractsAssets,
-        ContractsInfo,
         ContractsRawCode,
         ContractsState,
     },

@@ -131,8 +131,6 @@ impl crate::UniqueIdentifier for Script {
             .for_each(Output::prepare_sign);
         clone.witnesses_mut().clear();
 
-        println!("Tx to bytes {:?}", clone.to_bytes());
-
         crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 

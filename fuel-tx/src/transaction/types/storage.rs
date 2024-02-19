@@ -239,8 +239,6 @@ mod tests {
 
         let slot = StorageSlot::new(key, value.clone());
         let slot_bytes = slot.to_bytes();
-        // dbg!(slot_bytes.len());
-        // dbg!(&slot_bytes);
         let (slot_key, slot_value) = slot_bytes.split_at(32);
         let recreated_slot =
             StorageSlot::from_bytes(&slot_bytes).expect("read from bytes");

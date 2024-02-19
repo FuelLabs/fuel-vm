@@ -166,7 +166,6 @@ fn input<'a>(
 #[test]
 fn test_revert() {
     let mut receipts = Default::default();
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
     let pc = 10;
     let is = 20;
     revert(&mut receipts, None, Reg::new(&pc), Reg::new(&is), 99).expect("should be ok");

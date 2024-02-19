@@ -20,6 +20,9 @@ use rand::{
     SeedableRng,
 };
 
+#[cfg(feature = "alloc")]
+use alloc::vec;
+
 use crate::consts::WORD_SIZE;
 
 #[test]
@@ -130,7 +133,6 @@ fn malleable_fields_do_not_affect_validity() {
 
         let vm = Interpreter::<_, Script>::with_memory_storage();
         let mut client = MemoryClient::from_txtor(vm.into());
-        let consensus_params = ConsensusParameters::standard();
         let receipts =
             client.transact(tx.into_checked(0u32.into(), &params).expect("valid tx"));
 

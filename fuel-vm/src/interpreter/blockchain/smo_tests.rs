@@ -20,7 +20,6 @@ use rand::{
     SeedableRng,
 };
 
-use fuel_tx::Create;
 use test_case::test_case;
 
 struct Input {

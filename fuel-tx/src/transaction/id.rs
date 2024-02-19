@@ -171,12 +171,8 @@ mod tests {
     }
 
     fn invert_storage_slot(storage_slot: &mut StorageSlot) {
-        let mut data = [0u8; 64 + 8];
-        storage_slot
-            .encode(&mut &mut data[..])
-            .expect("Failed to encode storage slot");
+        let mut data = storage_slot.to_bytes();
         invert(&mut data);
-        invert(&mut data[32..40]);
         *storage_slot =
             StorageSlot::from_bytes(&data).expect("Failed to decode storage slot");
     }

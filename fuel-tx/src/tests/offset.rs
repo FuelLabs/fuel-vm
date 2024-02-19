@@ -29,7 +29,6 @@ use rand::{
     Rng,
     SeedableRng,
 };
-use std::mem::size_of;
 
 // Assert everything is tested. If some of these bools fails, just increase the number of
 // cases
@@ -360,8 +359,7 @@ fn tx_offset_create() {
                     let key_range = ofs..ofs + Bytes32::LEN;
                     let key = Bytes32::from_bytes_ref_checked(&bytes[key_range.clone()])
                         .unwrap();
-                    let value_range_start = key_range.end + size_of::<u64>();
-                    let value_range = value_range_start..value_range_start + Bytes32::LEN;
+                    let value_range = key_range.end..key_range.end + Bytes32::LEN;
                     let value = bytes[value_range].into();
                     let slot_p = StorageSlot::from(&(*key, value));
 

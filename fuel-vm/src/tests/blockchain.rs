@@ -263,7 +263,7 @@ fn state_read_write() {
     bytes[24..].copy_from_slice(&p.to_be_bytes());
 
     // Assert the state is correct
-    let data = StorageData::from(bytes);
+    let data = StorageData::from(bytes.as_ref());
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);

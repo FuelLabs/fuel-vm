@@ -95,12 +95,10 @@ impl MemoryStorage {
         contract: &ContractId,
         key: &Bytes32,
     ) -> Cow<'_, StorageData> {
-        const DEFAULT_STATE: StorageData = StorageData(alloc::vec![]);
-
         self.storage::<ContractsState>()
             .get(&(contract, key).into())
             .expect("Infallible")
-            .unwrap_or(Cow::Owned(DEFAULT_STATE))
+            .unwrap_or(Cow::Owned(StorageData::default()))
     }
 
     /// Set the transacted state to the memory state.

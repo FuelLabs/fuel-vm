@@ -643,7 +643,7 @@ mod tests {
     #[test]
     fn storage_slots_sorting() {
         // Test that storage slots must be sorted correctly
-        let mut slot_data = ([0u8; 32], [0u8; 32].into());
+        let mut slot_data = ([0u8; 32], vec![0u8; 32].into());
 
         let storage_slots = (0..10u64)
             .map(|i| {

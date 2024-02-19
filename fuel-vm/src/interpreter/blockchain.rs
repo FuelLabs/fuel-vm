@@ -1042,7 +1042,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = ContractId::from_bytes_ref(contract.read(memory));
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let mut value = StorageData::from(*Bytes32::zeroed());
+    let mut value = StorageData::from(Bytes32::zeroed().as_ref());
     value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
     let result = storage
@@ -1231,7 +1231,7 @@ fn state_read_qword<S: InterpreterStorage>(
             Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                StorageData::from(*Bytes32::zeroed())
+                StorageData::from(Bytes32::zeroed().as_ref())
             }
         })
         .collect();

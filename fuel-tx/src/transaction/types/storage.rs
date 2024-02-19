@@ -18,24 +18,29 @@ use rand::{
 
 use core::cmp::Ordering;
 use derivative::Derivative;
+use fuel_types::canonical::{
+    Error,
+    Input,
+    Output,
+};
 
-#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
+#[derive(Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct StorageData(
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] pub Vec<u8>,
 );
 
-impl From<Vec<u8>> for StorageData {
-    fn from(c: Vec<u8>) -> Self {
-        Self(c)
+// TODO: Remove fixed size default when adding support for dynamic storage
+impl Default for StorageData {
+    fn default() -> Self {
+        Self(vec![0u8; 32])
     }
 }
 
-impl<const N: usize> From<[u8; N]> for StorageData {
-    fn from(c: [u8; N]) -> Self {
-        Self(c.into())
+impl From<Vec<u8>> for StorageData {
+    fn from(c: Vec<u8>) -> Self {
+        Self(c)
     }
 }
 
@@ -82,6 +87,49 @@ impl IntoIterator for StorageData {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+// TODO: Remove manual serialization when implementing dynamic storage
+// StorageData uses Vec<u8> to represent storage data. We manually implement
+// Serialize and Deserialize in order to preserve the 32-byte serialized format
+// of the StorageData, and by extension, the Create Transaction. When it is
+// possible to write dynamically sized storage data via new opcodes, and
+// dynamically sized slots are supported, remove these implementations, allowing
+// native support for dynamically sized serialization and deserialization.
+impl Serialize for StorageData {
+    fn size_static(&self) -> usize {
+        Bytes32::LEN
+    }
+
+    fn size_dynamic(&self) -> usize {
+        0
+    }
+
+    fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
+        let mut bytes = Bytes32::default();
+        bytes[0..Bytes32::LEN].copy_from_slice(&self.0[0..Bytes32::LEN]);
+        bytes.encode_static(buffer)
+    }
+
+    fn encode_dynamic<O: Output + ?Sized>(&self, _buffer: &mut O) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+// TODO: Remove manual deserialization when implementing dynamic storage
+impl Deserialize for StorageData {
+    fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
+        let bytes = Bytes32::decode(buffer)?;
+        let data = Self::from(bytes.as_ref());
+        Ok(data)
+    }
+
+    fn decode_dynamic<I: Input + ?Sized>(
+        &mut self,
+        _buffer: &mut I,
+    ) -> Result<(), Error> {
+        Ok(())
     }
 }
 
@@ -186,24 +234,19 @@ mod tests {
     fn test_storage_slot_canonical_serialization() {
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let mut value = [0u8; 128];
-        rng.fill_bytes(&mut value);
+        let mut value = StorageData::from(vec![0u8; 32]);
+        rng.fill_bytes(value.as_mut());
 
-        let slot = StorageSlot::new(key, value.into());
-
+        let slot = StorageSlot::new(key, value.clone());
         let slot_bytes = slot.to_bytes();
-
-        let (slot_key, slot_data) = slot_bytes.split_at(32);
-
-        assert_eq!(slot_key, key.as_ref());
-
-        let slot_data_num_bytes =
-            u64::from_bytes(&slot_data[..8]).expect("read from bytes");
-        assert_eq!(slot_data_num_bytes, 128);
-
-        // `from_bytes` works
+        // dbg!(slot_bytes.len());
+        // dbg!(&slot_bytes);
+        let (slot_key, slot_value) = slot_bytes.split_at(32);
         let recreated_slot =
             StorageSlot::from_bytes(&slot_bytes).expect("read from bytes");
+
+        assert_eq!(slot_key, key.as_ref());
+        assert_eq!(slot_value, value.as_ref());
         assert_eq!(recreated_slot, slot);
     }
 
@@ -211,12 +254,13 @@ mod tests {
     fn test_storage_slot_size() {
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let mut value = [0u8; 128];
-        rng.fill_bytes(&mut value);
+        let mut value = StorageData::from(vec![0u8; 32]);
+        rng.fill_bytes(value.as_mut());
 
-        let slot = StorageSlot::new(key, value.into());
+        let slot = StorageSlot::new(key, value);
         let size = slot.size();
-        let expected_size = 32 + 8 + 128; // Key + u64 (data size) + Data
+
+        let expected_size = 64; // 32-byte Key + 32-byte Data
         assert_eq!(size, expected_size);
     }
 }

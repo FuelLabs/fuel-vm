@@ -1071,13 +1071,13 @@ fn code_root_a_plus_32_overflow() {
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
 
-    let arb_gas_price = 1;
+    let zero_gas_price = 0;
 
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots, arb_gas_price);
+    deploy_contract(&mut client, contract, salt, storage_slots, zero_gas_price);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;
@@ -1119,13 +1119,13 @@ fn code_root_a_over_max_ram() {
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
 
-    let arb_gas_price = 1;
+    let zero_gas_price = 0;
 
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots, arb_gas_price);
+    deploy_contract(&mut client, contract, salt, storage_slots, zero_gas_price);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;

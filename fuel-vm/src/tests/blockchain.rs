@@ -62,6 +62,7 @@ fn deploy_contract(
     contract: Witness,
     salt: Salt,
     storage_slots: Vec<StorageSlot>,
+    gas_price: u64,
 ) {
     let code_root = Contract::root_from_code(contract.as_ref());
     let state_root = Contract::initial_state_root(storage_slots.iter());
@@ -74,10 +75,10 @@ fn deploy_contract(
         .with_tx_params(tx_params)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     client
-        .deploy(contract_deployer)
+        .deploy(contract_deployer, gas_price)
         .expect("valid contract deployment");
 }
 
@@ -1069,11 +1070,14 @@ fn code_root_a_plus_32_overflow() {
     let salt = Default::default();
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
+
+    let arb_gas_price = 1;
+
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots);
+    deploy_contract(&mut client, contract, salt, storage_slots, arb_gas_price);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;
@@ -1114,11 +1118,14 @@ fn code_root_a_over_max_ram() {
     let salt = Default::default();
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
+
+    let arb_gas_price = 1;
+
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots);
+    deploy_contract(&mut client, contract, salt, storage_slots, arb_gas_price);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;

@@ -737,7 +737,6 @@ impl Input {
         }
     }
 
-
     pub fn compute_message_id(
         sender: &Address,
         recipient: &Address,

@@ -413,24 +413,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
         self.inputs_mut().push(input);
     }
-
-    // /// Prepare the transaction for VM initialization for script or predicate execution
-    // ///
-    // /// note: Fields dependent on storage/state such as balance and state roots
-    // /// should already set by the client beforehand.
-    // fn __prepare_init_execute(&mut self) -> &mut Self {
-    //     // *self.receipts_root_mut() = Default::default();
-
-    //     self.inputs_mut()
-    //         .iter_mut()
-    //         .for_each(|o| o.prepare_init_execute());
-
-    //     self.outputs_mut()
-    //         .iter_mut()
-    //         .for_each(|o| o.prepare_init_execute());
-
-    //     self
-    // }
 }
 
 impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}

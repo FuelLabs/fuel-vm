@@ -16,7 +16,10 @@ use crate::{
     storage::InterpreterStorage,
 };
 use fuel_asm::RegId;
-use fuel_tx::field::{ScriptGasLimit, ReceiptsRoot};
+use fuel_tx::field::{
+    ReceiptsRoot,
+    ScriptGasLimit,
+};
 use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;

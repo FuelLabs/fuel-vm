@@ -399,16 +399,22 @@ fn get_transaction_fields() {
     let outputs = tx.as_ref().outputs();
     let witnesses = tx.as_ref().witnesses();
 
-    let inputs_bytes: Vec<Vec<u8>> =
-        inputs.iter().map(|v| {
+    let inputs_bytes: Vec<Vec<u8>> = inputs
+        .iter()
+        .map(|v| {
             let mut v = v.clone();
             v.prepare_init_execute();
-            v.clone().to_bytes()}).collect();
-    let outputs_bytes: Vec<Vec<u8>> =
-        outputs.iter().map(|v| {
+            v.clone().to_bytes()
+        })
+        .collect();
+    let outputs_bytes: Vec<Vec<u8>> = outputs
+        .iter()
+        .map(|v| {
             let mut v = v.clone();
             v.prepare_init_execute();
-            v.clone().to_bytes()}).collect();
+            v.clone().to_bytes()
+        })
+        .collect();
     let witnesses_bytes: Vec<Vec<u8>> =
         witnesses.iter().map(|w| w.clone().to_bytes()).collect();
 

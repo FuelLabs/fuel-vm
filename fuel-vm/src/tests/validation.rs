@@ -103,8 +103,8 @@ fn malleable_fields_do_not_affect_validity() {
             op::sw(0x26, RegId::ZERO, 0), // Zero out the witness count
             // Actually hash
             op::subi(0x24, 0x21, 64 + 8 - 8), // Offset ptr
-            op::s256(RegId::HP, 0x22, 0x24), // Compute tx id hash
-            op::movi(0x25, 32),              // Hash size
+            op::s256(RegId::HP, 0x22, 0x24),  // Compute tx id hash
+            op::movi(0x25, 32),               // Hash size
             op::logd(0x00, 0x00, RegId::HP, 0x25), // Log computed txid
             op::logd(0, 0, 0x22, 0x24),
             // Done

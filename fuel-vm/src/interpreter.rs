@@ -166,42 +166,6 @@ impl Default for InterpreterParams {
     }
 }
 
-// impl From<ConsensusParameters> for InterpreterParams {
-//     fn from(value: ConsensusParameters) -> Self {
-//         InterpreterParams::from(&value)
-//     }
-// }
-//
-// impl From<&ConsensusParameters> for InterpreterParams {
-//     fn from(value: &ConsensusParameters) -> Self {
-//         InterpreterParams {
-//             gas_costs: value.gas_costs.to_owned(),
-//             max_inputs: value.tx_params.max_inputs,
-//             contract_max_size: value.contract_params.contract_max_size,
-//             tx_offset: value.tx_params.tx_offset(),
-//             max_message_data_length: value.predicate_params.max_message_data_length,
-//             chain_id: value.chain_id,
-//             fee_params: value.fee_params,
-//             base_asset_id: value.base_asset_id,
-//         }
-//     }
-// }
-
-// impl From<CheckPredicateParams> for InterpreterParams {
-//     fn from(params: CheckPredicateParams) -> Self {
-//         InterpreterParams {
-//             gas_costs: params.gas_costs,
-//             max_inputs: params.max_inputs,
-//             contract_max_size: params.contract_max_size,
-//             tx_offset: params.tx_offset,
-//             max_message_data_length: params.max_message_data_length,
-//             chain_id: params.chain_id,
-//             fee_params: params.fee_params,
-//             base_asset_id: params.base_asset_id,
-//         }
-//     }
-// }
-
 impl InterpreterParams {
     /// Constructor for `InterpreterParams`
     pub fn new<T: Into<CheckPredicateParams>>(gas_price: Word, params: T) -> Self {

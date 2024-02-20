@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 #### Breaking
 
+- [#679](https://github.com/FuelLabs/fuel-vm/pull/679): Require less restricted constraint on `MerkleRootStorage` trait. Now it requires `StorageInspect` instead of the `StorageMutate`.
 - [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Removed `ContractsInfo` table. Contract salts and roots are no longer stored in on-chain data.
 - [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Opcode `CROO` now calculates the given contract's root on demand. `CROO` has therefore been changed to a `DependentCost` gas cost.
 

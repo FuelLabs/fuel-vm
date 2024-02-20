@@ -379,6 +379,7 @@ mod use_std {
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
+                self.rng.gen(),
             );
 
             builder.finalize()

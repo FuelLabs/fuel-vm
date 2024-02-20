@@ -172,6 +172,7 @@ impl TransactionBuilder<Mint> {
         output_contract: output::contract::Contract,
         mint_amount: Word,
         mint_asset_id: AssetId,
+        gas_price: Word,
     ) -> Self {
         let tx = Mint {
             tx_pointer: TxPointer::new(block_height, tx_index),
@@ -179,6 +180,7 @@ impl TransactionBuilder<Mint> {
             output_contract,
             mint_amount,
             mint_asset_id,
+            gas_price,
             metadata: None,
         };
 

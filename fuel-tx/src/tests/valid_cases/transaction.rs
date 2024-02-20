@@ -1085,6 +1085,7 @@ fn mint() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
     )
     .finalize()
     .check(block_height, &test_params())
@@ -1103,6 +1104,7 @@ fn mint() {
         },
         rng.gen(),
         rng.gen(),
+        rng.gen(),
     )
     .finalize()
     .check(block_height, &test_params())
@@ -1119,6 +1121,7 @@ fn mint() {
             balance_root: rng.gen(),
             state_root: rng.gen(),
         },
+        rng.gen(),
         rng.gen(),
         rng.gen(),
     )

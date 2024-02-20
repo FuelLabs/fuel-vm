@@ -46,6 +46,7 @@ pub trait InterpreterStorage:
     StorageMutate<ContractsRawCode, Error = Self::DataError>
     + StorageSize<ContractsRawCode, Error = Self::DataError>
     + StorageRead<ContractsRawCode, Error = Self::DataError>
+    + StorageMutate<ContractsState, Error = Self::DataError>
     + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
@@ -189,7 +190,9 @@ pub trait InterpreterStorage:
 }
 
 /// Storage operations for contract assets.
-pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets> {
+pub trait ContractsAssetsStorage:
+    MerkleRootStorage<ContractId, ContractsAssets> + StorageMutate<ContractsAssets>
+{
     /// Fetch the balance of an asset ID in a contract storage.
     fn merkle_contract_asset_id_balance(
         &self,

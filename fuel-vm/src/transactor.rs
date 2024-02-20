@@ -197,8 +197,8 @@ where
 impl<S, Tx, Ecal> Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage,
-    Tx: ExecutableTransaction + core::fmt::Debug,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata + core::fmt::Debug,
+    Tx: ExecutableTransaction,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
 {
     /// Execute a transaction, and return the new state of the transactor

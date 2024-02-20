@@ -631,8 +631,8 @@ where
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
-    Tx: ExecutableTransaction + core::fmt::Debug,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata + core::fmt::Debug,
+    Tx: ExecutableTransaction,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler + Default,
 {
     /// Allocate internally a new instance of [`Interpreter`] with the provided
@@ -656,8 +656,8 @@ where
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
-    Tx: ExecutableTransaction + core::fmt::Debug,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata + core::fmt::Debug,
+    Tx: ExecutableTransaction,
+    <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
 {
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided

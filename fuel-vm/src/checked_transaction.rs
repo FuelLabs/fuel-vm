@@ -53,8 +53,6 @@ bitflags::bitflags! {
         const Signatures    = 0b00000010;
         /// Check that predicate in the transactions are valid.
         const Predicates    = 0b00000100;
-        /// Malleable fields are zeroed.
-        const ZeroMalleable = 0b00001000;
     }
 }
 

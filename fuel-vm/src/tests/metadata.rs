@@ -667,12 +667,6 @@ fn get_transaction_fields() {
         op::addi(0x30, 0x30, cases[10].len().try_into().unwrap()),
         op::addi(0x30, 0x30, cases[11].len().try_into().unwrap()),
 
-        // op::movi(0x11, 0x01),
-        // op::movi(0x19, contract_input_index as Immediate18),
-        // op::gtf_args(0x10, 0x19, GTFArgs::InputContractOutputIndex),
-        // op::eq(0x10, 0x10, RegId::ZERO),
-        // op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractId),
         op::movi(0x11, cases[12].len() as Immediate18),
@@ -799,19 +793,9 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0x01),
-        // op::gtf_args(0x10, 0x19, GTFArgs::OutputContractBalanceRoot),
-        op::movi(0x11, cases[21].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        // op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x19, 0x01),
-        // op::gtf_args(0x10, 0x19, GTFArgs::OutputContractStateRoot),
-        op::movi(0x11, cases[22].len() as Immediate18),
-        // op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        // op::and(0x20, 0x20, 0x10),
+        // Sjip over always-zero OutputContract fields
+        op::addi(0x30, 0x30, cases[21].len().try_into().unwrap()),
+        op::addi(0x30, 0x30, cases[22].len().try_into().unwrap()),
 
         op::movi(0x11, witnesses[1].as_ref().len() as Immediate18),
         op::movi(0x19, 0x01),

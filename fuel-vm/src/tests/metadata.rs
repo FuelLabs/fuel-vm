@@ -410,7 +410,7 @@ fn get_transaction_fields() {
     let outputs_bytes: Vec<Vec<u8>> = outputs
         .iter()
         .map(|v| {
-            let mut v = v.clone();
+            let mut v = *v;
             v.prepare_init_execute();
             v.clone().to_bytes()
         })

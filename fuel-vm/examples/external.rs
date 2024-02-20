@@ -109,7 +109,7 @@ fn example_file_read() {
         .finalize()
         .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, zero_gas_price);
+    client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::LogData { data, .. } = receipts.first().unwrap() else {
@@ -169,7 +169,7 @@ fn example_counter() {
         .finalize()
         .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, zero_gas_price);
+    client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::Log { ra, rb, rc, rd, .. } = receipts.first().unwrap() else {
@@ -233,7 +233,7 @@ fn example_shared_counter() {
         .finalize()
         .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, zero_gas_price);
+    client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::Log { ra, rb, rc, rd, .. } = receipts.first().unwrap() else {

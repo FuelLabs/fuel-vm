@@ -92,12 +92,12 @@ fn metadata() {
         .into_checked(height, &consensus_params, gas_price)
         .expect("failed to check tx");
 
-    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     // Deploy the contract into the blockchain
     assert!(
         Transactor::<_, _>::new(&mut storage, interpreter_params.clone())
-            .transact(tx, gas_price)
+            .transact(tx)
             .is_success()
     );
 
@@ -144,7 +144,7 @@ fn metadata() {
 
     assert!(
         Transactor::<_, _>::new(&mut storage, interpreter_params.clone())
-            .transact(tx, gas_price)
+            .transact(tx)
             .is_success()
     );
 
@@ -204,7 +204,7 @@ fn metadata() {
         .expect("failed to check tx");
 
     let receipts = Transactor::<_, _>::new(&mut storage, interpreter_params)
-        .transact(tx, gas_price)
+        .transact(tx)
         .receipts()
         .expect("Failed to transact")
         .to_owned();
@@ -259,7 +259,7 @@ fn get_metadata_chain_id() {
         .into_checked(height, &consensus_params, zero_gas_price)
         .unwrap();
 
-    let receipts = client.transact(script, zero_gas_price);
+    let receipts = client.transact(script);
 
     if let Receipt::Return { val, .. } = receipts[0].clone() {
         assert_eq!(val, *chain_id);
@@ -299,7 +299,7 @@ fn get_transaction_fields() {
         .add_random_fee_input()
         .finalize_checked(height, zero_gas_price);
 
-    client.deploy(tx, zero_gas_price);
+    client.deploy(tx);
 
     let predicate = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];
@@ -892,7 +892,7 @@ fn get_transaction_fields() {
         .max_fee_limit(max_fee_limit)
         .finalize_checked_basic(height, zero_gas_price);
 
-    let receipts = client.transact(tx, zero_gas_price);
+    let receipts = client.transact(tx);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));

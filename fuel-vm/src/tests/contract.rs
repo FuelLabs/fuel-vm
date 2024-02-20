@@ -79,11 +79,11 @@ fn prevent_contract_id_redeployment() {
 
     // deploy contract
     client
-        .deploy(create.clone(), gas_price)
+        .deploy(create.clone())
         .expect("First create should be executed");
     let mut txtor: Transactor<_, _> = client.into();
     // second deployment should fail
-    let result = txtor.deploy(create, gas_price).unwrap_err();
+    let result = txtor.deploy(create).unwrap_err();
     assert_eq!(
         result,
         InterpreterError::Panic(PanicReason::ContractIdAlreadyDeployed)

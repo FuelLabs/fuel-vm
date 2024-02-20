@@ -78,16 +78,16 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     }
 
     /// Deploys a `Create` transaction.
-    pub fn deploy(&mut self, tx: Checked<Create>, gas_price: u64) -> Option<Create> {
-        self.transactor.deploy(tx, gas_price).ok()
+    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<Create> {
+        self.transactor.deploy(tx).ok()
     }
 
     /// Execute a transaction.
     ///
     /// Since the memory storage is `Infallible`, associatively, the memory
     /// client should also be.
-    pub fn transact(&mut self, tx: Checked<Script>, gas_price: u64) -> &[Receipt] {
-        self.transactor.transact(tx, gas_price);
+    pub fn transact(&mut self, tx: Checked<Script>) -> &[Receipt] {
+        self.transactor.transact(tx);
 
         // TODO `Transactor::result` should accept error as generic so compile-time
         // constraints can be applied.

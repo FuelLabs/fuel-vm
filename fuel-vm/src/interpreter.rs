@@ -9,10 +9,7 @@ use crate::{
     error::SimpleResult,
     state::Debugger,
 };
-use alloc::{
-    borrow::ToOwned,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use core::{
     mem,
     ops::Index,
@@ -26,7 +23,6 @@ use fuel_tx::{
     field,
     output,
     Chargeable,
-    ConsensusParameters,
     ContractParameters,
     Create,
     Executable,
@@ -134,6 +130,8 @@ pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
 /// Interpreter parameters
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterpreterParams {
+    /// Gas Price
+    pub gas_price: Word,
     /// Gas costs
     pub gas_costs: GasCosts,
     /// Maximum number of inputs
@@ -155,6 +153,7 @@ pub struct InterpreterParams {
 impl Default for InterpreterParams {
     fn default() -> Self {
         Self {
+            gas_price: 0,
             gas_costs: Default::default(),
             max_inputs: TxParameters::DEFAULT.max_inputs,
             contract_max_size: ContractParameters::DEFAULT.contract_max_size,
@@ -167,30 +166,48 @@ impl Default for InterpreterParams {
     }
 }
 
-impl From<ConsensusParameters> for InterpreterParams {
-    fn from(value: ConsensusParameters) -> Self {
-        InterpreterParams::from(&value)
-    }
-}
+// impl From<ConsensusParameters> for InterpreterParams {
+//     fn from(value: ConsensusParameters) -> Self {
+//         InterpreterParams::from(&value)
+//     }
+// }
+//
+// impl From<&ConsensusParameters> for InterpreterParams {
+//     fn from(value: &ConsensusParameters) -> Self {
+//         InterpreterParams {
+//             gas_costs: value.gas_costs.to_owned(),
+//             max_inputs: value.tx_params.max_inputs,
+//             contract_max_size: value.contract_params.contract_max_size,
+//             tx_offset: value.tx_params.tx_offset(),
+//             max_message_data_length: value.predicate_params.max_message_data_length,
+//             chain_id: value.chain_id,
+//             fee_params: value.fee_params,
+//             base_asset_id: value.base_asset_id,
+//         }
+//     }
+// }
 
-impl From<&ConsensusParameters> for InterpreterParams {
-    fn from(value: &ConsensusParameters) -> Self {
-        InterpreterParams {
-            gas_costs: value.gas_costs.to_owned(),
-            max_inputs: value.tx_params.max_inputs,
-            contract_max_size: value.contract_params.contract_max_size,
-            tx_offset: value.tx_params.tx_offset(),
-            max_message_data_length: value.predicate_params.max_message_data_length,
-            chain_id: value.chain_id,
-            fee_params: value.fee_params,
-            base_asset_id: value.base_asset_id,
-        }
-    }
-}
+// impl From<CheckPredicateParams> for InterpreterParams {
+//     fn from(params: CheckPredicateParams) -> Self {
+//         InterpreterParams {
+//             gas_costs: params.gas_costs,
+//             max_inputs: params.max_inputs,
+//             contract_max_size: params.contract_max_size,
+//             tx_offset: params.tx_offset,
+//             max_message_data_length: params.max_message_data_length,
+//             chain_id: params.chain_id,
+//             fee_params: params.fee_params,
+//             base_asset_id: params.base_asset_id,
+//         }
+//     }
+// }
 
-impl From<CheckPredicateParams> for InterpreterParams {
-    fn from(params: CheckPredicateParams) -> Self {
-        InterpreterParams {
+impl InterpreterParams {
+    /// Constructor for `InterpreterParams`
+    pub fn new<T: Into<CheckPredicateParams>>(gas_price: Word, params: T) -> Self {
+        let params: CheckPredicateParams = params.into();
+        Self {
+            gas_price,
             gas_costs: params.gas_costs,
             max_inputs: params.max_inputs,
             contract_max_size: params.contract_max_size,
@@ -258,6 +275,11 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Get max_inputs value
     pub fn max_inputs(&self) -> u8 {
         self.interpreter_params.max_inputs
+    }
+
+    /// Gas price for current block
+    pub fn gas_price(&self) -> Word {
+        self.interpreter_params.gas_price
     }
 
     /// Gas costs for opcodes

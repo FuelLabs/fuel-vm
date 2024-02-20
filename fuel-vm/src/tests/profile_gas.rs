@@ -57,7 +57,7 @@ fn profile_gas() {
                 .into(),
         );
 
-        let receipts = client.transact(tx_deploy, gas_price);
+        let receipts = client.transact(tx_deploy);
 
         if let Some(Receipt::ScriptResult { result, .. }) = receipts.last() {
             if count == case_out_of_gas {

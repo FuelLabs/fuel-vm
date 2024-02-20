@@ -41,10 +41,10 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .into_checked(height, &consensus_params, gas_price)
         .expect("failed to check tx");
 
-    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     let mut vm = Transactor::new(storage, interpreter_params);
-    vm.transact(tx, gas_price);
+    vm.transact(tx);
     vm
 }
 

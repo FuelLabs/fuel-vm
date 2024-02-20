@@ -24,7 +24,7 @@ fn memcopy() {
 
     let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
-        InterpreterParams::from(&consensus_params),
+        InterpreterParams::new(zero_gas_price, &consensus_params),
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
         .script_gas_limit(100_000)

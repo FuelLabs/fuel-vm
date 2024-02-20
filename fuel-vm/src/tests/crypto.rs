@@ -89,7 +89,7 @@ fn secp256k1_recover() {
         .add_random_fee_input()
         .finalize_checked(height, gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
@@ -150,7 +150,7 @@ fn ecrecover_tx_id() {
         .into_checked(height, &consensus_params, gas_price)
         .unwrap();
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Return{ val, .. } if *val == 1));
@@ -230,7 +230,7 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&check_params)
+            .estimate_predicates_async::<TokioWithRayon>(gas_price, &check_params)
             .await
             .expect("Should estimate predicate successfully");
 
@@ -240,7 +240,7 @@ async fn recover_tx_id_predicate() {
     }
 
     // sequential version
-    tx.estimate_predicates(&check_params)
+    tx.estimate_predicates(gas_price, &check_params)
         .expect("Should estimate predicate successfully");
 
     tx.into_checked(maturity, &consensus_params, gas_price)
@@ -381,7 +381,7 @@ fn secp256r1_recover() {
         .add_random_fee_input()
         .finalize_checked(height, gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
@@ -518,7 +518,7 @@ fn ed25519_verify() {
         .add_random_fee_input()
         .finalize_checked(height, gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 0));
@@ -651,7 +651,7 @@ fn sha256() {
         .add_random_fee_input()
         .finalize_checked(height, gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
@@ -743,7 +743,7 @@ fn keccak256() {
         .add_random_fee_input()
         .finalize_checked(height, gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));

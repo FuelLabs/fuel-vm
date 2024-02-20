@@ -84,7 +84,7 @@ fn code_coverage() {
             .into(),
     );
 
-    let receipts = client.transact(tx_script, gas_price);
+    let receipts = client.transact(tx_script);
 
     if let Some(Receipt::ScriptResult { result, .. }) = receipts.last() {
         assert!(matches!(result, ScriptExecutionResult::Success));

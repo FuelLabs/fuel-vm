@@ -131,13 +131,14 @@ where
     /// predicates.
     pub fn check_predicates(
         checked: &Checked<Tx>,
+        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let tx = checked.transaction();
-        Self::run_predicate(PredicateRunKind::Verifying(tx), params)
+        Self::run_predicate(PredicateRunKind::Verifying(tx), gas_price, params)
     }
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -147,6 +148,7 @@ where
     /// predicates.
     pub async fn check_predicates_async<E>(
         checked: &Checked<Tx>,
+        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -156,9 +158,12 @@ where
     {
         let tx = checked.transaction();
 
-        let predicates_checked =
-            Self::run_predicate_async::<E>(PredicateRunKind::Verifying(tx), params)
-                .await?;
+        let predicates_checked = Self::run_predicate_async::<E>(
+            PredicateRunKind::Verifying(tx),
+            gas_price,
+            params,
+        )
+        .await?;
 
         Ok(predicates_checked)
     }
@@ -171,10 +176,14 @@ where
     /// predicates.
     pub fn estimate_predicates(
         transaction: &mut Tx,
+        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
-        let predicates_checked =
-            Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
+        let predicates_checked = Self::run_predicate(
+            PredicateRunKind::Estimating(transaction),
+            gas_price,
+            params,
+        )?;
         Ok(predicates_checked)
     }
 
@@ -186,6 +195,7 @@ where
     /// predicates.
     pub async fn estimate_predicates_async<E>(
         transaction: &mut Tx,
+        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -194,6 +204,7 @@ where
     {
         let predicates_checked = Self::run_predicate_async::<E>(
             PredicateRunKind::Estimating(transaction),
+            gas_price,
             params,
         )
         .await?;
@@ -203,6 +214,7 @@ where
 
     async fn run_predicate_async<E>(
         kind: PredicateRunKind<'_, Tx>,
+        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -226,6 +238,7 @@ where
                         index,
                         predicate_action,
                         predicate,
+                        gas_price,
                         my_params,
                     )
                 });
@@ -241,6 +254,7 @@ where
 
     fn run_predicate(
         kind: PredicateRunKind<'_, Tx>,
+        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
         let predicate_action = PredicateAction::from(&kind);
@@ -257,6 +271,7 @@ where
                     index,
                     predicate_action,
                     predicate,
+                    gas_price,
                     params.clone(),
                 ));
             }
@@ -270,6 +285,7 @@ where
         index: usize,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
+        gas_price: Word,
         params: CheckPredicateParams,
     ) -> Result<(Word, usize), PredicateVerificationFailed> {
         match &tx.inputs()[index] {
@@ -297,7 +313,7 @@ where
 
         let max_gas_per_tx = params.max_gas_per_tx;
         let max_gas_per_predicate = params.max_gas_per_predicate;
-        let interpreter_params = params.into();
+        let interpreter_params = InterpreterParams::new(gas_price, params);
 
         let mut vm = Self::with_storage(PredicateStorage {}, interpreter_params);
 
@@ -476,14 +492,12 @@ where
         Ok(())
     }
 
-    pub(crate) fn run(
-        &mut self,
-        gas_price: Word,
-    ) -> Result<ProgramState, InterpreterError<S::DataError>> {
+    pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         // TODO: Remove `Create` from here
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::deploy_inner(
                 create,
@@ -578,6 +592,7 @@ where
             }
 
             let revert = matches!(program, ProgramState::Revert(_));
+            let gas_price = self.gas_price();
             Self::finalize_outputs(
                 &mut self.tx,
                 &gas_costs,
@@ -642,11 +657,10 @@ where
         storage: S,
         tx: Checked<Tx>,
         params: InterpreterParams,
-        gas_price: Word,
     ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
         let mut interpreter = Self::with_storage(storage, params);
         interpreter
-            .transact(tx, gas_price)
+            .transact(tx)
             .map(ProgramState::from)
             .map(|state| {
                 StateTransition::new(state, interpreter.tx, interpreter.receipts.into())
@@ -668,9 +682,8 @@ where
     pub fn transact(
         &mut self,
         tx: Checked<Tx>,
-        gas_price: Word,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
-        let state_result = self.init_script(tx).and_then(|_| self.run(gas_price));
+        let state_result = self.init_script(tx).and_then(|_| self.run());
 
         #[cfg(feature = "profile-any")]
         {
@@ -701,12 +714,12 @@ where
     pub fn deploy(
         &mut self,
         tx: Checked<Create>,
-        gas_price: Word,
     ) -> Result<Create, InterpreterError<S::DataError>> {
         let (mut create, metadata) = tx.into();
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,

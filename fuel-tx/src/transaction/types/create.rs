@@ -231,7 +231,7 @@ impl FormatValidityChecks for Create {
             ..
         } = consensus_params;
 
-        check_common_part(self, block_height, consensus_params, gas_price)?;
+        check_common_part(self, block_height, gas_price, consensus_params)?;
 
         let bytecode_witness_len = self
             .witnesses

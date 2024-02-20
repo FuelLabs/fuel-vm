@@ -37,7 +37,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .finalize()
         .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, zero_gas_price);
+    client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()
 }
 

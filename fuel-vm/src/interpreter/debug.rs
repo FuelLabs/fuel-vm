@@ -116,7 +116,7 @@ fn breakpoint_script() {
     suite.iter().for_each(|(b, _)| vm.set_breakpoint(*b));
 
     let state = vm
-        .transact(tx, zero_gas_price)
+        .transact(tx)
         .map(ProgramState::from)
         .expect("Failed to execute script!");
 
@@ -171,7 +171,7 @@ fn single_stepping() {
     vm.set_single_stepping(true);
 
     let mut state = vm
-        .transact(tx, zero_gas_price)
+        .transact(tx)
         .map(ProgramState::from)
         .expect("Failed to execute script!");
 

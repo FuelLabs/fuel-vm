@@ -189,9 +189,8 @@ where
     pub fn deploy(
         &mut self,
         checked: Checked<Create>,
-        gas_price: u64,
     ) -> Result<Create, InterpreterError<S::DataError>> {
-        self.interpreter.deploy(checked, gas_price)
+        self.interpreter.deploy(checked)
     }
 }
 
@@ -203,8 +202,8 @@ where
     Ecal: EcalHandler,
 {
     /// Execute a transaction, and return the new state of the transactor
-    pub fn transact(&mut self, tx: Checked<Tx>, gas_price: u64) -> &mut Self {
-        match self.interpreter.transact(tx, gas_price) {
+    pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
+        match self.interpreter.transact(tx) {
             Ok(s) => {
                 self.program_state.replace(s.into());
                 self.error.take();

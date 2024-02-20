@@ -78,7 +78,7 @@ fn deploy_contract(
         .finalize_checked(height, gas_price);
 
     client
-        .deploy(contract_deployer, gas_price)
+        .deploy(contract_deployer)
         .expect("valid contract deployment");
 }
 
@@ -599,7 +599,7 @@ fn ldc__load_len_of_target_contract<'a>(
             .into_checked(height, &consensus_params, gas_price)
             .expect("failed to check tx");
 
-    client.deploy(tx_create_target, gas_price);
+    client.deploy(tx_create_target);
 
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
@@ -678,7 +678,7 @@ fn ldc__load_len_of_target_contract<'a>(
             .into_checked(height, &consensus_params, gas_price)
             .expect("failed to check tx");
 
-    client.transact(tx_deploy_loader, gas_price)
+    client.transact(tx_deploy_loader)
 }
 
 fn pad(a: u16) -> u16 {
@@ -694,6 +694,7 @@ fn pad(a: u16) -> u16 {
 fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
+    let gas_price = 0;
 
     // make gas costs free
     let gas_costs = GasCosts::default();
@@ -703,14 +704,13 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         ..Default::default()
     };
 
-    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     let mut client = MemoryClient::<NotSupportedEcal>::new(
         MemoryStorage::default(),
         interpreter_params,
     );
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -739,7 +739,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         .into_checked(height, &consensus_params, gas_price)
         .expect("failed to check tx");
 
-    client.deploy(tx_create_target, gas_price);
+    client.deploy(tx_create_target);
 
     let load_contract = cmd;
 
@@ -754,7 +754,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     .into_checked(height, &consensus_params, gas_price)
     .expect("failed to check tx");
 
-    let receipts = client.transact(tx_deploy_loader, gas_price);
+    let receipts = client.transact(tx_deploy_loader);
     if let Receipt::Panic {
         id: _,
         reason,
@@ -1694,7 +1694,7 @@ fn smo_instruction_works() {
         let retryable_balance: u64 = tx.metadata().retryable_balance.into();
 
         let txid = tx.transaction().id(&ChainId::default());
-        let receipts = client.transact(tx, gas_price);
+        let receipts = client.transact(tx);
 
         let success = receipts.iter().any(|r| {
             matches!(
@@ -1827,7 +1827,7 @@ fn timestamp_works() {
             .add_random_fee_input()
             .finalize_checked(block_height, gas_price);
 
-        let receipts = client.transact(tx, gas_price);
+        let receipts = client.transact(tx);
         let result = receipts.iter().any(|r| {
             matches!(
                 r,
@@ -1882,7 +1882,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
         .add_random_fee_input()
         .finalize_checked(current_height, gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let Some(Receipt::Log { ra, .. }) = receipts.first() else {
         panic!("expected log receipt");
     };
@@ -1932,7 +1932,7 @@ fn block_hash_works(
         .add_random_fee_input()
         .finalize_checked(current_height, gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
         panic!("expected log receipt");
     };
@@ -1971,7 +1971,7 @@ fn coinbase_works() {
         .add_random_fee_input()
         .finalize_checked(10.into(), gas_price);
 
-    let receipts = client.transact(tx, gas_price);
+    let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
         panic!("expected log receipt");
     };

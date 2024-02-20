@@ -57,7 +57,7 @@ fn noop_ecal() {
         .finalize()
         .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, zero_gas_price);
+    client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() else {
@@ -133,7 +133,7 @@ fn provide_ecal_fn() {
         .finalize()
         .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
-    client.transact(tx, zero_gas_price);
+    client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
 
     let Receipt::Log { ra, rb, .. } = receipts.first().unwrap() else {

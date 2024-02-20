@@ -315,8 +315,8 @@ where
 pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
-    consensus_params: &ConsensusParameters,
     gas_price: u64,
+    consensus_params: &ConsensusParameters,
 ) -> Result<(), ValidityError>
 where
     T: canonical::Serialize + Chargeable + field::Outputs,

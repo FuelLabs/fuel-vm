@@ -104,7 +104,7 @@ fn variable_output_updates_in_memory() {
     let consensus_params = ConsensusParameters::standard();
     let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
-        InterpreterParams::from(&consensus_params),
+        InterpreterParams::new(zero_gas_price, &consensus_params),
     );
 
     let gas_limit = 1_000_000;

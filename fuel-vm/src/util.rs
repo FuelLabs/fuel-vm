@@ -463,7 +463,7 @@ pub mod test_helpers {
         {
             self.storage.set_block_height(self.block_height);
 
-            transactor.transact(checked, self.gas_price);
+            transactor.transact(checked);
 
             let storage = transactor.as_mut().clone();
 
@@ -498,7 +498,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
-            let interpreter_params = InterpreterParams::from(&self.consensus_params);
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -509,7 +510,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
-            let interpreter_params = (&self.consensus_params).into();
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -519,8 +521,10 @@ pub mod test_helpers {
         pub fn execute_tx_with_backtrace(
             &mut self,
             checked: Checked<Script>,
+            gas_price: u64,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
-            let interpreter_params = (&self.consensus_params).into();
+            let interpreter_params =
+                InterpreterParams::new(gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -611,7 +615,7 @@ pub mod test_helpers {
             .finalize_checked(height, zero_gas_price);
 
         client
-            .deploy(contract_deployer, zero_gas_price)
+            .deploy(contract_deployer)
             .expect("valid contract deployment");
 
         // call deployed contract
@@ -645,21 +649,15 @@ pub mod test_helpers {
             .add_output(Output::contract(0, Default::default(), Default::default()))
             .finalize_checked(height, zero_gas_price);
 
-        check_reason_for_transaction(
-            client,
-            tx_deploy_loader,
-            expected_reason,
-            zero_gas_price,
-        );
+        check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }
 
     pub fn check_reason_for_transaction(
         mut client: MemoryClient,
         checked_tx: Checked<Script>,
         expected_reason: PanicReason,
-        gas_price: u64,
     ) {
-        let receipts = client.transact(checked_tx, gas_price);
+        let receipts = client.transact(checked_tx);
 
         let panic_found = receipts.iter().any(|receipt| {
             if let Receipt::Panic { id: _, reason, .. } = receipt {

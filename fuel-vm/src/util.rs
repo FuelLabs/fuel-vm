@@ -489,11 +489,8 @@ pub mod test_helpers {
             let mut deser_tx = Transaction::decode(&mut tx_mem).unwrap();
 
             // Patch the tx with correct receipts root
-            match deser_tx {
-                Transaction::Script(ref mut s) => {
-                    *s.receipts_root_mut() = interpreter.compute_receipts_root();
-                }
-                _ => {}
+            if let Transaction::Script(ref mut s) = deser_tx {
+                *s.receipts_root_mut() = interpreter.compute_receipts_root();
             }
 
             assert_eq!(deser_tx, transaction);

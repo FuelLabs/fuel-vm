@@ -646,6 +646,7 @@ impl From<PredicateVerificationFailed> for CheckError {
 }
 
 #[cfg(feature = "random")]
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
     #![allow(clippy::cast_possible_truncation)]
@@ -950,6 +951,7 @@ mod tests {
         input_amount: u64,
         gas_price_factor: u64,
         seed: u64,
+        tip: u64,
     ) -> TestResult {
         // dont divide by zero
         if gas_price_factor == 0 {
@@ -967,8 +969,8 @@ mod tests {
         // When
         let refund = tx.refund_fee(&gas_costs, &fee_params, used_gas, gas_price);
 
-        let min_fee = tx.min_fee(&gas_costs, &fee_params, gas_price);
-        let max_fee = tx.max_fee(&gas_costs, &fee_params, gas_price);
+        let min_fee = tx.min_fee(&gas_costs, &fee_params, gas_price, tip);
+        let max_fee = tx.max_fee(&gas_costs, &fee_params, gas_price, tip);
 
         // Then
         if let Some(refund) = refund {
@@ -1469,13 +1471,12 @@ mod tests {
     }
 
     #[test]
-    fn checked_from_tx__including_tip_increases_max_fee() {
+    fn checked_from_tx__including_tip_increases_fees() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 1000;
         let gas_price = 1;
         let gas_limit = 1000;
         let mut tx = base_asset_tx(rng, input_amount, gas_limit);
-        let consensus_params = params(1);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::default();
 
@@ -1488,8 +1489,9 @@ mod tests {
             &tipless_tx,
             gas_price,
         )
-        .unwrap()
-        .max_fee();
+        .unwrap();
+        let max_fee_without_tip = fee_without_tip.max_fee();
+        let min_fee_without_tip = fee_without_tip.min_fee();
         let tip = 100;
 
         // when
@@ -1497,11 +1499,13 @@ mod tests {
 
         let fee_with_tip =
             TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx, gas_price)
-                .unwrap()
-                .max_fee();
+                .unwrap();
+        let max_fee_with_tip = fee_with_tip.max_fee();
+        let min_fee_with_tip = fee_with_tip.min_fee();
 
         // then
-        assert_eq!(fee_without_tip + tip, fee_with_tip);
+        assert_eq!(max_fee_without_tip + tip, max_fee_with_tip);
+        assert_eq!(min_fee_without_tip + tip, min_fee_with_tip);
     }
 
     #[test]

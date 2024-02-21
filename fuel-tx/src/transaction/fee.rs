@@ -1,6 +1,9 @@
 use crate::{
     field,
-    field::WitnessLimit,
+    field::{
+        Tip,
+        WitnessLimit,
+    },
     input::{
         coin::{
             CoinPredicate,
@@ -13,6 +16,7 @@ use crate::{
             MessageDataSigned,
         },
     },
+    policies::PolicyType,
     FeeParameters,
     GasCosts,
     Input,
@@ -92,10 +96,17 @@ impl TransactionFee {
     where
         T: Chargeable,
     {
+        let tip = tx.tip();
         let min_gas = tx.min_gas(gas_costs, params);
         let max_gas = tx.max_gas(gas_costs, params);
-        let min_fee = tx.min_fee(gas_costs, params, gas_price).try_into().ok()?;
-        let max_fee = tx.max_fee(gas_costs, params, gas_price).try_into().ok()?;
+        let min_fee = tx
+            .min_fee(gas_costs, params, gas_price, tip)
+            .try_into()
+            .ok()?;
+        let max_fee = tx
+            .max_fee(gas_costs, params, gas_price, tip)
+            .try_into()
+            .ok()?;
 
         if min_fee > max_fee {
             return None;
@@ -150,12 +161,14 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         gas_costs: &GasCosts,
         fee: &FeeParameters,
         gas_price: Word,
+        tip: Word,
     ) -> u128 {
-        gas_to_fee(
+        let gas_fee = gas_to_fee(
             self.min_gas(gas_costs, fee),
             gas_price,
             fee.gas_price_factor,
-        )
+        );
+        gas_fee + tip as u128
     }
 
     /// Returns the maximum possible fee after the end of transaction execution.
@@ -166,12 +179,14 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         gas_costs: &GasCosts,
         fee: &FeeParameters,
         gas_price: Word,
+        tip: Word,
     ) -> u128 {
-        gas_to_fee(
+        let gas_fee = gas_to_fee(
             self.max_gas(gas_costs, fee),
             gas_price,
             fee.gas_price_factor,
-        )
+        );
+        gas_fee + tip as u128
     }
 
     /// Returns the fee amount that can be refunded back based on the `used_gas` and
@@ -192,8 +207,9 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let total_used_gas = min_gas.saturating_add(used_gas);
         let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor);
 
+        let tip = self.policies().get(PolicyType::Tip).unwrap_or(0);
         let refund = self
-            .max_fee(gas_costs, fee, gas_price)
+            .max_fee(gas_costs, fee, gas_price, tip)
             .saturating_sub(used_fee);
         // It is okay to saturate everywhere above because it only can decrease the value
         // of `refund`. But here, because we need to return the amount we

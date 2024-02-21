@@ -656,6 +656,7 @@ mod tests {
     use fuel_tx::{
         field::{
             ScriptGasLimit,
+            Tip,
             WitnessLimit,
             Witnesses,
         },
@@ -1465,6 +1466,42 @@ mod tests {
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
+    }
+
+    #[test]
+    fn checked_from_tx__including_tip_increases_max_fee() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let input_amount = 1000;
+        let gas_price = 1;
+        let gas_limit = 1000;
+        let mut tx = base_asset_tx(rng, input_amount, gas_limit);
+        let consensus_params = params(1);
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::default();
+
+        // given
+        let tipless_tx = tx.clone();
+
+        let fee_without_tip = TransactionFee::checked_from_tx(
+            &gas_costs,
+            &fee_params,
+            &tipless_tx,
+            gas_price,
+        )
+        .unwrap()
+        .max_fee();
+        let tip = 100;
+
+        // when
+        tx.set_tip(tip);
+
+        let fee_with_tip =
+            TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx, gas_price)
+                .unwrap()
+                .max_fee();
+
+        // then
+        assert_eq!(fee_without_tip + tip, fee_with_tip);
     }
 
     #[test]

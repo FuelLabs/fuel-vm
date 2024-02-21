@@ -136,13 +136,7 @@ where
 {
     fn default() -> Self {
         let gas_price = 0;
-        Tx::default()
-            .into_checked(
-                Default::default(),
-                &ConsensusParameters::standard(),
-                gas_price,
-            )
-            .expect("default tx should produce a valid fully checked transaction")
+        Self::default_with_gas_price(gas_price)
     }
 }
 
@@ -222,7 +216,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params, gas_price)?
             .check_signatures(&consensus_params.chain_id)?
-            .check_predicates(gas_price, &check_predicate_params)
+            .check_predicates(&check_predicate_params)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -292,16 +286,11 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
 #[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
-    fn check_predicates(
-        self,
-        gas_price: Word,
-        params: &CheckPredicateParams,
-    ) -> Result<Self, CheckError>;
+    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
     async fn check_predicates_async<E: ParallelExecutor>(
         self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>;
 }
@@ -312,14 +301,12 @@ pub trait EstimatePredicates: Sized {
     /// Estimates predicates of the transaction.
     fn estimate_predicates(
         &mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError>;
 
     /// Estimates predicates of the transaction in parallel.
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError>;
 }
@@ -351,13 +338,10 @@ where
 {
     fn check_predicates(
         mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            Interpreter::<PredicateStorage, _>::check_predicates(
-                &self, gas_price, params,
-            )?;
+            Interpreter::<PredicateStorage, _>::check_predicates(&self, params)?;
             self.checks_bitmask.insert(Checks::Predicates);
         }
         Ok(self)
@@ -365,7 +349,6 @@ where
 
     async fn check_predicates_async<E>(
         mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
     where
@@ -373,7 +356,7 @@ where
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
-                &self, gas_price, params,
+                &self, params,
             )
             .await?;
 
@@ -390,25 +373,21 @@ where
 impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
     fn estimate_predicates(
         &mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
-        Interpreter::<PredicateStorage, _>::estimate_predicates(self, gas_price, params)?;
+        Interpreter::<PredicateStorage, _>::estimate_predicates(self, params)?;
         Ok(())
     }
 
     async fn estimate_predicates_async<E>(
         &mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
     {
-        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(
-            self, gas_price, params,
-        )
-        .await?;
+        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(self, params)
+            .await?;
 
         Ok(())
     }
@@ -418,31 +397,25 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
 impl EstimatePredicates for Transaction {
     fn estimate_predicates(
         &mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
         match self {
-            Transaction::Script(script) => script.estimate_predicates(gas_price, params),
-            Transaction::Create(create) => create.estimate_predicates(gas_price, params),
+            Transaction::Script(script) => script.estimate_predicates(params),
+            Transaction::Create(create) => create.estimate_predicates(params),
             Transaction::Mint(_) => Ok(()),
         }
     }
 
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError> {
         match self {
             Transaction::Script(script) => {
-                script
-                    .estimate_predicates_async::<E>(gas_price, params)
-                    .await
+                script.estimate_predicates_async::<E>(params).await
             }
             Transaction::Create(create) => {
-                create
-                    .estimate_predicates_async::<E>(gas_price, params)
-                    .await
+                create.estimate_predicates_async::<E>(params).await
             }
             Transaction::Mint(_) => Ok(()),
         }
@@ -453,7 +426,6 @@ impl EstimatePredicates for Transaction {
 impl CheckPredicates for Checked<Mint> {
     fn check_predicates(
         mut self,
-        _gas_price: Word,
         _params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
@@ -462,7 +434,6 @@ impl CheckPredicates for Checked<Mint> {
 
     async fn check_predicates_async<E: ParallelExecutor>(
         mut self,
-        _gas_price: Word,
         _params: &CheckPredicateParams,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
@@ -472,21 +443,17 @@ impl CheckPredicates for Checked<Mint> {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(
-        self,
-        gas_price: Word,
-        params: &CheckPredicateParams,
-    ) -> Result<Self, CheckError> {
+    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates(tx, gas_price, params)?.into()
+                CheckPredicates::check_predicates(tx, params)?.into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates(tx, gas_price, params)?.into()
+                CheckPredicates::check_predicates(tx, params)?.into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates(tx, gas_price, params)?.into()
+                CheckPredicates::check_predicates(tx, params)?.into()
             }
         };
         Ok(checked_transaction.into())
@@ -494,7 +461,6 @@ impl CheckPredicates for Checked<Transaction> {
 
     async fn check_predicates_async<E>(
         mut self,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
     where
@@ -504,17 +470,17 @@ impl CheckPredicates for Checked<Transaction> {
 
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, gas_price, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params)
                     .await?
                     .into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, gas_price, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params)
                     .await?
                     .into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, gas_price, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params)
                     .await?
                     .into()
             }

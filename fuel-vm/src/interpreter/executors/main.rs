@@ -131,14 +131,13 @@ where
     /// predicates.
     pub fn check_predicates(
         checked: &Checked<Tx>,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let tx = checked.transaction();
-        Self::run_predicate(PredicateRunKind::Verifying(tx), gas_price, params)
+        Self::run_predicate(PredicateRunKind::Verifying(tx), params)
     }
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -148,7 +147,6 @@ where
     /// predicates.
     pub async fn check_predicates_async<E>(
         checked: &Checked<Tx>,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -158,12 +156,9 @@ where
     {
         let tx = checked.transaction();
 
-        let predicates_checked = Self::run_predicate_async::<E>(
-            PredicateRunKind::Verifying(tx),
-            gas_price,
-            params,
-        )
-        .await?;
+        let predicates_checked =
+            Self::run_predicate_async::<E>(PredicateRunKind::Verifying(tx), params)
+                .await?;
 
         Ok(predicates_checked)
     }
@@ -176,14 +171,10 @@ where
     /// predicates.
     pub fn estimate_predicates(
         transaction: &mut Tx,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
-        let predicates_checked = Self::run_predicate(
-            PredicateRunKind::Estimating(transaction),
-            gas_price,
-            params,
-        )?;
+        let predicates_checked =
+            Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
         Ok(predicates_checked)
     }
 
@@ -195,7 +186,6 @@ where
     /// predicates.
     pub async fn estimate_predicates_async<E>(
         transaction: &mut Tx,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -204,7 +194,6 @@ where
     {
         let predicates_checked = Self::run_predicate_async::<E>(
             PredicateRunKind::Estimating(transaction),
-            gas_price,
             params,
         )
         .await?;
@@ -214,7 +203,6 @@ where
 
     async fn run_predicate_async<E>(
         kind: PredicateRunKind<'_, Tx>,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -238,7 +226,6 @@ where
                         index,
                         predicate_action,
                         predicate,
-                        gas_price,
                         my_params,
                     )
                 });
@@ -254,7 +241,6 @@ where
 
     fn run_predicate(
         kind: PredicateRunKind<'_, Tx>,
-        gas_price: Word,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
         let predicate_action = PredicateAction::from(&kind);
@@ -271,7 +257,6 @@ where
                     index,
                     predicate_action,
                     predicate,
-                    gas_price,
                     params.clone(),
                 ));
             }
@@ -285,7 +270,6 @@ where
         index: usize,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
-        gas_price: Word,
         params: CheckPredicateParams,
     ) -> Result<(Word, usize), PredicateVerificationFailed> {
         match &tx.inputs()[index] {
@@ -313,7 +297,8 @@ where
 
         let max_gas_per_tx = params.max_gas_per_tx;
         let max_gas_per_predicate = params.max_gas_per_predicate;
-        let interpreter_params = InterpreterParams::new(gas_price, params);
+        let zero_gas_price = 0;
+        let interpreter_params = InterpreterParams::new(zero_gas_price, params);
 
         let mut vm = Self::with_storage(PredicateStorage {}, interpreter_params);
 

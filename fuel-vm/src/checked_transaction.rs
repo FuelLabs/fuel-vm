@@ -1017,6 +1017,7 @@ mod tests {
     fn min_fee_message_input(
         gas_limit: u64,
         input_amount: u64,
+        gas_price: u64,
         gas_price_factor: u64,
         seed: u64,
     ) -> TestResult {
@@ -1032,7 +1033,8 @@ mod tests {
         let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
 
-        if let Ok(valid) = is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id)
+        if let Ok(valid) =
+            is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id, gas_price)
         {
             TestResult::from_bool(valid)
         } else {
@@ -1699,17 +1701,17 @@ mod tests {
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
+        gas_price: u64,
     ) -> Result<bool, ValidityError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let arb_gas_price = 1;
         let available_balances = balances::initial_free_balances(
             tx,
             gas_costs,
             fee_params,
             base_asset_id,
-            arb_gas_price,
+            gas_price,
         )?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
@@ -1726,7 +1728,7 @@ mod tests {
                     .vm_initialization
                     .resolve(tx.metered_bytes_size() as u64),
             );
-        let total = gas as u128 * arb_gas_price as u128;
+        let total = gas as u128 * gas_price as u128;
         // use different division mechanism than impl
         let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =

@@ -56,7 +56,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default(), gas_price)
-        .check_predicates(gas_price, &params.into())
+        .check_predicates(&params.into())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -99,7 +99,6 @@ fn estimate_gas_gives_proper_gas_used() {
 
     Interpreter::<PredicateStorage, _>::estimate_predicates(
         &mut transaction,
-        gas_price,
         &params.into(),
     )
     .expect("Should successfully estimate predicates");

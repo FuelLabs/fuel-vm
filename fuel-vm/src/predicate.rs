@@ -278,7 +278,6 @@ mod tests {
 
                 let result = Interpreter::<PredicateStorage, Script>::check_predicates(
                     &tx,
-                    zero_gas_price,
                     &CheckPredicateParams::default(),
                 );
 

@@ -230,7 +230,7 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(gas_price, &check_params)
+            .estimate_predicates_async::<TokioWithRayon>(&check_params)
             .await
             .expect("Should estimate predicate successfully");
 
@@ -240,7 +240,7 @@ async fn recover_tx_id_predicate() {
     }
 
     // sequential version
-    tx.estimate_predicates(gas_price, &check_params)
+    tx.estimate_predicates(&check_params)
         .expect("Should estimate predicate successfully");
 
     tx.into_checked(maturity, &consensus_params, gas_price)

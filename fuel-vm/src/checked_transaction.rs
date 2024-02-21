@@ -1603,7 +1603,7 @@ mod tests {
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(arb_gas_price, &check_predicate_params)
+            .check_predicates( &check_predicate_params)
             .unwrap();
         assert!(checked
             .checks()

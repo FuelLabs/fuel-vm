@@ -1083,6 +1083,7 @@ fn mint() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
     )
     .finalize()
     .check(block_height, &test_params(), arb_gas_price)
@@ -1101,6 +1102,7 @@ fn mint() {
         },
         rng.gen(),
         rng.gen(),
+        rng.gen(),
     )
     .finalize()
     .check(block_height, &test_params(), arb_gas_price)
@@ -1117,6 +1119,7 @@ fn mint() {
             balance_root: rng.gen(),
             state_root: rng.gen(),
         },
+        rng.gen(),
         rng.gen(),
         rng.gen(),
     )

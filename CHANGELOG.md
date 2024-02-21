@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.46.0]
+
 ### Changed
 #### Breaking
 
+- [#679](https://github.com/FuelLabs/fuel-vm/pull/679): Require less restricted constraint on `MerkleRootStorage` trait. Now it requires `StorageInspect` instead of the `StorageMutate`.
 - [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Removed `ContractsInfo` table. Contract salts and roots are no longer stored in on-chain data.
 - [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Opcode `CROO` now calculates the given contract's root on demand. `CROO` has therefore been changed to a `DependentCost` gas cost.
 - [#678](https://github.com/FuelLabs/fuel-vm/pull/678): Zero malleable fields before execution. Remove some now-obsolete GTF getters. Don't update `tx.receiptsRoot` after pushing receipts, and do it after execution instead.
@@ -66,6 +69,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#676](https://github.com/FuelLabs/fuel-vm/pull/676) Add `gas_price` to `Mint` transaction
 - [#629](https://github.com/FuelLabs/fuel-vm/pull/629): Charge the user for VM initialization.
 - [#628](https://github.com/FuelLabs/fuel-vm/pull/628): Renamed `transaction::CheckError` to `transaction::ValidityError`.
   Created a new `checked_transaction::CheckError` that combines `ValidityError`

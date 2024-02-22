@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Remove `GasPrice` policy
 - [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `gas_price` field to transaction execution
+- [#684](https://github.com/FuelLabs/fuel-vm/pull/684): Remove `maturity` field from `Input` coin types. Also remove related `GTF` getter.
 
 ## [Version 0.46.0]
 

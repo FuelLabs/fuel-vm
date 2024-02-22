@@ -162,9 +162,9 @@ impl<Tx> GTFInput<'_, Tx> {
                 .map(|script| *script.script_gas_limit())
                 .unwrap_or_default(),
             GTFArgs::PolicyTypes => tx.policies().bits() as Word,
-            GTFArgs::PolicyGasPrice => tx
+            GTFArgs::PolicyTip => tx
                 .policies()
-                .get(PolicyType::GasPrice)
+                .get(PolicyType::Tip)
                 .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::PolicyWitnessLimit => tx
                 .policies()

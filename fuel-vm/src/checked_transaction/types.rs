@@ -94,10 +94,11 @@ pub mod create {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
+            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.check_without_signatures(block_height, consensus_params, gas_price)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
@@ -109,6 +110,7 @@ pub mod create {
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
                 consensus_params.base_asset_id(),
+                gas_price,
             )?;
             assert_eq!(
                 retryable_balance, 0,
@@ -148,10 +150,11 @@ pub mod mint {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
+            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.check_without_signatures(block_height, consensus_params, gas_price)?;
 
             Ok(Checked::basic(self, ()))
         }
@@ -202,10 +205,11 @@ pub mod script {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
+            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.check_without_signatures(block_height, consensus_params, gas_price)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
@@ -217,6 +221,7 @@ pub mod script {
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
                 consensus_params.base_asset_id(),
+                gas_price,
             )?;
 
             let metadata = CheckedMetadata {

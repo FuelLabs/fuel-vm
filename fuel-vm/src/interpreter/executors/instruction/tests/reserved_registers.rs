@@ -24,6 +24,8 @@ use quickcheck_macros::quickcheck;
 // Ensure none of the opcodes can write to reserved registers
 #[quickcheck]
 fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
+    let zero_gas_price = 0;
+
     let random_instruction = match Instruction::try_from(raw_random_instruction) {
         Ok(inst) => inst,
         Err(_) => return TestResult::discard(),
@@ -55,7 +57,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
 
     let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
-        InterpreterParams::from(&consensus_params),
+        InterpreterParams::new(zero_gas_price, &consensus_params),
     );
 
     let script = op::ret(0x10).to_bytes().to_vec();
@@ -65,7 +67,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .finalize();
 
     let tx = tx
-        .into_checked(block_height, &consensus_params)
+        .into_checked(block_height, &consensus_params, zero_gas_price)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");

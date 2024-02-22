@@ -84,11 +84,10 @@ fn secp256k1_recover() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -139,7 +138,6 @@ fn ecrecover_tx_id() {
     let script_data = public.as_ref().to_vec();
 
     let mut tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -148,7 +146,9 @@ fn ecrecover_tx_id() {
     tx.sign_inputs(&secret, &chain_id);
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
-    let tx = tx.into_checked(height, &consensus_params).unwrap();
+    let tx = tx
+        .into_checked(height, &consensus_params, gas_price)
+        .unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -213,7 +213,6 @@ async fn recover_tx_id_predicate() {
     );
 
     let mut tx = TransactionBuilder::script(vec![], script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(input)
@@ -236,7 +235,7 @@ async fn recover_tx_id_predicate() {
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &consensus_params)
+            .into_checked(maturity, &consensus_params, gas_price)
             .expect("Should check predicate successfully");
     }
 
@@ -244,7 +243,7 @@ async fn recover_tx_id_predicate() {
     tx.estimate_predicates(&check_params)
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &consensus_params)
+    tx.into_checked(maturity, &consensus_params, gas_price)
         .expect("Should check predicate successfully");
 }
 
@@ -377,11 +376,10 @@ fn secp256r1_recover() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -515,11 +513,10 @@ fn ed25519_verify() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -649,11 +646,10 @@ fn sha256() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -742,11 +738,10 @@ fn keccak256() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     let receipts = client.transact(tx);
     let success = receipts

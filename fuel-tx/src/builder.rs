@@ -6,8 +6,8 @@ use crate::{
         field::{
             BytecodeLength,
             BytecodeWitnessIndex,
-            GasPrice,
             Maturity,
+            Tip,
             Witnesses,
         },
         Chargeable,
@@ -119,7 +119,7 @@ impl TransactionBuilder<Script> {
             script_gas_limit: Default::default(),
             script,
             script_data,
-            policies: Policies::new().with_gas_price(0),
+            policies: Policies::new(),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -148,7 +148,7 @@ impl TransactionBuilder<Create> {
             bytecode_witness_index: Default::default(),
             salt,
             storage_slots,
-            policies: Policies::new().with_gas_price(0),
+            policies: Policies::new(),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -293,9 +293,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self.sign_keys.keys()
     }
 
-    pub fn gas_price(&mut self, gas_price: Word) -> &mut Self {
-        self.tx.set_gas_price(gas_price);
-
+    pub fn tip(&mut self, tip: Word) -> &mut Self {
+        self.tx.set_tip(tip);
         self
     }
 

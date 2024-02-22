@@ -62,6 +62,7 @@ fn deploy_contract(
     contract: Witness,
     salt: Salt,
     storage_slots: Vec<StorageSlot>,
+    gas_price: u64,
 ) {
     let code_root = Contract::root_from_code(contract.as_ref());
     let state_root = Contract::initial_state_root(storage_slots.iter());
@@ -74,7 +75,7 @@ fn deploy_contract(
         .with_tx_params(tx_params)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     client
         .deploy(contract_deployer)
@@ -591,12 +592,11 @@ fn ldc__load_len_of_target_contract<'a>(
 
     let tx_create_target =
         TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
-            .gas_price(gas_price)
             .maturity(maturity)
             .add_random_fee_input()
             .add_output(output0)
             .finalize()
-            .into_checked(height, &consensus_params)
+            .into_checked(height, &consensus_params, gas_price)
             .expect("failed to check tx");
 
     client.deploy(tx_create_target);
@@ -652,14 +652,13 @@ fn ldc__load_len_of_target_contract<'a>(
         load_contract.iter().copied().collect(),
         vec![],
     )
-    .gas_price(gas_price)
     .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_input(input0.clone())
     .add_random_fee_input()
     .add_output(output1)
     .finalize()
-    .into_checked(height, &consensus_params)
+    .into_checked(height, &consensus_params, gas_price)
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
@@ -670,14 +669,13 @@ fn ldc__load_len_of_target_contract<'a>(
 
     let tx_deploy_loader =
         TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
-            .gas_price(gas_price)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_input(input0)
             .add_random_fee_input()
             .add_output(output1)
             .finalize()
-            .into_checked(height, &consensus_params)
+            .into_checked(height, &consensus_params, gas_price)
             .expect("failed to check tx");
 
     client.transact(tx_deploy_loader)
@@ -696,6 +694,7 @@ fn pad(a: u16) -> u16 {
 fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
+    let gas_price = 0;
 
     // make gas costs free
     let gas_costs = GasCosts::default();
@@ -705,14 +704,13 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         ..Default::default()
     };
 
-    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     let mut client = MemoryClient::<NotSupportedEcal>::new(
         MemoryStorage::default(),
         interpreter_params,
     );
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -734,12 +732,11 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let output0 = Output::contract_created(contract_id, state_root);
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
-        .gas_price(gas_price)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output0)
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, gas_price)
         .expect("failed to check tx");
 
     client.deploy(tx_create_target);
@@ -750,12 +747,11 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         load_contract.into_iter().collect(),
         contract_id.to_vec(),
     )
-    .gas_price(gas_price)
     .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &consensus_params)
+    .into_checked(height, &consensus_params, gas_price)
     .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
@@ -1074,11 +1070,14 @@ fn code_root_a_plus_32_overflow() {
     let salt = Default::default();
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
+
+    let zero_gas_price = 0;
+
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots);
+    deploy_contract(&mut client, contract, salt, storage_slots, zero_gas_price);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;
@@ -1119,11 +1118,14 @@ fn code_root_a_over_max_ram() {
     let salt = Default::default();
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
+
+    let zero_gas_price = 0;
+
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots);
+    deploy_contract(&mut client, contract, salt, storage_slots, zero_gas_price);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;
@@ -1673,9 +1675,7 @@ fn smo_instruction_works() {
         let script_data = vec![];
 
         let mut tx = TransactionBuilder::script(script, script_data);
-        tx.gas_price(gas_price)
-            .script_gas_limit(gas_limit)
-            .maturity(maturity);
+        tx.script_gas_limit(gas_limit).maturity(maturity);
         // add inputs
         for (amount, data) in inputs {
             tx.add_unsigned_message_input(secret, sender, rng.gen(), amount, data);
@@ -1687,7 +1687,7 @@ fn smo_instruction_works() {
                 asset_id: Default::default(),
             })
             .add_random_fee_input()
-            .finalize_checked(block_height);
+            .finalize_checked(block_height, gas_price);
 
         let non_retryable_free_balance =
             tx.metadata().non_retryable_balances[&AssetId::BASE];
@@ -1733,7 +1733,7 @@ fn smo_instruction_works() {
         // get refunded fee amount
         let refund_amount = state
             .tx()
-            .refund_fee(client.gas_costs(), &fee_params, *gas_used)
+            .refund_fee(client.gas_costs(), &fee_params, *gas_used, gas_price)
             .unwrap();
 
         // check that refundable balances aren't converted into change on failed txs
@@ -1822,11 +1822,10 @@ fn timestamp_works() {
         let script_data = vec![];
 
         let tx = TransactionBuilder::script(script, script_data)
-            .gas_price(gas_price)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_random_fee_input()
-            .finalize_checked(block_height);
+            .finalize_checked(block_height, gas_price);
 
         let receipts = client.transact(tx);
         let result = receipts.iter().any(|r| {
@@ -1878,11 +1877,10 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
     let script_data = vec![];
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(current_height);
+        .finalize_checked(current_height, gas_price);
 
     let receipts = client.transact(tx);
     let Some(Receipt::Log { ra, .. }) = receipts.first() else {
@@ -1929,11 +1927,10 @@ fn block_hash_works(
     let script_data = vec![];
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(current_height);
+        .finalize_checked(current_height, gas_price);
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
@@ -1969,11 +1966,10 @@ fn coinbase_works() {
     let script_data = vec![];
 
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(10.into());
+        .finalize_checked(10.into(), gas_price);
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {

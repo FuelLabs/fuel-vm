@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 #### Breaking
 
+- [#683](https://github.com/FuelLabs/fuel-vm/pull/683): Simplify `InterpreterStorage` by removing dependency on `MerkleRootStorage` and removing `merkle_` prefix from method names.
 - [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Remove `GasPrice` policy
 - [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `gas_price` field to transaction execution
 

@@ -37,6 +37,27 @@ pub(crate) fn initial_free_balances<T>(
 where
     T: Chargeable + field::Inputs + field::Outputs,
 {
+    let (mut non_retryable_balances, retryable_balance) =
+        add_up_input_balances(transaction, base_asset_id);
+
+    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction, gas_price)
+        .ok_or(ValidityError::BalanceOverflow)?;
+
+    deduct_fee_from_base_asset(&mut non_retryable_balances, base_asset_id, &fee)?;
+
+    reduce_free_balances_by_coin_outputs(&mut non_retryable_balances, transaction)?;
+
+    Ok(AvailableBalances {
+        non_retryable_balances,
+        retryable_balance,
+        fee,
+    })
+}
+
+fn add_up_input_balances<T: field::Inputs>(
+    transaction: &T,
+    base_asset_id: &AssetId,
+) -> (BTreeMap<AssetId, Word>, Word) {
     let mut non_retryable_balances = BTreeMap::<AssetId, Word>::new();
     // The sum of [`AssetId::Base`] from metadata messages.
     let mut retryable_balance: Word = 0;
@@ -67,10 +88,14 @@ where
         }
     }
 
-    // Deduct fee from base asset
-    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction, gas_price)
-        .ok_or(ValidityError::BalanceOverflow)?;
+    (non_retryable_balances, retryable_balance)
+}
 
+fn deduct_fee_from_base_asset(
+    non_retryable_balances: &mut BTreeMap<AssetId, Word>,
+    base_asset_id: &AssetId,
+    fee: &TransactionFee,
+) -> Result<(), ValidityError> {
     let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
 
     *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
@@ -80,6 +105,13 @@ where
         },
     )?;
 
+    Ok(())
+}
+
+fn reduce_free_balances_by_coin_outputs(
+    non_retryable_balances: &mut BTreeMap<AssetId, Word>,
+    transaction: &impl field::Outputs,
+) -> Result<(), ValidityError> {
     // reduce free balances by coin outputs
     for (asset_id, amount) in
         transaction
@@ -104,11 +136,7 @@ where
         )?;
     }
 
-    Ok(AvailableBalances {
-        non_retryable_balances,
-        retryable_balance,
-        fee,
-    })
+    Ok(())
 }
 
 pub(crate) struct AvailableBalances {

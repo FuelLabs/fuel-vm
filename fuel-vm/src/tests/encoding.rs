@@ -101,7 +101,6 @@ fn input() {
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
             0xff,
-            (u32::MAX >> 1).into(),
         ),
         Input::coin_predicate(
             UtxoId::new([0xaa; 32].into(), 0),
@@ -109,7 +108,6 @@ fn input() {
             Word::MAX,
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
-            (u32::MAX >> 1).into(),
             Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 23],
@@ -120,7 +118,6 @@ fn input() {
             Word::MAX,
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
-            (u32::MAX >> 1).into(),
             Word::MAX,
             vec![0xdd; 50],
             vec![],

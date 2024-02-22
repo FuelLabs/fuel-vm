@@ -21,7 +21,6 @@ pub(super) const INPUT_COIN_TX_POINTER_OFFSET: usize =
 pub(super) const INPUT_COIN_FIXED_SIZE: usize = INPUT_COIN_TX_POINTER_OFFSET
     + TxPointer::LEN // TxPointer
     + WORD_SIZE // Witness index
-    + WORD_SIZE // Maturity
     + WORD_SIZE // Predicate size
     + WORD_SIZE // Predicate data size
     + WORD_SIZE; // Predicate gas used

@@ -196,15 +196,6 @@ mod tests {
         mem::swap(t, &mut t_p);
     }
 
-    fn not_u32<T>(t: &mut T)
-    where
-        T: Copy + Into<u32> + From<u32>,
-    {
-        let u_32: u32 = (*t).into();
-        let mut t_p = u_32.not().into();
-        mem::swap(t, &mut t_p);
-    }
-
     fn assert_id_eq<Tx: Buildable, F>(tx: &Tx, mut f: F)
     where
         F: FnMut(&mut Tx),
@@ -304,13 +295,6 @@ mod tests {
                 witness_index,
                 not
             );
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::CoinSigned[CoinSigned],
-                maturity,
-                not_u32
-            );
 
             assert_io_ne!(
                 tx,
@@ -339,13 +323,6 @@ mod tests {
                 Input::CoinPredicate[CoinPredicate],
                 asset_id,
                 invert
-            );
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::CoinPredicate[CoinPredicate],
-                maturity,
-                not_u32
             );
             assert_io_ne!(
                 tx,
@@ -636,13 +613,11 @@ mod tests {
                     rng.gen(),
                     rng.gen(),
                     rng.next_u32().to_be_bytes()[0],
-                    rng.gen(),
                 ),
                 Input::coin_predicate(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
-                    rng.gen(),
                     rng.gen(),
                     rng.gen(),
                     rng.gen(),

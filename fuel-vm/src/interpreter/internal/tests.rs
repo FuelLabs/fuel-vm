@@ -49,7 +49,6 @@ fn external_balance() {
             amount,
             asset,
             rng.gen(),
-            maturity,
         );
     });
 

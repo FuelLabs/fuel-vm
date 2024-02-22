@@ -68,7 +68,6 @@ fn prevent_contract_id_redeployment() {
         asset_id,
         rng.gen(),
         Default::default(),
-        1,
     );
 
     let consensus_params = ConsensusParameters::standard();

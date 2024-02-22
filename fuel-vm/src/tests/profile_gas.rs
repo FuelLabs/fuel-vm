@@ -42,7 +42,6 @@ fn profile_gas() {
                     2,
                     Default::default(),
                     rng.gen(),
-                    Default::default(),
                 )
                 .script_gas_limit(gas_limit)
                 .maturity(maturity)

@@ -89,7 +89,6 @@ fn input_coin_message_signature() {
             let amount = rng.gen();
             let asset_id = rng.gen();
             let tx_pointer = rng.gen();
-            let maturity = rng.gen();
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
                 let witness_index =
@@ -102,7 +101,6 @@ fn input_coin_message_signature() {
                     amount,
                     asset_id,
                     tx_pointer,
-                    maturity,
                     witness_index as u8,
                 )
             })
@@ -145,15 +143,8 @@ fn coin_signed() {
 
     let mut tx = Script::default();
 
-    let input = Input::coin_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let input =
+        Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
     tx.add_input(input);
 
     let block_height = rng.gen();
@@ -176,9 +167,9 @@ fn duplicate_secrets_reuse_witness() {
     // verify witness reuse for script txs
     let script = TransactionBuilder::script(vec![], vec![])
         // coin 1
-        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default())
         // coin 2
-        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default())
         // message 1
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
@@ -193,9 +184,9 @@ fn duplicate_secrets_reuse_witness() {
     // verify witness reuse for creation txs
     let create = TransactionBuilder::create(Witness::default(), rng.gen(), vec![])
         // coin 1
-        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default())
         // coin 2
-        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default())
         // message 1
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
@@ -224,7 +215,6 @@ fn coin_predicate() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
-        rng.gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -237,7 +227,6 @@ fn coin_predicate() {
     let err = Input::coin_predicate(
         rng.gen(),
         owner,
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -258,7 +247,6 @@ fn coin_predicate() {
     let err = Input::coin_predicate(
         rng.gen(),
         owner,
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -574,24 +562,8 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let utxo_id = rng.gen();
     let arb_gas_price = 1;
 
-    let a = Input::coin_signed(
-        utxo_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
-    let b = Input::coin_signed(
-        utxo_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let a = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+    let b = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(a)
@@ -628,7 +600,6 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
-        rng.gen(),
     );
 
     let err = TransactionBuilder::script(vec![], vec![])
@@ -654,7 +625,6 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let arb_gas_price = 1;
     let contract_id = rng.gen();
     let fee = Input::coin_signed(
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -694,15 +664,8 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
 
     let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
-    let fee = Input::coin_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let fee =
+        Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
 
     let o = Output::contract(0, rng.gen(), rng.gen());
     let p = Output::contract(1, rng.gen(), rng.gen());

@@ -703,7 +703,7 @@ where
 
         let _ = self
             .storage
-            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
+            .contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
@@ -746,7 +746,7 @@ where
 
         let old_value = self
             .storage
-            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
+            .contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
         if old_value.is_none() {
@@ -1024,7 +1024,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
     let value = storage
-        .merkle_contract_state(contract, key)
+        .contract_state(contract, key)
         .map_err(RuntimeError::Storage)?
         .map(|bytes| {
             Word::from_be_bytes(
@@ -1085,7 +1085,7 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
     let result = storage
-        .merkle_contract_state_insert(contract, key, &value)
+        .contract_state_insert(contract, key, &value)
         .map_err(RuntimeError::Storage)?;
 
     *created_new = result.is_none() as Word;
@@ -1263,7 +1263,7 @@ fn state_read_qword<S: InterpreterStorage>(
 
     let mut all_set = true;
     let result: Vec<u8> = storage
-        .merkle_contract_state_range(contract_id, origin_key, input.num_slots)
+        .contract_state_range(contract_id, origin_key, input.num_slots)
         .map_err(RuntimeError::Storage)?
         .into_iter()
         .flat_map(|bytes| match bytes {
@@ -1338,7 +1338,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
         .collect();
 
     let unset_count = storage
-        .merkle_contract_state_insert_range(contract_id, destination_key, &values)
+        .contract_state_insert_range(contract_id, destination_key, &values)
         .map_err(RuntimeError::Storage)?;
     *result_register = unset_count as Word;
 
@@ -1402,7 +1402,7 @@ fn state_clear_qword<S: InterpreterStorage>(
         Bytes32::from_bytes_ref(input.start_storage_key_memory_range.read(memory));
 
     let all_previously_set = storage
-        .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)
+        .contract_state_remove_range(contract_id, start_key, input.num_slots)
         .map_err(RuntimeError::Storage)?
         .is_some();
 

@@ -41,7 +41,7 @@ fn test_burn(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -76,7 +76,7 @@ fn test_burn(
     .burn(amount, ContractId::LEN as Word)?;
     assert_eq!(pc, 8);
     let result = storage
-        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
+        .contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
     assert_eq!(result, initialize.unwrap_or(0) - amount);
@@ -124,7 +124,7 @@ fn test_mint(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -166,7 +166,7 @@ fn test_mint(
     .mint(amount, ContractId::LEN as Word)?;
     assert_eq!(pc, 8);
     let result = storage
-        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
+        .contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
     assert_eq!(result, initialize.unwrap_or(0) + amount);

@@ -138,7 +138,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let bytecode_witness = 0;
     let mut create = Transaction::create(
         bytecode_witness,
-        Policies::new().with_gas_price(gas_price),
+        Policies::new(),
         salt,
         vec![],
         vec![],
@@ -170,7 +170,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         *context.get_base_asset_id(),
     );
     let create = create
-        .into_checked_basic(context.get_block_height(), &consensus_params)
+        .into_checked_basic(context.get_block_height(), &consensus_params, gas_price)
         .expect("failed to generate checked tx");
 
     let state = context.deploy(create).expect("Create should be executed");

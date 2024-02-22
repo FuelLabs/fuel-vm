@@ -71,6 +71,7 @@ fn breakpoint_script() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
+    let zero_gas_price = 0;
     let height = Default::default();
 
     let script = [
@@ -90,7 +91,7 @@ fn breakpoint_script() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, zero_gas_price)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -143,6 +144,8 @@ fn single_stepping() {
 
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
+    let zero_gas_price = 0;
+
     let gas_limit = 1_000_000;
     let height = Default::default();
 
@@ -162,7 +165,7 @@ fn single_stepping() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, zero_gas_price)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

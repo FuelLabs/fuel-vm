@@ -26,16 +26,16 @@ pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
 pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
+    let zero_gas_price = 0;
 
     let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()

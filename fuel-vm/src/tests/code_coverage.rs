@@ -55,10 +55,9 @@ fn code_coverage() {
             rng.gen(),
             Default::default(),
         )
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height);
+        .finalize_checked(height, gas_price);
 
     #[derive(Clone, Default)]
     struct ProfilingOutput {

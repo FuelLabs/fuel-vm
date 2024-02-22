@@ -217,6 +217,7 @@ fn transaction() {
             vec![0xfa],
             vec![0xfb, 0xfc],
             Policies::new()
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),

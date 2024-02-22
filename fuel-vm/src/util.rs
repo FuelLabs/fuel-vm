@@ -203,13 +203,11 @@ pub mod test_helpers {
         ) -> &mut Self {
             let bytecode = script.into_iter().collect();
             self.builder = TransactionBuilder::script(bytecode, script_data);
-            self.builder.gas_price(self.gas_price);
             self.builder.script_gas_limit(self.script_gas_limit);
             self
         }
 
         pub fn gas_price(&mut self, price: Word) -> &mut TestBuilder {
-            self.builder.gas_price(price);
             self.gas_price = price;
             self
         }
@@ -324,7 +322,8 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder.finalize_checked(self.block_height)
+            self.builder
+                .finalize_checked(self.block_height, self.gas_price)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -421,12 +420,11 @@ pub mod test_helpers {
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 
             let tx = TransactionBuilder::create(program, salt, storage_slots)
-                .gas_price(self.gas_price)
                 .maturity(Default::default())
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params)
+                .into_checked(self.block_height, &self.consensus_params, self.gas_price)
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -499,7 +497,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
-            let interpreter_params = InterpreterParams::from(&self.consensus_params);
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -510,7 +509,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
-            let interpreter_params = (&self.consensus_params).into();
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -520,8 +520,10 @@ pub mod test_helpers {
         pub fn execute_tx_with_backtrace(
             &mut self,
             checked: Checked<Script>,
+            gas_price: u64,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
-            let interpreter_params = (&self.consensus_params).into();
+            let interpreter_params =
+                InterpreterParams::new(gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -588,7 +590,7 @@ pub mod test_helpers {
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
-        let gas_price = 0;
+        let zero_gas_price = 0;
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
@@ -609,7 +611,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height);
+            .finalize_checked(height, zero_gas_price);
 
         client
             .deploy(contract_deployer)
@@ -632,7 +634,6 @@ pub mod test_helpers {
             .collect();
 
         let tx_deploy_loader = TransactionBuilder::script(script, script_data)
-            .gas_price(gas_price)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .with_tx_params(tx_params)
@@ -645,7 +646,7 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height);
+            .finalize_checked(height, zero_gas_price);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

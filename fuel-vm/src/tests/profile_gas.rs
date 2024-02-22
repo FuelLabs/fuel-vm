@@ -44,9 +44,8 @@ fn profile_gas() {
                     rng.gen(),
                 )
                 .script_gas_limit(gas_limit)
-                .gas_price(gas_price)
                 .maturity(maturity)
-                .finalize_checked(height);
+                .finalize_checked(height, gas_price);
 
         let output = GasProfiler::default();
 

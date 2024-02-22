@@ -83,6 +83,7 @@ impl EcalHandler for FileReadEcal {
 }
 
 fn example_file_read() {
+    let zero_gas_price = 0;
     let vm: Interpreter<MemoryStorage, Script, FileReadEcal> =
         Interpreter::with_memory_storage();
 
@@ -102,12 +103,11 @@ fn example_file_read() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -142,6 +142,7 @@ impl EcalHandler for CounterEcal {
 }
 
 fn example_counter() {
+    let zero_gas_price = 0;
     let mut vm: Interpreter<MemoryStorage, Script, CounterEcal> =
         Interpreter::with_memory_storage();
 
@@ -162,12 +163,11 @@ fn example_counter() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -206,6 +206,7 @@ impl EcalHandler for SharedCounterEcal {
 }
 
 fn example_shared_counter() {
+    let zero_gas_price = 0;
     let vm: Interpreter<MemoryStorage, Script, SharedCounterEcal> =
         Interpreter::with_memory_storage_and_ecal(SharedCounterEcal {
             counter: Arc::new(Mutex::new(5)),
@@ -226,12 +227,11 @@ fn example_shared_counter() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, zero_gas_price)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");

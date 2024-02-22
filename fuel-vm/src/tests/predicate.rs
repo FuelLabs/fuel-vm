@@ -71,6 +71,7 @@ where
     let amount = 0;
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
+    let maturity = Default::default();
     let height = Default::default();
     let predicate_gas_used = 0;
 
@@ -93,7 +94,7 @@ where
 
     let mut builder = TransactionBuilder::script(script, script_data);
 
-    builder.gas_price(gas_price).script_gas_limit(gas_limit);
+    builder.script_gas_limit(gas_limit).maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
         builder.add_unsigned_coin_input(
@@ -113,7 +114,7 @@ where
         .expect("Should estiamte predicate");
 
     let checked = transaction
-        .into_checked_basic(height, &ConsensusParameters::standard())
+        .into_checked_basic(height, &ConsensusParameters::standard(), gas_price)
         .expect("Should successfully convert into Checked");
 
     let params = CheckPredicateParams::default();
@@ -206,7 +207,7 @@ async fn execute_gas_metered_predicates(
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder.gas_price(gas_price).maturity(Default::default());
+    builder.maturity(Default::default());
 
     let coin_amount = 10_000_000;
 
@@ -258,7 +259,11 @@ async fn execute_gas_metered_predicates(
             .map_err(|_| ())?;
 
         let tx = async_tx
-            .into_checked_basic(Default::default(), &ConsensusParameters::standard())
+            .into_checked_basic(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                gas_price,
+            )
             .expect("Should successfully create checked tranaction with predicate");
 
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
@@ -273,7 +278,11 @@ async fn execute_gas_metered_predicates(
     transaction.estimate_predicates(&params).map_err(|_| ())?;
 
     let tx = transaction
-        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
+        .into_checked_basic(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            gas_price,
+        )
         .expect("Should successfully create checked tranaction with predicate");
 
     let seq_gas_used = Interpreter::<PredicateStorage, _>::check_predicates(&tx, &params)
@@ -346,7 +355,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
@@ -364,14 +372,14 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let _ = builder
             .clone()
-            .finalize_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default(), gas_price)
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default(), gas_price)
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -410,7 +418,11 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         .expect("Predicate estimation failed");
 
     let checked = transaction
-        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
+        .into_checked_basic(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            gas_price,
+        )
         .expect("Should successfully create checked tranaction with predicate");
 
     // parallel version
@@ -469,7 +481,6 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
@@ -487,14 +498,14 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let _ = builder
             .clone()
-            .finalize_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default(), gas_price)
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default(), gas_price)
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -537,7 +548,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let tx_with_predicate = builder
             .clone()
-            .finalize_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default(), gas_price)
             .check_predicates_async::<TokioWithRayon>(&params)
             .await;
 
@@ -548,7 +559,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     }
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default(), gas_price)
         .check_predicates(&params);
 
     assert!(matches!(

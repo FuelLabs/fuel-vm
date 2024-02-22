@@ -9,10 +9,7 @@ use crate::{
     error::SimpleResult,
     state::Debugger,
 };
-use alloc::{
-    borrow::ToOwned,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use core::{
     mem,
     ops::Index,
@@ -26,7 +23,6 @@ use fuel_tx::{
     field,
     output,
     Chargeable,
-    ConsensusParameters,
     ContractParameters,
     Create,
     Executable,
@@ -134,6 +130,8 @@ pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
 /// Interpreter parameters
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterpreterParams {
+    /// Gas Price
+    pub gas_price: Word,
     /// Gas costs
     pub gas_costs: GasCosts,
     /// Maximum number of inputs
@@ -155,6 +153,7 @@ pub struct InterpreterParams {
 impl Default for InterpreterParams {
     fn default() -> Self {
         Self {
+            gas_price: 0,
             gas_costs: Default::default(),
             max_inputs: TxParameters::DEFAULT.max_inputs,
             contract_max_size: ContractParameters::DEFAULT.contract_max_size,
@@ -167,30 +166,12 @@ impl Default for InterpreterParams {
     }
 }
 
-impl From<ConsensusParameters> for InterpreterParams {
-    fn from(value: ConsensusParameters) -> Self {
-        InterpreterParams::from(&value)
-    }
-}
-
-impl From<&ConsensusParameters> for InterpreterParams {
-    fn from(value: &ConsensusParameters) -> Self {
-        InterpreterParams {
-            gas_costs: value.gas_costs.to_owned(),
-            max_inputs: value.tx_params.max_inputs,
-            contract_max_size: value.contract_params.contract_max_size,
-            tx_offset: value.tx_params.tx_offset(),
-            max_message_data_length: value.predicate_params.max_message_data_length,
-            chain_id: value.chain_id,
-            fee_params: value.fee_params,
-            base_asset_id: value.base_asset_id,
-        }
-    }
-}
-
-impl From<CheckPredicateParams> for InterpreterParams {
-    fn from(params: CheckPredicateParams) -> Self {
-        InterpreterParams {
+impl InterpreterParams {
+    /// Constructor for `InterpreterParams`
+    pub fn new<T: Into<CheckPredicateParams>>(gas_price: Word, params: T) -> Self {
+        let params: CheckPredicateParams = params.into();
+        Self {
+            gas_price,
             gas_costs: params.gas_costs,
             max_inputs: params.max_inputs,
             contract_max_size: params.contract_max_size,
@@ -258,6 +239,11 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Get max_inputs value
     pub fn max_inputs(&self) -> u8 {
         self.interpreter_params.max_inputs
+    }
+
+    /// Gas price for current block
+    pub fn gas_price(&self) -> Word {
+        self.interpreter_params.gas_price
     }
 
     /// Gas costs for opcodes
@@ -388,7 +374,7 @@ pub trait ExecutableTransaction:
         output: Output,
     ) -> SimpleResult<()> {
         if !output.is_variable() {
-            return Err(PanicReason::ExpectedOutputVariable.into())
+            return Err(PanicReason::ExpectedOutputVariable.into());
         }
 
         // TODO increase the error granularity for this case - create a new variant of
@@ -424,12 +410,13 @@ pub trait ExecutableTransaction:
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
+        gas_price: Word,
     ) -> Result<(), ValidityError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
         let gas_refund = self
-            .refund_fee(gas_costs, fee_params, used_gas)
+            .refund_fee(gas_costs, fee_params, used_gas, gas_price)
             .ok_or(ValidityError::GasCostsCoinsOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {

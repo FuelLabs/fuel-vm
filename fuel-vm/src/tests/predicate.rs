@@ -71,7 +71,6 @@ where
     let amount = 0;
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
-    let maturity = Default::default();
     let height = Default::default();
     let predicate_gas_used = 0;
 
@@ -82,7 +81,6 @@ where
         amount,
         asset_id,
         tx_pointer,
-        maturity,
         predicate_gas_used,
         predicate,
         predicate_data,
@@ -95,10 +93,7 @@ where
 
     let mut builder = TransactionBuilder::script(script, script_data);
 
-    builder
-        .gas_price(gas_price)
-        .script_gas_limit(gas_limit)
-        .maturity(maturity);
+    builder.gas_price(gas_price).script_gas_limit(gas_limit);
 
     (0..dummy_inputs).for_each(|_| {
         builder.add_unsigned_coin_input(
@@ -107,7 +102,6 @@ where
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            maturity,
         );
     });
 
@@ -223,7 +217,6 @@ async fn execute_gas_metered_predicates(
             coin_amount,
             AssetId::default(),
             rng.gen(),
-            Default::default(),
         );
     }
 
@@ -241,7 +234,6 @@ async fn execute_gas_metered_predicates(
             coin_amount,
             AssetId::default(),
             rng.gen(),
-            Default::default(),
             0,
             predicate,
             vec![],
@@ -366,7 +358,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
     );
 
     // parallel version
@@ -406,7 +397,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
         rng.gen(),
         predicate,
         vec![],
@@ -491,7 +481,6 @@ async fn gas_used_by_predicates_more_than_limit() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
     );
 
     // parallel version
@@ -537,7 +526,6 @@ async fn gas_used_by_predicates_more_than_limit() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
         gas_limit + 1,
         predicate,
         vec![],

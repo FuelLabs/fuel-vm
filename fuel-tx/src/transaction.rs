@@ -22,7 +22,6 @@ use fuel_types::{
     },
     Address,
     AssetId,
-    BlockHeight,
     Bytes32,
     Nonce,
     Salt,
@@ -366,7 +365,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: BlockHeight,
         witness_index: u8,
     ) {
         let owner = Input::owner(owner);
@@ -378,7 +376,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
         );
         self.inputs_mut().push(input);
     }

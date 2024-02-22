@@ -338,7 +338,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         amount: Word,
         asset_id: fuel_types::AssetId,
         tx_pointer: TxPointer,
-        maturity: BlockHeight,
     ) -> &mut Self {
         let pk = secret.public_key();
 
@@ -350,7 +349,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
             amount,
             asset_id,
             tx_pointer,
-            maturity,
             witness_index,
         );
 
@@ -369,7 +367,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            Default::default(),
             Default::default(),
         )
     }

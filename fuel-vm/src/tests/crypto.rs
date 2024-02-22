@@ -206,7 +206,6 @@ async fn recover_tx_id_predicate() {
         1000,
         rng.gen(),
         Default::default(),
-        rng.gen(),
         0,
         predicate,
         vec![],
@@ -222,7 +221,6 @@ async fn recover_tx_id_predicate() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            Default::default(),
             Default::default(),
         )
         .finalize();

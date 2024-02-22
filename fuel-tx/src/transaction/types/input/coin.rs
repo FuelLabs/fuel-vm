@@ -14,7 +14,6 @@ use derivative::Derivative;
 use fuel_types::{
     Address,
     AssetId,
-    BlockHeight,
     Word,
 };
 
@@ -108,7 +107,6 @@ where
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
-    pub maturity: BlockHeight,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[derivative(Debug(format_with = "fmt_as_field"))]
@@ -140,7 +138,6 @@ impl Coin<Full> {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
             ..
         } = self;
 
@@ -151,7 +148,6 @@ impl Coin<Full> {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
             ..Default::default()
         }
     }
@@ -163,7 +159,6 @@ impl Coin<Full> {
             amount,
             asset_id,
             tx_pointer,
-            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
@@ -176,7 +171,6 @@ impl Coin<Full> {
             amount,
             asset_id,
             tx_pointer,
-            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
@@ -194,7 +188,6 @@ impl Coin<Signed> {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
             ..
         } = self;
 
@@ -205,7 +198,6 @@ impl Coin<Signed> {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
             ..Default::default()
         }
     }
@@ -219,7 +211,6 @@ impl Coin<Predicate> {
             amount,
             asset_id,
             tx_pointer,
-            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
@@ -232,7 +223,6 @@ impl Coin<Predicate> {
             amount,
             asset_id,
             tx_pointer,
-            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,

@@ -52,7 +52,6 @@ fn estimate_gas_gives_proper_gas_used() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
     );
 
     let transaction_without_predicate = builder
@@ -82,7 +81,6 @@ fn estimate_gas_gives_proper_gas_used() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
         rng.gen(),
         predicate,
         vec![],

@@ -742,7 +742,7 @@ mod tests {
             .script_gas_limit(gas_limit)
             .add_unsigned_message_input(SecretKey::random(rng), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
             // Add empty base coin
-            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen())
             .finalize();
 
         let err = tx
@@ -780,7 +780,7 @@ mod tests {
                 vec![0xbb; 10],
             ))
             // Add empty base coin
-            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen(), rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen())
             .finalize();
 
         let err = tx
@@ -1320,7 +1320,6 @@ mod tests {
                 asset,
                 rng.gen(),
                 Default::default(),
-                Default::default(),
             ))
             .add_input(Input::contract(
                 rng.gen(),
@@ -1455,7 +1454,6 @@ mod tests {
                 input_amount,
                 AssetId::default(),
                 rng.gen(),
-                Default::default(),
             )
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             // arbitrary spending asset
@@ -1465,7 +1463,6 @@ mod tests {
                 input_amount,
                 any_asset,
                 rng.gen(),
-                Default::default(),
             )
             .add_output(Output::coin(rng.gen(), input_amount + 1, any_asset))
             .add_output(Output::change(rng.gen(), 0, any_asset))
@@ -1653,7 +1650,6 @@ mod tests {
                 input_amount,
                 asset,
                 rng.gen(),
-                Default::default(),
             )
             .add_input(Input::contract(
                 rng.gen(),
@@ -1690,7 +1686,6 @@ mod tests {
                 fee_input_amount,
                 asset,
                 rng.gen(),
-                Default::default(),
                 predicate_gas_used,
                 predicate,
                 vec![],
@@ -1755,7 +1750,6 @@ mod tests {
                 input_amount,
                 AssetId::default(),
                 rng.gen(),
-                Default::default(),
             )
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             .finalize()

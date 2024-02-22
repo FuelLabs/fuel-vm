@@ -322,14 +322,7 @@ fn max_iow() {
     builder
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            asset_id,
-            rng.gen(),
-            maturity,
-        );
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen());
 
     while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
@@ -358,14 +351,7 @@ fn max_iow() {
 
     let asset_id: AssetId = rng.gen();
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            *k,
-            rng.gen(),
-            rng.gen(),
-            asset_id,
-            rng.gen(),
-            maturity,
-        );
+        builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), asset_id, rng.gen());
     });
 
     while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
@@ -393,14 +379,7 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            *k,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        );
+        builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
     while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
@@ -430,14 +409,7 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            *k,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        );
+        builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
     while builder.outputs().len() < 1 + TX_PARAMS.max_outputs as usize {
@@ -467,14 +439,7 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(
-            *k,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        );
+        builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
     while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
@@ -509,8 +474,8 @@ fn output_change_asset_id() {
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen(), rng.gen())
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), b))
         .finalize()
@@ -520,8 +485,8 @@ fn output_change_asset_id() {
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen(), rng.gen())
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .finalize()
@@ -536,8 +501,8 @@ fn output_change_asset_id() {
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen(), rng.gen())
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), c))
         .finalize()
@@ -552,8 +517,8 @@ fn output_change_asset_id() {
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .gas_price(rng.gen())
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen(), rng.gen())
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen(), rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), a))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), c))
         .finalize()
@@ -582,7 +547,7 @@ fn script() {
     )
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
     .finalize()
     .check(block_height, &test_params())
@@ -594,7 +559,7 @@ fn script() {
     )
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
     .check(block_height, &test_params())
@@ -611,7 +576,7 @@ fn script() {
     )
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
     .check(block_height, &test_params())
@@ -625,7 +590,7 @@ fn script() {
     )
     .gas_price(rng.gen())
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen(), rng.gen())
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
     .add_output(Output::contract_created(rng.gen(), rng.gen()))
     .finalize()
     .check(block_height, &test_params())
@@ -638,7 +603,6 @@ fn script() {
 fn create() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let maturity = 100.into();
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
@@ -646,22 +610,13 @@ fn create() {
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate tx");
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .maturity(maturity)
         .add_input(Input::contract(
             rng.gen(),
             rng.gen(),
@@ -669,14 +624,7 @@ fn create() {
             rng.gen(),
             rng.gen(),
         ))
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
         .finalize()
         .check(block_height, &test_params())
@@ -690,7 +638,6 @@ fn create() {
     let not_empty_data = vec![0x1];
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .maturity(maturity)
         .add_unsigned_message_input(
             secret,
             rng.gen(),
@@ -698,14 +645,7 @@ fn create() {
             rng.gen(),
             not_empty_data,
         )
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize()
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
@@ -717,15 +657,7 @@ fn create() {
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize()
         .check(block_height, &test_params())
@@ -738,23 +670,14 @@ fn create() {
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .maturity(maturity)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
             rng.gen(),
             AssetId::default(),
             rng.gen(),
-            maturity,
         )
-        .add_unsigned_coin_input(
-            secret_b,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .finalize()
@@ -770,23 +693,14 @@ fn create() {
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .maturity(maturity)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
             rng.gen(),
             AssetId::default(),
             rng.gen(),
-            maturity,
         )
-        .add_unsigned_coin_input(
-            secret_b,
-            rng.gen(),
-            rng.gen(),
-            asset_id,
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), asset_id, rng.gen())
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
         .finalize()
@@ -807,23 +721,14 @@ fn create() {
 
     let err = TransactionBuilder::create(witness.into(), salt, storage_slots)
         .gas_price(rng.gen())
-        .maturity(maturity)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
             rng.gen(),
             AssetId::default(),
             rng.gen(),
-            maturity,
         )
-        .add_unsigned_coin_input(
-            secret_b,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .add_output(Output::contract_created(contract_id, state_root))
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize()
@@ -841,15 +746,7 @@ fn create() {
         vec![],
     )
     .gas_price(rng.gen())
-    .maturity(maturity)
-    .add_unsigned_coin_input(
-        secret,
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        maturity,
-    )
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())
@@ -861,15 +758,7 @@ fn create() {
         vec![],
     )
     .gas_price(rng.gen())
-    .maturity(maturity)
-    .add_unsigned_coin_input(
-        secret,
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        maturity,
-    )
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())
@@ -889,7 +778,6 @@ fn create() {
             rng.gen(),
             rng.gen(),
             0,
-            rng.gen(),
         )],
         vec![],
         vec![Default::default()],
@@ -901,14 +789,12 @@ fn create() {
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .gas_price(rng.gen())
-        .maturity(maturity)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
             rng.gen(),
             AssetId::default(),
             rng.gen(),
-            maturity,
         )
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
@@ -930,15 +816,7 @@ fn create() {
         storage_slots.clone(),
     )
     .gas_price(rng.gen())
-    .maturity(maturity)
-    .add_unsigned_coin_input(
-        secret,
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        maturity,
-    )
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())
@@ -956,15 +834,7 @@ fn create() {
         storage_slots_max,
     )
     .gas_price(rng.gen())
-    .maturity(maturity)
-    .add_unsigned_coin_input(
-        secret,
-        rng.gen(),
-        rng.gen(),
-        AssetId::default(),
-        rng.gen(),
-        maturity,
-    )
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())
@@ -978,7 +848,6 @@ fn script_transaction_at_maximum_size_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let secret = SecretKey::random(rng);
 
-    let maturity = 100.into();
     let block_height = 100.into();
     let mut params = test_params();
     let max_size = 1024usize;
@@ -986,14 +855,7 @@ fn script_transaction_at_maximum_size_is_valid() {
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .add_unsigned_coin_input(
-                secret,
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                maturity,
-            )
+            .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
             .finalize();
         tx.size()
     };
@@ -1006,14 +868,7 @@ fn script_transaction_at_maximum_size_is_valid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize();
 
     tx.check(block_height, &params)
@@ -1025,7 +880,6 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let secret = SecretKey::random(rng);
 
-    let maturity = 100.into();
     let block_height = 100.into();
     let mut params = test_params();
     let max_size = 1024usize;
@@ -1033,14 +887,7 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .add_unsigned_coin_input(
-                secret,
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                maturity,
-            )
+            .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
             .finalize();
         tx.size()
     };
@@ -1055,14 +902,7 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            maturity,
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize();
 
     let err = tx
@@ -1221,7 +1061,6 @@ mod inputs {
                     rng.gen(),
                     rng.gen(),
                     rng.gen(),
-                    rng.gen(),
                     predicate,
                     vec![],
                 ))
@@ -1242,7 +1081,6 @@ mod inputs {
                 .gas_price(rng.gen())
                 .maturity(rng.gen())
                 .add_input(Input::coin_predicate(
-                    rng.gen(),
                     rng.gen(),
                     rng.gen(),
                     rng.gen(),

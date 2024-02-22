@@ -156,7 +156,6 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         base_asset_id,
         rng.gen(),
         Default::default(),
-        1,
     );
 
     let consensus_params = ConsensusParameters::new(

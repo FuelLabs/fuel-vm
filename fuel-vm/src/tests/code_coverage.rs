@@ -53,7 +53,6 @@ fn code_coverage() {
             2,
             Default::default(),
             rng.gen(),
-            Default::default(),
         )
         .gas_price(gas_price)
         .script_gas_limit(gas_limit)

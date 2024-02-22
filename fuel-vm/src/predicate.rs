@@ -89,7 +89,6 @@ mod tests {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
             0,
             predicate.clone(),
             predicate_data.clone(),
@@ -191,7 +190,6 @@ mod tests {
                     Input::coin_predicate(
                         rng.gen(),
                         owner,
-                        rng.gen(),
                         rng.gen(),
                         rng.gen(),
                         rng.gen(),

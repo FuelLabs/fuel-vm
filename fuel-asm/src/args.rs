@@ -143,9 +143,6 @@ crate::enum_try_from! {
         /// Set `$rA` to `tx.inputs[$rB].witnessIndex`
         InputCoinWitnessIndex = 0x207,
 
-        /// Set `$rA` to `tx.inputs[$rB].maturity`
-        InputCoinMaturity = 0x208,
-
         /// Set `$rA` to `tx.inputs[$rB].predicateLength`
         InputCoinPredicateLength = 0x209,
 
@@ -326,7 +323,6 @@ fn encode_gtf_args() {
         GTFArgs::InputCoinAssetId,
         GTFArgs::InputCoinTxPointer,
         GTFArgs::InputCoinWitnessIndex,
-        GTFArgs::InputCoinMaturity,
         GTFArgs::InputCoinPredicateLength,
         GTFArgs::InputCoinPredicateDataLength,
         GTFArgs::InputCoinPredicate,

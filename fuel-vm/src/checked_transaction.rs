@@ -1473,8 +1473,7 @@ mod tests {
     fn arb_tx(rng: &mut StdRng) -> Script {
         let input_amount = 1000;
         let gas_limit = 1000;
-        let tx = base_asset_tx(rng, input_amount, gas_limit);
-        tx
+        base_asset_tx(rng, input_amount, gas_limit)
     }
 
     #[test]

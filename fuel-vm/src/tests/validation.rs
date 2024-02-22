@@ -26,7 +26,6 @@ fn transaction_can_be_executed_after_maturity() {
         1,
         Default::default(),
         rng.gen(),
-        Default::default(),
     )
     .script_gas_limit(100)
     .maturity(MATURITY)

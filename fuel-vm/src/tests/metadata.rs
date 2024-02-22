@@ -313,7 +313,6 @@ fn get_transaction_fields() {
         1_500,
         rng.gen(),
         rng.gen(),
-        100.into(),
         gas_costs.ret,
         predicate.clone(),
         predicate_data.clone(),
@@ -358,7 +357,6 @@ fn get_transaction_fields() {
             input,
             AssetId::zeroed(),
             rng.gen(),
-            maturity,
         )
         .add_input(input_coin_predicate)
         .add_input(Input::contract(
@@ -389,7 +387,6 @@ fn get_transaction_fields() {
             asset_amt,
             asset,
             rng.gen(),
-            maturity,
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .finalize_checked(height, zero_gas_price);
@@ -624,12 +621,6 @@ fn get_transaction_fields() {
         op::movi(0x11, inputs[0].witness_index().unwrap() as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinWitnessIndex),
-        op::eq(0x10, 0x10, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x11, *inputs[0].maturity().unwrap() as Immediate18),
-        op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinMaturity),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 

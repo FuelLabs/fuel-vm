@@ -268,13 +268,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(Input::witness_index)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
-            GTFArgs::InputCoinMaturity => {
-                *tx.inputs()
-                    .get(b)
-                    .filter(|i| i.is_coin())
-                    .and_then(Input::maturity)
-                    .ok_or(PanicReason::InputNotFound)? as Word
-            }
             GTFArgs::InputCoinPredicateLength => {
                 tx.inputs()
                     .get(b)

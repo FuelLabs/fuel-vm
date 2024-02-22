@@ -267,7 +267,6 @@ pub mod test_helpers {
                 self.rng.gen(),
                 amount,
                 asset_id,
-                self.rng.gen(),
                 Default::default(),
             );
             self

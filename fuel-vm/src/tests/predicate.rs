@@ -82,7 +82,6 @@ where
         amount,
         asset_id,
         tx_pointer,
-        maturity,
         predicate_gas_used,
         predicate,
         predicate_data,
@@ -104,7 +103,6 @@ where
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            maturity,
         );
     });
 
@@ -220,7 +218,6 @@ async fn execute_gas_metered_predicates(
             coin_amount,
             AssetId::default(),
             rng.gen(),
-            Default::default(),
         );
     }
 
@@ -238,7 +235,6 @@ async fn execute_gas_metered_predicates(
             coin_amount,
             AssetId::default(),
             rng.gen(),
-            Default::default(),
             0,
             predicate,
             vec![],
@@ -370,7 +366,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
     );
 
     // parallel version
@@ -410,7 +405,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
         rng.gen(),
         predicate,
         vec![],
@@ -498,7 +492,6 @@ async fn gas_used_by_predicates_more_than_limit() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
     );
 
     // parallel version
@@ -544,7 +537,6 @@ async fn gas_used_by_predicates_more_than_limit() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
         gas_limit + 1,
         predicate,
         vec![],

@@ -436,11 +436,7 @@ pub mod test_helpers {
             // set initial contract balance
             if let Some((asset_id, amount)) = initial_balance {
                 self.storage
-                    .merkle_contract_asset_id_balance_insert(
-                        &contract_id,
-                        &asset_id,
-                        amount,
-                    )
+                    .contract_asset_id_balance_insert(&contract_id, &asset_id, amount)
                     .unwrap();
             }
 

@@ -22,7 +22,6 @@ use hashbrown::{
 use fuel_asm::Word;
 use fuel_storage::{
     Mappable,
-    MerkleRootStorage,
     StorageInspect,
     StorageMutate,
 };

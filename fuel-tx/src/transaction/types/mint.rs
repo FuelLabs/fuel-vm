@@ -64,6 +64,8 @@ pub struct Mint {
     pub(crate) mint_amount: Word,
     /// The asset IDs corresponding to the minted amount.
     pub(crate) mint_asset_id: AssetId,
+    /// Gas Price used for current block
+    pub(crate) gas_price: Word,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
@@ -73,7 +75,7 @@ pub struct Mint {
 impl crate::UniqueIdentifier for Mint {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
-            return id
+            return id;
         }
 
         let mut clone = self.clone();
@@ -97,20 +99,21 @@ impl FormatValidityChecks for Mint {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        _gas_price: u64,
     ) -> Result<(), ValidityError> {
         check_size(self, consensus_params.tx_params())?;
 
         if self.tx_pointer().block_height() != block_height {
-            return Err(ValidityError::TransactionMintIncorrectBlockHeight)
+            return Err(ValidityError::TransactionMintIncorrectBlockHeight);
         }
 
         if self.output_contract.input_index != 0 {
-            return Err(ValidityError::TransactionMintIncorrectOutputIndex)
+            return Err(ValidityError::TransactionMintIncorrectOutputIndex);
         }
 
         // It is temporary check until https://github.com/FuelLabs/fuel-core/issues/1205
         if self.mint_asset_id != consensus_params.base_asset_id {
-            return Err(ValidityError::TransactionMintNonBaseAsset)
+            return Err(ValidityError::TransactionMintNonBaseAsset);
         }
 
         Ok(())

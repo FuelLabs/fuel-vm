@@ -143,9 +143,6 @@ crate::enum_try_from! {
         /// Set `$rA` to `tx.inputs[$rB].witnessIndex`
         InputCoinWitnessIndex = 0x207,
 
-        /// Set `$rA` to `tx.inputs[$rB].maturity`
-        InputCoinMaturity = 0x208,
-
         /// Set `$rA` to `tx.inputs[$rB].predicateLength`
         InputCoinPredicateLength = 0x209,
 
@@ -252,7 +249,7 @@ crate::enum_try_from! {
         PolicyTypes = 0x500,
 
         /// Set `$rA` to `tx.policies[0x00].gasPrice`
-        PolicyGasPrice = 0x501,
+        PolicyTip = 0x501,
 
         /// Set `$rA` to `tx.policies[count_ones(0b11 & tx.policyTypes) - 1].witnessLimit`
         PolicyWitnessLimit = 0x502,
@@ -326,7 +323,6 @@ fn encode_gtf_args() {
         GTFArgs::InputCoinAssetId,
         GTFArgs::InputCoinTxPointer,
         GTFArgs::InputCoinWitnessIndex,
-        GTFArgs::InputCoinMaturity,
         GTFArgs::InputCoinPredicateLength,
         GTFArgs::InputCoinPredicateDataLength,
         GTFArgs::InputCoinPredicate,
@@ -362,7 +358,7 @@ fn encode_gtf_args() {
         GTFArgs::WitnessDataLength,
         GTFArgs::WitnessData,
         GTFArgs::PolicyTypes,
-        GTFArgs::PolicyGasPrice,
+        GTFArgs::PolicyTip,
         GTFArgs::PolicyWitnessLimit,
         GTFArgs::PolicyMaturity,
         GTFArgs::PolicyMaxFee,

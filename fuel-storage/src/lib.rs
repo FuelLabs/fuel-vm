@@ -150,10 +150,9 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
     fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
-/// Returns the merkle root for the `StorageType` per merkle `Key`. The type should
-/// implement the `StorageMutate` for the `StorageType`. Per one storage, it is possible
-/// to have several merkle trees under different `Key`.
-pub trait MerkleRootStorage<Key, StorageType>: StorageMutate<StorageType>
+/// Returns the merkle root for the `StorageType` per merkle `Key`. Per one storage, it is
+/// possible to have several merkle trees under different `Key`.
+pub trait MerkleRootStorage<Key, StorageType>: StorageInspect<StorageType>
 where
     StorageType: Mappable,
 {

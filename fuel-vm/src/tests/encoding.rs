@@ -101,7 +101,6 @@ fn input() {
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
             0xff,
-            (u32::MAX >> 1).into(),
         ),
         Input::coin_predicate(
             UtxoId::new([0xaa; 32].into(), 0),
@@ -109,7 +108,6 @@ fn input() {
             Word::MAX,
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
-            (u32::MAX >> 1).into(),
             Word::MAX,
             vec![0xdd; 50],
             vec![0xee; 23],
@@ -120,7 +118,6 @@ fn input() {
             Word::MAX,
             [0xcc; 32].into(),
             TxPointer::new(0x3802.into(), 0x28),
-            (u32::MAX >> 1).into(),
             Word::MAX,
             vec![0xdd; 50],
             vec![],
@@ -217,7 +214,7 @@ fn transaction() {
             vec![0xfa],
             vec![0xfb, 0xfc],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -230,7 +227,7 @@ fn transaction() {
             vec![],
             vec![0xfb, 0xfc],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -243,7 +240,7 @@ fn transaction() {
             vec![0xfa],
             vec![],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -256,7 +253,7 @@ fn transaction() {
             vec![],
             vec![],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -269,7 +266,7 @@ fn transaction() {
             vec![],
             vec![],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -282,7 +279,7 @@ fn transaction() {
             vec![],
             vec![],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -295,7 +292,7 @@ fn transaction() {
             vec![],
             vec![],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -308,7 +305,7 @@ fn transaction() {
             vec![],
             vec![],
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
             vec![],
@@ -328,7 +325,7 @@ fn transaction() {
         Transaction::create(
             0xba,
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -341,7 +338,7 @@ fn transaction() {
         Transaction::create(
             0xba,
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -354,7 +351,7 @@ fn transaction() {
         Transaction::create(
             0xba,
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -367,7 +364,7 @@ fn transaction() {
         Transaction::create(
             0xba,
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -380,7 +377,7 @@ fn transaction() {
         Transaction::create(
             0xba,
             Policies::new()
-                .with_gas_price(Word::MAX >> 1)
+                .with_tip(Word::MAX >> 1)
                 .with_max_fee(Word::MAX >> 5),
             [0xdd; 32].into(),
             vec![],

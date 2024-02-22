@@ -89,7 +89,6 @@ fn input_coin_message_signature() {
             let amount = rng.gen();
             let asset_id = rng.gen();
             let tx_pointer = rng.gen();
-            let maturity = rng.gen();
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
                 let witness_index =
@@ -102,7 +101,6 @@ fn input_coin_message_signature() {
                     amount,
                     asset_id,
                     tx_pointer,
-                    maturity,
                     witness_index as u8,
                 )
             })
@@ -141,23 +139,21 @@ fn input_coin_message_signature() {
 #[test]
 fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
+    let arb_gas_price = 1;
 
     let mut tx = Script::default();
 
-    let input = Input::coin_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let input =
+        Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
     tx.add_input(input);
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &ConsensusParameters::standard())
+        .check(
+            block_height,
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err);
@@ -171,9 +167,9 @@ fn duplicate_secrets_reuse_witness() {
     // verify witness reuse for script txs
     let script = TransactionBuilder::script(vec![], vec![])
         // coin 1
-        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default())
         // coin 2
-        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default())
         // message 1
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
@@ -188,9 +184,9 @@ fn duplicate_secrets_reuse_witness() {
     // verify witness reuse for creation txs
     let create = TransactionBuilder::create(Witness::default(), rng.gen(), vec![])
         // coin 1
-        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default())
         // coin 2
-        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default(), 0.into())
+        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default())
         // message 1
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
         .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
@@ -219,7 +215,6 @@ fn coin_predicate() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
-        rng.gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -232,7 +227,6 @@ fn coin_predicate() {
     let err = Input::coin_predicate(
         rng.gen(),
         owner,
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -253,7 +247,6 @@ fn coin_predicate() {
     let err = Input::coin_predicate(
         rng.gen(),
         owner,
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -333,6 +326,7 @@ fn contract() {
 #[test]
 fn message_metadata() {
     let rng = &mut StdRng::seed_from_u64(8586);
+    let arb_gas_price = 1;
 
     let txhash: Bytes32 = rng.gen();
 
@@ -370,7 +364,11 @@ fn message_metadata() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &ConsensusParameters::standard())
+        .check(
+            block_height,
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err,);
@@ -471,6 +469,8 @@ fn message_metadata() {
 fn message_message_coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
+    let arb_gas_price = 1;
+
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
@@ -495,7 +495,11 @@ fn message_message_coin() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(block_height, &ConsensusParameters::standard())
+        .check(
+            block_height,
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err,);
@@ -556,32 +560,21 @@ fn message_message_coin() {
 fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let utxo_id = rng.gen();
+    let arb_gas_price = 1;
 
-    let a = Input::coin_signed(
-        utxo_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
-    let b = Input::coin_signed(
-        utxo_id,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let a = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+    let b = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(a)
         .add_input(b)
         .add_witness(rng.gen())
         .finalize()
-        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
+        .check_without_signatures(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect_err("Expected checkable failure");
 
     assert_eq!(err, ValidityError::DuplicateInputUtxoId { utxo_id });
@@ -590,6 +583,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
+    let arb_gas_price = 1;
     let message_input = Input::message_data_signed(
         rng.gen(),
         rng.gen(),
@@ -600,7 +594,6 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
     );
     let message_id = message_input.message_id().unwrap();
     let fee = Input::coin_signed(
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -619,6 +612,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         .check_without_signatures(
             Default::default(),
             &ConsensusParameters::standard(),
+            arb_gas_price,
         )
         .expect_err("Expected checkable failure");
 
@@ -628,9 +622,9 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
+    let arb_gas_price = 1;
     let contract_id = rng.gen();
     let fee = Input::coin_signed(
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -652,7 +646,11 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .add_output(o)
         .add_output(p)
         .finalize()
-        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
+        .check_without_signatures(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect_err("Expected checkable failure");
 
     assert_eq!(err, ValidityError::DuplicateInputContractId { contract_id });
@@ -662,18 +660,12 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
 fn transaction_with_duplicate_contract_utxo_id_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let input_utxo_id: UtxoId = rng.gen();
+    let arb_gas_price = 1;
 
     let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
-    let fee = Input::coin_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        0,
-        rng.gen(),
-    );
+    let fee =
+        Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
 
     let o = Output::contract(0, rng.gen(), rng.gen());
     let p = Output::contract(1, rng.gen(), rng.gen());
@@ -686,6 +678,10 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_output(p)
         .add_witness(rng.gen())
         .finalize()
-        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
+        .check_without_signatures(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            arb_gas_price,
+        )
         .expect("Duplicated UTXO id is valid for contract input");
 }

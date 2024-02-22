@@ -162,9 +162,9 @@ impl<Tx> GTFInput<'_, Tx> {
                 .map(|script| *script.script_gas_limit())
                 .unwrap_or_default(),
             GTFArgs::PolicyTypes => tx.policies().bits() as Word,
-            GTFArgs::PolicyGasPrice => tx
+            GTFArgs::PolicyTip => tx
                 .policies()
-                .get(PolicyType::GasPrice)
+                .get(PolicyType::Tip)
                 .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::PolicyWitnessLimit => tx
                 .policies()
@@ -266,13 +266,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .get(b)
                     .filter(|i| i.is_coin())
                     .and_then(Input::witness_index)
-                    .ok_or(PanicReason::InputNotFound)? as Word
-            }
-            GTFArgs::InputCoinMaturity => {
-                *tx.inputs()
-                    .get(b)
-                    .filter(|i| i.is_coin())
-                    .and_then(Input::maturity)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputCoinPredicateLength => {

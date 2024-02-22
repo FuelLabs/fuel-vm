@@ -31,9 +31,9 @@ fn gas_factor_rounds_correctly() {
         .collect();
 
     let transaction = TestBuilder::new(2322u64)
+        .gas_price(gas_price)
         .with_fee_params(fee_params)
         .start_script(script, vec![])
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .coin_input(AssetId::default(), input)
         .change_output(AssetId::default())
@@ -43,6 +43,7 @@ fn gas_factor_rounds_correctly() {
         &gas_costs,
         &fee_params,
         transaction.transaction(),
+        gas_price,
     )
     .expect("failed to calculate fee");
 
@@ -50,10 +51,11 @@ fn gas_factor_rounds_correctly() {
 
     let consensus_params = ConsensusParameters {
         fee_params,
+        gas_costs,
         ..ConsensusParameters::standard()
     };
 
-    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
     let storage = MemoryStorage::default();
 
     let mut interpreter = Interpreter::<_, _>::with_storage(storage, interpreter_params);
@@ -78,7 +80,7 @@ fn gas_factor_rounds_correctly() {
 
     let refund = res
         .tx()
-        .refund_fee(&gas_costs, &fee_params, gas_used)
+        .refund_fee(&gas_costs, &fee_params, gas_used, gas_price)
         .expect("failed to calculate refund");
 
     assert_eq!(*change, initial_balance + refund);

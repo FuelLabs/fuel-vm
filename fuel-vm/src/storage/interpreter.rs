@@ -1,7 +1,6 @@
 //! Trait definitions for storage backend
 
 use fuel_storage::{
-    MerkleRootStorage,
     StorageAsRef,
     StorageInspect,
     StorageMutate,
@@ -47,7 +46,7 @@ pub trait InterpreterStorage:
     StorageMutate<ContractsRawCode, Error = Self::DataError>
     + StorageSize<ContractsRawCode, Error = Self::DataError>
     + StorageRead<ContractsRawCode, Error = Self::DataError>
-    + MerkleRootStorage<ContractId, ContractsState, Error = Self::DataError>
+    + StorageMutate<ContractsState, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
@@ -84,7 +83,7 @@ pub trait InterpreterStorage:
 
         // On the `fuel-core` side it is done in more optimal way
         slots.iter().try_for_each(|s| {
-            self.merkle_contract_state_insert(id, s.key(), s.value())
+            self.contract_state_insert(id, s.key(), s.value())
                 .map(|_| ())
         })
     }
@@ -133,7 +132,7 @@ pub trait InterpreterStorage:
     }
 
     /// Fetch the value form a key-value mapping in a contract storage.
-    fn merkle_contract_state(
+    fn contract_state(
         &self,
         id: &ContractId,
         key: &Bytes32,
@@ -142,7 +141,7 @@ pub trait InterpreterStorage:
     }
 
     /// Insert a key-value mapping in a contract storage.
-    fn merkle_contract_state_insert(
+    fn contract_state_insert(
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
@@ -158,7 +157,7 @@ pub trait InterpreterStorage:
     }
 
     /// Remove a key-value mapping from a contract storage.
-    fn merkle_contract_state_remove(
+    fn contract_state_remove(
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
@@ -169,7 +168,7 @@ pub trait InterpreterStorage:
     /// Fetch a range of values from a key-value mapping in a contract storage.
     /// Returns the full range requested using optional values in case
     /// a requested slot is unset.  
-    fn merkle_contract_state_range(
+    fn contract_state_range(
         &self,
         id: &ContractId,
         start_key: &Bytes32,
@@ -178,7 +177,7 @@ pub trait InterpreterStorage:
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns the number of keys that were previously unset but are now set.
-    fn merkle_contract_state_insert_range(
+    fn contract_state_insert_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
@@ -187,7 +186,7 @@ pub trait InterpreterStorage:
 
     /// Remove a range of key-values from contract storage.
     /// Returns None if any of the keys in the range were already unset.
-    fn merkle_contract_state_remove_range(
+    fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
@@ -196,9 +195,9 @@ pub trait InterpreterStorage:
 }
 
 /// Storage operations for contract assets.
-pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets> {
+pub trait ContractsAssetsStorage: StorageMutate<ContractsAssets> {
     /// Fetch the balance of an asset ID in a contract storage.
-    fn merkle_contract_asset_id_balance(
+    fn contract_asset_id_balance(
         &self,
         id: &ContractId,
         asset_id: &AssetId,
@@ -213,7 +212,7 @@ pub trait ContractsAssetsStorage: MerkleRootStorage<ContractId, ContractsAssets>
 
     /// Update the balance of an asset ID in a contract storage.
     /// Returns the old balance, if any.
-    fn merkle_contract_asset_id_balance_insert(
+    fn contract_asset_id_balance_insert(
         &mut self,
         contract: &ContractId,
         asset_id: &AssetId,
@@ -266,13 +265,13 @@ where
         <S as InterpreterStorage>::read_contract(self.deref(), id, writer)
     }
 
-    fn merkle_contract_state_range(
+    fn contract_state_range(
         &self,
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Vec<Option<Cow<StorageData>>>, Self::DataError> {
-        <S as InterpreterStorage>::merkle_contract_state_range(
+        <S as InterpreterStorage>::contract_state_range(
             self.deref(),
             id,
             start_key,
@@ -280,13 +279,13 @@ where
         )
     }
 
-    fn merkle_contract_state_insert_range(
+    fn contract_state_insert_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[StorageData],
     ) -> Result<usize, Self::DataError> {
-        <S as InterpreterStorage>::merkle_contract_state_insert_range(
+        <S as InterpreterStorage>::contract_state_insert_range(
             self.deref_mut(),
             contract,
             start_key,
@@ -294,13 +293,13 @@ where
         )
     }
 
-    fn merkle_contract_state_remove_range(
+    fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Option<()>, Self::DataError> {
-        <S as InterpreterStorage>::merkle_contract_state_remove_range(
+        <S as InterpreterStorage>::contract_state_remove_range(
             self.deref_mut(),
             contract,
             start_key,

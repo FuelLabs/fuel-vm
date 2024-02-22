@@ -147,7 +147,7 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn merkle_contract_state_range(
+    fn contract_state_range(
         &self,
         _id: &ContractId,
         _start_key: &Bytes32,
@@ -156,7 +156,7 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn merkle_contract_state_insert_range(
+    fn contract_state_insert_range(
         &mut self,
         _contract: &ContractId,
         _start_key: &Bytes32,
@@ -165,7 +165,7 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn merkle_contract_state_remove_range(
+    fn contract_state_remove_range(
         &mut self,
         _contract: &ContractId,
         _start_key: &Bytes32,

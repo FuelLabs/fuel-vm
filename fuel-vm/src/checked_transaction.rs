@@ -1470,42 +1470,79 @@ mod tests {
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
     }
 
-    #[test]
-    fn checked_from_tx__including_tip_increases_fees() {
-        let rng = &mut StdRng::seed_from_u64(2322u64);
+    fn arb_tx(rng: &mut StdRng) -> Script {
         let input_amount = 1000;
-        let gas_price = 1;
         let gas_limit = 1000;
-        let mut tx = base_asset_tx(rng, input_amount, gas_limit);
+        let tx = base_asset_tx(rng, input_amount, gas_limit);
+        tx
+    }
+
+    #[test]
+    fn checked_from_tx__including_tip_increases_min_fee() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 1;
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::default();
+        let mut tx = arb_tx(rng);
 
         // given
         let tipless_tx = tx.clone();
 
-        let fee_without_tip = TransactionFee::checked_from_tx(
+        let min_fee_without_tip = TransactionFee::checked_from_tx(
             &gas_costs,
             &fee_params,
             &tipless_tx,
             gas_price,
         )
-        .unwrap();
-        let max_fee_without_tip = fee_without_tip.max_fee();
-        let min_fee_without_tip = fee_without_tip.min_fee();
+        .unwrap()
+        .min_fee();
+
         let tip = 100;
 
         // when
         tx.set_tip(tip);
 
-        let fee_with_tip =
+        let min_fee_with_tip =
             TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx, gas_price)
-                .unwrap();
-        let max_fee_with_tip = fee_with_tip.max_fee();
-        let min_fee_with_tip = fee_with_tip.min_fee();
+                .unwrap()
+                .min_fee();
+
+        // then
+        assert_eq!(min_fee_without_tip + tip, min_fee_with_tip);
+    }
+
+    #[test]
+    fn checked_from_tx__including_tip_increases_max_fee() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 1;
+        let gas_costs = GasCosts::default();
+        let fee_params = FeeParameters::default();
+        let mut tx = arb_tx(rng);
+
+        // given
+        let tipless_tx = tx.clone();
+
+        let max_fee_without_tip = TransactionFee::checked_from_tx(
+            &gas_costs,
+            &fee_params,
+            &tipless_tx,
+            gas_price,
+        )
+        .unwrap()
+        .max_fee();
+
+        let tip = 100;
+
+        // when
+        tx.set_tip(tip);
+
+        let max_fee_with_tip =
+            TransactionFee::checked_from_tx(&gas_costs, &fee_params, &tx, gas_price)
+                .unwrap()
+                .max_fee();
 
         // then
         assert_eq!(max_fee_without_tip + tip, max_fee_with_tip);
-        assert_eq!(min_fee_without_tip + tip, min_fee_with_tip);
     }
 
     #[test]

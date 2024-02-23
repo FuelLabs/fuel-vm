@@ -131,8 +131,8 @@ impl<Tx: IntoChecked + UniqueIdentifier> Checked<Tx> {
 
 #[cfg(feature = "test-helpers")]
 impl<Tx: IntoChecked + Default> Default for Checked<Tx>
-where
-    Checked<Tx>: CheckPredicates,
+    where
+        Checked<Tx>: CheckPredicates,
 {
     fn default() -> Self {
         let gas_price = 0;
@@ -142,8 +142,8 @@ where
 
 #[cfg(feature = "test-helpers")]
 impl<Tx: IntoChecked + Default> Checked<Tx>
-where
-    Checked<Tx>: CheckPredicates,
+    where
+        Checked<Tx>: CheckPredicates,
 {
     /// Creates a default checked transaction with a given gas price.
     pub fn default_with_gas_price(gas_price: u64) -> Self {
@@ -210,8 +210,8 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         consensus_params: &ConsensusParameters,
         gas_price: u64,
     ) -> Result<Checked<Self>, CheckError>
-    where
-        Checked<Self>: CheckPredicates,
+        where
+            Checked<Self>: CheckPredicates,
     {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params, gas_price)?
@@ -319,8 +319,8 @@ pub trait ParallelExecutor {
 
     /// Creates a Future from a CPU-heavy task.
     fn create_task<F>(func: F) -> Self::Task
-    where
-        F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
+        where
+            F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
             + Send
             + 'static;
 
@@ -332,9 +332,9 @@ pub trait ParallelExecutor {
 
 #[async_trait::async_trait]
 impl<Tx> CheckPredicates for Checked<Tx>
-where
-    Tx: ExecutableTransaction + Send + Sync + 'static,
-    <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
+    where
+        Tx: ExecutableTransaction + Send + Sync + 'static,
+        <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
 {
     fn check_predicates(
         mut self,
@@ -351,14 +351,14 @@ where
         mut self,
         params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
-    where
-        E: ParallelExecutor,
+        where
+            E: ParallelExecutor,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
                 &self, params,
             )
-            .await?;
+                .await?;
 
             self.checks_bitmask.insert(Checks::Predicates);
 
@@ -383,8 +383,8 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
         &mut self,
         params: &CheckPredicateParams,
     ) -> Result<(), CheckError>
-    where
-        E: ParallelExecutor,
+        where
+            E: ParallelExecutor,
     {
         Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(self, params)
             .await?;
@@ -463,8 +463,8 @@ impl CheckPredicates for Checked<Transaction> {
         mut self,
         params: &CheckPredicateParams,
     ) -> Result<Self, CheckError>
-    where
-        E: ParallelExecutor,
+        where
+            E: ParallelExecutor,
     {
         let checked_transaction: CheckedTransaction = self.into();
 
@@ -555,20 +555,20 @@ impl From<CheckedTransaction> for Checked<Transaction> {
     fn from(checked: CheckedTransaction) -> Self {
         match checked {
             CheckedTransaction::Script(Checked {
-                transaction,
-                metadata,
-                checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+                                           transaction,
+                                           metadata,
+                                           checks_bitmask,
+                                       }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
             CheckedTransaction::Create(Checked {
-                transaction,
-                metadata,
-                checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+                                           transaction,
+                                           metadata,
+                                           checks_bitmask,
+                                       }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
             CheckedTransaction::Mint(Checked {
-                transaction,
-                metadata,
-                checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+                                         transaction,
+                                         metadata,
+                                         checks_bitmask,
+                                     }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
         }
     }
 }
@@ -629,7 +629,7 @@ impl IntoChecked for Transaction {
                 Ok((transaction.into(), metadata.into()))
             }
         }
-        .map(|(transaction, metadata)| Checked::basic(transaction, metadata))
+            .map(|(transaction, metadata)| Checked::basic(transaction, metadata))
     }
 }
 
@@ -650,6 +650,7 @@ impl From<PredicateVerificationFailed> for CheckError {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::cast_possible_truncation)]
+
     use super::*;
     use alloc::vec;
     use fuel_asm::op;
@@ -921,6 +922,7 @@ mod tests {
         gas_limit: u64,
         input_amount: u64,
         gas_price_factor: u64,
+        tip: u64,
         seed: u64,
     ) -> TestResult {
         // dont divide by zero
@@ -932,7 +934,7 @@ mod tests {
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
-        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
         if let Ok(valid) =
             is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
@@ -961,7 +963,7 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
         // Given
         let used_gas = 0;
@@ -969,8 +971,8 @@ mod tests {
         // When
         let refund = tx.refund_fee(&gas_costs, &fee_params, used_gas, gas_price);
 
-        let min_fee = tx.min_fee(&gas_costs, &fee_params, gas_price, tip);
-        let max_fee = tx.max_fee(&gas_costs, &fee_params, gas_price, tip);
+        let min_fee = tx.min_fee(&gas_costs, &fee_params, gas_price);
+        let max_fee = tx.max_fee(&gas_costs, &fee_params, gas_price);
 
         // Then
         if let Some(refund) = refund {
@@ -988,6 +990,7 @@ mod tests {
         input_amount: u64,
         gas_price: u64,
         gas_price_factor: u64,
+        tip: u64,
         seed: u64,
     ) -> TestResult {
         // verify min fee a transaction can consume based on bytes is correct
@@ -1000,7 +1003,7 @@ mod tests {
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
-        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
         if let Ok(valid) =
             is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id, gas_price)
@@ -1307,8 +1310,8 @@ mod tests {
         let max_fee = fee.max_fee();
         let expected_max_fee = min_fee
             + (witness_limit - bytecode.size() as u64)
-                * fee_params.gas_per_byte
-                * gas_price;
+            * fee_params.gas_per_byte
+            * gas_price;
         assert_eq!(max_fee, expected_max_fee);
     }
 
@@ -1341,8 +1344,8 @@ mod tests {
         let max_fee = fee.max_fee();
         let expected_max_fee = min_fee
             + (witness_limit - bytecode.size_static() as u64)
-                * fee_params.gas_per_byte
-                * gas_price;
+            * fee_params.gas_per_byte
+            * gas_price;
         assert_eq!(max_fee, expected_max_fee);
     }
 
@@ -1413,9 +1416,9 @@ mod tests {
 
         let provided = match err {
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
-                provided,
-                ..
-            }) => provided,
+                                     provided,
+                                     ..
+                                 }) => provided,
             _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
@@ -1442,9 +1445,9 @@ mod tests {
 
         let provided = match err {
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
-                provided,
-                ..
-            }) => provided,
+                                     provided,
+                                     ..
+                                 }) => provided,
             _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
@@ -1599,7 +1602,7 @@ mod tests {
             CheckError::Validity(ValidityError::InsufficientInputAmount {
                 asset: any_asset,
                 expected: input_amount + 1,
-                provided: input_amount
+                provided: input_amount,
             }),
             checked
         );
@@ -1636,7 +1639,7 @@ mod tests {
             .into_checked(
                 block_height,
                 &ConsensusParameters::standard_with_id(chain_id),
-                arb_gas_price
+                arb_gas_price,
             )
             .unwrap()
             // Sets Checks::Signatures
@@ -1669,11 +1672,11 @@ mod tests {
             .into_checked(
                 block_height,
                 &consensus_params,
-                arb_gas_price
+                arb_gas_price,
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates( &check_predicate_params)
+            .check_predicates(&check_predicate_params)
             .unwrap();
         assert!(checked
             .checks()
@@ -1728,7 +1731,9 @@ mod tests {
             .try_into()
             .map_err(|_| ValidityError::BalanceOverflow)?;
 
-        let result = max_fee == available_balances.fee.max_fee();
+        let max_fee_with_tip = max_fee + tx.tip();
+
+        let result = max_fee_with_tip == available_balances.fee.max_fee();
         Ok(result)
     }
 
@@ -1739,8 +1744,8 @@ mod tests {
         base_asset_id: &AssetId,
         gas_price: u64,
     ) -> Result<bool, ValidityError>
-    where
-        Tx: Chargeable + field::Inputs + field::Outputs,
+        where
+            Tx: Chargeable + field::Inputs + field::Outputs,
     {
         let available_balances = balances::initial_free_balances(
             tx,
@@ -1774,7 +1779,9 @@ mod tests {
             .try_into()
             .map_err(|_| ValidityError::BalanceOverflow)?;
 
-        Ok(min_fee == available_balances.fee.min_fee())
+        let min_fee_with_tip = min_fee + tx.tip();
+
+        Ok(min_fee_with_tip == available_balances.fee.min_fee())
     }
 
     fn valid_coin_tx(
@@ -1856,8 +1863,10 @@ mod tests {
         rng: &mut StdRng,
         gas_limit: u64,
         input_amount: u64,
+        tip: u64,
     ) -> Script {
         TransactionBuilder::script(vec![], vec![])
+            .tip(tip)
             .script_gas_limit(gas_limit)
             .add_input(Input::message_coin_predicate(
                 rng.gen(),

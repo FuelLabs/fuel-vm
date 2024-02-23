@@ -349,8 +349,7 @@ where
     }
 
     if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
-        let tip = tx.policies().get(PolicyType::Tip).unwrap_or(0);
-        if tx.max_fee(gas_costs, fee_params, gas_price, tip) > max_fee_limit as u128 {
+        if tx.max_fee(gas_costs, fee_params, gas_price) > max_fee_limit as u128 {
             Err(ValidityError::TransactionMaxFeeLimitExceeded)?
         }
     }

@@ -37,9 +37,11 @@ fn gas_limit() {
     let block_height = 1000.into();
 
     let arb_gas_price = 1;
-
+    let arb_max_fee = 1000;
+    
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
@@ -47,12 +49,13 @@ fn gas_limit() {
 
     TransactionBuilder::create(vec![0xfau8].into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate transaction");
 
-    let err = Transaction::script(
+    let mut tx = Transaction::script(
         TX_PARAMS.max_gas_per_tx + 1,
         generate_bytes(rng),
         generate_bytes(rng),
@@ -60,7 +63,9 @@ fn gas_limit() {
         vec![],
         vec![],
         vec![],
-    )
+    );
+    tx.set_max_fee_limit(arb_max_fee);
+    let err = tx
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
@@ -73,22 +78,25 @@ fn maturity() {
 
     let block_height = 1000.into();
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(block_height)
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate script");
 
     TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .max_fee_limit(arb_max_fee)
         .maturity(block_height)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate tx create");
 
-    let err = Transaction::script(
+    let mut tx = Transaction::script(
         Default::default(),
         vec![],
         vec![],
@@ -96,13 +104,15 @@ fn maturity() {
         vec![],
         vec![],
         vec![],
-    )
+    );
+    tx.set_max_fee_limit(arb_max_fee);
+    let err = tx
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionMaturity, err);
 
-    let err = Transaction::create(
+    let mut tx = Transaction::create(
         0,
         Policies::new().with_maturity(1001.into()),
         rng.gen(),
@@ -110,7 +120,10 @@ fn maturity() {
         vec![],
         vec![],
         vec![rng.gen()],
-    )
+    );
+    tx
+        .set_max_fee_limit(arb_max_fee);
+    let err = tx
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
@@ -118,14 +131,16 @@ fn maturity() {
 }
 
 #[test]
-fn script_not_set_witness_limit_success() {
+fn script__check__not_set_witness_limit_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     // When
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params());
@@ -141,9 +156,12 @@ fn create_not_set_witness_limit_success() {
     let block_height = 1000.into();
     let bytecode = vec![];
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
+
 
     // When
     let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params());
@@ -153,17 +171,20 @@ fn create_not_set_witness_limit_success() {
 }
 
 #[test]
-fn script_set_witness_limit_for_empty_witness_success() {
+fn script__check__set_witness_limit_for_empty_witness_success() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();
 
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
+
     // Given
     let limit = Signature::LEN /* witness from random fee */ + vec![0u8; 0].size_static();
 
     // When
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .witness_limit(limit as u64)
         .finalize()
@@ -180,12 +201,14 @@ fn script_set_witness_limit_less_than_witness_data_size_fails() {
     let block_height = 1000.into();
     let witness_size = Signature::LEN + vec![0u8; 0].size_static();
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     // Given
     let limit = witness_size - 1;
 
     // When
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .witness_limit(limit as u64)
         .finalize()
@@ -203,11 +226,13 @@ fn create_set_witness_limit_for_empty_witness_success() {
     let block_height = 1000.into();
     let bytecode = vec![];
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
     // Given
     let limit = Signature::LEN /* witness from random fee */ + bytecode.size_static() + bytecode.size_static();
 
     // When
     let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .witness_limit(limit as u64)
         .finalize()
@@ -224,11 +249,13 @@ fn create_set_witness_limit_less_than_witness_data_size_fails() {
     let block_height = 1000.into();
     let bytecode = vec![];
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
     // Given
     let limit = Signature::LEN /* witness from random fee */ + bytecode.size_static() + bytecode.size_static();
 
     // When
     let err = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .witness_limit(limit as u64 - 1)
         .finalize()
@@ -245,9 +272,11 @@ fn script_not_set_max_fee_limit_success() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     // When
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params());
@@ -283,10 +312,11 @@ fn create_not_set_max_fee_limit_success() {
     let block_height = 1000.into();
 
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     // When
     let result = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
-
+        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params());
@@ -322,15 +352,17 @@ fn max_iow() {
     let block_height = 1000.into();
 
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     let secret = SecretKey::random(rng);
 
+    let asset_id: AssetId = rng.gen();
     let mut builder =
         TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng));
 
     let asset_id: AssetId = rng.gen();
 
-    builder.maturity(maturity).add_unsigned_coin_input(
+    builder.maturity(maturity).max_fee_limit(arb_max_fee).add_unsigned_coin_input(
         secret,
         rng.gen(),
         rng.gen(),
@@ -377,6 +409,7 @@ fn max_iow() {
     }
 
     builder
+        .max_fee_limit(arb_max_fee)
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate transaction");
@@ -405,6 +438,7 @@ fn max_iow() {
     }
 
     let err = builder
+        .max_fee_limit(arb_max_fee)
         .finalize()
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
@@ -415,7 +449,7 @@ fn max_iow() {
     let mut builder =
         TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![]);
 
-    builder.maturity(maturity);
+    builder.max_fee_limit(arb_max_fee).maturity(maturity);
 
     let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs as usize
         - builder.inputs().len())
@@ -435,6 +469,7 @@ fn max_iow() {
     }
 
     let err = builder
+        .max_fee_limit(arb_max_fee)
         .finalize()
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
@@ -445,7 +480,7 @@ fn max_iow() {
     let mut builder =
         TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![]);
 
-    builder.maturity(maturity);
+    builder.maturity(maturity).max_fee_limit(arb_max_fee);
 
     let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs as usize
         - builder.inputs().len())
@@ -477,6 +512,7 @@ fn output_change_asset_id() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     let maturity = 100.into();
     let block_height = 1000.into();
@@ -488,6 +524,7 @@ fn output_change_asset_id() {
     let secret = SecretKey::random(rng);
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .max_fee_limit(arb_max_fee)
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
@@ -499,6 +536,7 @@ fn output_change_asset_id() {
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
@@ -514,6 +552,7 @@ fn output_change_asset_id() {
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
@@ -529,6 +568,7 @@ fn output_change_asset_id() {
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), b, rng.gen())
         .add_output(Output::coin(rng.gen(), rng.next_u64(), a))
@@ -560,6 +600,7 @@ fn script__check__happy_path() {
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
         .finalize()
@@ -1074,7 +1115,7 @@ fn create__check__cannot_exceed_max_storage_slot() {
 }
 
 #[test]
-fn script_transaction_at_maximum_size_is_valid() {
+fn script__check__transaction_at_maximum_size_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let secret = SecretKey::random(rng);
 
@@ -1082,10 +1123,11 @@ fn script_transaction_at_maximum_size_is_valid() {
     let mut params = test_params();
     let max_size = 1024usize;
     params.tx_params.max_size = max_size as u64;
-    let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
+            .max_fee_limit(arb_max_fee)
             .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
             .finalize();
         tx.size()
@@ -1099,6 +1141,7 @@ fn script_transaction_at_maximum_size_is_valid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize();
 
@@ -1107,9 +1150,10 @@ fn script_transaction_at_maximum_size_is_valid() {
 }
 
 #[test]
-fn script_transaction_exceeding_maximum_size_is_invalid() {
+fn script__check__transaction_exceeding_maximum_size_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let secret = SecretKey::random(rng);
+    let arb_max_fee = 1000;
 
     let block_height = 100.into();
     let mut params = test_params();
@@ -1134,6 +1178,7 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize();
 

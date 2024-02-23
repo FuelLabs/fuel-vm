@@ -1334,7 +1334,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
 
     let values: Vec<_> = memory[input.source_address_memory_range.usizes()]
         .chunks_exact(Bytes32::LEN)
-        .flat_map(|chunk| Some(chunk.as_ref()))
+        .flat_map(Some)
         .collect();
 
     let unset_count = storage

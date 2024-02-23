@@ -257,8 +257,8 @@ impl<'a, T: StorageWrite<Type>, Type: Mappable> StorageMut<'a, T, Type> {
         self.0.replace(key, buf)
     }
 
-    // #[inline(always)]
-    // pub fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, T::Error> {
-    //     self.0.take(key)
-    // }
+    #[inline(always)]
+    pub fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, T::Error> {
+        self.0.take(key)
+    }
 }

@@ -544,10 +544,10 @@ fn output_change_asset_id() {
 }
 
 #[test]
-fn script() {
+fn script__check__happy_path() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let arb_gas_price = 1;
+    let arb_max_fee = 1000;
 
     let maturity = 100.into();
     let block_height = 1000.into();
@@ -565,12 +565,26 @@ fn script() {
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate transaction");
+}
+
+#[test]
+fn script__check__cannot_create_contract() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .finalize()
@@ -581,12 +595,26 @@ fn script() {
         ValidityError::TransactionScriptOutputContractCreated { index: 0 },
         err
     );
+}
+
+#[test]
+fn script__check__errors_if_script_too_long() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
         vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .finalize()
@@ -594,12 +622,26 @@ fn script() {
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionScriptLength, err);
+}
+
+#[test]
+fn script__check__errors_if_script_data_too_long() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length as usize],
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .finalize()
@@ -622,6 +664,7 @@ fn create__check__happy_path() {
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize()

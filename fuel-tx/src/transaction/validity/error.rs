@@ -90,7 +90,6 @@ pub enum ValidityError {
     TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded
     TransactionMaxGasExceeded,
-    TransactionMaxFeeLimitExceeded,
     TransactionWitnessLimitExceeded,
     TransactionPoliciesAreInvalid,
     TransactionNoGasPricePolicy,

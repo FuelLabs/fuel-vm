@@ -344,6 +344,10 @@ pub(crate) fn check_common_part<T>(
         Err(ValidityError::TransactionMaxGasExceeded)?
     }
 
+    if !tx.policies().is_set(PolicyType::MaxFee) {
+        Err(ValidityError::TransactionMaxFeeNotSet)?
+    };
+
     if tx.maturity() > block_height {
         Err(ValidityError::TransactionMaturity)?;
     }

@@ -39,14 +39,14 @@ bitflags::bitflags! {
 /// The helper enum to make user-friendly API for [`Policies::set`] and [`Policies::get`]
 /// methods.
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    PartialEq,
-    Eq,
-    Hash,
-    strum_macros::EnumCount,
-    strum_macros::EnumIter,
+Clone,
+Copy,
+Debug,
+PartialEq,
+Eq,
+Hash,
+strum_macros::EnumCount,
+strum_macros::EnumIter,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PolicyType {
@@ -145,6 +145,10 @@ impl Policies {
         } else {
             None
         }
+    }
+
+    pub fn is_set(&self, policy_type: PolicyType) -> bool {
+        self.bits.contains(policy_type.bit())
     }
 
     /// Returns a policy's type by the `index`.

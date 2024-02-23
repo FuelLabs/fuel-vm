@@ -256,24 +256,23 @@ fn script_not_set_max_fee_limit_success() {
 }
 
 #[test]
-fn script_set_max_fee_limit_fails() {
+fn script__check__no_max_fee_fails() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
 
-    let arb_gas_price = 1;
     // Given
-    let max_fee = 0;
+    let tx = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .add_random_fee_input()
+        .finalize();
 
     // When
-    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
-        .max_fee_limit(max_fee)
-        .add_random_fee_input()
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    let err =
+        tx
+            .check(block_height, &test_params())
+            .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(ValidityError::TransactionMaxFeeLimitExceeded, err);
+    assert_eq!(ValidityError::TransactionMaxFeeNotSet, err);
 }
 
 #[test]
@@ -295,24 +294,22 @@ fn create_not_set_max_fee_limit_success() {
 }
 
 #[test]
-fn create_set_max_fee_limit_fails() {
+fn create__check__no_max_fee_fails() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
 
-    let arb_gas_price = 1;
     // Given
-    let max_fee = 0;
+    let tx = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .add_random_fee_input()
+        .finalize();
 
     // When
-    let err = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
-        .max_fee_limit(max_fee)
-        .add_random_fee_input()
-        .finalize()
+    let err = tx
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(ValidityError::TransactionMaxFeeLimitExceeded, err);
+    assert_eq!(ValidityError::TransactionMaxFeeNotSet, err);
 }
 
 #[test]

@@ -27,6 +27,7 @@ use rand::{
     RngCore,
     SeedableRng,
 };
+use crate::field::MaxFeeLimit;
 
 #[test]
 fn gas_limit() {
@@ -285,6 +286,7 @@ fn create_not_set_max_fee_limit_success() {
 
     // When
     let result = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params());
@@ -608,10 +610,30 @@ fn script() {
 }
 
 #[test]
-fn create() {
+fn create__check__happy_path() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let arb_gas_price = 1;
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+
+    TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+        .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        .finalize()
+        .check(block_height, &test_params())
+        .expect("Failed to validate tx");
+}
+
+#[test]
+fn create__check__cannot_have_contract_input() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
 
     let maturity = 100.into();
     let block_height = 1000.into();
@@ -619,15 +641,9 @@ fn create() {
     let secret = SecretKey::random(rng);
     let secret_b = SecretKey::random(rng);
 
-    TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
-        .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate tx");
-
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_input(Input::contract(
             rng.gen(),
             rng.gen(),
@@ -645,10 +661,24 @@ fn create() {
         err,
         ValidityError::TransactionCreateInputContract { index: 0 }
     );
+}
+
+#[test]
+fn create__check__cannot_have_message_input() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     let not_empty_data = vec![0x1];
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_message_input(
             secret,
             rng.gen(),
@@ -665,9 +695,23 @@ fn create() {
         err,
         ValidityError::TransactionCreateMessageData { index: 0 }
     );
+}
+
+#[test]
+fn create__check__cannot_have_variable_output() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize()
@@ -678,9 +722,23 @@ fn create() {
         err,
         ValidityError::TransactionCreateOutputVariable { index: 0 }
     );
+}
+
+#[test]
+fn create__check__cannot_have_multiple_change_outputs() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
@@ -699,11 +757,25 @@ fn create() {
         err,
         ValidityError::TransactionOutputChangeAssetIdDuplicated(AssetId::BASE)
     );
+}
+
+#[test]
+fn create__check__errors_if_change_is_wrong_asset() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
@@ -722,6 +794,19 @@ fn create() {
         err,
         ValidityError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
     );
+}
+
+#[test]
+fn create__check__cannot_create_multiple_contract_outputs() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     let witness = generate_bytes(rng);
     let contract = Contract::from(witness.as_ref());
@@ -732,6 +817,7 @@ fn create() {
 
     let err = TransactionBuilder::create(witness.into(), salt, storage_slots)
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
@@ -750,6 +836,19 @@ fn create() {
         err,
         ValidityError::TransactionCreateOutputContractCreatedMultiple { index: 1 },
     );
+}
+
+#[test]
+fn create__check__something_else() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     TransactionBuilder::create(
         vec![0xfa; CONTRACT_PARAMS.contract_max_size as usize / 4].into(),
@@ -757,11 +856,24 @@ fn create() {
         vec![],
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate the transaction");
+}
+
+fn create__check__errors_if_witness_bytecode_too_long() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(
         vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size as usize].into(),
@@ -769,6 +881,7 @@ fn create() {
         vec![],
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
@@ -776,8 +889,20 @@ fn create() {
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionCreateBytecodeLen);
+}
 
-    let err = Transaction::create(
+#[test]
+fn create__check_without_signatures__errors_if_wrong_witness_index() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
+
+    let mut tx = Transaction::create(
         1,
         Default::default(),
         rng.gen(),
@@ -792,14 +917,31 @@ fn create() {
         )],
         vec![],
         vec![Default::default()],
-    )
+    );
+    tx
+        .set_max_fee_limit(arb_max_fee);
+    let err = tx
         .check_without_signatures(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionCreateBytecodeWitnessIndex);
+}
+
+#[test]
+fn create__check__something() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(
             secret,
             rng.gen(),
@@ -811,6 +953,19 @@ fn create() {
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate the transaction");
+}
+
+#[test]
+fn create__check__can_max_out_storage_slots() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
         .map(|i| {
@@ -827,14 +982,34 @@ fn create() {
         storage_slots.clone(),
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate the transaction");
+}
+
+#[test]
+fn create__check__cannot_exceed_max_storage_slot() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let arb_max_fee = 1000;
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let secret = SecretKey::random(rng);
+    let secret_b = SecretKey::random(rng);
 
     // Test max slots can't be exceeded
-    let mut storage_slots_max = storage_slots;
+    let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots)
+        .map(|i| {
+            let mut slot_data = StorageSlot::default().to_bytes();
+            slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
+            StorageSlot::from_bytes(&slot_data).unwrap()
+        })
+        .collect::<Vec<StorageSlot>>();
 
     let s = StorageSlot::new([255u8; 32].into(), Default::default());
     storage_slots_max.push(s);
@@ -845,6 +1020,7 @@ fn create() {
         storage_slots_max,
     )
         .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()

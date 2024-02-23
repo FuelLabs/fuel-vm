@@ -205,7 +205,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let min_gas = self.min_gas(gas_costs, fee);
 
         let total_used_gas = min_gas.saturating_add(used_gas);
-        let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor);
+        let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor).saturating_add(tip);
 
         let tip = self.policies().get(PolicyType::Tip).unwrap_or(0);
         let refund = self

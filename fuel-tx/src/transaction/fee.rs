@@ -168,7 +168,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
             gas_price,
             fee.gas_price_factor,
         );
-        gas_fee + tip as u128
+        gas_fee.saturated_add(tip as u128)
     }
 
     /// Returns the maximum possible fee after the end of transaction execution.

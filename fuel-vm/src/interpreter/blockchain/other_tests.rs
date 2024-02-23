@@ -241,7 +241,7 @@ fn test_code_size() {
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-        .write(&ContractId::from([3u8; 32]), vec![1u8; 100])
+        .write(&ContractId::from([3u8; 32]), &[1u8; 100])
         .unwrap();
     let mut pc = 4;
     let is = 0;

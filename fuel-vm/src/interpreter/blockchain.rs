@@ -1081,16 +1081,16 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = ContractId::from_bytes_ref(contract.read(memory));
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let mut value = StorageData::from(Bytes32::zeroed().as_ref());
+    let mut value = Bytes32::zeroed();
     value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
-    let result = storage
-        .contract_state_insert(contract, key, &value)
+    let (_size, prev) = storage
+        .contract_state_insert(contract, key, value.as_ref())
         .map_err(RuntimeError::Storage)?;
 
-    *created_new = result.is_none() as Word;
+    *created_new = prev.is_none() as Word;
 
-    if result.is_none() {
+    if prev.is_none() {
         // New data was written, charge gas for it
         let profiler = ProfileGas {
             pc: pc.as_ref(),
@@ -1334,7 +1334,7 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
 
     let values: Vec<_> = memory[input.source_address_memory_range.usizes()]
         .chunks_exact(Bytes32::LEN)
-        .flat_map(|chunk| Some(chunk.to_vec().into()))
+        .flat_map(|chunk| Some(chunk.as_ref()))
         .collect();
 
     let unset_count = storage

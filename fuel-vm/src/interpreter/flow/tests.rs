@@ -355,7 +355,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     for (id, code) in storage_contract {
         StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-            .write(&id, code)
+            .write(&id, code.as_ref())
             .unwrap();
     }
     for (a, n) in storage_balance.iter() {

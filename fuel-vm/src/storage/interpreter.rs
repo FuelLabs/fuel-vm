@@ -6,6 +6,7 @@ use fuel_storage::{
     StorageMutate,
     StorageRead,
     StorageSize,
+    StorageWrite,
 };
 use fuel_tx::{
     Contract,
@@ -43,10 +44,12 @@ use core::ops::{
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    StorageMutate<ContractsRawCode, Error = Self::DataError>
+    StorageWrite<ContractsRawCode, Error = Self::DataError>
     + StorageSize<ContractsRawCode, Error = Self::DataError>
     + StorageRead<ContractsRawCode, Error = Self::DataError>
-    + StorageMutate<ContractsState, Error = Self::DataError>
+    + StorageWrite<ContractsState, Error = Self::DataError>
+    + StorageSize<ContractsState, Error = Self::DataError>
+    + StorageRead<ContractsState, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
@@ -83,9 +86,10 @@ pub trait InterpreterStorage:
 
         // On the `fuel-core` side it is done in more optimal way
         slots.iter().try_for_each(|s| {
-            self.contract_state_insert(id, s.key(), s.value())
-                .map(|_| ())
-        })
+            self.contract_state_insert(id, s.key(), s.value().as_ref())?;
+            Ok(())
+        })?;
+        Ok(())
     }
 
     /// Fetch a previously inserted contract code from the chain state for a
@@ -145,15 +149,14 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-        value: &StorageData,
-    ) -> Result<Option<StorageData>, Self::DataError> {
-        // StorageWrite::<ContractsState>::write(self, &(contract, key).into(),
-        // value.into())
-        StorageMutate::<ContractsState>::insert(
+        value: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::DataError> {
+        let result = StorageWrite::<ContractsState>::replace(
             self,
             &(contract, key).into(),
-            value.as_ref(),
-        )
+            value,
+        )?;
+        Ok(result)
     }
 
     /// Remove a key-value mapping from a contract storage.
@@ -162,7 +165,9 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
     ) -> Result<Option<StorageData>, Self::DataError> {
-        StorageMutate::<ContractsState>::remove(self, &(contract, key).into())
+        let result = StorageWrite::<ContractsState>::take(self, &(contract, key).into())?
+            .map(Into::into);
+        Ok(result)
     }
 
     /// Fetch a range of values from a key-value mapping in a contract storage.
@@ -181,7 +186,7 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[StorageData],
+        values: &[&[u8]],
     ) -> Result<usize, Self::DataError>;
 
     /// Remove a range of key-values from contract storage.
@@ -283,7 +288,7 @@ where
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[StorageData],
+        values: &[&[u8]],
     ) -> Result<usize, Self::DataError> {
         <S as InterpreterStorage>::contract_state_insert_range(
             self.deref_mut(),

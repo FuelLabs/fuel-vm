@@ -4,6 +4,7 @@ use hashbrown::HashMap;
 use fuel_storage::{
     StorageRead,
     StorageSize,
+    StorageWrite,
 };
 use fuel_tx::StorageData;
 use fuel_types::{
@@ -326,9 +327,9 @@ where
 
 impl<Type: StorageType, S> StorageMutate<Type> for Record<S>
 where
-    S: InterpreterStorage,
     S: StorageInspect<Type>,
     S: StorageMutate<Type>,
+    S: InterpreterStorage,
 {
     fn insert(
         &mut self,
@@ -354,6 +355,28 @@ where
                 .push(<Type as StorageType>::record_remove(key, existing.clone()));
         }
         Ok(existing)
+    }
+}
+
+impl<Type: StorageType, S> StorageWrite<Type> for Record<S>
+where
+    S: StorageWrite<Type>,
+    S: InterpreterStorage,
+{
+    fn write(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
+        <S as StorageWrite<Type>>::write(&mut self.0, key, buf)
+    }
+
+    fn replace(
+        &mut self,
+        key: &Type::Key,
+        buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+        <S as StorageWrite<Type>>::replace(&mut self.0, key, buf)
+    }
+
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+        <S as StorageWrite<Type>>::take(&mut self.0, key)
     }
 }
 
@@ -397,7 +420,7 @@ where
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[StorageData],
+        values: &[&[u8]],
     ) -> Result<usize, Self::DataError> {
         self.0
             .contract_state_insert_range(contract, start_key, values)

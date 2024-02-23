@@ -157,7 +157,7 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
-    fn write(&mut self, key: &ContractId, buf: Vec<u8>) -> Result<usize, Infallible> {
+    fn write(&mut self, key: &ContractId, buf: &[u8]) -> Result<usize, Infallible> {
         let size = buf.len();
         self.memory.contracts.insert(*key, Contract::from(buf));
         Ok(size)
@@ -165,22 +165,21 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
 
     fn replace(
         &mut self,
-        key: &<ContractsRawCode as Mappable>::Key,
-        buf: Vec<u8>,
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
-    where
-        Self: StorageSize<ContractsRawCode>,
-    {
+        key: &ContractId,
+        buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
         let size = buf.len();
-        let last = self.memory.contracts.insert(*key, Contract::from(buf));
-        Ok((size, last.map(Vec::from)))
+        let prev = self
+            .memory
+            .contracts
+            .insert(*key, Contract::from(buf))
+            .map(Into::into);
+        Ok((size, prev))
     }
 
-    fn take(
-        &mut self,
-        key: &<ContractsRawCode as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
-        Ok(self.memory.contracts.remove(key).map(Vec::from))
+    fn take(&mut self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
+        let prev = self.memory.contracts.remove(key).map(Into::into);
+        Ok(prev)
     }
 }
 
@@ -283,7 +282,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
     fn write(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-        buf: Vec<u8>,
+        buf: &[u8],
     ) -> Result<usize, Infallible> {
         let size = buf.len();
         self.memory
@@ -295,24 +294,26 @@ impl StorageWrite<ContractsState> for MemoryStorage {
     fn replace(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-        buf: Vec<u8>,
+        buf: &[u8],
     ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
     where
         Self: StorageSize<ContractsState>,
     {
         let size = buf.len();
-        let last = self
+        let prev = self
             .memory
             .contract_state
-            .insert(*key, StorageData::from(buf));
-        Ok((size, last.map(Vec::from)))
+            .insert(*key, StorageData::from(buf))
+            .map(Into::into);
+        Ok((size, prev))
     }
 
     fn take(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
-        Ok(self.memory.contract_state.remove(key).map(Vec::from))
+        let prev = self.memory.contract_state.remove(key).map(Into::into);
+        Ok(prev)
     }
 }
 
@@ -335,9 +336,9 @@ impl StorageRead<ContractsState> for MemoryStorage {
         key: &<ContractsState as Mappable>::Key,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.contract_state.get(key).map(|c| {
-            let len = buf.len().min(c.as_ref().len());
-            buf.copy_from_slice(&c.as_ref()[..len]);
+        Ok(self.memory.contract_state.get(key).map(|data| {
+            let len = buf.len().min(data.as_ref().len());
+            buf.copy_from_slice(&data.as_ref()[..len]);
             len
         }))
     }
@@ -419,7 +420,7 @@ impl InterpreterStorage for MemoryStorage {
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[StorageData],
+        values: &[&[u8]],
     ) -> Result<usize, Self::DataError> {
         let storage: &mut dyn StorageWrite<ContractsState, Error = Self::DataError> =
             self;
@@ -438,7 +439,8 @@ impl InterpreterStorage for MemoryStorage {
             if !storage.contains_key(&key)? {
                 unset_count += 1;
             }
-            storage.write(&key, value.clone().into()).map(|_| ())
+            storage.write(&key, value)?;
+            Ok::<_, Self::DataError>(())
         })?;
         Ok(unset_count)
     }

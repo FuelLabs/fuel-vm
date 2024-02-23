@@ -51,7 +51,6 @@ where
             max_fee,
         )?;
     } else {
-        // todo!("Should we use the calculated max_fee or the provided max_fee?")
         deduct_fee_from_base_asset(&mut non_retryable_balances, base_asset_id, &fee)?;
     }
 
@@ -123,16 +122,15 @@ fn deduct_max_fee_from_base_asset(
     base_asset_id: &AssetId,
     max_fee: Word,
 ) -> Result<(), ValidityError> {
-    todo!()
-    // let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
-    // *base_asset_balance = base_asset_balance.checked_sub(max_fee).ok_or(
-    //     ValidityError::InsufficientFeeAmount {
-    //         expected: max_fee,
-    //         provided: *base_asset_balance,
-    //     },
-    // )?;
-    //
-    // Ok(())
+    let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
+    *base_asset_balance = base_asset_balance.checked_sub(max_fee).ok_or(
+        ValidityError::InsufficientFeeAmount {
+            expected: max_fee,
+            provided: *base_asset_balance,
+        },
+    )?;
+
+    Ok(())
 }
 
 fn reduce_free_balances_by_coin_outputs(

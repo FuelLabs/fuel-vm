@@ -323,7 +323,7 @@ pub mod test_helpers {
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
             self.builder
-                .finalize_checked(self.block_height, self.gas_price)
+                .finalize_checked(self.block_height)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -424,7 +424,7 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params, self.gas_price)
+                .into_checked(self.block_height, &self.consensus_params)
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -451,10 +451,10 @@ pub mod test_helpers {
             transactor: &mut Transactor<MemoryStorage, Tx, Ecal>,
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
-        where
-            Tx: ExecutableTransaction,
-            <Tx as IntoChecked>::Metadata: CheckedMetadata,
-            Ecal: crate::interpreter::EcalHandler,
+            where
+                Tx: ExecutableTransaction,
+                <Tx as IntoChecked>::Metadata: CheckedMetadata,
+                Ecal: crate::interpreter::EcalHandler,
         {
             self.storage.set_block_height(self.block_height);
 
@@ -463,7 +463,7 @@ pub mod test_helpers {
             let storage = transactor.as_mut().clone();
 
             if let Some(e) = transactor.error() {
-                return Err(anyhow!("{:?}", e))
+                return Err(anyhow!("{:?}", e));
             }
             let is_reverted = transactor.is_reverted();
 
@@ -480,7 +480,7 @@ pub mod test_helpers {
 
             assert_eq!(deser_tx, transaction);
             if is_reverted {
-                return Ok(state)
+                return Ok(state);
             }
 
             // save storage between client instances
@@ -607,7 +607,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height, zero_gas_price);
+            .finalize_checked(height);
 
         client
             .deploy(contract_deployer)
@@ -621,8 +621,8 @@ pub mod test_helpers {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ]
-        .into_iter()
-        .collect();
+            .into_iter()
+            .collect();
         let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
             .into_iter()
             .flatten()
@@ -642,7 +642,7 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, zero_gas_price);
+            .finalize_checked(height);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }
@@ -697,9 +697,9 @@ pub mod test_helpers {
 
 #[allow(missing_docs)]
 #[cfg(all(
-    feature = "profile-gas",
-    feature = "std",
-    any(test, feature = "test-helpers")
+feature = "profile-gas",
+feature = "std",
+any(test, feature = "test-helpers")
 ))]
 /// Gas testing utilities
 pub mod gas_profiling {

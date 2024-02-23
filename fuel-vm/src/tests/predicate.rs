@@ -37,8 +37,8 @@ impl ParallelExecutor for TokioWithRayon {
     type Task = AsyncRayonHandle<Result<(Word, usize), PredicateVerificationFailed>>;
 
     fn create_task<F>(func: F) -> Self::Task
-    where
-        F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
+        where
+            F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
             + Send
             + 'static,
     {
@@ -57,8 +57,8 @@ async fn execute_predicate<P>(
     predicate_data: Vec<u8>,
     dummy_inputs: usize,
 ) -> bool
-where
-    P: IntoIterator<Item = Instruction>,
+    where
+        P: IntoIterator<Item=Instruction>,
 {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
@@ -114,7 +114,7 @@ where
         .expect("Should estiamte predicate");
 
     let checked = transaction
-        .into_checked_basic(height, &ConsensusParameters::standard(), gas_price)
+        .into_checked_basic(height, &ConsensusParameters::standard())
         .expect("Should successfully convert into Checked");
 
     let params = CheckPredicateParams::default();
@@ -123,8 +123,8 @@ where
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
             &checked, &params,
         )
-        .await
-        .map(|checked| checked.gas_used())
+            .await
+            .map(|checked| checked.gas_used())
     };
 
     let seq_execution =
@@ -184,7 +184,7 @@ async fn get_verifying_predicate() {
 
     for idx in indices {
         #[rustfmt::skip]
-        let predicate = vec![
+            let predicate = vec![
             op::gm_args(0x10, GMArgs::GetVerifyingPredicate),
             op::movi(0x11, idx),
             op::eq(0x10, 0x10, 0x11),
@@ -262,16 +262,15 @@ async fn execute_gas_metered_predicates(
             .into_checked_basic(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect("Should successfully create checked tranaction with predicate");
 
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
             &tx, &params,
         )
-        .await
-        .map(|r| r.gas_used())
-        .map_err(|_| ())?
+            .await
+            .map(|r| r.gas_used())
+            .map_err(|_| ())?
     };
 
     // sequential version
@@ -281,7 +280,6 @@ async fn execute_gas_metered_predicates(
         .into_checked_basic(
             Default::default(),
             &ConsensusParameters::standard(),
-            gas_price,
         )
         .expect("Should successfully create checked tranaction with predicate");
 
@@ -307,8 +305,8 @@ async fn predicate_gas_metering() {
     assert!(execute_gas_metered_predicates(vec![vec![
         op::ji(0), // Infinite loop
     ]])
-    .await
-    .is_err());
+        .await
+        .is_err());
 
     // Multiple Predicate Success
     assert!(execute_gas_metered_predicates(vec![
@@ -316,11 +314,11 @@ async fn predicate_gas_metering() {
         vec![
             op::movi(0x10, 0x11),
             op::movi(0x10, 0x11),
-            op::ret(RegId::ONE)
+            op::ret(RegId::ONE),
         ],
     ])
-    .await
-    .is_ok());
+        .await
+        .is_ok());
 
     // Running predicate gas used is combined properly
     let exe = (0..4).map(|n| async move {
@@ -349,8 +347,8 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         op::addi(0x20, 0x20, 1),
         op::ret(RegId::ONE),
     ]
-    .into_iter()
-    .collect::<Vec<u8>>();
+        .into_iter()
+        .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -372,14 +370,14 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let _ = builder
             .clone()
-            .finalize_checked_basic(Default::default(), gas_price)
+            .finalize_checked_basic(Default::default())
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default(), gas_price)
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -421,7 +419,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         .into_checked_basic(
             Default::default(),
             &ConsensusParameters::standard(),
-            gas_price,
         )
         .expect("Should successfully create checked tranaction with predicate");
 
@@ -475,8 +472,8 @@ async fn gas_used_by_predicates_more_than_limit() {
         op::addi(0x20, 0x20, 1),
         op::ret(RegId::ONE),
     ]
-    .into_iter()
-    .collect::<Vec<u8>>();
+        .into_iter()
+        .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -498,14 +495,14 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let _ = builder
             .clone()
-            .finalize_checked_basic(Default::default(), gas_price)
+            .finalize_checked_basic(Default::default())
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_checked_basic(Default::default(), gas_price)
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -527,9 +524,9 @@ async fn gas_used_by_predicates_more_than_limit() {
         op::addi(0x20, 0x20, 1),
         op::ret(RegId::ONE),
     ]
-    .into_iter()
-    .flat_map(|op| u32::from(op).to_be_bytes())
-    .collect();
+        .into_iter()
+        .flat_map(|op| u32::from(op).to_be_bytes())
+        .collect();
     let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
         rng.gen(),
@@ -548,7 +545,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let tx_with_predicate = builder
             .clone()
-            .finalize_checked_basic(Default::default(), gas_price)
+            .finalize_checked_basic(Default::default())
             .check_predicates_async::<TokioWithRayon>(&params)
             .await;
 
@@ -559,7 +556,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     }
 
     let tx_with_predicate = builder
-        .finalize_checked_basic(Default::default(), gas_price)
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params);
 
     assert!(matches!(

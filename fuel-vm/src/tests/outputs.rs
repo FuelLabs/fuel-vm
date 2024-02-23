@@ -32,7 +32,6 @@ use rand::{
 };
 
 /// Testing of post-execution output handling
-
 #[test]
 fn full_change_with_no_fees() {
     let mut rng = StdRng::seed_from_u64(2322u64);
@@ -81,8 +80,8 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
                 // Revert transaction
                 op::rvrt(RegId::ONE),
             ]
-            .into_iter()
-            .collect(),
+                .into_iter()
+                .collect(),
             vec![],
         )
         .gas_price(gas_price)
@@ -121,7 +120,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let base_asset_id: AssetId = rng.gen();
 
     #[rustfmt::skip]
-    let invalid_instruction_bytecode = vec![0u8; 4];
+        let invalid_instruction_bytecode = vec![0u8; 4];
 
     let salt: Salt = rng.gen();
     let program: Witness = invalid_instruction_bytecode.into();
@@ -169,7 +168,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         *context.get_base_asset_id(),
     );
     let create = create
-        .into_checked_basic(context.get_block_height(), &consensus_params, gas_price)
+        .into_checked_basic(context.get_block_height(), &consensus_params)
         .expect("failed to generate checked tx");
 
     let state = context.deploy(create).expect("Create should be executed");
@@ -438,10 +437,10 @@ fn variable_output_set_by_external_transfer_out() {
         asset_id.as_ref(),
         owner.as_ref(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // create and run the tx
     let result = TestBuilder::new(2322u64)
@@ -513,10 +512,10 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
         asset_id.as_ref(),
         owner.as_ref(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // create and run the tx
     let result = TestBuilder::new(2322u64)
@@ -603,10 +602,10 @@ fn variable_output_set_by_internal_contract_transfer_out() {
             .to_bytes()
             .as_ref(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // create and run the tx
     let result = test_context
@@ -683,10 +682,10 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
             .to_bytes()
             .as_ref(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // create and run the tx
     let result = test_context

@@ -20,16 +20,16 @@ fn transaction_can_be_executed_after_maturity() {
         Some(op::ret(1)).into_iter().collect(),
         Default::default(),
     )
-    .add_unsigned_coin_input(
-        SecretKey::random(rng),
-        rng.gen(),
-        1,
-        Default::default(),
-        rng.gen(),
-    )
-    .script_gas_limit(100)
-    .maturity(MATURITY)
-    .finalize_checked(BLOCK_HEIGHT, arb_gas_price);
+        .add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            1,
+            Default::default(),
+            rng.gen(),
+        )
+        .script_gas_limit(100)
+        .maturity(MATURITY)
+        .finalize_checked(BLOCK_HEIGHT);
 
     let result = TestBuilder::new(2322u64)
         .block_height(BLOCK_HEIGHT)

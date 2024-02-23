@@ -656,7 +656,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
+            .check(0.into(), &ConsensusParameters::standard())
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);
@@ -677,7 +677,7 @@ mod tests {
         )
             .add_random_fee_input()
             .finalize()
-            .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
+            .check(0.into(), &ConsensusParameters::standard())
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);

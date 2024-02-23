@@ -34,7 +34,7 @@ fn prevent_contract_id_redeployment() {
     let asset_id = AssetId::BASE;
 
     #[rustfmt::skip]
-    let function_rvrt: Vec<Instruction> = vec![
+        let function_rvrt: Vec<Instruction> = vec![
         op::rvrt(0),
     ];
 
@@ -73,7 +73,7 @@ fn prevent_contract_id_redeployment() {
     let consensus_params = ConsensusParameters::standard();
 
     let create = create
-        .into_checked_basic(1.into(), &consensus_params, gas_price)
+        .into_checked_basic(1.into(), &consensus_params)
         .expect("failed to generate checked tx");
 
     // deploy contract
@@ -357,10 +357,10 @@ fn call_increases_contract_asset_balance_and_balance_register() {
             .to_bytes()
             .as_slice(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // starting contract balance
     let start_balance = test_context.get_contract_balance(&contract_id, &asset_id);
@@ -443,10 +443,10 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
             .to_bytes()
             .as_slice(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // assert initial balance state
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
@@ -486,8 +486,7 @@ fn call_decreases_internal_balance_and_increases_destination_contract_balance() 
 }
 
 #[test]
-fn internal_transfer_reduces_source_contract_balance_and_increases_destination_contract_balance(
-) {
+fn internal_transfer_reduces_source_contract_balance_and_increases_destination_contract_balance() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_limit = 1_000_000;
@@ -532,10 +531,10 @@ fn internal_transfer_reduces_source_contract_balance_and_increases_destination_c
             .to_bytes()
             .as_slice(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // assert initial balance state
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);
@@ -615,10 +614,10 @@ fn internal_transfer_cant_exceed_more_than_source_contract_balance() {
             .to_bytes()
             .as_slice(),
     ]
-    .into_iter()
-    .flatten()
-    .copied()
-    .collect();
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
 
     // assert initial balance state
     let dest_balance = test_context.get_contract_balance(&dest_contract_id, &asset_id);

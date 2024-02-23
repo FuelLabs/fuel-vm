@@ -34,8 +34,8 @@ fn estimate_gas_gives_proper_gas_used() {
         op::addi(0x20, 0x20, 1),
         op::ret(RegId::ONE),
     ]
-    .into_iter()
-    .collect::<Vec<u8>>();
+        .into_iter()
+        .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -54,7 +54,7 @@ fn estimate_gas_gives_proper_gas_used() {
     );
 
     let transaction_without_predicate = builder
-        .finalize_checked_basic(Default::default(), gas_price)
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params.into())
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -92,17 +92,17 @@ fn estimate_gas_gives_proper_gas_used() {
     // unestimated transaction should fail as it's predicates are not estimated
     assert!(transaction
         .clone()
-        .into_checked(Default::default(), params, gas_price)
+        .into_checked(Default::default(), params)
         .is_err());
 
     Interpreter::<PredicateStorage, _>::estimate_predicates(
         &mut transaction,
         &params.into(),
     )
-    .expect("Should successfully estimate predicates");
+        .expect("Should successfully estimate predicates");
 
     // transaction should pass checking after estimation
 
-    let check_res = transaction.into_checked(Default::default(), params, gas_price);
+    let check_res = transaction.into_checked(Default::default(), params);
     assert!(check_res.is_ok());
 }

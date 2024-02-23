@@ -1,4 +1,5 @@
 #![allow(clippy::cast_possible_truncation)]
+
 use super::{
     test_params,
     CHAIN_ID,
@@ -40,14 +41,14 @@ fn gas_limit() {
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate transaction");
 
     TransactionBuilder::create(vec![0xfau8].into(), rng.gen(), vec![])
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate transaction");
 
     let err = Transaction::script(
@@ -59,8 +60,8 @@ fn gas_limit() {
         vec![],
         vec![],
     )
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionMaxGasExceeded, err);
 }
@@ -76,14 +77,14 @@ fn maturity() {
         .maturity(block_height)
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate script");
 
     TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
         .maturity(block_height)
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate tx create");
 
     let err = Transaction::script(
@@ -95,8 +96,8 @@ fn maturity() {
         vec![],
         vec![],
     )
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionMaturity, err);
 
@@ -109,8 +110,8 @@ fn maturity() {
         vec![],
         vec![rng.gen()],
     )
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionMaturity, err);
 }
@@ -126,7 +127,7 @@ fn script_not_set_witness_limit_success() {
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price);
+        .check(block_height, &test_params());
 
     // Then
     assert!(result.is_ok());
@@ -144,7 +145,7 @@ fn create_not_set_witness_limit_success() {
     let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price);
+        .check(block_height, &test_params());
 
     // Then
     assert!(result.is_ok());
@@ -165,7 +166,7 @@ fn script_set_witness_limit_for_empty_witness_success() {
         .add_random_fee_input()
         .witness_limit(limit as u64)
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price);
+        .check(block_height, &test_params());
 
     // Then
     assert!(result.is_ok());
@@ -187,7 +188,7 @@ fn script_set_witness_limit_less_than_witness_data_size_fails() {
         .add_random_fee_input()
         .witness_limit(limit as u64)
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     // Then
@@ -209,7 +210,7 @@ fn create_set_witness_limit_for_empty_witness_success() {
         .add_random_fee_input()
         .witness_limit(limit as u64)
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price);
+        .check(block_height, &test_params());
 
     // Then
     assert!(result.is_ok());
@@ -230,7 +231,7 @@ fn create_set_witness_limit_less_than_witness_data_size_fails() {
         .add_random_fee_input()
         .witness_limit(limit as u64 - 1)
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     // Then
@@ -248,7 +249,7 @@ fn script_not_set_max_fee_limit_success() {
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price);
+        .check(block_height, &test_params());
 
     // Then
     assert!(result.is_ok());
@@ -268,7 +269,7 @@ fn script_set_max_fee_limit_fails() {
         .max_fee_limit(max_fee)
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     // Then
@@ -287,7 +288,7 @@ fn create_not_set_max_fee_limit_success() {
     let result = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price);
+        .check(block_height, &test_params());
 
     // Then
     assert!(result.is_ok());
@@ -307,7 +308,7 @@ fn create_set_max_fee_limit_fails() {
         .max_fee_limit(max_fee)
         .add_random_fee_input()
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     // Then
@@ -348,7 +349,7 @@ fn max_iow() {
 
     builder
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate transaction");
 
     // Add inputs up to maximum and validate
@@ -378,7 +379,7 @@ fn max_iow() {
 
     builder
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate transaction");
 
     // Overflow maximum inputs and expect error
@@ -406,7 +407,7 @@ fn max_iow() {
 
     let err = builder
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionInputsMax, err);
@@ -436,7 +437,7 @@ fn max_iow() {
 
     let err = builder
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionOutputsMax, err);
@@ -466,7 +467,7 @@ fn max_iow() {
 
     let err = builder
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionWitnessesMax, err);
@@ -494,7 +495,7 @@ fn output_change_asset_id() {
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), b))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate transaction");
 
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
@@ -504,7 +505,7 @@ fn output_change_asset_id() {
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
@@ -519,7 +520,7 @@ fn output_change_asset_id() {
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), c))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert!(matches!(
@@ -534,7 +535,7 @@ fn output_change_asset_id() {
         .add_output(Output::coin(rng.gen(), rng.next_u64(), a))
         .add_output(Output::coin(rng.gen(), rng.next_u64(), c))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert!(matches!(
@@ -559,23 +560,23 @@ fn script() {
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-    .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect("Failed to validate transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+        .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect("Failed to validate transaction");
 
     let err = TransactionBuilder::script(
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-    .add_output(Output::contract_created(rng.gen(), rng.gen()))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+        .add_output(Output::contract_created(rng.gen(), rng.gen()))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(
         ValidityError::TransactionScriptOutputContractCreated { index: 0 },
@@ -586,12 +587,12 @@ fn script() {
         vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-    .add_output(Output::contract_created(rng.gen(), rng.gen()))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+        .add_output(Output::contract_created(rng.gen(), rng.gen()))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionScriptLength, err);
 
@@ -599,12 +600,12 @@ fn script() {
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length as usize],
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-    .add_output(Output::contract_created(rng.gen(), rng.gen()))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+        .add_output(Output::contract_created(rng.gen(), rng.gen()))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionScriptDataLength, err);
 }
@@ -625,7 +626,7 @@ fn create() {
         .maturity(maturity)
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate tx");
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -640,7 +641,7 @@ fn create() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .add_output(Output::contract(0, rng.gen(), rng.gen()))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
@@ -660,7 +661,7 @@ fn create() {
         )
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
@@ -673,7 +674,7 @@ fn create() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
@@ -694,7 +695,7 @@ fn create() {
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
@@ -717,7 +718,7 @@ fn create() {
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
@@ -745,7 +746,7 @@ fn create() {
         .add_output(Output::contract_created(contract_id, state_root))
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
 
     assert_eq!(
@@ -758,24 +759,24 @@ fn create() {
         rng.gen(),
         vec![],
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect("Failed to validate the transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect("Failed to validate the transaction");
 
     let err = TransactionBuilder::create(
         vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size as usize].into(),
         rng.gen(),
         vec![],
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionCreateBytecodeLen);
 
@@ -795,8 +796,8 @@ fn create() {
         vec![],
         vec![Default::default()],
     )
-    .check_without_signatures(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .check_without_signatures(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionCreateBytecodeWitnessIndex);
 
@@ -811,7 +812,7 @@ fn create() {
         )
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
-        .check(block_height, &test_params(), arb_gas_price)
+        .check(block_height, &test_params())
         .expect("Failed to validate the transaction");
 
     let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
@@ -828,12 +829,12 @@ fn create() {
         rng.gen(),
         storage_slots.clone(),
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect("Failed to validate the transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect("Failed to validate the transaction");
 
     // Test max slots can't be exceeded
     let mut storage_slots_max = storage_slots;
@@ -846,12 +847,12 @@ fn create() {
         rng.gen(),
         storage_slots_max,
     )
-    .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .maturity(maturity)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionCreateStorageSlotMax, err);
 }
@@ -885,7 +886,7 @@ fn script_transaction_at_maximum_size_is_valid() {
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize();
 
-    tx.check(block_height, &params, arb_gas_price)
+    tx.check(block_height, &params)
         .expect("Expected valid transaction");
 }
 
@@ -921,7 +922,7 @@ fn script_transaction_exceeding_maximum_size_is_invalid() {
         .finalize();
 
     let err = tx
-        .check(block_height, &params, arb_gas_price)
+        .check(block_height, &params)
         .expect_err("Expected valid transaction");
 
     assert_eq!(err, ValidityError::TransactionSizeLimitExceeded);
@@ -944,9 +945,9 @@ fn mint() {
         rng.gen(),
         rng.gen(),
     )
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintIncorrectOutputIndex);
 
@@ -963,9 +964,9 @@ fn mint() {
         rng.gen(),
         rng.gen(),
     )
-    .finalize()
-    .check(block_height, &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintNonBaseAsset);
 
@@ -982,9 +983,9 @@ fn mint() {
         rng.gen(),
         rng.gen(),
     )
-    .finalize()
-    .check(block_height.succ().unwrap(), &test_params(), arb_gas_price)
-    .expect_err("Expected erroneous transaction");
+        .finalize()
+        .check(block_height.succ().unwrap(), &test_params())
+        .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintIncorrectBlockHeight);
 }

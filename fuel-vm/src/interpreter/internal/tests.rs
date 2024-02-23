@@ -56,7 +56,7 @@ fn external_balance() {
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height);
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -65,32 +65,32 @@ fn external_balance() {
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
-            amount + 1
+            amount + 1,
         )
-        .is_err());
+            .is_err());
         external_asset_id_balance_sub(
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
             amount - 10,
         )
-        .unwrap();
+            .unwrap();
         assert!(external_asset_id_balance_sub(
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
-            11
+            11,
         )
-        .is_err());
+            .is_err());
         external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 10)
             .unwrap();
         assert!(external_asset_id_balance_sub(
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
-            1
+            1,
         )
-        .is_err());
+            .is_err());
     }
 }
 
@@ -123,7 +123,7 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM!");

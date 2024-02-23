@@ -9,8 +9,8 @@ use crate::prelude::*;
 use fuel_asm::RegId;
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
-where
-    Tx: ExecutableTransaction,
+    where
+        Tx: ExecutableTransaction,
 {
     /// Get single-stepping mode
     pub const fn single_stepping(&self) -> bool {
@@ -82,8 +82,8 @@ fn breakpoint_script() {
         op::addi(0x14, RegId::ZERO, 128),
         op::ret(0x10),
     ]
-    .into_iter()
-    .collect();
+        .into_iter()
+        .collect();
 
     let consensus_params = ConsensusParameters::standard();
 
@@ -91,7 +91,7 @@ fn breakpoint_script() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     let suite = vec![
@@ -156,8 +156,8 @@ fn single_stepping() {
         op::jnei(0x10, 0x11, 1),
         op::ret(0x10),
     ]
-    .into_iter()
-    .collect();
+        .into_iter()
+        .collect();
 
     let consensus_params = ConsensusParameters::standard();
 
@@ -165,7 +165,7 @@ fn single_stepping() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);

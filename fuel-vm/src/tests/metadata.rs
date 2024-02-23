@@ -49,6 +49,7 @@ use crate::prelude::{
     GasCosts,
     *,
 };
+
 #[test]
 fn metadata() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -63,11 +64,11 @@ fn metadata() {
     let consensus_params = ConsensusParameters::standard();
 
     #[rustfmt::skip]
-    let routine_metadata_is_caller_external = vec![
+        let routine_metadata_is_caller_external = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
         op::gm_args(0x11, GMArgs::GetCaller),
         op::log(0x10, 0x00, 0x00, 0x00),
-        op::movi(0x20,  ContractId::LEN as Immediate18),
+        op::movi(0x20, ContractId::LEN as Immediate18),
         op::logd(0x00, 0x00, 0x11, 0x20),
         op::ret(RegId::ONE),
     ];
@@ -89,7 +90,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
@@ -139,7 +140,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     assert!(
@@ -188,8 +189,8 @@ fn metadata() {
     script.push(op::ret(RegId::ONE));
 
     #[allow(clippy::iter_cloned_collect)]
-    // collection is also perfomring a type conversion
-    let script = script.iter().copied().collect::<Vec<u8>>();
+        // collection is also perfomring a type conversion
+        let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = TransactionBuilder::script(script, vec![])
         .script_gas_limit(gas_limit)
@@ -200,7 +201,7 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let receipts = Transactor::<_, _>::new(&mut storage, interpreter_params)
@@ -256,7 +257,7 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
+        .into_checked(height, &consensus_params)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -297,7 +298,7 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
-        .finalize_checked(height, zero_gas_price);
+        .finalize_checked(height);
 
     client.deploy(tx);
 
@@ -389,7 +390,7 @@ fn get_transaction_fields() {
             rng.gen(),
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .finalize_checked(height, zero_gas_price);
+        .finalize_checked(height);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -407,7 +408,7 @@ fn get_transaction_fields() {
     let base_asset_id = AssetId::BASE;
 
     #[rustfmt::skip]
-    let cases = vec![
+        let cases = vec![
         inputs_bytes[0].clone(), // 0 - ScriptInputAtIndex
         outputs_bytes[0].clone(), // 1 - ScriptOutputAtIndex
         witnesses_bytes[1].clone(), // 2 - ScriptWitnessAtIndex
@@ -457,22 +458,19 @@ fn get_transaction_fields() {
     // TODO GTFArgs::InputContractTxPointer
 
     #[rustfmt::skip]
-    let mut script: Vec<u8> = vec![
+        let mut script: Vec<u8> = vec![
         op::movi(0x20, 0x01),
         op::gtf_args(0x30, 0x19, GTFArgs::ScriptData),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, TransactionRepr::Script as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::Type),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, tip as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyTip),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, (gas_limit & 0x3ffff) as Immediate18),
         op::movi(0x12, (gas_limit >> 18) as Immediate18),
@@ -481,127 +479,107 @@ fn get_transaction_fields() {
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptGasLimit),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, *maturity as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaturity),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, max_fee_limit as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaxFee),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, witness_limit as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyWitnessLimit),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, PoliciesBits::all().bits() as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyTypes),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, inputs.len() as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptInputsCount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, outputs.len() as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptOutputsCount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::movi(0x11, witnesses.len() as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptWitnessesCount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptInputAtIndex),
         op::movi(0x11, cases[0].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptOutputAtIndex),
         op::movi(0x11, cases[1].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptWitnessAtIndex),
         op::movi(0x11, cases[2].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, script_reserved_words as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, script_data.len() as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptDataLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptReceiptsRoot),
         op::movi(0x11, cases[3].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, script_offset as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::Script),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, script_data_offset as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptData),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, InputRepr::Coin as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputType),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxId),
         op::movi(0x11, cases[4].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, inputs[0].utxo_id().unwrap().output_index() as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinOutputIndex),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinOwner),
         op::movi(0x11, cases[5].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, (inputs[0].amount().unwrap() & 0x3ffff) as Immediate18),
         op::movi(0x12, (inputs[0].amount().unwrap() >> 18) as Immediate18),
         op::slli(0x12, 0x12, 18),
@@ -610,249 +588,210 @@ fn get_transaction_fields() {
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinAmount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinAssetId),
         op::movi(0x11, cases[6].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, inputs[0].witness_index().unwrap() as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinWitnessIndex),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, predicate.len() as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, predicate_data.len() as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateDataLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicate),
         op::movi(0x11, cases[7].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateData),
         op::movi(0x11, cases[8].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateGasUsed),
         op::movi(0x11, 0 as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxId),
         op::movi(0x11, cases[9].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, 0x01),
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractOutputIndex),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractBalanceRoot),
         op::movi(0x11, cases[10].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractStateRoot),
         op::movi(0x11, cases[11].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractId),
         op::movi(0x11, cases[12].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x03),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageSender),
         op::movi(0x11, cases[13].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x03),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageRecipient),
         op::movi(0x11, cases[14].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, message_amount as Immediate18),
         op::movi(0x19, 0x03),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageAmount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x03),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageNonce),
         op::movi(0x11, cases[15].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
-
-
         op::movi(0x11, 0x02),
         op::movi(0x19, 0x03),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageWitnessIndex),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, message_data.len() as Immediate18),
         op::movi(0x19, 0x03),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageDataLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, m_predicate.len() as Immediate18),
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, m_predicate_data.len() as Immediate18),
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateDataLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageData),
         op::movi(0x11, cases[16].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicate),
         op::movi(0x11, cases[17].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateData),
         op::movi(0x11, cases[18].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x04),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessagePredicateGasUsed),
         op::movi(0x11, 0 as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, OutputRepr::Contract as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputType),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x02),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinTo),
         op::movi(0x11, cases[19].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, asset_amt as Immediate18),
         op::movi(0x19, 0x02),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinAmount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x02),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinAssetId),
         op::movi(0x11, cases[20].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, asset_amt as Immediate18),
         op::movi(0x19, 0x02),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinAmount),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, contract_input_index as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputContractInputIndex),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputContractBalanceRoot),
         op::movi(0x11, cases[21].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::OutputContractStateRoot),
         op::movi(0x11, cases[22].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, witnesses[1].as_ref().len() as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::WitnessDataLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::WitnessData),
         op::movi(0x11, cases[23].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, 0),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxPointer),
         op::movi(0x11, cases[24].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxPointer),
         op::movi(0x11, cases[25].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
         op::log(0x20, 0x00, 0x00, 0x00),
-        op::ret(0x00)
+        op::ret(0x00),
     ].into_iter().collect();
 
     while script.len() < script_reserved_words {
@@ -881,7 +820,7 @@ fn get_transaction_fields() {
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
-        .finalize_checked_basic(height, zero_gas_price);
+        .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);
     let success = receipts

@@ -135,27 +135,15 @@ impl<Tx: IntoChecked + Default> Default for Checked<Tx>
         Checked<Tx>: CheckPredicates,
 {
     fn default() -> Self {
-        let gas_price = 0;
-        Self::default_with_gas_price(gas_price)
-    }
-}
-
-#[cfg(feature = "test-helpers")]
-impl<Tx: IntoChecked + Default> Checked<Tx>
-    where
-        Checked<Tx>: CheckPredicates,
-{
-    /// Creates a default checked transaction with a given gas price.
-    pub fn default_with_gas_price(gas_price: u64) -> Self {
         Tx::default()
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
+
 
 impl<Tx: IntoChecked> From<Checked<Tx>> for (Tx, Tx::Metadata) {
     fn from(checked: Checked<Tx>) -> Self {
@@ -698,17 +686,17 @@ mod tests {
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect("Expected valid transaction");
 
         // verify transaction getter works
         assert_eq!(checked.transaction(), &tx);
         // verify available balance was decreased by max fee
-        assert_eq!(
-            checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.max_fee() - output_amount
-        );
+        todo!()
+        // assert_eq!(
+        //     checked.metadata().non_retryable_balances[&AssetId::default()],
+        //     input_amount - checked.metadata().fee.max_fee() - output_amount
+        // );
     }
 
     #[test]
@@ -724,15 +712,15 @@ mod tests {
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
-        assert_eq!(
-            checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.max_fee()
-        );
+        todo!()
+        // assert_eq!(
+        //     checked.metadata().non_retryable_balances[&AssetId::default()],
+        //     input_amount - checked.metadata().fee.max_fee()
+        // );
     }
 
     #[test]
@@ -748,15 +736,15 @@ mod tests {
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
-        assert_eq!(
-            checked.metadata().non_retryable_balances[&AssetId::default()],
-            input_amount - checked.metadata().fee.max_fee()
-        );
+        todo!()
+        // assert_eq!(
+        //     checked.metadata().non_retryable_balances[&AssetId::default()],
+        //     input_amount - checked.metadata().fee.max_fee()
+        // );
     }
 
     #[test]
@@ -775,7 +763,6 @@ mod tests {
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect_err("Expected valid transaction");
 
@@ -816,7 +803,6 @@ mod tests {
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect_err("Expected valid transaction");
 
@@ -1378,7 +1364,6 @@ mod tests {
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                gas_price,
             )
             .expect_err("Expected invalid transaction");
 
@@ -1403,7 +1388,7 @@ mod tests {
         let consensus_params = params(factor);
 
         let err = transaction
-            .into_checked(Default::default(), &consensus_params, gas_price)
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         let provided = match err {
@@ -1432,7 +1417,7 @@ mod tests {
         let consensus_params = params(factor);
 
         let err = transaction
-            .into_checked(Default::default(), &consensus_params, gas_price)
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         let provided = match err {
@@ -1458,7 +1443,7 @@ mod tests {
         let consensus_params = params(1);
 
         let err = transaction
-            .into_checked(Default::default(), &consensus_params, gas_price)
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
@@ -1476,7 +1461,7 @@ mod tests {
         let consensus_params = params(1);
 
         let err = transaction
-            .into_checked(Default::default(), &consensus_params, gas_price)
+            .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
@@ -1516,7 +1501,6 @@ mod tests {
             .into_checked(
                 Default::default(),
                 &ConsensusParameters::standard(),
-                arb_gas_price,
             )
             .expect_err("Expected valid transaction");
 
@@ -1542,7 +1526,6 @@ mod tests {
             .into_checked_basic(
                 block_height,
                 &ConsensusParameters::standard(),
-                zero_gas_price,
             )
             .unwrap();
         assert!(checked.checks().contains(Checks::Basic));
@@ -1561,7 +1544,6 @@ mod tests {
             .into_checked(
                 block_height,
                 &ConsensusParameters::standard_with_id(chain_id),
-                arb_gas_price,
             )
             .unwrap()
             // Sets Checks::Signatures
@@ -1594,7 +1576,6 @@ mod tests {
             .into_checked(
                 block_height,
                 &consensus_params,
-                arb_gas_price,
             )
             .unwrap()
             // Sets Checks::Predicates
@@ -1621,10 +1602,7 @@ mod tests {
 
         let available_balances = balances::initial_free_balances(
             tx,
-            gas_costs,
-            fee_params,
             base_asset_id,
-            gas_price,
         )?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let gas_used_by_bytes = fee_params
@@ -1653,8 +1631,9 @@ mod tests {
             .try_into()
             .map_err(|_| ValidityError::BalanceOverflow)?;
 
-        let result = max_fee == available_balances.fee.max_fee();
-        Ok(result)
+        todo!();
+        // let result = max_fee == available_balances.fee.max_fee();
+        // Ok(result)
     }
 
     fn is_valid_min_fee<Tx>(
@@ -1669,10 +1648,7 @@ mod tests {
     {
         let available_balances = balances::initial_free_balances(
             tx,
-            gas_costs,
-            fee_params,
             base_asset_id,
-            gas_price,
         )?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
@@ -1699,7 +1675,9 @@ mod tests {
             .try_into()
             .map_err(|_| ValidityError::BalanceOverflow)?;
 
-        Ok(min_fee == available_balances.fee.min_fee())
+
+        todo!()
+        // Ok(min_fee == available_balances.fee.min_fee())
     }
 
     fn valid_coin_tx(

@@ -33,7 +33,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let opcode = random_instruction.opcode();
 
     if opcode == Opcode::ECAL {
-        return TestResult::passed() // ECAL can do anything with registers, so skip it
+        return TestResult::passed(); // ECAL can do anything with registers, so skip it
     }
 
     // ignore if rA/rB isn't set to writeable register and the opcode should write to that
@@ -41,10 +41,10 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let [ra, rb, _, _] = random_instruction.reg_ids();
     match (ra, rb) {
         (Some(r), _) if writes_to_ra(opcode) && r >= RegId::WRITABLE => {
-            return TestResult::discard()
+            return TestResult::discard();
         }
         (_, Some(r)) if writes_to_rb(opcode) && r >= RegId::WRITABLE => {
-            return TestResult::discard()
+            return TestResult::discard();
         }
         _ => (),
     }
@@ -67,7 +67,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .finalize();
 
     let tx = tx
-        .into_checked(block_height, &consensus_params, zero_gas_price)
+        .into_checked(block_height, &consensus_params)
         .expect("failed to check tx");
 
     vm.init_script(tx).expect("Failed to init VM");
@@ -91,7 +91,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",
                     (opcode, &res)
-                ))
+                ));
             }
         }
     } else if matches!(
@@ -113,10 +113,10 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     // erroneous register access. This is not a comprehensive set of all possible
     // writeable violations but more can be added.
     if vm.registers[RegId::ZERO] != 0 {
-        return TestResult::error("reserved register was modified!")
+        return TestResult::error("reserved register was modified!");
     }
     if vm.registers[RegId::ONE] != 1 {
-        return TestResult::error("reserved register was modified!")
+        return TestResult::error("reserved register was modified!");
     }
 
     TestResult::passed()

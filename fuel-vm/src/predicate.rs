@@ -27,8 +27,8 @@ impl RuntimePredicate {
     ///
     /// Return `None` if the tx input doesn't map to an input with a predicate
     pub fn from_tx<T>(tx: &T, tx_offset: usize, idx: usize) -> Option<Self>
-    where
-        T: field::Inputs,
+        where
+            T: field::Inputs,
     {
         let (ofs, len) = tx.inputs_predicate_offset_at(idx)?;
         let addr = ofs.saturating_add(tx_offset);
@@ -76,7 +76,7 @@ mod tests {
         let height = 1.into();
 
         #[rustfmt::skip]
-        let predicate: Vec<u8> = vec![
+            let predicate: Vec<u8> = vec![
             op::addi(0x10, 0x00, 0x01),
             op::addi(0x10, 0x10, 0x01),
             op::ret(0x01),
@@ -123,7 +123,7 @@ mod tests {
             let tx = TransactionBuilder::script(vec![], vec![])
                 .add_input(i)
                 .add_random_fee_input()
-                .finalize_checked_basic(height, zero_gas_price);
+                .finalize_checked_basic(height);
 
             // assert invalid idx wont panic
             let idx = 1;
@@ -150,7 +150,7 @@ mod tests {
                         program: Default::default()
                     },
                     tx.transaction().clone(),
-                    *tx.transaction().script_gas_limit()
+                    *tx.transaction().script_gas_limit(),
                 )
                 .is_ok());
 
@@ -270,9 +270,9 @@ mod tests {
                     [op::ret(0x01)].into_iter().collect(),
                     vec![],
                 )
-                .add_input(input)
-                .add_random_fee_input()
-                .finalize_checked_basic(height, zero_gas_price);
+                    .add_input(input)
+                    .add_random_fee_input()
+                    .finalize_checked_basic(height);
 
                 let result = Interpreter::<PredicateStorage, Script>::check_predicates(
                     &tx,

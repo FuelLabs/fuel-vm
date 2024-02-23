@@ -222,7 +222,6 @@ impl FormatValidityChecks for Create {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError> {
         let ConsensusParameters {
             contract_params,
@@ -231,7 +230,7 @@ impl FormatValidityChecks for Create {
             ..
         } = consensus_params;
 
-        check_common_part(self, block_height, gas_price, consensus_params)?;
+        check_common_part(self, block_height, consensus_params)?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -308,13 +307,13 @@ impl FormatValidityChecks for Create {
                     state_root,
                 } if contract_id != &contract_id_calculated
                     || state_root != &state_root_calculated =>
-                {
-                    Err(
-                        ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
-                            index,
-                        },
-                    )
-                }
+                    {
+                        Err(
+                            ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
+                                index,
+                            },
+                        )
+                    }
 
                 // TODO: Output::ContractCreated { contract_id, state_root } if
                 // contract_id == &id && state_root == &storage_root
@@ -472,9 +471,9 @@ mod field {
         #[inline(always)]
         fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(CreateMetadata {
-                inputs_offset_at: inputs_offset,
-                ..
-            }) = &self.metadata
+                            inputs_offset_at: inputs_offset,
+                            ..
+                        }) = &self.metadata
             {
                 return inputs_offset.get(idx).cloned();
             }
@@ -483,11 +482,11 @@ mod field {
                 Some(
                     self.inputs_offset()
                         + self
-                            .inputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.size())
-                            .sum::<usize>(),
+                        .inputs()
+                        .iter()
+                        .take(idx)
+                        .map(|i| i.size())
+                        .sum::<usize>(),
                 )
             } else {
                 None
@@ -497,9 +496,9 @@ mod field {
         #[inline(always)]
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)> {
             if let Some(CreateMetadata {
-                inputs_predicate_offset_at: inputs_predicate_offset,
-                ..
-            }) = &self.metadata
+                            inputs_predicate_offset_at: inputs_predicate_offset,
+                            ..
+                        }) = &self.metadata
             {
                 return inputs_predicate_offset.get(idx).cloned().unwrap_or(None);
             }
@@ -538,9 +537,9 @@ mod field {
         #[inline(always)]
         fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(CreateMetadata {
-                outputs_offset_at: outputs_offset,
-                ..
-            }) = &self.metadata
+                            outputs_offset_at: outputs_offset,
+                            ..
+                        }) = &self.metadata
             {
                 return outputs_offset.get(idx).cloned();
             }
@@ -549,11 +548,11 @@ mod field {
                 Some(
                     self.outputs_offset()
                         + self
-                            .outputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.size())
-                            .sum::<usize>(),
+                        .outputs()
+                        .iter()
+                        .take(idx)
+                        .map(|i| i.size())
+                        .sum::<usize>(),
                 )
             } else {
                 None
@@ -575,8 +574,8 @@ mod field {
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
             if let Some(CreateMetadata {
-                witnesses_offset, ..
-            }) = &self.metadata
+                            witnesses_offset, ..
+                        }) = &self.metadata
             {
                 return *witnesses_offset;
             }
@@ -587,9 +586,9 @@ mod field {
         #[inline(always)]
         fn witnesses_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(CreateMetadata {
-                witnesses_offset_at: witnesses_offset,
-                ..
-            }) = &self.metadata
+                            witnesses_offset_at: witnesses_offset,
+                            ..
+                        }) = &self.metadata
             {
                 return witnesses_offset.get(idx).cloned();
             }
@@ -598,11 +597,11 @@ mod field {
                 Some(
                     self.witnesses_offset()
                         + self
-                            .witnesses()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.size())
-                            .sum::<usize>(),
+                        .witnesses()
+                        .iter()
+                        .take(idx)
+                        .map(|i| i.size())
+                        .sum::<usize>(),
                 )
             } else {
                 None
@@ -652,8 +651,8 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
-        .add_random_fee_input()
-        .finalize();
+            .add_random_fee_input()
+            .finalize();
         tx.storage_slots.reverse();
 
         let err = tx
@@ -676,10 +675,10 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
-        .add_random_fee_input()
-        .finalize()
-        .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
-        .expect_err("Expected erroneous transaction");
+            .add_random_fee_input()
+            .finalize()
+            .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
+            .expect_err("Expected erroneous transaction");
 
         assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);
     }

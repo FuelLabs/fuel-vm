@@ -33,8 +33,8 @@ pub(crate) struct MintMetadata {
 
 impl MintMetadata {
     fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
-    where
-        Tx: crate::UniqueIdentifier,
+        where
+            Tx: crate::UniqueIdentifier,
     {
         let id = tx.id(chain_id);
 
@@ -99,7 +99,6 @@ impl FormatValidityChecks for Mint {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        _gas_price: u64,
     ) -> Result<(), ValidityError> {
         check_size(self, consensus_params.tx_params())?;
 

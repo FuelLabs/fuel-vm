@@ -26,9 +26,10 @@ use fuel_types::{
 };
 
 use alloc::collections::BTreeMap;
+use fuel_tx::policies::PolicyType;
 
 pub(crate) fn initial_free_balances<T>(
-    transaction: &T,
+    tx: &T,
     gas_costs: &GasCosts,
     params: &FeeParameters,
     base_asset_id: &AssetId,
@@ -38,14 +39,23 @@ where
     T: Chargeable + field::Inputs + field::Outputs,
 {
     let (mut non_retryable_balances, retryable_balance) =
-        add_up_input_balances(transaction, base_asset_id);
+        add_up_input_balances(tx, base_asset_id);
 
-    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction, gas_price)
+    let fee = TransactionFee::checked_from_tx(gas_costs, params, tx, gas_price)
         .ok_or(ValidityError::BalanceOverflow)?;
 
-    deduct_fee_from_base_asset(&mut non_retryable_balances, base_asset_id, &fee)?;
+    if let Some(max_fee) = tx.policies().get(PolicyType::MaxFee) {
+        deduct_max_fee_from_base_asset(
+            &mut non_retryable_balances,
+            base_asset_id,
+            max_fee,
+        )?;
+    } else {
+        // todo!("Should we use the calculated max_fee or the provided max_fee?")
+        deduct_fee_from_base_asset(&mut non_retryable_balances, base_asset_id, &fee)?;
+    }
 
-    reduce_free_balances_by_coin_outputs(&mut non_retryable_balances, transaction)?;
+    reduce_free_balances_by_coin_outputs(&mut non_retryable_balances, tx)?;
 
     Ok(AvailableBalances {
         non_retryable_balances,
@@ -106,6 +116,23 @@ fn deduct_fee_from_base_asset(
     )?;
 
     Ok(())
+}
+
+fn deduct_max_fee_from_base_asset(
+    non_retryable_balances: &mut BTreeMap<AssetId, Word>,
+    base_asset_id: &AssetId,
+    max_fee: Word,
+) -> Result<(), ValidityError> {
+    todo!()
+    // let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
+    // *base_asset_balance = base_asset_balance.checked_sub(max_fee).ok_or(
+    //     ValidityError::InsufficientFeeAmount {
+    //         expected: max_fee,
+    //         provided: *base_asset_balance,
+    //     },
+    // )?;
+    //
+    // Ok(())
 }
 
 fn reduce_free_balances_by_coin_outputs(

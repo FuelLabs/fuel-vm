@@ -13,17 +13,18 @@ fn transaction_can_be_executed_after_maturity() {
     const MATURITY: BlockHeight = BlockHeight::new(1);
     const BLOCK_HEIGHT: BlockHeight = BlockHeight::new(2);
 
-    let arb_gas_price = 1;
+    let arb_max_fee = 1;
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let tx = TransactionBuilder::script(
         Some(op::ret(1)).into_iter().collect(),
         Default::default(),
     )
+        .max_fee_limit(arb_max_fee)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),
-            1,
+            arb_max_fee,
             Default::default(),
             rng.gen(),
         )

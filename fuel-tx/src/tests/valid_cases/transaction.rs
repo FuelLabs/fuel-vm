@@ -1,4 +1,5 @@
 #![allow(clippy::cast_possible_truncation)]
+#![allow(non_snake_case)]
 
 use super::{
     test_params,
@@ -36,9 +37,8 @@ fn gas_limit() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
-    
+
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(maturity)
         .max_fee_limit(arb_max_fee)
@@ -77,7 +77,6 @@ fn maturity() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
@@ -135,7 +134,6 @@ fn script__check__not_set_witness_limit_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     // When
@@ -155,7 +153,6 @@ fn create_not_set_witness_limit_success() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let bytecode = vec![];
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
 
@@ -176,7 +173,6 @@ fn script__check__set_witness_limit_for_empty_witness_success() {
 
     let block_height = 1000.into();
 
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     // Given
@@ -200,7 +196,6 @@ fn script_set_witness_limit_less_than_witness_data_size_fails() {
 
     let block_height = 1000.into();
     let witness_size = Signature::LEN + vec![0u8; 0].size_static();
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     // Given
@@ -225,7 +220,6 @@ fn create_set_witness_limit_for_empty_witness_success() {
 
     let block_height = 1000.into();
     let bytecode = vec![];
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
     // Given
     let limit = Signature::LEN /* witness from random fee */ + bytecode.size_static() + bytecode.size_static();
@@ -248,7 +242,6 @@ fn create_set_witness_limit_less_than_witness_data_size_fails() {
 
     let block_height = 1000.into();
     let bytecode = vec![];
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
     // Given
     let limit = Signature::LEN /* witness from random fee */ + bytecode.size_static() + bytecode.size_static();
@@ -271,7 +264,6 @@ fn script_not_set_max_fee_limit_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     // When
@@ -311,7 +303,6 @@ fn create_not_set_max_fee_limit_success() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
 
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     // When
@@ -351,12 +342,10 @@ fn max_iow() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     let secret = SecretKey::random(rng);
 
-    let asset_id: AssetId = rng.gen();
     let mut builder =
         TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng));
 
@@ -511,7 +500,6 @@ fn max_iow() {
 fn output_change_asset_id() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let arb_gas_price = 1;
     let arb_max_fee = 1000;
 
     let maturity = 100.into();
@@ -723,7 +711,6 @@ fn create__check__cannot_have_contract_input() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
@@ -757,7 +744,6 @@ fn create__check__cannot_have_message_input() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     let not_empty_data = vec![0x1];
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
@@ -791,7 +777,6 @@ fn create__check__cannot_have_variable_output() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
@@ -932,7 +917,6 @@ fn create__check__something_else() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     TransactionBuilder::create(
         vec![0xfa; CONTRACT_PARAMS.contract_max_size as usize / 4].into(),
@@ -957,7 +941,6 @@ fn create__check__errors_if_witness_bytecode_too_long() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(
         vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size as usize].into(),
@@ -983,8 +966,6 @@ fn create__check_without_signatures__errors_if_wrong_witness_index() {
 
     let block_height = 1000.into();
 
-    let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     let mut tx = Transaction::create(
         1,
@@ -1021,7 +1002,6 @@ fn create__check__something() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
@@ -1049,7 +1029,6 @@ fn create__check__can_max_out_storage_slots() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
         .map(|i| {
@@ -1084,7 +1063,6 @@ fn create__check__cannot_exceed_max_storage_slot() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     // Test max slots can't be exceeded
     let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots)
@@ -1158,7 +1136,6 @@ fn script__check__transaction_exceeding_maximum_size_is_invalid() {
     let block_height = 100.into();
     let mut params = test_params();
     let max_size = 1024usize;
-    let arb_gas_price = 1;
     params.tx_params.max_size = max_size as u64;
 
     let base_size = {
@@ -1195,7 +1172,6 @@ fn mint() {
 
     let block_height = 1000.into();
 
-    let arb_gas_price = 1;
 
     let err = TransactionBuilder::mint(
         block_height,

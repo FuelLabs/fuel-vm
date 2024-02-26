@@ -360,7 +360,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     }
     for (a, n) in storage_balance.iter() {
         let old_balance = storage
-            .merkle_contract_asset_id_balance_insert(&ContractId::default(), a, *n)
+            .contract_asset_id_balance_insert(&ContractId::default(), a, *n)
             .unwrap();
         assert!(old_balance.is_none());
     }

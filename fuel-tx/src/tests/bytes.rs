@@ -98,13 +98,11 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
         ),
         Input::coin_predicate(
             rng.gen(),
             rng.gen(),
             rng.next_u64(),
-            rng.gen(),
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -403,7 +401,6 @@ fn transaction() {
 fn create_input_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let gas_price = 100;
     let maturity = 10.into();
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
@@ -444,7 +441,6 @@ fn create_input_data_offset() {
         rng.next_u64(),
         rng.gen(),
         rng.gen(),
-        rng.gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data.clone(),
@@ -476,9 +472,7 @@ fn create_input_data_offset() {
 
                     let tx = Transaction::create(
                         bytecode_witness_index,
-                        Policies::new()
-                            .with_maturity(maturity)
-                            .with_gas_price(gas_price),
+                        Policies::new().with_maturity(maturity),
                         salt,
                         storage_slot.clone(),
                         inputs,
@@ -529,7 +523,6 @@ fn create_input_data_offset() {
 fn script_input_coin_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let gas_price = 100;
     let gas_limit = 1000;
     let maturity = 10.into();
 
@@ -579,7 +572,6 @@ fn script_input_coin_data_offset() {
         rng.next_u64(),
         rng.gen(),
         rng.gen(),
-        rng.gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data,
@@ -598,9 +590,7 @@ fn script_input_coin_data_offset() {
                             gas_limit,
                             script.clone(),
                             script_data.clone(),
-                            Policies::new()
-                                .with_maturity(maturity)
-                                .with_gas_price(gas_price),
+                            Policies::new().with_maturity(maturity),
                             inputs,
                             outputs.clone(),
                             witnesses.clone(),

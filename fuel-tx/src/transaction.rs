@@ -22,7 +22,6 @@ use fuel_types::{
     },
     Address,
     AssetId,
-    BlockHeight,
     Bytes32,
     Nonce,
     Salt,
@@ -366,7 +365,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: BlockHeight,
         witness_index: u8,
     ) {
         let owner = Input::owner(owner);
@@ -378,7 +376,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
         );
         self.inputs_mut().push(input);
     }
@@ -538,22 +535,20 @@ pub mod field {
         DerefMut,
     };
 
-    pub trait GasPrice {
-        fn gas_price(&self) -> Word;
-        fn set_gas_price(&mut self, value: Word);
+    pub trait Tip {
+        fn tip(&self) -> Word;
+        fn set_tip(&mut self, value: Word);
     }
 
-    impl<T: Policies + ?Sized> GasPrice for T {
+    impl<T: Policies + ?Sized> Tip for T {
         #[inline(always)]
-        fn gas_price(&self) -> Word {
-            self.policies()
-                .get(PolicyType::GasPrice)
-                .unwrap_or_default()
+        fn tip(&self) -> Word {
+            self.policies().get(PolicyType::Tip).unwrap_or_default()
         }
 
         #[inline(always)]
-        fn set_gas_price(&mut self, price: Word) {
-            self.policies_mut().set(PolicyType::GasPrice, Some(price))
+        fn set_tip(&mut self, price: Word) {
+            self.policies_mut().set(PolicyType::Tip, Some(price))
         }
     }
 

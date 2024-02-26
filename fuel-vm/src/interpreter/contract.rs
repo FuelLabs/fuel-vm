@@ -406,7 +406,7 @@ where
     S: ContractsAssetsStorage + ?Sized,
 {
     Ok(storage
-        .merkle_contract_asset_id_balance(contract, asset_id)
+        .contract_asset_id_balance(contract, asset_id)
         .map_err(RuntimeError::Storage)?
         .unwrap_or_default())
 }
@@ -428,7 +428,7 @@ where
         .ok_or(PanicReason::BalanceOverflow)?;
 
     let old_value = storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
 
     Ok((balance, old_value.is_none()))
@@ -449,7 +449,7 @@ where
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;
     let _ = storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
     Ok(balance)
 }

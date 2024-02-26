@@ -6,15 +6,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+#### Breaking
+
+- [#683](https://github.com/FuelLabs/fuel-vm/pull/683): Simplify `InterpreterStorage` by removing dependency on `MerkleRootStorage` and removing `merkle_` prefix from method names.
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Remove `GasPrice` policy
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `gas_price` field to transaction execution
+- [#684](https://github.com/FuelLabs/fuel-vm/pull/684): Remove `maturity` field from `Input` coin types. Also remove related `GTF` getter.
+
 ## [Version 0.46.0]
 
 ### Changed
 #### Breaking
 
 - [#679](https://github.com/FuelLabs/fuel-vm/pull/679): Require less restricted constraint on `MerkleRootStorage` trait. Now it requires `StorageInspect` instead of the `StorageMutate`.
-- [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Removed `ContractsInfo` table. Contract salts and roots are no longer stored in on-chain data.
-- [#1632](https://github.com/FuelLabs/fuel-core/pull/1632): Opcode `CROO` now calculates the given contract's root on demand. `CROO` has therefore been changed to a `DependentCost` gas cost.
+- [#673](https://github.com/FuelLabs/fuel-vm/pull/673): Removed `ContractsInfo` table. Contract salts and roots are no longer stored in on-chain data.
+- [#673](https://github.com/FuelLabs/fuel-vm/pull/673): Opcode `CROO` now calculates the given contract's root on demand. `CROO` has therefore been changed to a `DependentCost` gas cost.
 - [#678](https://github.com/FuelLabs/fuel-vm/pull/678): Zero malleable fields before execution. Remove some now-obsolete GTF getters. Don't update `tx.receiptsRoot` after pushing receipts, and do it after execution instead.
+
+### Changed
+
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `Tip` policy
 
 ## [Version 0.45.0]
 

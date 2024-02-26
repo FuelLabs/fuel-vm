@@ -1,20 +1,15 @@
-use crate::{
-    crypto,
-    storage::{
-        ContractsAssetKey,
-        ContractsAssets,
-        ContractsRawCode,
-        ContractsState,
-        ContractsStateKey,
-        InterpreterStorage,
-    },
+use crate::storage::{
+    ContractsAssetKey,
+    ContractsAssets,
+    ContractsRawCode,
+    ContractsState,
+    ContractsStateKey,
+    InterpreterStorage,
 };
 
 use fuel_crypto::Hasher;
 use fuel_storage::{
     Mappable,
-    MerkleRoot,
-    MerkleRootStorage,
     StorageAsRef,
     StorageInspect,
     StorageMutate,
@@ -29,7 +24,6 @@ use fuel_types::{
     ContractId,
     Word,
 };
-use itertools::Itertools;
 use tai64::Tai64;
 
 use alloc::{
@@ -248,23 +242,6 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
     }
 }
 
-impl MerkleRootStorage<ContractId, ContractsAssets> for MemoryStorage {
-    fn root(&self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
-        let root = self
-            .memory
-            .balances
-            .iter()
-            .filter_map(|(key, balance)| {
-                (key.contract_id() == parent).then_some((key.asset_id(), balance))
-            })
-            .sorted_by_key(|t| t.0)
-            .map(|(_, &balance)| balance)
-            .map(Word::to_be_bytes);
-
-        Ok(crypto::ephemeral_merkle_root(root).into())
-    }
-}
-
 impl StorageInspect<ContractsState> for MemoryStorage {
     type Error = Infallible;
 
@@ -300,22 +277,6 @@ impl StorageMutate<ContractsState> for MemoryStorage {
     }
 }
 
-impl MerkleRootStorage<ContractId, ContractsState> for MemoryStorage {
-    fn root(&self, parent: &ContractId) -> Result<MerkleRoot, Infallible> {
-        let root = self
-            .memory
-            .contract_state
-            .iter()
-            .filter_map(|(key, value)| {
-                (key.contract_id() == parent).then_some((key.state_key(), value))
-            })
-            .sorted_by_key(|t| t.0)
-            .map(|(_, value)| value);
-
-        Ok(crypto::ephemeral_merkle_root(root).into())
-    }
-}
-
 impl ContractsAssetsStorage for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {
@@ -340,7 +301,7 @@ impl InterpreterStorage for MemoryStorage {
         Ok(self.coinbase)
     }
 
-    fn merkle_contract_state_range(
+    fn contract_state_range(
         &self,
         id: &ContractId,
         start_key: &Bytes32,
@@ -377,7 +338,7 @@ impl InterpreterStorage for MemoryStorage {
         .collect())
     }
 
-    fn merkle_contract_state_insert_range(
+    fn contract_state_insert_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
@@ -405,7 +366,7 @@ impl InterpreterStorage for MemoryStorage {
         Ok(unset_count)
     }
 
-    fn merkle_contract_state_remove_range(
+    fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
@@ -479,7 +440,7 @@ mod tests {
                 Bytes32::zeroed(),
             );
         }
-        mem.merkle_contract_state_range(&ContractId::default(), &(*start).into(), range)
+        mem.contract_state_range(&ContractId::default(), &(*start).into(), range)
             .unwrap()
             .into_iter()
             .map(|v| v.map(|v| v.into_owned()))

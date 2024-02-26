@@ -356,16 +356,6 @@ where
     }
 }
 
-impl<Key, Type: StorageType, S> MerkleRootStorage<Key, Type> for Record<S>
-where
-    S: InterpreterStorage,
-    S: MerkleRootStorage<Key, Type>,
-{
-    fn root(&self, key: &Key) -> Result<fuel_storage::MerkleRoot, Self::Error> {
-        <S as MerkleRootStorage<Key, Type>>::root(&self.0, key)
-    }
-}
-
 impl<S: ContractsAssetsStorage + InterpreterStorage> ContractsAssetsStorage
     for Record<S>
 {
@@ -393,33 +383,33 @@ where
         self.0.coinbase()
     }
 
-    fn merkle_contract_state_range(
+    fn contract_state_range(
         &self,
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Vec<Option<alloc::borrow::Cow<Bytes32>>>, Self::DataError> {
-        self.0.merkle_contract_state_range(id, start_key, range)
+        self.0.contract_state_range(id, start_key, range)
     }
 
-    fn merkle_contract_state_insert_range(
+    fn contract_state_insert_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         values: &[Bytes32],
     ) -> Result<usize, Self::DataError> {
         self.0
-            .merkle_contract_state_insert_range(contract, start_key, values)
+            .contract_state_insert_range(contract, start_key, values)
     }
 
-    fn merkle_contract_state_remove_range(
+    fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Option<()>, S::DataError> {
         self.0
-            .merkle_contract_state_remove_range(contract, start_key, range)
+            .contract_state_remove_range(contract, start_key, range)
     }
 }
 

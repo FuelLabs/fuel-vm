@@ -71,6 +71,8 @@ mod tests {
     fn from_tx_works() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
+        let zero_gas_price = 0;
+
         let height = 1.into();
 
         #[rustfmt::skip]
@@ -86,7 +88,6 @@ mod tests {
         let a = Input::coin_predicate(
             rng.gen(),
             owner,
-            rng.gen(),
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -122,7 +123,7 @@ mod tests {
             let tx = TransactionBuilder::script(vec![], vec![])
                 .add_input(i)
                 .add_random_fee_input()
-                .finalize_checked_basic(height);
+                .finalize_checked_basic(height, zero_gas_price);
 
             // assert invalid idx wont panic
             let idx = 1;
@@ -177,6 +178,7 @@ mod tests {
     #[test]
     fn inputs_are_validated() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
+        let zero_gas_price = 0;
 
         let height = 1.into();
         let predicate_data =
@@ -191,7 +193,6 @@ mod tests {
                     Input::coin_predicate(
                         rng.gen(),
                         owner,
-                        rng.gen(),
                         rng.gen(),
                         rng.gen(),
                         rng.gen(),
@@ -270,9 +271,8 @@ mod tests {
                     vec![],
                 )
                 .add_input(input)
-                .gas_price(0)
                 .add_random_fee_input()
-                .finalize_checked_basic(height);
+                .finalize_checked_basic(height, zero_gas_price);
 
                 let result = Interpreter::<PredicateStorage, Script>::check_predicates(
                     &tx,

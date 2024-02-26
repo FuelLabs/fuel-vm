@@ -218,7 +218,7 @@ fn test_smo(
     let mut receipts = Default::default();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let old_balance = storage
-        .merkle_contract_asset_id_balance_insert(
+        .contract_asset_id_balance_insert(
             &ContractId::default(),
             &base_asset_id,
             initial_balance,

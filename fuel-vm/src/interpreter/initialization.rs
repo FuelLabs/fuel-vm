@@ -16,10 +16,7 @@ use crate::{
     storage::InterpreterStorage,
 };
 use fuel_asm::RegId;
-use fuel_tx::field::{
-    ReceiptsRoot,
-    ScriptGasLimit,
-};
+use fuel_tx::field::ScriptGasLimit;
 use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
@@ -37,15 +34,7 @@ where
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        if let Some(s) = tx.as_script_mut() {
-            *s.receipts_root_mut() = Default::default();
-        }
-        tx.inputs_mut()
-            .iter_mut()
-            .for_each(fuel_tx::Input::prepare_init_execute);
-        tx.outputs_mut()
-            .iter_mut()
-            .for_each(fuel_tx::Output::prepare_init_execute);
+        tx.prepare_init_execute();
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();

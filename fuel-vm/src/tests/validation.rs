@@ -121,9 +121,7 @@ fn malleable_fields_do_not_affect_validity() {
         123456789,
         AssetId::default(),
         Default::default(),
-        Default::default(),
     )
-    .gas_price(0)
     .script_gas_limit(1_000_000)
     .finalize();
 
@@ -133,7 +131,7 @@ fn malleable_fields_do_not_affect_validity() {
         let vm = Interpreter::<_, Script>::with_memory_storage();
         let mut client = MemoryClient::from_txtor(vm.into());
         let receipts =
-            client.transact(tx.into_checked(0u32.into(), &params).expect("valid tx"));
+            client.transact(tx.into_checked(0u32.into(), &params, 0).expect("valid tx"));
 
         let start_id = receipts[0].data().unwrap();
         let computed_id = receipts[1].data().unwrap();

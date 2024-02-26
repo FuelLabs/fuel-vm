@@ -20,7 +20,12 @@ use fuel_asm::{
     PanicReason,
 };
 use fuel_tx::{
-    field,
+    field::{
+        self,
+        Inputs,
+        Outputs,
+        ReceiptsRoot,
+    },
     output,
     Chargeable,
     ContractParameters,
@@ -28,6 +33,7 @@ use fuel_tx::{
     Executable,
     FeeParameters,
     GasCosts,
+    Input,
     Output,
     PredicateParameters,
     Receipt,
@@ -480,6 +486,9 @@ pub trait ExecutableTransaction:
             }) if *input_index as usize == input)
         })
     }
+
+    /// Prepares the transaction for execution.
+    fn prepare_init_execute(&mut self);
 }
 
 impl ExecutableTransaction for Create {
@@ -502,6 +511,8 @@ impl ExecutableTransaction for Create {
     fn transaction_type() -> Word {
         TransactionRepr::Create as Word
     }
+
+    fn prepare_init_execute(&mut self) {}
 }
 
 impl ExecutableTransaction for Script {
@@ -523,6 +534,16 @@ impl ExecutableTransaction for Script {
 
     fn transaction_type() -> Word {
         TransactionRepr::Script as Word
+    }
+
+    fn prepare_init_execute(&mut self) {
+        *self.receipts_root_mut() = Default::default();
+        self.inputs_mut()
+            .iter_mut()
+            .for_each(Input::prepare_init_execute);
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(Output::prepare_init_execute);
     }
 }
 

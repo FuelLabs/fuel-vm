@@ -644,14 +644,13 @@ mod tests {
     #[test]
     fn storage_slots_sorting() {
         // Test that storage slots must be sorted correctly
-        let mut slot_data = ([0u8; 32], vec![0u8; 32].into());
+        let mut slot_data = [0u8; 64];
         let arb_gas_price = 1;
 
         let storage_slots = (0..10u64)
             .map(|i| {
-                slot_data.0[..8].copy_from_slice(&i.to_be_bytes());
-                let (key, value) = slot_data.clone();
-                StorageSlot::from(&(key.into(), value))
+                slot_data[..8].copy_from_slice(&i.to_be_bytes());
+                StorageSlot::from(&slot_data.into())
             })
             .collect::<Vec<StorageSlot>>();
 

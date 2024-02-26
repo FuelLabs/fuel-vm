@@ -51,6 +51,7 @@ use crate::{
     storage::{
         ContractsAssetsStorage,
         ContractsRawCode,
+        ContractsStateData,
         InterpreterStorage,
     },
 };
@@ -59,7 +60,6 @@ use fuel_asm::PanicReason;
 use fuel_storage::StorageSize;
 use fuel_tx::{
     ContractIdExt,
-    ContractsStateData,
     DependentCost,
     Receipt,
 };

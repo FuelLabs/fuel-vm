@@ -8,6 +8,7 @@ use crate::{
     },
     prelude::*,
     script_with_data_offset,
+    storage::ContractsStateData,
     util::test_helpers::{
         check_expected_reason_for_instructions,
         check_expected_reason_for_instructions_with_client,

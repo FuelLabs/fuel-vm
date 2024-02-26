@@ -10,7 +10,6 @@ use fuel_storage::{
 };
 use fuel_tx::{
     Contract,
-    ContractsStateData,
     StorageSlot,
 };
 use fuel_types::{
@@ -30,6 +29,7 @@ use crate::{
         ContractsAssets,
         ContractsRawCode,
         ContractsState,
+        ContractsStateData,
     },
 };
 use alloc::{

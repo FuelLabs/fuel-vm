@@ -20,7 +20,6 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::ContractsStateData;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -31,6 +30,7 @@ use super::{
     interpreter::ContractsAssetsStorage,
     ContractsRawCode,
     ContractsState,
+    ContractsStateData,
 };
 
 /// No-op storage used for predicate operations.

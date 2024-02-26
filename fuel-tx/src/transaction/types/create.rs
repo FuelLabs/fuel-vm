@@ -445,13 +445,7 @@ mod field {
 
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
             if idx < self.storage_slots.len() {
-                let storage_slots_size: usize = self
-                    .storage_slots
-                    .iter()
-                    .take(idx)
-                    .map(|slot| slot.size())
-                    .sum();
-                Some(self.storage_slots_offset() + storage_slots_size)
+                Some(self.storage_slots_offset() + idx * StorageSlot::SLOT_SIZE)
             } else {
                 None
             }
@@ -471,9 +465,8 @@ mod field {
 
         #[inline(always)]
         fn inputs_offset(&self) -> usize {
-            let storage_slots_size: usize =
-                self.storage_slots.iter().map(|slot| slot.size()).sum();
-            self.storage_slots_offset() + storage_slots_size
+            self.storage_slots_offset()
+                + self.storage_slots.len() * StorageSlot::SLOT_SIZE
         }
 
         #[inline(always)]
@@ -673,8 +666,8 @@ mod tests {
     #[test]
     fn storage_slots_no_duplicates() {
         let storage_slots = vec![
-            StorageSlot::new(Bytes32::zeroed(), Default::default()),
-            StorageSlot::new(Bytes32::zeroed(), Default::default()),
+            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
+            StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
         ];
         let arb_gas_price = 1;
 

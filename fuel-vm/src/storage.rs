@@ -1,21 +1,23 @@
 //! Storage backend implementations.
 
 use fuel_storage::Mappable;
-use fuel_tx::{
-    Contract,
-    ContractsStateData,
-};
+use fuel_tx::Contract;
 use fuel_types::{
     AssetId,
-    Bytes32,
     ContractId,
     Word,
 };
 
+mod contracts_state;
 mod interpreter;
 mod memory;
 pub(crate) mod predicate;
 
+pub use contracts_state::{
+    ContractsState,
+    ContractsStateData,
+    ContractsStateKey,
+};
 pub use interpreter::{
     ContractsAssetsStorage,
     InterpreterStorage,
@@ -43,20 +45,6 @@ impl Mappable for ContractsAssets {
     type OwnedKey = ContractsAssetKey;
     type OwnedValue = Self::Value;
     type Value = Word;
-}
-
-/// The storage table for contract's hashed key-value state.
-///
-/// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsState;
-
-impl Mappable for ContractsState {
-    type Key = Self::OwnedKey;
-    /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's
-    /// key.
-    type OwnedKey = ContractsStateKey;
-    type OwnedValue = ContractsStateData;
-    type Value = [u8];
 }
 
 /// The macro defines a new type of double storage key. It is a merge of the two types
@@ -170,11 +158,4 @@ double_key!(
     contract_id,
     AssetId,
     asset_id
-);
-double_key!(
-    ContractsStateKey,
-    ContractId,
-    contract_id,
-    Bytes32,
-    state_key
 );

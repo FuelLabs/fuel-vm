@@ -12,9 +12,11 @@ use core::{
 use crate::{
     context::Context,
     interpreter::memory::Memory,
-    storage::MemoryStorage,
+    storage::{
+        ContractsStateData,
+        MemoryStorage,
+    },
 };
-use fuel_tx::ContractsStateData;
 use test_case::test_case;
 
 use super::*;

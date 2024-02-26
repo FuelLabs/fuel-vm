@@ -6,7 +6,6 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::ContractsStateData;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -16,6 +15,7 @@ use fuel_types::{
 use crate::storage::{
     ContractsAssetKey,
     ContractsAssetsStorage,
+    ContractsStateData,
     ContractsStateKey,
     InterpreterStorage,
 };

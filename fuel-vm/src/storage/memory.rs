@@ -3,6 +3,7 @@ use crate::storage::{
     ContractsAssets,
     ContractsRawCode,
     ContractsState,
+    ContractsStateData,
     ContractsStateKey,
     InterpreterStorage,
 };
@@ -17,10 +18,7 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::{
-    Contract,
-    ContractsStateData,
-};
+use fuel_tx::Contract;
 use fuel_types::{
     BlockHeight,
     Bytes32,

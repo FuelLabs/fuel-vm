@@ -78,7 +78,6 @@ pub use transaction::{
     Chargeable,
     ConsensusParameters,
     ContractParameters,
-    ContractsStateData,
     Create,
     DependentCost,
     Executable,

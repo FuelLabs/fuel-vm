@@ -7,12 +7,12 @@ use alloc::{
 
 use crate::storage::{
     ContractsState,
+    ContractsStateData,
     MemoryStorage,
 };
 
 use super::*;
 use fuel_storage::StorageAsMut;
-use fuel_tx::ContractsStateData;
 use test_case::test_case;
 
 struct SWWQInput {

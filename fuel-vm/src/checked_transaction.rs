@@ -1449,27 +1449,28 @@ mod tests {
         // given
         let tipless_tx = tx.clone();
 
-        let min_fee_without_tip = tipless_tx
-            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
-            .unwrap()
-            .metadata()
-            .fee
-            .min_fee();
-
-        let tip = 100;
-
-        // when
-        tx.set_tip(tip);
-
-        let min_fee_with_tip = tx
-            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
-            .unwrap()
-            .metadata()
-            .fee
-            .min_fee();
+        todo!();
+        // let min_fee_without_tip = tipless_tx
+        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
+        //     .unwrap()
+        //     .metadata()
+        //     .fee
+        //     .min_fee();
+        //
+        // let tip = 100;
+        //
+        // // when
+        // tx.set_tip(tip);
+        //
+        // let min_fee_with_tip = tx
+        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
+        //     .unwrap()
+        //     .metadata()
+        //     .fee
+        //     .min_fee();
 
         // then
-        assert_eq!(min_fee_without_tip + tip, min_fee_with_tip);
+        // assert_eq!(min_fee_without_tip + tip, min_fee_with_tip);
     }
 
     #[test]
@@ -1481,27 +1482,28 @@ mod tests {
         // given
         let tipless_tx = tx.clone();
 
-        let max_fee_without_tip = tipless_tx
-            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
-            .unwrap()
-            .metadata()
-            .fee
-            .max_fee();
-
-        let tip = 100;
-
-        // when
-        tx.set_tip(tip);
-
-        let max_fee_with_tip = tx
-            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
-            .unwrap()
-            .metadata()
-            .fee
-            .max_fee();
-
+        todo!();
+        // let max_fee_without_tip = tipless_tx
+        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
+        //     .unwrap()
+        //     .metadata()
+        //     .fee
+        //     .max_fee();
+        //
+        // let tip = 100;
+        //
+        // // when
+        // tx.set_tip(tip);
+        //
+        // let max_fee_with_tip = tx
+        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
+        //     .unwrap()
+        //     .metadata()
+        //     .fee
+        //     .max_fee();
+        //
         // then
-        assert_eq!(max_fee_without_tip + tip, max_fee_with_tip);
+        // assert_eq!(max_fee_without_tip + tip, max_fee_with_tip);
     }
 
     #[test]
@@ -1678,10 +1680,10 @@ mod tests {
             .try_into()
             .map_err(|_| ValidityError::BalanceOverflow)?;
 
-        todo!();
-        // let max_fee_with_tip = max_fee + tx.tip();
+        let max_fee_with_tip = max_fee + tx.tip();
 
-        let result = max_fee_with_tip == available_balances.fee.max_fee();
+        todo!();
+        // let result = max_fee_with_tip == available_balances.fee.max_fee();
         // Ok(result)
     }
 
@@ -1767,7 +1769,9 @@ mod tests {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
         let owner = Input::predicate_owner(&predicate);
+        let zero_max_fee = 0;
         TransactionBuilder::script(vec![], vec![])
+            .max_fee_limit(zero_max_fee)
             .script_gas_limit(gas_limit)
             .witness_limit(witness_limit)
             .add_input(Input::coin_predicate(

@@ -223,8 +223,14 @@ mod tests {
         assert_eq!(storage_slots.len(), 1);
     }
 
+    #[test]
     fn test_storage_slot_serde_serialization_from_file_creates_storage_slot() {
         // Given
+        let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
+        let key: Bytes32 = rng.gen();
+        let value = rng.gen::<StorageData>();
+        let slot = StorageSlot::new(key, value);
+        let slots = vec![slot.clone()];
         let path = std::env::temp_dir().join(PathBuf::from(FILE_PATH));
         let storage_slots_file = File::create(&path).expect("create file");
         serde_json::to_writer(&storage_slots_file, &slots).expect("write file");

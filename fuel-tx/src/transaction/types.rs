@@ -11,7 +11,7 @@ pub use create::Create;
 pub use mint::Mint;
 pub use script::Script;
 pub use storage::{
-    StorageData,
+    ContractsStateData,
     StorageSlot,
 };
 pub use utxo_id::UtxoId;

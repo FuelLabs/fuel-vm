@@ -20,7 +20,7 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::StorageData;
+use fuel_tx::ContractsStateData;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -222,7 +222,7 @@ impl InterpreterStorage for PredicateStorage {
         _id: &ContractId,
         _start_key: &Bytes32,
         _range: usize,
-    ) -> Result<Vec<Option<Cow<StorageData>>>, StorageUnavailable> {
+    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 

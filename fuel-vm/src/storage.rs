@@ -3,7 +3,7 @@
 use fuel_storage::Mappable;
 use fuel_tx::{
     Contract,
-    StorageData,
+    ContractsStateData,
 };
 use fuel_types::{
     AssetId,
@@ -55,7 +55,7 @@ impl Mappable for ContractsState {
     /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's
     /// key.
     type OwnedKey = ContractsStateKey;
-    type OwnedValue = StorageData;
+    type OwnedValue = ContractsStateData;
     type Value = [u8];
 }
 

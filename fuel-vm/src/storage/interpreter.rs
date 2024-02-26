@@ -10,7 +10,7 @@ use fuel_storage::{
 };
 use fuel_tx::{
     Contract,
-    StorageData,
+    ContractsStateData,
     StorageSlot,
 };
 use fuel_types::{
@@ -140,7 +140,7 @@ pub trait InterpreterStorage:
         &self,
         id: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Cow<'_, StorageData>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, ContractsStateData>>, Self::DataError> {
         StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
@@ -164,7 +164,7 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<StorageData>, Self::DataError> {
+    ) -> Result<Option<ContractsStateData>, Self::DataError> {
         let result = StorageWrite::<ContractsState>::take(self, &(contract, key).into())?
             .map(Into::into);
         Ok(result)
@@ -178,7 +178,7 @@ pub trait InterpreterStorage:
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<StorageData>>>, Self::DataError>;
+    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns the number of keys that were previously unset but are now set.
@@ -275,7 +275,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<StorageData>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError> {
         <S as InterpreterStorage>::contract_state_range(
             self.deref(),
             id,

@@ -8,12 +8,12 @@ use crate::{
 
 use super::*;
 use fuel_storage::StorageAsMut;
-use fuel_tx::StorageData;
+use fuel_tx::ContractsStateData;
 use test_case::test_case;
 
 struct SRWQInput {
     input: StateReadQWord,
-    storage_slots: Vec<([u8; 32], StorageData)>,
+    storage_slots: Vec<([u8; 32], ContractsStateData)>,
     memory: Memory<MEM_SIZE>,
 }
 

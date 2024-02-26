@@ -179,7 +179,7 @@ impl TryFrom<&Transaction> for Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::StorageData;
+    use crate::ContractsStateData;
     use fuel_types::bytes::WORD_SIZE;
     use itertools::Itertools;
     use quickcheck_macros::quickcheck;
@@ -229,8 +229,8 @@ mod tests {
 
     #[rstest]
     fn state_root_snapshot(
-        #[values(Vec::new(), vec![ (Bytes32::new([1u8; 32]), StorageData::from([1u8; 32].as_ref())) ] )]
-        state_slot_bytes: Vec<(Bytes32, StorageData)>,
+        #[values(Vec::new(), vec![ (Bytes32::new([1u8; 32]), ContractsStateData::from([1u8; 32].as_ref())) ] )]
+        state_slot_bytes: Vec<(Bytes32, ContractsStateData)>,
     ) {
         let slots: Vec<StorageSlot> =
             state_slot_bytes.iter().map(Into::into).collect_vec();

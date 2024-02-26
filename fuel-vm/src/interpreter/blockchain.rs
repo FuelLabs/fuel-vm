@@ -59,9 +59,9 @@ use fuel_asm::PanicReason;
 use fuel_storage::StorageSize;
 use fuel_tx::{
     ContractIdExt,
+    ContractsStateData,
     DependentCost,
     Receipt,
-    StorageData,
 };
 use fuel_types::{
     bytes,
@@ -1270,7 +1270,7 @@ fn state_read_qword<S: InterpreterStorage>(
             Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                StorageData::from(Bytes32::zeroed().as_ref())
+                ContractsStateData::from(Bytes32::zeroed().as_ref())
             }
         })
         .collect();

@@ -1,4 +1,4 @@
-use crate::StorageData;
+use crate::ContractsStateData;
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -15,11 +15,11 @@ fn test_create_serialization() {
         storage_slots: vec![
             StorageSlot::new(
                 Bytes32::from([1u8; 32]),
-                StorageData::from([2u8; 32].as_ref()),
+                ContractsStateData::from([2u8; 32].as_ref()),
             ),
             StorageSlot::new(
                 Bytes32::from([3u8; 32]),
-                StorageData::from([4u8; 32].as_ref()),
+                ContractsStateData::from([4u8; 32].as_ref()),
             ),
         ],
 

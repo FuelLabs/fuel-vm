@@ -14,7 +14,7 @@ use crate::{
     interpreter::memory::Memory,
     storage::MemoryStorage,
 };
-use fuel_tx::StorageData;
+use fuel_tx::ContractsStateData;
 use test_case::test_case;
 
 use super::*;
@@ -35,8 +35,8 @@ const fn key(k: u8) -> [u8; 32] {
     ]
 }
 
-fn data(value: &[u8]) -> StorageData {
-    StorageData::from(value)
+fn data(value: &[u8]) -> ContractsStateData {
+    ContractsStateData::from(value)
 }
 
 impl OwnershipRegisters {

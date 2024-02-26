@@ -30,61 +30,61 @@ use fuel_types::canonical::{
 #[derive(Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct StorageData(
+pub struct ContractsStateData(
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] pub Vec<u8>,
 );
 
 // TODO: Remove fixed size default when adding support for dynamic storage
-impl Default for StorageData {
+impl Default for ContractsStateData {
     fn default() -> Self {
         Self(vec![0u8; 32])
     }
 }
 
-impl From<Vec<u8>> for StorageData {
+impl From<Vec<u8>> for ContractsStateData {
     fn from(c: Vec<u8>) -> Self {
         Self(c)
     }
 }
 
-impl From<&[u8]> for StorageData {
+impl From<&[u8]> for ContractsStateData {
     fn from(c: &[u8]) -> Self {
         Self(c.into())
     }
 }
 
-impl From<&mut [u8]> for StorageData {
+impl From<&mut [u8]> for ContractsStateData {
     fn from(c: &mut [u8]) -> Self {
         Self(c.into())
     }
 }
 
-impl From<StorageData> for Vec<u8> {
-    fn from(c: StorageData) -> Vec<u8> {
+impl From<ContractsStateData> for Vec<u8> {
+    fn from(c: ContractsStateData) -> Vec<u8> {
         c.0
     }
 }
 
-impl AsRef<[u8]> for StorageData {
+impl AsRef<[u8]> for ContractsStateData {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl AsMut<[u8]> for StorageData {
+impl AsMut<[u8]> for ContractsStateData {
     fn as_mut(&mut self) -> &mut [u8] {
         self.0.as_mut()
     }
 }
 
 #[cfg(feature = "random")]
-impl Distribution<StorageData> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StorageData {
-        StorageData(rng.gen::<Bytes32>().to_vec())
+impl Distribution<ContractsStateData> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ContractsStateData {
+        ContractsStateData(rng.gen::<Bytes32>().to_vec())
     }
 }
 
-impl IntoIterator for StorageData {
+impl IntoIterator for ContractsStateData {
     type IntoIter = alloc::vec::IntoIter<Self::Item>;
     type Item = u8;
 
@@ -100,7 +100,7 @@ impl IntoIterator for StorageData {
 // possible to write dynamically sized storage data via new opcodes, and
 // dynamically sized slots are supported, remove these implementations, allowing
 // native support for dynamically sized serialization and deserialization.
-impl Serialize for StorageData {
+impl Serialize for ContractsStateData {
     fn size_static(&self) -> usize {
         Bytes32::LEN
     }
@@ -121,7 +121,7 @@ impl Serialize for StorageData {
 }
 
 // TODO: Remove manual deserialization when implementing dynamic storage
-impl Deserialize for StorageData {
+impl Deserialize for ContractsStateData {
     fn decode_static<I: Input + ?Sized>(buffer: &mut I) -> Result<Self, Error> {
         let bytes = Bytes32::decode(buffer)?;
         let data = Self::from(bytes.as_ref());
@@ -142,11 +142,11 @@ impl Deserialize for StorageData {
 #[derive(Deserialize, Serialize)]
 pub struct StorageSlot {
     key: Bytes32,
-    value: StorageData,
+    value: ContractsStateData,
 }
 
 impl StorageSlot {
-    pub const fn new(key: Bytes32, value: StorageData) -> Self {
+    pub const fn new(key: Bytes32, value: ContractsStateData) -> Self {
         StorageSlot { key, value }
     }
 
@@ -154,7 +154,7 @@ impl StorageSlot {
         &self.key
     }
 
-    pub const fn value(&self) -> &StorageData {
+    pub const fn value(&self) -> &ContractsStateData {
         &self.value
     }
 
@@ -163,8 +163,8 @@ impl StorageSlot {
     }
 }
 
-impl From<&(Bytes32, StorageData)> for StorageSlot {
-    fn from((key, value): &(Bytes32, StorageData)) -> Self {
+impl From<&(Bytes32, ContractsStateData)> for StorageSlot {
+    fn from((key, value): &(Bytes32, ContractsStateData)) -> Self {
         Self::new(*key, value.clone())
     }
 }
@@ -174,7 +174,7 @@ impl Distribution<StorageSlot> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StorageSlot {
         StorageSlot {
             key: rng.gen(),
-            value: rng.gen::<StorageData>(),
+            value: rng.gen::<ContractsStateData>(),
         }
     }
 }
@@ -210,7 +210,7 @@ mod tests {
         // Given
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let value = rng.gen::<StorageData>();
+        let value = rng.gen::<ContractsStateData>();
         let slot = StorageSlot::new(key, value);
         let slots = vec![slot.clone()];
 
@@ -228,7 +228,7 @@ mod tests {
         // Given
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let value = rng.gen::<StorageData>();
+        let value = rng.gen::<ContractsStateData>();
         let slot = StorageSlot::new(key, value);
         let slots = vec![slot.clone()];
         let path = std::env::temp_dir().join(PathBuf::from(FILE_PATH));
@@ -249,7 +249,7 @@ mod tests {
         // Given
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let mut value = StorageData::from(vec![0u8; 32]);
+        let mut value = ContractsStateData::from(vec![0u8; 32]);
         rng.fill_bytes(value.as_mut());
         let slot = StorageSlot::new(key, value.clone());
 
@@ -270,7 +270,7 @@ mod tests {
         // Given
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
-        let mut value = StorageData::from(vec![0u8; 32]);
+        let mut value = ContractsStateData::from(vec![0u8; 32]);
         rng.fill_bytes(value.as_mut());
 
         // When

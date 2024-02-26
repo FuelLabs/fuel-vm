@@ -19,7 +19,7 @@ use fuel_storage::{
 };
 use fuel_tx::{
     Contract,
-    StorageData,
+    ContractsStateData,
 };
 use fuel_types::{
     BlockHeight,
@@ -42,7 +42,7 @@ use super::interpreter::ContractsAssetsStorage;
 struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
-    contract_state: BTreeMap<ContractsStateKey, StorageData>,
+    contract_state: BTreeMap<ContractsStateKey, ContractsStateData>,
 }
 
 #[derive(Debug, Clone)]
@@ -76,7 +76,7 @@ impl MemoryStorage {
     /// Iterate over all contract state in storage
     pub fn all_contract_state(
         &self,
-    ) -> impl Iterator<Item = (&ContractsStateKey, &StorageData)> {
+    ) -> impl Iterator<Item = (&ContractsStateKey, &ContractsStateData)> {
         self.memory.contract_state.iter()
     }
 
@@ -85,11 +85,11 @@ impl MemoryStorage {
         &self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Cow<'_, StorageData> {
+    ) -> Cow<'_, ContractsStateData> {
         self.storage::<ContractsState>()
             .get(&(contract, key).into())
             .expect("Infallible")
-            .unwrap_or(Cow::Owned(StorageData::default()))
+            .unwrap_or(Cow::Owned(ContractsStateData::default()))
     }
 
     /// Set the transacted state to the memory state.
@@ -273,7 +273,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
     fn remove(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<StorageData>, Infallible> {
+    ) -> Result<Option<ContractsStateData>, Infallible> {
         Ok(self.memory.contract_state.remove(key))
     }
 }
@@ -287,7 +287,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         let size = buf.len();
         self.memory
             .contract_state
-            .insert(*key, StorageData::from(buf));
+            .insert(*key, ContractsStateData::from(buf));
         Ok(size)
     }
 
@@ -303,7 +303,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         let prev = self
             .memory
             .contract_state
-            .insert(*key, StorageData::from(buf))
+            .insert(*key, ContractsStateData::from(buf))
             .map(Into::into);
         Ok((size, prev))
     }
@@ -384,7 +384,7 @@ impl InterpreterStorage for MemoryStorage {
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<StorageData>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError> {
         let start: ContractsStateKey = (id, start_key).into();
         let end: ContractsStateKey = (id, &Bytes32::new([u8::MAX; 32])).into();
         let mut iter = self.memory.contract_state.range(start..end);
@@ -501,7 +501,7 @@ mod tests {
     }
 
     #[test_case(&[&[0u8; 32]], &[0u8; 32], 1 => vec![Some(Default::default())])]
-    #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<StorageData>>::with_capacity(0))]
+    #[test_case(&[&[0u8; 32]], &[0u8; 32], 0 => Vec::<Option<ContractsStateData>>::with_capacity(0))]
     #[test_case(&[], &[0u8; 32], 1 => vec![None])]
     #[test_case(&[], &[1u8; 32], 1 => vec![None])]
     #[test_case(&[&[0u8; 32]], &key(1), 2 => vec![None, None])]
@@ -511,7 +511,7 @@ mod tests {
         store: &[&[u8; 32]],
         start: &[u8; 32],
         range: usize,
-    ) -> Vec<Option<StorageData>> {
+    ) -> Vec<Option<ContractsStateData>> {
         let mut mem = MemoryStorage::default();
         for k in store {
             mem.memory.contract_state.insert(

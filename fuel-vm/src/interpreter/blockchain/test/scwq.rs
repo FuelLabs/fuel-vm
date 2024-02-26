@@ -12,12 +12,12 @@ use crate::storage::{
 
 use super::*;
 use fuel_storage::StorageAsMut;
-use fuel_tx::StorageData;
+use fuel_tx::ContractsStateData;
 use test_case::test_case;
 
 struct SCWQInput {
     input: StateClearQWord,
-    storage_slots: Vec<([u8; 32], StorageData)>,
+    storage_slots: Vec<([u8; 32], ContractsStateData)>,
     memory: Memory<MEM_SIZE>,
 }
 
@@ -69,7 +69,9 @@ struct SCWQInput {
     } => (vec![(key(26), vec![8; 32].into())], false)
     ; "Clear storage slots with some previously set before the key"
 )]
-fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], StorageData)>, bool) {
+fn test_state_clear_qword(
+    input: SCWQInput,
+) -> (Vec<([u8; 32], ContractsStateData)>, bool) {
     let SCWQInput {
         input,
         storage_slots,

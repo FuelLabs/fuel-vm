@@ -12,12 +12,12 @@ use crate::storage::{
 
 use super::*;
 use fuel_storage::StorageAsMut;
-use fuel_tx::StorageData;
+use fuel_tx::ContractsStateData;
 use test_case::test_case;
 
 struct SWWQInput {
     input: StateWriteQWord,
-    storage_slots: Vec<([u8; 32], StorageData)>,
+    storage_slots: Vec<([u8; 32], ContractsStateData)>,
     memory: Memory<MEM_SIZE>,
 }
 
@@ -93,7 +93,9 @@ struct SWWQInput {
     } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32])), (key(100), data(&[8; 32]))], 3)
     ; "Does not override slots that aren't being written to (non-adjacent)"
 )]
-fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], StorageData)>, u64) {
+fn test_state_write_qword(
+    input: SWWQInput,
+) -> (Vec<([u8; 32], ContractsStateData)>, u64) {
     let SWWQInput {
         input,
         storage_slots,

@@ -6,7 +6,7 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::StorageData;
+use fuel_tx::ContractsStateData;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -29,7 +29,7 @@ use super::{
 #[derive(Debug)]
 /// The set of state changes that are recorded.
 pub(super) enum StorageDelta {
-    State(MappableDelta<ContractsStateKey, StorageData>),
+    State(MappableDelta<ContractsStateKey, ContractsStateData>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
@@ -37,7 +37,7 @@ pub(super) enum StorageDelta {
 /// The set of states that are recorded.
 #[derive(Debug, Clone)]
 pub(super) enum StorageState {
-    State(MappableState<ContractsStateKey, StorageData>),
+    State(MappableState<ContractsStateKey, ContractsStateData>),
     Assets(MappableState<ContractsAssetKey, u64>),
     RawCode(MappableState<ContractId, Contract>),
 }
@@ -412,7 +412,8 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<StorageData>>>, Self::DataError> {
+    ) -> Result<Vec<Option<alloc::borrow::Cow<ContractsStateData>>>, Self::DataError>
+    {
         self.0.contract_state_range(id, start_key, range)
     }
 
@@ -441,12 +442,12 @@ impl StorageType for ContractsState {
     fn record_insert(
         key: &Self::Key,
         value: &[u8],
-        existing: Option<StorageData>,
+        existing: Option<ContractsStateData>,
     ) -> StorageDelta {
         StorageDelta::State(MappableDelta::Insert(*key, value.into(), existing))
     }
 
-    fn record_remove(key: &Self::Key, value: StorageData) -> StorageDelta {
+    fn record_remove(key: &Self::Key, value: ContractsStateData) -> StorageDelta {
         StorageDelta::State(MappableDelta::Remove(*key, value))
     }
 }

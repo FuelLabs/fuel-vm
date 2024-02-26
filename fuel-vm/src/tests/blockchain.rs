@@ -227,7 +227,7 @@ fn state_read_write() {
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
-    assert_eq!(StorageData::default(), state.into_owned());
+    assert_eq!(ContractsStateData::default(), state.into_owned());
 
     let result = test_context
         .start_script(script.clone(), script_data)
@@ -309,7 +309,7 @@ fn state_read_write() {
     bytes[24..].copy_from_slice(&p.to_be_bytes());
 
     // Assert the state is correct
-    let data = StorageData::from(bytes.as_ref());
+    let data = ContractsStateData::from(bytes.as_ref());
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
@@ -1370,7 +1370,7 @@ fn check_receipts_for_program_call(
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
-    assert_eq!(StorageData::default(), state.into_owned());
+    assert_eq!(ContractsStateData::default(), state.into_owned());
 
     let result = test_context
         .start_script(script, script_data)

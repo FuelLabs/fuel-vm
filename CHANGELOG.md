@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 #### Breaking
 
-- [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized Contract state by changing the storage slot data type to a vector of bytes (`Vec<u8>`).
+- [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized values in the ContractsState table by using a vector data type (`Vec<u8>`).
+- [#682](https://github.com/FuelLabs/fuel-vm/pull/682): Include `Tip` policy in fee calculation
 - [#683](https://github.com/FuelLabs/fuel-vm/pull/683): Simplify `InterpreterStorage` by removing dependency on `MerkleRootStorage` and removing `merkle_` prefix from method names.
 - [#678](https://github.com/FuelLabs/fuel-vm/pull/678): Zero malleable fields before execution. Remove some now-obsolete GTF getters. Don't update `tx.receiptsRoot` after pushing receipts, and do it after execution instead.
 - [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Remove `GasPrice` policy

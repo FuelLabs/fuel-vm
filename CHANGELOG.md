@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 #### Breaking
 
+- [#682](https://github.com/FuelLabs/fuel-vm/pull/682): Include `Tip` policy in fee calculation
 - [#683](https://github.com/FuelLabs/fuel-vm/pull/683): Simplify `InterpreterStorage` by removing dependency on `MerkleRootStorage` and removing `merkle_` prefix from method names.
 - [#678](https://github.com/FuelLabs/fuel-vm/pull/678): Zero malleable fields before execution. Remove some now-obsolete GTF getters. Don't update `tx.receiptsRoot` after pushing receipts, and do it after execution instead.
 - [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Remove `GasPrice` policy

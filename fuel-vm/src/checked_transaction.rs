@@ -647,9 +647,11 @@ impl From<PredicateVerificationFailed> for CheckError {
 }
 
 #[cfg(feature = "random")]
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
     #![allow(clippy::cast_possible_truncation)]
+
     use super::*;
     use alloc::vec;
     use fuel_asm::op;
@@ -657,6 +659,7 @@ mod tests {
     use fuel_tx::{
         field::{
             ScriptGasLimit,
+            Tip,
             WitnessLimit,
             Witnesses,
         },
@@ -920,6 +923,7 @@ mod tests {
         gas_limit: u64,
         input_amount: u64,
         gas_price_factor: u64,
+        tip: u64,
         seed: u64,
     ) -> TestResult {
         // dont divide by zero
@@ -931,7 +935,7 @@ mod tests {
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
-        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
         if let Ok(valid) =
             is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
@@ -950,6 +954,7 @@ mod tests {
         input_amount: u64,
         gas_price_factor: u64,
         seed: u64,
+        tip: u64,
     ) -> TestResult {
         // dont divide by zero
         if gas_price_factor == 0 {
@@ -959,7 +964,7 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
         // Given
         let used_gas = 0;
@@ -986,6 +991,7 @@ mod tests {
         input_amount: u64,
         gas_price: u64,
         gas_price_factor: u64,
+        tip: u64,
         seed: u64,
     ) -> TestResult {
         // verify min fee a transaction can consume based on bytes is correct
@@ -998,7 +1004,7 @@ mod tests {
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
         let base_asset_id = rng.gen();
-        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount);
+        let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
         if let Ok(valid) =
             is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id, gas_price)
@@ -1467,6 +1473,76 @@ mod tests {
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
     }
 
+    fn arb_tx(rng: &mut StdRng) -> Script {
+        let input_amount = 1000;
+        let gas_limit = 1000;
+        base_asset_tx(rng, input_amount, gas_limit)
+    }
+
+    #[test]
+    fn into_checked_basic__min_fee_calc_includes_tip() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 1;
+        let mut tx = arb_tx(rng);
+
+        // given
+        let tipless_tx = tx.clone();
+
+        let min_fee_without_tip = tipless_tx
+            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
+            .unwrap()
+            .metadata()
+            .fee
+            .min_fee();
+
+        let tip = 100;
+
+        // when
+        tx.set_tip(tip);
+
+        let min_fee_with_tip = tx
+            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
+            .unwrap()
+            .metadata()
+            .fee
+            .min_fee();
+
+        // then
+        assert_eq!(min_fee_without_tip + tip, min_fee_with_tip);
+    }
+
+    #[test]
+    fn into_checked_basic__max_fee_calc_includes_tip() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let gas_price = 1;
+        let mut tx = arb_tx(rng);
+
+        // given
+        let tipless_tx = tx.clone();
+
+        let max_fee_without_tip = tipless_tx
+            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
+            .unwrap()
+            .metadata()
+            .fee
+            .max_fee();
+
+        let tip = 100;
+
+        // when
+        tx.set_tip(tip);
+
+        let max_fee_with_tip = tx
+            .into_checked_basic(1.into(), &ConsensusParameters::standard(), gas_price)
+            .unwrap()
+            .metadata()
+            .fee
+            .max_fee();
+
+        // then
+        assert_eq!(max_fee_without_tip + tip, max_fee_with_tip);
+    }
+
     #[test]
     fn gas_fee_cant_overflow() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -1527,7 +1603,7 @@ mod tests {
             CheckError::Validity(ValidityError::InsufficientInputAmount {
                 asset: any_asset,
                 expected: input_amount + 1,
-                provided: input_amount
+                provided: input_amount,
             }),
             checked
         );
@@ -1564,7 +1640,7 @@ mod tests {
             .into_checked(
                 block_height,
                 &ConsensusParameters::standard_with_id(chain_id),
-                arb_gas_price
+                arb_gas_price,
             )
             .unwrap()
             // Sets Checks::Signatures
@@ -1597,11 +1673,11 @@ mod tests {
             .into_checked(
                 block_height,
                 &consensus_params,
-                arb_gas_price
+                arb_gas_price,
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates( &check_predicate_params)
+            .check_predicates(&check_predicate_params)
             .unwrap();
         assert!(checked
             .checks()
@@ -1656,7 +1732,9 @@ mod tests {
             .try_into()
             .map_err(|_| ValidityError::BalanceOverflow)?;
 
-        let result = max_fee == available_balances.fee.max_fee();
+        let max_fee_with_tip = max_fee + tx.tip();
+
+        let result = max_fee_with_tip == available_balances.fee.max_fee();
         Ok(result)
     }
 
@@ -1702,7 +1780,9 @@ mod tests {
             .try_into()
             .map_err(|_| ValidityError::BalanceOverflow)?;
 
-        Ok(min_fee == available_balances.fee.min_fee())
+        let min_fee_with_tip = min_fee + tx.tip();
+
+        Ok(min_fee_with_tip == available_balances.fee.min_fee())
     }
 
     fn valid_coin_tx(
@@ -1784,8 +1864,10 @@ mod tests {
         rng: &mut StdRng,
         gas_limit: u64,
         input_amount: u64,
+        tip: u64,
     ) -> Script {
         TransactionBuilder::script(vec![], vec![])
+            .tip(tip)
             .script_gas_limit(gas_limit)
             .add_input(Input::message_coin_predicate(
                 rng.gen(),

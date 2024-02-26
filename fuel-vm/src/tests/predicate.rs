@@ -346,7 +346,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = CheckPredicateParams::default();
 
-    let gas_price = 1_000;
+    let max_fee_limit = 1000;
     let gas_limit = 1_000_000;
     let script = vec![
         op::addi(0x20, 0x20, 1),
@@ -359,6 +359,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
+        .max_fee_limit(max_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 

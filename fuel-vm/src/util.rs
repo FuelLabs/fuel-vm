@@ -171,6 +171,7 @@ pub mod test_helpers {
     pub struct TestBuilder {
         rng: StdRng,
         gas_price: Word,
+        max_fee_limit: Word,
         script_gas_limit: Word,
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
@@ -184,6 +185,7 @@ pub mod test_helpers {
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
+                max_fee_limit: 0,
                 script_gas_limit: 100,
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
@@ -314,6 +316,7 @@ pub mod test_helpers {
         }
 
         pub fn build(&mut self) -> Checked<Script> {
+            self.builder.max_fee_limit(self.max_fee_limit);
             self.builder.with_tx_params(*self.get_tx_params());
             self.builder
                 .with_contract_params(*self.get_contract_params());
@@ -420,6 +423,7 @@ pub mod test_helpers {
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 
             let tx = TransactionBuilder::create(program, salt, storage_slots)
+                .max_fee_limit(self.max_fee_limit)
                 .maturity(Default::default())
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))

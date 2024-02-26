@@ -238,6 +238,7 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let input_amount = 1000;
     // attempt overspend to cause a revert
     let transfer_amount: Word = input_amount + 100;
+    let max_fee_limit = 1000;
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let asset_id: AssetId = rng.gen();

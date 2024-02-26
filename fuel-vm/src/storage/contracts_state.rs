@@ -11,6 +11,8 @@ use alloc::{
     vec::Vec,
 };
 use derivative::Derivative;
+
+#[cfg(feature = "random")]
 use rand::{
     distributions::{
         Distribution,

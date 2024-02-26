@@ -20,7 +20,6 @@ use rand::{
     SeedableRng,
 };
 
-use fuel_tx::Create;
 use test_case::test_case;
 
 struct Input {
@@ -217,7 +216,6 @@ fn test_smo(
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
     let mut receipts = Default::default();
-    let mut tx = Create::default();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let old_balance = storage
         .contract_asset_id_balance_insert(
@@ -236,9 +234,7 @@ fn test_smo(
         base_asset_id,
         max_message_data_length,
         memory: &mut memory,
-        tx_offset: 0,
         receipts: &mut receipts,
-        tx: &mut tx,
         balances: &mut balances,
         storage: &mut storage,
         current_contract: if internal {

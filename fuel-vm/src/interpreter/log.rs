@@ -1,9 +1,7 @@
 use super::{
     internal::{
-        append_receipt,
         inc_pc,
         internal_contract_or_default,
-        AppendReceipt,
     },
     receipts::ReceiptsCtx,
     ExecutableTransaction,
@@ -17,10 +15,7 @@ use crate::{
     error::SimpleResult,
 };
 
-use fuel_tx::{
-    Receipt,
-    Script,
-};
+use fuel_tx::Receipt;
 use fuel_types::Word;
 
 #[cfg(test)]
@@ -31,15 +26,12 @@ where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
-        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
-            tx_offset,
             context: &self.context,
             receipts: &mut self.receipts,
-            script: self.tx.as_script_mut(),
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
@@ -54,15 +46,12 @@ where
         c: Word,
         d: Word,
     ) -> SimpleResult<()> {
-        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
             memory: &mut self.memory,
-            tx_offset,
             context: &self.context,
             receipts: &mut self.receipts,
-            script: self.tx.as_script_mut(),
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
@@ -73,10 +62,8 @@ where
 
 struct LogInput<'vm> {
     memory: &'vm mut [u8; MEM_SIZE],
-    tx_offset: usize,
     context: &'vm Context,
     receipts: &'vm mut ReceiptsCtx,
-    script: Option<&'vm mut Script>,
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
@@ -94,15 +81,7 @@ impl LogInput<'_> {
             *self.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.script,
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -120,15 +99,7 @@ impl LogInput<'_> {
             self.memory[range.usizes()].to_vec(),
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.script,
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }

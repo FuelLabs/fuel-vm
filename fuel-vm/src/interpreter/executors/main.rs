@@ -565,7 +565,7 @@ where
 
             let receipt = Receipt::script_result(status, gas_used);
 
-            self.append_receipt(receipt)?;
+            self.receipts.push(receipt)?;
 
             if program.is_debug() {
                 self.debugger_set_last_state(program);
@@ -626,6 +626,13 @@ where
             }
         }
     }
+
+    /// Update tx fields after execution
+    pub(crate) fn post_execute(&mut self) {
+        if let Some(script) = self.tx.as_script_mut() {
+            *script.receipts_root_mut() = self.receipts.root();
+        }
+    }
 }
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
@@ -669,6 +676,7 @@ where
         tx: Checked<Tx>,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
+        self.post_execute();
 
         #[cfg(feature = "profile-any")]
         {

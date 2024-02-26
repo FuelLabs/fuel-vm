@@ -164,15 +164,6 @@ crate::enum_try_from! {
         /// Set `$rA` to `tx.inputs[$rB].outputIndex`
         InputContractOutputIndex = 0x221,
 
-        /// Set `$rA` to `Memory address of tx.inputs[$rB].balanceRoot`
-        InputContractBalanceRoot = 0x222,
-
-        /// Set `$rA` to `Memory address of tx.inputs[$rB].stateRoot`
-        InputContractStateRoot = 0x223,
-
-        /// Set `$rA` to `Memory address of tx.inputs[$rB].txPointer`
-        InputContractTxPointer = 0x224,
-
         /// Set `$rA` to `Memory address of tx.inputs[$rB].contractID`
         InputContractId = 0x225,
 
@@ -226,12 +217,6 @@ crate::enum_try_from! {
 
         /// Set `$rA` to `tx.outputs[$rB].inputIndex`
         OutputContractInputIndex = 0x304,
-
-        /// Set `$rA` to `Memory address of tx.outputs[$rB].balanceRoot`
-        OutputContractBalanceRoot = 0x305,
-
-        /// Set `$rA` to `Memory address of tx.outputs[$rB].stateRoot`
-        OutputContractStateRoot = 0x306,
 
         /// Set `$rA` to `Memory address of tx.outputs[$rB].contractID`
         OutputContractCreatedContractId = 0x307,
@@ -328,11 +313,6 @@ fn encode_gtf_args() {
         GTFArgs::InputCoinPredicate,
         GTFArgs::InputCoinPredicateData,
         GTFArgs::InputCoinPredicateGasUsed,
-        GTFArgs::InputContractTxId,
-        GTFArgs::InputContractOutputIndex,
-        GTFArgs::InputContractBalanceRoot,
-        GTFArgs::InputContractStateRoot,
-        GTFArgs::InputContractTxPointer,
         GTFArgs::InputContractId,
         GTFArgs::InputMessageSender,
         GTFArgs::InputMessageRecipient,
@@ -351,8 +331,6 @@ fn encode_gtf_args() {
         GTFArgs::OutputCoinAmount,
         GTFArgs::OutputCoinAssetId,
         GTFArgs::OutputContractInputIndex,
-        GTFArgs::OutputContractBalanceRoot,
-        GTFArgs::OutputContractStateRoot,
         GTFArgs::OutputContractCreatedContractId,
         GTFArgs::OutputContractCreatedStateRoot,
         GTFArgs::WitnessDataLength,

@@ -22,7 +22,6 @@ use fuel_tx::{
     field::{
         BytecodeLength,
         BytecodeWitnessIndex,
-        ReceiptsRoot,
         Salt,
         Script as ScriptField,
         ScriptData,
@@ -322,36 +321,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .map(|(idx, _o)| idx)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
-            GTFArgs::InputContractBalanceRoot => {
-                (ofs + tx
-                    .inputs()
-                    .get(b)
-                    .filter(|i| i.is_contract())
-                    .map(Input::repr)
-                    .and_then(|r| r.contract_balance_root_offset())
-                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::InputNotFound)?) as Word
-            }
-            GTFArgs::InputContractStateRoot => {
-                (ofs + tx
-                    .inputs()
-                    .get(b)
-                    .filter(|i| i.is_contract())
-                    .map(Input::repr)
-                    .and_then(|r| r.contract_state_root_offset())
-                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::InputNotFound)?) as Word
-            }
-            GTFArgs::InputContractTxPointer => {
-                (ofs + tx
-                    .inputs()
-                    .get(b)
-                    .filter(|i| i.is_contract())
-                    .map(Input::repr)
-                    .and_then(|r| r.tx_pointer_offset())
-                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::InputNotFound)?) as Word
-            }
             GTFArgs::InputContractId => {
                 (ofs + tx
                     .inputs()
@@ -502,26 +471,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(Output::input_index)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
-            GTFArgs::OutputContractBalanceRoot => {
-                (ofs + tx
-                    .outputs()
-                    .get(b)
-                    .filter(|o| o.is_contract())
-                    .map(Output::repr)
-                    .and_then(|r| r.contract_balance_root_offset())
-                    .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::OutputNotFound)?) as Word
-            }
-            GTFArgs::OutputContractStateRoot => {
-                (ofs + tx
-                    .outputs()
-                    .get(b)
-                    .filter(|o| o.is_contract())
-                    .map(Output::repr)
-                    .and_then(|r| r.contract_state_root_offset())
-                    .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))
-                    .ok_or(PanicReason::OutputNotFound)?) as Word
-            }
             GTFArgs::OutputContractCreatedContractId => {
                 (ofs + tx
                     .outputs()
@@ -568,9 +517,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     }
                     (Some(script), None, GTFArgs::ScriptDataLength) => {
                         script.script_data().len() as Word
-                    }
-                    (Some(script), None, GTFArgs::ScriptReceiptsRoot) => {
-                        (ofs + script.receipts_root_offset()) as Word
                     }
                     (Some(script), None, GTFArgs::Script) => {
                         (ofs + script.script_offset()) as Word

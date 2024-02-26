@@ -679,7 +679,8 @@ mod tests {
         let gas_limit = 1000;
         let input_amount = 1000;
         let output_amount = 10;
-        let tx = valid_coin_tx(rng, gas_limit, input_amount, output_amount);
+        let max_fee_limit = 0;
+        let tx = valid_coin_tx(rng, gas_limit, input_amount, output_amount, max_fee_limit);
 
         let checked = tx
             .clone()
@@ -692,11 +693,10 @@ mod tests {
         // verify transaction getter works
         assert_eq!(checked.transaction(), &tx);
         // verify available balance was decreased by max fee
-        todo!()
-        // assert_eq!(
-        //     checked.metadata().non_retryable_balances[&AssetId::default()],
-        //     input_amount - checked.metadata().fee.max_fee() - output_amount
-        // );
+        assert_eq!(
+            checked.metadata().non_retryable_balances[&AssetId::default()],
+            input_amount - max_fee_limit - output_amount
+        );
     }
 
     #[test]
@@ -1536,8 +1536,9 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
         let arb_gas_price = 1;
+        let max_fee_limit = 0;
 
-        let tx = valid_coin_tx(&mut rng, 100000, 1000000, 10);
+        let tx = valid_coin_tx(&mut rng, 100000, 1000000, 10, max_fee_limit);
         let chain_id = ChainId::default();
         let checked = tx
             // Sets Checks::Basic
@@ -1685,10 +1686,12 @@ mod tests {
         gas_limit: u64,
         input_amount: u64,
         output_amount: u64,
+        max_fee_limit: u64,
     ) -> Script {
         let asset = AssetId::default();
         TransactionBuilder::script(vec![], vec![])
             .script_gas_limit(gas_limit)
+            .max_fee_limit(max_fee_limit)
             .add_unsigned_coin_input(
                 SecretKey::random(rng),
                 rng.gen(),

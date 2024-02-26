@@ -637,6 +637,7 @@ mod tests {
     fn storage_slots_sorting() {
         // Test that storage slots must be sorted correctly
         let mut slot_data = [0u8; 64];
+        let arb_max_fee = 1000;
 
         let storage_slots = (0..10u64)
             .map(|i| {
@@ -650,6 +651,7 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
+            .max_fee_limit(arb_max_fee)
             .add_random_fee_input()
             .finalize();
         tx.storage_slots.reverse();
@@ -663,6 +665,8 @@ mod tests {
 
     #[test]
     fn storage_slots_no_duplicates() {
+        let arb_max_fee = 1000;
+
         let storage_slots = vec![
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
@@ -673,6 +677,7 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
+            .max_fee_limit(arb_max_fee)
             .add_random_fee_input()
             .finalize()
             .check(0.into(), &ConsensusParameters::standard())

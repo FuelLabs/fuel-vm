@@ -140,8 +140,9 @@ fn input_coin_message_signature() {
 #[test]
 fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
+    let arb_max_fee = rng.gen();
 
-    let mut tx = Script::default();
+    let mut tx = TransactionBuilder::script(vec![], vec![]).max_fee_limit(arb_max_fee).finalize();
 
     let input =
         Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);

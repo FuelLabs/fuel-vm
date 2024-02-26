@@ -296,6 +296,7 @@ fn get_transaction_fields() {
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
+        .max_fee_limit(max_fee_limit)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
         .finalize_checked(height);

@@ -66,6 +66,8 @@ fn malleable_fields_do_not_affect_validity() {
         32 + (params.tx_params.max_inputs as usize * (AssetId::LEN + WORD_SIZE));
     let tx_start_ptr = tx_size_ptr + 8;
 
+    let arb_max_fee = 1_000;
+
     let tx = TransactionBuilder::script(
         vec![
             // Log tx id (hash)
@@ -116,6 +118,7 @@ fn malleable_fields_do_not_affect_validity() {
         .collect(),
         params.chain_id.to_be_bytes().to_vec(),
     )
+    .max_fee_limit(arb_max_fee)
     .add_unsigned_coin_input(
         SecretKey::random(rng),
         UtxoId::new([3; 32].into(), 0),

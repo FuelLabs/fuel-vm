@@ -328,8 +328,7 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder
-                .finalize_checked(self.block_height)
+            self.builder.finalize_checked(self.block_height)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -458,10 +457,10 @@ pub mod test_helpers {
             transactor: &mut Transactor<MemoryStorage, Tx, Ecal>,
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
-            where
-                Tx: ExecutableTransaction,
-                <Tx as IntoChecked>::Metadata: CheckedMetadata,
-                Ecal: crate::interpreter::EcalHandler,
+        where
+            Tx: ExecutableTransaction,
+            <Tx as IntoChecked>::Metadata: CheckedMetadata,
+            Ecal: crate::interpreter::EcalHandler,
         {
             self.storage.set_block_height(self.block_height);
 
@@ -605,6 +604,7 @@ pub mod test_helpers {
         let gas_limit = tx_params.max_gas_per_tx / 2;
         let maturity = Default::default();
         let height = Default::default();
+        let zero_max_fee = 0;
 
         // setup contract with state tests
         let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
@@ -616,6 +616,7 @@ pub mod test_helpers {
             Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+            .max_fee_limit(zero_max_fee)
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
@@ -633,8 +634,8 @@ pub mod test_helpers {
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
         ]
-            .into_iter()
-            .collect();
+        .into_iter()
+        .collect();
         let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
             .into_iter()
             .flatten()
@@ -642,6 +643,7 @@ pub mod test_helpers {
             .collect();
 
         let tx_deploy_loader = TransactionBuilder::script(script, script_data)
+            .max_fee_limit(zero_max_fee)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .with_tx_params(tx_params)
@@ -709,9 +711,9 @@ pub mod test_helpers {
 
 #[allow(missing_docs)]
 #[cfg(all(
-feature = "profile-gas",
-feature = "std",
-any(test, feature = "test-helpers")
+    feature = "profile-gas",
+    feature = "std",
+    any(test, feature = "test-helpers")
 ))]
 /// Gas testing utilities
 pub mod gas_profiling {

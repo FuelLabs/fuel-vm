@@ -20,7 +20,10 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
-    policies::Policies,
+    policies::{
+        Policies,
+        PolicyType,
+    },
     ConsensusParameters,
     Witness,
 };
@@ -80,8 +83,8 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
                 // Revert transaction
                 op::rvrt(RegId::ONE),
             ]
-                .into_iter()
-                .collect(),
+            .into_iter()
+            .collect(),
             vec![],
         )
         .gas_price(gas_price)
@@ -118,6 +121,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let gas_price = 0;
     let spend_amount = 600;
     let base_asset_id: AssetId = rng.gen();
+    let arb_max_fee = 0;
 
     #[rustfmt::skip]
         let invalid_instruction_bytecode = vec![0u8; 4];
@@ -135,9 +139,13 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let mut context = TestBuilder::new(2322u64);
     let context = context.base_asset_id(base_asset_id);
     let bytecode_witness = 0;
+
+    let mut policies = Policies::new();
+    policies.set(PolicyType::MaxFee, Some(arb_max_fee));
+
     let mut create = Transaction::create(
         bytecode_witness,
-        Policies::new(),
+        policies,
         salt,
         vec![],
         vec![],
@@ -438,10 +446,10 @@ fn variable_output_set_by_external_transfer_out() {
         asset_id.as_ref(),
         owner.as_ref(),
     ]
-        .into_iter()
-        .flatten()
-        .copied()
-        .collect();
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
 
     // create and run the tx
     let result = TestBuilder::new(2322u64)
@@ -513,10 +521,10 @@ fn variable_output_not_set_by_external_transfer_out_on_revert() {
         asset_id.as_ref(),
         owner.as_ref(),
     ]
-        .into_iter()
-        .flatten()
-        .copied()
-        .collect();
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
 
     // create and run the tx
     let result = TestBuilder::new(2322u64)
@@ -603,10 +611,10 @@ fn variable_output_set_by_internal_contract_transfer_out() {
             .to_bytes()
             .as_ref(),
     ]
-        .into_iter()
-        .flatten()
-        .copied()
-        .collect();
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
 
     // create and run the tx
     let result = test_context
@@ -683,10 +691,10 @@ fn variable_output_not_increased_by_contract_transfer_out_on_revert() {
             .to_bytes()
             .as_ref(),
     ]
-        .into_iter()
-        .flatten()
-        .copied()
-        .collect();
+    .into_iter()
+    .flatten()
+    .copied()
+    .collect();
 
     // create and run the tx
     let result = test_context

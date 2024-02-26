@@ -25,14 +25,12 @@ use crate::{
             ProfileGas,
         },
         internal::{
-            append_receipt,
             base_asset_balance_sub,
             current_contract,
             inc_pc,
             internal_contract,
             internal_contract_bounds,
             tx_id,
-            AppendReceipt,
         },
         memory::{
             copy_from_slice_zero_fill_noownerchecks,
@@ -150,18 +148,13 @@ where
     }
 
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
-        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, is, .. }, _) =
             split_registers(&mut self.registers);
         BurnCtx {
             storage: &mut self.storage,
             context: &self.context,
-            append: AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset,
-                memory: &mut self.memory,
-            },
+            memory: &self.memory,
+            receipts: &mut self.receipts,
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -170,7 +163,6 @@ where
     }
 
     pub(crate) fn mint(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
-        let tx_offset = self.tx_offset();
         let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
         let (
             SystemRegisters {
@@ -186,12 +178,8 @@ where
         MintCtx {
             storage: &mut self.storage,
             context: &self.context,
-            append: AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset,
-                memory: &mut self.memory,
-            },
+            memory: &self.memory,
+            receipts: &mut self.receipts,
             profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             cgas,
@@ -522,15 +510,12 @@ where
     ) -> IoResult<(), S::DataError> {
         let base_asset_id = self.interpreter_params.base_asset_id;
         let max_message_data_length = self.max_message_data_length();
-        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         let input = MessageOutputCtx {
             base_asset_id,
             max_message_data_length,
             memory: &mut self.memory,
-            tx_offset,
             receipts: &mut self.receipts,
-            tx: &mut self.tx,
             balances: &mut self.balances,
             storage: &mut self.storage,
             current_contract: self.frames.last().map(|frame| frame.to()).copied(),
@@ -676,7 +661,8 @@ where
 struct BurnCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
-    append: AppendReceipt<'vm>,
+    memory: &'vm [u8; MEM_SIZE],
+    receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
@@ -689,11 +675,10 @@ where
     pub(crate) fn burn(self, a: Word, b: Word) -> IoResult<(), S::Error> {
         let range = internal_contract_bounds(self.context, self.fp)?;
         let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
-        let memory = &*self.append.memory;
 
-        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(memory));
+        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(self.memory));
 
-        let contract_id = ContractId::from_bytes_ref(range.read(memory));
+        let contract_id = ContractId::from_bytes_ref(range.read(self.memory));
         let asset_id = contract_id.asset_id(sub_id);
 
         let balance = balance(self.storage, contract_id, &asset_id)?;
@@ -708,7 +693,7 @@ where
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
 
-        append_receipt(self.append, receipt)?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -717,9 +702,10 @@ where
 struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
+    memory: &'vm [u8; MEM_SIZE],
     profiler: &'vm mut Profiler,
+    receipts: &'vm mut ReceiptsCtx,
     new_storage_gas_per_byte: Word,
-    append: AppendReceipt<'vm>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     fp: Reg<'vm, FP>,
@@ -734,11 +720,10 @@ where
     pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
         let range = internal_contract_bounds(self.context, self.fp)?;
         let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
-        let memory = &*self.append.memory;
 
-        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(memory));
+        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(self.memory));
 
-        let contract_id = ContractId::from_bytes_ref(range.read(memory));
+        let contract_id = ContractId::from_bytes_ref(range.read(self.memory));
         let asset_id = contract_id.asset_id(sub_id);
 
         let balance = balance(self.storage, contract_id, &asset_id)?;
@@ -767,7 +752,7 @@ where
 
         let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
 
-        append_receipt(self.append, receipt)?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -1127,16 +1112,14 @@ pub(crate) fn timestamp<S: InterpreterStorage>(
 
     Ok(inc_pc(pc)?)
 }
-struct MessageOutputCtx<'vm, Tx, S>
+struct MessageOutputCtx<'vm, S>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
-    tx_offset: usize,
     receipts: &'vm mut ReceiptsCtx,
-    tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
     current_contract: Option<ContractId>,
@@ -1152,14 +1135,11 @@ where
     amount_coins_to_send: Word,
 }
 
-impl<Tx, S> MessageOutputCtx<'_, Tx, S>
+impl<S> MessageOutputCtx<'_, S>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
-    pub(crate) fn message_output(self) -> Result<(), RuntimeError<S::Error>>
-    where
-        Tx: ExecutableTransaction,
-    {
+    pub(crate) fn message_output(self) -> Result<(), RuntimeError<S::Error>> {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(
             self.recipient_mem_address,
         )?;
@@ -1204,15 +1184,7 @@ where
             msg_data,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }

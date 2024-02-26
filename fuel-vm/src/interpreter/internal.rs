@@ -1,5 +1,4 @@
 use super::{
-    receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
     MemoryRange,
@@ -22,13 +21,8 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
-    field::{
-        Outputs,
-        ReceiptsRoot,
-    },
+    field::Outputs,
     Output,
-    Receipt,
-    Script,
 };
 use fuel_types::{
     canonical::Serialize,
@@ -53,19 +47,6 @@ where
     pub(crate) fn update_memory_output(&mut self, idx: usize) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         update_memory_output(&mut self.tx, &mut self.memory, tx_offset, idx)
-    }
-
-    pub(crate) fn append_receipt(&mut self, receipt: Receipt) -> SimpleResult<()> {
-        let tx_offset = self.tx_offset();
-        append_receipt(
-            AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset,
-                memory: &mut self.memory,
-            },
-            receipt,
-        )
     }
 }
 
@@ -118,40 +99,6 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     output
         .encode(&mut mem)
         .expect("Unable to write output into given memory range");
-    Ok(())
-}
-
-pub(crate) struct AppendReceipt<'vm> {
-    pub receipts: &'vm mut ReceiptsCtx,
-    pub script: Option<&'vm mut Script>,
-    pub tx_offset: usize,
-    pub memory: &'vm mut [u8; MEM_SIZE],
-}
-
-pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) -> SimpleResult<()> {
-    let AppendReceipt {
-        receipts,
-        script,
-        tx_offset,
-        memory,
-    } = input;
-    receipts.push(receipt)?;
-
-    if let Some(script) = script {
-        let offset = tx_offset + script.receipts_root_offset();
-
-        // TODO this generates logarithmic gas cost to the receipts count. This won't fit
-        // the linear monadic model and should be discussed. Maybe the receipts
-        // tree should have constant capacity so the gas cost is also constant to
-        // the maximum depth?
-        let root = receipts.root();
-        *script.receipts_root_mut() = root;
-
-        // Transaction memory space length is already checked on initialization so its
-        // guaranteed to fit
-        memory[offset..offset + Bytes32::LEN].copy_from_slice(&root[..]);
-    }
-
     Ok(())
 }
 

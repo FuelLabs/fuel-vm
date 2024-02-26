@@ -11,17 +11,14 @@ fn test_log() -> SimpleResult<()> {
         block_height: Default::default(),
     };
     let mut receipts = Default::default();
-    let mut script = Some(Script::default());
 
     let fp = 0;
     let is = 0;
     let mut pc = 4;
     let input = LogInput {
         memory: &mut memory,
-        tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
-        script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
         pc: RegMut::new(&mut pc),
@@ -36,10 +33,8 @@ fn test_log() -> SimpleResult<()> {
 
     let input = LogInput {
         memory: &mut memory,
-        tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
-        script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
         pc: RegMut::new(&mut pc),

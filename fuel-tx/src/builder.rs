@@ -443,10 +443,11 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         }
     }
 
-    fn finalize_inner(&mut self) -> Tx {
-        self.prepare_finalize();
+    fn finalize_inner(&self) -> Tx {
+        let mut new = self.clone();
+        new.prepare_finalize();
 
-        let mut tx = core::mem::take(&mut self.tx);
+        let mut tx = new.tx;
 
         self.sign_keys
             .iter()
@@ -458,10 +459,11 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         tx
     }
 
-    pub fn finalize_without_signature_inner(&mut self) -> Tx {
-        self.prepare_finalize();
+    pub fn finalize_without_signature_inner(&self) -> Tx {
+        let mut new = self.clone();
+        new.prepare_finalize();
 
-        let mut tx = core::mem::take(&mut self.tx);
+        let mut tx = new.tx;
 
         tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");
@@ -478,40 +480,40 @@ impl<Tx: field::Outputs> TransactionBuilder<Tx> {
 }
 
 pub trait Finalizable<Tx> {
-    fn finalize(&mut self) -> Tx;
+    fn finalize(&self) -> Tx;
 
-    fn finalize_without_signature(&mut self) -> Tx;
+    fn finalize_without_signature(&self) -> Tx;
 }
 
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
-    fn finalize(&mut self) -> Mint {
-        let mut tx = core::mem::take(&mut self.tx);
+    fn finalize(&self) -> Mint {
+        let mut tx = self.tx.clone();
         tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");
         tx
     }
 
-    fn finalize_without_signature(&mut self) -> Mint {
+    fn finalize_without_signature(&self) -> Mint {
         self.finalize()
     }
 }
 
 impl Finalizable<Create> for TransactionBuilder<Create> {
-    fn finalize(&mut self) -> Create {
+    fn finalize(&self) -> Create {
         self.finalize_inner()
     }
 
-    fn finalize_without_signature(&mut self) -> Create {
+    fn finalize_without_signature(&self) -> Create {
         self.finalize_without_signature_inner()
     }
 }
 
 impl Finalizable<Script> for TransactionBuilder<Script> {
-    fn finalize(&mut self) -> Script {
+    fn finalize(&self) -> Script {
         self.finalize_inner()
     }
 
-    fn finalize_without_signature(&mut self) -> Script {
+    fn finalize_without_signature(&self) -> Script {
         self.finalize_without_signature_inner()
     }
 }

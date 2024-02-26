@@ -58,18 +58,17 @@ use fuel_types::{
 };
 
 pub trait BuildableAloc
-where
-    Self: Default + Clone + Executable + Chargeable + field::Policies + Into<Transaction>,
-{
-}
+    where
+        Self: Default + Clone + Executable + Chargeable + field::Policies + Into<Transaction>,
+{}
 
 pub trait BuildableStd: Signable + Cacheable {}
 
 pub trait BuildableSet: BuildableAloc + BuildableStd {}
 
 pub trait Buildable
-where
-    Self: BuildableSet,
+    where
+        Self: BuildableSet,
 {
     /// Append an input to the transaction
     fn add_input(&mut self, input: Input) {
@@ -83,8 +82,8 @@ where
 
     /// Set the `Script`'s gas limit
     fn set_script_gas_limit(&mut self, limit: Word)
-    where
-        Self: field::ScriptGasLimit,
+        where
+            Self: field::ScriptGasLimit,
     {
         *self.script_gas_limit_mut() = limit;
     }
@@ -92,11 +91,12 @@ where
 
 impl<T> BuildableAloc for T where
     Self: Default + Clone + Executable + Chargeable + field::Policies + Into<Transaction>
-{
-}
+{}
 
 impl<T> BuildableStd for T where T: Signable + Cacheable {}
+
 impl<T> BuildableSet for T where T: BuildableAloc + BuildableStd {}
+
 impl<T> Buildable for T where T: BuildableSet {}
 
 #[derive(Debug, Clone)]
@@ -289,7 +289,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn sign_keys(&self) -> impl Iterator<Item = &SecretKey> {
+    pub fn sign_keys(&self) -> impl Iterator<Item=&SecretKey> {
         self.sign_keys.keys()
     }
 
@@ -299,8 +299,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     pub fn script_gas_limit(&mut self, gas_limit: Word) -> &mut Self
-    where
-        Tx: field::ScriptGasLimit,
+        where
+            Tx: field::ScriptGasLimit,
     {
         self.tx.set_script_gas_limit(gas_limit);
 
@@ -517,9 +517,9 @@ impl Finalizable<Script> for TransactionBuilder<Script> {
 }
 
 impl<Tx> TransactionBuilder<Tx>
-where
-    Self: Finalizable<Tx>,
-    Transaction: From<Tx>,
+    where
+        Self: Finalizable<Tx>,
+        Transaction: From<Tx>,
 {
     pub fn finalize_as_transaction(&mut self) -> Transaction {
         self.finalize().into()

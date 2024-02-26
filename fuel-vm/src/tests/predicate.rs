@@ -471,8 +471,8 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let params = CheckPredicateParams::default();
 
-    let gas_price = 1_000;
     let gas_limit = 1_000_000;
+    let arb_max_fee = 1000;
     let script = vec![
         op::addi(0x20, 0x20, 1),
         op::addi(0x20, 0x20, 1),
@@ -484,6 +484,7 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
+        .max_fee_limit(arb_max_fee)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 

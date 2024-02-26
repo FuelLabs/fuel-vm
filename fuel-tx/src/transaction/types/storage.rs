@@ -42,12 +42,6 @@ impl StorageSlot {
     }
 }
 
-// impl From<&(Bytes32, ContractsStateData)> for StorageSlot {
-//     fn from((key, value): &(Bytes32, ContractsStateData)) -> Self {
-//         Self::new(*key, value.clone())
-//     }
-// }
-
 impl From<&StorageSlot> for Bytes64 {
     fn from(s: &StorageSlot) -> Self {
         let mut buf = [0u8; StorageSlot::SLOT_SIZE];
@@ -75,7 +69,6 @@ impl Distribution<StorageSlot> for Standard {
         StorageSlot {
             key: rng.gen(),
             value: rng.gen(),
-            // value: rng.gen::<ContractsStateData>(),
         }
     }
 }

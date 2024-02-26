@@ -100,6 +100,19 @@ impl Default for Script {
     }
 }
 
+impl Script {
+    /// Prepare script for execution by clearing malleable fields.
+    pub fn prepare_init_execute(&mut self) {
+        *self.receipts_root_mut() = Default::default();
+        self.inputs_mut()
+            .iter_mut()
+            .for_each(Input::prepare_init_execute);
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(Output::prepare_init_execute);
+    }
+}
+
 impl crate::UniqueIdentifier for Script {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {

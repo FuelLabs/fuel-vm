@@ -55,7 +55,6 @@ fn test_burn(
         }
     };
     let mut receipts = Default::default();
-    let mut script = Some(fuel_tx::Script::default());
 
     let is = 0;
     const ORIGINAL_PC: Word = 4;
@@ -63,12 +62,8 @@ fn test_burn(
     BurnCtx {
         storage: &mut storage,
         context: &context,
-        append: AppendReceipt {
-            receipts: &mut receipts,
-            script: script.as_mut(),
-            tx_offset: 0,
-            memory: &mut memory,
-        },
+        receipts: &mut receipts,
+        memory: &mut memory,
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),
@@ -139,7 +134,6 @@ fn test_mint(
     };
 
     let mut receipts = Default::default();
-    let mut script = Some(fuel_tx::Script::default());
 
     let is = 0;
     const ORIGINAL_PC: Word = 4;
@@ -149,12 +143,8 @@ fn test_mint(
     MintCtx {
         storage: &mut storage,
         context: &context,
-        append: AppendReceipt {
-            receipts: &mut receipts,
-            script: script.as_mut(),
-            tx_offset: 0,
-            memory: &mut memory,
-        },
+        receipts: &mut receipts,
+        memory: &mut memory,
         profiler: &mut Profiler::default(),
         new_storage_gas_per_byte: 1,
         cgas: RegMut::new(&mut cgas),

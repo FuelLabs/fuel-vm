@@ -189,8 +189,8 @@ fn metadata() {
     script.push(op::ret(RegId::ONE));
 
     #[allow(clippy::iter_cloned_collect)]
-        // collection is also perfomring a type conversion
-        let script = script.iter().copied().collect::<Vec<u8>>();
+    // collection is also perfomring a type conversion
+    let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = TransactionBuilder::script(script, vec![])
         .script_gas_limit(gas_limit)
@@ -348,7 +348,6 @@ fn get_transaction_fields() {
     let asset_amt = 27;
 
     let tx = TransactionBuilder::script(vec![], vec![])
-        .prepare_script(true)
         .maturity(maturity)
         .with_gas_costs(gas_costs)
         .script_gas_limit(gas_limit)
@@ -396,10 +395,22 @@ fn get_transaction_fields() {
     let outputs = tx.as_ref().outputs();
     let witnesses = tx.as_ref().witnesses();
 
-    let inputs_bytes: Vec<Vec<u8>> =
-        inputs.iter().map(|i| i.clone().to_bytes()).collect();
-    let outputs_bytes: Vec<Vec<u8>> =
-        outputs.iter().map(|o| o.clone().to_bytes()).collect();
+    let inputs_bytes: Vec<Vec<u8>> = inputs
+        .iter()
+        .map(|v| {
+            let mut v = v.clone();
+            v.prepare_init_execute();
+            v.clone().to_bytes()
+        })
+        .collect();
+    let outputs_bytes: Vec<Vec<u8>> = outputs
+        .iter()
+        .map(|v| {
+            let mut v = *v;
+            v.prepare_init_execute();
+            v.clone().to_bytes()
+        })
+        .collect();
     let witnesses_bytes: Vec<Vec<u8>> =
         witnesses.iter().map(|w| w.clone().to_bytes()).collect();
 
@@ -433,8 +444,6 @@ fn get_transaction_fields() {
         outputs[1].balance_root().unwrap().to_vec(), // 21 - OutputContractBalanceRoot
         outputs[1].state_root().unwrap().to_vec(), // 22 - OutputContractStateRoot
         witnesses[1].as_ref().to_vec(), // 23 - WitnessData
-        inputs[0].tx_pointer().unwrap().clone().to_bytes(), // 24 - InputCoinTxPointer
-        inputs[2].tx_pointer().unwrap().clone().to_bytes(), // 25 - InputContractTxPointer
     ];
 
     // hardcoded metadata of script len so it can be checked at runtime
@@ -542,12 +551,8 @@ fn get_transaction_fields() {
         op::gtf_args(0x10, 0x19, GTFArgs::ScriptDataLength),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptReceiptsRoot),
-        op::movi(0x11, cases[3].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Skip over ReceiptsRoot which is always zero
+        op::addi(0x30, 0x30, cases[3].len().try_into().unwrap()),
         op::movi(0x11, script_offset as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::Script),
@@ -563,12 +568,8 @@ fn get_transaction_fields() {
         op::gtf_args(0x10, 0x19, GTFArgs::InputType),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxId),
-        op::movi(0x11, cases[4].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Skip over CoinTxId which is always zero
+        op::addi(0x30, 0x30, cases[4].len().try_into().unwrap()),
         op::movi(0x11, inputs[0].utxo_id().unwrap().output_index() as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinOutputIndex),
@@ -621,35 +622,10 @@ fn get_transaction_fields() {
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateGasUsed),
-        op::movi(0x11, 0 as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxId),
-        op::movi(0x11, cases[9].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-        op::movi(0x11, 0x01),
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractOutputIndex),
-        op::eq(0x10, 0x10, 0x11),
-        op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractBalanceRoot),
-        op::movi(0x11, cases[10].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractStateRoot),
-        op::movi(0x11, cases[11].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Skip over always-zero InputContract fields
+        op::addi(0x30, 0x30, cases[9].len().try_into().unwrap()),
+        op::addi(0x30, 0x30, cases[10].len().try_into().unwrap()),
+        op::addi(0x30, 0x30, cases[11].len().try_into().unwrap()),
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractId),
         op::movi(0x11, cases[12].len() as Immediate18),
@@ -755,18 +731,9 @@ fn get_transaction_fields() {
         op::gtf_args(0x10, 0x19, GTFArgs::OutputContractInputIndex),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::OutputContractBalanceRoot),
-        op::movi(0x11, cases[21].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::OutputContractStateRoot),
-        op::movi(0x11, cases[22].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Sjip over always-zero OutputContract fields
+        op::addi(0x30, 0x30, cases[21].len().try_into().unwrap()),
+        op::addi(0x30, 0x30, cases[22].len().try_into().unwrap()),
         op::movi(0x11, witnesses[1].as_ref().len() as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::WitnessDataLength),
@@ -778,18 +745,7 @@ fn get_transaction_fields() {
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, 0),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxPointer),
-        op::movi(0x11, cases[24].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxPointer),
-        op::movi(0x11, cases[25].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        
         op::log(0x20, 0x00, 0x00, 0x00),
         op::ret(0x00),
     ].into_iter().collect();

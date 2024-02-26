@@ -15,7 +15,7 @@ use crate::crypto;
 use fuel_storage::StorageAsMut;
 use fuel_tx::{
     field::ReceiptsRoot,
-    TxParameters,
+    Script,
 };
 use fuel_types::{
     canonical::Serialize,
@@ -336,7 +336,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
         memory: mut mem,
         gas_cost,
         storage_contract,
-        mut script,
+        script,
     } = input;
     let mut registers = [0; VM_REGISTER_COUNT];
     let mut registers: PrepareCallRegisters = (&mut registers).into();
@@ -380,8 +380,6 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
         input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
         new_storage_gas_per_byte: 0,
         receipts: &mut receipts,
-        script: script.as_mut(),
-        tx_offset: TxParameters::DEFAULT.tx_offset(),
         frames: &mut frames,
         current_contract,
         profiler: &mut Profiler::default(),
@@ -405,7 +403,6 @@ fn check_output(
             assert_eq!(e.receipts, r.receipts);
             assert_eq!(e.frames, r.frames);
             assert_eq!(e.context, r.context);
-            assert_eq!(e.script, r.script);
             match (e.memory, r.memory) {
                 (CheckMem::Check(e), CheckMem::Mem(r)) => {
                     for (i, bytes) in e {

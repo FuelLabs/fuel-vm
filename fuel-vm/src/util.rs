@@ -121,7 +121,10 @@ pub mod test_helpers {
         RegId,
     };
     use fuel_tx::{
-        field::Outputs,
+        field::{
+            Outputs,
+            ReceiptsRoot,
+        },
         ConsensusParameters,
         Contract,
         ContractParameters,
@@ -480,7 +483,12 @@ pub mod test_helpers {
             let tx_offset = self.get_tx_params().tx_offset();
             let mut tx_mem =
                 &interpreter.memory()[tx_offset..(tx_offset + transaction.size())];
-            let deser_tx = Transaction::decode(&mut tx_mem).unwrap();
+            let mut deser_tx = Transaction::decode(&mut tx_mem).unwrap();
+
+            // Patch the tx with correct receipts root
+            if let Transaction::Script(ref mut s) = deser_tx {
+                *s.receipts_root_mut() = interpreter.compute_receipts_root();
+            }
 
             assert_eq!(deser_tx, transaction);
             if is_reverted {

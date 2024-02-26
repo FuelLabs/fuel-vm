@@ -15,7 +15,6 @@ use crate::{
     prelude::RuntimeError,
     storage::InterpreterStorage,
 };
-
 use fuel_asm::RegId;
 use fuel_tx::field::ScriptGasLimit;
 use fuel_types::Word;
@@ -30,11 +29,12 @@ where
     /// Initialize the VM with a given transaction
     fn init_inner(
         &mut self,
-        tx: Tx,
+        mut tx: Tx,
         initial_balances: InitialBalances,
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
+        tx.prepare_init_execute();
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
@@ -79,12 +79,10 @@ where
     pub fn init_predicate(
         &mut self,
         context: Context,
-        mut tx: Tx,
+        tx: Tx,
         gas_limit: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
         self.context = context;
-        tx.prepare_init_predicate();
-
         let initial_balances: InitialBalances = Default::default();
         let runtime_balances = initial_balances.clone().try_into()?;
         Ok(self.init_inner(tx, initial_balances, runtime_balances, gas_limit)?)
@@ -110,8 +108,8 @@ where
 
         self.context = Context::Script { block_height };
 
-        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
-        tx.prepare_init_script();
+        let (tx, metadata): (Tx, Tx::Metadata) = checked.into();
+
         let gas_limit = tx
             .as_script()
             .map(|script| *script.script_gas_limit())

@@ -2,17 +2,18 @@
 
 use fuel_storage::Mappable;
 use fuel_tx::Contract;
-use fuel_types::{
-    AssetId,
-    ContractId,
-    Word,
-};
+use fuel_types::ContractId;
 
+mod contracts_assets;
 mod contracts_state;
 mod interpreter;
 mod memory;
 pub(crate) mod predicate;
 
+pub use contracts_assets::{
+    ContractsAssetKey,
+    ContractsAssets,
+};
 pub use contracts_state::{
     ContractsState,
     ContractsStateData,
@@ -33,18 +34,6 @@ impl Mappable for ContractsRawCode {
     type OwnedKey = ContractId;
     type OwnedValue = Contract;
     type Value = [u8];
-}
-
-/// The storage table for contract's assets balances.
-///
-/// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsAssets;
-
-impl Mappable for ContractsAssets {
-    type Key = Self::OwnedKey;
-    type OwnedKey = ContractsAssetKey;
-    type OwnedValue = Self::Value;
-    type Value = Word;
 }
 
 /// The macro defines a new type of double storage key. It is a merge of the two types
@@ -151,11 +140,3 @@ macro_rules! double_key {
         }
     };
 }
-
-double_key!(
-    ContractsAssetKey,
-    ContractId,
-    contract_id,
-    AssetId,
-    asset_id
-);

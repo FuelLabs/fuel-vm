@@ -206,61 +206,72 @@ mod tests {
     const FILE_PATH: &str = "storage-slots.json";
 
     #[test]
-    fn test_storage_slot_serialization() {
+    fn test_storage_slot_serde_serialization_creates_storage_slot() {
+        // Given
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
         let value = rng.gen::<StorageData>();
-
         let slot = StorageSlot::new(key, value);
         let slots = vec![slot.clone()];
 
-        // `from_str` works
+        // When
         let slot_str = serde_json::to_string(&slots).expect("to string");
         let storage_slots: Vec<StorageSlot> =
             serde_json::from_str(&slot_str).expect("read from string");
+
+        // Then
         assert_eq!(storage_slots.len(), 1);
+    }
 
+    fn test_storage_slot_serde_serialization_from_file_creates_storage_slot() {
+        // Given
         let path = std::env::temp_dir().join(PathBuf::from(FILE_PATH));
-
-        // writes to file works
         let storage_slots_file = File::create(&path).expect("create file");
         serde_json::to_writer(&storage_slots_file, &slots).expect("write file");
-
-        // `from_reader` works
         let storage_slots_file = File::open(&path).expect("open file");
+
+        // When
         let storage_slots: Vec<StorageSlot> =
             serde_json::from_reader(storage_slots_file).expect("read file");
+
+        // Then
         assert_eq!(storage_slots.len(), 1);
     }
 
     #[test]
-    fn test_storage_slot_canonical_serialization() {
+    fn test_storage_slot_canonical_serialization_from_bytes_creates_storage_slot() {
+        // Given
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
         let mut value = StorageData::from(vec![0u8; 32]);
         rng.fill_bytes(value.as_mut());
-
         let slot = StorageSlot::new(key, value.clone());
+
+        // When
         let slot_bytes = slot.to_bytes();
         let (slot_key, slot_value) = slot_bytes.split_at(32);
         let recreated_slot =
             StorageSlot::from_bytes(&slot_bytes).expect("read from bytes");
 
+        // Then
         assert_eq!(slot_key, key.as_ref());
         assert_eq!(slot_value, value.as_ref());
         assert_eq!(recreated_slot, slot);
     }
 
     #[test]
-    fn test_storage_slot_size() {
+    fn test_storage_slot_size_returns_expected_size() {
+        // Given
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
         let key: Bytes32 = rng.gen();
         let mut value = StorageData::from(vec![0u8; 32]);
         rng.fill_bytes(value.as_mut());
 
+        // When
         let slot = StorageSlot::new(key, value);
         let size = slot.size();
 
+        // Then
         let expected_size = 64; // 32-byte Key + 32-byte Data
         assert_eq!(size, expected_size);
     }

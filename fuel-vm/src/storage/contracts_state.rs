@@ -1,11 +1,16 @@
 use crate::double_key;
-use derivative::Derivative;
 use fuel_storage::Mappable;
 use fuel_types::{
     fmt_truncated_hex,
     Bytes32,
     ContractId,
 };
+
+use alloc::{
+    vec,
+    vec::Vec,
+};
+use derivative::Derivative;
 use rand::{
     distributions::{
         Distribution,

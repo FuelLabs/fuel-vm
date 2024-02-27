@@ -6,7 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#686](https://github.com/FuelLabs/fuel-vm/pull/686): Implement `serde` for `InterpreterError`.
+
 ### Changed
+
 #### Breaking
 
 - [#682](https://github.com/FuelLabs/fuel-vm/pull/682): Include `Tip` policy in fee calculation

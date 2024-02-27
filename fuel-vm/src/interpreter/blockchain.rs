@@ -49,6 +49,7 @@ use crate::{
     storage::{
         ContractsAssetsStorage,
         ContractsRawCode,
+        ContractsStateData,
         InterpreterStorage,
     },
 };
@@ -1013,7 +1014,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
         .map_err(RuntimeError::Storage)?
         .map(|bytes| {
             Word::from_be_bytes(
-                bytes[..8]
+                bytes.as_ref().as_ref()[..8]
                     .try_into()
                     .expect("8 bytes can be converted to a Word"),
             )
@@ -1065,17 +1066,16 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = ContractId::from_bytes_ref(contract.read(memory));
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let mut value = Bytes32::default();
+    let mut value = Bytes32::zeroed();
+    value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
-    value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
-
-    let result = storage
-        .contract_state_insert(contract, key, &value)
+    let (_size, prev) = storage
+        .contract_state_insert(contract, key, value.as_ref())
         .map_err(RuntimeError::Storage)?;
 
-    *created_new = result.is_none() as Word;
+    *created_new = prev.is_none() as Word;
 
-    if result.is_none() {
+    if prev.is_none() {
         // New data was written, charge gas for it
         let profiler = ProfileGas {
             pc: pc.as_ref(),
@@ -1239,10 +1239,10 @@ fn state_read_qword<S: InterpreterStorage>(
         .map_err(RuntimeError::Storage)?
         .into_iter()
         .flat_map(|bytes| match bytes {
-            Some(bytes) => **bytes,
+            Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                *Bytes32::zeroed()
+                ContractsStateData::from(Bytes32::zeroed().as_ref())
             }
         })
         .collect();
@@ -1304,13 +1304,11 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
     let destination_key =
         Bytes32::from_bytes_ref(input.starting_storage_key_memory_range.read(memory));
 
-    let values: Vec<_> = memory[input.source_address_memory_range.usizes()]
-        .chunks_exact(Bytes32::LEN)
-        .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
-        .collect();
+    let values =
+        memory[input.source_address_memory_range.usizes()].chunks_exact(Bytes32::LEN);
 
     let unset_count = storage
-        .contract_state_insert_range(contract_id, destination_key, &values)
+        .contract_state_insert_range(contract_id, destination_key, values)
         .map_err(RuntimeError::Storage)?;
     *result_register = unset_count as Word;
 

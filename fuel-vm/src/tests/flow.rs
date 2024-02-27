@@ -397,7 +397,10 @@ fn revert() {
         .contract_state(&contract_id, &key);
 
     // Assert the state of `key` is mutated to `val`
-    assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
+    assert_eq!(
+        &val.to_be_bytes()[..],
+        &state.as_ref().as_ref()[..WORD_SIZE]
+    );
 
     // Expect the correct receipt
     assert_eq!(receipts[1].ra().expect("Register value expected"), val);
@@ -433,7 +436,10 @@ fn revert() {
         .get_storage()
         .contract_state(&contract_id, &key);
 
-    assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
+    assert_eq!(
+        &val.to_be_bytes()[..],
+        &state.as_ref().as_ref()[..WORD_SIZE]
+    );
 
     // Expect the correct receipt
     let receipts = result.receipts();

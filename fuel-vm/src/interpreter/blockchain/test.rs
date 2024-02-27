@@ -12,7 +12,10 @@ use core::{
 use crate::{
     context::Context,
     interpreter::memory::Memory,
-    storage::MemoryStorage,
+    storage::{
+        ContractsStateData,
+        MemoryStorage,
+    },
 };
 use test_case::test_case;
 
@@ -32,6 +35,10 @@ const fn key(k: u8) -> [u8; 32] {
         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, k,
     ]
+}
+
+fn data(value: &[u8]) -> ContractsStateData {
+    ContractsStateData::from(value)
 }
 
 impl OwnershipRegisters {

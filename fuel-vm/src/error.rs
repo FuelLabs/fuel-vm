@@ -24,6 +24,7 @@ use crate::storage::predicate;
 
 /// Interpreter runtime error variants.
 #[derive(Debug, derive_more::Display)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum InterpreterError<StorageError> {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.

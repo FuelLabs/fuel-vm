@@ -2,6 +2,7 @@ use crate::{
     context::Context,
     storage::{
         ContractsState,
+        ContractsStateData,
         MemoryStorage,
     },
 };
@@ -12,7 +13,7 @@ use test_case::test_case;
 
 struct SRWQInput {
     input: StateReadQWord,
-    storage_slots: Vec<([u8; 32], [u8; 32])>,
+    storage_slots: Vec<([u8; 32], ContractsStateData)>,
     memory: Memory<MEM_SIZE>,
 }
 
@@ -43,56 +44,56 @@ impl StateReadQWord {
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(1, 2, 1).unwrap(),
-        storage_slots: vec![(key(27), [5; 32])],
+        storage_slots: vec![(key(27), data(&[5; 32]))],
         memory: mem(&[&[0; 2], &key(27)]),
     } => (mem(&[&[0], &[5; 32], &[27]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 2).unwrap(),
-        storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32])],
+        storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32]))],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[6; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
-        storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
+        storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[6; 32], &[7; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 2).unwrap(),
-        storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
+        storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[6; 32]]), true)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
-        storage_slots: vec![(key(27), [5; 32]), (key(30), [6; 32]), (key(29), [7; 32])],
+        storage_slots: vec![(key(27), data(&[5; 32])), (key(30), data(&[6; 32])), (key(29), data(&[7; 32]))],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[0; 32], &[7; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
-        storage_slots: vec![(key(27), [5; 32]), (key(28), [7; 32])],
+        storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[7; 32]))],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[5; 32], &[7; 32], &[0; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
-        storage_slots: vec![(key(26), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
+        storage_slots: vec![(key(26), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), false)
 )]
 #[test_case(
     SRWQInput{
         input: StateReadQWord::test(0, 0, 3).unwrap(),
-        storage_slots: vec![(key(28), [6; 32]), (key(29), [7; 32])],
+        storage_slots: vec![(key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
         memory: mem(&[&key(27)]),
     } => (mem(&[&[0; 32], &[6; 32], &[7; 32]]), false)
 )]
@@ -108,7 +109,7 @@ fn test_state_read_qword(input: SRWQInput) -> (Memory<MEM_SIZE>, bool) {
             .storage::<ContractsState>()
             .insert(
                 &(&ContractId::default(), &Bytes32::new(k)).into(),
-                &Bytes32::new(v),
+                v.as_ref(),
             )
             .unwrap();
     }

@@ -6,6 +6,7 @@ use fuel_storage::{
     StorageMutate,
     StorageRead,
     StorageSize,
+    StorageWrite,
 };
 use fuel_tx::{
     Contract,
@@ -28,6 +29,7 @@ use crate::{
         ContractsAssets,
         ContractsRawCode,
         ContractsState,
+        ContractsStateData,
     },
 };
 use alloc::{
@@ -42,10 +44,12 @@ use core::ops::{
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
-    StorageMutate<ContractsRawCode, Error = Self::DataError>
+    StorageWrite<ContractsRawCode, Error = Self::DataError>
     + StorageSize<ContractsRawCode, Error = Self::DataError>
     + StorageRead<ContractsRawCode, Error = Self::DataError>
-    + StorageMutate<ContractsState, Error = Self::DataError>
+    + StorageWrite<ContractsState, Error = Self::DataError>
+    + StorageSize<ContractsState, Error = Self::DataError>
+    + StorageRead<ContractsState, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
@@ -82,9 +86,10 @@ pub trait InterpreterStorage:
 
         // On the `fuel-core` side it is done in more optimal way
         slots.iter().try_for_each(|s| {
-            self.contract_state_insert(id, s.key(), s.value())
-                .map(|_| ())
-        })
+            self.contract_state_insert(id, s.key(), s.value().as_ref())?;
+            Ok(())
+        })?;
+        Ok(())
     }
 
     /// Fetch a previously inserted contract code from the chain state for a
@@ -135,7 +140,7 @@ pub trait InterpreterStorage:
         &self,
         id: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Cow<'_, ContractsStateData>>, Self::DataError> {
         StorageInspect::<ContractsState>::get(self, &(id, key).into())
     }
 
@@ -144,9 +149,14 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-        value: &Bytes32,
-    ) -> Result<Option<Bytes32>, Self::DataError> {
-        StorageMutate::<ContractsState>::insert(self, &(contract, key).into(), value)
+        value: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::DataError> {
+        let result = StorageWrite::<ContractsState>::replace(
+            self,
+            &(contract, key).into(),
+            value,
+        )?;
+        Ok(result)
     }
 
     /// Remove a key-value mapping from a contract storage.
@@ -154,8 +164,10 @@ pub trait InterpreterStorage:
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<Bytes32>, Self::DataError> {
-        StorageMutate::<ContractsState>::remove(self, &(contract, key).into())
+    ) -> Result<Option<ContractsStateData>, Self::DataError> {
+        let result = StorageWrite::<ContractsState>::take(self, &(contract, key).into())?
+            .map(Into::into);
+        Ok(result)
     }
 
     /// Fetch a range of values from a key-value mapping in a contract storage.
@@ -166,16 +178,18 @@ pub trait InterpreterStorage:
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError>;
+    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError>;
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns the number of keys that were previously unset but are now set.
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Bytes32],
-    ) -> Result<usize, Self::DataError>;
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>;
 
     /// Remove a range of key-values from contract storage.
     /// Returns None if any of the keys in the range were already unset.
@@ -263,7 +277,7 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, Self::DataError> {
         <S as InterpreterStorage>::contract_state_range(
             self.deref(),
             id,
@@ -272,12 +286,15 @@ where
         )
     }
 
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Bytes32],
-    ) -> Result<usize, Self::DataError> {
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         <S as InterpreterStorage>::contract_state_insert_range(
             self.deref_mut(),
             contract,

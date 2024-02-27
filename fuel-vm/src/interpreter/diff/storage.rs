@@ -4,6 +4,7 @@ use hashbrown::HashMap;
 use fuel_storage::{
     StorageRead,
     StorageSize,
+    StorageWrite,
 };
 use fuel_types::{
     BlockHeight,
@@ -14,6 +15,7 @@ use fuel_types::{
 use crate::storage::{
     ContractsAssetKey,
     ContractsAssetsStorage,
+    ContractsStateData,
     ContractsStateKey,
     InterpreterStorage,
 };
@@ -27,7 +29,7 @@ use super::{
 #[derive(Debug)]
 /// The set of state changes that are recorded.
 pub(super) enum StorageDelta {
-    State(MappableDelta<ContractsStateKey, Bytes32>),
+    State(MappableDelta<ContractsStateKey, ContractsStateData>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
@@ -35,7 +37,7 @@ pub(super) enum StorageDelta {
 /// The set of states that are recorded.
 #[derive(Debug, Clone)]
 pub(super) enum StorageState {
-    State(MappableState<ContractsStateKey, Bytes32>),
+    State(MappableState<ContractsStateKey, ContractsStateData>),
     Assets(MappableState<ContractsAssetKey, u64>),
     RawCode(MappableState<ContractId, Contract>),
 }
@@ -179,7 +181,7 @@ where
                             StorageMutate::<ContractsState>::insert(
                                 &mut self.storage,
                                 key,
-                                value,
+                                value.as_ref(),
                             )
                             .unwrap();
                         }
@@ -325,9 +327,9 @@ where
 
 impl<Type: StorageType, S> StorageMutate<Type> for Record<S>
 where
-    S: InterpreterStorage,
     S: StorageInspect<Type>,
     S: StorageMutate<Type>,
+    S: InterpreterStorage,
 {
     fn insert(
         &mut self,
@@ -353,6 +355,28 @@ where
                 .push(<Type as StorageType>::record_remove(key, existing.clone()));
         }
         Ok(existing)
+    }
+}
+
+impl<Type: StorageType, S> StorageWrite<Type> for Record<S>
+where
+    S: StorageWrite<Type>,
+    S: InterpreterStorage,
+{
+    fn write(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
+        <S as StorageWrite<Type>>::write(&mut self.0, key, buf)
+    }
+
+    fn replace(
+        &mut self,
+        key: &Type::Key,
+        buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+        <S as StorageWrite<Type>>::replace(&mut self.0, key, buf)
+    }
+
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+        <S as StorageWrite<Type>>::take(&mut self.0, key)
     }
 }
 
@@ -388,16 +412,20 @@ where
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<Bytes32>>>, Self::DataError> {
+    ) -> Result<Vec<Option<alloc::borrow::Cow<ContractsStateData>>>, Self::DataError>
+    {
         self.0.contract_state_range(id, start_key, range)
     }
 
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Bytes32],
-    ) -> Result<usize, Self::DataError> {
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         self.0
             .contract_state_insert_range(contract, start_key, values)
     }
@@ -416,13 +444,13 @@ where
 impl StorageType for ContractsState {
     fn record_insert(
         key: &Self::Key,
-        value: &Bytes32,
-        existing: Option<Bytes32>,
+        value: &[u8],
+        existing: Option<ContractsStateData>,
     ) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Insert(*key, *value, existing))
+        StorageDelta::State(MappableDelta::Insert(*key, value.into(), existing))
     }
 
-    fn record_remove(key: &Self::Key, value: Bytes32) -> StorageDelta {
+    fn record_remove(key: &Self::Key, value: ContractsStateData) -> StorageDelta {
         StorageDelta::State(MappableDelta::Remove(*key, value))
     }
 }

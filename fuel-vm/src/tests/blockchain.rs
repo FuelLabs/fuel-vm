@@ -8,6 +8,7 @@ use crate::{
     },
     prelude::*,
     script_with_data_offset,
+    storage::ContractsStateData,
     util::test_helpers::{
         check_expected_reason_for_instructions,
         check_expected_reason_for_instructions_with_client,
@@ -227,7 +228,7 @@ fn state_read_write() {
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
-    assert_eq!(Bytes32::default(), state.into_owned());
+    assert_eq!(ContractsStateData::default(), state.into_owned());
 
     let result = test_context
         .start_script(script.clone(), script_data)
@@ -243,7 +244,10 @@ fn state_read_write() {
         .contract_state(&contract_id, &key);
 
     // Assert the state of `key` is mutated to `val`
-    assert_eq!(&val.to_be_bytes()[..], &state.as_ref()[..WORD_SIZE]);
+    assert_eq!(
+        &val.to_be_bytes()[..],
+        &state.as_ref().as_ref()[..WORD_SIZE]
+    );
 
     // Expect the correct receipt
     assert_eq!(receipts[1].ra().expect("Register value expected"), val);
@@ -306,11 +310,11 @@ fn state_read_write() {
     bytes[24..].copy_from_slice(&p.to_be_bytes());
 
     // Assert the state is correct
-    let bytes = Bytes32::from(bytes);
+    let data = ContractsStateData::from(bytes.as_ref());
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
-    assert_eq!(bytes, state.into_owned());
+    assert_eq!(data, state.into_owned());
 }
 
 #[test]
@@ -1367,7 +1371,7 @@ fn check_receipts_for_program_call(
     let state = test_context
         .get_storage()
         .contract_state(&contract_id, &key);
-    assert_eq!(Bytes32::default(), state.into_owned());
+    assert_eq!(ContractsStateData::default(), state.into_owned());
 
     let result = test_context
         .start_script(script, script_data)

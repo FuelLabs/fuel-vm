@@ -182,12 +182,14 @@ pub trait InterpreterStorage:
 
     /// Insert a range of key-value mappings into contract storage.
     /// Returns the number of keys that were previously unset but are now set.
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[&[u8]],
-    ) -> Result<usize, Self::DataError>;
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>;
 
     /// Remove a range of key-values from contract storage.
     /// Returns None if any of the keys in the range were already unset.
@@ -284,12 +286,15 @@ where
         )
     }
 
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[&[u8]],
-    ) -> Result<usize, Self::DataError> {
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         <S as InterpreterStorage>::contract_state_insert_range(
             self.deref_mut(),
             contract,

@@ -414,12 +414,15 @@ impl InterpreterStorage for MemoryStorage {
         .collect())
     }
 
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[&[u8]],
-    ) -> Result<usize, Self::DataError> {
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         let storage: &mut dyn StorageWrite<ContractsState, Error = Self::DataError> =
             self;
         let mut unset_count = 0;

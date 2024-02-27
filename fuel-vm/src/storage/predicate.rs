@@ -226,12 +226,15 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
-        _contract: &ContractId,
-        _start_key: &Bytes32,
-        _values: &[&[u8]],
-    ) -> Result<usize, StorageUnavailable> {
+        _: &ContractId,
+        _: &Bytes32,
+        _: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         Err(StorageUnavailable)
     }
 

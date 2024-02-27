@@ -417,12 +417,15 @@ where
         self.0.contract_state_range(id, start_key, range)
     }
 
-    fn contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[&[u8]],
-    ) -> Result<usize, Self::DataError> {
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         self.0
             .contract_state_insert_range(contract, start_key, values)
     }

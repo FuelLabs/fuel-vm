@@ -1304,13 +1304,11 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
     let destination_key =
         Bytes32::from_bytes_ref(input.starting_storage_key_memory_range.read(memory));
 
-    let values: Vec<_> = memory[input.source_address_memory_range.usizes()]
-        .chunks_exact(Bytes32::LEN)
-        .flat_map(Some)
-        .collect();
+    let values =
+        memory[input.source_address_memory_range.usizes()].chunks_exact(Bytes32::LEN);
 
     let unset_count = storage
-        .contract_state_insert_range(contract_id, destination_key, &values)
+        .contract_state_insert_range(contract_id, destination_key, values)
         .map_err(RuntimeError::Storage)?;
     *result_register = unset_count as Word;
 

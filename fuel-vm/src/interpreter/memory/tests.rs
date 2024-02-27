@@ -28,6 +28,7 @@ fn memcopy() {
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
+        .max_fee_limit(zero_gas_price)
         .script_gas_limit(100_000)
         .add_random_fee_input()
         .finalize();
@@ -89,13 +90,11 @@ fn memrange() {
     let zero_gas_price = 0;
 
     let tx = TransactionBuilder::script(vec![], vec![])
+        .max_fee_limit(zero_gas_price)
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            Default::default(),
-            &ConsensusParameters::standard(),
-        )
+        .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid");
     let mut vm = Interpreter::<_, _>::with_memory_storage();
     vm.init_script(tx).expect("Failed to init VM");
@@ -123,13 +122,11 @@ fn stack_alloc_ownership() {
     let zero_gas_price = 0;
 
     let tx = TransactionBuilder::script(vec![], vec![])
+        .max_fee_limit(zero_gas_price)
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            Default::default(),
-            &ConsensusParameters::standard(),
-        )
+        .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid");
     vm.init_script(tx).expect("Failed to init VM");
 
@@ -366,7 +363,7 @@ fn test_copy_from_slice_zero_fill_noownerchecks(
         src_offset,
         len,
     )
-        .is_ok();
+    .is_ok();
     let memory: [u8; 5] = memory[..5].try_into().unwrap();
     (r, memory)
 }

@@ -1769,9 +1769,9 @@ mod tests {
         let asset = AssetId::default();
         let predicate = vec![op::ret(1)].into_iter().collect::<Vec<u8>>();
         let owner = Input::predicate_owner(&predicate);
-        let zero_max_fee = 0;
+        let zero_fee_limit = 0;
         TransactionBuilder::script(vec![], vec![])
-            .max_fee_limit(zero_max_fee)
+            .max_fee_limit(zero_fee_limit)
             .script_gas_limit(gas_limit)
             .witness_limit(witness_limit)
             .add_input(Input::coin_predicate(

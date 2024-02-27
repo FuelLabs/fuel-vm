@@ -9,8 +9,8 @@ use crate::prelude::*;
 use fuel_asm::RegId;
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
-    where
-        Tx: ExecutableTransaction,
+where
+    Tx: ExecutableTransaction,
 {
     /// Get single-stepping mode
     pub const fn single_stepping(&self) -> bool {
@@ -72,6 +72,7 @@ fn breakpoint_script() {
 
     let gas_limit = 1_000_000;
     let zero_gas_price = 0;
+    let zero_fee_limit = 0;
     let height = Default::default();
 
     let script = [
@@ -82,12 +83,13 @@ fn breakpoint_script() {
         op::addi(0x14, RegId::ZERO, 128),
         op::ret(0x10),
     ]
-        .into_iter()
-        .collect();
+    .into_iter()
+    .collect();
 
     let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
@@ -145,6 +147,7 @@ fn single_stepping() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
     let zero_gas_price = 0;
+    let zero_fee_limit = 0;
 
     let gas_limit = 1_000_000;
     let height = Default::default();
@@ -156,12 +159,13 @@ fn single_stepping() {
         op::jnei(0x10, 0x11, 1),
         op::ret(0x10),
     ]
-        .into_iter()
-        .collect();
+    .into_iter()
+    .collect();
 
     let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()

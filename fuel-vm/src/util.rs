@@ -604,7 +604,7 @@ pub mod test_helpers {
         let gas_limit = tx_params.max_gas_per_tx / 2;
         let maturity = Default::default();
         let height = Default::default();
-        let zero_max_fee = 0;
+        let zero_fee_limit = 0;
 
         // setup contract with state tests
         let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
@@ -616,7 +616,7 @@ pub mod test_helpers {
             Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
-            .max_fee_limit(zero_max_fee)
+            .max_fee_limit(zero_fee_limit)
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
@@ -643,7 +643,7 @@ pub mod test_helpers {
             .collect();
 
         let tx_deploy_loader = TransactionBuilder::script(script, script_data)
-            .max_fee_limit(zero_max_fee)
+            .max_fee_limit(zero_fee_limit)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .with_tx_params(tx_params)

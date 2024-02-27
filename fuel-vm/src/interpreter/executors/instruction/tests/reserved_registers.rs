@@ -25,6 +25,7 @@ use quickcheck_macros::quickcheck;
 #[quickcheck]
 fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let zero_gas_price = 0;
+    let zero_fee_limit = 0;
 
     let random_instruction = match Instruction::try_from(raw_random_instruction) {
         Ok(inst) => inst,
@@ -63,6 +64,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = Default::default();
     let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(zero_fee_limit)
         .add_random_fee_input()
         .finalize();
 

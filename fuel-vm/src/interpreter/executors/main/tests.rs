@@ -27,6 +27,7 @@ fn estimate_gas_gives_proper_gas_used() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = &ConsensusParameters::standard();
 
+    let zero_fee_limit = 0;
     let gas_price = 1_000;
     let gas_limit = 1_000_000;
     let script = vec![
@@ -34,8 +35,8 @@ fn estimate_gas_gives_proper_gas_used() {
         op::addi(0x20, 0x20, 1),
         op::ret(RegId::ONE),
     ]
-        .into_iter()
-        .collect::<Vec<u8>>();
+    .into_iter()
+    .collect::<Vec<u8>>();
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
@@ -54,6 +55,7 @@ fn estimate_gas_gives_proper_gas_used() {
     );
 
     let transaction_without_predicate = builder
+        .max_fee_limit(zero_fee_limit)
         .finalize_checked_basic(Default::default())
         .check_predicates(&params.into())
         .expect("Predicate check failed even if we don't have any predicates");
@@ -99,7 +101,7 @@ fn estimate_gas_gives_proper_gas_used() {
         &mut transaction,
         &params.into(),
     )
-        .expect("Should successfully estimate predicates");
+    .expect("Should successfully estimate predicates");
 
     // transaction should pass checking after estimation
 

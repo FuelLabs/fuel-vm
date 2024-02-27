@@ -32,6 +32,7 @@ fn external_balance() {
 
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
+    let zero_fee_limit = 0;
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
@@ -40,10 +41,10 @@ fn external_balance() {
     let script = op::ret(0x01).to_bytes().to_vec();
     let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
 
-    let mut tx = TransactionBuilder::script(script, Default::default());
+    let mut builder = TransactionBuilder::script(script, Default::default());
 
     balances.iter().copied().for_each(|(asset, amount)| {
-        tx.add_unsigned_coin_input(
+        builder.add_unsigned_coin_input(
             SecretKey::random(&mut rng),
             rng.gen(),
             amount,
@@ -52,7 +53,8 @@ fn external_balance() {
         );
     });
 
-    let tx = tx
+    let tx = builder
+        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
@@ -67,21 +69,21 @@ fn external_balance() {
             &asset_id,
             amount + 1,
         )
-            .is_err());
+        .is_err());
         external_asset_id_balance_sub(
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
             amount - 10,
         )
-            .unwrap();
+        .unwrap();
         assert!(external_asset_id_balance_sub(
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
             11,
         )
-            .is_err());
+        .is_err());
         external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 10)
             .unwrap();
         assert!(external_asset_id_balance_sub(
@@ -90,7 +92,7 @@ fn external_balance() {
             &asset_id,
             1,
         )
-            .is_err());
+        .is_err());
     }
 }
 
@@ -99,6 +101,7 @@ fn variable_output_updates_in_memory() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     let zero_gas_price = 0;
+    let zero_fee_limit = 0;
 
     let consensus_params = ConsensusParameters::standard();
     let mut vm = Interpreter::<_, _>::with_storage(
@@ -119,6 +122,7 @@ fn variable_output_updates_in_memory() {
     };
 
     let tx = TransactionBuilder::script(vec![], vec![])
+        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .add_output(variable_output)

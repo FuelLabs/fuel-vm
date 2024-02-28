@@ -122,7 +122,6 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let input_amount = 1000;
     let spend_amount = 600;
     let base_asset_id: AssetId = rng.gen();
-    let arb_max_fee = 0;
 
     #[rustfmt::skip]
     let invalid_instruction_bytecode = vec![0u8; 4];
@@ -141,12 +140,9 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let context = context.base_asset_id(base_asset_id);
     let bytecode_witness = 0;
 
-    let mut policies = Policies::new();
-    policies.set(PolicyType::MaxFee, Some(arb_max_fee));
-
     let mut create = Transaction::create(
         bytecode_witness,
-        policies,
+        Policies::new().with_max_fee(0),
         salt,
         vec![],
         vec![],

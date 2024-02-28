@@ -64,7 +64,6 @@ fn deploy_contract(
     salt: Salt,
     storage_slots: Vec<StorageSlot>,
 ) {
-    let zero_fee_limit = 0;
     let code_root = Contract::root_from_code(contract.as_ref());
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
@@ -73,7 +72,6 @@ fn deploy_contract(
     let tx_params = TxParameters::default();
     let height = Default::default();
     let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
-        .max_fee_limit(zero_fee_limit)
         .with_tx_params(tx_params)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
@@ -582,7 +580,6 @@ fn ldc__load_len_of_target_contract<'a>(
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_fee_limit = 0;
 
     let contract = Contract::from(target_contract_witness.as_ref());
     let contract_root = contract.root();
@@ -597,7 +594,6 @@ fn ldc__load_len_of_target_contract<'a>(
 
     let tx_create_target =
         TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
-            .max_fee_limit(zero_fee_limit)
             .maturity(maturity)
             .add_random_fee_input()
             .add_output(output0)
@@ -658,7 +654,6 @@ fn ldc__load_len_of_target_contract<'a>(
         load_contract.iter().copied().collect(),
         vec![],
     )
-    .max_fee_limit(zero_fee_limit)
     .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_input(input0.clone())
@@ -676,7 +671,6 @@ fn ldc__load_len_of_target_contract<'a>(
 
     let tx_deploy_loader =
         TransactionBuilder::script(load_contract.into_iter().collect(), vec![])
-            .max_fee_limit(zero_fee_limit)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_input(input0)
@@ -703,7 +697,6 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
     let gas_price = 0;
-    let zero_fee_limit = 0;
 
     // make gas costs free
     let gas_costs = GasCosts::default();
@@ -741,7 +734,6 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let output0 = Output::contract_created(contract_id, state_root);
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
-        .max_fee_limit(zero_fee_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output0)
@@ -757,7 +749,6 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         load_contract.into_iter().collect(),
         contract_id.to_vec(),
     )
-    .max_fee_limit(zero_fee_limit)
     .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_random_fee_input()
@@ -1656,7 +1647,6 @@ fn smo_instruction_works() {
         let gas_limit = 1_000_000;
         let maturity = Default::default();
         let block_height = Default::default();
-        let zero_fee_limit = 0;
 
         let secret = SecretKey::random(rng);
         let sender = rng.gen();
@@ -1683,9 +1673,7 @@ fn smo_instruction_works() {
         let script_data = vec![];
 
         let mut tx = TransactionBuilder::script(script, script_data);
-        tx.max_fee_limit(zero_fee_limit)
-            .script_gas_limit(gas_limit)
-            .maturity(maturity);
+        tx.script_gas_limit(gas_limit).maturity(maturity);
         // add inputs
         for (amount, data) in inputs {
             tx.add_unsigned_message_input(secret, sender, rng.gen(), amount, data);
@@ -1796,7 +1784,6 @@ fn timestamp_works() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let block_height = Default::default();
-    let zero_fee_limit = 0;
 
     // TODO consider using quickcheck after PR lands
     // https://github.com/FuelLabs/fuel-vm/pull/187
@@ -1832,7 +1819,6 @@ fn timestamp_works() {
         let script_data = vec![];
 
         let tx = TransactionBuilder::script(script, script_data)
-            .max_fee_limit(zero_fee_limit)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_random_fee_input()
@@ -1873,7 +1859,6 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
 
     let gas_limit = 1_000_000;
     let maturity = Default::default();
-    let zero_fee_limit = 0;
 
     client.as_mut().set_block_height(current_height);
 
@@ -1888,7 +1873,6 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
     let script_data = vec![];
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -1936,10 +1920,8 @@ fn block_hash_works(
 
     let script = script.into_iter().collect();
     let script_data = vec![];
-    let zero_fee_limit = 0;
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -1959,7 +1941,6 @@ fn coinbase_works() {
 
     let gas_limit = 1_000_000;
     let maturity = Default::default();
-    let zero_fee_limit = 0;
 
     let expected = client
         .as_ref()
@@ -1979,7 +1960,6 @@ fn coinbase_works() {
     let script_data = vec![];
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()

@@ -31,11 +31,7 @@ fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
     let contract_id = ContractId::from([3u8; 32]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let old_balance = storage
-        .merkle_contract_asset_id_balance_insert(
-            &contract_id,
-            &AssetId::from([2u8; 32]),
-            33,
-        )
+        .contract_asset_id_balance_insert(&contract_id, &AssetId::from([2u8; 32]), 33)
         .unwrap();
     assert!(old_balance.is_none());
     let mut pc = 4;
@@ -106,7 +102,7 @@ fn test_transfer(
     let initial_recipient_contract_balance = 0;
     let initial_source_contract_balance = 60;
     let old_balance = storage
-        .merkle_contract_asset_id_balance_insert(
+        .contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_source_contract_balance,
@@ -167,12 +163,12 @@ fn test_transfer(
     // Then
 
     let final_recipient_contract_balance = storage
-        .merkle_contract_asset_id_balance(&RECIPIENT_CONTRACT_ID, &ASSET_ID)
+        .contract_asset_id_balance(&RECIPIENT_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
     let final_source_contract_balance = storage
-        .merkle_contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
+        .contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
@@ -249,7 +245,7 @@ fn test_transfer_output(
     let initial_contract_balance = 60;
 
     let old_balance = storage
-        .merkle_contract_asset_id_balance_insert(
+        .contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_contract_balance,
@@ -321,7 +317,7 @@ fn test_transfer_output(
     // Then
 
     let final_contract_balance = storage
-        .merkle_contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
+        .contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
@@ -367,7 +363,7 @@ fn test_balance_increase(
     let initial = initial.into();
     if let Some(initial) = initial {
         let old_balance = storage
-            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
+            .contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -380,7 +376,7 @@ fn test_balance_increase(
     assert_eq!(result, initial + amount);
 
     let result = storage
-        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
+        .contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
 
@@ -405,7 +401,7 @@ fn test_balance_decrease(
     let initial = initial.into();
     if let Some(initial) = initial {
         let old_balance = storage
-            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
+            .contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -416,7 +412,7 @@ fn test_balance_decrease(
     assert_eq!(result, initial - amount);
 
     let result = storage
-        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
+        .contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
 

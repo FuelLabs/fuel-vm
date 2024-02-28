@@ -6,12 +6,10 @@ use super::{
         ProfileGas,
     },
     internal::{
-        append_receipt,
         external_asset_id_balance_sub,
         inc_pc,
         internal_contract,
         set_variable_output,
-        AppendReceipt,
     },
     memory::read_bytes,
     ExecutableTransaction,
@@ -316,15 +314,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             *self.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -388,15 +378,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             *self.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -424,7 +406,7 @@ where
     S: ContractsAssetsStorage + ?Sized,
 {
     Ok(storage
-        .merkle_contract_asset_id_balance(contract, asset_id)
+        .contract_asset_id_balance(contract, asset_id)
         .map_err(RuntimeError::Storage)?
         .unwrap_or_default())
 }
@@ -446,7 +428,7 @@ where
         .ok_or(PanicReason::BalanceOverflow)?;
 
     let old_value = storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
 
     Ok((balance, old_value.is_none()))
@@ -467,7 +449,7 @@ where
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;
     let _ = storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
     Ok(balance)
 }

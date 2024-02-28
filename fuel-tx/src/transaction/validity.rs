@@ -113,7 +113,7 @@ impl Input {
                 };
 
                 if owner != &recovered_address {
-                    return Err(ValidityError::InputInvalidSignature { index })
+                    return Err(ValidityError::InputInvalidSignature { index });
                 }
 
                 Ok(())
@@ -246,8 +246,9 @@ pub trait FormatValidityChecks {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<(), ValidityError> {
-        self.check_without_signatures(block_height, consensus_params)?;
+        self.check_without_signatures(block_height, consensus_params, gas_price)?;
         self.check_signatures(&consensus_params.chain_id())?;
 
         Ok(())
@@ -263,6 +264,7 @@ pub trait FormatValidityChecks {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<(), ValidityError>;
 }
 
@@ -279,16 +281,17 @@ impl FormatValidityChecks for Transaction {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        gas_price: u64,
     ) -> Result<(), ValidityError> {
         match self {
             Transaction::Script(script) => {
-                script.check_without_signatures(block_height, consensus_params)
+                script.check_without_signatures(block_height, consensus_params, gas_price)
             }
             Transaction::Create(create) => {
-                create.check_without_signatures(block_height, consensus_params)
+                create.check_without_signatures(block_height, consensus_params, gas_price)
             }
             Transaction::Mint(mint) => {
-                mint.check_without_signatures(block_height, consensus_params)
+                mint.check_without_signatures(block_height, consensus_params, gas_price)
             }
         }
     }
@@ -312,6 +315,7 @@ where
 pub(crate) fn check_common_part<T>(
     tx: &T,
     block_height: BlockHeight,
+    gas_price: u64,
     consensus_params: &ConsensusParameters,
 ) -> Result<(), ValidityError>
 where
@@ -332,10 +336,6 @@ where
         Err(ValidityError::TransactionPoliciesAreInvalid)?
     }
 
-    if tx.policies().get(PolicyType::GasPrice).is_none() {
-        Err(ValidityError::TransactionNoGasPricePolicy)?
-    }
-
     if let Some(witness_limit) = tx.policies().get(PolicyType::WitnessLimit) {
         let witness_size = tx.witnesses().size_dynamic();
         if witness_size as u64 > witness_limit {
@@ -349,7 +349,7 @@ where
     }
 
     if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
-        if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
+        if tx.max_fee(gas_costs, fee_params, gas_price) > max_fee_limit as u128 {
             Err(ValidityError::TransactionMaxFeeLimitExceeded)?
         }
     }
@@ -406,7 +406,7 @@ where
             {
                 return Err(ValidityError::TransactionOutputChangeAssetIdDuplicated(
                     *input_asset_id,
-                ))
+                ));
             }
 
             Ok(())
@@ -419,20 +419,20 @@ where
         .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
 
     if let Some(utxo_id) = next_duplicate(duplicated_utxo_id).copied() {
-        return Err(ValidityError::DuplicateInputUtxoId { utxo_id })
+        return Err(ValidityError::DuplicateInputUtxoId { utxo_id });
     }
 
     // Check for duplicated input contract id
     let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
 
     if let Some(contract_id) = next_duplicate(duplicated_contract_id).copied() {
-        return Err(ValidityError::DuplicateInputContractId { contract_id })
+        return Err(ValidityError::DuplicateInputContractId { contract_id });
     }
 
     // Check for duplicated input message id
     let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
     if let Some(message_id) = next_duplicate(duplicated_message_id) {
-        return Err(ValidityError::DuplicateMessageInputId { message_id })
+        return Err(ValidityError::DuplicateMessageInputId { message_id });
     }
 
     // Validate the inputs without checking signature
@@ -461,7 +461,7 @@ where
                 {
                     return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
                         *asset_id,
-                    ))
+                    ));
                 }
             }
 
@@ -472,7 +472,7 @@ where
                 {
                     return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
                         *asset_id,
-                    ))
+                    ));
                 }
             }
 

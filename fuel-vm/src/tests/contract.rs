@@ -50,7 +50,7 @@ fn prevent_contract_id_redeployment() {
 
     let mut create = Transaction::create(
         Default::default(),
-        Policies::new().with_gas_price(gas_price),
+        Policies::new(),
         salt,
         vec![],
         vec![],
@@ -68,13 +68,12 @@ fn prevent_contract_id_redeployment() {
         asset_id,
         rng.gen(),
         Default::default(),
-        1,
     );
 
     let consensus_params = ConsensusParameters::standard();
 
     let create = create
-        .into_checked_basic(1.into(), &consensus_params)
+        .into_checked_basic(1.into(), &consensus_params, gas_price)
         .expect("failed to generate checked tx");
 
     // deploy contract

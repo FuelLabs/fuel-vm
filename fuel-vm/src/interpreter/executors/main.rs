@@ -289,7 +289,7 @@ where
                 ..
             }) => {
                 if !Input::is_predicate_owner_valid(address, predicate) {
-                    return Err(PredicateVerificationFailed::InvalidOwner)
+                    return Err(PredicateVerificationFailed::InvalidOwner);
                 }
             }
             _ => {}
@@ -297,7 +297,8 @@ where
 
         let max_gas_per_tx = params.max_gas_per_tx;
         let max_gas_per_predicate = params.max_gas_per_predicate;
-        let interpreter_params = params.into();
+        let zero_gas_price = 0;
+        let interpreter_params = InterpreterParams::new(zero_gas_price, params);
 
         let mut vm = Self::with_storage(PredicateStorage {}, interpreter_params);
 
@@ -308,7 +309,7 @@ where
                     if let Some(x) = tx.inputs()[index].predicate_gas_used() {
                         x
                     } else {
-                        return Err(PredicateVerificationFailed::GasNotSpecified)
+                        return Err(PredicateVerificationFailed::GasNotSpecified);
                     };
 
                 vm.init_predicate(context, tx, available_gas)?;
@@ -333,11 +334,11 @@ where
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
                 result?;
-                return Err(PredicateVerificationFailed::False)
+                return Err(PredicateVerificationFailed::False);
             }
 
             if vm.remaining_gas() != 0 {
-                return Err(PredicateVerificationFailed::GasMismatch)
+                return Err(PredicateVerificationFailed::GasMismatch);
             }
         }
 
@@ -381,7 +382,7 @@ where
         if max_gas > params.max_gas_per_tx {
             return Err(
                 PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
-            )
+            );
         }
 
         let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {
@@ -406,6 +407,7 @@ where
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
+        gas_price: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let metadata = create.metadata().as_ref();
         debug_assert!(
@@ -440,11 +442,11 @@ where
         {
             return Err(InterpreterError::Panic(
                 PanicReason::ContractIdAlreadyDeployed,
-            ))
+            ));
         }
 
         storage
-            .deploy_contract_with_id(salt, storage_slots, &contract, &root, &id)
+            .deploy_contract_with_id(storage_slots, &contract, &id)
             .map_err(RuntimeError::Storage)?;
         Self::finalize_outputs(
             create,
@@ -455,6 +457,7 @@ where
             0,
             &initial_balances,
             &RuntimeBalances::try_from(initial_balances.clone())?,
+            gas_price,
         )?;
         Ok(())
     }
@@ -479,6 +482,7 @@ where
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::deploy_inner(
                 create,
@@ -487,6 +491,7 @@ where
                 &gas_costs,
                 &fee_params,
                 &base_asset_id,
+                gas_price,
             )?;
             self.update_transaction_outputs()?;
             ProgramState::Return(1)
@@ -500,7 +505,7 @@ where
                     false
                 }
             }) {
-                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs))
+                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
             }
 
             let gas_limit;
@@ -560,7 +565,7 @@ where
 
             let receipt = Receipt::script_result(status, gas_used);
 
-            self.append_receipt(receipt)?;
+            self.receipts.push(receipt)?;
 
             if program.is_debug() {
                 self.debugger_set_last_state(program);
@@ -572,6 +577,7 @@ where
             }
 
             let revert = matches!(program, ProgramState::Revert(_));
+            let gas_price = self.gas_price();
             Self::finalize_outputs(
                 &mut self.tx,
                 &gas_costs,
@@ -581,6 +587,7 @@ where
                 gas_used,
                 &self.initial_balances,
                 &self.balances,
+                gas_price,
             )?;
             self.update_transaction_outputs()?;
 
@@ -602,7 +609,7 @@ where
             if in_call {
                 // Only reverts should terminate execution from a call context
                 if let ExecuteState::Revert(r) = state {
-                    return Ok(ProgramState::Revert(r))
+                    return Ok(ProgramState::Revert(r));
                 }
             } else {
                 match state {
@@ -617,6 +624,13 @@ where
                     ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
                 }
             }
+        }
+    }
+
+    /// Update tx fields after execution
+    pub(crate) fn post_execute(&mut self) {
+        if let Some(script) = self.tx.as_script_mut() {
+            *script.receipts_root_mut() = self.receipts.root();
         }
     }
 }
@@ -662,6 +676,7 @@ where
         tx: Checked<Tx>,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
+        self.post_execute();
 
         #[cfg(feature = "profile-any")]
         {
@@ -697,6 +712,7 @@ where
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,
@@ -704,6 +720,7 @@ where
             &gas_costs,
             &fee_params,
             &base_asset_id,
+            gas_price,
         )?;
         Ok(create)
     }

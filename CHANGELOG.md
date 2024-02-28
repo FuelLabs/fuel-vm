@@ -6,6 +6,35 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#686](https://github.com/FuelLabs/fuel-vm/pull/686): Implement `serde` for `InterpreterError`.
+
+### Changed
+
+#### Breaking
+
+- [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized values in the ContractsState table by using a vector data type (`Vec<u8>`).
+- [#682](https://github.com/FuelLabs/fuel-vm/pull/682): Include `Tip` policy in fee calculation
+- [#683](https://github.com/FuelLabs/fuel-vm/pull/683): Simplify `InterpreterStorage` by removing dependency on `MerkleRootStorage` and removing `merkle_` prefix from method names.
+- [#678](https://github.com/FuelLabs/fuel-vm/pull/678): Zero malleable fields before execution. Remove some now-obsolete GTF getters. Don't update `tx.receiptsRoot` after pushing receipts, and do it after execution instead.
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Remove `GasPrice` policy
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `gas_price` field to transaction execution
+- [#684](https://github.com/FuelLabs/fuel-vm/pull/684): Remove `maturity` field from `Input` coin types. Also remove related `GTF` getter.
+
+## [Version 0.46.0]
+
+### Changed
+#### Breaking
+
+- [#679](https://github.com/FuelLabs/fuel-vm/pull/679): Require less restricted constraint on `MerkleRootStorage` trait. Now it requires `StorageInspect` instead of the `StorageMutate`.
+- [#673](https://github.com/FuelLabs/fuel-vm/pull/673): Removed `ContractsInfo` table. Contract salts and roots are no longer stored in on-chain data.
+- [#673](https://github.com/FuelLabs/fuel-vm/pull/673): Opcode `CROO` now calculates the given contract's root on demand. `CROO` has therefore been changed to a `DependentCost` gas cost.
+
+### Changed
+
+- [#672](https://github.com/FuelLabs/fuel-vm/pull/672): Add `Tip` policy
+
 ## [Version 0.45.0]
 
 ### Changed
@@ -59,6 +88,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#676](https://github.com/FuelLabs/fuel-vm/pull/676) Add `gas_price` to `Mint` transaction
 - [#629](https://github.com/FuelLabs/fuel-vm/pull/629): Charge the user for VM initialization.
 - [#628](https://github.com/FuelLabs/fuel-vm/pull/628): Renamed `transaction::CheckError` to `transaction::ValidityError`.
   Created a new `checked_transaction::CheckError` that combines `ValidityError`

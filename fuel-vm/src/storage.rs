@@ -2,18 +2,23 @@
 
 use fuel_storage::Mappable;
 use fuel_tx::Contract;
-use fuel_types::{
-    AssetId,
-    Bytes32,
-    ContractId,
-    Salt,
-    Word,
-};
+use fuel_types::ContractId;
 
+mod contracts_assets;
+mod contracts_state;
 mod interpreter;
 mod memory;
 pub(crate) mod predicate;
 
+pub use contracts_assets::{
+    ContractsAssetKey,
+    ContractsAssets,
+};
+pub use contracts_state::{
+    ContractsState,
+    ContractsStateData,
+    ContractsStateKey,
+};
 pub use interpreter::{
     ContractsAssetsStorage,
     InterpreterStorage,
@@ -29,45 +34,6 @@ impl Mappable for ContractsRawCode {
     type OwnedKey = ContractId;
     type OwnedValue = Contract;
     type Value = [u8];
-}
-
-/// The storage table for contract's additional information as salt, root hash, etc.
-pub struct ContractsInfo;
-
-impl Mappable for ContractsInfo {
-    type Key = Self::OwnedKey;
-    type OwnedKey = ContractId;
-    type OwnedValue = Self::Value;
-    /// `Salt` - is the salt used during creation of the contract for uniques.
-    /// `Bytes32` - is the root hash of the contract's code.
-    type Value = (Salt, Bytes32);
-}
-
-/// The storage table for contract's assets balances.
-///
-/// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsAssets;
-
-impl Mappable for ContractsAssets {
-    type Key = Self::OwnedKey;
-    type OwnedKey = ContractsAssetKey;
-    type OwnedValue = Self::Value;
-    type Value = Word;
-}
-
-/// The storage table for contract's hashed key-value state.
-///
-/// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsState;
-
-impl Mappable for ContractsState {
-    type Key = Self::OwnedKey;
-    /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's
-    /// key.
-    type OwnedKey = ContractsStateKey;
-    type OwnedValue = Self::Value;
-    /// The table value is hash of the value.
-    type Value = Bytes32;
 }
 
 /// The macro defines a new type of double storage key. It is a merge of the two types
@@ -174,18 +140,3 @@ macro_rules! double_key {
         }
     };
 }
-
-double_key!(
-    ContractsAssetKey,
-    ContractId,
-    contract_id,
-    AssetId,
-    asset_id
-);
-double_key!(
-    ContractsStateKey,
-    ContractId,
-    contract_id,
-    Bytes32,
-    state_key
-);

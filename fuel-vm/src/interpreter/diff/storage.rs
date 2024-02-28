@@ -4,6 +4,7 @@ use hashbrown::HashMap;
 use fuel_storage::{
     StorageRead,
     StorageSize,
+    StorageWrite,
 };
 use fuel_types::{
     BlockHeight,
@@ -14,6 +15,7 @@ use fuel_types::{
 use crate::storage::{
     ContractsAssetKey,
     ContractsAssetsStorage,
+    ContractsStateData,
     ContractsStateKey,
     InterpreterStorage,
 };
@@ -27,18 +29,16 @@ use super::{
 #[derive(Debug)]
 /// The set of state changes that are recorded.
 pub(super) enum StorageDelta {
-    State(MappableDelta<ContractsStateKey, Bytes32>),
+    State(MappableDelta<ContractsStateKey, ContractsStateData>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
-    Info(MappableDelta<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableDelta<ContractId, Contract>),
 }
 
 /// The set of states that are recorded.
 #[derive(Debug, Clone)]
 pub(super) enum StorageState {
-    State(MappableState<ContractsStateKey, Bytes32>),
+    State(MappableState<ContractsStateKey, ContractsStateData>),
     Assets(MappableState<ContractsAssetKey, u64>),
-    Info(MappableState<ContractId, (fuel_types::Salt, Bytes32)>),
     RawCode(MappableState<ContractId, Contract>),
 }
 
@@ -114,10 +114,6 @@ where
             from: HashMap::new(),
             to: HashMap::new(),
         };
-        let mut contracts_info = Delta {
-            from: HashMap::new(),
-            to: HashMap::new(),
-        };
         let mut contracts_raw_code = Delta {
             from: HashMap::new(),
             to: HashMap::new(),
@@ -131,16 +127,12 @@ where
                 StorageDelta::Assets(delta) => {
                     mappable_delta_to_hashmap(&mut contracts_assets, delta)
                 }
-                StorageDelta::Info(delta) => {
-                    mappable_delta_to_hashmap(&mut contracts_info, delta)
-                }
                 StorageDelta::RawCode(delta) => {
                     mappable_delta_to_hashmap(&mut contracts_raw_code, delta)
                 }
             }
         }
         storage_state_to_changes(&mut diff, contracts_state, StorageState::State);
-        storage_state_to_changes(&mut diff, contracts_info, StorageState::Info);
         storage_state_to_changes(&mut diff, contracts_assets, StorageState::Assets);
         storage_state_to_changes(&mut diff, contracts_raw_code, StorageState::RawCode);
         diff
@@ -189,7 +181,7 @@ where
                             StorageMutate::<ContractsState>::insert(
                                 &mut self.storage,
                                 key,
-                                value,
+                                value.as_ref(),
                             )
                             .unwrap();
                         }
@@ -197,16 +189,6 @@ where
                     StorageState::Assets(MappableState { key, value }) => {
                         if let Some(value) = value {
                             StorageMutate::<ContractsAssets>::insert(
-                                &mut self.storage,
-                                key,
-                                value,
-                            )
-                            .unwrap();
-                        }
-                    }
-                    StorageState::Info(MappableState { key, value }) => {
-                        if let Some(value) = value {
-                            StorageMutate::<ContractsInfo>::insert(
                                 &mut self.storage,
                                 key,
                                 value,
@@ -345,9 +327,9 @@ where
 
 impl<Type: StorageType, S> StorageMutate<Type> for Record<S>
 where
-    S: InterpreterStorage,
     S: StorageInspect<Type>,
     S: StorageMutate<Type>,
+    S: InterpreterStorage,
 {
     fn insert(
         &mut self,
@@ -376,13 +358,25 @@ where
     }
 }
 
-impl<Key, Type: StorageType, S> MerkleRootStorage<Key, Type> for Record<S>
+impl<Type: StorageType, S> StorageWrite<Type> for Record<S>
 where
+    S: StorageWrite<Type>,
     S: InterpreterStorage,
-    S: MerkleRootStorage<Key, Type>,
 {
-    fn root(&self, key: &Key) -> Result<fuel_storage::MerkleRoot, Self::Error> {
-        <S as MerkleRootStorage<Key, Type>>::root(&self.0, key)
+    fn write(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
+        <S as StorageWrite<Type>>::write(&mut self.0, key, buf)
+    }
+
+    fn replace(
+        &mut self,
+        key: &Type::Key,
+        buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+        <S as StorageWrite<Type>>::replace(&mut self.0, key, buf)
+    }
+
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+        <S as StorageWrite<Type>>::take(&mut self.0, key)
     }
 }
 
@@ -413,46 +407,50 @@ where
         self.0.coinbase()
     }
 
-    fn merkle_contract_state_range(
+    fn contract_state_range(
         &self,
         id: &ContractId,
         start_key: &Bytes32,
         range: usize,
-    ) -> Result<Vec<Option<alloc::borrow::Cow<Bytes32>>>, Self::DataError> {
-        self.0.merkle_contract_state_range(id, start_key, range)
+    ) -> Result<Vec<Option<alloc::borrow::Cow<ContractsStateData>>>, Self::DataError>
+    {
+        self.0.contract_state_range(id, start_key, range)
     }
 
-    fn merkle_contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
-        values: &[Bytes32],
-    ) -> Result<usize, Self::DataError> {
+        values: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         self.0
-            .merkle_contract_state_insert_range(contract, start_key, values)
+            .contract_state_insert_range(contract, start_key, values)
     }
 
-    fn merkle_contract_state_remove_range(
+    fn contract_state_remove_range(
         &mut self,
         contract: &ContractId,
         start_key: &Bytes32,
         range: usize,
     ) -> Result<Option<()>, S::DataError> {
         self.0
-            .merkle_contract_state_remove_range(contract, start_key, range)
+            .contract_state_remove_range(contract, start_key, range)
     }
 }
 
 impl StorageType for ContractsState {
     fn record_insert(
         key: &Self::Key,
-        value: &Bytes32,
-        existing: Option<Bytes32>,
+        value: &[u8],
+        existing: Option<ContractsStateData>,
     ) -> StorageDelta {
-        StorageDelta::State(MappableDelta::Insert(*key, *value, existing))
+        StorageDelta::State(MappableDelta::Insert(*key, value.into(), existing))
     }
 
-    fn record_remove(key: &Self::Key, value: Bytes32) -> StorageDelta {
+    fn record_remove(key: &Self::Key, value: ContractsStateData) -> StorageDelta {
         StorageDelta::State(MappableDelta::Remove(*key, value))
     }
 }
@@ -468,23 +466,6 @@ impl StorageType for ContractsAssets {
 
     fn record_remove(key: &Self::Key, value: u64) -> StorageDelta {
         StorageDelta::Assets(MappableDelta::Remove(*key, value))
-    }
-}
-
-impl StorageType for ContractsInfo {
-    fn record_insert(
-        key: &ContractId,
-        value: &(fuel_types::Salt, Bytes32),
-        existing: Option<(fuel_types::Salt, Bytes32)>,
-    ) -> StorageDelta {
-        StorageDelta::Info(MappableDelta::Insert(*key, *value, existing))
-    }
-
-    fn record_remove(
-        key: &ContractId,
-        value: (fuel_types::Salt, Bytes32),
-    ) -> StorageDelta {
-        StorageDelta::Info(MappableDelta::Remove(*key, value))
     }
 }
 

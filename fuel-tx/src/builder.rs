@@ -6,8 +6,8 @@ use crate::{
         field::{
             BytecodeLength,
             BytecodeWitnessIndex,
-            GasPrice,
             Maturity,
+            Tip,
             Witnesses,
         },
         Chargeable,
@@ -103,8 +103,6 @@ impl<T> Buildable for T where T: BuildableSet {}
 pub struct TransactionBuilder<Tx> {
     tx: Tx,
 
-    should_prepare_script: bool,
-    should_prepare_predicate: bool,
     params: ConsensusParameters,
 
     // We take the key by reference so this lib won't have the responsibility to properly
@@ -119,19 +117,14 @@ impl TransactionBuilder<Script> {
             script_gas_limit: Default::default(),
             script,
             script_data,
-            policies: Policies::new().with_gas_price(0),
+            policies: Policies::new(),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
             receipts_root: Default::default(),
             metadata: None,
         };
-
-        let mut slf = Self::with_tx(tx);
-
-        slf.prepare_script(true);
-
-        slf
+        Self::with_tx(tx)
     }
 }
 
@@ -148,7 +141,7 @@ impl TransactionBuilder<Create> {
             bytecode_witness_index: Default::default(),
             salt,
             storage_slots,
-            policies: Policies::new().with_gas_price(0),
+            policies: Policies::new(),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -172,6 +165,7 @@ impl TransactionBuilder<Mint> {
         output_contract: output::contract::Contract,
         mint_amount: Word,
         mint_asset_id: AssetId,
+        gas_price: Word,
     ) -> Self {
         let tx = Mint {
             tx_pointer: TxPointer::new(block_height, tx_index),
@@ -179,6 +173,7 @@ impl TransactionBuilder<Mint> {
             output_contract,
             mint_amount,
             mint_asset_id,
+            gas_price,
             metadata: None,
         };
 
@@ -188,14 +183,10 @@ impl TransactionBuilder<Mint> {
 
 impl<Tx> TransactionBuilder<Tx> {
     fn with_tx(tx: Tx) -> Self {
-        let should_prepare_script = false;
-        let should_prepare_predicate = false;
         let sign_keys = BTreeMap::new();
 
         Self {
             tx,
-            should_prepare_script,
-            should_prepare_predicate,
             params: ConsensusParameters::standard(),
             sign_keys,
         }
@@ -277,23 +268,12 @@ impl<Tx> TransactionBuilder<Tx> {
 }
 
 impl<Tx: Buildable> TransactionBuilder<Tx> {
-    pub fn prepare_script(&mut self, should_prepare_script: bool) -> &mut Self {
-        self.should_prepare_script = should_prepare_script;
-        self
-    }
-
-    pub fn prepare_predicate(&mut self, should_prepare_predicate: bool) -> &mut Self {
-        self.should_prepare_predicate = should_prepare_predicate;
-        self
-    }
-
     pub fn sign_keys(&self) -> impl Iterator<Item = &SecretKey> {
         self.sign_keys.keys()
     }
 
-    pub fn gas_price(&mut self, gas_price: Word) -> &mut Self {
-        self.tx.set_gas_price(gas_price);
-
+    pub fn tip(&mut self, tip: Word) -> &mut Self {
+        self.tx.set_tip(tip);
         self
     }
 
@@ -336,7 +316,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         amount: Word,
         asset_id: fuel_types::AssetId,
         tx_pointer: TxPointer,
-        maturity: BlockHeight,
     ) -> &mut Self {
         let pk = secret.public_key();
 
@@ -348,7 +327,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
             amount,
             asset_id,
             tx_pointer,
-            maturity,
             witness_index,
         );
 
@@ -367,7 +345,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            Default::default(),
             Default::default(),
         )
     }
@@ -435,19 +412,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         *witness_index
     }
 
-    fn prepare_finalize(&mut self) {
-        if self.should_prepare_predicate {
-            self.tx.prepare_init_predicate();
-        }
-
-        if self.should_prepare_script {
-            self.tx.prepare_init_script();
-        }
-    }
-
     fn finalize_inner(&mut self) -> Tx {
-        self.prepare_finalize();
-
         let mut tx = core::mem::take(&mut self.tx);
 
         self.sign_keys
@@ -461,8 +426,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     pub fn finalize_without_signature_inner(&mut self) -> Tx {
-        self.prepare_finalize();
-
         let mut tx = core::mem::take(&mut self.tx);
 
         tx.precompute(&self.get_chain_id())

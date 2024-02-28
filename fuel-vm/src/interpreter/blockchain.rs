@@ -25,14 +25,12 @@ use crate::{
             ProfileGas,
         },
         internal::{
-            append_receipt,
             base_asset_balance_sub,
             current_contract,
             inc_pc,
             internal_contract,
             internal_contract_bounds,
             tx_id,
-            AppendReceipt,
         },
         memory::{
             copy_from_slice_zero_fill_noownerchecks,
@@ -51,6 +49,7 @@ use crate::{
     storage::{
         ContractsAssetsStorage,
         ContractsRawCode,
+        ContractsStateData,
         InterpreterStorage,
     },
 };
@@ -75,6 +74,8 @@ use fuel_types::{
 
 #[cfg(test)]
 mod code_tests;
+#[cfg(test)]
+mod croo_tests;
 #[cfg(test)]
 mod other_tests;
 #[cfg(test)]
@@ -148,18 +149,13 @@ where
     }
 
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
-        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, is, .. }, _) =
             split_registers(&mut self.registers);
         BurnCtx {
             storage: &mut self.storage,
             context: &self.context,
-            append: AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset,
-                memory: &mut self.memory,
-            },
+            memory: &self.memory,
+            receipts: &mut self.receipts,
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -168,7 +164,6 @@ where
     }
 
     pub(crate) fn mint(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
-        let tx_offset = self.tx_offset();
         let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
         let (
             SystemRegisters {
@@ -184,12 +179,8 @@ where
         MintCtx {
             storage: &mut self.storage,
             context: &self.context,
-            append: AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset,
-                memory: &mut self.memory,
-            },
+            memory: &self.memory,
+            receipts: &mut self.receipts,
             profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             cgas,
@@ -272,16 +263,33 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
+        let gas_cost = self.gas_costs().croo;
+        self.gas_charge(gas_cost.base())?;
+        let current_contract =
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
+                .copied();
         let owner = self.ownership_registers();
+        let (
+            SystemRegisters {
+                cgas, ggas, pc, is, ..
+            },
+            _,
+        ) = split_registers(&mut self.registers);
         CodeRootCtx {
             memory: &mut self.memory,
+            storage: &mut self.storage,
+            gas_cost,
+            profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
             ),
-            storage: &self.storage,
+            current_contract,
+            cgas,
+            ggas,
             owner,
-            pc: self.registers.pc_mut(),
+            pc,
+            is: is.as_ref(),
         }
         .code_root(a, b)
     }
@@ -503,15 +511,12 @@ where
     ) -> IoResult<(), S::DataError> {
         let base_asset_id = self.interpreter_params.base_asset_id;
         let max_message_data_length = self.max_message_data_length();
-        let tx_offset = self.tx_offset();
         let (SystemRegisters { fp, pc, .. }, _) = split_registers(&mut self.registers);
         let input = MessageOutputCtx {
             base_asset_id,
             max_message_data_length,
             memory: &mut self.memory,
-            tx_offset,
             receipts: &mut self.receipts,
-            tx: &mut self.tx,
             balances: &mut self.balances,
             storage: &mut self.storage,
             current_contract: self.frames.last().map(|frame| frame.to()).copied(),
@@ -657,7 +662,8 @@ where
 struct BurnCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
-    append: AppendReceipt<'vm>,
+    memory: &'vm [u8; MEM_SIZE],
+    receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
@@ -670,11 +676,10 @@ where
     pub(crate) fn burn(self, a: Word, b: Word) -> IoResult<(), S::Error> {
         let range = internal_contract_bounds(self.context, self.fp)?;
         let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
-        let memory = &*self.append.memory;
 
-        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(memory));
+        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(self.memory));
 
-        let contract_id = ContractId::from_bytes_ref(range.read(memory));
+        let contract_id = ContractId::from_bytes_ref(range.read(self.memory));
         let asset_id = contract_id.asset_id(sub_id);
 
         let balance = balance(self.storage, contract_id, &asset_id)?;
@@ -684,12 +689,12 @@ where
 
         let _ = self
             .storage
-            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
+            .contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
         let receipt = Receipt::burn(*sub_id, *contract_id, a, *self.pc, *self.is);
 
-        append_receipt(self.append, receipt)?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -698,9 +703,10 @@ where
 struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
+    memory: &'vm [u8; MEM_SIZE],
     profiler: &'vm mut Profiler,
+    receipts: &'vm mut ReceiptsCtx,
     new_storage_gas_per_byte: Word,
-    append: AppendReceipt<'vm>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     fp: Reg<'vm, FP>,
@@ -715,11 +721,10 @@ where
     pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
         let range = internal_contract_bounds(self.context, self.fp)?;
         let sub_id_range = CheckedMemConstLen::<{ Bytes32::LEN }>::new(b)?;
-        let memory = &*self.append.memory;
 
-        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(memory));
+        let sub_id = Bytes32::from_bytes_ref(sub_id_range.read(self.memory));
 
-        let contract_id = ContractId::from_bytes_ref(range.read(memory));
+        let contract_id = ContractId::from_bytes_ref(range.read(self.memory));
         let asset_id = contract_id.asset_id(sub_id);
 
         let balance = balance(self.storage, contract_id, &asset_id)?;
@@ -727,7 +732,7 @@ where
 
         let old_value = self
             .storage
-            .merkle_contract_asset_id_balance_insert(contract_id, &asset_id, balance)
+            .contract_asset_id_balance_insert(contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
         if old_value.is_none() {
@@ -748,7 +753,7 @@ where
 
         let receipt = Receipt::mint(*sub_id, *contract_id, a, *self.pc, *self.is);
 
-        append_receipt(self.append, receipt)?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -876,11 +881,17 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 }
 
 struct CodeRootCtx<'vm, S, I> {
-    memory: &'vm mut [u8; MEM_SIZE],
-    input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
+    memory: &'vm mut [u8; MEM_SIZE],
+    gas_cost: DependentCost,
+    profiler: &'vm mut Profiler,
+    input_contracts: InputContracts<'vm, I>,
+    current_contract: Option<ContractId>,
+    cgas: RegMut<'vm, CGAS>,
+    ggas: RegMut<'vm, GGAS>,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
+    is: Reg<'vm, IS>,
 }
 
 impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
@@ -895,13 +906,27 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
 
         self.input_contracts.check(contract_id)?;
 
-        let (_, root) = self
+        let len = contract_size(self.storage, contract_id)? as Word;
+        let profiler = ProfileGas {
+            pc: self.pc.as_ref(),
+            is: self.is,
+            current_contract: self.current_contract,
+            profiler: self.profiler,
+        };
+        dependent_gas_charge_without_base(
+            self.cgas,
+            self.ggas,
+            profiler,
+            self.gas_cost,
+            len,
+        )?;
+        let root = self
             .storage
-            .storage_contract_root(contract_id)
+            .storage_contract(contract_id)
             .transpose()
             .ok_or(PanicReason::ContractNotFound)?
             .map_err(RuntimeError::Storage)?
-            .into_owned();
+            .root();
 
         try_mem_write(a, root.as_ref(), self.owner, self.memory)?;
 
@@ -985,11 +1010,11 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
     let value = storage
-        .merkle_contract_state(contract, key)
+        .contract_state(contract, key)
         .map_err(RuntimeError::Storage)?
         .map(|bytes| {
             Word::from_be_bytes(
-                bytes[..8]
+                bytes.as_ref().as_ref()[..8]
                     .try_into()
                     .expect("8 bytes can be converted to a Word"),
             )
@@ -1041,17 +1066,16 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let contract = ContractId::from_bytes_ref(contract.read(memory));
     let key = Bytes32::from_bytes_ref(key.read(memory));
 
-    let mut value = Bytes32::default();
+    let mut value = Bytes32::zeroed();
+    value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
-    value[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
-
-    let result = storage
-        .merkle_contract_state_insert(contract, key, &value)
+    let (_size, prev) = storage
+        .contract_state_insert(contract, key, value.as_ref())
         .map_err(RuntimeError::Storage)?;
 
-    *created_new = result.is_none() as Word;
+    *created_new = prev.is_none() as Word;
 
-    if result.is_none() {
+    if prev.is_none() {
         // New data was written, charge gas for it
         let profiler = ProfileGas {
             pc: pc.as_ref(),
@@ -1088,16 +1112,14 @@ pub(crate) fn timestamp<S: InterpreterStorage>(
 
     Ok(inc_pc(pc)?)
 }
-struct MessageOutputCtx<'vm, Tx, S>
+struct MessageOutputCtx<'vm, S>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
     memory: &'vm mut [u8; MEM_SIZE],
-    tx_offset: usize,
     receipts: &'vm mut ReceiptsCtx,
-    tx: &'vm mut Tx,
     balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
     current_contract: Option<ContractId>,
@@ -1113,20 +1135,17 @@ where
     amount_coins_to_send: Word,
 }
 
-impl<Tx, S> MessageOutputCtx<'_, Tx, S>
+impl<S> MessageOutputCtx<'_, S>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
-    pub(crate) fn message_output(self) -> Result<(), RuntimeError<S::Error>>
-    where
-        Tx: ExecutableTransaction,
-    {
+    pub(crate) fn message_output(self) -> Result<(), RuntimeError<S::Error>> {
         let recipient_address = CheckedMemValue::<Address>::new::<{ Address::LEN }>(
             self.recipient_mem_address,
         )?;
 
         if self.msg_data_len > self.max_message_data_length {
-            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong))
+            return Err(RuntimeError::Recoverable(PanicReason::MessageDataTooLong));
         }
 
         let msg_data_range = MemoryRange::new(self.msg_data_ptr, self.msg_data_len)?;
@@ -1165,15 +1184,7 @@ where
             msg_data,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -1224,14 +1235,14 @@ fn state_read_qword<S: InterpreterStorage>(
 
     let mut all_set = true;
     let result: Vec<u8> = storage
-        .merkle_contract_state_range(contract_id, origin_key, input.num_slots)
+        .contract_state_range(contract_id, origin_key, input.num_slots)
         .map_err(RuntimeError::Storage)?
         .into_iter()
         .flat_map(|bytes| match bytes {
-            Some(bytes) => **bytes,
+            Some(bytes) => bytes.into_owned(),
             None => {
                 all_set = false;
-                *Bytes32::zeroed()
+                ContractsStateData::from(Bytes32::zeroed().as_ref())
             }
         })
         .collect();
@@ -1293,13 +1304,11 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
     let destination_key =
         Bytes32::from_bytes_ref(input.starting_storage_key_memory_range.read(memory));
 
-    let values: Vec<_> = memory[input.source_address_memory_range.usizes()]
-        .chunks_exact(Bytes32::LEN)
-        .flat_map(|chunk| Some(Bytes32::from(<[u8; 32]>::try_from(chunk).ok()?)))
-        .collect();
+    let values =
+        memory[input.source_address_memory_range.usizes()].chunks_exact(Bytes32::LEN);
 
     let unset_count = storage
-        .merkle_contract_state_insert_range(contract_id, destination_key, &values)
+        .contract_state_insert_range(contract_id, destination_key, values)
         .map_err(RuntimeError::Storage)?;
     *result_register = unset_count as Word;
 
@@ -1363,7 +1372,7 @@ fn state_clear_qword<S: InterpreterStorage>(
         Bytes32::from_bytes_ref(input.start_storage_key_memory_range.read(memory));
 
     let all_previously_set = storage
-        .merkle_contract_state_remove_range(contract_id, start_key, input.num_slots)
+        .contract_state_remove_range(contract_id, start_key, input.num_slots)
         .map_err(RuntimeError::Storage)?
         .is_some();
 

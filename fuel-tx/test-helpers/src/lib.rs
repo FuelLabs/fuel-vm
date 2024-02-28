@@ -209,7 +209,6 @@ mod use_std {
                             self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
-                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -283,7 +282,6 @@ mod use_std {
             input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_coin_input(
                     *k,
-                    self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
@@ -373,6 +371,7 @@ mod use_std {
     {
         pub fn transaction(&mut self) -> Mint {
             let mut builder = TransactionBuilder::<Mint>::mint(
+                self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),

@@ -64,7 +64,7 @@ fn metadata() {
     let consensus_params = ConsensusParameters::standard();
 
     #[rustfmt::skip]
-        let routine_metadata_is_caller_external = vec![
+    let routine_metadata_is_caller_external = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
         op::gm_args(0x11, GMArgs::GetCaller),
         op::log(0x10, 0x00, 0x00, 0x00),
@@ -244,7 +244,7 @@ fn get_metadata_chain_id() {
         MemoryClient::<NotSupportedEcal>::new(Default::default(), interpreter_params);
 
     #[rustfmt::skip]
-        let get_chain_id = vec![
+    let get_chain_id = vec![
         op::gm_args(0x10, GMArgs::GetChainId),
         op::ret(0x10),
     ];
@@ -423,7 +423,7 @@ fn get_transaction_fields() {
     let base_asset_id = AssetId::BASE;
 
     #[rustfmt::skip]
-        let cases = vec![
+    let cases = vec![
         inputs_bytes[0].clone(), // 0 - ScriptInputAtIndex
         outputs_bytes[0].clone(), // 1 - ScriptOutputAtIndex
         witnesses_bytes[1].clone(), // 2 - ScriptWitnessAtIndex
@@ -471,7 +471,7 @@ fn get_transaction_fields() {
     // TODO GTFArgs::InputContractTxPointer
 
     #[rustfmt::skip]
-        let mut script: Vec<u8> = vec![
+    let mut script: Vec<u8> = vec![
         op::movi(0x20, 0x01),
         op::gtf_args(0x30, 0x19, GTFArgs::ScriptData),
         op::movi(0x19, 0x00),

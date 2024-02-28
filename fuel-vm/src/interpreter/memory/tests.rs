@@ -132,68 +132,68 @@ fn stack_alloc_ownership() {
 }
 
 #[test_case(
-OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..0
-=> true; "empty mem range"
+    OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..0
+    => true; "empty mem range"
 )]
 #[test_case(
-OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 0..0
-=> true; "empty mem range (external)"
+    OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 0..0
+    => true; "empty mem range (external)"
 )]
 #[test_case(
-OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..1
-=> false; "empty stack and heap"
+    OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..1
+    => false; "empty stack and heap"
 )]
 #[test_case(
-OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM, Context::Script{ block_height: Default::default() }), 0..1
-=> false; "empty stack and heap (external)"
+    OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM, Context::Script{ block_height: Default::default() }), 0..1
+    => false; "empty stack and heap (external)"
 )]
 #[test_case(
-OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..1
-=> true; "in range for stack"
+    OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..1
+    => true; "in range for stack"
 )]
 #[test_case(
-OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..2
-=> false; "above stack range"
+    OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..2
+    => false; "above stack range"
 )]
 #[test_case(
-OwnershipRegisters::test(0..0, 0..2, Context::Call{ block_height: Default::default()}), 1..2
-=> true; "in range for heap"
+    OwnershipRegisters::test(0..0, 0..2, Context::Call{ block_height: Default::default()}), 1..2
+    => true; "in range for heap"
 )]
 #[test_case(
-OwnershipRegisters::test(0..2, 1..2, Context::Call{ block_height: Default::default()}), 0..2
-=> true; "crosses stack and heap"
+    OwnershipRegisters::test(0..2, 1..2, Context::Call{ block_height: Default::default()}), 0..2
+    => true; "crosses stack and heap"
 )]
 #[test_case(
-OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 1..2
-=> true; "in heap range (external)"
+    OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 1..2
+    => true; "in heap range (external)"
 )]
 #[test_case(
-OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: Default::default()}), 20..30
-=> false; "between ranges (external)"
+    OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: Default::default()}), 20..30
+    => false; "between ranges (external)"
 )]
 #[test_case(
-OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: Default::default() }), 0..1
-=> true; "in stack range (external)"
+    OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: Default::default() }), 0..1
+    => true; "in stack range (external)"
 )]
 #[test_case(
-OwnershipRegisters::test(0..0, 9..10, Context::Script { block_height: 10.into() }), 1..9
-=> false; "not owned in Script context"
+    OwnershipRegisters::test(0..0, 9..10, Context::Script { block_height: 10.into() }), 1..9
+    => false; "not owned in Script context"
 )]
 #[test_case(
-OwnershipRegisters::test(0..0, 9..10, Context::Call { block_height: 15.into() }), 1..9
-=> false; "not owned in Call context"
+    OwnershipRegisters::test(0..0, 9..10, Context::Call { block_height: 15.into() }), 1..9
+    => false; "not owned in Call context"
 )]
 #[test_case(
-OwnershipRegisters::test(1_000_000..1_100_000, 5_900_000..6_300_000, Context::Script { block_height: 0.into() }),
-999_000..7_100_200 => false; "crosses heap and stack range"
+    OwnershipRegisters::test(1_000_000..1_100_000, 5_900_000..6_300_000, Context::Script { block_height: 0.into() }),
+    999_000..7_100_200 => false; "crosses heap and stack range"
 )]
 #[test_case(
-OwnershipRegisters::test(0..20, 40..50, Context::Script { block_height: 0.into() }),
-0..20 => true; "start inclusive and end exclusive"
+    OwnershipRegisters::test(0..20, 40..50, Context::Script { block_height: 0.into() }),
+    0..20 => true; "start inclusive and end exclusive"
 )]
 #[test_case(
-OwnershipRegisters::test(0..20, 40..50, Context::Script { block_height: 0.into() }),
-20..41 => false; "start exclusive and end inclusive"
+    OwnershipRegisters::test(0..20, 40..50, Context::Script { block_height: 0.into() }),
+    20..41 => false; "start exclusive and end inclusive"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
     let range =
@@ -207,49 +207,49 @@ fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {
 }
 
 #[test_case(
-1, & [],
-OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: Default::default()})
-=> (false, [0u8; 100]); "External errors when write is empty"
+    1, & [],
+    OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: Default::default()})
+    => (false, [0u8; 100]); "External errors when write is empty"
 )]
 #[test_case(
-1, & [],
-OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: Default::default()})
-=> (false, [0u8; 100]); "Internal errors when write is empty"
+    1, & [],
+    OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: Default::default()})
+    => (false, [0u8; 100]); "Internal errors when write is empty"
 )]
 #[test_case(
-1, & [2],
-OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: Default::default()})
-=> (true, set_index(1, 2, [0u8; 100])); "External writes to stack"
+    1, & [2],
+    OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: Default::default()})
+    => (true, set_index(1, 2, [0u8; 100])); "External writes to stack"
 )]
 #[test_case(
-98, & [2],
-OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: Default::default()})
-=> (true, set_index(98, 2, [0u8; 100])); "External writes to heap"
+    98, & [2],
+    OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: Default::default()})
+    => (true, set_index(98, 2, [0u8; 100])); "External writes to heap"
 )]
 #[test_case(
-1, & [2],
-OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: Default::default()})
-=> (true, set_index(1, 2, [0u8; 100])); "Internal writes to stack"
+    1, & [2],
+    OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: Default::default()})
+    => (true, set_index(1, 2, [0u8; 100])); "Internal writes to stack"
 )]
 #[test_case(
-98, & [2],
-OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: Default::default()})
-=> (true, set_index(98, 2, [0u8; 100])); "Internal writes to heap"
+    98, & [2],
+    OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: Default::default()})
+    => (true, set_index(98, 2, [0u8; 100])); "Internal writes to heap"
 )]
 #[test_case(
-1, & [2; 50],
-OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: Default::default()})
-=> (false, [0u8; 100]); "External too large for stack"
+    1, & [2; 50],
+    OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: Default::default()})
+    => (false, [0u8; 100]); "External too large for stack"
 )]
 #[test_case(
-1, & [2; 50],
-OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: Default::default()})
-=> (false, [0u8; 100]); "Internal too large for stack"
+    1, & [2; 50],
+    OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: Default::default()})
+    => (false, [0u8; 100]); "Internal too large for stack"
 )]
 #[test_case(
-61, & [2; 50],
-OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
-=> (false, [0u8; 100]); "Internal too large for heap"
+    61, & [2; 50],
+    OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
+    => (false, [0u8; 100]); "Internal too large for heap"
 )]
 fn test_mem_write(
     addr: usize,
@@ -263,49 +263,49 @@ fn test_mem_write(
 }
 
 #[test_case(
-1, 0,
-OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: Default::default()})
-=> (false, [1u8; 100]); "External errors when write is empty"
+    1, 0,
+    OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: Default::default()})
+    => (false, [1u8; 100]); "External errors when write is empty"
 )]
 #[test_case(
-1, 0,
-OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: Default::default()})
-=> (false, [1u8; 100]); "Internal errors when write is empty"
+    1, 0,
+    OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: Default::default()})
+    => (false, [1u8; 100]); "Internal errors when write is empty"
 )]
 #[test_case(
-1, 1,
-OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: Default::default()})
-=> (true, set_index(1, 0, [1u8; 100])); "External writes to stack"
+    1, 1,
+    OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: Default::default()})
+    => (true, set_index(1, 0, [1u8; 100])); "External writes to stack"
 )]
 #[test_case(
-98, 1,
-OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: Default::default()})
-=> (true, set_index(98, 0, [1u8; 100])); "External writes to heap"
+    98, 1,
+    OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: Default::default()})
+    => (true, set_index(98, 0, [1u8; 100])); "External writes to heap"
 )]
 #[test_case(
-1, 1,
-OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: Default::default()})
-=> (true, set_index(1, 0, [1u8; 100])); "Internal writes to stack"
+    1, 1,
+    OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: Default::default()})
+    => (true, set_index(1, 0, [1u8; 100])); "Internal writes to stack"
 )]
 #[test_case(
-98, 1,
-OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: Default::default()})
-=> (true, set_index(98, 0, [1u8; 100])); "Internal writes to heap"
+    98, 1,
+    OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: Default::default()})
+    => (true, set_index(98, 0, [1u8; 100])); "Internal writes to heap"
 )]
 #[test_case(
-1, 50,
-OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: Default::default()})
-=> (false, [1u8; 100]); "External too large for stack"
+    1, 50,
+    OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: Default::default()})
+    => (false, [1u8; 100]); "External too large for stack"
 )]
 #[test_case(
-1, 50,
-OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: Default::default()})
-=> (false, [1u8; 100]); "Internal too large for stack"
+    1, 50,
+    OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: Default::default()})
+    => (false, [1u8; 100]); "Internal too large for stack"
 )]
 #[test_case(
-61, 50,
-OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
-=> (false, [1u8; 100]); "Internal too large for heap"
+    61, 50,
+    OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
+    => (false, [1u8; 100]); "Internal too large for heap"
 )]
 fn test_try_zeroize(
     addr: usize,
@@ -319,30 +319,30 @@ fn test_try_zeroize(
 }
 
 // Zero-sized write
-#[test_case(0, 0, 0, & [1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
-#[test_case(1, 0, 0, & [1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
-#[test_case(0, 0, 1, & [1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+#[test_case(0, 0, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+#[test_case(1, 0, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+#[test_case(0, 0, 1, &[1, 2, 3, 4] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
 // Dst address checks
-#[test_case(0, 4, 0, & [1, 2, 3, 4] => (true, [1, 2, 3, 4, 0xff]))]
-#[test_case(1, 4, 0, & [1, 2, 3, 4] => (true, [0xff, 1, 2, 3, 4]))]
-#[test_case(2, 4, 0, & [1, 2, 3, 4] => (true, [0xff, 0xff, 1, 2, 3]))]
-#[test_case(2, 2, 0, & [1, 2, 3, 4] => (true, [0xff, 0xff, 1, 2, 0xff]))]
+#[test_case(0, 4, 0, &[1, 2, 3, 4] => (true, [1, 2, 3, 4, 0xff]))]
+#[test_case(1, 4, 0, &[1, 2, 3, 4] => (true, [0xff, 1, 2, 3, 4]))]
+#[test_case(2, 4, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 1, 2, 3]))]
+#[test_case(2, 2, 0, &[1, 2, 3, 4] => (true, [0xff, 0xff, 1, 2, 0xff]))]
 // Zero padding when exceeding slice size
-#[test_case(0, 2, 2, & [1, 2, 3, 4] => (true, [3, 4, 0xff, 0xff, 0xff]))]
-#[test_case(0, 2, 3, & [1, 2, 3, 4] => (true, [4, 0, 0xff, 0xff, 0xff]))]
-#[test_case(0, 2, 4, & [1, 2, 3, 4] => (true, [0, 0, 0xff, 0xff, 0xff]))]
-#[test_case(0, 2, 5, & [1, 2, 3, 4] => (true, [0, 0, 0xff, 0xff, 0xff]))]
+#[test_case(0, 2, 2, &[1, 2, 3, 4] => (true, [3, 4, 0xff, 0xff, 0xff]))]
+#[test_case(0, 2, 3, &[1, 2, 3, 4] => (true, [4, 0, 0xff, 0xff, 0xff]))]
+#[test_case(0, 2, 4, &[1, 2, 3, 4] => (true, [0, 0, 0xff, 0xff, 0xff]))]
+#[test_case(0, 2, 5, &[1, 2, 3, 4] => (true, [0, 0, 0xff, 0xff, 0xff]))]
 // Zero padding when exceeding slice size, but with nonzero dst address
-#[test_case(1, 2, 2, & [1, 2, 3, 4] => (true, [0xff, 3, 4, 0xff, 0xff]))]
-#[test_case(1, 2, 3, & [1, 2, 3, 4] => (true, [0xff, 4, 0, 0xff, 0xff]))]
-#[test_case(1, 2, 4, & [1, 2, 3, 4] => (true, [0xff, 0, 0, 0xff, 0xff]))]
-#[test_case(1, 2, 5, & [1, 2, 3, 4] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 2, &[1, 2, 3, 4] => (true, [0xff, 3, 4, 0xff, 0xff]))]
+#[test_case(1, 2, 3, &[1, 2, 3, 4] => (true, [0xff, 4, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 4, &[1, 2, 3, 4] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 5, &[1, 2, 3, 4] => (true, [0xff, 0, 0, 0xff, 0xff]))]
 // Zero-sized src slice
-#[test_case(1, 0, 0, & [] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
-#[test_case(1, 2, 0, & [] => (true, [0xff, 0, 0, 0xff, 0xff]))]
-#[test_case(1, 2, 1, & [] => (true, [0xff, 0, 0, 0xff, 0xff]))]
-#[test_case(1, 2, 2, & [] => (true, [0xff, 0, 0, 0xff, 0xff]))]
-#[test_case(1, 2, 3, & [] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 0, 0, &[] => (true, [0xff, 0xff, 0xff, 0xff, 0xff]))]
+#[test_case(1, 2, 0, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 1, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 2, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
+#[test_case(1, 2, 3, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
 fn test_copy_from_slice_zero_fill_noownerchecks(
     addr: usize,
     len: usize,

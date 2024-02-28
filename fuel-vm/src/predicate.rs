@@ -74,7 +74,7 @@ mod tests {
         let height = 1.into();
 
         #[rustfmt::skip]
-            let predicate: Vec<u8> = vec![
+        let predicate: Vec<u8> = vec![
             op::addi(0x10, 0x00, 0x01),
             op::addi(0x10, 0x10, 0x01),
             op::ret(0x01),

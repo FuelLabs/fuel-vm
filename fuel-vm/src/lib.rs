@@ -11,7 +11,6 @@
 #[doc(hidden)] // Needed by some of the exported macros
 pub extern crate alloc;
 
-extern crate core;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
 

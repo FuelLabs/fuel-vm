@@ -61,7 +61,7 @@ fn secp256k1_recover() {
     let signature = Signature::sign(&secret, &message);
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
@@ -111,7 +111,7 @@ fn ecrecover_tx_id() {
     let chain_id = ChainId::default();
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         // 0x21 is a address of the singer of the witness
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::move_(0x21, 0x20),
@@ -171,7 +171,7 @@ async fn recover_tx_id_predicate() {
     let consensus_params = ConsensusParameters::standard();
 
     #[rustfmt::skip]
-        let predicate = vec![
+    let predicate = vec![
         // 0x21 is a address of the singer of the witness
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::move_(0x21, 0x20),
@@ -252,7 +252,7 @@ fn secp256k1_recover_error() {
     let signature = Signature::sign(&secret, &message);
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         // op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
@@ -280,7 +280,7 @@ fn secp256k1_recover_a_gt_vmaxram_sub_64() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
@@ -297,7 +297,7 @@ fn secp256k1_recover_b_gt_vmaxram_sub_64() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
@@ -314,7 +314,7 @@ fn secp256k1_recover_c_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31),
@@ -346,7 +346,7 @@ fn secp256r1_recover() {
     let public_key = secret_key.verifying_key();
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.to_bytes().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
@@ -393,7 +393,7 @@ fn secp256r1_recover_error() {
     let signature = Signature::sign(&secret, &message);
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         // op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
@@ -421,7 +421,7 @@ fn secp256r1_recover_a_gt_vmaxram_sub_64() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
@@ -438,7 +438,7 @@ fn secp256r1_recover_b_gt_vmaxram_sub_64() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
@@ -455,7 +455,7 @@ fn secp256r1_recover_c_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31),
@@ -485,7 +485,7 @@ fn ed25519_verify() {
     let signature = signing_key.sign(&*message);
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.to_bytes().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
@@ -532,7 +532,7 @@ fn ed25519_verify_error() {
     let altered_message = Message::new(altered_message);
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
         op::addi(0x22, 0x21, altered_message.as_ref().len() as Immediate12),
@@ -560,7 +560,7 @@ fn ed25519_verify_a_gt_vmaxram_sub_64() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
@@ -577,7 +577,7 @@ fn ed25519_verify_b_gt_vmaxram_sub_64() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
@@ -594,7 +594,7 @@ fn ed25519_verify_c_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31),
@@ -617,7 +617,7 @@ fn sha256() {
     let hash = Hasher::hash(message);
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, message.len() as Immediate12),
         op::movi(0x10, Bytes32::LEN as Immediate18),
@@ -656,7 +656,7 @@ fn s256_a_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_a, reg_b, reg_b),
@@ -670,7 +670,7 @@ fn s256_c_gt_mem_max() {
     let reg_a = 0x20;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::not(reg_a, RegId::ZERO),
         op::s256(RegId::ZERO, RegId::ZERO, reg_a),
     ];
@@ -684,7 +684,7 @@ fn s256_b_gt_vmaxram_sub_c() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_b, reg_a, reg_b),
@@ -708,7 +708,7 @@ fn keccak256() {
     let hash = hasher.finalize();
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, message.len() as Immediate12),
         op::movi(0x10, Bytes32::LEN as Immediate18),
@@ -747,7 +747,7 @@ fn k256_a_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_a, reg_b, reg_b),
@@ -762,7 +762,7 @@ fn k256_c_gt_mem_max() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_b, reg_b, reg_a),
@@ -777,7 +777,7 @@ fn k256_b_gt_vmaxram_sub_c() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_b, reg_a, reg_b),

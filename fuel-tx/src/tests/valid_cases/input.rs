@@ -559,7 +559,6 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let arb_max_fee = rng.gen();
     let message_input = Input::message_data_signed(
         rng.gen(),
         rng.gen(),
@@ -572,7 +571,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
     let fee = Input::coin_signed(
         rng.gen(),
         rng.gen(),
-        arb_max_fee,
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -598,11 +597,10 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
 fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let contract_id = rng.gen();
-    let arb_max_fee = rng.gen();
     let fee = Input::coin_signed(
         rng.gen(),
         rng.gen(),
-        arb_max_fee,
+        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -631,12 +629,11 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
 fn transaction_with_duplicate_contract_utxo_id_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let input_utxo_id: UtxoId = rng.gen();
-    let arb_max_fee = rng.gen();
 
     let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     let fee =
-        Input::coin_signed(rng.gen(), rng.gen(), arb_max_fee, rng.gen(), rng.gen(), 0);
+        Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
 
     let o = Output::contract(0, rng.gen(), rng.gen());
     let p = Output::contract(1, rng.gen(), rng.gen());

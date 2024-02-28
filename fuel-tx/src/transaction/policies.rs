@@ -147,6 +147,7 @@ impl Policies {
         }
     }
 
+    /// Returns `true` if the policy is set.
     pub fn is_set(&self, policy_type: PolicyType) -> bool {
         self.bits.contains(policy_type.bit())
     }

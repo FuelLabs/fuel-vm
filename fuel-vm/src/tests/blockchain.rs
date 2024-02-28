@@ -120,13 +120,13 @@ fn state_read_write() {
     // state[key] with unpacked b
 
     #[rustfmt::skip]
-        let function_selector = vec![
+    let function_selector = vec![
         op::move_(0x30, RegId::ZERO),
         op::move_(0x31, RegId::ONE),
     ];
 
     #[rustfmt::skip]
-        let call_arguments_parser = vec![
+    let call_arguments_parser = vec![
         op::addi(0x10, RegId::FP, CallFrame::a_offset() as Immediate12),
         op::lw(0x10, 0x10, 0),
         op::addi(0x11, RegId::FP, CallFrame::b_offset() as Immediate12),
@@ -134,7 +134,7 @@ fn state_read_write() {
     ];
 
     #[rustfmt::skip]
-        let routine_add_word_to_state = vec![
+    let routine_add_word_to_state = vec![
         op::jnei(0x10, 0x30, 13),               // (0, b) Add word to state
         op::lw(0x20, 0x11, 4),                  // r[0x20]      := m[b+32, 8]
         op::srw(0x21, SET_STATUS_REG, 0x11),    // r[0x21]      := s[m[b, 32], 8]
@@ -145,7 +145,7 @@ fn state_read_write() {
     ];
 
     #[rustfmt::skip]
-        let routine_unpack_and_xor_limbs_into_state = vec![
+    let routine_unpack_and_xor_limbs_into_state = vec![
         op::jnei(0x10, 0x31, 45),                               // (1, b) Unpack arg into 4x16 and xor into state
         op::movi(0x20, 32),                                     // r[0x20]      := 32
         op::aloc(0x20),                                         // aloc            0x20
@@ -181,7 +181,7 @@ fn state_read_write() {
     ];
 
     #[rustfmt::skip]
-        let invalid_call = vec![
+    let invalid_call = vec![
         op::ret(RegId::ZERO),
     ];
 
@@ -1200,7 +1200,7 @@ fn code_size_b_over_max_ram() {
 #[test]
 fn sww_sets_status() {
     #[rustfmt::skip]
-        let program = vec![
+    let program = vec![
         op::sww(0x30, SET_STATUS_REG, RegId::ZERO),
         op::srw(0x31, SET_STATUS_REG + 1, RegId::ZERO),
         op::log(SET_STATUS_REG, SET_STATUS_REG + 1, 0x00, 0x00),
@@ -1213,7 +1213,7 @@ fn sww_sets_status() {
 #[test]
 fn scwq_clears_status() {
     #[rustfmt::skip]
-        let program = vec![
+    let program = vec![
         op::sww(0x30, SET_STATUS_REG, RegId::ZERO),
         op::scwq(0x30, SET_STATUS_REG + 1, RegId::ONE),
         op::srw(0x30, SET_STATUS_REG + 2, RegId::ZERO),
@@ -1227,7 +1227,7 @@ fn scwq_clears_status() {
 #[test]
 fn scwq_clears_status_for_range() {
     #[rustfmt::skip]
-        let program = vec![
+    let program = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
         op::addi(0x31, RegId::HP, 0x4),
@@ -1266,7 +1266,7 @@ fn srw_reads_status() {
 #[test]
 fn srwq_reads_status() {
     #[rustfmt::skip]
-        let program = vec![
+    let program = vec![
         op::aloc(0x10),
         op::addi(0x31, RegId::HP, 0x5),
         op::sww(0x31, SET_STATUS_REG, RegId::ZERO),
@@ -1282,7 +1282,7 @@ fn srwq_reads_status() {
 #[test]
 fn srwq_reads_status_with_range() {
     #[rustfmt::skip]
-        let program = vec![
+    let program = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
         op::addi(0x31, RegId::HP, 0x5),
@@ -1302,7 +1302,7 @@ fn srwq_reads_status_with_range() {
 #[test]
 fn swwq_sets_status() {
     #[rustfmt::skip]
-        let program = vec![
+    let program = vec![
         op::aloc(0x10),
         op::addi(0x31, RegId::HP, 0x5),
         op::srw(0x31, SET_STATUS_REG, 0x31),
@@ -1318,7 +1318,7 @@ fn swwq_sets_status() {
 #[test]
 fn swwq_sets_status_with_range() {
     #[rustfmt::skip]
-        let program = vec![
+    let program = vec![
         op::movi(0x11, 100),
         op::aloc(0x11),
         op::movi(0x32, 0x2),
@@ -1665,7 +1665,7 @@ fn smo_instruction_works() {
         let msg_data = [rng.gen::<u8>(), rng.gen::<u8>()];
 
         #[rustfmt::skip]
-            let script = vec![
+        let script = vec![
             op::movi(0x10, 2),                          // data buffer allocation size
             op::aloc(0x10),                             // allocate
             op::movi(0x10, msg_data[0].into()),         // first message byte
@@ -1821,7 +1821,7 @@ fn timestamp_works() {
             .expect("failed to calculate timestamp");
 
         #[rustfmt::skip]
-            let script = vec![
+        let script = vec![
             op::movi(0x11, input),              // set the argument
             op::time(0x10, 0x11),               // perform the instruction
             op::log(0x10, 0x00, 0x00, 0x00),    // log output
@@ -1878,7 +1878,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
     client.as_mut().set_block_height(current_height);
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::bhei(0x20),         // perform the instruction
         op::log(0x20, 0, 0, 0), // log output
         op::ret(RegId::ONE),
@@ -1925,7 +1925,7 @@ fn block_hash_works(
         .expect("failed to calculate block hash");
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::movi(0x10, 32),                 // allocation size
         op::aloc(0x10),                     // allocate memory
         op::movi(0x11, test_height.into()), // set the argument
@@ -1967,7 +1967,7 @@ fn coinbase_works() {
         .expect("failed to calculate block hash");
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::movi(0x10, 32),                 // allocation size
         op::aloc(0x10),                     // allocate memory
         op::cb(RegId::HP),                  // perform the instruction

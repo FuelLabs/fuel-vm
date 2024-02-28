@@ -184,7 +184,7 @@ async fn get_verifying_predicate() {
 
     for idx in indices {
         #[rustfmt::skip]
-            let predicate = vec![
+        let predicate = vec![
             op::gm_args(0x10, GMArgs::GetVerifyingPredicate),
             op::movi(0x11, idx),
             op::eq(0x10, 0x10, 0x11),

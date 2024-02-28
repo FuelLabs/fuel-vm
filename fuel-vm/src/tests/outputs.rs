@@ -125,7 +125,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let arb_max_fee = 0;
 
     #[rustfmt::skip]
-        let invalid_instruction_bytecode = vec![0u8; 4];
+    let invalid_instruction_bytecode = vec![0u8; 4];
 
     let salt: Salt = rng.gen();
     let program: Witness = invalid_instruction_bytecode.into();

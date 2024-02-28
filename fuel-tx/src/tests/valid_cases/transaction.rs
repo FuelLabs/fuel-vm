@@ -40,11 +40,8 @@ fn gas_limit() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    let arb_max_fee = 1000;
-
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
@@ -52,7 +49,6 @@ fn gas_limit() {
 
     TransactionBuilder::create(vec![0xfau8].into(), rng.gen(), vec![])
         .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
@@ -62,7 +58,7 @@ fn gas_limit() {
         TX_PARAMS.max_gas_per_tx + 1,
         generate_bytes(rng),
         generate_bytes(rng),
-        Policies::new().with_max_fee(arb_max_fee),
+        Policies::new().with_max_fee(0),
         vec![],
         vec![],
         vec![],
@@ -78,7 +74,6 @@ fn maturity() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();
-    let arb_max_fee = 1000;
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(block_height)
@@ -98,9 +93,7 @@ fn maturity() {
         Default::default(),
         vec![],
         vec![],
-        Policies::new()
-            .with_maturity(1001.into())
-            .with_max_fee(arb_max_fee),
+        Policies::new().with_maturity(1001.into()).with_max_fee(0),
         vec![],
         vec![],
         vec![],
@@ -112,9 +105,7 @@ fn maturity() {
 
     let err = Transaction::create(
         0,
-        Policies::new()
-            .with_maturity(1001.into())
-            .with_max_fee(arb_max_fee),
+        Policies::new().with_maturity(1001.into()).with_max_fee(0),
         rng.gen(),
         vec![],
         vec![],
@@ -892,13 +883,11 @@ fn create__check__errors_if_witness_bytecode_too_long() {
 fn create__check_without_signatures__errors_if_wrong_witness_index() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let arb_max_fee = 1000;
-
     let block_height = 1000.into();
 
     let err = Transaction::create(
         1,
-        Policies::default().with_max_fee(arb_max_fee),
+        Policies::default().with_max_fee(0),
         rng.gen(),
         vec![],
         vec![Input::coin_signed(

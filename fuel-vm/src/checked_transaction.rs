@@ -88,6 +88,7 @@ pub struct Checked<Tx: IntoChecked> {
     checks_bitmask: Checks,
 }
 
+/// Transaction that has checks for all dynamic values, e.g. `gas_price`
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Immutable<Tx: IntoChecked> {
     gas_price: Word,
@@ -135,6 +136,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
 }
 
 impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
+    /// Run final checks on `Checked` using dynamic values, e.g. `gas_price`
     pub fn into_immutable(
         self,
         gas_price: Word,

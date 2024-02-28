@@ -93,7 +93,7 @@ fn breakpoint_script() {
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx")
-        .into_immutable(
+        .into_ready(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,
@@ -172,7 +172,7 @@ fn single_stepping() {
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to generate checked tx")
-        .into_immutable(
+        .into_ready(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,

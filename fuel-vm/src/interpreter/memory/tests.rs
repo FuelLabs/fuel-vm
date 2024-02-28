@@ -35,7 +35,7 @@ fn memcopy() {
     let tx = tx
         .into_checked(Default::default(), &consensus_params)
         .expect("default tx should produce a valid checked transaction")
-        .into_immutable(
+        .into_ready(
             zero_gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,
@@ -100,7 +100,7 @@ fn memrange() {
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
-        .into_immutable(
+        .into_ready(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,
@@ -138,7 +138,7 @@ fn stack_alloc_ownership() {
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
-        .into_immutable(
+        .into_ready(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,

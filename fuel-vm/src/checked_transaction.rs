@@ -127,17 +127,17 @@ impl<Tx: IntoChecked> Checked<Tx> {
 
 /// Transaction that has checks for all dynamic values, e.g. `gas_price`
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Immutable<Tx: IntoChecked> {
+pub struct Ready<Tx: IntoChecked> {
     gas_price: Word,
     transaction: Tx,
     metadata: Tx::Metadata,
     checks_bitmask: Checks,
 }
 
-impl<Tx: IntoChecked> Immutable<Tx> {
+impl<Tx: IntoChecked> Ready<Tx> {
     /// Consume and decompose components of the `Immutable` transaction.
     pub fn decompose(self) -> (Word, Tx, Tx::Metadata, Checks) {
-        let Immutable {
+        let Ready {
             gas_price,
             transaction,
             metadata,
@@ -149,12 +149,12 @@ impl<Tx: IntoChecked> Immutable<Tx> {
 
 impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
     /// Run final checks on `Checked` using dynamic values, e.g. `gas_price`
-    pub fn into_immutable(
+    pub fn into_ready(
         self,
         gas_price: Word,
         gas_costs: &GasCosts,
         fee_parameters: &FeeParameters,
-    ) -> Result<Immutable<Tx>, CheckError> {
+    ) -> Result<Ready<Tx>, CheckError> {
         let Checked {
             transaction,
             metadata,
@@ -177,7 +177,7 @@ impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
                 max_fee_from_gas_price,
             })
         } else {
-            Ok(Immutable {
+            Ok(Ready {
                 gas_price,
                 transaction,
                 metadata,
@@ -1460,7 +1460,7 @@ mod tests {
             .clone()
             .into_checked(Default::default(), &params)
             .unwrap()
-            .into_immutable(gas_price, &GasCosts::default(), params.fee_params())
+            .into_ready(gas_price, &GasCosts::default(), params.fee_params())
             .expect("`new_transaction` should be fully valid");
 
         // given
@@ -1472,7 +1472,7 @@ mod tests {
 
         // when
         let err = bigger_checked
-            .into_immutable(gas_price, &GasCosts::default(), params.fee_params())
+            .into_ready(gas_price, &GasCosts::default(), params.fee_params())
             .expect_err("Expected invalid transaction");
 
         let max_fee_from_policies = match err {
@@ -1537,7 +1537,7 @@ mod tests {
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_immutable(max_gas_price, &gas_costs, fee_params)
+            .into_ready(max_gas_price, &gas_costs, fee_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
@@ -1564,7 +1564,7 @@ mod tests {
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_immutable(gas_price, &gas_costs, fee_params)
+            .into_ready(gas_price, &gas_costs, fee_params)
             .expect_err("overflow expected");
 
         // then
@@ -1590,7 +1590,7 @@ mod tests {
             .clone()
             .into_checked(block_height, &params)
             .unwrap()
-            .into_immutable(gas_price, &gas_costs, params.fee_params())
+            .into_ready(gas_price, &gas_costs, params.fee_params())
             .expect("Should be valid");
 
         // given
@@ -1605,7 +1605,7 @@ mod tests {
         tx_without_enough_to_pay_for_tip
             .into_checked(block_height, &params)
             .unwrap()
-            .into_immutable(gas_price, &gas_costs, params.fee_params())
+            .into_ready(gas_price, &gas_costs, params.fee_params())
             .expect_err("Expected invalid transaction");
 
         // when
@@ -1623,7 +1623,7 @@ mod tests {
         tx.clone()
             .into_checked(block_height, &params)
             .unwrap()
-            .into_immutable(gas_price, &GasCosts::default(), params.fee_params())
+            .into_ready(gas_price, &GasCosts::default(), params.fee_params())
             .expect("Should be valid");
     }
 
@@ -1642,7 +1642,7 @@ mod tests {
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_immutable(
+            .into_ready(
                 gas_price,
                 &GasCosts::default(),
                 consensus_params.fee_params(),

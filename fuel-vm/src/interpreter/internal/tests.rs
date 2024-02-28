@@ -59,7 +59,7 @@ fn external_balance() {
         .script_gas_limit(100)
         .maturity(maturity)
         .finalize_checked(height)
-        .into_immutable(gas_price, &gas_costs, &fee_params)
+        .into_ready(gas_price, &gas_costs, &fee_params)
         .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM!");
@@ -129,7 +129,7 @@ fn variable_output_updates_in_memory() {
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to check tx")
-        .into_immutable(
+        .into_ready(
             zero_gas_price,
             &GasCosts::default(),
             &consensus_params.fee_params,

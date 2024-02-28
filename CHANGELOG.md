@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Breaking
 
 - [#685](https://github.com/FuelLabs/fuel-vm/pull/685):
-  Use the `MaxFee` policy to check that the transaction is valid. Introduce a new type that `FullyCheckedTx` that can 
+  Use the `MaxFee` policy to check that the transaction is valid. Introduce a new type `Ready` that can 
   will be constructed with the `gas_price` before being transacted by the `Interpreter`. 
 - [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized values in the ContractsState table by using a vector data type (`Vec<u8>`).
 - [#682](https://github.com/FuelLabs/fuel-vm/pull/682): Include `Tip` policy in fee calculation

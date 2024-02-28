@@ -208,7 +208,7 @@ where
         let fee_params = self.interpreter.fee_params();
 
         match tx
-            .into_immutable(gas_price, gas_costs, fee_params)
+            .into_ready(gas_price, gas_costs, fee_params)
             .map_err(InterpreterError::CheckError)
             .and_then(|immutable| self.interpreter.transact(immutable))
         {

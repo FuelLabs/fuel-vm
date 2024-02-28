@@ -168,6 +168,10 @@ impl Output {
         matches!(self, Self::Coin { .. })
     }
 
+    pub const fn is_change(&self) -> bool {
+        matches!(self, Self::Change { .. })
+    }
+
     pub const fn is_variable(&self) -> bool {
         matches!(self, Self::Variable { .. })
     }

@@ -442,7 +442,7 @@ impl<Tx> GTFInput<'_, Tx> {
                 (ofs + tx
                     .outputs()
                     .get(b)
-                    .filter(|o| o.is_coin())
+                    .filter(|o| o.is_coin() || o.is_change())
                     .map(Output::repr)
                     .and_then(|r| r.to_offset())
                     .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))
@@ -458,7 +458,7 @@ impl<Tx> GTFInput<'_, Tx> {
                 (ofs + tx
                     .outputs()
                     .get(b)
-                    .filter(|o| o.is_coin())
+                    .filter(|o| o.is_coin() || o.is_change())
                     .map(Output::repr)
                     .and_then(|r| r.asset_id_offset())
                     .and_then(|ofs| tx.outputs_offset_at(b).map(|o| o + ofs))

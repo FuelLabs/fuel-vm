@@ -393,6 +393,7 @@ fn get_transaction_fields() {
             rng.gen(),
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
+        .add_output(Output::change(rng.gen(), rng.gen_range(10..1000), asset))
         .finalize_partially_checked(height);
 
     let inputs = tx.as_ref().inputs();
@@ -448,6 +449,8 @@ fn get_transaction_fields() {
         outputs[1].balance_root().unwrap().to_vec(), // 21 - OutputContractBalanceRoot
         outputs[1].state_root().unwrap().to_vec(), // 22 - OutputContractStateRoot
         witnesses[1].as_ref().to_vec(), // 23 - WitnessData
+        outputs[3].asset_id().unwrap().to_vec(), // 24 - OutputCoinAssetId
+        outputs[3].to().unwrap().to_vec(), // 25 - OutputCoinTo
     ];
 
     // hardcoded metadata of script len so it can be checked at runtime
@@ -785,7 +788,7 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        // Sjip over always-zero OutputContract fields
+        // Skip over always-zero OutputContract fields
         op::addi(0x30, 0x30, cases[21].len().try_into().unwrap()),
         op::addi(0x30, 0x30, cases[22].len().try_into().unwrap()),
 
@@ -798,6 +801,20 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::WitnessData),
         op::movi(0x11, cases[23].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x03),
+        op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinAssetId),
+        op::movi(0x11, cases[24].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x03),
+        op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinTo),
+        op::movi(0x11, cases[25].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),

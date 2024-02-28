@@ -20,10 +20,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
-    policies::{
-        Policies,
-        PolicyType,
-    },
+    policies::Policies,
     ConsensusParameters,
     Witness,
 };

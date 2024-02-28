@@ -6,7 +6,6 @@ use super::{
 };
 use crate::{
     checked_transaction::{
-        Checked,
         Immutable,
         IntoChecked,
     },

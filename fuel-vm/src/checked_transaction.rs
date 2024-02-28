@@ -136,6 +136,7 @@ pub struct Immutable<Tx: IntoChecked> {
 }
 
 impl<Tx: IntoChecked> Immutable<Tx> {
+    /// Consume and decompose components of the `Immutable` transaction.
     pub fn decompose(self) -> (Word, Tx, Tx::Metadata, Checks) {
         let Immutable {
             gas_price,
@@ -713,13 +714,11 @@ mod tests {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
         field::{
-            Policies,
             ScriptGasLimit,
             Tip,
             WitnessLimit,
             Witnesses,
         },
-        policies::PolicyType,
         Script,
         TransactionBuilder,
         ValidityError,
@@ -905,7 +904,6 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx = predicate_tx(
             rng,
@@ -915,9 +913,7 @@ mod tests {
             predicate_gas_used,
         );
 
-        if let Ok(valid) =
-            is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
-        {
+        if let Ok(valid) = is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -944,7 +940,6 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let base_asset_id = rng.gen();
         let predicate_gas_used = rng.gen();
         let tx = predicate_tx(
             rng,
@@ -954,9 +949,7 @@ mod tests {
             predicate_gas_used,
         );
 
-        if let Ok(valid) =
-            is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
-        {
+        if let Ok(valid) = is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -982,12 +975,9 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
-        if let Ok(valid) =
-            is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params, &base_asset_id)
-        {
+        if let Ok(valid) = is_valid_max_fee(&tx, gas_price, &gas_costs, &fee_params) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -1051,12 +1041,9 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let base_asset_id = rng.gen();
         let tx = predicate_message_coin_tx(rng, gas_limit, input_amount, tip);
 
-        if let Ok(valid) =
-            is_valid_min_fee(&tx, &gas_costs, &fee_params, &base_asset_id, gas_price)
-        {
+        if let Ok(valid) = is_valid_min_fee(&tx, &gas_costs, &fee_params, gas_price) {
             TestResult::from_bool(valid)
         } else {
             TestResult::discard()
@@ -1453,9 +1440,8 @@ mod tests {
         let params = params(factor);
 
         // setup "valid" transaction
-        let mut transaction =
-            base_asset_tx(rng, arb_input_amount, gas_limit, zero_max_fee);
-        let checked = transaction
+        let transaction = base_asset_tx(rng, arb_input_amount, gas_limit, zero_max_fee);
+        transaction
             .clone()
             .into_checked(Default::default(), &params)
             .unwrap();
@@ -1509,7 +1495,6 @@ mod tests {
         let input_amount = 10;
         let factor = 1;
         // make gas price too high for the input amount
-        let gas_price = 1;
         let gas_limit = input_amount + 1; // make gas cost 1 higher than input amount
 
         // given
@@ -1587,13 +1572,6 @@ mod tests {
         assert!(matches!(err, CheckError::InsufficientMaxFee { .. }));
     }
 
-    fn arb_tx(rng: &mut StdRng) -> Script {
-        let input_amount = 1000;
-        let gas_limit = 1000;
-        let zero_fee_limit = 0;
-        base_asset_tx(rng, input_amount, gas_limit, zero_fee_limit)
-    }
-
     #[test]
     fn into_immutable__tx_fails_if_tip_not_covered() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -1625,7 +1603,7 @@ mod tests {
             max_fee_limit,
             Some(tip),
         );
-        let err = tx_without_enough_to_pay_for_tip
+        tx_without_enough_to_pay_for_tip
             .into_checked(block_height, &params)
             .unwrap()
             .into_immutable(gas_price, &gas_costs, &params.fee_params())
@@ -1681,7 +1659,6 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let secret = SecretKey::random(rng);
         let any_asset = rng.gen();
-        let arb_gas_price = 1;
         let zero_gas_limit = 0;
         let tx = TransactionBuilder::script(vec![], vec![])
             .max_fee_limit(zero_gas_limit)
@@ -1725,7 +1702,6 @@ mod tests {
     #[test]
     fn basic_check_marks_basic_flag() {
         let block_height = 1.into();
-        let zero_gas_price = 0;
 
         let tx = Transaction::default_test_tx();
         // Sets Checks::Basic
@@ -1739,7 +1715,6 @@ mod tests {
     fn signatures_check_marks_signatures_flag() {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
-        let arb_gas_price = 1;
         let max_fee_limit = 0;
 
         let tx = valid_coin_tx(&mut rng, 100000, 1000000, 10, max_fee_limit);
@@ -1765,7 +1740,6 @@ mod tests {
         let mut rng = StdRng::seed_from_u64(1);
         let block_height = 1.into();
         let gas_costs = GasCosts::default();
-        let arb_gas_price = 1;
 
         let tx = predicate_tx(&mut rng, 1000000, 1000000, 1000000, gas_costs.ret);
 
@@ -1796,7 +1770,6 @@ mod tests {
         gas_price: u64,
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
-        base_asset_id: &AssetId,
     ) -> Result<bool, ValidityError> {
         fn gas_to_fee(gas: u64, price: u64, factor: u64) -> u128 {
             let prices_gas = gas as u128 * price as u128;
@@ -1805,7 +1778,6 @@ mod tests {
             fee + fee_remainder
         }
 
-        let available_balances = balances::initial_free_balances(tx, base_asset_id)?;
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let gas_used_by_bytes = fee_params
             .gas_per_byte
@@ -1841,13 +1813,11 @@ mod tests {
         tx: &Tx,
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
-        base_asset_id: &AssetId,
         gas_price: u64,
     ) -> Result<bool, ValidityError>
     where
         Tx: Chargeable + field::Inputs + field::Outputs,
     {
-        let available_balances = balances::initial_free_balances(tx, base_asset_id)?;
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
         let gas_used_by_bytes = fee_params

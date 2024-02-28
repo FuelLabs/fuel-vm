@@ -21,19 +21,15 @@ use crate::{
     storage::InterpreterStorage,
 };
 
-use crate::{
-    checked_transaction::Immutable,
-    interpreter::{
-        InterpreterParams,
-        NotSupportedEcal,
-    },
+use crate::interpreter::{
+    InterpreterParams,
+    NotSupportedEcal,
 };
 use fuel_tx::{
     Create,
     GasCosts,
     Receipt,
     Script,
-    ValidityError,
 };
 
 #[derive(Debug)]

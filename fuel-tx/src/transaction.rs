@@ -109,6 +109,7 @@ impl Transaction {
         use crate::Finalizable;
 
         crate::TransactionBuilder::script(vec![], vec![])
+            .max_fee_limit(0)
             .add_random_fee_input()
             .finalize()
             .into()
@@ -207,8 +208,8 @@ impl Transaction {
     /// fails
     #[cfg(all(feature = "serde", feature = "alloc"))]
     pub fn from_json<J>(json: J) -> Option<Self>
-    where
-        J: AsRef<str>,
+        where
+            J: AsRef<str>,
     {
         // we opt to return `Option` to not leak serde concrete error implementations in
         // the crate. considering we don't expect to handle failures downstream
@@ -301,10 +302,10 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         let asset_ids = self.input_asset_ids(base_asset_id);
 
         #[cfg(feature = "std")]
-        let asset_ids = asset_ids.unique();
+            let asset_ids = asset_ids.unique();
 
         #[cfg(not(feature = "std"))]
-        let asset_ids = asset_ids.sorted().dedup();
+            let asset_ids = asset_ids.sorted().dedup();
 
         asset_ids.collect_vec().into_iter()
     }
@@ -331,18 +332,18 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .iter()
             .filter_map(|i| match i {
                 Input::CoinPredicate(CoinPredicate {
-                    owner, predicate, ..
-                }) => Some((owner, predicate)),
+                                         owner, predicate, ..
+                                     }) => Some((owner, predicate)),
                 Input::MessageDataPredicate(MessageDataPredicate {
-                    recipient,
-                    predicate,
-                    ..
-                }) => Some((recipient, predicate)),
+                                                recipient,
+                                                predicate,
+                                                ..
+                                            }) => Some((recipient, predicate)),
                 Input::MessageCoinPredicate(MessageCoinPredicate {
-                    recipient,
-                    predicate,
-                    ..
-                }) => Some((recipient, predicate)),
+                                                recipient,
+                                                predicate,
+                                                ..
+                                            }) => Some((recipient, predicate)),
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {

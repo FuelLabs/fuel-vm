@@ -32,6 +32,7 @@ fn prevent_contract_id_redeployment() {
     let gas_price = 0;
     let spend_amount = 600;
     let asset_id = AssetId::BASE;
+    let zero_fee_limit = 0;
 
     #[rustfmt::skip]
         let function_rvrt: Vec<Instruction> = vec![
@@ -48,9 +49,12 @@ fn prevent_contract_id_redeployment() {
 
     let output = Output::contract_created(contract_undefined, state_root);
 
+    let policies = Policies::new().with_max_fee(zero_fee_limit);
+
+
     let mut create = Transaction::create(
         Default::default(),
-        Policies::new(),
+        policies,
         salt,
         vec![],
         vec![],

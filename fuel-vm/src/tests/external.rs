@@ -39,6 +39,7 @@ impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
 #[test]
 fn noop_ecal() {
     let zero_gas_price = 0;
+    let zero_fee_limit = 0;
     let script = vec![
         op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(RegId::ONE),
@@ -52,6 +53,7 @@ fn noop_ecal() {
     );
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, vec![])
+        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -103,6 +105,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 fn provide_ecal_fn() {
     let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
     let zero_gas_price = 0;
+    let zero_fee_limit = 0;
 
     let script_data = [
         2u64.to_be_bytes(),
@@ -129,6 +132,7 @@ fn provide_ecal_fn() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
+        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()

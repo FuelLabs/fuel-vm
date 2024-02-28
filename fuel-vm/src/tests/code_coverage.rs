@@ -32,6 +32,7 @@ fn code_coverage() {
 
     let gas_price = 1;
     let gas_limit = 1_000_000;
+    let zero_fee_limit = 0;
     let maturity = Default::default();
     let height = Default::default();
 
@@ -47,6 +48,7 @@ fn code_coverage() {
     ];
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
+        .max_fee_limit(zero_fee_limit)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),

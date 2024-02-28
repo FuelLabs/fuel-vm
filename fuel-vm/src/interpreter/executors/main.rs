@@ -44,7 +44,10 @@ use crate::{
 };
 
 use crate::{
-    checked_transaction::CheckPredicateParams,
+    checked_transaction::{
+        CheckPredicateParams,
+        Immutable,
+    },
     interpreter::InterpreterParams,
 };
 use fuel_asm::{
@@ -647,7 +650,7 @@ where
     /// result of th execution in form of [`StateTransition`]
     pub fn transact_owned(
         storage: S,
-        tx: Checked<Tx>,
+        tx: Immutable<Tx>,
         params: InterpreterParams,
     ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
         let mut interpreter = Self::with_storage(storage, params);
@@ -673,7 +676,7 @@ where
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(
         &mut self,
-        tx: Checked<Tx>,
+        tx: Immutable<Tx>,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
         self.post_execute();

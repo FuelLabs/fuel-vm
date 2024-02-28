@@ -21,15 +21,19 @@ use crate::{
     storage::InterpreterStorage,
 };
 
-use crate::interpreter::{
-    InterpreterParams,
-    NotSupportedEcal,
+use crate::{
+    checked_transaction::Immutable,
+    interpreter::{
+        InterpreterParams,
+        NotSupportedEcal,
+    },
 };
 use fuel_tx::{
     Create,
     GasCosts,
     Receipt,
     Script,
+    ValidityError,
 };
 
 #[derive(Debug)]
@@ -203,7 +207,15 @@ where
 {
     /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
-        match self.interpreter.transact(tx) {
+        let gas_price = self.interpreter.gas_price();
+        let gas_costs = self.interpreter.gas_costs();
+        let fee_params = self.interpreter.fee_params();
+
+        match tx
+            .into_immutable(gas_price, &gas_costs, &fee_params)
+            .map_err(InterpreterError::CheckError)
+            .and_then(|immutable| self.interpreter.transact(immutable))
+        {
             Ok(s) => {
                 self.program_state.replace(s.into());
                 self.error.take();

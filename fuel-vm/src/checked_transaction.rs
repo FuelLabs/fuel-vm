@@ -88,15 +88,6 @@ pub struct Checked<Tx: IntoChecked> {
     checks_bitmask: Checks,
 }
 
-/// Transaction that has checks for all dynamic values, e.g. `gas_price`
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Immutable<Tx: IntoChecked> {
-    gas_price: Word,
-    transaction: Tx,
-    metadata: Tx::Metadata,
-    checks_bitmask: Checks,
-}
-
 impl<Tx: IntoChecked> Checked<Tx> {
     fn new(transaction: Tx, metadata: Tx::Metadata, checks_bitmask: Checks) -> Self {
         Checked {
@@ -132,6 +123,27 @@ impl<Tx: IntoChecked> Checked<Tx> {
             self.checks_bitmask.insert(Checks::Signatures);
         }
         Ok(self)
+    }
+}
+
+/// Transaction that has checks for all dynamic values, e.g. `gas_price`
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Immutable<Tx: IntoChecked> {
+    gas_price: Word,
+    transaction: Tx,
+    metadata: Tx::Metadata,
+    checks_bitmask: Checks,
+}
+
+impl<Tx: IntoChecked> Immutable<Tx> {
+    pub fn decompose(self) -> (Word, Tx, Tx::Metadata, Checks) {
+        let Immutable {
+            gas_price,
+            transaction,
+            metadata,
+            checks_bitmask,
+        } = self;
+        (gas_price, transaction, metadata, checks_bitmask)
     }
 }
 

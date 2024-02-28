@@ -34,7 +34,13 @@ fn memcopy() {
 
     let tx = tx
         .into_checked(Default::default(), &consensus_params)
-        .expect("default tx should produce a valid checked transaction");
+        .expect("default tx should produce a valid checked transaction")
+        .into_immutable(
+            zero_gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM");
 
@@ -86,12 +92,20 @@ fn memcopy() {
 
 #[test]
 fn memrange() {
+    let gas_price = 0;
+    let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
-        .expect("Empty script should be valid");
+        .expect("Empty script should be valid")
+        .into_immutable(
+            gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
     let mut vm = Interpreter::<_, _>::with_memory_storage();
     vm.init_script(tx).expect("Failed to init VM");
 
@@ -115,13 +129,21 @@ fn memrange() {
 #[test]
 fn stack_alloc_ownership() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let gas_price = 0;
+    let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
-        .expect("Empty script should be valid");
+        .expect("Empty script should be valid")
+        .into_immutable(
+            gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
     vm.init_script(tx).expect("Failed to init VM");
 
     vm.instruction(op::move_(0x10, RegId::SP)).unwrap();

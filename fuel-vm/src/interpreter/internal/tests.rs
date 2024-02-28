@@ -35,6 +35,9 @@ fn external_balance() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
+    let gas_price = 0;
+    let gas_costs = GasCosts::default();
+    let fee_params = ConsensusParameters::standard().fee_params;
 
     let script = op::ret(0x01).to_bytes().to_vec();
     let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
@@ -55,7 +58,9 @@ fn external_balance() {
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height);
+        .finalize_checked(height)
+        .into_immutable(gas_price, &gas_costs, &fee_params)
+        .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -123,7 +128,13 @@ fn variable_output_updates_in_memory() {
         .add_output(variable_output)
         .finalize()
         .into_checked(height, &consensus_params)
-        .expect("failed to check tx");
+        .expect("failed to check tx")
+        .into_immutable(
+            zero_gas_price,
+            &GasCosts::default(),
+            &consensus_params.fee_params,
+        )
+        .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM!");
 

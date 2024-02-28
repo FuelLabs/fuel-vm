@@ -8,6 +8,7 @@ use fuel_asm::{
 };
 use fuel_tx::ValidityError;
 
+use crate::checked_transaction::CheckError;
 use alloc::{
     format,
     string::{
@@ -38,6 +39,9 @@ pub enum InterpreterError<StorageError> {
     /// The provided transaction isn't valid.
     #[display(fmt = "Failed to validate the transaction: {_0}")]
     TransactionValidity(ValidityError),
+    /// Failed while checking the transaction.
+    #[display(fmt = "Failed to check the transaction: {_0:?}")]
+    CheckError(CheckError),
     /// No transaction was initialized in the interpreter. It cannot provide
     /// state transitions.
     #[display(fmt = "Execution error")]
@@ -110,6 +114,7 @@ where
             Self::NoTransactionInitialized => InterpreterError::NoTransactionInitialized,
             Self::DebugStateNotInitialized => InterpreterError::DebugStateNotInitialized,
             Self::Bug(e) => InterpreterError::Bug(e.clone()),
+            Self::CheckError(e) => InterpreterError::CheckError(e.clone()),
         }
     }
 }

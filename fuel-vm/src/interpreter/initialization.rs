@@ -7,6 +7,7 @@ use super::{
 use crate::{
     checked_transaction::{
         Checked,
+        Immutable,
         IntoChecked,
     },
     consts::*,
@@ -102,13 +103,13 @@ where
     /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(
         &mut self,
-        checked: Checked<Tx>,
+        immutable: Immutable<Tx>,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 
         self.context = Context::Script { block_height };
 
-        let (tx, metadata): (Tx, Tx::Metadata) = checked.into();
+        let (_, tx, metadata, _) = immutable.decompose();
 
         let gas_limit = tx
             .as_script()

@@ -28,7 +28,6 @@ use core::{
     fmt::Debug,
     future::Future,
 };
-use std::hash::Hash;
 
 use fuel_tx::{
     field::MaxFeeLimit,

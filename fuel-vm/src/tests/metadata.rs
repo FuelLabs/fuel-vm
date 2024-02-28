@@ -90,7 +90,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_partially_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
@@ -140,7 +140,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_partially_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     assert!(
@@ -201,7 +201,7 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_partially_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let receipts = Transactor::<_, _>::new(&mut storage, interpreter_params)
@@ -256,7 +256,7 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_partially_checked(height, &consensus_params)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -302,7 +302,7 @@ fn get_transaction_fields() {
             AssetId::zeroed(),
             rng.gen(),
         )
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     client.deploy(tx);
 
@@ -393,7 +393,7 @@ fn get_transaction_fields() {
             rng.gen(),
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -832,7 +832,7 @@ fn get_transaction_fields() {
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
-        .finalize_checked_basic(height);
+        .finalize_partially_checked_basic(height);
 
     let receipts = client.transact(tx);
     let success = receipts

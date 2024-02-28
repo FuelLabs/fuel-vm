@@ -74,7 +74,7 @@ fn prevent_contract_id_redeployment() {
     let consensus_params = ConsensusParameters::standard();
 
     let create = create
-        .into_checked_basic(1.into(), &consensus_params)
+        .into_partially_checked_basic(1.into(), &consensus_params)
         .expect("failed to generate checked tx");
 
     // deploy contract

@@ -170,7 +170,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         *context.get_base_asset_id(),
     );
     let create = create
-        .into_checked_basic(context.get_block_height(), &consensus_params)
+        .into_partially_checked_basic(context.get_block_height(), &consensus_params)
         .expect("failed to generate checked tx");
 
     let state = context.deploy(create).expect("Create should be executed");

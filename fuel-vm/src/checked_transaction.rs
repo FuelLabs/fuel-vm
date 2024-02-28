@@ -82,15 +82,15 @@ impl core::fmt::Display for Checks {
 /// Since checked tx would need to be re-validated on deserialization anyways,
 /// it's cleaner to redo the tx check.
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Checked<Tx: IntoChecked> {
+pub struct PartiallyCheckedTx<Tx: IntoChecked> {
     transaction: Tx,
     metadata: Tx::Metadata,
     checks_bitmask: Checks,
 }
 
-impl<Tx: IntoChecked> Checked<Tx> {
+impl<Tx: IntoChecked> PartiallyCheckedTx<Tx> {
     fn new(transaction: Tx, metadata: Tx::Metadata, checks_bitmask: Checks) -> Self {
-        Checked {
+        PartiallyCheckedTx {
             transaction,
             metadata,
             checks_bitmask,
@@ -98,7 +98,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 
     pub(crate) fn basic(transaction: Tx, metadata: Tx::Metadata) -> Self {
-        Checked::new(transaction, metadata, Checks::Basic)
+        PartiallyCheckedTx::new(transaction, metadata, Checks::Basic)
     }
 
     /// Returns reference on inner transaction.
@@ -128,17 +128,17 @@ impl<Tx: IntoChecked> Checked<Tx> {
 
 /// Transaction that has checks for all dynamic values, e.g. `gas_price`
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Immutable<Tx: IntoChecked> {
+pub struct FullyCheckedTx<Tx: IntoChecked> {
     gas_price: Word,
     transaction: Tx,
     metadata: Tx::Metadata,
     checks_bitmask: Checks,
 }
 
-impl<Tx: IntoChecked> Immutable<Tx> {
+impl<Tx: IntoChecked> FullyCheckedTx<Tx> {
     /// Consume and decompose components of the `Immutable` transaction.
     pub fn decompose(self) -> (Word, Tx, Tx::Metadata, Checks) {
-        let Immutable {
+        let FullyCheckedTx {
             gas_price,
             transaction,
             metadata,
@@ -148,15 +148,15 @@ impl<Tx: IntoChecked> Immutable<Tx> {
     }
 }
 
-impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
+impl<Tx: IntoChecked + Chargeable> PartiallyCheckedTx<Tx> {
     /// Run final checks on `Checked` using dynamic values, e.g. `gas_price`
-    pub fn into_immutable(
+    pub fn into_fully_checked(
         self,
         gas_price: Word,
         gas_costs: &GasCosts,
         fee_parameters: &FeeParameters,
-    ) -> Result<Immutable<Tx>, CheckError> {
-        let Checked {
+    ) -> Result<FullyCheckedTx<Tx>, CheckError> {
+        let PartiallyCheckedTx {
             transaction,
             metadata,
             checks_bitmask,
@@ -178,7 +178,7 @@ impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
                 max_fee_from_gas_price,
             })
         } else {
-            Ok(Immutable {
+            Ok(FullyCheckedTx {
                 gas_price,
                 transaction,
                 metadata,
@@ -188,7 +188,7 @@ impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
     }
 }
 
-impl<Tx: IntoChecked + UniqueIdentifier> Checked<Tx> {
+impl<Tx: IntoChecked + UniqueIdentifier> PartiallyCheckedTx<Tx> {
     /// Returns the transaction ID from the computed metadata
     pub fn id(&self) -> TxId {
         self.transaction
@@ -198,20 +198,20 @@ impl<Tx: IntoChecked + UniqueIdentifier> Checked<Tx> {
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx: IntoChecked + Default> Default for Checked<Tx>
+impl<Tx: IntoChecked + Default> Default for PartiallyCheckedTx<Tx>
 where
-    Checked<Tx>: CheckPredicates,
+    PartiallyCheckedTx<Tx>: CheckPredicates,
 {
     fn default() -> Self {
         Tx::default()
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
 
-impl<Tx: IntoChecked> From<Checked<Tx>> for (Tx, Tx::Metadata) {
-    fn from(checked: Checked<Tx>) -> Self {
-        let Checked {
+impl<Tx: IntoChecked> From<PartiallyCheckedTx<Tx>> for (Tx, Tx::Metadata) {
+    fn from(checked: PartiallyCheckedTx<Tx>) -> Self {
+        let PartiallyCheckedTx {
             transaction,
             metadata,
             ..
@@ -221,20 +221,20 @@ impl<Tx: IntoChecked> From<Checked<Tx>> for (Tx, Tx::Metadata) {
     }
 }
 
-impl<Tx: IntoChecked> AsRef<Tx> for Checked<Tx> {
+impl<Tx: IntoChecked> AsRef<Tx> for PartiallyCheckedTx<Tx> {
     fn as_ref(&self) -> &Tx {
         &self.transaction
     }
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx: IntoChecked> AsMut<Tx> for Checked<Tx> {
+impl<Tx: IntoChecked> AsMut<Tx> for PartiallyCheckedTx<Tx> {
     fn as_mut(&mut self) -> &mut Tx {
         &mut self.transaction
     }
 }
 
-impl<Tx: IntoChecked> Borrow<Tx> for Checked<Tx> {
+impl<Tx: IntoChecked> Borrow<Tx> for PartiallyCheckedTx<Tx> {
     fn borrow(&self) -> &Tx {
         self.transaction()
     }
@@ -264,26 +264,26 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     type Metadata: Sized;
 
     /// Returns transaction that passed all `Checks`.
-    fn into_checked(
+    fn into_partially_checked(
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError>
+    ) -> Result<PartiallyCheckedTx<Self>, CheckError>
     where
-        Checked<Self>: CheckPredicates,
+        PartiallyCheckedTx<Self>: CheckPredicates,
     {
         let check_predicate_params = consensus_params.into();
-        self.into_checked_basic(block_height, consensus_params)?
+        self.into_partially_checked_basic(block_height, consensus_params)?
             .check_signatures(&consensus_params.chain_id)?
             .check_predicates(&check_predicate_params)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
-    fn into_checked_basic(
+    fn into_partially_checked_basic(
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError>;
+    ) -> Result<PartiallyCheckedTx<Self>, CheckError>;
 }
 
 /// The parameters needed for checking a predicate
@@ -389,7 +389,7 @@ pub trait ParallelExecutor {
 }
 
 #[async_trait::async_trait]
-impl<Tx> CheckPredicates for Checked<Tx>
+impl<Tx> CheckPredicates for PartiallyCheckedTx<Tx>
 where
     Tx: ExecutableTransaction + Send + Sync + 'static,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
@@ -481,7 +481,7 @@ impl EstimatePredicates for Transaction {
 }
 
 #[async_trait::async_trait]
-impl CheckPredicates for Checked<Mint> {
+impl CheckPredicates for PartiallyCheckedTx<Mint> {
     fn check_predicates(
         mut self,
         _params: &CheckPredicateParams,
@@ -500,7 +500,7 @@ impl CheckPredicates for Checked<Mint> {
 }
 
 #[async_trait::async_trait]
-impl CheckPredicates for Checked<Transaction> {
+impl CheckPredicates for PartiallyCheckedTx<Transaction> {
     fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
@@ -556,14 +556,14 @@ impl CheckPredicates for Checked<Transaction> {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[allow(missing_docs)]
 pub enum CheckedTransaction {
-    Script(Checked<Script>),
-    Create(Checked<Create>),
-    Mint(Checked<Mint>),
+    Script(PartiallyCheckedTx<Script>),
+    Create(PartiallyCheckedTx<Create>),
+    Mint(PartiallyCheckedTx<Mint>),
 }
 
-impl From<Checked<Transaction>> for CheckedTransaction {
-    fn from(checked: Checked<Transaction>) -> Self {
-        let Checked {
+impl From<PartiallyCheckedTx<Transaction>> for CheckedTransaction {
+    fn from(checked: PartiallyCheckedTx<Transaction>) -> Self {
+        let PartiallyCheckedTx {
             transaction,
             metadata,
             checks_bitmask,
@@ -572,13 +572,25 @@ impl From<Checked<Transaction>> for CheckedTransaction {
         // # Dev note: Avoid wildcard pattern to be sure that all variants are covered.
         match (transaction, metadata) {
             (Transaction::Script(transaction), CheckedMetadata::Script(metadata)) => {
-                Self::Script(Checked::new(transaction, metadata, checks_bitmask))
+                Self::Script(PartiallyCheckedTx::new(
+                    transaction,
+                    metadata,
+                    checks_bitmask,
+                ))
             }
             (Transaction::Create(transaction), CheckedMetadata::Create(metadata)) => {
-                Self::Create(Checked::new(transaction, metadata, checks_bitmask))
+                Self::Create(PartiallyCheckedTx::new(
+                    transaction,
+                    metadata,
+                    checks_bitmask,
+                ))
             }
             (Transaction::Mint(transaction), CheckedMetadata::Mint(metadata)) => {
-                Self::Mint(Checked::new(transaction, metadata, checks_bitmask))
+                Self::Mint(PartiallyCheckedTx::new(
+                    transaction,
+                    metadata,
+                    checks_bitmask,
+                ))
             }
             // The code should produce the `CheckedMetadata` for the corresponding
             // transaction variant. It is done in the implementation of the
@@ -591,42 +603,54 @@ impl From<Checked<Transaction>> for CheckedTransaction {
     }
 }
 
-impl From<Checked<Script>> for CheckedTransaction {
-    fn from(checked: Checked<Script>) -> Self {
+impl From<PartiallyCheckedTx<Script>> for CheckedTransaction {
+    fn from(checked: PartiallyCheckedTx<Script>) -> Self {
         Self::Script(checked)
     }
 }
 
-impl From<Checked<Create>> for CheckedTransaction {
-    fn from(checked: Checked<Create>) -> Self {
+impl From<PartiallyCheckedTx<Create>> for CheckedTransaction {
+    fn from(checked: PartiallyCheckedTx<Create>) -> Self {
         Self::Create(checked)
     }
 }
 
-impl From<Checked<Mint>> for CheckedTransaction {
-    fn from(checked: Checked<Mint>) -> Self {
+impl From<PartiallyCheckedTx<Mint>> for CheckedTransaction {
+    fn from(checked: PartiallyCheckedTx<Mint>) -> Self {
         Self::Mint(checked)
     }
 }
 
-impl From<CheckedTransaction> for Checked<Transaction> {
+impl From<CheckedTransaction> for PartiallyCheckedTx<Transaction> {
     fn from(checked: CheckedTransaction) -> Self {
         match checked {
-            CheckedTransaction::Script(Checked {
+            CheckedTransaction::Script(PartiallyCheckedTx {
                 transaction,
                 metadata,
                 checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
-            CheckedTransaction::Create(Checked {
+            }) => PartiallyCheckedTx::new(
+                transaction.into(),
+                metadata.into(),
+                checks_bitmask,
+            ),
+            CheckedTransaction::Create(PartiallyCheckedTx {
                 transaction,
                 metadata,
                 checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
-            CheckedTransaction::Mint(Checked {
+            }) => PartiallyCheckedTx::new(
+                transaction.into(),
+                metadata.into(),
+                checks_bitmask,
+            ),
+            CheckedTransaction::Mint(PartiallyCheckedTx {
                 transaction,
                 metadata,
                 checks_bitmask,
-            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+            }) => PartiallyCheckedTx::new(
+                transaction.into(),
+                metadata.into(),
+                checks_bitmask,
+            ),
         }
     }
 }
@@ -661,32 +685,32 @@ impl From<<Mint as IntoChecked>::Metadata> for CheckedMetadata {
 impl IntoChecked for Transaction {
     type Metadata = CheckedMetadata;
 
-    fn into_checked_basic(
+    fn into_partially_checked_basic(
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError> {
+    ) -> Result<PartiallyCheckedTx<Self>, CheckError> {
         match self {
             Transaction::Script(script) => {
                 let (transaction, metadata) = script
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_partially_checked_basic(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Transaction::Create(create) => {
                 let (transaction, metadata) = create
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_partially_checked_basic(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Transaction::Mint(mint) => {
                 let (transaction, metadata) = mint
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_partially_checked_basic(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
         }
-        .map(|(transaction, metadata)| Checked::basic(transaction, metadata))
+        .map(|(transaction, metadata)| PartiallyCheckedTx::basic(transaction, metadata))
     }
 }
 
@@ -758,7 +782,7 @@ mod tests {
 
         let checked = tx
             .clone()
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify transaction getter works
@@ -771,7 +795,7 @@ mod tests {
     }
 
     #[test]
-    fn into_checked__tx_accepts_valid_signed_message_coin_for_fees() {
+    fn into_partially_checked__tx_accepts_valid_signed_message_coin_for_fees() {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
@@ -780,7 +804,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -791,7 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn into_checked__tx_excludes_message_output_amount_from_fee() {
+    fn into_partially_checked__tx_excludes_message_output_amount_from_fee() {
         // ensure message outputs aren't deducted from available balance
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
@@ -800,7 +824,7 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -811,7 +835,7 @@ mod tests {
     }
 
     #[test]
-    fn into_checked__message_data_signed_message_is_not_used_to_cover_fees() {
+    fn into_partially_checked__message_data_signed_message_is_not_used_to_cover_fees() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         // given
@@ -828,7 +852,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         // then
@@ -870,7 +894,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         // then
@@ -1418,7 +1442,7 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
@@ -1429,7 +1453,7 @@ mod tests {
     }
 
     #[test]
-    fn into_checked__tx_fails_when_provided_fees_dont_cover_byte_costs() {
+    fn into_partially_checked__tx_fails_when_provided_fees_dont_cover_byte_costs() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         let arb_input_amount = 1;
@@ -1443,7 +1467,7 @@ mod tests {
         let transaction = base_asset_tx(rng, arb_input_amount, gas_limit, zero_max_fee);
         transaction
             .clone()
-            .into_checked(Default::default(), &params)
+            .into_partially_checked(Default::default(), &params)
             .unwrap();
         let fees = TransactionFee::checked_from_tx(
             &GasCosts::default(),
@@ -1459,21 +1483,21 @@ mod tests {
             base_asset_tx(rng, new_input_amount, gas_limit, real_max_fee);
         new_transaction
             .clone()
-            .into_checked(Default::default(), &params)
+            .into_partially_checked(Default::default(), &params)
             .unwrap()
-            .into_immutable(gas_price, &GasCosts::default(), &params.fee_params())
+            .into_fully_checked(gas_price, &GasCosts::default(), &params.fee_params())
             .expect("`new_transaction` should be fully valid");
 
         // given
         // invalidating the transaction by increasing witness size
         new_transaction.witnesses_mut().push(rng.gen());
         let bigger_checked = new_transaction
-            .into_checked(Default::default(), &params)
+            .into_partially_checked(Default::default(), &params)
             .unwrap();
 
         // when
         let err = bigger_checked
-            .into_immutable(gas_price, &GasCosts::default(), &params.fee_params())
+            .into_fully_checked(gas_price, &GasCosts::default(), &params.fee_params())
             .expect_err("Expected invalid transaction");
 
         let max_fee_from_policies = match err {
@@ -1489,7 +1513,7 @@ mod tests {
     }
 
     #[test]
-    fn into_checked__tx_fails_when_provided_fees_dont_cover_fee_limit() {
+    fn into_partially_checked__tx_fails_when_provided_fees_dont_cover_fee_limit() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         let input_amount = 10;
@@ -1507,7 +1531,7 @@ mod tests {
 
         // when
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_partially_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
         // then
@@ -1536,9 +1560,9 @@ mod tests {
 
         let fee_params = consensus_params.fee_params();
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_partially_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_immutable(max_gas_price, &gas_costs, &fee_params)
+            .into_fully_checked(max_gas_price, &gas_costs, &fee_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
@@ -1563,9 +1587,9 @@ mod tests {
 
         // when
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_partially_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_immutable(gas_price, &gas_costs, &fee_params)
+            .into_fully_checked(gas_price, &gas_costs, &fee_params)
             .expect_err("overflow expected");
 
         // then
@@ -1589,9 +1613,9 @@ mod tests {
             base_asset_tx_with_tip(rng, input_amount, gas_limit, max_fee_limit, None);
         tx_without_tip
             .clone()
-            .into_checked(block_height, &params)
+            .into_partially_checked(block_height, &params)
             .unwrap()
-            .into_immutable(gas_price, &gas_costs, &params.fee_params())
+            .into_fully_checked(gas_price, &gas_costs, &params.fee_params())
             .expect("Should be valid");
 
         // given
@@ -1604,9 +1628,9 @@ mod tests {
             Some(tip),
         );
         tx_without_enough_to_pay_for_tip
-            .into_checked(block_height, &params)
+            .into_partially_checked(block_height, &params)
             .unwrap()
-            .into_immutable(gas_price, &gas_costs, &params.fee_params())
+            .into_fully_checked(gas_price, &gas_costs, &params.fee_params())
             .expect_err("Expected invalid transaction");
 
         // when
@@ -1622,9 +1646,9 @@ mod tests {
 
         // then
         tx.clone()
-            .into_checked(block_height, &params)
+            .into_partially_checked(block_height, &params)
             .unwrap()
-            .into_immutable(gas_price, &GasCosts::default(), &params.fee_params())
+            .into_fully_checked(gas_price, &GasCosts::default(), &params.fee_params())
             .expect("Should be valid");
     }
 
@@ -1641,9 +1665,9 @@ mod tests {
         let consensus_params = params(1);
 
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_partially_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_immutable(
+            .into_fully_checked(
                 gas_price,
                 &GasCosts::default(),
                 &consensus_params.fee_params(),
@@ -1685,7 +1709,7 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_partially_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
         assert_eq!(
@@ -1706,7 +1730,7 @@ mod tests {
         let tx = Transaction::default_test_tx();
         // Sets Checks::Basic
         let checked = tx
-            .into_checked_basic(block_height, &ConsensusParameters::standard())
+            .into_partially_checked_basic(block_height, &ConsensusParameters::standard())
             .unwrap();
         assert!(checked.checks().contains(Checks::Basic));
     }
@@ -1721,7 +1745,7 @@ mod tests {
         let chain_id = ChainId::default();
         let checked = tx
             // Sets Checks::Basic
-            .into_checked(
+            .into_partially_checked(
                 block_height,
                 &ConsensusParameters::standard_with_id(chain_id),
             )
@@ -1752,7 +1776,7 @@ mod tests {
 
         let checked = tx
             // Sets Checks::Basic
-            .into_checked(
+            .into_partially_checked(
                 block_height,
                 &consensus_params,
             )

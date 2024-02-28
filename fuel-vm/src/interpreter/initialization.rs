@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     checked_transaction::{
-        Immutable,
+        FullyCheckedTx,
         IntoChecked,
     },
     consts::*,
@@ -102,7 +102,7 @@ where
     /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(
         &mut self,
-        immutable: Immutable<Tx>,
+        immutable: FullyCheckedTx<Tx>,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 

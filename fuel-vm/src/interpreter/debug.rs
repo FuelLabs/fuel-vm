@@ -91,9 +91,9 @@ fn breakpoint_script() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_partially_checked(height, &consensus_params)
         .expect("failed to generate checked tx")
-        .into_immutable(
+        .into_fully_checked(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,
@@ -170,9 +170,9 @@ fn single_stepping() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_partially_checked(height, &consensus_params)
         .expect("failed to generate checked tx")
-        .into_immutable(
+        .into_fully_checked(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,

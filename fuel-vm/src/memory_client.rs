@@ -2,7 +2,7 @@
 
 use crate::{
     backtrace::Backtrace,
-    checked_transaction::Checked,
+    checked_transaction::PartiallyCheckedTx,
     state::StateTransitionRef,
     storage::MemoryStorage,
     transactor::Transactor,
@@ -78,7 +78,7 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     }
 
     /// Deploys a `Create` transaction.
-    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<Create> {
+    pub fn deploy(&mut self, tx: PartiallyCheckedTx<Create>) -> Option<Create> {
         self.transactor.deploy(tx).ok()
     }
 
@@ -86,7 +86,7 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     ///
     /// Since the memory storage is `Infallible`, associatively, the memory
     /// client should also be.
-    pub fn transact(&mut self, tx: Checked<Script>) -> &[Receipt] {
+    pub fn transact(&mut self, tx: PartiallyCheckedTx<Script>) -> &[Receipt] {
         self.transactor.transact(tx);
 
         // TODO `Transactor::result` should accept error as generic so compile-time

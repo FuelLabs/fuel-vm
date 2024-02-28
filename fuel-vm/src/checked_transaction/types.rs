@@ -60,8 +60,8 @@ pub mod create {
             initial_free_balances,
             AvailableBalances,
         },
-        Checked,
         IntoChecked,
+        PartiallyCheckedTx,
     };
     use crate::checked_transaction::{
         CheckError,
@@ -87,11 +87,11 @@ pub mod create {
     impl IntoChecked for Create {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_partially_checked_basic(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<PartiallyCheckedTx<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
@@ -111,7 +111,7 @@ pub mod create {
                 block_height,
             };
 
-            Ok(Checked::basic(self, metadata))
+            Ok(PartiallyCheckedTx::basic(self, metadata))
         }
     }
 }
@@ -119,8 +119,8 @@ pub mod create {
 /// For [`fuel_tx::Mint`]
 pub mod mint {
     use super::super::{
-        Checked,
         IntoChecked,
+        PartiallyCheckedTx,
     };
     use crate::checked_transaction::CheckError;
     use fuel_tx::{
@@ -134,16 +134,16 @@ pub mod mint {
     impl IntoChecked for Mint {
         type Metadata = ();
 
-        fn into_checked_basic(
+        fn into_partially_checked_basic(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<PartiallyCheckedTx<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
 
-            Ok(Checked::basic(self, ()))
+            Ok(PartiallyCheckedTx::basic(self, ()))
         }
     }
 }
@@ -155,8 +155,8 @@ pub mod script {
             initial_free_balances,
             AvailableBalances,
         },
-        Checked,
         IntoChecked,
+        PartiallyCheckedTx,
     };
     use crate::checked_transaction::{
         CheckError,
@@ -185,11 +185,11 @@ pub mod script {
     impl IntoChecked for Script {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_partially_checked_basic(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<PartiallyCheckedTx<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
@@ -209,7 +209,7 @@ pub mod script {
                 block_height,
             };
 
-            Ok(Checked::basic(self, metadata))
+            Ok(PartiallyCheckedTx::basic(self, metadata))
         }
     }
 }

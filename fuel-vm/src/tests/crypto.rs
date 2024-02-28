@@ -86,7 +86,7 @@ fn secp256k1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -144,7 +144,9 @@ fn ecrecover_tx_id() {
     tx.sign_inputs(&secret, &chain_id);
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
-    let tx = tx.into_checked(height, &consensus_params).unwrap();
+    let tx = tx
+        .into_partially_checked(height, &consensus_params)
+        .unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -228,7 +230,7 @@ async fn recover_tx_id_predicate() {
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &consensus_params)
+            .into_partially_checked(maturity, &consensus_params)
             .expect("Should check predicate successfully");
     }
 
@@ -236,7 +238,7 @@ async fn recover_tx_id_predicate() {
     tx.estimate_predicates(&check_params)
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &consensus_params)
+    tx.into_partially_checked(maturity, &consensus_params)
         .expect("Should check predicate successfully");
 }
 
@@ -371,7 +373,7 @@ fn secp256r1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -508,7 +510,7 @@ fn ed25519_verify() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -640,7 +642,7 @@ fn sha256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -731,7 +733,7 @@ fn keccak256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts

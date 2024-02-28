@@ -55,7 +55,7 @@ fn code_coverage() {
         )
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height);
+        .finalize_partially_checked(height);
 
     #[derive(Clone, Default)]
     struct ProfilingOutput {

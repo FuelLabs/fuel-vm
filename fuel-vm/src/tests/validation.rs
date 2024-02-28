@@ -47,7 +47,7 @@ fn transaction_can_be_executed_after_maturity() {
     )
     .script_gas_limit(100)
     .maturity(MATURITY)
-    .finalize_checked(BLOCK_HEIGHT);
+    .finalize_partially_checked(BLOCK_HEIGHT);
 
     let result = TestBuilder::new(2322u64)
         .block_height(BLOCK_HEIGHT)
@@ -131,8 +131,10 @@ fn malleable_fields_do_not_affect_validity() {
 
         let vm = Interpreter::<_, Script>::with_memory_storage();
         let mut client = MemoryClient::from_txtor(vm.into());
-        let receipts =
-            client.transact(tx.into_checked(0u32.into(), &params).expect("valid tx"));
+        let receipts = client.transact(
+            tx.into_partially_checked(0u32.into(), &params)
+                .expect("valid tx"),
+        );
 
         let start_id = receipts[0].data().unwrap();
         let computed_id = receipts[1].data().unwrap();

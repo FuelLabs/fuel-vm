@@ -89,8 +89,8 @@ pub mod test_helpers {
     use crate::{
         checked_transaction::{
             builder::TransactionBuilderExt,
-            Checked,
             IntoChecked,
+            PartiallyCheckedTx,
         },
         memory_client::MemoryClient,
         state::StateTransition,
@@ -323,7 +323,7 @@ pub mod test_helpers {
             self
         }
 
-        pub fn build(&mut self) -> Checked<Script> {
+        pub fn build(&mut self) -> PartiallyCheckedTx<Script> {
             self.builder.max_fee_limit(self.max_fee_limit);
             self.builder.with_tx_params(*self.get_tx_params());
             self.builder
@@ -333,7 +333,7 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder.finalize_checked(self.block_height)
+            self.builder.finalize_partially_checked(self.block_height)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -372,7 +372,7 @@ pub mod test_helpers {
             contract_id: &ContractId,
             asset_id: &AssetId,
             tx_offset: usize,
-        ) -> Checked<Script> {
+        ) -> PartiallyCheckedTx<Script> {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
@@ -435,7 +435,7 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params)
+                .into_partially_checked(self.block_height, &self.consensus_params)
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -460,7 +460,7 @@ pub mod test_helpers {
         fn execute_tx_inner<Tx, Ecal>(
             &mut self,
             transactor: &mut Transactor<MemoryStorage, Tx, Ecal>,
-            checked: Checked<Tx>,
+            checked: PartiallyCheckedTx<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
             Tx: ExecutableTransaction,
@@ -507,7 +507,7 @@ pub mod test_helpers {
 
         pub fn deploy(
             &mut self,
-            checked: Checked<Create>,
+            checked: PartiallyCheckedTx<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
@@ -519,7 +519,7 @@ pub mod test_helpers {
 
         pub fn execute_tx(
             &mut self,
-            checked: Checked<Script>,
+            checked: PartiallyCheckedTx<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
@@ -531,7 +531,7 @@ pub mod test_helpers {
 
         pub fn execute_tx_with_backtrace(
             &mut self,
-            checked: Checked<Script>,
+            checked: PartiallyCheckedTx<Script>,
             gas_price: u64,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
             let interpreter_params =
@@ -624,7 +624,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height);
+            .finalize_partially_checked(height);
 
         client
             .deploy(contract_deployer)
@@ -660,14 +660,14 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height);
+            .finalize_partially_checked(height);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }
 
     pub fn check_reason_for_transaction(
         mut client: MemoryClient,
-        checked_tx: Checked<Script>,
+        checked_tx: PartiallyCheckedTx<Script>,
         expected_reason: PanicReason,
     ) {
         let receipts = client.transact(checked_tx);

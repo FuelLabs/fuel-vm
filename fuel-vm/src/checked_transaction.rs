@@ -154,13 +154,13 @@ impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
         )
         .ok_or(CheckError::Validity(ValidityError::BalanceOverflow))?;
 
-        let checked = transaction.max_fee_limit();
-        let calculated = fee.max_fee();
+        let max_fee_from_policies = transaction.max_fee_limit();
+        let max_fee_from_gas_price = fee.max_fee();
 
-        if calculated > checked {
+        if max_fee_from_gas_price > max_fee_from_policies {
             Err(CheckError::InsufficientMaxFee {
-                checked,
-                calculated,
+                max_fee_from_policies,
+                max_fee_from_gas_price,
             })
         } else {
             Ok(Immutable {
@@ -235,7 +235,10 @@ pub enum CheckError {
     PredicateVerificationFailed(PredicateVerificationFailed),
     /// The max fee used during checking was lower than calculated during `Immutable`
     /// conversion
-    InsufficientMaxFee { checked: Word, calculated: Word },
+    InsufficientMaxFee {
+        max_fee_from_policies: Word,
+        max_fee_from_gas_price: Word,
+    },
 }
 
 /// Performs checks for a transaction
@@ -752,7 +755,7 @@ mod tests {
     }
 
     #[test]
-    fn checked_tx_accepts_valid_signed_message_input_fees() {
+    fn into_checked__tx_accepts_valid_signed_message_coin_for_fees() {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
@@ -766,15 +769,14 @@ mod tests {
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
-        todo!()
-        // assert_eq!(
-        //     checked.metadata().non_retryable_balances[&AssetId::default()],
-        //     input_amount - checked.metadata().fee.max_fee()
-        // );
+        assert_eq!(
+            checked.metadata().non_retryable_balances[&AssetId::default()],
+            input_amount - checked.transaction.max_fee_limit()
+        );
     }
 
     #[test]
-    fn checked_tx_excludes_message_output_amount_from_fee() {
+    fn into_checked__tx_excludes_message_output_amount_from_fee() {
         // ensure message outputs aren't deducted from available balance
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
@@ -788,20 +790,25 @@ mod tests {
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
-        todo!()
-        // assert_eq!(
-        //     checked.metadata().non_retryable_balances[&AssetId::default()],
-        //     input_amount - checked.metadata().fee.max_fee()
-        // );
+        assert_eq!(
+            checked.metadata().non_retryable_balances[&AssetId::default()],
+            input_amount - checked.transaction.max_fee_limit()
+        );
     }
 
     #[test]
-    fn message_data_signed_message_is_not_used_to_cover_fees() {
-        // simple test to ensure a tx that only has a message input can cover fees
+    fn into_checked__message_data_signed_message_is_not_used_to_cover_fees() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let input_amount = 100;
         let gas_price = 100;
+
+        // given
+        let input_amount = 100;
+
+        // when
+        let max_fee = input_amount;
         let tx = TransactionBuilder::script(vec![], vec![])
+            .max_fee_limit(max_fee)
+            // Add message input with enough to cover max fee
             .add_unsigned_message_input(SecretKey::random(rng), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
             // Add empty base coin
             .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen())
@@ -811,7 +818,7 @@ mod tests {
             .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
-        // verify available balance was decreased by max fee
+        // then
         assert!(matches!(
             err,
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
@@ -823,12 +830,18 @@ mod tests {
 
     #[test]
     fn message_data_predicate_message_is_not_used_to_cover_fees() {
-        // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let input_amount = 100;
         let gas_price = 100;
         let gas_limit = 1000;
+
+        // given
+        let input_amount = 100;
+
+        // when
+        let max_fee = input_amount;
+
         let tx = TransactionBuilder::script(vec![], vec![])
+            .max_fee_limit(max_fee)
             .script_gas_limit(gas_limit)
             .add_input(Input::message_data_predicate(
                 rng.gen(),
@@ -848,7 +861,7 @@ mod tests {
             .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected valid transaction");
 
-        // verify available balance was decreased by max fee
+        // then
         assert!(matches!(
             err,
             CheckError::Validity(ValidityError::InsufficientFeeAmount {

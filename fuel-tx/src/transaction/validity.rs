@@ -73,20 +73,20 @@ impl Input {
     ) -> Result<(), ValidityError> {
         match self {
             Self::CoinSigned(CoinSigned {
-                                 witness_index,
-                                 owner,
-                                 ..
-                             })
+                witness_index,
+                owner,
+                ..
+            })
             | Self::MessageCoinSigned(MessageCoinSigned {
-                                          witness_index,
-                                          recipient: owner,
-                                          ..
-                                      })
+                witness_index,
+                recipient: owner,
+                ..
+            })
             | Self::MessageDataSigned(MessageDataSigned {
-                                          witness_index,
-                                          recipient: owner,
-                                          ..
-                                      }) => {
+                witness_index,
+                recipient: owner,
+                ..
+            }) => {
                 // Helper function for recovering the address from a witness
                 let recover_address = || -> Result<Address, ValidityError> {
                     let witness = witnesses
@@ -120,18 +120,18 @@ impl Input {
             }
 
             Self::CoinPredicate(CoinPredicate {
-                                    owner, predicate, ..
-                                })
+                owner, predicate, ..
+            })
             | Self::MessageCoinPredicate(MessageCoinPredicate {
-                                             recipient: owner,
-                                             predicate,
-                                             ..
-                                         })
+                recipient: owner,
+                predicate,
+                ..
+            })
             | Self::MessageDataPredicate(MessageDataPredicate {
-                                             recipient: owner,
-                                             predicate,
-                                             ..
-                                         }) if !Input::is_predicate_owner_valid(owner, predicate) => {
+                recipient: owner,
+                predicate,
+                ..
+            }) if !Input::is_predicate_owner_valid(owner, predicate) => {
                 Err(ValidityError::InputPredicateOwner { index })
             }
 
@@ -150,63 +150,63 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-            if predicate.is_empty() =>
-                {
-                    Err(ValidityError::InputPredicateEmpty { index })
-                }
+                if predicate.is_empty() =>
+            {
+                Err(ValidityError::InputPredicateEmpty { index })
+            }
 
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-            if predicate.len() as u64 > predicate_params.max_predicate_length =>
-                {
-                    Err(ValidityError::InputPredicateLength { index })
-                }
+                if predicate.len() as u64 > predicate_params.max_predicate_length =>
+            {
+                Err(ValidityError::InputPredicateLength { index })
+            }
 
             Self::CoinPredicate(CoinPredicate { predicate_data, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate {
-                                             predicate_data, ..
-                                         })
+                predicate_data, ..
+            })
             | Self::MessageDataPredicate(MessageDataPredicate {
-                                             predicate_data, ..
-                                         }) if predicate_data.len() as u64
+                predicate_data, ..
+            }) if predicate_data.len() as u64
                 > predicate_params.max_predicate_data_length =>
-                {
-                    Err(ValidityError::InputPredicateDataLength { index })
-                }
+            {
+                Err(ValidityError::InputPredicateDataLength { index })
+            }
 
             Self::CoinSigned(CoinSigned { witness_index, .. })
             | Self::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
             | Self::MessageDataSigned(MessageDataSigned { witness_index, .. })
-            if *witness_index as usize >= witnesses.len() =>
-                {
-                    Err(ValidityError::InputWitnessIndexBounds { index })
-                }
+                if *witness_index as usize >= witnesses.len() =>
+            {
+                Err(ValidityError::InputWitnessIndexBounds { index })
+            }
 
             // ∀ inputContract ∃! outputContract : outputContract.inputIndex =
             // inputContract.index
             Self::Contract { .. }
-            if 1 != outputs
-                .iter()
-                .filter_map(|output| match output {
-                    Output::Contract(output::contract::Contract {
-                                         input_index,
-                                         ..
-                                     }) if *input_index as usize == index => Some(()),
-                    _ => None,
-                })
-                .count() =>
-                {
-                    Err(ValidityError::InputContractAssociatedOutputContract { index })
-                }
+                if 1 != outputs
+                    .iter()
+                    .filter_map(|output| match output {
+                        Output::Contract(output::contract::Contract {
+                            input_index,
+                            ..
+                        }) if *input_index as usize == index => Some(()),
+                        _ => None,
+                    })
+                    .count() =>
+            {
+                Err(ValidityError::InputContractAssociatedOutputContract { index })
+            }
 
             Self::MessageDataSigned(MessageDataSigned { data, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
-            if data.is_empty()
-                || data.len() as u64 > predicate_params.max_message_data_length =>
-                {
-                    Err(ValidityError::InputMessageDataLength { index })
-                }
+                if data.is_empty()
+                    || data.len() as u64 > predicate_params.max_message_data_length =>
+            {
+                Err(ValidityError::InputMessageDataLength { index })
+            }
 
             // TODO: If h is the block height the UTXO being spent was created,
             // transaction is  invalid if `blockheight() < h + maturity`.
@@ -299,8 +299,8 @@ impl FormatValidityChecks for Transaction {
 /// transaction is calculated as the sum of the sizes of its static and dynamic
 /// parts.
 pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), ValidityError>
-    where
-        T: canonical::Serialize,
+where
+    T: canonical::Serialize,
 {
     if tx.size() as u64 > tx_params.max_size {
         Err(ValidityError::TransactionSizeLimitExceeded)?;
@@ -314,8 +314,8 @@ pub(crate) fn check_common_part<T>(
     block_height: BlockHeight,
     consensus_params: &ConsensusParameters,
 ) -> Result<(), ValidityError>
-    where
-        T: canonical::Serialize + Chargeable + field::Outputs,
+where
+    T: canonical::Serialize + Chargeable + field::Outputs,
 {
     let ConsensusParameters {
         tx_params,
@@ -389,10 +389,10 @@ pub(crate) fn check_common_part<T>(
                         Some(())
                     }
                     Output::Change { asset_id, .. }
-                    if asset_id != base_asset_id && input_asset_id == asset_id =>
-                        {
-                            Some(())
-                        }
+                        if asset_id != base_asset_id && input_asset_id == asset_id =>
+                    {
+                        Some(())
+                    }
                     _ => None,
                 })
                 .count()
@@ -477,9 +477,9 @@ pub(crate) fn check_common_part<T>(
 }
 
 // TODO https://github.com/FuelLabs/fuel-tx/issues/148
-pub(crate) fn next_duplicate<U>(iter: impl Iterator<Item=U>) -> Option<U>
-    where
-        U: PartialEq + Ord + Copy + Hash,
+pub(crate) fn next_duplicate<U>(iter: impl Iterator<Item = U>) -> Option<U>
+where
+    U: PartialEq + Ord + Copy + Hash,
 {
     #[cfg(not(feature = "std"))]
     {

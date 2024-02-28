@@ -150,9 +150,7 @@ fn ecrecover_tx_id() {
     tx.sign_inputs(&secret, &chain_id);
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
-    let tx = tx
-        .into_checked(height, &consensus_params)
-        .unwrap();
+    let tx = tx.into_checked(height, &consensus_params).unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts

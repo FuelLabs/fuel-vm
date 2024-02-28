@@ -302,8 +302,8 @@ mod field {
         #[inline(always)]
         fn script_data_offset(&self) -> usize {
             if let Some(ScriptMetadata {
-                            script_data_offset, ..
-                        }) = &self.metadata
+                script_data_offset, ..
+            }) = &self.metadata
             {
                 return *script_data_offset;
             }
@@ -343,9 +343,9 @@ mod field {
         #[inline(always)]
         fn inputs_offset(&self) -> usize {
             if let Some(ScriptMetadata {
-                            common: CommonMetadata { inputs_offset, .. },
-                            ..
-                        }) = &self.metadata
+                common: CommonMetadata { inputs_offset, .. },
+                ..
+            }) = &self.metadata
             {
                 return *inputs_offset;
             }
@@ -356,12 +356,12 @@ mod field {
         #[inline(always)]
         fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                            common:
-                            CommonMetadata {
-                                inputs_offset_at, ..
-                            },
-                            ..
-                        }) = &self.metadata
+                common:
+                    CommonMetadata {
+                        inputs_offset_at, ..
+                    },
+                ..
+            }) = &self.metadata
             {
                 return inputs_offset_at.get(idx).cloned();
             }
@@ -370,11 +370,11 @@ mod field {
                 Some(
                     self.inputs_offset()
                         + self
-                        .inputs()
-                        .iter()
-                        .take(idx)
-                        .map(|i| i.size())
-                        .sum::<usize>(),
+                            .inputs()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .sum::<usize>(),
                 )
             } else {
                 None
@@ -384,13 +384,13 @@ mod field {
         #[inline(always)]
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)> {
             if let Some(ScriptMetadata {
-                            common:
-                            CommonMetadata {
-                                inputs_predicate_offset_at,
-                                ..
-                            },
-                            ..
-                        }) = &self.metadata
+                common:
+                    CommonMetadata {
+                        inputs_predicate_offset_at,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
             {
                 return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None);
             }
@@ -420,9 +420,9 @@ mod field {
         #[inline(always)]
         fn outputs_offset(&self) -> usize {
             if let Some(ScriptMetadata {
-                            common: CommonMetadata { outputs_offset, .. },
-                            ..
-                        }) = &self.metadata
+                common: CommonMetadata { outputs_offset, .. },
+                ..
+            }) = &self.metadata
             {
                 return *outputs_offset;
             }
@@ -433,12 +433,12 @@ mod field {
         #[inline(always)]
         fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                            common:
-                            CommonMetadata {
-                                outputs_offset_at, ..
-                            },
-                            ..
-                        }) = &self.metadata
+                common:
+                    CommonMetadata {
+                        outputs_offset_at, ..
+                    },
+                ..
+            }) = &self.metadata
             {
                 return outputs_offset_at.get(idx).cloned();
             }
@@ -447,11 +447,11 @@ mod field {
                 Some(
                     self.outputs_offset()
                         + self
-                        .outputs()
-                        .iter()
-                        .take(idx)
-                        .map(|i| i.size())
-                        .sum::<usize>(),
+                            .outputs()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .sum::<usize>(),
                 )
             } else {
                 None
@@ -473,12 +473,12 @@ mod field {
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
             if let Some(ScriptMetadata {
-                            common:
-                            CommonMetadata {
-                                witnesses_offset, ..
-                            },
-                            ..
-                        }) = &self.metadata
+                common:
+                    CommonMetadata {
+                        witnesses_offset, ..
+                    },
+                ..
+            }) = &self.metadata
             {
                 return *witnesses_offset;
             }
@@ -489,13 +489,13 @@ mod field {
         #[inline(always)]
         fn witnesses_offset_at(&self, idx: usize) -> Option<usize> {
             if let Some(ScriptMetadata {
-                            common:
-                            CommonMetadata {
-                                witnesses_offset_at,
-                                ..
-                            },
-                            ..
-                        }) = &self.metadata
+                common:
+                    CommonMetadata {
+                        witnesses_offset_at,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
             {
                 return witnesses_offset_at.get(idx).cloned();
             }
@@ -504,11 +504,11 @@ mod field {
                 Some(
                     self.witnesses_offset()
                         + self
-                        .witnesses()
-                        .iter()
-                        .take(idx)
-                        .map(|i| i.size())
-                        .sum::<usize>(),
+                            .witnesses()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .sum::<usize>(),
                 )
             } else {
                 None

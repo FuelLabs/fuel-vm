@@ -44,8 +44,8 @@ fn noop_ecal() {
         op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(RegId::ONE),
     ]
-        .into_iter()
-        .collect();
+    .into_iter()
+    .collect();
 
     let mut client = MemoryClient::<NoopEcal>::new(
         fuel_vm::prelude::MemoryStorage::default(),
@@ -113,9 +113,9 @@ fn provide_ecal_fn() {
         4u64.to_be_bytes(),
         5u64.to_be_bytes(),
     ]
-        .into_iter()
-        .flatten()
-        .collect_vec();
+    .into_iter()
+    .flatten()
+    .collect_vec();
     let script = vec![
         op::gtf_args(0x10, 0x00, GTFArgs::ScriptData),
         op::lw(0x20, 0x10, 0),
@@ -126,8 +126,8 @@ fn provide_ecal_fn() {
         op::log(0x20, 0x21, RegId::ZERO, RegId::ZERO),
         op::ret(RegId::ONE),
     ]
-        .into_iter()
-        .collect();
+    .into_iter()
+    .collect();
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();

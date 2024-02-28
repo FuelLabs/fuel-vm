@@ -106,9 +106,9 @@ pub enum ValidityError {
     /// The transaction doesn't provide enough input amount of the native chain asset to
     /// cover all potential execution fees
     #[display(
-    fmt = "Insufficient fee amount: expected {}, provided {}",
-    expected,
-    provided
+        fmt = "Insufficient fee amount: expected {}, provided {}",
+        expected,
+        provided
     )]
     InsufficientFeeAmount {
         /// The expected amount of fees required to cover the transaction
@@ -119,10 +119,10 @@ pub enum ValidityError {
     /// The transaction doesn't provide enough input amount of the given asset to cover
     /// the amounts used in the outputs.
     #[display(
-    fmt = "Insufficient input amount: asset {}, expected {}, provided {}",
-    asset,
-    expected,
-    provided
+        fmt = "Insufficient input amount: asset {}, expected {}, provided {}",
+        asset,
+        expected,
+        provided
     )]
     InsufficientInputAmount {
         /// The asset id being spent

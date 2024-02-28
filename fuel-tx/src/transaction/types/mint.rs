@@ -33,8 +33,8 @@ pub(crate) struct MintMetadata {
 
 impl MintMetadata {
     fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
-        where
-            Tx: crate::UniqueIdentifier,
+    where
+        Tx: crate::UniqueIdentifier,
     {
         let id = tx.id(chain_id);
 

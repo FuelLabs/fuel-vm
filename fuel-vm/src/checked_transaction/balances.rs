@@ -29,18 +29,17 @@ pub(crate) fn initial_free_balances<T>(
     tx: &T,
     base_asset_id: &AssetId,
 ) -> Result<AvailableBalances, ValidityError>
-    where
-        T: Chargeable + field::Inputs + field::Outputs,
+where
+    T: Chargeable + field::Inputs + field::Outputs,
 {
     let (mut non_retryable_balances, retryable_balance) =
         add_up_input_balances(tx, base_asset_id);
 
-    let max_fee = tx.policies().get(PolicyType::MaxFee).ok_or(ValidityError::TransactionMaxFeeNotSet)?;
-    deduct_max_fee_from_base_asset(
-        &mut non_retryable_balances,
-        base_asset_id,
-        max_fee,
-    )?;
+    let max_fee = tx
+        .policies()
+        .get(PolicyType::MaxFee)
+        .ok_or(ValidityError::TransactionMaxFeeNotSet)?;
+    deduct_max_fee_from_base_asset(&mut non_retryable_balances, base_asset_id, max_fee)?;
 
     reduce_free_balances_by_coin_outputs(&mut non_retryable_balances, tx)?;
 
@@ -63,11 +62,11 @@ fn add_up_input_balances<T: field::Inputs>(
         match input {
             // Sum coin inputs
             Input::CoinPredicate(CoinPredicate {
-                                     asset_id, amount, ..
-                                 })
+                asset_id, amount, ..
+            })
             | Input::CoinSigned(CoinSigned {
-                                    asset_id, amount, ..
-                                }) => {
+                asset_id, amount, ..
+            }) => {
                 *non_retryable_balances.entry(*asset_id).or_default() += amount;
             }
             // Sum message coin inputs
@@ -109,15 +108,15 @@ fn reduce_free_balances_by_coin_outputs(
 ) -> Result<(), ValidityError> {
     // reduce free balances by coin outputs
     for (asset_id, amount) in
-    transaction
-        .outputs()
-        .iter()
-        .filter_map(|output| match output {
-            Output::Coin {
-                asset_id, amount, ..
-            } => Some((asset_id, amount)),
-            _ => None,
-        })
+        transaction
+            .outputs()
+            .iter()
+            .filter_map(|output| match output {
+                Output::Coin {
+                    asset_id, amount, ..
+                } => Some((asset_id, amount)),
+                _ => None,
+            })
     {
         let balance = non_retryable_balances.get_mut(asset_id).ok_or(
             ValidityError::TransactionOutputCoinAssetIdNotFound(*asset_id),

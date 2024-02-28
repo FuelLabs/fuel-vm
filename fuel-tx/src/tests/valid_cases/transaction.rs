@@ -9,6 +9,7 @@ use super::{
     TX_PARAMS,
 };
 use crate::{
+    field::MaxFeeLimit,
     policies::Policies,
     *,
 };
@@ -28,7 +29,6 @@ use rand::{
     RngCore,
     SeedableRng,
 };
-use crate::field::MaxFeeLimit;
 
 #[test]
 fn gas_limit() {
@@ -120,8 +120,7 @@ fn maturity() {
         vec![],
         vec![rng.gen()],
     );
-    tx
-        .set_max_fee_limit(arb_max_fee);
+    tx.set_max_fee_limit(arb_max_fee);
     let err = tx
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
@@ -154,7 +153,6 @@ fn create_not_set_witness_limit_success() {
     let block_height = 1000.into();
     let bytecode = vec![];
     let arb_max_fee = 1000;
-
 
     // When
     let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
@@ -288,10 +286,9 @@ fn script__check__no_max_fee_fails() {
         .finalize();
 
     // When
-    let err =
-        tx
-            .check(block_height, &test_params())
-            .expect_err("Expected erroneous transaction");
+    let err = tx
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     // Then
     assert_eq!(ValidityError::TransactionMaxFeeNotSet, err);
@@ -351,13 +348,10 @@ fn max_iow() {
 
     let asset_id: AssetId = rng.gen();
 
-    builder.maturity(maturity).max_fee_limit(arb_max_fee).add_unsigned_coin_input(
-        secret,
-        rng.gen(),
-        rng.gen(),
-        asset_id,
-        rng.gen(),
-    );
+    builder
+        .maturity(maturity)
+        .max_fee_limit(arb_max_fee)
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen());
 
     while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
@@ -587,13 +581,13 @@ fn script__check__happy_path() {
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-        .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+    .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect("Failed to validate transaction");
 }
 
 #[test]
@@ -612,13 +606,13 @@ fn script__check__cannot_create_contract() {
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+    .add_output(Output::contract_created(rng.gen(), rng.gen()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(
         ValidityError::TransactionScriptOutputContractCreated { index: 0 },
@@ -642,13 +636,13 @@ fn script__check__errors_if_script_too_long() {
         vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+    .add_output(Output::contract_created(rng.gen(), rng.gen()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionScriptLength, err);
 }
@@ -669,13 +663,13 @@ fn script__check__errors_if_script_data_too_long() {
         vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
         vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length as usize],
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
+    .add_output(Output::contract_created(rng.gen(), rng.gen()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionScriptDataLength, err);
 }
@@ -923,13 +917,13 @@ fn create__check__something_else() {
         rng.gen(),
         vec![],
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate the transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect("Failed to validate the transaction");
 }
 
 fn create__check__errors_if_witness_bytecode_too_long() {
@@ -947,13 +941,13 @@ fn create__check__errors_if_witness_bytecode_too_long() {
         rng.gen(),
         vec![],
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionCreateBytecodeLen);
 }
@@ -965,7 +959,6 @@ fn create__check_without_signatures__errors_if_wrong_witness_index() {
     let arb_max_fee = 1000;
 
     let block_height = 1000.into();
-
 
     let mut tx = Transaction::create(
         1,
@@ -983,8 +976,7 @@ fn create__check_without_signatures__errors_if_wrong_witness_index() {
         vec![],
         vec![Default::default()],
     );
-    tx
-        .set_max_fee_limit(arb_max_fee);
+    tx.set_max_fee_limit(arb_max_fee);
     let err = tx
         .check_without_signatures(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
@@ -1044,13 +1036,13 @@ fn create__check__can_max_out_storage_slots() {
         rng.gen(),
         storage_slots.clone(),
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate the transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect("Failed to validate the transaction");
 }
 
 #[test]
@@ -1081,13 +1073,13 @@ fn create__check__cannot_exceed_max_storage_slot() {
         rng.gen(),
         storage_slots_max,
     )
-        .maturity(maturity)
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    .maturity(maturity)
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+    .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(ValidityError::TransactionCreateStorageSlotMax, err);
 }
@@ -1172,7 +1164,6 @@ fn mint() {
 
     let block_height = 1000.into();
 
-
     let err = TransactionBuilder::mint(
         block_height,
         rng.gen(),
@@ -1182,9 +1173,9 @@ fn mint() {
         rng.gen(),
         rng.gen(),
     )
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintIncorrectOutputIndex);
 
@@ -1201,9 +1192,9 @@ fn mint() {
         rng.gen(),
         rng.gen(),
     )
-        .finalize()
-        .check(block_height, &test_params())
-        .expect_err("Expected erroneous transaction");
+    .finalize()
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintNonBaseAsset);
 
@@ -1220,9 +1211,9 @@ fn mint() {
         rng.gen(),
         rng.gen(),
     )
-        .finalize()
-        .check(block_height.succ().unwrap(), &test_params())
-        .expect_err("Expected erroneous transaction");
+    .finalize()
+    .check(block_height.succ().unwrap(), &test_params())
+    .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintIncorrectBlockHeight);
 }

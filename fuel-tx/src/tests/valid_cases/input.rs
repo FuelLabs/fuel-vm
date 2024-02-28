@@ -26,7 +26,7 @@ use rand::{
 
 #[test]
 fn input_coin_message_signature() {
-    fn test<Tx: Buildable>(txs: &mut impl Iterator<Item=(Tx, Vec<SecretKey>)>) {
+    fn test<Tx: Buildable>(txs: &mut impl Iterator<Item = (Tx, Vec<SecretKey>)>) {
         let rng = &mut StdRng::seed_from_u64(8586);
 
         fn check_inputs<Tx: Buildable>(tx: Tx) -> Result<(), ValidityError> {
@@ -59,11 +59,11 @@ fn input_coin_message_signature() {
             mut iter: I,
             f: F,
         ) -> Result<(), ValidityError>
-            where
-                R: Rng + CryptoRng,
-                I: Iterator<Item=(Tx, Vec<SecretKey>)>,
-                F: Fn(&mut Tx, &PublicKey),
-                Tx: Buildable,
+        where
+            R: Rng + CryptoRng,
+            I: Iterator<Item = (Tx, Vec<SecretKey>)>,
+            F: Fn(&mut Tx, &PublicKey),
+            Tx: Buildable,
         {
             let (mut tx, keys) = iter.next().expect("Failed to generate a transaction");
 
@@ -105,7 +105,7 @@ fn input_coin_message_signature() {
                     witness_index as u8,
                 )
             })
-                .expect("Failed to validate transaction");
+            .expect("Failed to validate transaction");
         }
 
         for _ in 0..3 {
@@ -128,7 +128,7 @@ fn input_coin_message_signature() {
                     witness_index as u8,
                 )
             })
-                .expect("Failed to validate transaction");
+            .expect("Failed to validate transaction");
         }
     }
 
@@ -142,7 +142,9 @@ fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let arb_max_fee = rng.gen();
 
-    let mut tx = TransactionBuilder::script(vec![], vec![]).max_fee_limit(arb_max_fee).finalize();
+    let mut tx = TransactionBuilder::script(vec![], vec![])
+        .max_fee_limit(arb_max_fee)
+        .finalize();
 
     let input =
         Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
@@ -150,10 +152,7 @@ fn coin_signed() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(
-            block_height,
-            &ConsensusParameters::standard(),
-        )
+        .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err);
@@ -163,7 +162,6 @@ fn coin_signed() {
 fn duplicate_secrets_reuse_witness() {
     let rng = &mut StdRng::seed_from_u64(10000);
     let key = SecretKey::random(rng);
-
 
     let script = TransactionBuilder::script(vec![], vec![])
         // coin 1
@@ -218,8 +216,8 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .unwrap();
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .unwrap();
 
     let predicate = vec![];
     let owner = Input::predicate_owner(&predicate);
@@ -234,9 +232,9 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .err()
-        .unwrap();
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .err()
+    .unwrap();
 
     assert_eq!(ValidityError::InputPredicateEmpty { index: 1 }, err);
 
@@ -254,9 +252,9 @@ fn coin_predicate() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .err()
-        .unwrap();
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .err()
+    .unwrap();
 
     assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 }
@@ -343,10 +341,12 @@ fn message_metadata() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect("failed to validate empty message input");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect("failed to validate empty message input");
 
-    let mut tx = TransactionBuilder::script(vec![], vec![]).max_fee_limit(arb_max_fee).finalize();
+    let mut tx = TransactionBuilder::script(vec![], vec![])
+        .max_fee_limit(arb_max_fee)
+        .finalize();
 
     let input = Input::message_data_signed(
         rng.gen(),
@@ -364,10 +364,7 @@ fn message_metadata() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(
-            block_height,
-            &ConsensusParameters::standard(),
-        )
+        .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err,);
@@ -386,8 +383,8 @@ fn message_metadata() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect_err("Expected failure");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 
@@ -401,15 +398,15 @@ fn message_metadata() {
         0,
         data.clone(),
     )
-        .check(
-            1,
-            &txhash,
-            &[],
-            &[vec![].into()],
-            &Default::default(),
-            &mut None,
-        )
-        .expect_err("expected max data length error");
+    .check(
+        1,
+        &txhash,
+        &[],
+        &[vec![].into()],
+        &Default::default(),
+        &mut None,
+    )
+    .expect_err("expected max data length error");
 
     assert_eq!(ValidityError::InputMessageDataLength { index: 1 }, err,);
 
@@ -423,8 +420,8 @@ fn message_metadata() {
         generate_nonempty_padded_bytes(rng),
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect_err("expected max data length error");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect_err("expected max data length error");
 
     assert_eq!(ValidityError::InputMessageDataLength { index: 1 }, err,);
 
@@ -440,8 +437,8 @@ fn message_metadata() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect_err("expected max predicate length error");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect_err("expected max predicate length error");
 
     assert_eq!(ValidityError::InputPredicateLength { index: 1 }, err,);
 
@@ -458,8 +455,8 @@ fn message_metadata() {
         generate_bytes(rng),
         predicate_data,
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect_err("expected max predicate data length error");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect_err("expected max predicate data length error");
 
     assert_eq!(ValidityError::InputPredicateDataLength { index: 1 }, err,);
 }
@@ -468,7 +465,6 @@ fn message_metadata() {
 fn message_message_coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let arb_max_fee = rng.gen();
-
 
     let txhash: Bytes32 = rng.gen();
 
@@ -484,8 +480,8 @@ fn message_message_coin() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect("failed to validate empty message input");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect("failed to validate empty message input");
 
     let mut tx = TransactionBuilder::script(vec![], vec![])
         .max_fee_limit(arb_max_fee)
@@ -496,10 +492,7 @@ fn message_message_coin() {
 
     let block_height = rng.gen();
     let err = tx
-        .check(
-            block_height,
-            &ConsensusParameters::standard(),
-        )
+        .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputWitnessIndexBounds { index: 0 }, err,);
@@ -517,8 +510,8 @@ fn message_message_coin() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect_err("Expected failure");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect_err("Expected failure");
 
     assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 
@@ -533,8 +526,8 @@ fn message_message_coin() {
         predicate,
         generate_bytes(rng),
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect_err("expected max predicate length error");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect_err("expected max predicate length error");
 
     assert_eq!(ValidityError::InputPredicateLength { index: 1 }, err,);
 
@@ -550,8 +543,8 @@ fn message_message_coin() {
         generate_bytes(rng),
         predicate_data,
     )
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .expect_err("expected max predicate data length error");
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .expect_err("expected max predicate data length error");
 
     assert_eq!(ValidityError::InputPredicateDataLength { index: 1 }, err,);
 }
@@ -571,10 +564,7 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
         .add_input(b)
         .add_witness(rng.gen())
         .finalize()
-        .check_without_signatures(
-            Default::default(),
-            &ConsensusParameters::standard(),
-        )
+        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect_err("Expected checkable failure");
 
     assert_eq!(err, ValidityError::DuplicateInputUtxoId { utxo_id });
@@ -648,10 +638,7 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         .add_output(o)
         .add_output(p)
         .finalize()
-        .check_without_signatures(
-            Default::default(),
-            &ConsensusParameters::standard(),
-        )
+        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect_err("Expected checkable failure");
 
     assert_eq!(err, ValidityError::DuplicateInputContractId { contract_id });
@@ -680,9 +667,6 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_witness(rng.gen())
         .max_fee_limit(arb_max_fee)
         .finalize()
-        .check_without_signatures(
-            Default::default(),
-            &ConsensusParameters::standard(),
-        )
+        .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect("Duplicated UTXO id is valid for contract input");
 }

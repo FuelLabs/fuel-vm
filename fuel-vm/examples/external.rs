@@ -97,8 +97,8 @@ fn example_file_read() {
         op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x21),   // Log the result
         op::ret(RegId::ONE),
     ]
-        .into_iter()
-        .collect();
+    .into_iter()
+    .collect();
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
@@ -157,8 +157,8 @@ fn example_counter() {
         op::log(0x20, 0x21, 0x22, 0x23),
         op::ret(RegId::ONE),
     ]
-        .into_iter()
-        .collect();
+    .into_iter()
+    .collect();
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
@@ -221,8 +221,8 @@ fn example_shared_counter() {
         op::log(0x20, 0x21, 0x22, 0x23),
         op::ret(RegId::ONE),
     ]
-        .into_iter()
-        .collect();
+    .into_iter()
+    .collect();
 
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();

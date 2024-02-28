@@ -39,14 +39,14 @@ bitflags::bitflags! {
 /// The helper enum to make user-friendly API for [`Policies::set`] and [`Policies::get`]
 /// methods.
 #[derive(
-Clone,
-Copy,
-Debug,
-PartialEq,
-Eq,
-Hash,
-strum_macros::EnumCount,
-strum_macros::EnumIter,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    Hash,
+    strum_macros::EnumCount,
+    strum_macros::EnumIter,
 )]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PolicyType {

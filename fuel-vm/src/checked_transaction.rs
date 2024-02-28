@@ -1471,7 +1471,7 @@ mod tests {
             .unwrap();
         let fees = TransactionFee::checked_from_tx(
             &GasCosts::default(),
-            &params.fee_params(),
+            params.fee_params(),
             &transaction,
             gas_price,
         )
@@ -1485,7 +1485,7 @@ mod tests {
             .clone()
             .into_partially_checked(Default::default(), &params)
             .unwrap()
-            .into_fully_checked(gas_price, &GasCosts::default(), &params.fee_params())
+            .into_fully_checked(gas_price, &GasCosts::default(), params.fee_params())
             .expect("`new_transaction` should be fully valid");
 
         // given
@@ -1497,7 +1497,7 @@ mod tests {
 
         // when
         let err = bigger_checked
-            .into_fully_checked(gas_price, &GasCosts::default(), &params.fee_params())
+            .into_fully_checked(gas_price, &GasCosts::default(), params.fee_params())
             .expect_err("Expected invalid transaction");
 
         let max_fee_from_policies = match err {
@@ -1562,7 +1562,7 @@ mod tests {
         let err = transaction
             .into_partially_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_fully_checked(max_gas_price, &gas_costs, &fee_params)
+            .into_fully_checked(max_gas_price, &gas_costs, fee_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
@@ -1589,7 +1589,7 @@ mod tests {
         let err = transaction
             .into_partially_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_fully_checked(gas_price, &gas_costs, &fee_params)
+            .into_fully_checked(gas_price, &gas_costs, fee_params)
             .expect_err("overflow expected");
 
         // then
@@ -1615,7 +1615,7 @@ mod tests {
             .clone()
             .into_partially_checked(block_height, &params)
             .unwrap()
-            .into_fully_checked(gas_price, &gas_costs, &params.fee_params())
+            .into_fully_checked(gas_price, &gas_costs, params.fee_params())
             .expect("Should be valid");
 
         // given
@@ -1630,7 +1630,7 @@ mod tests {
         tx_without_enough_to_pay_for_tip
             .into_partially_checked(block_height, &params)
             .unwrap()
-            .into_fully_checked(gas_price, &gas_costs, &params.fee_params())
+            .into_fully_checked(gas_price, &gas_costs, params.fee_params())
             .expect_err("Expected invalid transaction");
 
         // when
@@ -1648,7 +1648,7 @@ mod tests {
         tx.clone()
             .into_partially_checked(block_height, &params)
             .unwrap()
-            .into_fully_checked(gas_price, &GasCosts::default(), &params.fee_params())
+            .into_fully_checked(gas_price, &GasCosts::default(), params.fee_params())
             .expect("Should be valid");
     }
 
@@ -1670,7 +1670,7 @@ mod tests {
             .into_fully_checked(
                 gas_price,
                 &GasCosts::default(),
-                &consensus_params.fee_params(),
+                consensus_params.fee_params(),
             )
             .expect_err("overflow expected");
 
@@ -1829,7 +1829,7 @@ mod tests {
 
         let max_fee_with_tip = max_fee.saturating_add(tx.tip() as u128);
 
-        let result = max_fee_with_tip == tx.max_fee(&gas_costs, &fee_params, gas_price);
+        let result = max_fee_with_tip == tx.max_fee(gas_costs, fee_params, gas_price);
         Ok(result)
     }
 
@@ -1866,7 +1866,7 @@ mod tests {
             .saturating_add(fee_remainder)
             .saturating_add(tx.tip() as u128);
         let min_fee = rounded_fee;
-        let calculated_min_fee = tx.min_fee(&gas_costs, &fee_params, gas_price);
+        let calculated_min_fee = tx.min_fee(gas_costs, fee_params, gas_price);
 
         Ok(min_fee == calculated_min_fee)
     }

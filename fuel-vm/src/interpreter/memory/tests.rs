@@ -33,9 +33,9 @@ fn memcopy() {
         .finalize();
 
     let tx = tx
-        .into_partially_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params)
         .expect("default tx should produce a valid checked transaction")
-        .into_fully_checked(
+        .into_immutable(
             zero_gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,
@@ -98,9 +98,9 @@ fn memrange() {
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_partially_checked(Default::default(), &ConsensusParameters::standard())
+        .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
-        .into_fully_checked(
+        .into_immutable(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,
@@ -136,9 +136,9 @@ fn stack_alloc_ownership() {
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_partially_checked(Default::default(), &ConsensusParameters::standard())
+        .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
-        .into_fully_checked(
+        .into_immutable(
             gas_price,
             &consensus_params.gas_costs,
             &consensus_params.fee_params,

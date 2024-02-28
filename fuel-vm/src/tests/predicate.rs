@@ -115,7 +115,7 @@ where
         .expect("Should estimate predicate");
 
     let checked = transaction
-        .into_partially_checked_basic(height, &params)
+        .into_checked_basic(height, &params)
         .expect("Should successfully convert into Checked");
 
     let parallel_execution = {
@@ -265,10 +265,7 @@ async fn execute_gas_metered_predicates(
             .map_err(|_| ())?;
 
         let tx = async_tx
-            .into_partially_checked_basic(
-                Default::default(),
-                &ConsensusParameters::standard(),
-            )
+            .into_checked_basic(Default::default(), &ConsensusParameters::standard())
             .expect("Should successfully create checked tranaction with predicate");
 
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
@@ -283,10 +280,7 @@ async fn execute_gas_metered_predicates(
     transaction.estimate_predicates(&params).map_err(|_| ())?;
 
     let tx = transaction
-        .into_partially_checked_basic(
-            Default::default(),
-            &ConsensusParameters::standard(),
-        )
+        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
     let seq_gas_used = Interpreter::<PredicateStorage, _>::check_predicates(&tx, &params)
@@ -375,14 +369,14 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let _ = builder
             .clone()
-            .finalize_partially_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default())
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_partially_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -421,10 +415,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         .expect("Predicate estimation failed");
 
     let checked = transaction
-        .into_partially_checked_basic(
-            Default::default(),
-            &ConsensusParameters::standard(),
-        )
+        .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
     // parallel version
@@ -501,14 +492,14 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let _ = builder
             .clone()
-            .finalize_partially_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default())
             .check_predicates_async::<TokioWithRayon>(&params)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
-        .finalize_partially_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params)
         .expect("Predicate check failed even if we don't have any predicates");
 
@@ -551,7 +542,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     {
         let tx_with_predicate = builder
             .clone()
-            .finalize_partially_checked_basic(Default::default())
+            .finalize_checked_basic(Default::default())
             .check_predicates_async::<TokioWithRayon>(&params)
             .await;
 
@@ -562,7 +553,7 @@ async fn gas_used_by_predicates_more_than_limit() {
     }
 
     let tx_with_predicate = builder
-        .finalize_partially_checked_basic(Default::default())
+        .finalize_checked_basic(Default::default())
         .check_predicates(&params);
 
     assert!(matches!(

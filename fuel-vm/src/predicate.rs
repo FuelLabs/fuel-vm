@@ -121,7 +121,7 @@ mod tests {
             let tx = TransactionBuilder::script(vec![], vec![])
                 .add_input(i)
                 .add_random_fee_input()
-                .finalize_partially_checked_basic(height);
+                .finalize_checked_basic(height);
 
             // assert invalid idx wont panic
             let idx = 1;
@@ -269,7 +269,7 @@ mod tests {
                 )
                 .add_input(input)
                 .add_random_fee_input()
-                .finalize_partially_checked_basic(height);
+                .finalize_checked_basic(height);
 
                 let result = Interpreter::<PredicateStorage, Script>::check_predicates(
                     &tx,

@@ -3,8 +3,8 @@
 use crate::{
     backtrace::Backtrace,
     checked_transaction::{
+        Checked,
         IntoChecked,
-        PartiallyCheckedTx,
     },
     error::InterpreterError,
     interpreter::{
@@ -188,7 +188,7 @@ where
     /// Deploys `Create` checked transactions.
     pub fn deploy(
         &mut self,
-        checked: PartiallyCheckedTx<Create>,
+        checked: Checked<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
         self.interpreter.deploy(checked)
     }
@@ -202,13 +202,13 @@ where
     Ecal: EcalHandler,
 {
     /// Execute a transaction, and return the new state of the transactor
-    pub fn transact(&mut self, tx: PartiallyCheckedTx<Tx>) -> &mut Self {
+    pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
         let gas_price = self.interpreter.gas_price();
         let gas_costs = self.interpreter.gas_costs();
         let fee_params = self.interpreter.fee_params();
 
         match tx
-            .into_fully_checked(gas_price, gas_costs, fee_params)
+            .into_immutable(gas_price, gas_costs, fee_params)
             .map_err(InterpreterError::CheckError)
             .and_then(|immutable| self.interpreter.transact(immutable))
         {

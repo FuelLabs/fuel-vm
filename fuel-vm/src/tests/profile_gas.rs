@@ -46,7 +46,7 @@ fn profile_gas() {
                 )
                 .script_gas_limit(gas_limit)
                 .maturity(maturity)
-                .finalize_partially_checked(height);
+                .finalize_checked(height);
 
         let output = GasProfiler::default();
 

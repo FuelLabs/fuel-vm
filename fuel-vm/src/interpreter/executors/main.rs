@@ -8,9 +8,9 @@ use alloc::{
 
 use crate::{
     checked_transaction::{
+        Checked,
         IntoChecked,
         ParallelExecutor,
-        PartiallyCheckedTx,
     },
     context::Context,
     error::{
@@ -46,7 +46,7 @@ use crate::{
 use crate::{
     checked_transaction::{
         CheckPredicateParams,
-        FullyCheckedTx,
+        Immutable,
     },
     interpreter::InterpreterParams,
 };
@@ -133,7 +133,7 @@ where
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
     pub fn check_predicates(
-        checked: &PartiallyCheckedTx<Tx>,
+        checked: &Checked<Tx>,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -149,7 +149,7 @@ where
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
     pub async fn check_predicates_async<E>(
-        checked: &PartiallyCheckedTx<Tx>,
+        checked: &Checked<Tx>,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
@@ -650,7 +650,7 @@ where
     /// result of th execution in form of [`StateTransition`]
     pub fn transact_owned(
         storage: S,
-        tx: FullyCheckedTx<Tx>,
+        tx: Immutable<Tx>,
         params: InterpreterParams,
     ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
         let mut interpreter = Self::with_storage(storage, params);
@@ -676,7 +676,7 @@ where
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(
         &mut self,
-        tx: FullyCheckedTx<Tx>,
+        tx: Immutable<Tx>,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
         let state_result = self.init_script(tx).and_then(|_| self.run());
         self.post_execute();
@@ -709,7 +709,7 @@ where
     /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(
         &mut self,
-        tx: PartiallyCheckedTx<Create>,
+        tx: Checked<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
         let (mut create, metadata) = tx.into();
         let gas_costs = self.gas_costs().clone();

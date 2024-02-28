@@ -1817,15 +1817,12 @@ mod tests {
         let max_gas = min_gas
             .saturating_add(*tx.script_gas_limit())
             .saturating_add(witness_limit_allowance);
-        let max_fee: u64 = gas_to_fee(max_gas, gas_price, fee_params.gas_price_factor)
-            .try_into()
-            .map_err(|_| ValidityError::BalanceOverflow)?;
+        let max_fee = gas_to_fee(max_gas, gas_price, fee_params.gas_price_factor);
 
-        let max_fee_with_tip = max_fee + tx.tip();
+        let max_fee_with_tip = max_fee.saturating_add(tx.tip() as u128);
 
-        todo!();
-        // let result = max_fee_with_tip == available_balances.fee.max_fee();
-        // Ok(result)
+        let result = max_fee_with_tip == tx.max_fee(&gas_costs, &fee_params, gas_price);
+        Ok(result)
     }
 
     fn is_valid_min_fee<Tx>(
@@ -1859,13 +1856,13 @@ mod tests {
         let fee = total / fee_params.gas_price_factor as u128;
         let fee_remainder =
             (total.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
-        let rounded_fee = fee.saturating_add(fee_remainder);
-        let min_fee: u64 = rounded_fee
-            .try_into()
-            .map_err(|_| ValidityError::BalanceOverflow)?;
+        let rounded_fee = fee
+            .saturating_add(fee_remainder)
+            .saturating_add(tx.tip() as u128);
+        let min_fee = rounded_fee;
+        let calculated_min_fee = tx.min_fee(&gas_costs, &fee_params, gas_price);
 
-        todo!()
-        // Ok(min_fee == available_balances.fee.min_fee())
+        Ok(min_fee == calculated_min_fee)
     }
 
     fn valid_coin_tx(

@@ -25,10 +25,15 @@ use alloc::{
 };
 use core::{
     borrow::Borrow,
+    fmt::Debug,
     future::Future,
 };
+use std::hash::Hash;
 
-use fuel_tx::ConsensusParameters;
+use fuel_tx::{
+    field::MaxFeeLimit,
+    ConsensusParameters,
+};
 
 mod balances;
 pub mod builder;
@@ -83,6 +88,14 @@ pub struct Checked<Tx: IntoChecked> {
     checks_bitmask: Checks,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct Immutable<Tx: IntoChecked> {
+    gas_price: Word,
+    transaction: Tx,
+    metadata: Tx::Metadata,
+    checks_bitmask: Checks,
+}
+
 impl<Tx: IntoChecked> Checked<Tx> {
     fn new(transaction: Tx, metadata: Tx::Metadata, checks_bitmask: Checks) -> Self {
         Checked {
@@ -118,6 +131,45 @@ impl<Tx: IntoChecked> Checked<Tx> {
             self.checks_bitmask.insert(Checks::Signatures);
         }
         Ok(self)
+    }
+}
+
+impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
+    pub fn into_immutable(
+        self,
+        gas_price: Word,
+        gas_costs: &GasCosts,
+        fee_parameters: &FeeParameters,
+    ) -> Result<Immutable<Tx>, CheckError> {
+        let Checked {
+            transaction,
+            metadata,
+            checks_bitmask,
+        } = self;
+        let fee = TransactionFee::checked_from_tx(
+            gas_costs,
+            fee_parameters,
+            &transaction,
+            gas_price,
+        )
+        .ok_or(CheckError::Validity(ValidityError::BalanceOverflow))?;
+
+        let checked = transaction.max_fee_limit();
+        let calculated = fee.max_fee();
+
+        if calculated > checked {
+            Err(CheckError::InsufficientMaxFee {
+                checked,
+                calculated,
+            })
+        } else {
+            Ok(Immutable {
+                gas_price,
+                transaction,
+                metadata,
+                checks_bitmask,
+            })
+        }
     }
 }
 
@@ -181,6 +233,9 @@ pub enum CheckError {
     Validity(ValidityError),
     /// The predicate verification failed.
     PredicateVerificationFailed(PredicateVerificationFailed),
+    /// The max fee used during checking was lower than calculated during `Immutable`
+    /// conversion
+    InsufficientMaxFee { checked: Word, calculated: Word },
 }
 
 /// Performs checks for a transaction
@@ -1423,22 +1478,54 @@ mod tests {
     }
 
     #[test]
-    fn bytes_fee_cant_overflow() {
+    fn into_immutable__bytes_fee_cant_overflow() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         let input_amount = 1000;
-        let gas_price = Word::MAX;
+        let max_gas_price = Word::MAX;
         let gas_limit = 0; // ensure only bytes are included in fee
         let zero_fee_limit = 0;
         let transaction = base_asset_tx(rng, input_amount, gas_limit, zero_fee_limit);
+        let gas_costs = GasCosts::default();
 
         let consensus_params = params(1);
 
+        let fee_params = consensus_params.fee_params();
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
+            .unwrap()
+            .into_immutable(max_gas_price, &gas_costs, &fee_params)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
+    }
+
+    #[test]
+    fn into_immutable__fails_if_fee_limit_too_low() {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+
+        let input_amount = 1000;
+        let gas_price = 100;
+        let gas_limit = 0; // ensure only bytes are included in fee
+        let gas_costs = GasCosts::default();
+
+        let consensus_params = params(1);
+
+        let fee_params = consensus_params.fee_params();
+
+        // given
+        let zero_fee_limit = 0;
+        let transaction = base_asset_tx(rng, input_amount, gas_limit, zero_fee_limit);
+
+        // when
+        let err = transaction
+            .into_checked(Default::default(), &consensus_params)
+            .unwrap()
+            .into_immutable(gas_price, &gas_costs, &fee_params)
+            .expect_err("overflow expected");
+
+        // then
+        assert!(matches!(err, CheckError::InsufficientMaxFee { .. }));
     }
 
     fn arb_tx(rng: &mut StdRng) -> Script {

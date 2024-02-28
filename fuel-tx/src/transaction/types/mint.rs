@@ -137,6 +137,7 @@ mod field {
         InputContract,
         MintAmount,
         MintAssetId,
+        MintGasPrice,
         OutputContract,
     };
 
@@ -222,6 +223,23 @@ mod field {
         #[inline(always)]
         fn mint_asset_id_offset(&self) -> usize {
             self.mint_amount_offset() + WORD_SIZE
+        }
+    }
+
+    impl MintGasPrice for Mint {
+        #[inline(always)]
+        fn gas_price(&self) -> &Word {
+            &self.gas_price
+        }
+
+        #[inline(always)]
+        fn gas_price_mut(&mut self) -> &mut Word {
+            &mut self.gas_price
+        }
+
+        #[inline(always)]
+        fn gas_price_offset(&self) -> usize {
+            self.mint_asset_id_offset() + AssetId::LEN
         }
     }
 }

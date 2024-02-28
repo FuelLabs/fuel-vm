@@ -1418,14 +1418,14 @@ mod tests {
             .add_witness(Default::default())
             .finalize();
 
-        let checked = tx
+        let err = tx
             .into_checked(Default::default(), &ConsensusParameters::standard())
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
         assert!(matches!(
-            checked,
-            CheckError::Validity(ValidityError::InsufficientFeeAmount { .. })
+            err,
+            CheckError::Validity(ValidityError::InputInvalidSignature { .. })
         ));
     }
 
@@ -1491,7 +1491,7 @@ mod tests {
     }
 
     #[test]
-    fn checked_tx_fails_when_provided_fees_dont_cover_gas_costs() {
+    fn into_checked__tx_fails_when_provided_fees_dont_cover_fee_limit() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         let input_amount = 10;
@@ -1499,16 +1499,21 @@ mod tests {
         // make gas price too high for the input amount
         let gas_price = 1;
         let gas_limit = input_amount + 1; // make gas cost 1 higher than input amount
-        let zero_fee_limit = 0;
 
-        let transaction = base_asset_tx(rng, input_amount, gas_limit, zero_fee_limit);
+        // given
+        let input_amount = 10;
+        let big_fee_limit = input_amount + 1;
+
+        let transaction = base_asset_tx(rng, input_amount, gas_limit, big_fee_limit);
 
         let consensus_params = params(factor);
 
+        // when
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
             .expect_err("overflow expected");
 
+        // then
         let provided = match err {
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
                 provided,
@@ -1516,7 +1521,6 @@ mod tests {
             }) => provided,
             _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
-
         assert_eq!(provided, input_amount);
     }
 
@@ -1579,73 +1583,63 @@ mod tests {
     }
 
     #[test]
-    fn into_checked_basic__min_fee_calc_includes_tip() {
+    fn into_immutable__tx_fails_if_tip_not_covered() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
+
+        // tx without tip and fee limit that is good
+        let input_amount = 1;
+        let gas_limit = 1000;
+        let params = ConsensusParameters::standard();
+        let block_height = 1.into();
+        let gas_costs = GasCosts::default();
+        let max_fee_limit = input_amount;
         let gas_price = 1;
-        let mut tx = arb_tx(rng);
+
+        let tx_without_tip =
+            base_asset_tx_with_tip(rng, input_amount, gas_limit, max_fee_limit, None);
+        tx_without_tip
+            .clone()
+            .into_checked(block_height, &params)
+            .unwrap()
+            .into_immutable(gas_price, &gas_costs, &params.fee_params())
+            .expect("Should be valid");
 
         // given
-        let tipless_tx = tx.clone();
+        let tip = 100;
+        let tx_without_enough_to_pay_for_tip = base_asset_tx_with_tip(
+            rng,
+            input_amount,
+            gas_limit,
+            max_fee_limit,
+            Some(tip),
+        );
+        let err = tx_without_enough_to_pay_for_tip
+            .into_checked(block_height, &params)
+            .unwrap()
+            .into_immutable(gas_price, &gas_costs, &params.fee_params())
+            .expect_err("Expected invalid transaction");
 
-        todo!();
-        // let min_fee_without_tip = tipless_tx
-        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
-        //     .unwrap()
-        //     .metadata()
-        //     .fee
-        //     .min_fee();
-        //
-        // let tip = 100;
-        //
-        // // when
-        // tx.set_tip(tip);
-        //
-        // let min_fee_with_tip = tx
-        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
-        //     .unwrap()
-        //     .metadata()
-        //     .fee
-        //     .min_fee();
+        // when
+        let new_input_amount = input_amount + tip;
+        let new_gas_limit = new_input_amount;
+        let tx = base_asset_tx_with_tip(
+            rng,
+            new_input_amount,
+            gas_limit,
+            new_gas_limit,
+            Some(tip),
+        );
 
         // then
-        // assert_eq!(min_fee_without_tip + tip, min_fee_with_tip);
+        tx.clone()
+            .into_checked(block_height, &params)
+            .unwrap()
+            .into_immutable(gas_price, &GasCosts::default(), &params.fee_params())
+            .expect("Should be valid");
     }
 
     #[test]
-    fn into_checked_basic__max_fee_calc_includes_tip() {
-        let rng = &mut StdRng::seed_from_u64(2322u64);
-        let gas_price = 1;
-        let mut tx = arb_tx(rng);
-
-        // given
-        let tipless_tx = tx.clone();
-
-        todo!();
-        // let max_fee_without_tip = tipless_tx
-        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
-        //     .unwrap()
-        //     .metadata()
-        //     .fee
-        //     .max_fee();
-        //
-        // let tip = 100;
-        //
-        // // when
-        // tx.set_tip(tip);
-        //
-        // let max_fee_with_tip = tx
-        //     .into_checked_basic(1.into(), &ConsensusParameters::standard())
-        //     .unwrap()
-        //     .metadata()
-        //     .fee
-        //     .max_fee();
-        //
-        // then
-        // assert_eq!(max_fee_without_tip + tip, max_fee_with_tip);
-    }
-
-    #[test]
-    fn gas_fee_cant_overflow() {
+    fn into_immutable__return_overflow_error_if_gas_price_too_high() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 1000;
         let gas_price = Word::MAX;
@@ -1658,6 +1652,12 @@ mod tests {
 
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
+            .unwrap()
+            .into_immutable(
+                gas_price,
+                &GasCosts::default(),
+                &consensus_params.fee_params(),
+            )
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
@@ -1973,7 +1973,21 @@ mod tests {
         gas_limit: u64,
         max_fee: u64,
     ) -> Script {
-        TransactionBuilder::script(vec![], vec![])
+        base_asset_tx_with_tip(rng, input_amount, gas_limit, max_fee, None)
+    }
+
+    fn base_asset_tx_with_tip(
+        rng: &mut StdRng,
+        input_amount: u64,
+        gas_limit: u64,
+        max_fee: u64,
+        tip: Option<u64>,
+    ) -> Script {
+        let mut builder = TransactionBuilder::script(vec![], vec![]);
+        if let Some(tip) = tip {
+            builder.tip(tip);
+        }
+        builder
             .max_fee_limit(max_fee)
             .script_gas_limit(gas_limit)
             .add_unsigned_coin_input(

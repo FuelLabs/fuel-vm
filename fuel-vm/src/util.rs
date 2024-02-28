@@ -217,6 +217,11 @@ pub mod test_helpers {
             self
         }
 
+        pub fn max_fee_limit(&mut self, max_fee_limit: Word) -> &mut TestBuilder {
+            self.max_fee_limit = max_fee_limit;
+            self
+        }
+
         pub fn script_gas_limit(&mut self, limit: Word) -> &mut TestBuilder {
             self.builder.script_gas_limit(limit);
             self.script_gas_limit = limit;
@@ -597,7 +602,6 @@ pub mod test_helpers {
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
-        let zero_gas_price = 0;
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.

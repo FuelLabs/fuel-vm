@@ -28,7 +28,6 @@ fn memcopy() {
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
-        .max_fee_limit(zero_gas_price)
         .script_gas_limit(100_000)
         .add_random_fee_input()
         .finalize();
@@ -87,10 +86,7 @@ fn memcopy() {
 
 #[test]
 fn memrange() {
-    let zero_gas_price = 0;
-
     let tx = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(zero_gas_price)
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
@@ -119,10 +115,8 @@ fn memrange() {
 #[test]
 fn stack_alloc_ownership() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
-    let zero_gas_price = 0;
 
     let tx = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(zero_gas_price)
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()

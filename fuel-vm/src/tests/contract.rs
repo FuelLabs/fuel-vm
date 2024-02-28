@@ -29,7 +29,6 @@ fn prevent_contract_id_redeployment() {
     let mut client = MemoryClient::default();
 
     let input_amount = 1000;
-    let gas_price = 0;
     let spend_amount = 600;
     let asset_id = AssetId::BASE;
     let zero_fee_limit = 0;

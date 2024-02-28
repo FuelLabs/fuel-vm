@@ -140,11 +140,7 @@ fn input_coin_message_signature() {
 #[test]
 fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let arb_max_fee = rng.gen();
-
-    let mut tx = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(arb_max_fee)
-        .finalize();
+    let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
     let input =
         Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
@@ -324,8 +320,6 @@ fn contract() {
 #[test]
 fn message_metadata() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let arb_max_fee = rng.gen();
-
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
@@ -344,9 +338,7 @@ fn message_metadata() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect("failed to validate empty message input");
 
-    let mut tx = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(arb_max_fee)
-        .finalize();
+    let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
     let input = Input::message_data_signed(
         rng.gen(),
@@ -464,8 +456,6 @@ fn message_metadata() {
 #[test]
 fn message_message_coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let arb_max_fee = rng.gen();
-
     let txhash: Bytes32 = rng.gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
@@ -483,9 +473,7 @@ fn message_message_coin() {
     .check(1, &txhash, &[], &[], &Default::default(), &mut None)
     .expect("failed to validate empty message input");
 
-    let mut tx = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(arb_max_fee)
-        .finalize();
+    let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
     let input = Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
     tx.add_input(input);
@@ -552,14 +540,12 @@ fn message_message_coin() {
 #[test]
 fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let arb_max_fee = rng.gen();
     let utxo_id = rng.gen();
 
     let a = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
     let b = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
 
     let err = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(arb_max_fee)
         .add_input(a)
         .add_input(b)
         .add_witness(rng.gen())
@@ -591,10 +577,8 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         rng.gen(),
         rng.gen(),
     );
-    let arb_max_fee = 1000;
 
     let err = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(arb_max_fee)
         .add_input(fee)
         .add_input(message_input.clone())
         // duplicate input
@@ -631,7 +615,6 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let p = Output::contract(1, rng.gen(), rng.gen());
 
     let err = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(arb_max_fee)
         .add_input(fee)
         .add_input(a)
         .add_input(b)
@@ -665,7 +648,6 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_output(o)
         .add_output(p)
         .add_witness(rng.gen())
-        .max_fee_limit(arb_max_fee)
         .finalize()
         .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect("Duplicated UTXO id is valid for contract input");

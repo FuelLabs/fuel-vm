@@ -71,9 +71,6 @@ mod tests {
     fn from_tx_works() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
-        let zero_gas_price = 0;
-        let zero_fee_limit = 0;
-
         let height = 1.into();
 
         #[rustfmt::skip]
@@ -122,7 +119,6 @@ mod tests {
 
         for i in inputs {
             let tx = TransactionBuilder::script(vec![], vec![])
-                .max_fee_limit(zero_fee_limit)
                 .add_input(i)
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
@@ -180,8 +176,6 @@ mod tests {
     #[test]
     fn inputs_are_validated() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let zero_gas_price = 0;
-        let zero_fee_limit = 0;
 
         let height = 1.into();
         let predicate_data =
@@ -273,7 +267,6 @@ mod tests {
                     [op::ret(0x01)].into_iter().collect(),
                     vec![],
                 )
-                .max_fee_limit(zero_fee_limit)
                 .add_input(input)
                 .add_random_fee_input()
                 .finalize_checked_basic(height);

@@ -59,6 +59,7 @@ fn used_gas_is_deducted_from_base_asset_change() {
     let gas_price = 1;
 
     let change = TestBuilder::new(2322u64)
+        .max_fee_limit(1000)
         .gas_price(gas_price)
         .base_asset_id(base_asset_id)
         .coin_input(base_asset_id, input_amount)
@@ -87,6 +88,7 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
             .collect(),
             vec![],
         )
+        .max_fee_limit(1000)
         .gas_price(gas_price)
         .base_asset_id(base_asset_id)
         .coin_input(base_asset_id, input_amount)
@@ -118,7 +120,6 @@ fn correct_change_is_provided_for_coin_outputs_script() {
 fn correct_change_is_provided_for_coin_outputs_create() {
     let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
-    let gas_price = 0;
     let spend_amount = 600;
     let base_asset_id: AssetId = rng.gen();
     let arb_max_fee = 0;
@@ -246,7 +247,6 @@ fn change_is_not_reduced_by_external_transfer_on_revert() {
     let input_amount = 1000;
     // attempt overspend to cause a revert
     let transfer_amount: Word = input_amount + 100;
-    let max_fee_limit = 1000;
     let gas_price = 0;
     let gas_limit = 1_000_000;
     let asset_id: AssetId = rng.gen();

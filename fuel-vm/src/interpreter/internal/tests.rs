@@ -32,8 +32,6 @@ fn external_balance() {
 
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
-    let zero_fee_limit = 0;
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -54,7 +52,6 @@ fn external_balance() {
     });
 
     let tx = builder
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
@@ -101,7 +98,6 @@ fn variable_output_updates_in_memory() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     let zero_gas_price = 0;
-    let zero_fee_limit = 0;
 
     let consensus_params = ConsensusParameters::standard();
     let mut vm = Interpreter::<_, _>::with_storage(
@@ -122,7 +118,6 @@ fn variable_output_updates_in_memory() {
     };
 
     let tx = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .add_output(variable_output)

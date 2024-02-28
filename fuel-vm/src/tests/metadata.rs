@@ -60,7 +60,6 @@ fn metadata() {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_fee_limit = 0;
 
     let consensus_params = ConsensusParameters::standard();
 
@@ -87,7 +86,6 @@ fn metadata() {
     let output = Output::contract_created(contract_metadata, state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
-        .max_fee_limit(zero_fee_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -138,7 +136,6 @@ fn metadata() {
     let output = Output::contract_created(contract_call, state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
-        .max_fee_limit(zero_fee_limit)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -196,7 +193,6 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(inputs[0].clone())
@@ -235,7 +231,6 @@ fn metadata() {
 fn get_metadata_chain_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_limit = 1_000_000;
-    let zero_gas_price = 0;
     let height = BlockHeight::default();
 
     let chain_id: ChainId = rng.gen();
@@ -257,7 +252,6 @@ fn get_metadata_chain_id() {
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
 
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
-        .max_fee_limit(zero_gas_price)
         .script_gas_limit(gas_limit)
         .with_chain_id(chain_id)
         .add_random_fee_input()
@@ -300,7 +294,6 @@ fn get_transaction_fields() {
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
-        .max_fee_limit(max_fee_limit)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_unsigned_coin_input(
             SecretKey::random(rng),
@@ -359,7 +352,6 @@ fn get_transaction_fields() {
     let asset_amt = 27;
 
     let tx = TransactionBuilder::script(vec![], vec![])
-        .max_fee_limit(max_fee_limit)
         .maturity(maturity)
         .with_gas_costs(gas_costs)
         .script_gas_limit(gas_limit)
@@ -783,7 +775,6 @@ fn get_transaction_fields() {
     });
 
     let tx = builder
-        .max_fee_limit(max_fee_limit)
         .tip(tip)
         .maturity(maturity)
         .script_gas_limit(gas_limit)

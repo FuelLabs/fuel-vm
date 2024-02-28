@@ -71,8 +71,6 @@ fn breakpoint_script() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
-    let zero_gas_price = 0;
-    let zero_fee_limit = 0;
     let height = Default::default();
 
     let script = [
@@ -89,7 +87,6 @@ fn breakpoint_script() {
     let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
@@ -146,9 +143,6 @@ fn single_stepping() {
 
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
-    let zero_gas_price = 0;
-    let zero_fee_limit = 0;
-
     let gas_limit = 1_000_000;
     let height = Default::default();
 
@@ -165,7 +159,6 @@ fn single_stepping() {
     let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()

@@ -30,9 +30,7 @@ const HALF_WORD_SIZE: u64 = (WORD_SIZE as u64) / 2;
 fn code_coverage() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let gas_price = 1;
     let gas_limit = 1_000_000;
-    let zero_fee_limit = 0;
     let maturity = Default::default();
     let height = Default::default();
 
@@ -48,7 +46,6 @@ fn code_coverage() {
     ];
 
     let tx_script = TransactionBuilder::script(script_code.into_iter().collect(), vec![])
-        .max_fee_limit(zero_fee_limit)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),

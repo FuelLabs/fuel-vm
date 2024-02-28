@@ -28,14 +28,12 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_fee_limit = 0;
 
     let consensus_params = ConsensusParameters::standard();
 
     let script = program.into_iter().collect();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()

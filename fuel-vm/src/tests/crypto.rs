@@ -48,11 +48,9 @@ fn secp256k1_recover() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_fee_limit = 0;
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
@@ -85,7 +83,6 @@ fn secp256k1_recover() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -105,11 +102,9 @@ fn ecrecover_tx_id() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_fee_limit = 0;
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
@@ -141,7 +136,6 @@ fn ecrecover_tx_id() {
     let script_data = public.as_ref().to_vec();
 
     let mut tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -167,10 +161,8 @@ async fn recover_tx_id_predicate() {
     use rand::Rng;
     let rng = &mut StdRng::seed_from_u64(1234u64);
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
-    let zero_fee_limit = 0;
 
     let secret = SecretKey::random(rng);
     let public = secret.public_key();
@@ -215,7 +207,6 @@ async fn recover_tx_id_predicate() {
     );
 
     let mut tx = TransactionBuilder::script(vec![], script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(input)
@@ -342,11 +333,9 @@ fn secp256r1_recover() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_fee_limit = 0;
 
     let message = b"The gift of words is the gift of deception and illusion.";
     let message = Message::new(message);
@@ -379,7 +368,6 @@ fn secp256r1_recover() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -484,11 +472,9 @@ fn ed25519_verify() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_fee_limit = 0;
 
     let mut rng = rand::rngs::OsRng;
     let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
@@ -519,7 +505,6 @@ fn ed25519_verify() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -624,11 +609,9 @@ fn ed25519_verify_c_gt_vmaxram_sub_32() {
 fn sha256() {
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_max_fee = 0;
 
     let message = b"I say let the world go to hell, but I should always have my tea.";
     let hash = Hasher::hash(message);
@@ -654,7 +637,6 @@ fn sha256() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_max_fee)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -715,11 +697,9 @@ fn s256_b_gt_vmaxram_sub_c() {
 fn keccak256() {
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
-    let zero_max_fee = 0;
 
     let message = b"...and, moreover, I consider it my duty to warn you that the cat is an ancient, inviolable animal.";
 
@@ -748,7 +728,6 @@ fn keccak256() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
-        .max_fee_limit(zero_max_fee)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()

@@ -88,7 +88,6 @@ where
     );
 
     let gas_limit = 1_000_000;
-    let max_fee_limit = 0;
     let script = vec![];
     let script_data = vec![];
 
@@ -96,10 +95,7 @@ where
     let params = ConsensusParameters::standard();
     let check_params = params.clone().into();
 
-    builder
-        .script_gas_limit(gas_limit)
-        .max_fee_limit(max_fee_limit)
-        .maturity(maturity);
+    builder.script_gas_limit(gas_limit).maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
         builder.add_unsigned_coin_input(
@@ -206,7 +202,6 @@ async fn execute_gas_metered_predicates(
     const GAS_LIMIT: Word = 10000;
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let gas_price = 1_000;
     let arb_max_fee = 2_000;
     let script = vec![];
     let script_data = vec![];
@@ -345,7 +340,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = CheckPredicateParams::default();
 
-    let max_fee_limit = 1000;
     let gas_limit = 1_000_000;
     let script = vec![
         op::addi(0x20, 0x20, 1),
@@ -358,7 +352,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
-        .max_fee_limit(max_fee_limit)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 

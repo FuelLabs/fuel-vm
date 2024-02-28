@@ -238,7 +238,9 @@ pub enum CheckError {
     /// The max fee used during checking was lower than calculated during `Immutable`
     /// conversion
     InsufficientMaxFee {
+        /// The max fee from the policies defined by the user.
         max_fee_from_policies: Word,
+        /// The max fee calculated from the gas price and gas used by the transaction.
         max_fee_from_gas_price: Word,
     },
 }
@@ -734,7 +736,6 @@ mod tests {
     fn checked_tx_accepts_valid_tx() {
         // simple smoke test that valid txs can be checked
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let gas_price = 10;
         let gas_limit = 1000;
         let input_amount = 1000;
         let output_amount = 10;
@@ -761,7 +762,6 @@ mod tests {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
-        let gas_price = 100;
         let gas_limit = 1000;
         let zero_fee_limit = 0;
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
@@ -782,7 +782,6 @@ mod tests {
         // ensure message outputs aren't deducted from available balance
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
-        let gas_price = 100;
         let gas_limit = 1000;
         let zero_fee_limit = 0;
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
@@ -801,7 +800,6 @@ mod tests {
     #[test]
     fn into_checked__message_data_signed_message_is_not_used_to_cover_fees() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let gas_price = 100;
 
         // given
         let input_amount = 100;
@@ -833,7 +831,6 @@ mod tests {
     #[test]
     fn message_data_predicate_message_is_not_used_to_cover_fees() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let gas_price = 100;
         let gas_limit = 1000;
 
         // given
@@ -1392,14 +1389,11 @@ mod tests {
         // simple smoke test that invalid txs cannot be checked
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let asset = rng.gen();
-        let gas_price = 1;
         let gas_limit = 100;
         let input_amount = 1_000;
-        let zero_fee_limit = 0;
 
         // create a tx with invalid signature
         let tx = TransactionBuilder::script(vec![], vec![])
-            .max_fee_limit(zero_fee_limit)
             .script_gas_limit(gas_limit)
             .add_input(Input::coin_signed(
                 rng.gen(),

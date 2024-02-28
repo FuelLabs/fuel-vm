@@ -7,7 +7,10 @@ use crate::{
 use core::iter;
 use fuel_asm::op;
 use fuel_tx::{
-    field::Outputs,
+    field::{
+        MaxFeeLimit,
+        Outputs,
+    },
     ConsensusParameters,
     FeeParameters,
 };
@@ -39,14 +42,6 @@ fn gas_factor_rounds_correctly() {
         .change_output(AssetId::default())
         .build();
 
-    let fee = TransactionFee::checked_from_tx(
-        &gas_costs,
-        &fee_params,
-        transaction.transaction(),
-        gas_price,
-    )
-    .expect("failed to calculate fee");
-
     let profiler = GasProfiler::default();
 
     let consensus_params = ConsensusParameters {
@@ -74,7 +69,7 @@ fn gas_factor_rounds_correctly() {
         })
         .expect("failed to fetch change");
 
-    let initial_balance = input - fee.max_fee();
+    let initial_balance = input - res.tx().max_fee_limit();
 
     let gas_used = profiler.total_gas();
 

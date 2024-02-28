@@ -83,7 +83,6 @@ impl EcalHandler for FileReadEcal {
 }
 
 fn example_file_read() {
-    let zero_gas_price = 0;
     let vm: Interpreter<MemoryStorage, Script, FileReadEcal> =
         Interpreter::with_memory_storage();
 
@@ -142,7 +141,6 @@ impl EcalHandler for CounterEcal {
 }
 
 fn example_counter() {
-    let zero_gas_price = 0;
     let mut vm: Interpreter<MemoryStorage, Script, CounterEcal> =
         Interpreter::with_memory_storage();
 
@@ -206,7 +204,6 @@ impl EcalHandler for SharedCounterEcal {
 }
 
 fn example_shared_counter() {
-    let zero_gas_price = 0;
     let vm: Interpreter<MemoryStorage, Script, SharedCounterEcal> =
         Interpreter::with_memory_storage_and_ecal(SharedCounterEcal {
             counter: Arc::new(Mutex::new(5)),

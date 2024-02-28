@@ -119,7 +119,7 @@ impl TransactionBuilder<Script> {
             script_gas_limit: Default::default(),
             script,
             script_data,
-            policies: Policies::new(),
+            policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -143,7 +143,7 @@ impl TransactionBuilder<Create> {
             bytecode_witness_index: Default::default(),
             salt,
             storage_slots,
-            policies: Policies::new(),
+            policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -415,9 +415,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     fn finalize_inner(&self) -> Tx {
-        let mut new = self.clone();
-
-        let mut tx = new.tx;
+        let mut tx = self.tx.clone();
 
         self.sign_keys
             .iter()
@@ -430,9 +428,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     pub fn finalize_without_signature_inner(&self) -> Tx {
-        let mut new = self.clone();
-
-        let mut tx = new.tx;
+        let mut tx = self.tx.clone();
 
         tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");

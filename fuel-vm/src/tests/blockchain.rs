@@ -63,7 +63,6 @@ fn deploy_contract(
     contract: Witness,
     salt: Salt,
     storage_slots: Vec<StorageSlot>,
-    gas_price: u64,
 ) {
     let zero_fee_limit = 0;
     let code_root = Contract::root_from_code(contract.as_ref());
@@ -580,7 +579,6 @@ fn ldc__load_len_of_target_contract<'a>(
     target_contract_witness: Witness,
     include_log_d: bool,
 ) -> &'a [Receipt] {
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -1084,13 +1082,11 @@ fn code_root_a_plus_32_overflow() {
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
 
-    let zero_gas_price = 0;
-
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots, zero_gas_price);
+    deploy_contract(&mut client, contract, salt, storage_slots);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;
@@ -1132,13 +1128,11 @@ fn code_root_a_over_max_ram() {
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
 
-    let zero_gas_price = 0;
-
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
-    deploy_contract(&mut client, contract, salt, storage_slots, zero_gas_price);
+    deploy_contract(&mut client, contract, salt, storage_slots);
 
     let reg_a = 0x20;
     let reg_contract = 0x21;
@@ -1799,7 +1793,6 @@ fn smo_instruction_works() {
 fn timestamp_works() {
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let block_height = Default::default();
@@ -1878,7 +1871,6 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let zero_fee_limit = 0;
@@ -1922,7 +1914,6 @@ fn block_hash_works(
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
 
@@ -1966,7 +1957,6 @@ fn block_hash_works(
 fn coinbase_works() {
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let zero_fee_limit = 0;

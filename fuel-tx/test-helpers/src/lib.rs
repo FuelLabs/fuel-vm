@@ -370,7 +370,7 @@ mod use_std {
         R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Mint {
-            let mut builder = TransactionBuilder::<Mint>::mint(
+            let builder = TransactionBuilder::<Mint>::mint(
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),

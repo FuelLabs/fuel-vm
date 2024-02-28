@@ -109,7 +109,6 @@ impl Transaction {
         use crate::Finalizable;
 
         crate::TransactionBuilder::script(vec![], vec![])
-            .max_fee_limit(0)
             .add_random_fee_input()
             .finalize()
             .into()

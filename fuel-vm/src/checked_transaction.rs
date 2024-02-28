@@ -1449,7 +1449,7 @@ mod tests {
             .unwrap();
         let fees = TransactionFee::checked_from_tx(
             &GasCosts::default(),
-            &FeeParameters::DEFAULT.with_gas_price_factor(factor),
+            &params.fee_params(),
             &transaction,
             gas_price,
         )
@@ -1459,8 +1459,15 @@ mod tests {
         let new_input_amount = real_max_fee;
         let mut new_transaction =
             base_asset_tx(rng, new_input_amount, gas_limit, real_max_fee);
+        new_transaction
+            .clone()
+            .into_checked(Default::default(), &params)
+            .unwrap()
+            .into_immutable(gas_price, &GasCosts::default(), &params.fee_params())
+            .expect("`new_transaction` should be fully valid");
+
         // given
-        // increase size of transaction bytes
+        // invalidating the transaction by increasing witness size
         new_transaction.witnesses_mut().push(rng.gen());
         let bigger_checked = new_transaction
             .into_checked(Default::default(), &params)
@@ -1468,19 +1475,19 @@ mod tests {
 
         // when
         let err = bigger_checked
-            .into_immutable(gas_price, &GasCosts::default(), &FeeParameters::DEFAULT)
+            .into_immutable(gas_price, &GasCosts::default(), &params.fee_params())
             .expect_err("Expected invalid transaction");
 
-        let provided = match err {
-            CheckError::Validity(ValidityError::InsufficientFeeAmount {
-                provided,
+        let max_fee_from_policies = match err {
+            CheckError::InsufficientMaxFee {
+                max_fee_from_policies,
                 ..
-            }) => provided,
-            _ => panic!("expected insufficient fee amount; found {err:?}"),
+            } => max_fee_from_policies,
+            _ => panic!("expected insufficient max fee; found {err:?}"),
         };
 
         // then
-        assert_eq!(provided, arb_input_amount);
+        assert_eq!(max_fee_from_policies, real_max_fee);
     }
 
     #[test]

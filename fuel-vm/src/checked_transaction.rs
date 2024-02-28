@@ -701,11 +701,13 @@ mod tests {
     use fuel_crypto::SecretKey;
     use fuel_tx::{
         field::{
+            Policies,
             ScriptGasLimit,
             Tip,
             WitnessLimit,
             Witnesses,
         },
+        policies::PolicyType,
         Script,
         TransactionBuilder,
         ValidityError,
@@ -1428,22 +1430,46 @@ mod tests {
     }
 
     #[test]
-    fn checked_tx_fails_when_provided_fees_dont_cover_byte_costs() {
+    fn into_checked__tx_fails_when_provided_fees_dont_cover_byte_costs() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
-        let input_amount = 1;
+        let arb_input_amount = 1;
         let gas_price = 2; // price > amount
         let gas_limit = 0; // don't include any gas execution fees
         let factor = 1;
-        let zero_fee_limit = 0;
+        let zero_max_fee = 0;
+        let params = params(factor);
 
-        let transaction = base_asset_tx(rng, input_amount, gas_limit, zero_fee_limit);
+        // setup "valid" transaction
+        let mut transaction =
+            base_asset_tx(rng, arb_input_amount, gas_limit, zero_max_fee);
+        let checked = transaction
+            .clone()
+            .into_checked(Default::default(), &params)
+            .unwrap();
+        let fees = TransactionFee::checked_from_tx(
+            &GasCosts::default(),
+            &FeeParameters::DEFAULT.with_gas_price_factor(factor),
+            &transaction,
+            gas_price,
+        )
+        .unwrap();
+        let real_max_fee = fees.max_fee();
 
-        let consensus_params = params(factor);
+        let new_input_amount = real_max_fee;
+        let mut new_transaction =
+            base_asset_tx(rng, new_input_amount, gas_limit, real_max_fee);
+        // given
+        // increase size of transaction bytes
+        new_transaction.witnesses_mut().push(rng.gen());
+        let bigger_checked = new_transaction
+            .into_checked(Default::default(), &params)
+            .unwrap();
 
-        let err = transaction
-            .into_checked(Default::default(), &consensus_params)
-            .expect_err("overflow expected");
+        // when
+        let err = bigger_checked
+            .into_immutable(gas_price, &GasCosts::default(), &FeeParameters::DEFAULT)
+            .expect_err("Expected invalid transaction");
 
         let provided = match err {
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
@@ -1453,7 +1479,8 @@ mod tests {
             _ => panic!("expected insufficient fee amount; found {err:?}"),
         };
 
-        assert_eq!(provided, input_amount);
+        // then
+        assert_eq!(provided, arb_input_amount);
     }
 
     #[test]

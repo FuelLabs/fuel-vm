@@ -34,13 +34,13 @@ use crate::{
 };
 use alloc::{
     borrow::Cow,
+    sync::Arc,
     vec::Vec,
 };
 use core::ops::{
     Deref,
     DerefMut,
 };
-use std::sync::Arc;
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
@@ -167,7 +167,9 @@ pub trait InterpreterStorage:
         key: &Bytes32,
     ) -> Result<Option<ContractsStateData>, Self::DataError> {
         let result = StorageWrite::<ContractsState>::take(self, &(contract, key).into())?
-            .map(|v| (*v).clone().into());
+            .as_deref()
+            .map(Clone::clone)
+            .map(Into::into);
         Ok(result)
     }
 

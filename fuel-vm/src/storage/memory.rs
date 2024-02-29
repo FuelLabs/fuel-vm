@@ -30,10 +30,10 @@ use tai64::Tai64;
 use alloc::{
     borrow::Cow,
     collections::BTreeMap,
+    sync::Arc,
     vec::Vec,
 };
 use core::convert::Infallible;
-use std::sync::Arc;
 
 use super::interpreter::ContractsAssetsStorage;
 
@@ -368,7 +368,8 @@ impl StorageRead<ContractsState> for MemoryStorage {
             .memory
             .contract_state
             .get(key)
-            .map(|c| c.as_ref().to_vec())
+            .map(Clone::clone)
+            .map(Into::into)
             .map(Arc::new))
     }
 }

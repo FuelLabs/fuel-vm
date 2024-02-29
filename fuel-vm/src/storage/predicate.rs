@@ -2,6 +2,7 @@ use alloc::{
     borrow::Cow,
     vec::Vec,
 };
+use std::sync::Arc;
 
 use crate::{
     prelude::{
@@ -112,7 +113,7 @@ impl StorageRead<ContractsRawCode> for PredicateStorage {
     fn read_alloc(
         &self,
         _key: &<ContractsRawCode as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, StorageUnavailable> {
+    ) -> Result<Option<Arc<Vec<u8>>>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 }
@@ -130,14 +131,14 @@ impl StorageWrite<ContractsRawCode> for PredicateStorage {
         &mut self,
         _key: &<ContractsRawCode as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::Error> {
         Err(StorageUnavailable)
     }
 
     fn take(
         &mut self,
         _key: &<ContractsRawCode as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
+    ) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         Err(StorageUnavailable)
     }
 }
@@ -163,7 +164,7 @@ impl StorageRead<ContractsState> for PredicateStorage {
     fn read_alloc(
         &self,
         _key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, StorageUnavailable> {
+    ) -> Result<Option<Arc<Vec<u8>>>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 }
@@ -181,14 +182,14 @@ impl StorageWrite<ContractsState> for PredicateStorage {
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::Error> {
         Err(StorageUnavailable)
     }
 
     fn take(
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
+    ) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         Err(StorageUnavailable)
     }
 }

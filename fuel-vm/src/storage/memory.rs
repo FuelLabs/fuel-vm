@@ -33,6 +33,7 @@ use alloc::{
     vec::Vec,
 };
 use core::convert::Infallible;
+use std::sync::Arc;
 
 use super::interpreter::ContractsAssetsStorage;
 
@@ -165,18 +166,24 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
         &mut self,
         key: &ContractId,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::Error> {
         let size = buf.len();
         let prev = self
             .memory
             .contracts
             .insert(*key, Contract::from(buf))
-            .map(Into::into);
+            .map(Into::into)
+            .map(Arc::new);
         Ok((size, prev))
     }
 
-    fn take(&mut self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
-        let prev = self.memory.contracts.remove(key).map(Into::into);
+    fn take(&mut self, key: &ContractId) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
+        let prev = self
+            .memory
+            .contracts
+            .remove(key)
+            .map(Into::into)
+            .map(Arc::new);
         Ok(prev)
     }
 }
@@ -200,8 +207,14 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
         }))
     }
 
-    fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
-        Ok(self.memory.contracts.get(key).map(|c| c.as_ref().to_vec()))
+    fn read_alloc(&self, key: &ContractId) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
+        Ok(self
+            .memory
+            .contracts
+            .get(key)
+            .map(|c| c.as_ref())
+            .map(Into::into)
+            .map(Arc::new))
     }
 }
 
@@ -293,7 +306,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::Error>
     where
         Self: StorageSize<ContractsState>,
     {
@@ -302,15 +315,21 @@ impl StorageWrite<ContractsState> for MemoryStorage {
             .memory
             .contract_state
             .insert(*key, ContractsStateData::from(buf))
-            .map(Into::into);
+            .map(Into::into)
+            .map(Arc::new);
         Ok((size, prev))
     }
 
     fn take(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
-        let prev = self.memory.contract_state.remove(key).map(Into::into);
+    ) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
+        let prev = self
+            .memory
+            .contract_state
+            .remove(key)
+            .map(Into::into)
+            .map(Arc::new);
         Ok(prev)
     }
 }
@@ -344,12 +363,13 @@ impl StorageRead<ContractsState> for MemoryStorage {
     fn read_alloc(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
+    ) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         Ok(self
             .memory
             .contract_state
             .get(key)
-            .map(|c| c.as_ref().to_vec()))
+            .map(|c| c.as_ref().to_vec())
+            .map(Arc::new))
     }
 }
 

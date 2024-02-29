@@ -40,6 +40,7 @@ use core::ops::{
     Deref,
     DerefMut,
 };
+use std::sync::Arc;
 
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
@@ -150,7 +151,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
         value: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::DataError> {
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::DataError> {
         let result = StorageWrite::<ContractsState>::replace(
             self,
             &(contract, key).into(),
@@ -166,7 +167,7 @@ pub trait InterpreterStorage:
         key: &Bytes32,
     ) -> Result<Option<ContractsStateData>, Self::DataError> {
         let result = StorageWrite::<ContractsState>::take(self, &(contract, key).into())?
-            .map(Into::into);
+            .map(|v| (*v).clone().into());
         Ok(result)
     }
 

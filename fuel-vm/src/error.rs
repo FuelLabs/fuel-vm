@@ -36,9 +36,6 @@ pub enum InterpreterError<StorageError> {
     /// contract.
     #[display(fmt = "Execution error: {_0:?}")]
     Panic(PanicReason),
-    /// The provided transaction isn't valid.
-    #[display(fmt = "Failed to validate the transaction: {_0}")]
-    TransactionValidity(ValidityError),
     /// Failed while checking the transaction.
     #[display(fmt = "Failed to check the transaction: {_0:?}")]
     CheckError(CheckError),
@@ -118,9 +115,6 @@ where
             Self::Storage(e) => InterpreterError::Storage(format!("{e:?}")),
             Self::PanicInstruction(e) => InterpreterError::PanicInstruction(*e),
             Self::Panic(e) => InterpreterError::Panic(*e),
-            Self::TransactionValidity(e) => {
-                InterpreterError::TransactionValidity(e.clone())
-            }
             Self::NoTransactionInitialized => InterpreterError::NoTransactionInitialized,
             Self::DebugStateNotInitialized => InterpreterError::DebugStateNotInitialized,
             Self::Bug(e) => InterpreterError::Bug(e.clone()),
@@ -145,12 +139,6 @@ impl<StorageError> From<RuntimeError<StorageError>> for InterpreterError<Storage
     }
 }
 
-impl<StorageError> From<ValidityError> for InterpreterError<StorageError> {
-    fn from(error: ValidityError) -> Self {
-        Self::TransactionValidity(error)
-    }
-}
-
 impl<StorageError> PartialEq for InterpreterError<StorageError>
 where
     StorageError: PartialEq,
@@ -159,7 +147,6 @@ where
         match (self, other) {
             (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
             (Self::Panic(s), Self::Panic(o)) => s == o,
-            (Self::TransactionValidity(s), Self::TransactionValidity(o)) => s == o,
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
             (Self::Storage(a), Self::Storage(b)) => a == b,
             (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
@@ -178,6 +165,12 @@ impl<StorageError> From<Bug> for InterpreterError<StorageError> {
 impl<StorageError> From<Infallible> for InterpreterError<StorageError> {
     fn from(_: Infallible) -> Self {
         unreachable!()
+    }
+}
+
+impl<StorageError> From<ValidityError> for InterpreterError<StorageError> {
+    fn from(err: ValidityError) -> Self {
+        Self::CheckError(CheckError::Validity(err))
     }
 }
 

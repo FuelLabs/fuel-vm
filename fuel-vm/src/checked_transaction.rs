@@ -136,14 +136,15 @@ pub struct Ready<Tx: IntoChecked> {
 
 impl<Tx: IntoChecked> Ready<Tx> {
     /// Consume and decompose components of the `Immutable` transaction.
-    pub fn decompose(self) -> (Word, Tx, Tx::Metadata, Checks) {
+    pub fn decompose(self) -> (Word, Checked<Tx>) {
         let Ready {
             gas_price,
             transaction,
             metadata,
             checks_bitmask,
         } = self;
-        (gas_price, transaction, metadata, checks_bitmask)
+        let checked = Checked::new(transaction, metadata, checks_bitmask);
+        (gas_price, checked)
     }
 
     /// Getter for `gas_price` field
@@ -750,13 +751,13 @@ mod tests {
     }
 
     #[test]
-    fn checked_tx_accepts_valid_tx() {
+    fn into_checked__tx_accepts_valid_tx() {
         // simple smoke test that valid txs can be checked
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let gas_limit = 1000;
         let input_amount = 1000;
         let output_amount = 10;
-        let max_fee_limit = 0;
+        let max_fee_limit = 500;
         let tx =
             valid_coin_tx(rng, gas_limit, input_amount, output_amount, max_fee_limit);
 
@@ -778,9 +779,9 @@ mod tests {
     fn into_checked__tx_accepts_valid_signed_message_coin_for_fees() {
         // simple test to ensure a tx that only has a message input can cover fees
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let input_amount = 100;
+        let input_amount = 1000;
         let gas_limit = 1000;
-        let zero_fee_limit = 0;
+        let zero_fee_limit = 500;
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
 
         let checked = tx
@@ -800,7 +801,7 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 100;
         let gas_limit = 1000;
-        let zero_fee_limit = 0;
+        let zero_fee_limit = 50;
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
 
         let checked = tx
@@ -1663,9 +1664,7 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let secret = SecretKey::random(rng);
         let any_asset = rng.gen();
-        let zero_gas_limit = 0;
         let tx = TransactionBuilder::script(vec![], vec![])
-            .max_fee_limit(zero_gas_limit)
             .script_gas_limit(100)
             // base asset
             .add_unsigned_coin_input(

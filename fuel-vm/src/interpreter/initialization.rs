@@ -108,7 +108,8 @@ where
 
         self.context = Context::Script { block_height };
 
-        let (_, tx, metadata, _) = ready_tx.decompose();
+        let (_, checked) = ready_tx.decompose();
+        let (tx, metadata): (Tx, Tx::Metadata) = checked.into();
 
         let gas_limit = tx
             .as_script()

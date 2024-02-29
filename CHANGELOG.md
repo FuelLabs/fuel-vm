@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#688](https://github.com/FuelLabs/fuel-vm/pull/688): Return `Arc` in `StorageRead` and `StorageWrite` methods returning vectors of bytes.
+
 ## [Version 0.47.0]
 
 ### Added

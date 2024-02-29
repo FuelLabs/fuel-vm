@@ -34,6 +34,7 @@ use crate::{
 };
 use alloc::{
     borrow::Cow,
+    sync::Arc,
     vec::Vec,
 };
 use core::ops::{
@@ -150,7 +151,7 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
         value: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::DataError> {
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::DataError> {
         let result = StorageWrite::<ContractsState>::replace(
             self,
             &(contract, key).into(),
@@ -166,6 +167,8 @@ pub trait InterpreterStorage:
         key: &Bytes32,
     ) -> Result<Option<ContractsStateData>, Self::DataError> {
         let result = StorageWrite::<ContractsState>::take(self, &(contract, key).into())?
+            .as_deref()
+            .map(Clone::clone)
             .map(Into::into);
         Ok(result)
     }

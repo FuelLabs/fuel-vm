@@ -320,7 +320,7 @@ where
     fn read_alloc(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<Vec<u8>>, Self::Error> {
+    ) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         <S as StorageRead<Type>>::read_alloc(&self.0, key)
     }
 }
@@ -371,11 +371,11 @@ where
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::Error> {
         <S as StorageWrite<Type>>::replace(&mut self.0, key, buf)
     }
 
-    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         <S as StorageWrite<Type>>::take(&mut self.0, key)
     }
 }

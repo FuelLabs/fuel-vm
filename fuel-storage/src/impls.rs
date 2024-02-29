@@ -12,6 +12,7 @@ use crate::{
 };
 use alloc::{
     borrow::Cow,
+    sync::Arc,
     vec::Vec,
 };
 
@@ -100,7 +101,7 @@ impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
     fn read_alloc(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<alloc::vec::Vec<u8>>, Self::Error> {
+    ) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         <T as StorageRead<Type>>::read_alloc(self, key)
     }
 }
@@ -119,7 +120,7 @@ impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
     fn read_alloc(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<alloc::vec::Vec<u8>>, Self::Error> {
+    ) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         <T as StorageRead<Type>>::read_alloc(self, key)
     }
 }
@@ -135,11 +136,11 @@ impl<'a, T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type>
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::Error> {
         <T as StorageWrite<Type>>::replace(self, key, buf)
     }
 
-    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error> {
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Arc<Vec<u8>>>, Self::Error> {
         <T as StorageWrite<Type>>::take(self, key)
     }
 }
@@ -191,7 +192,7 @@ impl<'a, T: StorageRead<Type>, Type: Mappable> StorageRef<'a, T, Type> {
     pub fn read_alloc(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<alloc::vec::Vec<u8>>, T::Error> {
+    ) -> Result<Option<Arc<Vec<u8>>>, T::Error> {
         self.0.read_alloc(key)
     }
 }
@@ -250,7 +251,7 @@ impl<'a, T: StorageWrite<Type>, Type: Mappable> StorageMut<'a, T, Type> {
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), T::Error>
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), T::Error>
     where
         T: StorageSize<Type>,
     {
@@ -258,7 +259,7 @@ impl<'a, T: StorageWrite<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     }
 
     #[inline(always)]
-    pub fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, T::Error> {
+    pub fn take(&mut self, key: &Type::Key) -> Result<Option<Arc<Vec<u8>>>, T::Error> {
         self.0.take(key)
     }
 }

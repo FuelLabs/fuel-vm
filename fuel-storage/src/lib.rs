@@ -12,6 +12,7 @@ use alloc::{
         Cow,
         ToOwned,
     },
+    sync::Arc,
     vec::Vec,
 };
 
@@ -116,7 +117,7 @@ pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> 
     /// Same as `read` but allocates a new buffer and returns it.
     ///
     /// Checks the size of the value and allocates a buffer of that size.
-    fn read_alloc(&self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
+    fn read_alloc(&self, key: &Type::Key) -> Result<Option<Arc<Vec<u8>>>, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -144,10 +145,10 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>;
+    ) -> Result<(usize, Option<Arc<Vec<u8>>>), Self::Error>;
 
     /// Removes a value from the storage and returning it without deserializing it.
-    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Arc<Vec<u8>>>, Self::Error>;
 }
 
 /// Returns the merkle root for the `StorageType` per merkle `Key`. Per one storage, it is

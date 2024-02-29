@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.47.0]
+
 ### Added
 
 - [#686](https://github.com/FuelLabs/fuel-vm/pull/686): Implement `serde` for `InterpreterError`.

@@ -699,28 +699,6 @@ where
             self.receipts(),
         ))
     }
-
-    fn verify_ready_tx(
-        &self,
-        tx: &Ready<Tx>,
-    ) -> Result<(), InterpreterError<S::DataError>> {
-        self.gas_price_matches(tx)?;
-        Ok(())
-    }
-
-    fn gas_price_matches(
-        &self,
-        tx: &Ready<Tx>,
-    ) -> Result<(), InterpreterError<S::DataError>> {
-        if tx.gas_price() != self.gas_price() {
-            Err(InterpreterError::ReadyTransactionWrongGasPrice {
-                expected: self.gas_price(),
-                actual: tx.gas_price(),
-            })
-        } else {
-            Ok(())
-        }
-    }
 }
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
@@ -733,9 +711,13 @@ where
     /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(
         &mut self,
-        tx: Checked<Create>,
+        tx: Ready<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
-        let (mut create, metadata) = tx.into();
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut create, metadata): (Create, <Create as IntoChecked>::Metadata) =
+            checked.into();
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
@@ -750,5 +732,29 @@ where
             gas_price,
         )?;
         Ok(create)
+    }
+}
+
+impl<S: InterpreterStorage, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+    fn verify_ready_tx<Tx2: IntoChecked>(
+        &self,
+        tx: &Ready<Tx2>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        self.gas_price_matches(tx)?;
+        Ok(())
+    }
+
+    fn gas_price_matches<Tx2: IntoChecked>(
+        &self,
+        tx: &Ready<Tx2>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        if tx.gas_price() != self.gas_price() {
+            Err(InterpreterError::ReadyTransactionWrongGasPrice {
+                expected: self.gas_price(),
+                actual: tx.gas_price(),
+            })
+        } else {
+            Ok(())
+        }
     }
 }

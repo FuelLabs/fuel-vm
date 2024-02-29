@@ -193,7 +193,23 @@ where
         &mut self,
         checked: Checked<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
-        self.interpreter.deploy(checked)
+        let gas_price = self.interpreter.gas_price();
+        let gas_costs = self.interpreter.gas_costs();
+        let fee_params = self.interpreter.fee_params();
+
+        let ready = checked
+            .into_ready(gas_price, gas_costs, fee_params)
+            .map_err(InterpreterError::CheckError)?;
+
+        self.deploy_ready_tx(ready)
+    }
+
+    /// Deployt a `Ready` transaction directly instead of letting `Transactor` construct
+    pub fn deploy_ready_tx(
+        &mut self,
+        ready_tx: Ready<Create>,
+    ) -> Result<Create, InterpreterError<S::DataError>> {
+        self.interpreter.deploy(ready_tx)
     }
 }
 
@@ -219,8 +235,7 @@ where
         }
     }
 
-    /// Submit a `Ready` transaction directly instead of letting `Transactor` construct
-    /// for you
+    /// Transact a `Ready` transaction directly instead of letting `Transactor` construct
     pub fn transact_ready_tx(&mut self, ready_tx: Ready<Tx>) -> &mut Self {
         match self.interpreter.transact(ready_tx) {
             Ok(s) => {

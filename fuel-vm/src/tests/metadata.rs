@@ -49,6 +49,7 @@ use crate::prelude::{
     GasCosts,
     *,
 };
+
 #[test]
 fn metadata() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -67,7 +68,7 @@ fn metadata() {
         op::gm_args(0x10, GMArgs::IsCallerExternal),
         op::gm_args(0x11, GMArgs::GetCaller),
         op::log(0x10, 0x00, 0x00, 0x00),
-        op::movi(0x20,  ContractId::LEN as Immediate18),
+        op::movi(0x20, ContractId::LEN as Immediate18),
         op::logd(0x00, 0x00, 0x11, 0x20),
         op::ret(RegId::ONE),
     ];
@@ -89,7 +90,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
@@ -139,7 +140,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     assert!(
@@ -200,7 +201,7 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let receipts = Transactor::<_, _>::new(&mut storage, interpreter_params)
@@ -230,7 +231,6 @@ fn metadata() {
 fn get_metadata_chain_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_limit = 1_000_000;
-    let zero_gas_price = 0;
     let height = BlockHeight::default();
 
     let chain_id: ChainId = rng.gen();
@@ -244,7 +244,7 @@ fn get_metadata_chain_id() {
         MemoryClient::<NotSupportedEcal>::new(Default::default(), interpreter_params);
 
     #[rustfmt::skip]
-        let get_chain_id = vec![
+    let get_chain_id = vec![
         op::gm_args(0x10, GMArgs::GetChainId),
         op::ret(0x10),
     ];
@@ -256,7 +256,7 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
+        .into_checked(height, &consensus_params)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -275,7 +275,6 @@ fn get_transaction_fields() {
 
     let mut client = MemoryClient::default();
 
-    let zero_gas_price = 0;
     let witness_limit = 1234;
     let max_fee_limit = 4321;
     let tip = 4321;
@@ -296,8 +295,14 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
-        .add_random_fee_input()
-        .finalize_checked(height, zero_gas_price);
+        .add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            max_fee_limit,
+            AssetId::zeroed(),
+            rng.gen(),
+        )
+        .finalize_checked(height);
 
     client.deploy(tx);
 
@@ -389,7 +394,7 @@ fn get_transaction_fields() {
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .add_output(Output::change(rng.gen(), rng.gen_range(10..1000), asset))
-        .finalize_checked(height, zero_gas_price);
+        .finalize_checked(height);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
@@ -693,8 +698,6 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-
-
         op::movi(0x11, 0x02),
         op::movi(0x19, 0x03),
         op::gtf_args(0x10, 0x19, GTFArgs::InputMessageWitnessIndex),
@@ -846,7 +849,7 @@ fn get_transaction_fields() {
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)
-        .finalize_checked_basic(height, zero_gas_price);
+        .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);
     let success = receipts

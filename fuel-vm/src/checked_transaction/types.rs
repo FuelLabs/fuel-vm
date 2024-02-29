@@ -72,7 +72,6 @@ pub mod create {
         ConsensusParameters,
         Create,
         FormatValidityChecks,
-        TransactionFee,
     };
     use fuel_types::BlockHeight;
 
@@ -83,8 +82,6 @@ pub mod create {
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
         pub block_height: BlockHeight,
-        /// The fees and gas usage
-        pub fee: TransactionFee,
     }
 
     impl IntoChecked for Create {
@@ -94,25 +91,17 @@ pub mod create {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, gas_price)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-                fee,
-            } = initial_free_balances(
-                &self,
-                consensus_params.gas_costs(),
-                consensus_params.fee_params(),
-                consensus_params.base_asset_id(),
-                gas_price,
-            )?;
-            assert_eq!(
+            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
+            debug_assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionCreateMessageData` above"
             );
@@ -120,7 +109,6 @@ pub mod create {
             let metadata = CheckedMetadata {
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
-                fee,
             };
 
             Ok(Checked::basic(self, metadata))
@@ -150,11 +138,10 @@ pub mod mint {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, gas_price)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             Ok(Checked::basic(self, ()))
         }
@@ -181,7 +168,6 @@ pub mod script {
         ConsensusParameters,
         FormatValidityChecks,
         Script,
-        TransactionFee,
     };
     use fuel_types::BlockHeight;
 
@@ -194,8 +180,6 @@ pub mod script {
         pub retryable_balance: RetryableAmount,
         /// The block height this tx was verified with
         pub block_height: BlockHeight,
-        /// The fees and gas usage
-        pub fee: TransactionFee,
     }
 
     impl IntoChecked for Script {
@@ -205,24 +189,16 @@ pub mod script {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-            gas_price: u64,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
             self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params, gas_price)?;
+            self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-                fee,
-            } = initial_free_balances(
-                &self,
-                consensus_params.gas_costs(),
-                consensus_params.fee_params(),
-                consensus_params.base_asset_id(),
-                gas_price,
-            )?;
+            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
 
             let metadata = CheckedMetadata {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
@@ -231,7 +207,6 @@ pub mod script {
                     base_asset_id: consensus_params.base_asset_id,
                 },
                 block_height,
-                fee,
             };
 
             Ok(Checked::basic(self, metadata))

@@ -6,8 +6,8 @@ use super::{
 };
 use crate::{
     checked_transaction::{
-        Checked,
         IntoChecked,
+        Ready,
     },
     consts::*,
     context::Context,
@@ -102,12 +102,13 @@ where
     /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(
         &mut self,
-        checked: Checked<Tx>,
+        ready_tx: Ready<Tx>,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 
         self.context = Context::Script { block_height };
 
+        let (_, checked) = ready_tx.decompose();
         let (tx, metadata): (Tx, Tx::Metadata) = checked.into();
 
         let gas_limit = tx

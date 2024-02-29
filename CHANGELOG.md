@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#685](https://github.com/FuelLabs/fuel-vm/pull/685):
+  The `MaxFee` is a mandatory policy to set. The `MaxFee` policy is used to check that the transaction is valid. 
+  Added a new stage for the `Checked` transaction - `Ready`. This type can be constructed with the 
+  `gas_price` before being transacted by the `Interpreter`.
 - [#671](https://github.com/FuelLabs/fuel-vm/pull/671): Support dynamically sized values in the ContractsState table by using a vector data type (`Vec<u8>`).
 - [#682](https://github.com/FuelLabs/fuel-vm/pull/682): Include `Tip` policy in fee calculation
 - [#683](https://github.com/FuelLabs/fuel-vm/pull/683): Simplify `InterpreterStorage` by removing dependency on `MerkleRootStorage` and removing `merkle_` prefix from method names.

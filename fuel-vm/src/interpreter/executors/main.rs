@@ -44,7 +44,10 @@ use crate::{
 };
 
 use crate::{
-    checked_transaction::CheckPredicateParams,
+    checked_transaction::{
+        CheckPredicateParams,
+        Ready,
+    },
     interpreter::InterpreterParams,
 };
 use fuel_asm::{
@@ -647,7 +650,7 @@ where
     /// result of th execution in form of [`StateTransition`]
     pub fn transact_owned(
         storage: S,
-        tx: Checked<Tx>,
+        tx: Ready<Tx>,
         params: InterpreterParams,
     ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
         let mut interpreter = Self::with_storage(storage, params);
@@ -673,8 +676,10 @@ where
     /// that can be referenced from the interpreter instance itself.
     pub fn transact(
         &mut self,
-        tx: Checked<Tx>,
+        tx: Ready<Tx>,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
         let state_result = self.init_script(tx).and_then(|_| self.run());
         self.post_execute();
 
@@ -706,9 +711,13 @@ where
     /// Returns `Create` transaction with all modifications after execution.
     pub fn deploy(
         &mut self,
-        tx: Checked<Create>,
+        tx: Ready<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
-        let (mut create, metadata) = tx.into();
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut create, metadata): (Create, <Create as IntoChecked>::Metadata) =
+            checked.into();
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
@@ -723,5 +732,29 @@ where
             gas_price,
         )?;
         Ok(create)
+    }
+}
+
+impl<S: InterpreterStorage, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+    fn verify_ready_tx<Tx2: IntoChecked>(
+        &self,
+        tx: &Ready<Tx2>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        self.gas_price_matches(tx)?;
+        Ok(())
+    }
+
+    fn gas_price_matches<Tx2: IntoChecked>(
+        &self,
+        tx: &Ready<Tx2>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        if tx.gas_price() != self.gas_price() {
+            Err(InterpreterError::ReadyTransactionWrongGasPrice {
+                expected: self.gas_price(),
+                actual: tx.gas_price(),
+            })
+        } else {
+            Ok(())
+        }
     }
 }

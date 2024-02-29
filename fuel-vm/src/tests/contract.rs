@@ -29,7 +29,6 @@ fn prevent_contract_id_redeployment() {
     let mut client = MemoryClient::default();
 
     let input_amount = 1000;
-    let gas_price = 0;
     let spend_amount = 600;
     let asset_id = AssetId::BASE;
 
@@ -48,9 +47,11 @@ fn prevent_contract_id_redeployment() {
 
     let output = Output::contract_created(contract_undefined, state_root);
 
+    let policies = Policies::new().with_max_fee(0);
+
     let mut create = Transaction::create(
         Default::default(),
-        Policies::new(),
+        policies,
         salt,
         vec![],
         vec![],
@@ -73,7 +74,7 @@ fn prevent_contract_id_redeployment() {
     let consensus_params = ConsensusParameters::standard();
 
     let create = create
-        .into_checked_basic(1.into(), &consensus_params, gas_price)
+        .into_checked_basic(1.into(), &consensus_params)
         .expect("failed to generate checked tx");
 
     // deploy contract

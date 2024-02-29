@@ -32,18 +32,20 @@ fn external_balance() {
 
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
+    let gas_price = 0;
+    let gas_costs = GasCosts::default();
+    let fee_params = ConsensusParameters::standard().fee_params;
 
     let script = op::ret(0x01).to_bytes().to_vec();
     let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
 
-    let mut tx = TransactionBuilder::script(script, Default::default());
+    let mut builder = TransactionBuilder::script(script, Default::default());
 
     balances.iter().copied().for_each(|(asset, amount)| {
-        tx.add_unsigned_coin_input(
+        builder.add_unsigned_coin_input(
             SecretKey::random(&mut rng),
             rng.gen(),
             amount,
@@ -52,11 +54,13 @@ fn external_balance() {
         );
     });
 
-    let tx = tx
+    let tx = builder
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height)
+        .into_ready(gas_price, &gas_costs, &fee_params)
+        .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM!");
 
@@ -65,7 +69,7 @@ fn external_balance() {
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
-            amount + 1
+            amount + 1,
         )
         .is_err());
         external_asset_id_balance_sub(
@@ -79,7 +83,7 @@ fn external_balance() {
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
-            11
+            11,
         )
         .is_err());
         external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 10)
@@ -88,7 +92,7 @@ fn external_balance() {
             &mut vm.balances,
             &mut vm.memory,
             &asset_id,
-            1
+            1,
         )
         .is_err());
     }
@@ -123,8 +127,14 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
-        .expect("failed to check tx");
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx")
+        .into_ready(
+            zero_gas_price,
+            &GasCosts::default(),
+            &consensus_params.fee_params,
+        )
+        .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM!");
 

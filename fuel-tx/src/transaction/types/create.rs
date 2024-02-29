@@ -222,7 +222,6 @@ impl FormatValidityChecks for Create {
         &self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-        gas_price: u64,
     ) -> Result<(), ValidityError> {
         let ConsensusParameters {
             contract_params,
@@ -231,7 +230,7 @@ impl FormatValidityChecks for Create {
             ..
         } = consensus_params;
 
-        check_common_part(self, block_height, gas_price, consensus_params)?;
+        check_common_part(self, block_height, consensus_params)?;
 
         let bytecode_witness_len = self
             .witnesses
@@ -308,13 +307,13 @@ impl FormatValidityChecks for Create {
                     state_root,
                 } if contract_id != &contract_id_calculated
                     || state_root != &state_root_calculated =>
-                {
-                    Err(
-                        ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
-                            index,
-                        },
-                    )
-                }
+                    {
+                        Err(
+                            ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
+                                index,
+                            },
+                        )
+                    }
 
                 // TODO: Output::ContractCreated { contract_id, state_root } if
                 // contract_id == &id && state_root == &storage_root
@@ -638,7 +637,6 @@ mod tests {
     fn storage_slots_sorting() {
         // Test that storage slots must be sorted correctly
         let mut slot_data = [0u8; 64];
-        let arb_gas_price = 1;
 
         let storage_slots = (0..10u64)
             .map(|i| {
@@ -657,7 +655,7 @@ mod tests {
         tx.storage_slots.reverse();
 
         let err = tx
-            .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
+            .check(0.into(), &ConsensusParameters::standard())
             .expect_err("Expected erroneous transaction");
 
         assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);
@@ -669,7 +667,6 @@ mod tests {
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
             StorageSlot::new(Bytes32::zeroed(), Bytes32::zeroed()),
         ];
-        let arb_gas_price = 1;
 
         let err = crate::TransactionBuilder::create(
             vec![].into(),
@@ -678,7 +675,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize()
-        .check(0.into(), &ConsensusParameters::standard(), arb_gas_price)
+        .check(0.into(), &ConsensusParameters::standard())
         .expect_err("Expected erroneous transaction");
 
         assert_eq!(ValidityError::TransactionCreateStorageSlotOrder, err);

@@ -652,6 +652,12 @@ pub mod field {
         fn mint_asset_id_offset(&self) -> usize;
     }
 
+    pub trait MintGasPrice {
+        fn gas_price(&self) -> &Word;
+        fn gas_price_mut(&mut self) -> &mut Word;
+        fn gas_price_offset(&self) -> usize;
+    }
+
     pub trait ReceiptsRoot {
         fn receipts_root(&self) -> &Bytes32;
         fn receipts_root_mut(&mut self) -> &mut Bytes32;

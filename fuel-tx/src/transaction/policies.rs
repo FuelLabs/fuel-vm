@@ -147,6 +147,11 @@ impl Policies {
         }
     }
 
+    /// Returns `true` if the policy is set.
+    pub fn is_set(&self, policy_type: PolicyType) -> bool {
+        self.bits.contains(policy_type.bit())
+    }
+
     /// Returns a policy's type by the `index`.
     pub fn get_type_by_index(&self, index: usize) -> Option<u32> {
         self.bits.iter().nth(index).map(|bit| bit.bits())

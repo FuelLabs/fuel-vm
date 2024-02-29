@@ -48,7 +48,6 @@ fn secp256k1_recover() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -87,7 +86,7 @@ fn secp256k1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -103,7 +102,6 @@ fn ecrecover_tx_id() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -146,9 +144,7 @@ fn ecrecover_tx_id() {
     tx.sign_inputs(&secret, &chain_id);
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
-    let tx = tx
-        .into_checked(height, &consensus_params, gas_price)
-        .unwrap();
+    let tx = tx.into_checked(height, &consensus_params).unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -165,7 +161,6 @@ async fn recover_tx_id_predicate() {
     use rand::Rng;
     let rng = &mut StdRng::seed_from_u64(1234u64);
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
 
@@ -233,7 +228,7 @@ async fn recover_tx_id_predicate() {
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &consensus_params, gas_price)
+            .into_checked(maturity, &consensus_params)
             .expect("Should check predicate successfully");
     }
 
@@ -241,7 +236,7 @@ async fn recover_tx_id_predicate() {
     tx.estimate_predicates(&check_params)
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &consensus_params, gas_price)
+    tx.into_checked(maturity, &consensus_params)
         .expect("Should check predicate successfully");
 }
 
@@ -338,7 +333,6 @@ fn secp256r1_recover() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -377,7 +371,7 @@ fn secp256r1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -386,6 +380,7 @@ fn secp256r1_recover() {
 
     assert!(success);
 }
+
 #[test]
 fn secp256r1_recover_error() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -477,7 +472,6 @@ fn ed25519_verify() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -514,7 +508,7 @@ fn ed25519_verify() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -615,7 +609,6 @@ fn ed25519_verify_c_gt_vmaxram_sub_32() {
 fn sha256() {
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -647,7 +640,7 @@ fn sha256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -663,7 +656,7 @@ fn s256_a_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_a, reg_b, reg_b),
@@ -677,7 +670,7 @@ fn s256_c_gt_mem_max() {
     let reg_a = 0x20;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::not(reg_a, RegId::ZERO),
         op::s256(RegId::ZERO, RegId::ZERO, reg_a),
     ];
@@ -691,7 +684,7 @@ fn s256_b_gt_vmaxram_sub_c() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_b, reg_a, reg_b),
@@ -704,7 +697,6 @@ fn s256_b_gt_vmaxram_sub_c() {
 fn keccak256() {
     let mut client = MemoryClient::default();
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -739,7 +731,7 @@ fn keccak256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, gas_price);
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -755,7 +747,7 @@ fn k256_a_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_a, reg_b, reg_b),
@@ -785,7 +777,7 @@ fn k256_b_gt_vmaxram_sub_c() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-        let script = vec![
+    let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_b, reg_a, reg_b),

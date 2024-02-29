@@ -174,6 +174,7 @@ pub mod test_helpers {
     pub struct TestBuilder {
         rng: StdRng,
         gas_price: Word,
+        max_fee_limit: Word,
         script_gas_limit: Word,
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
@@ -187,6 +188,7 @@ pub mod test_helpers {
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
+                max_fee_limit: 0,
                 script_gas_limit: 100,
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
@@ -212,6 +214,11 @@ pub mod test_helpers {
 
         pub fn gas_price(&mut self, price: Word) -> &mut TestBuilder {
             self.gas_price = price;
+            self
+        }
+
+        pub fn max_fee_limit(&mut self, max_fee_limit: Word) -> &mut TestBuilder {
+            self.max_fee_limit = max_fee_limit;
             self
         }
 
@@ -317,6 +324,7 @@ pub mod test_helpers {
         }
 
         pub fn build(&mut self) -> Checked<Script> {
+            self.builder.max_fee_limit(self.max_fee_limit);
             self.builder.with_tx_params(*self.get_tx_params());
             self.builder
                 .with_contract_params(*self.get_contract_params());
@@ -325,8 +333,7 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder
-                .finalize_checked(self.block_height, self.gas_price)
+            self.builder.finalize_checked(self.block_height)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -423,11 +430,12 @@ pub mod test_helpers {
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 
             let tx = TransactionBuilder::create(program, salt, storage_slots)
+                .max_fee_limit(self.max_fee_limit)
                 .maturity(Default::default())
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params, self.gas_price)
+                .into_checked(self.block_height, &self.consensus_params)
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -466,7 +474,7 @@ pub mod test_helpers {
             let storage = transactor.as_mut().clone();
 
             if let Some(e) = transactor.error() {
-                return Err(anyhow!("{:?}", e))
+                return Err(anyhow!("{:?}", e));
             }
             let is_reverted = transactor.is_reverted();
 
@@ -488,7 +496,7 @@ pub mod test_helpers {
 
             assert_eq!(deser_tx, transaction);
             if is_reverted {
-                return Ok(state)
+                return Ok(state);
             }
 
             // save storage between client instances
@@ -594,13 +602,13 @@ pub mod test_helpers {
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
-        let zero_gas_price = 0;
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
         let gas_limit = tx_params.max_gas_per_tx / 2;
         let maturity = Default::default();
         let height = Default::default();
+        let zero_fee_limit = 0;
 
         // setup contract with state tests
         let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
@@ -612,10 +620,11 @@ pub mod test_helpers {
             Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+            .max_fee_limit(zero_fee_limit)
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height, zero_gas_price);
+            .finalize_checked(height);
 
         client
             .deploy(contract_deployer)
@@ -638,6 +647,7 @@ pub mod test_helpers {
             .collect();
 
         let tx_deploy_loader = TransactionBuilder::script(script, script_data)
+            .max_fee_limit(zero_fee_limit)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .with_tx_params(tx_params)
@@ -650,7 +660,7 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, zero_gas_price);
+            .finalize_checked(height);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

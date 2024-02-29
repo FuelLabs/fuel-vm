@@ -38,7 +38,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, gas_price)
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
@@ -368,7 +368,7 @@ fn test_meq(
     if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
         if count == 0 {
             assert_eq!(*ra, 1); // Empty ranges always equal
-            return
+            return;
         }
         match pattern {
             "equal" => {

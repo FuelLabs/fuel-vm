@@ -13,11 +13,8 @@ use fuel_tx::{
         },
     },
     Chargeable,
-    FeeParameters,
-    GasCosts,
     Input,
     Output,
-    TransactionFee,
     ValidityError,
 };
 use fuel_types::{
@@ -26,17 +23,36 @@ use fuel_types::{
 };
 
 use alloc::collections::BTreeMap;
+use fuel_tx::policies::PolicyType;
 
 pub(crate) fn initial_free_balances<T>(
-    transaction: &T,
-    gas_costs: &GasCosts,
-    params: &FeeParameters,
+    tx: &T,
     base_asset_id: &AssetId,
-    gas_price: u64,
 ) -> Result<AvailableBalances, ValidityError>
 where
     T: Chargeable + field::Inputs + field::Outputs,
 {
+    let (mut non_retryable_balances, retryable_balance) =
+        add_up_input_balances(tx, base_asset_id);
+
+    let max_fee = tx
+        .policies()
+        .get(PolicyType::MaxFee)
+        .ok_or(ValidityError::TransactionMaxFeeNotSet)?;
+    deduct_max_fee_from_base_asset(&mut non_retryable_balances, base_asset_id, max_fee)?;
+
+    reduce_free_balances_by_coin_outputs(&mut non_retryable_balances, tx)?;
+
+    Ok(AvailableBalances {
+        non_retryable_balances,
+        retryable_balance,
+    })
+}
+
+fn add_up_input_balances<T: field::Inputs>(
+    transaction: &T,
+    base_asset_id: &AssetId,
+) -> (BTreeMap<AssetId, Word>, Word) {
     let mut non_retryable_balances = BTreeMap::<AssetId, Word>::new();
     // The sum of [`AssetId::Base`] from metadata messages.
     let mut retryable_balance: Word = 0;
@@ -67,19 +83,29 @@ where
         }
     }
 
-    // Deduct fee from base asset
-    let fee = TransactionFee::checked_from_tx(gas_costs, params, transaction, gas_price)
-        .ok_or(ValidityError::BalanceOverflow)?;
+    (non_retryable_balances, retryable_balance)
+}
 
+fn deduct_max_fee_from_base_asset(
+    non_retryable_balances: &mut BTreeMap<AssetId, Word>,
+    base_asset_id: &AssetId,
+    max_fee: Word,
+) -> Result<(), ValidityError> {
     let base_asset_balance = non_retryable_balances.entry(*base_asset_id).or_default();
-
-    *base_asset_balance = fee.checked_deduct_total(*base_asset_balance).ok_or(
+    *base_asset_balance = base_asset_balance.checked_sub(max_fee).ok_or(
         ValidityError::InsufficientFeeAmount {
-            expected: fee.max_fee(),
+            expected: max_fee,
             provided: *base_asset_balance,
         },
     )?;
 
+    Ok(())
+}
+
+fn reduce_free_balances_by_coin_outputs(
+    non_retryable_balances: &mut BTreeMap<AssetId, Word>,
+    transaction: &impl field::Outputs,
+) -> Result<(), ValidityError> {
     // reduce free balances by coin outputs
     for (asset_id, amount) in
         transaction
@@ -104,15 +130,10 @@ where
         )?;
     }
 
-    Ok(AvailableBalances {
-        non_retryable_balances,
-        retryable_balance,
-        fee,
-    })
+    Ok(())
 }
 
 pub(crate) struct AvailableBalances {
     pub(crate) non_retryable_balances: BTreeMap<AssetId, Word>,
     pub(crate) retryable_balance: Word,
-    pub(crate) fee: TransactionFee,
 }

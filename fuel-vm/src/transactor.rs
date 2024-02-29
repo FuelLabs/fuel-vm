@@ -21,9 +21,12 @@ use crate::{
     storage::InterpreterStorage,
 };
 
-use crate::interpreter::{
-    InterpreterParams,
-    NotSupportedEcal,
+use crate::{
+    checked_transaction::Ready,
+    interpreter::{
+        InterpreterParams,
+        NotSupportedEcal,
+    },
 };
 use fuel_tx::{
     Create,
@@ -190,7 +193,23 @@ where
         &mut self,
         checked: Checked<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
-        self.interpreter.deploy(checked)
+        let gas_price = self.interpreter.gas_price();
+        let gas_costs = self.interpreter.gas_costs();
+        let fee_params = self.interpreter.fee_params();
+
+        let ready = checked
+            .into_ready(gas_price, gas_costs, fee_params)
+            .map_err(InterpreterError::CheckError)?;
+
+        self.deploy_ready_tx(ready)
+    }
+
+    /// Deployt a `Ready` transaction directly instead of letting `Transactor` construct
+    pub fn deploy_ready_tx(
+        &mut self,
+        ready_tx: Ready<Create>,
+    ) -> Result<Create, InterpreterError<S::DataError>> {
+        self.interpreter.deploy(ready_tx)
     }
 }
 
@@ -203,17 +222,35 @@ where
 {
     /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
-        match self.interpreter.transact(tx) {
+        let gas_price = self.interpreter.gas_price();
+        let gas_costs = self.interpreter.gas_costs();
+        let fee_params = self.interpreter.fee_params();
+
+        match tx
+            .into_ready(gas_price, gas_costs, fee_params)
+            .map_err(InterpreterError::CheckError)
+        {
+            Ok(ready_tx) => self.transact_ready_tx(ready_tx),
+            Err(e) => self.handle_error(e),
+        }
+    }
+
+    /// Transact a `Ready` transaction directly instead of letting `Transactor` construct
+    pub fn transact_ready_tx(&mut self, ready_tx: Ready<Tx>) -> &mut Self {
+        match self.interpreter.transact(ready_tx) {
             Ok(s) => {
                 self.program_state.replace(s.into());
                 self.error.take();
+                self
             }
 
-            Err(e) => {
-                self.program_state.take();
-                self.error.replace(e);
-            }
+            Err(e) => self.handle_error(e),
         }
+    }
+
+    fn handle_error(&mut self, error: InterpreterError<S::DataError>) -> &mut Self {
+        self.program_state.take();
+        self.error.replace(error);
         self
     }
 }

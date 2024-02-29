@@ -7,7 +7,10 @@ use crate::{
 use core::iter;
 use fuel_asm::op;
 use fuel_tx::{
-    field::Outputs,
+    field::{
+        MaxFeeLimit,
+        Outputs,
+    },
     ConsensusParameters,
     FeeParameters,
 };
@@ -21,6 +24,8 @@ fn gas_factor_rounds_correctly() {
     let factor = 5479_f64;
     let gas_price = 6197;
 
+    let large_max_fee_limit = input;
+
     let gas_costs = GasCosts::default();
     let fee_params = FeeParameters::default().with_gas_price_factor(factor as Word);
 
@@ -31,21 +36,16 @@ fn gas_factor_rounds_correctly() {
         .collect();
 
     let transaction = TestBuilder::new(2322u64)
+        .max_fee_limit(large_max_fee_limit)
         .gas_price(gas_price)
         .with_fee_params(fee_params)
         .start_script(script, vec![])
         .script_gas_limit(gas_limit)
         .coin_input(AssetId::default(), input)
         .change_output(AssetId::default())
-        .build();
-
-    let fee = TransactionFee::checked_from_tx(
-        &gas_costs,
-        &fee_params,
-        transaction.transaction(),
-        gas_price,
-    )
-    .expect("failed to calculate fee");
+        .build()
+        .into_ready(gas_price, &gas_costs, &fee_params)
+        .unwrap();
 
     let profiler = GasProfiler::default();
 
@@ -74,7 +74,7 @@ fn gas_factor_rounds_correctly() {
         })
         .expect("failed to fetch change");
 
-    let initial_balance = input - fee.max_fee();
+    let initial_balance = input - res.tx().max_fee_limit();
 
     let gas_used = profiler.total_gas();
 

@@ -96,7 +96,9 @@ impl<T> BuildableAloc for T where
 }
 
 impl<T> BuildableStd for T where T: Signable + Cacheable {}
+
 impl<T> BuildableSet for T where T: BuildableAloc + BuildableStd {}
+
 impl<T> Buildable for T where T: BuildableSet {}
 
 #[derive(Debug, Clone)]
@@ -117,7 +119,7 @@ impl TransactionBuilder<Script> {
             script_gas_limit: Default::default(),
             script,
             script_data,
-            policies: Policies::new(),
+            policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -141,7 +143,7 @@ impl TransactionBuilder<Create> {
             bytecode_witness_index: Default::default(),
             salt,
             storage_slots,
-            policies: Policies::new(),
+            policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -412,8 +414,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         *witness_index
     }
 
-    fn finalize_inner(&mut self) -> Tx {
-        let mut tx = core::mem::take(&mut self.tx);
+    fn finalize_inner(&self) -> Tx {
+        let mut tx = self.tx.clone();
 
         self.sign_keys
             .iter()
@@ -425,8 +427,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         tx
     }
 
-    pub fn finalize_without_signature_inner(&mut self) -> Tx {
-        let mut tx = core::mem::take(&mut self.tx);
+    pub fn finalize_without_signature_inner(&self) -> Tx {
+        let mut tx = self.tx.clone();
 
         tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");
@@ -443,40 +445,40 @@ impl<Tx: field::Outputs> TransactionBuilder<Tx> {
 }
 
 pub trait Finalizable<Tx> {
-    fn finalize(&mut self) -> Tx;
+    fn finalize(&self) -> Tx;
 
-    fn finalize_without_signature(&mut self) -> Tx;
+    fn finalize_without_signature(&self) -> Tx;
 }
 
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
-    fn finalize(&mut self) -> Mint {
-        let mut tx = core::mem::take(&mut self.tx);
+    fn finalize(&self) -> Mint {
+        let mut tx = self.tx.clone();
         tx.precompute(&self.get_chain_id())
             .expect("Should be able to calculate cache");
         tx
     }
 
-    fn finalize_without_signature(&mut self) -> Mint {
+    fn finalize_without_signature(&self) -> Mint {
         self.finalize()
     }
 }
 
 impl Finalizable<Create> for TransactionBuilder<Create> {
-    fn finalize(&mut self) -> Create {
+    fn finalize(&self) -> Create {
         self.finalize_inner()
     }
 
-    fn finalize_without_signature(&mut self) -> Create {
+    fn finalize_without_signature(&self) -> Create {
         self.finalize_without_signature_inner()
     }
 }
 
 impl Finalizable<Script> for TransactionBuilder<Script> {
-    fn finalize(&mut self) -> Script {
+    fn finalize(&self) -> Script {
         self.finalize_inner()
     }
 
-    fn finalize_without_signature(&mut self) -> Script {
+    fn finalize_without_signature(&self) -> Script {
         self.finalize_without_signature_inner()
     }
 }

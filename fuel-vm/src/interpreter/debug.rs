@@ -71,7 +71,7 @@ fn breakpoint_script() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
-    let zero_gas_price = 0;
+    let gas_price = 0;
     let height = Default::default();
 
     let script = [
@@ -91,8 +91,14 @@ fn breakpoint_script() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
-        .expect("failed to generate checked tx");
+        .into_checked(height, &consensus_params)
+        .expect("failed to generate checked tx")
+        .into_ready(
+            gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
 
     let suite = vec![
         (
@@ -144,10 +150,9 @@ fn single_stepping() {
 
     let mut vm = Interpreter::<_, _>::with_memory_storage();
 
-    let zero_gas_price = 0;
-
     let gas_limit = 1_000_000;
     let height = Default::default();
+    let gas_price = 0;
 
     // Repeats the middle two instructions five times
     let script = [
@@ -165,8 +170,14 @@ fn single_stepping() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, zero_gas_price)
-        .expect("failed to generate checked tx");
+        .into_checked(height, &consensus_params)
+        .expect("failed to generate checked tx")
+        .into_ready(
+            gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
 
     vm.set_single_stepping(true);
 

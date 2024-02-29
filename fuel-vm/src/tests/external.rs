@@ -23,6 +23,7 @@ use itertools::Itertools;
 /// An ECAL opcode handler function, which charges for `noop` and does nothing.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopEcal;
+
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
     fn ecal<S, Tx>(
         vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
@@ -37,7 +38,6 @@ impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
 
 #[test]
 fn noop_ecal() {
-    let zero_gas_price = 0;
     let script = vec![
         op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(RegId::ONE),
@@ -55,7 +55,7 @@ fn noop_ecal() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, zero_gas_price)
+        .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -68,6 +68,7 @@ fn noop_ecal() {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SumProdEcal;
+
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
@@ -100,7 +101,6 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 #[test]
 fn provide_ecal_fn() {
     let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
-    let zero_gas_price = 0;
 
     let script_data = [
         2u64.to_be_bytes(),
@@ -131,7 +131,7 @@ fn provide_ecal_fn() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, zero_gas_price)
+        .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");

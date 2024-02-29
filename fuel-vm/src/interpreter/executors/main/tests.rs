@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use alloc::{
     vec,
     vec::Vec,
@@ -19,6 +21,7 @@ use rand::{
 
 use crate::{
     checked_transaction::CheckPredicates,
+    interpreter::InterpreterParams,
     prelude::*,
 };
 
@@ -104,4 +107,49 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let check_res = transaction.into_checked(Default::default(), params);
     assert!(check_res.is_ok());
+}
+
+#[test]
+fn transact__tx_with_wrong_gas_price_causes_error() {
+    let mut rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let tx_gas_price = 1;
+    let interpreter_gas_price = 2;
+    let input_amount = 1000;
+    let arb_max_fee = input_amount;
+
+    let interpreter_params = InterpreterParams {
+        gas_price: interpreter_gas_price,
+        ..Default::default()
+    };
+
+    let ready_tx = TransactionBuilder::script(vec![], vec![])
+        .max_fee_limit(arb_max_fee)
+        .add_unsigned_coin_input(
+            SecretKey::random(&mut rng),
+            rng.gen(),
+            input_amount,
+            AssetId::default(),
+            rng.gen(),
+        )
+        .finalize_checked_basic(Default::default())
+        .into_ready(
+            tx_gas_price,
+            &interpreter_params.gas_costs,
+            &interpreter_params.fee_params,
+        )
+        .unwrap();
+
+    // when
+    let mut transactor =
+        Transactor::<_, _>::new(MemoryStorage::default(), interpreter_params);
+    transactor.transact_ready_tx(ready_tx);
+
+    // then
+    let err = transactor.error().expect("Expected error");
+    assert!(matches!(
+        *err,
+        InterpreterError::ReadyTransactionWrongGasPrice { .. }
+    ));
 }

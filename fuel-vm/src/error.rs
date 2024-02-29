@@ -55,6 +55,16 @@ pub enum InterpreterError<StorageError> {
     /// Encountered a bug
     #[display(fmt = "Bug: {_0}")]
     Bug(Bug),
+    /// The `Ready` transaction provided to `Interpreter` doesn't have expected gas price
+    #[display(
+        fmt = "The transaction's gas price is wrong: expected {expected}, got {actual}"
+    )]
+    ReadyTransactionWrongGasPrice {
+        /// Expected gas price
+        expected: Word,
+        /// Actual gas price
+        actual: Word,
+    },
 }
 
 impl<StorageError> InterpreterError<StorageError> {
@@ -115,6 +125,12 @@ where
             Self::DebugStateNotInitialized => InterpreterError::DebugStateNotInitialized,
             Self::Bug(e) => InterpreterError::Bug(e.clone()),
             Self::CheckError(e) => InterpreterError::CheckError(e.clone()),
+            InterpreterError::ReadyTransactionWrongGasPrice { expected, actual } => {
+                InterpreterError::ReadyTransactionWrongGasPrice {
+                    expected: *expected,
+                    actual: *actual,
+                }
+            }
         }
     }
 }

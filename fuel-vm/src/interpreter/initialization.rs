@@ -102,13 +102,13 @@ where
     /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(
         &mut self,
-        immutable: Ready<Tx>,
+        ready_tx: Ready<Tx>,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 
         self.context = Context::Script { block_height };
 
-        let (_, tx, metadata, _) = immutable.decompose();
+        let (_, tx, metadata, _) = ready_tx.decompose();
 
         let gas_limit = tx
             .as_script()

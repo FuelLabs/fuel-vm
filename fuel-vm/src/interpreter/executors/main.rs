@@ -678,6 +678,8 @@ where
         &mut self,
         tx: Ready<Tx>,
     ) -> Result<StateTransitionRef<'_, Tx>, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
         let state_result = self.init_script(tx).and_then(|_| self.run());
         self.post_execute();
 
@@ -696,6 +698,28 @@ where
             self.transaction(),
             self.receipts(),
         ))
+    }
+
+    fn verify_ready_tx(
+        &self,
+        tx: &Ready<Tx>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        self.gas_price_matches(tx)?;
+        Ok(())
+    }
+
+    fn gas_price_matches(
+        &self,
+        tx: &Ready<Tx>,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        if tx.gas_price() != self.gas_price() {
+            Err(InterpreterError::ReadyTransactionWrongGasPrice {
+                expected: self.gas_price(),
+                actual: tx.gas_price(),
+            })
+        } else {
+            Ok(())
+        }
     }
 }
 

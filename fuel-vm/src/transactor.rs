@@ -21,9 +21,12 @@ use crate::{
     storage::InterpreterStorage,
 };
 
-use crate::interpreter::{
-    InterpreterParams,
-    NotSupportedEcal,
+use crate::{
+    checked_transaction::Ready,
+    interpreter::{
+        InterpreterParams,
+        NotSupportedEcal,
+    },
 };
 use fuel_tx::{
     Create,
@@ -210,18 +213,29 @@ where
         match tx
             .into_ready(gas_price, gas_costs, fee_params)
             .map_err(InterpreterError::CheckError)
-            .and_then(|immutable| self.interpreter.transact(immutable))
         {
+            Ok(ready_tx) => self.transact_ready_tx(ready_tx),
+            Err(e) => self.handle_error(e),
+        }
+    }
+
+    /// Submit a `Ready` transaction directly instead of letting `Transactor` construct
+    /// for you
+    pub fn transact_ready_tx(&mut self, ready_tx: Ready<Tx>) -> &mut Self {
+        match self.interpreter.transact(ready_tx) {
             Ok(s) => {
                 self.program_state.replace(s.into());
                 self.error.take();
+                self
             }
 
-            Err(e) => {
-                self.program_state.take();
-                self.error.replace(e);
-            }
+            Err(e) => self.handle_error(e),
         }
+    }
+
+    fn handle_error(&mut self, error: InterpreterError<S::DataError>) -> &mut Self {
+        self.program_state.take();
+        self.error.replace(error);
         self
     }
 }

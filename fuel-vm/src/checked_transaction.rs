@@ -145,6 +145,11 @@ impl<Tx: IntoChecked> Ready<Tx> {
         } = self;
         (gas_price, transaction, metadata, checks_bitmask)
     }
+
+    /// Getter for `gas_price` field
+    pub fn gas_price(&self) -> Word {
+        self.gas_price
+    }
 }
 
 impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
@@ -1521,7 +1526,7 @@ mod tests {
     }
 
     #[test]
-    fn into_immutable__bytes_fee_cant_overflow() {
+    fn into_ready__bytes_fee_cant_overflow() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         let input_amount = 1000;
@@ -1544,7 +1549,7 @@ mod tests {
     }
 
     #[test]
-    fn into_immutable__fails_if_fee_limit_too_low() {
+    fn into_ready__fails_if_fee_limit_too_low() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         let input_amount = 1000;
@@ -1572,7 +1577,7 @@ mod tests {
     }
 
     #[test]
-    fn into_immutable__tx_fails_if_tip_not_covered() {
+    fn into_ready__tx_fails_if_tip_not_covered() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         // tx without tip and fee limit that is good
@@ -1628,7 +1633,7 @@ mod tests {
     }
 
     #[test]
-    fn into_immutable__return_overflow_error_if_gas_price_too_high() {
+    fn into_ready__return_overflow_error_if_gas_price_too_high() {
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let input_amount = 1000;
         let gas_price = Word::MAX;

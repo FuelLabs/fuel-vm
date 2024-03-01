@@ -153,6 +153,24 @@ impl<Tx: IntoChecked> Ready<Tx> {
     }
 }
 
+#[cfg(feature = "test-helpers")]
+impl<Tx: IntoChecked> Checked<Tx> {
+    /// Convert `Checked` into `Ready` without performing final checks.
+    pub fn test_into_read(self) -> Ready<Tx> {
+        let Checked {
+            transaction,
+            metadata,
+            checks_bitmask,
+        } = self;
+        Ready {
+            gas_price: 0,
+            transaction,
+            metadata,
+            checks_bitmask,
+        }
+    }
+}
+
 impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
     /// Run final checks on `Checked` using dynamic values, e.g. `gas_price`
     pub fn into_ready(

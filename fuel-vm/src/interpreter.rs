@@ -253,6 +253,12 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         self.interpreter_params.gas_price
     }
 
+    #[cfg(feature = "test-helpers")]
+    /// Sets the gas price of the `Interpreter`
+    pub fn set_gas_price(&mut self, gas_price: u64) {
+        self.interpreter_params.gas_price = gas_price;
+    }
+
     /// Gas costs for opcodes
     pub fn gas_costs(&self) -> &GasCosts {
         &self.interpreter_params.gas_costs

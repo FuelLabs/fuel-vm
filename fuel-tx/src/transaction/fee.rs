@@ -207,8 +207,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         // of `refund`. But here, because we need to return the amount we
         // want to refund, we need to handle the overflow caused by the price.
         let used_fee: u64 = used_fee.try_into().ok()?;
-        let refund = self.max_fee_limit().checked_sub(used_fee);
-        refund
+        self.max_fee_limit().checked_sub(used_fee)
     }
 
     /// Used for accounting purposes when charging byte based fees.

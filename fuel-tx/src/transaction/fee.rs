@@ -1,6 +1,7 @@
 use crate::{
     field,
     field::{
+        MaxFeeLimit,
         Tip,
         WitnessLimit,
     },
@@ -202,13 +203,12 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor)
             .saturating_add(tip as u128);
 
-        let refund = self
-            .max_fee(gas_costs, fee, gas_price)
-            .saturating_sub(used_fee);
         // It is okay to saturate everywhere above because it only can decrease the value
         // of `refund`. But here, because we need to return the amount we
         // want to refund, we need to handle the overflow caused by the price.
-        refund.try_into().ok()
+        let used_fee: u64 = used_fee.try_into().ok()?;
+        let refund = self.max_fee_limit().checked_sub(used_fee);
+        refund
     }
 
     /// Used for accounting purposes when charging byte based fees.

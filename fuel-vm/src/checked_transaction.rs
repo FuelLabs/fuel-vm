@@ -156,7 +156,7 @@ impl<Tx: IntoChecked> Ready<Tx> {
 #[cfg(feature = "test-helpers")]
 impl<Tx: IntoChecked> Checked<Tx> {
     /// Convert `Checked` into `Ready` without performing final checks.
-    pub fn test_into_read(self) -> Ready<Tx> {
+    pub fn test_into_ready(self) -> Ready<Tx> {
         let Checked {
             transaction,
             metadata,

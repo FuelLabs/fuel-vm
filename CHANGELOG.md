@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.47.1]
+
 ### Added
 
 - [#689](https://github.com/FuelLabs/fuel-vm/pull/689): Re-add fields to the checked tx `Metadata` for min and max gas.

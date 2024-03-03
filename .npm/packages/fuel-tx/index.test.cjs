@@ -38,11 +38,10 @@ describe('fuel-tx [cjs]', () => {
       tx.Input.coin_predicate(
         new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
         tx.Address.zeroed(),
-        BigInt(1234),
+          1234n,
         tx.AssetId.zeroed(),
         new tx.TxPointer("0123456789ab"),
-        new tx.BlockHeight(5678),
-        BigInt(9012),
+          9012n,
         [1, 2, 3, 4],
         [5, 6, 7, 8],
       ),
@@ -53,7 +52,6 @@ describe('fuel-tx [cjs]', () => {
         tx.AssetId.zeroed(),
         new tx.TxPointer("0123456789ab"),
         2,
-        new tx.BlockHeight(5678),
       ),
       tx.Input.contract(
         new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
@@ -174,6 +172,7 @@ describe('fuel-tx [cjs]', () => {
         ),
         1234n,
         tx.AssetId.zeroed(),
+          1234n,
       )],
     ].forEach(([tx_variant_type, tx_variant]) => {
       let bytes = tx_variant.to_bytes();

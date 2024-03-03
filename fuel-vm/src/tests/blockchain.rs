@@ -1642,9 +1642,10 @@ fn smo_instruction_works() {
         R: Rng + CryptoRng,
     {
         let mut client = MemoryClient::default();
-        let fee_params = FeeParameters::default();
+        client.set_gas_price(gas_price);
 
         let gas_limit = 1_000_000;
+        let max_fee = 100_000_000;
         let maturity = Default::default();
         let block_height = Default::default();
 
@@ -1673,11 +1674,14 @@ fn smo_instruction_works() {
         let script_data = vec![];
 
         let mut tx = TransactionBuilder::script(script, script_data);
-        tx.script_gas_limit(gas_limit).maturity(maturity);
+        tx.script_gas_limit(gas_limit)
+            .maturity(maturity)
+            .max_fee_limit(max_fee);
         // add inputs
         for (amount, data) in inputs {
             tx.add_unsigned_message_input(secret, sender, rng.gen(), amount, data);
         }
+        tx.add_unsigned_coin_input(secret, rng.gen(), max_fee, AssetId::BASE, rng.gen());
         let tx = tx
             .add_output(Output::Change {
                 to: Default::default(),
@@ -1731,7 +1735,12 @@ fn smo_instruction_works() {
         // get refunded fee amount
         let refund_amount = state
             .tx()
-            .refund_fee(client.gas_costs(), &fee_params, *gas_used, gas_price)
+            .refund_fee(
+                client.gas_costs(),
+                client.fee_params(),
+                *gas_used,
+                gas_price,
+            )
             .unwrap();
 
         // check that refundable balances aren't converted into change on failed txs

@@ -69,6 +69,7 @@ pub mod create {
     };
     use fuel_tx::{
         Cacheable,
+        Chargeable,
         ConsensusParameters,
         Create,
         FormatValidityChecks,
@@ -82,6 +83,10 @@ pub mod create {
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
         pub block_height: BlockHeight,
+        /// The minimum gas required for this transaction.
+        pub min_gas: u64,
+        /// The maximum gas required for this transaction.
+        pub max_gas: u64,
     }
 
     impl IntoChecked for Create {
@@ -109,6 +114,10 @@ pub mod create {
             let metadata = CheckedMetadata {
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
+                min_gas: self
+                    .min_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
+                max_gas: self
+                    .max_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
             };
 
             Ok(Checked::basic(self, metadata))
@@ -165,6 +174,7 @@ pub mod script {
     };
     use fuel_tx::{
         Cacheable,
+        Chargeable,
         ConsensusParameters,
         FormatValidityChecks,
         Script,
@@ -180,6 +190,10 @@ pub mod script {
         pub retryable_balance: RetryableAmount,
         /// The block height this tx was verified with
         pub block_height: BlockHeight,
+        /// The minimum gas required for this transaction.
+        pub min_gas: u64,
+        /// The maximum gas required for this transaction.
+        pub max_gas: u64,
     }
 
     impl IntoChecked for Script {
@@ -207,6 +221,10 @@ pub mod script {
                     base_asset_id: consensus_params.base_asset_id,
                 },
                 block_height,
+                min_gas: self
+                    .min_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
+                max_gas: self
+                    .max_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
             };
 
             Ok(Checked::basic(self, metadata))

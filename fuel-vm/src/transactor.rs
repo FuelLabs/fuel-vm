@@ -30,6 +30,7 @@ use crate::{
 };
 use fuel_tx::{
     Create,
+    FeeParameters,
     GasCosts,
     Receipt,
     Script,
@@ -152,6 +153,17 @@ where
     /// Gas costs of opcodes
     pub fn gas_costs(&self) -> &GasCosts {
         self.interpreter.gas_costs()
+    }
+
+    /// Fee parameters
+    pub fn fee_params(&self) -> &FeeParameters {
+        self.interpreter.fee_params()
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Sets the gas price of the `Interpreter`
+    pub fn set_gas_price(&mut self, gas_price: u64) {
+        self.interpreter.set_gas_price(gas_price);
     }
 
     /// Tx memory offset

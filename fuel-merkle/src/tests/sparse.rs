@@ -101,8 +101,6 @@ prop_compose! {
 }
 
 proptest! {
-    // #![proptest_config(ProptestConfig::with_cases(1))]
-
     #[test]
     fn generate_inclusion_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree(1, 10), arb_num: usize) {
         let index = arb_num % key_values.len();

@@ -176,7 +176,7 @@ fn try_map_array<const S: usize, T, R, E, F: FnMut(T) -> Result<R, E>>(
         tmp[i] = MaybeUninit::new(f(v)?);
     }
 
-    // SAFETY: Everything element is initialized.
+    // SAFETY: Every element is initialized.
     Ok(tmp.map(|v| unsafe { v.assume_init() }))
 }
 

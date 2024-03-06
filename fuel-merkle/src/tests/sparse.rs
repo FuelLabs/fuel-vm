@@ -132,15 +132,11 @@ proptest! {
     #[test]
     fn generate_exclusion_proof_and_verify_with_excluded_key_returns_true((key_values, tree) in random_tree(2, 10), key: Key) {
         prop_assume!(!key_values.iter().any(|(k, _)| *k == key));
-        // dbg!(&key_values);
-        // dbg!(&key);
         let proof = tree.generate_proof(key).expect("Infallible");
-        // let root = *proof.root();
         let exclusion = match proof {
             Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
             Proof::Exclusion(proof) => proof.verify(key),
         };
-        // println!("root: {}, exclusion: {}", hex::encode(root), exclusion);
         prop_assert!(exclusion)
     }
 }

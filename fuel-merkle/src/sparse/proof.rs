@@ -68,8 +68,21 @@ impl InclusionProof {
                 Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
             };
         }
-
         current == *root
+    }
+}
+
+impl Debug for InclusionProof {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut debug = f.debug_struct("InclusionProof");
+        debug.field("Root", &hex::encode(self.root));
+        let proof_set = self
+            .proof_set
+            .iter()
+            .map(|p| hex::encode(p))
+            .collect::<Vec<_>>();
+        debug.field("Proof set", &proof_set);
+        debug.finish()
     }
 }
 
@@ -87,14 +100,13 @@ impl ExclusionProof {
             proof_set,
             leaf,
         } = self;
-        let mut current = if let Some((leaf_key, leaf_data)) = leaf {
-            let leaf = Node::new(0, Prefix::Leaf, *leaf_key, *leaf_data);
-            *leaf.hash()
-        } else {
-            let leaf = Node::create_placeholder();
-            *leaf.hash()
-        };
         let key = key.into();
+        let leaf = if let Some((leaf_key, leaf_data)) = leaf {
+            Node::new(0, Prefix::Leaf, *leaf_key, *leaf_data)
+        } else {
+            Node::create_placeholder()
+        };
+        let mut current = *leaf.hash();
         for (i, side_hash) in proof_set.iter().enumerate() {
             let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
             let prefix = Prefix::Node;
@@ -103,7 +115,6 @@ impl ExclusionProof {
                 Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
             };
         }
-
         current == *root
     }
 
@@ -144,11 +155,7 @@ mod test {
             StorageMap,
         },
         sparse::{
-            proof::{
-                ExclusionProof,
-                InclusionProof,
-                Proof,
-            },
+            proof::Proof,
             MerkleTree,
             MerkleTreeKey,
             Primitive,

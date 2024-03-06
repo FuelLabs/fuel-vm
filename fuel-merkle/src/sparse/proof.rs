@@ -74,15 +74,15 @@ impl InclusionProof {
 
 impl Debug for InclusionProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut debug = f.debug_struct("InclusionProof");
-        debug.field("Root", &hex::encode(self.root));
         let proof_set = self
             .proof_set
             .iter()
             .map(|p| hex::encode(p))
             .collect::<Vec<_>>();
-        debug.field("Proof set", &proof_set);
-        debug.finish()
+        f.debug_struct("InclusionProof")
+            .field("Root", &hex::encode(self.root))
+            .field("Proof set", &proof_set)
+            .finish()
     }
 }
 
@@ -116,16 +116,16 @@ impl ExclusionProof {
 
 impl Debug for ExclusionProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut debug = f.debug_struct("ExclusionProof");
-        debug.field("Root", &hex::encode(self.root));
         let proof_set = self
             .proof_set
             .iter()
             .map(|p| hex::encode(p))
             .collect::<Vec<_>>();
-        debug.field("Proof set", &proof_set);
-        debug.field("Leaf", &self.leaf);
-        debug.finish()
+        f.debug_struct("ExclusionProof")
+            .field("Root", &hex::encode(self.root))
+            .field("Proof set", &proof_set)
+            .field("Leaf", &self.leaf)
+            .finish()
     }
 }
 
@@ -416,8 +416,8 @@ mod test {
         // Generate inclusion proof and convert to exclusion proof
         let proof = tree.generate_proof(k3).unwrap();
         let exclusion = match proof {
+            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
             Proof::Exclusion(proof) => proof.verify(k3),
-            Proof::Inclusion(_) => panic!("Expected InclusionProof"),
         };
         assert!(exclusion);
     }
@@ -436,8 +436,8 @@ mod test {
 
         let proof = tree.generate_proof(k3).unwrap();
         let exclusion = match proof {
+            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
             Proof::Exclusion(proof) => proof.verify(k3),
-            Proof::Inclusion(_) => panic!("Expected InclusionProof"),
         };
         assert!(exclusion);
     }
@@ -532,7 +532,6 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000000",
             );
             tree.update(MerkleTreeKey::new(key), &value).unwrap();
-            println!("root after update: {:?}", hex::encode(tree.root()));
         }
 
         {
@@ -543,7 +542,6 @@ mod test {
                 "0000000000000000000000000001ce6398719b2999539d3a1cf8af6c40e3f0da",
             );
             tree.update(MerkleTreeKey::new(key), &value).unwrap();
-            println!("root after update: {:?}", hex::encode(tree.root()));
         }
 
         {
@@ -554,7 +552,6 @@ mod test {
                 "83bf317a03d652151e8781666ffb541fcd63888824e6f93312d512751bd9313b",
             );
             tree.update(MerkleTreeKey::new(key), &value).unwrap();
-            println!("root after update: {:?}", hex::encode(tree.root()));
         }
 
         let key: MerkleTreeKey =
@@ -564,8 +561,8 @@ mod test {
         let proof = tree.generate_proof(key).unwrap();
         dbg!(&proof);
         let exclusion = match proof {
-            Proof::Exclusion(proof) => proof.verify(key),
             Proof::Inclusion(_) => panic!("Expected InclusionProof"),
+            Proof::Exclusion(proof) => proof.verify(key),
         };
         assert!(exclusion);
     }
@@ -605,7 +602,7 @@ mod test {
             .collect::<Vec<_>>());
         let exclusion = match proof {
             Proof::Exclusion(proof) => proof.verify(key),
-            Proof::Inclusion(_) => panic!("Expected InclusionProof"),
+            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
         };
         assert!(exclusion);
     }

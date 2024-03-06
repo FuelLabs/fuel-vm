@@ -10,6 +10,8 @@ use crate::{
     },
     sparse::Node,
 };
+
+use alloc::vec::Vec;
 use core::{
     fmt,
     fmt::Debug,
@@ -74,11 +76,7 @@ impl InclusionProof {
 
 impl Debug for InclusionProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let proof_set = self
-            .proof_set
-            .iter()
-            .map(|p| hex::encode(p))
-            .collect::<Vec<_>>();
+        let proof_set = self.proof_set.iter().map(hex::encode).collect::<Vec<_>>();
         f.debug_struct("InclusionProof")
             .field("Root", &hex::encode(self.root))
             .field("Proof set", &proof_set)
@@ -116,11 +114,7 @@ impl ExclusionProof {
 
 impl Debug for ExclusionProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let proof_set = self
-            .proof_set
-            .iter()
-            .map(|p| hex::encode(p))
-            .collect::<Vec<_>>();
+        let proof_set = self.proof_set.iter().map(hex::encode).collect::<Vec<_>>();
         f.debug_struct("ExclusionProof")
             .field("Root", &hex::encode(self.root))
             .field("Proof set", &proof_set)

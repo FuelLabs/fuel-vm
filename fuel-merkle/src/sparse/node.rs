@@ -79,6 +79,7 @@ impl Node {
 
     pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes32, data: D) -> Self {
         let bytes_hi = sum(data);
+        // println!("LEAF: {} {}", hex::encode(key), hex::encode(bytes_hi));
         Self::Node {
             hash: Self::calculate_hash(&Prefix::Leaf, key, &bytes_hi),
             height: 0u32,

@@ -627,7 +627,14 @@ where
             // exclusion proof. When building an exclusion proof, the requested
             // leaf is unset and is currently a placeholder. The path to this
             // placeholder is designated by the requested leaf's key.
-            let exclusion_proof = ExclusionProof { root, proof_set };
+            let leaf_key = *actual_leaf.leaf_key();
+            let leaf_data = *actual_leaf.leaf_data();
+            let exclusion_proof = ExclusionProof {
+                root,
+                proof_set,
+                leaf_key,
+                leaf_data,
+            };
             Proof::Exclusion(exclusion_proof)
         };
         Ok(proof)

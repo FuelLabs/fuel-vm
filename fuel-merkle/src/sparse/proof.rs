@@ -77,18 +77,24 @@ impl InclusionProof {
 pub struct ExclusionProof {
     pub root: Bytes32,
     pub proof_set: ProofSet,
-    pub leaf_key: Bytes32,
-    pub leaf_data: Bytes32,
+    pub leaf: Option<(Bytes32, Bytes32)>,
 }
 
 impl ExclusionProof {
     pub fn verify<K: Into<Bytes32>>(&self, key: K) -> bool {
         let Self {
-            root, proof_set, ..
+            root,
+            proof_set,
+            leaf,
         } = self;
+        let mut current = if let Some((leaf_key, leaf_data)) = leaf {
+            let leaf = Node::new(0, Prefix::Leaf, *leaf_key, *leaf_data);
+            *leaf.hash()
+        } else {
+            let leaf = Node::create_placeholder();
+            *leaf.hash()
+        };
         let key = key.into();
-        let leaf = Node::new(0, Prefix::Leaf, self.leaf_key, self.leaf_data);
-        let mut current = *leaf.hash();
         for (i, side_hash) in proof_set.iter().enumerate() {
             let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
             let prefix = Prefix::Node;
@@ -100,21 +106,33 @@ impl ExclusionProof {
 
         current == *root
     }
+
+    pub fn leaf_key(&self) -> Option<&Bytes32> {
+        self.leaf.as_ref().map(|leaf| &leaf.0)
+    }
+
+    pub fn leaf_data(&self) -> Option<&Bytes32> {
+        self.leaf.as_ref().map(|leaf| &leaf.1)
+    }
 }
 
 impl Debug for ExclusionProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut debug = f.debug_struct("ExclusionProof");
+        debug.field("Root", &hex::encode(self.root));
         let proof_set = self
             .proof_set
             .iter()
             .map(|p| hex::encode(p))
             .collect::<Vec<_>>();
-        f.debug_struct("ExclusionProof")
-            .field("Root", &hex::encode(self.root))
-            .field("Proof set", &proof_set)
-            .field("Leaf key", &hex::encode(self.leaf_key))
-            .field("Leaf data", &hex::encode(self.leaf_data))
-            .finish()
+        debug.field("Proof set", &proof_set);
+        if let Some(leaf_key) = self.leaf_key() {
+            debug.field("Leaf key", &hex::encode(leaf_key));
+        }
+        if let Some(leaf_data) = self.leaf_data() {
+            debug.field("Leaf data", &hex::encode(leaf_data));
+        }
+        debug.finish()
     }
 }
 

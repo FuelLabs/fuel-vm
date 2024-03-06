@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::{
     common::{
         Bytes32,
@@ -92,49 +94,62 @@ prop_compose! {
 prop_compose! {
     fn random_tree(min: usize, max: usize)(kv in key_values(min, max)) -> (Vec<(Key, Value)>, MerkleTree<TestTable, StorageMap<TestTable>>) {
         let storage = StorageMap::<TestTable>::new();
-        let mut tree = MerkleTree::new(storage);
-        for (key, value) in kv.iter() {
-            tree.update(MerkleTreeKey::new(key), value.as_ref()).unwrap();
-        }
+        let iter = kv.clone().into_iter().map(|(key, value)| (MerkleTreeKey::new(key), value));
+        let tree = MerkleTree::from_set(storage, iter).expect("Unable to create Merkle tree");
         (kv, tree)
     }
 }
 
 proptest! {
     #[test]
-    fn generate_inclusion_proof_and_verify_with_valid_key_value_returns_true((key_values, tree) in random_tree(1, 10), arb_num: usize) {
+    fn inclusion_proof__verify__returns_true_with_correct_key_and_correct_value((key_values, tree) in random_tree(1, 100), arb_num: usize) {
+        // Given
         let index = arb_num % key_values.len();
         let (key, value) = key_values[index];
         let key = MerkleTreeKey::new(key);
         let proof = tree.generate_proof(key).expect("Infallible");
+
+        // When
         let inclusion = match proof {
             Proof::Inclusion(proof) => proof.verify(key, &value),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
+
+        // Then
         prop_assert!(inclusion)
     }
 
     #[test]
-    fn generate_inclusion_proof_and_verify_with_valid_key_invalid_value_returns_false((key_values, tree) in random_tree(1, 10), arb_num: usize, value: Bytes32) {
+    fn inclusion_proof__verify__returns_false_with_correct_key_and_incorrect_value((key_values, tree) in random_tree(1, 100), arb_num: usize, value: Bytes32) {
+        // Given
         let index = arb_num % key_values.len();
         let (key, _) = key_values[index];
         let key = MerkleTreeKey::new(key);
         let proof = tree.generate_proof(key).expect("Infallible");
+
+        // When
         let inclusion = match proof {
             Proof::Inclusion(proof) => proof.verify(key, &value),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
+
+        // Then
         prop_assert!(!inclusion)
     }
 
     #[test]
-    fn generate_exclusion_proof_and_verify_with_excluded_key_returns_true((key_values, tree) in random_tree(2, 10), key: Key) {
+    fn exclusion_proof__verify__returns_true_with_excluded_key((key_values, tree) in random_tree(1, 100), key: Key) {
+        // Given
         prop_assume!(!key_values.iter().any(|(k, _)| *k == key));
         let proof = tree.generate_proof(key).expect("Infallible");
+
+        // When
         let exclusion = match proof {
             Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
             Proof::Exclusion(proof) => proof.verify(key),
         };
+
+        // Then
         prop_assert!(exclusion)
     }
 }

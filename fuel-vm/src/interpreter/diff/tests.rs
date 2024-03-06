@@ -47,7 +47,9 @@ use crate::interpreter::InterpreterParams;
 
 #[test]
 fn record_and_invert_storage() {
-    let interpreter_params = InterpreterParams::from(&ConsensusParameters::standard());
+    let arb_gas_price = 1;
+    let interpreter_params =
+        InterpreterParams::new(arb_gas_price, &ConsensusParameters::standard());
 
     let a = Interpreter::<_, Script>::with_storage(
         Record::new(MemoryStorage::default()),

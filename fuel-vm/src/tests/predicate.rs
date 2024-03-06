@@ -82,23 +82,20 @@ where
         amount,
         asset_id,
         tx_pointer,
-        maturity,
         predicate_gas_used,
         predicate,
         predicate_data,
     );
 
-    let gas_price = 0;
     let gas_limit = 1_000_000;
     let script = vec![];
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
+    let params = ConsensusParameters::standard();
+    let check_params = params.clone().into();
 
-    builder
-        .gas_price(gas_price)
-        .script_gas_limit(gas_limit)
-        .maturity(maturity);
+    builder.script_gas_limit(gas_limit).maturity(maturity);
 
     (0..dummy_inputs).for_each(|_| {
         builder.add_unsigned_coin_input(
@@ -107,7 +104,6 @@ where
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            maturity,
         );
     });
 
@@ -115,25 +111,24 @@ where
 
     let mut transaction = builder.finalize();
     transaction
-        .estimate_predicates(&ConsensusParameters::standard().into())
-        .expect("Should estiamte predicate");
+        .estimate_predicates(&check_params)
+        .expect("Should estimate predicate");
 
     let checked = transaction
-        .into_checked_basic(height, &ConsensusParameters::standard())
+        .into_checked_basic(height, &params)
         .expect("Should successfully convert into Checked");
-
-    let params = CheckPredicateParams::default();
 
     let parallel_execution = {
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
-            &checked, &params,
+            &checked,
+            &check_params,
         )
         .await
         .map(|checked| checked.gas_used())
     };
 
     let seq_execution =
-        Interpreter::<PredicateStorage, _>::check_predicates(&checked, &params)
+        Interpreter::<PredicateStorage, _>::check_predicates(&checked, &check_params)
             .map(|checked| checked.gas_used());
 
     match (parallel_execution, seq_execution) {
@@ -207,23 +202,28 @@ async fn execute_gas_metered_predicates(
     const GAS_LIMIT: Word = 10000;
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let gas_price = 1_000;
+    let arb_max_fee = 2_000;
     let script = vec![];
     let script_data = vec![];
 
     let mut builder = TransactionBuilder::script(script, script_data);
-    builder.gas_price(gas_price).maturity(Default::default());
+    builder
+        .max_fee_limit(arb_max_fee)
+        .maturity(Default::default());
 
     let coin_amount = 10_000_000;
+    let params = CheckPredicateParams {
+        max_gas_per_predicate: GAS_LIMIT,
+        ..Default::default()
+    };
 
     if predicates.is_empty() {
         builder.add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),
-            coin_amount,
-            AssetId::default(),
+            arb_max_fee,
+            params.base_asset_id,
             rng.gen(),
-            Default::default(),
         );
     }
 
@@ -241,7 +241,6 @@ async fn execute_gas_metered_predicates(
             coin_amount,
             AssetId::default(),
             rng.gen(),
-            Default::default(),
             0,
             predicate,
             vec![],
@@ -315,7 +314,7 @@ async fn predicate_gas_metering() {
         vec![
             op::movi(0x10, 0x11),
             op::movi(0x10, 0x11),
-            op::ret(RegId::ONE)
+            op::ret(RegId::ONE),
         ],
     ])
     .await
@@ -341,7 +340,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let params = CheckPredicateParams::default();
 
-    let gas_price = 1_000;
     let gas_limit = 1_000_000;
     let script = vec![
         op::addi(0x20, 0x20, 1),
@@ -354,7 +352,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
@@ -366,7 +363,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
     );
 
     // parallel version
@@ -406,7 +402,6 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
         rng.gen(),
         predicate,
         vec![],
@@ -466,8 +461,8 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let params = CheckPredicateParams::default();
 
-    let gas_price = 1_000;
     let gas_limit = 1_000_000;
+    let arb_max_fee = 1000;
     let script = vec![
         op::addi(0x20, 0x20, 1),
         op::addi(0x20, 0x20, 1),
@@ -479,7 +474,7 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let mut builder = TransactionBuilder::script(script, script_data);
     builder
-        .gas_price(gas_price)
+        .max_fee_limit(arb_max_fee)
         .script_gas_limit(gas_limit)
         .maturity(Default::default());
 
@@ -491,7 +486,6 @@ async fn gas_used_by_predicates_more_than_limit() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
     );
 
     // parallel version
@@ -537,7 +531,6 @@ async fn gas_used_by_predicates_more_than_limit() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        Default::default(),
         gas_limit + 1,
         predicate,
         vec![],

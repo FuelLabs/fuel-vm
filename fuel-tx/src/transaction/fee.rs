@@ -1,7 +1,8 @@
 use crate::{
     field,
     field::{
-        GasPrice,
+        MaxFeeLimit,
+        Tip,
         WitnessLimit,
     },
     input::{
@@ -16,6 +17,7 @@ use crate::{
             MessageDataSigned,
         },
     },
+    policies::PolicyType,
     FeeParameters,
     GasCosts,
     Input,
@@ -90,17 +92,18 @@ impl TransactionFee {
         gas_costs: &GasCosts,
         params: &FeeParameters,
         tx: &T,
+        gas_price: Word,
     ) -> Option<Self>
     where
         T: Chargeable,
     {
         let min_gas = tx.min_gas(gas_costs, params);
         let max_gas = tx.max_gas(gas_costs, params);
-        let min_fee = tx.min_fee(gas_costs, params).try_into().ok()?;
-        let max_fee = tx.max_fee(gas_costs, params).try_into().ok()?;
+        let min_fee = tx.min_fee(gas_costs, params, gas_price).try_into().ok()?;
+        let max_fee = tx.max_fee(gas_costs, params, gas_price).try_into().ok()?;
 
         if min_fee > max_fee {
-            return None
+            return None;
         }
 
         Some(Self::new(min_fee, max_fee, min_gas, max_gas))
@@ -116,11 +119,6 @@ fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
 
 /// Means that the blockchain charges fee for the transaction.
 pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
-    /// Returns the gas price.
-    fn price(&self) -> Word {
-        self.gas_price()
-    }
-
     /// Returns the minimum gas required to start transaction execution.
     fn min_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
         let bytes_size = self.metered_bytes_size();
@@ -152,23 +150,37 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     }
 
     /// Returns the minimum fee required to start transaction execution.
-    fn min_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
-        gas_to_fee(
+    fn min_fee(
+        &self,
+        gas_costs: &GasCosts,
+        fee: &FeeParameters,
+        gas_price: Word,
+    ) -> u128 {
+        let tip = self.tip();
+        let gas_fee = gas_to_fee(
             self.min_gas(gas_costs, fee),
-            self.price(),
+            gas_price,
             fee.gas_price_factor,
-        )
+        );
+        gas_fee.saturating_add(tip as u128)
     }
 
     /// Returns the maximum possible fee after the end of transaction execution.
     ///
     /// The function guarantees that the value is not less than [Self::min_fee].
-    fn max_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
-        gas_to_fee(
+    fn max_fee(
+        &self,
+        gas_costs: &GasCosts,
+        fee: &FeeParameters,
+        gas_price: Word,
+    ) -> u128 {
+        let tip = self.tip();
+        let gas_fee = gas_to_fee(
             self.max_gas(gas_costs, fee),
-            self.price(),
+            gas_price,
             fee.gas_price_factor,
-        )
+        );
+        gas_fee.saturating_add(tip as u128)
     }
 
     /// Returns the fee amount that can be refunded back based on the `used_gas` and
@@ -180,19 +192,22 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         gas_costs: &GasCosts,
         fee: &FeeParameters,
         used_gas: Word,
+        gas_price: Word,
     ) -> Option<Word> {
         // We've already charged the user for witnesses as part of the minimal gas and all
         // execution required to validate transaction validity rules.
         let min_gas = self.min_gas(gas_costs, fee);
 
         let total_used_gas = min_gas.saturating_add(used_gas);
-        let used_fee = gas_to_fee(total_used_gas, self.price(), fee.gas_price_factor);
+        let tip = self.policies().get(PolicyType::Tip).unwrap_or(0);
+        let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor)
+            .saturating_add(tip as u128);
 
-        let refund = self.max_fee(gas_costs, fee).saturating_sub(used_fee);
         // It is okay to saturate everywhere above because it only can decrease the value
         // of `refund`. But here, because we need to return the amount we
         // want to refund, we need to handle the overflow caused by the price.
-        refund.try_into().ok()
+        let used_fee: u64 = used_fee.try_into().ok()?;
+        self.max_fee_limit().checked_sub(used_fee)
     }
 
     /// Used for accounting purposes when charging byte based fees.

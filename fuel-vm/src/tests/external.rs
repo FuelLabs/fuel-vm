@@ -23,6 +23,7 @@ use itertools::Itertools;
 /// An ECAL opcode handler function, which charges for `noop` and does nothing.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopEcal;
+
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
     fn ecal<S, Tx>(
         vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
@@ -50,7 +51,6 @@ fn noop_ecal() {
     );
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -68,6 +68,7 @@ fn noop_ecal() {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SumProdEcal;
+
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
@@ -126,7 +127,6 @@ fn provide_ecal_fn() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()

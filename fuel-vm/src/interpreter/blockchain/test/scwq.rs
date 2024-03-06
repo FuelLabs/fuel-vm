@@ -7,6 +7,7 @@ use alloc::{
 
 use crate::storage::{
     ContractsState,
+    ContractsStateData,
     MemoryStorage,
 };
 
@@ -16,14 +17,14 @@ use test_case::test_case;
 
 struct SCWQInput {
     input: StateClearQWord,
-    storage_slots: Vec<([u8; 32], [u8; 32])>,
+    storage_slots: Vec<([u8; 32], ContractsStateData)>,
     memory: Memory<MEM_SIZE>,
 }
 
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 1).unwrap(),
-        storage_slots: vec![(key(27), [8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
     } => (vec![], true)
     ; "Clear single storage slot"
@@ -31,7 +32,7 @@ struct SCWQInput {
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), [8; 32]), (key(28), [9; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(28), data(&[9; 32]))],
         memory: mem(&[&key(27)]),
     } => (vec![], true)
     ; "Clear multiple existing storage slots"
@@ -55,20 +56,22 @@ struct SCWQInput {
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), [8; 32]), (key(29), [8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(29), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![(key(29), [8; 32])], false)
+    } => (vec![(key(29), vec![8; 32].into())], false)
     ; "Clear storage slots with some previously set"
 )]
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), [8; 32]), (key(26), [8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(26), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![(key(26), [8; 32])], false)
+    } => (vec![(key(26), vec![8; 32].into())], false)
     ; "Clear storage slots with some previously set before the key"
 )]
-fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool) {
+fn test_state_clear_qword(
+    input: SCWQInput,
+) -> (Vec<([u8; 32], ContractsStateData)>, bool) {
     let SCWQInput {
         input,
         storage_slots,
@@ -81,7 +84,7 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
             .storage::<ContractsState>()
             .insert(
                 &(&ContractId::default(), &Bytes32::new(k)).into(),
-                &Bytes32::new(v),
+                v.as_ref(),
             )
             .unwrap();
     }
@@ -100,7 +103,7 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
 
     let results = storage
         .all_contract_state()
-        .map(|(key, v)| (**key.state_key(), **v))
+        .map(|(key, v)| (**key.state_key(), v.clone()))
         .collect();
     (results, result_register != 0)
 }

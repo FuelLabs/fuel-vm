@@ -8,6 +8,7 @@ use fuel_asm::{
 };
 use fuel_tx::ValidityError;
 
+use crate::checked_transaction::CheckError;
 use alloc::{
     format,
     string::{
@@ -24,6 +25,7 @@ use crate::storage::predicate;
 
 /// Interpreter runtime error variants.
 #[derive(Debug, derive_more::Display)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum InterpreterError<StorageError> {
     /// The instructions execution resulted in a well-formed panic, caused by an
     /// explicit instruction.
@@ -34,9 +36,9 @@ pub enum InterpreterError<StorageError> {
     /// contract.
     #[display(fmt = "Execution error: {_0:?}")]
     Panic(PanicReason),
-    /// The provided transaction isn't valid.
-    #[display(fmt = "Failed to validate the transaction: {_0}")]
-    TransactionValidity(ValidityError),
+    /// Failed while checking the transaction.
+    #[display(fmt = "Failed to check the transaction: {_0:?}")]
+    CheckError(CheckError),
     /// No transaction was initialized in the interpreter. It cannot provide
     /// state transitions.
     #[display(fmt = "Execution error")]
@@ -50,6 +52,16 @@ pub enum InterpreterError<StorageError> {
     /// Encountered a bug
     #[display(fmt = "Bug: {_0}")]
     Bug(Bug),
+    /// The `Ready` transaction provided to `Interpreter` doesn't have expected gas price
+    #[display(
+        fmt = "The transaction's gas price is wrong: expected {expected}, got {actual}"
+    )]
+    ReadyTransactionWrongGasPrice {
+        /// Expected gas price
+        expected: Word,
+        /// Actual gas price
+        actual: Word,
+    },
 }
 
 impl<StorageError> InterpreterError<StorageError> {
@@ -103,12 +115,16 @@ where
             Self::Storage(e) => InterpreterError::Storage(format!("{e:?}")),
             Self::PanicInstruction(e) => InterpreterError::PanicInstruction(*e),
             Self::Panic(e) => InterpreterError::Panic(*e),
-            Self::TransactionValidity(e) => {
-                InterpreterError::TransactionValidity(e.clone())
-            }
             Self::NoTransactionInitialized => InterpreterError::NoTransactionInitialized,
             Self::DebugStateNotInitialized => InterpreterError::DebugStateNotInitialized,
             Self::Bug(e) => InterpreterError::Bug(e.clone()),
+            Self::CheckError(e) => InterpreterError::CheckError(e.clone()),
+            InterpreterError::ReadyTransactionWrongGasPrice { expected, actual } => {
+                InterpreterError::ReadyTransactionWrongGasPrice {
+                    expected: *expected,
+                    actual: *actual,
+                }
+            }
         }
     }
 }
@@ -123,12 +139,6 @@ impl<StorageError> From<RuntimeError<StorageError>> for InterpreterError<Storage
     }
 }
 
-impl<StorageError> From<ValidityError> for InterpreterError<StorageError> {
-    fn from(error: ValidityError) -> Self {
-        Self::TransactionValidity(error)
-    }
-}
-
 impl<StorageError> PartialEq for InterpreterError<StorageError>
 where
     StorageError: PartialEq,
@@ -137,7 +147,6 @@ where
         match (self, other) {
             (Self::PanicInstruction(s), Self::PanicInstruction(o)) => s == o,
             (Self::Panic(s), Self::Panic(o)) => s == o,
-            (Self::TransactionValidity(s), Self::TransactionValidity(o)) => s == o,
             (Self::NoTransactionInitialized, Self::NoTransactionInitialized) => true,
             (Self::Storage(a), Self::Storage(b)) => a == b,
             (Self::DebugStateNotInitialized, Self::DebugStateNotInitialized) => true,
@@ -156,6 +165,12 @@ impl<StorageError> From<Bug> for InterpreterError<StorageError> {
 impl<StorageError> From<Infallible> for InterpreterError<StorageError> {
     fn from(_: Infallible) -> Self {
         unreachable!()
+    }
+}
+
+impl<StorageError> From<ValidityError> for InterpreterError<StorageError> {
+    fn from(err: ValidityError) -> Self {
+        Self::CheckError(CheckError::Validity(err))
     }
 }
 

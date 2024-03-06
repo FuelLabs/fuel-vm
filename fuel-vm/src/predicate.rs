@@ -89,7 +89,6 @@ mod tests {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
             0,
             predicate.clone(),
             predicate_data.clone(),
@@ -149,7 +148,7 @@ mod tests {
                         program: Default::default()
                     },
                     tx.transaction().clone(),
-                    *tx.transaction().script_gas_limit()
+                    *tx.transaction().script_gas_limit(),
                 )
                 .is_ok());
 
@@ -191,7 +190,6 @@ mod tests {
                     Input::coin_predicate(
                         rng.gen(),
                         owner,
-                        rng.gen(),
                         rng.gen(),
                         rng.gen(),
                         rng.gen(),
@@ -270,7 +268,6 @@ mod tests {
                     vec![],
                 )
                 .add_input(input)
-                .gas_price(0)
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
 

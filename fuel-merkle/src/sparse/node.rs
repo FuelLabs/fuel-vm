@@ -55,7 +55,7 @@ impl Node {
         hash.update(prefix);
         hash.update(bytes_lo);
         hash.update(bytes_hi);
-        hash.finalize().try_into().unwrap()
+        hash.finalize().into()
     }
 
     pub fn max_height() -> u32 {

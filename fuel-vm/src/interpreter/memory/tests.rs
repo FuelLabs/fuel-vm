@@ -1,4 +1,5 @@
 #![allow(clippy::cast_possible_truncation)]
+
 use alloc::vec;
 use core::ops::Range;
 
@@ -15,6 +16,7 @@ use test_case::test_case;
 #[test]
 fn memcopy() {
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+    let zero_gas_price = 0;
 
     let consensus_params = ConsensusParameters {
         tx_params,
@@ -23,7 +25,7 @@ fn memcopy() {
 
     let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
-        InterpreterParams::from(&consensus_params),
+        InterpreterParams::new(zero_gas_price, &consensus_params),
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
         .script_gas_limit(100_000)
@@ -32,7 +34,13 @@ fn memcopy() {
 
     let tx = tx
         .into_checked(Default::default(), &consensus_params)
-        .expect("default tx should produce a valid checked transaction");
+        .expect("default tx should produce a valid checked transaction")
+        .into_ready(
+            zero_gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM");
 
@@ -84,12 +92,20 @@ fn memcopy() {
 
 #[test]
 fn memrange() {
+    let gas_price = 0;
+    let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
-        .expect("Empty script should be valid");
+        .expect("Empty script should be valid")
+        .into_ready(
+            gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
     let mut vm = Interpreter::<_, _>::with_memory_storage();
     vm.init_script(tx).expect("Failed to init VM");
 
@@ -113,13 +129,21 @@ fn memrange() {
 #[test]
 fn stack_alloc_ownership() {
     let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let gas_price = 0;
+    let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
-        .expect("Empty script should be valid");
+        .expect("Empty script should be valid")
+        .into_ready(
+            gas_price,
+            &consensus_params.gas_costs,
+            &consensus_params.fee_params,
+        )
+        .unwrap();
     vm.init_script(tx).expect("Failed to init VM");
 
     vm.instruction(op::move_(0x10, RegId::SP)).unwrap();
@@ -131,23 +155,23 @@ fn stack_alloc_ownership() {
 
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..0
-    => true ; "empty mem range"
+    => true; "empty mem range"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 0..0
-    => true ; "empty mem range (external)"
+    => true; "empty mem range (external)"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..1
-    => false ; "empty stack and heap"
+    => false; "empty stack and heap"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM, Context::Script{ block_height: Default::default() }), 0..1
-    => false ; "empty stack and heap (external)"
+    => false; "empty stack and heap (external)"
 )]
 #[test_case(
     OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..1
-    => true ; "in range for stack"
+    => true; "in range for stack"
 )]
 #[test_case(
     OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..2
@@ -155,15 +179,15 @@ fn stack_alloc_ownership() {
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..2, Context::Call{ block_height: Default::default()}), 1..2
-    => true ; "in range for heap"
+    => true; "in range for heap"
 )]
 #[test_case(
     OwnershipRegisters::test(0..2, 1..2, Context::Call{ block_height: Default::default()}), 0..2
-    => true ; "crosses stack and heap"
+    => true; "crosses stack and heap"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 1..2
-    => true ; "in heap range (external)"
+    => true; "in heap range (external)"
 )]
 #[test_case(
     OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: Default::default()}), 20..30
@@ -205,47 +229,47 @@ fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {
 }
 
 #[test_case(
-    1, &[],
+    1, & [],
     OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: Default::default()})
     => (false, [0u8; 100]); "External errors when write is empty"
 )]
 #[test_case(
-    1, &[],
+    1, & [],
     OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal errors when write is empty"
 )]
 #[test_case(
-    1, &[2],
+    1, & [2],
     OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: Default::default()})
     => (true, set_index(1, 2, [0u8; 100])); "External writes to stack"
 )]
 #[test_case(
-    98, &[2],
+    98, & [2],
     OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: Default::default()})
     => (true, set_index(98, 2, [0u8; 100])); "External writes to heap"
 )]
 #[test_case(
-    1, &[2],
+    1, & [2],
     OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: Default::default()})
     => (true, set_index(1, 2, [0u8; 100])); "Internal writes to stack"
 )]
 #[test_case(
-    98, &[2],
+    98, & [2],
     OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: Default::default()})
     => (true, set_index(98, 2, [0u8; 100])); "Internal writes to heap"
 )]
 #[test_case(
-    1, &[2; 50],
+    1, & [2; 50],
     OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: Default::default()})
     => (false, [0u8; 100]); "External too large for stack"
 )]
 #[test_case(
-    1, &[2; 50],
+    1, & [2; 50],
     OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal too large for stack"
 )]
 #[test_case(
-    61, &[2; 50],
+    61, & [2; 50],
     OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal too large for heap"
 )]

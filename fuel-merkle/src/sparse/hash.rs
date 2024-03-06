@@ -17,5 +17,5 @@ where
 {
     let mut hash = Hash::new();
     hash.update(data);
-    hash.finalize().try_into().unwrap()
+    hash.finalize().into()
 }

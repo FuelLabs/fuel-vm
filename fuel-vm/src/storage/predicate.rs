@@ -14,12 +14,11 @@ use crate::{
 use fuel_asm::Word;
 use fuel_storage::{
     Mappable,
-    MerkleRoot,
-    MerkleRootStorage,
     StorageInspect,
     StorageMutate,
     StorageRead,
     StorageSize,
+    StorageWrite,
 };
 use fuel_types::{
     BlockHeight,
@@ -30,6 +29,8 @@ use fuel_types::{
 use super::{
     interpreter::ContractsAssetsStorage,
     ContractsRawCode,
+    ContractsState,
+    ContractsStateData,
 };
 
 /// No-op storage used for predicate operations.
@@ -116,8 +117,78 @@ impl StorageRead<ContractsRawCode> for PredicateStorage {
     }
 }
 
-impl<Key, Type: Mappable> MerkleRootStorage<Key, Type> for PredicateStorage {
-    fn root(&self, _parent: &Key) -> Result<MerkleRoot, StorageUnavailable> {
+impl StorageWrite<ContractsRawCode> for PredicateStorage {
+    fn write(
+        &mut self,
+        _key: &<ContractsRawCode as Mappable>::Key,
+        _buf: &[u8],
+    ) -> Result<usize, Self::Error> {
+        Err(StorageUnavailable)
+    }
+
+    fn replace(
+        &mut self,
+        _key: &<ContractsRawCode as Mappable>::Key,
+        _buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+        Err(StorageUnavailable)
+    }
+
+    fn take(
+        &mut self,
+        _key: &<ContractsRawCode as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Err(StorageUnavailable)
+    }
+}
+
+impl StorageSize<ContractsState> for PredicateStorage {
+    fn size_of_value(
+        &self,
+        _key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<usize>, StorageUnavailable> {
+        Err(StorageUnavailable)
+    }
+}
+
+impl StorageRead<ContractsState> for PredicateStorage {
+    fn read(
+        &self,
+        _key: &<ContractsState as Mappable>::Key,
+        _buf: &mut [u8],
+    ) -> Result<Option<usize>, StorageUnavailable> {
+        Err(StorageUnavailable)
+    }
+
+    fn read_alloc(
+        &self,
+        _key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, StorageUnavailable> {
+        Err(StorageUnavailable)
+    }
+}
+
+impl StorageWrite<ContractsState> for PredicateStorage {
+    fn write(
+        &mut self,
+        _key: &<ContractsState as Mappable>::Key,
+        _buf: &[u8],
+    ) -> Result<usize, Self::Error> {
+        Err(StorageUnavailable)
+    }
+
+    fn replace(
+        &mut self,
+        _key: &<ContractsState as Mappable>::Key,
+        _buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+        Err(StorageUnavailable)
+    }
+
+    fn take(
+        &mut self,
+        _key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         Err(StorageUnavailable)
     }
 }
@@ -146,25 +217,28 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn merkle_contract_state_range(
+    fn contract_state_range(
         &self,
         _id: &ContractId,
         _start_key: &Bytes32,
         _range: usize,
-    ) -> Result<Vec<Option<Cow<Bytes32>>>, StorageUnavailable> {
+    ) -> Result<Vec<Option<Cow<ContractsStateData>>>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 
-    fn merkle_contract_state_insert_range(
+    fn contract_state_insert_range<'a, I>(
         &mut self,
-        _contract: &ContractId,
-        _start_key: &Bytes32,
-        _values: &[Bytes32],
-    ) -> Result<usize, StorageUnavailable> {
+        _: &ContractId,
+        _: &Bytes32,
+        _: I,
+    ) -> Result<usize, Self::DataError>
+    where
+        I: Iterator<Item = &'a [u8]>,
+    {
         Err(StorageUnavailable)
     }
 
-    fn merkle_contract_state_remove_range(
+    fn contract_state_remove_range(
         &mut self,
         _contract: &ContractId,
         _start_key: &Bytes32,

@@ -22,7 +22,6 @@ use fuel_types::{
     },
     Address,
     AssetId,
-    BlockHeight,
     Bytes32,
     Nonce,
     Salt,
@@ -91,7 +90,6 @@ pub type TxId = Bytes32;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(clippy::large_enum_variant)]
-#[non_exhaustive]
 pub enum Transaction {
     Script(Script),
     Create(Create),
@@ -111,6 +109,7 @@ impl Transaction {
         use crate::Finalizable;
 
         crate::TransactionBuilder::script(vec![], vec![])
+            .max_fee_limit(0)
             .add_random_fee_input()
             .finalize()
             .into()
@@ -179,6 +178,7 @@ impl Transaction {
         output_contract: output::contract::Contract,
         mint_amount: Word,
         mint_asset_id: AssetId,
+        gas_price: Word,
     ) -> Mint {
         Mint {
             tx_pointer,
@@ -186,6 +186,7 @@ impl Transaction {
             output_contract,
             mint_amount,
             mint_asset_id,
+            gas_price,
             metadata: None,
         }
     }
@@ -365,7 +366,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: BlockHeight,
         witness_index: u8,
     ) {
         let owner = Input::owner(owner);
@@ -377,7 +377,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
         );
         self.inputs_mut().push(input);
     }
@@ -413,31 +412,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         };
 
         self.inputs_mut().push(input);
-    }
-
-    /// Prepare the transaction for VM initialization for script execution
-    ///
-    /// note: Fields dependent on storage/state such as balance and state roots, or tx
-    /// pointers, should already set by the client beforehand.
-    fn prepare_init_script(&mut self) -> &mut Self {
-        self.outputs_mut()
-            .iter_mut()
-            .for_each(|o| o.prepare_init_script());
-
-        self
-    }
-
-    /// Prepare the transaction for VM initialization for predicate verification
-    fn prepare_init_predicate(&mut self) -> &mut Self {
-        self.inputs_mut()
-            .iter_mut()
-            .for_each(|i| i.prepare_init_predicate());
-
-        self.outputs_mut()
-            .iter_mut()
-            .for_each(|o| o.prepare_init_predicate());
-
-        self
     }
 }
 
@@ -562,22 +536,20 @@ pub mod field {
         DerefMut,
     };
 
-    pub trait GasPrice {
-        fn gas_price(&self) -> Word;
-        fn set_gas_price(&mut self, value: Word);
+    pub trait Tip {
+        fn tip(&self) -> Word;
+        fn set_tip(&mut self, value: Word);
     }
 
-    impl<T: Policies + ?Sized> GasPrice for T {
+    impl<T: Policies + ?Sized> Tip for T {
         #[inline(always)]
-        fn gas_price(&self) -> Word {
-            self.policies()
-                .get(PolicyType::GasPrice)
-                .unwrap_or_default()
+        fn tip(&self) -> Word {
+            self.policies().get(PolicyType::Tip).unwrap_or_default()
         }
 
         #[inline(always)]
-        fn set_gas_price(&mut self, price: Word) {
-            self.policies_mut().set(PolicyType::GasPrice, Some(price))
+        fn set_tip(&mut self, price: Word) {
+            self.policies_mut().set(PolicyType::Tip, Some(price))
         }
     }
 
@@ -679,6 +651,12 @@ pub mod field {
         fn mint_asset_id(&self) -> &AssetId;
         fn mint_asset_id_mut(&mut self) -> &mut AssetId;
         fn mint_asset_id_offset(&self) -> usize;
+    }
+
+    pub trait MintGasPrice {
+        fn gas_price(&self) -> &Word;
+        fn gas_price_mut(&mut self) -> &mut Word;
+        fn gas_price_offset(&self) -> usize;
     }
 
     pub trait ReceiptsRoot {
@@ -920,6 +898,7 @@ pub mod typescript {
             output_contract: crate::output::contract::Contract,
             mint_amount: Word,
             mint_asset_id: AssetId,
+            gas_price: Word,
         ) -> Mint {
             Mint {
                 tx_pointer,
@@ -927,6 +906,7 @@ pub mod typescript {
                 output_contract,
                 mint_amount,
                 mint_asset_id,
+                gas_price,
                 metadata: None,
             }
         }

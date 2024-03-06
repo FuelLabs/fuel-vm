@@ -132,7 +132,7 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
     /// Does not perform any serialization.
     ///
     /// Returns the number of bytes written.
-    fn write(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<usize, Self::Error>;
+    fn write(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error>;
 
     /// Write the value to the given key from the provided buffer and
     /// return the previous value if it existed.
@@ -143,19 +143,16 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
     fn replace(
         &mut self,
         key: &Type::Key,
-        buf: Vec<u8>,
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
-    where
-        Self: StorageSize<Type>;
+        buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>;
 
     /// Removes a value from the storage and returning it without deserializing it.
     fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
-/// Returns the merkle root for the `StorageType` per merkle `Key`. The type should
-/// implement the `StorageMutate` for the `StorageType`. Per one storage, it is possible
-/// to have several merkle trees under different `Key`.
-pub trait MerkleRootStorage<Key, StorageType>: StorageMutate<StorageType>
+/// Returns the merkle root for the `StorageType` per merkle `Key`. Per one storage, it is
+/// possible to have several merkle trees under different `Key`.
+pub trait MerkleRootStorage<Key, StorageType>: StorageInspect<StorageType>
 where
     StorageType: Mappable,
 {

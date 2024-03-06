@@ -16,8 +16,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.73.0
-  NIGHTLY_RUST_VERSION: nightly-2023-10-29
+  RUST_VERSION: 1.75.0
+  NIGHTLY_RUST_VERSION: nightly-2024-02-07
 
 jobs:
   check-changelog:
@@ -138,6 +138,7 @@ jobs:
       - cargo
       - cargo-toml-fmt-check
       - publish-check
+      - publish-wasm-packages-check
     runs-on: ubuntu-latest
     steps:
       - run: true
@@ -156,6 +157,46 @@ jobs:
         uses: xgreenx/publish-crates@v1
         with:
           dry-run: true
+          check-repo: false
+          ignore-unpublished-changes: true
+
+  publish-wasm-packages-check:
+    needs:
+      - publish-check
+    runs-on: buildjet-4vcpu-ubuntu-2204
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "wasm32-unknown-unknown"
+
+      - name: Installing required crates
+        run: cargo install wasm-bindgen-cli wasm-opt
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8.6.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          cache: "pnpm"
+          node-version: 18.14.1
+          node-version-file: ".npm/package.json"
+          cache-dependency-path: ".npm/pnpm-lock.yaml"
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Build and Test packages
+        run: |
+          pnpm -C .npm install
+          pnpm -C .npm pack:all
 
   publish:
     # Only do this job if publishing a release and all checks pass.

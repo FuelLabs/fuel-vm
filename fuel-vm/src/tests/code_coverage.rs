@@ -30,7 +30,6 @@ const HALF_WORD_SIZE: u64 = (WORD_SIZE as u64) / 2;
 fn code_coverage() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let gas_price = 1;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -53,9 +52,7 @@ fn code_coverage() {
             2,
             Default::default(),
             rng.gen(),
-            Default::default(),
         )
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .finalize_checked(height);

@@ -24,7 +24,6 @@ pub use repr::OutputRepr;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Deserialize, Serialize)]
-#[non_exhaustive]
 pub enum Output {
     Coin {
         to: Address,
@@ -169,6 +168,10 @@ impl Output {
         matches!(self, Self::Coin { .. })
     }
 
+    pub const fn is_change(&self) -> bool {
+        matches!(self, Self::Change { .. })
+    }
+
     pub const fn is_variable(&self) -> bool {
         matches!(self, Self::Variable { .. })
     }
@@ -218,29 +221,9 @@ impl Output {
     }
 
     /// Prepare the output for VM initialization for script execution
-    pub fn prepare_init_script(&mut self) {
-        match self {
-            Output::Change { amount, .. } => {
-                mem::take(amount);
-            }
-
-            Output::Variable {
-                to,
-                amount,
-                asset_id,
-            } => {
-                mem::take(to);
-                mem::take(amount);
-                mem::take(asset_id);
-            }
-
-            _ => (),
-        }
-    }
-
-    /// Prepare the output for VM initialization for predicate verification
-    pub fn prepare_init_predicate(&mut self) {
-        self.prepare_sign()
+    /// or predicate verification
+    pub fn prepare_init_execute(&mut self) {
+        self.prepare_sign() // Currently does the same thing
     }
 }
 

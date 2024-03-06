@@ -52,8 +52,10 @@ mod use_std {
         Mint,
         Output,
         Script,
+        Transaction,
         TransactionBuilder,
     };
+    use fuel_types::canonical::Deserialize;
     use rand::{
         distributions::{
             Distribution,
@@ -88,6 +90,45 @@ mod use_std {
             use strum::EnumCount;
             let input_sampler = Uniform::from(0..Input::COUNT);
             let output_sampler = Uniform::from(0..Output::COUNT);
+
+            // Trick to enforce coverage of all variants in compile-time
+            //
+            // When and if a new variant is added, this implementation enforces it will be
+            // listed here.
+            let empty: [u8; 0] = [];
+            debug_assert!({
+                Input::decode(&mut &empty[..])
+                    .map(|i| match i {
+                        Input::CoinSigned(_) => (),
+                        Input::CoinPredicate(_) => (),
+                        Input::Contract(_) => (),
+                        Input::MessageCoinSigned(_) => (),
+                        Input::MessageCoinPredicate(_) => (),
+                        Input::MessageDataSigned(_) => (),
+                        Input::MessageDataPredicate(_) => (),
+                    })
+                    .unwrap_or(());
+
+                Output::decode(&mut &empty[..])
+                    .map(|o| match o {
+                        Output::Coin { .. } => (),
+                        Output::Contract(_) => (),
+                        Output::Change { .. } => (),
+                        Output::Variable { .. } => (),
+                        Output::ContractCreated { .. } => (),
+                    })
+                    .unwrap_or(());
+
+                Transaction::decode(&mut &empty[..])
+                    .map(|t| match t {
+                        Transaction::Script(_) => (),
+                        Transaction::Create(_) => (),
+                        Transaction::Mint(_) => (),
+                    })
+                    .unwrap_or(());
+
+                true
+            });
 
             Self {
                 rng,
@@ -168,7 +209,6 @@ mod use_std {
                             self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
-                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -242,7 +282,6 @@ mod use_std {
             input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_coin_input(
                     *k,
-                    self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
@@ -331,7 +370,8 @@ mod use_std {
         R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Mint {
-            let mut builder = TransactionBuilder::<Mint>::mint(
+            let builder = TransactionBuilder::<Mint>::mint(
+                self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),

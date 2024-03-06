@@ -16,8 +16,8 @@ use rand::{
 fn profile_gas() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let gas_price = 1;
     let gas_limit = 1_000;
+    let arb_fee_limit = 2_000;
     let maturity = Default::default();
     let height = Default::default();
 
@@ -36,16 +36,15 @@ fn profile_gas() {
 
         let tx_deploy =
             TransactionBuilder::script(script_code.into_iter().collect(), vec![])
+                .max_fee_limit(arb_fee_limit)
                 .add_unsigned_coin_input(
                     SecretKey::random(rng),
                     rng.gen(),
-                    2,
+                    arb_fee_limit,
                     Default::default(),
                     rng.gen(),
-                    Default::default(),
                 )
                 .script_gas_limit(gas_limit)
-                .gas_price(gas_price)
                 .maturity(maturity)
                 .finalize_checked(height);
 

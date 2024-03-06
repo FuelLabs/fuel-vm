@@ -29,7 +29,6 @@ use fuel_types::{
     fmt_truncated_hex,
     Address,
     AssetId,
-    BlockHeight,
     Bytes32,
     ContractId,
     MessageId,
@@ -181,7 +180,6 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[non_exhaustive]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
@@ -221,7 +219,6 @@ impl Input {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: BlockHeight,
         predicate_gas_used: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -233,7 +230,6 @@ impl Input {
             asset_id,
             tx_pointer,
             witness_index: Empty::new(),
-            maturity,
             predicate_gas_used,
             predicate,
             predicate_data,
@@ -247,7 +243,6 @@ impl Input {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         witness_index: u8,
-        maturity: BlockHeight,
     ) -> Self {
         Self::CoinSigned(CoinSigned {
             utxo_id,
@@ -256,7 +251,6 @@ impl Input {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
             predicate_gas_used: Empty::new(),
             predicate: Empty::new(),
             predicate_data: Empty::new(),
@@ -435,18 +429,6 @@ impl Input {
             Input::CoinPredicate(_)
             | Input::Contract(_)
             | Input::MessageCoinPredicate(_)
-            | Input::MessageDataPredicate(_) => None,
-        }
-    }
-
-    pub const fn maturity(&self) -> Option<BlockHeight> {
-        match self {
-            Input::CoinSigned(CoinSigned { maturity, .. })
-            | Input::CoinPredicate(CoinPredicate { maturity, .. }) => Some(*maturity),
-            Input::Contract(_)
-            | Input::MessageCoinSigned(_)
-            | Input::MessageCoinPredicate(_)
-            | Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_) => None,
         }
     }
@@ -771,9 +753,9 @@ impl Input {
         owner == &Self::predicate_owner(predicate)
     }
 
-    /// Prepare the output for VM predicate execution
-    pub fn prepare_init_predicate(&mut self) {
-        self.prepare_sign()
+    /// Prepare the output for script or predicate execution
+    pub fn prepare_init_execute(&mut self) {
+        self.prepare_sign(); // This currently does the same thing
     }
 }
 
@@ -910,7 +892,6 @@ pub mod typescript {
     use fuel_types::{
         Address,
         AssetId,
-        BlockHeight,
         Bytes32,
         Word,
     };
@@ -961,7 +942,6 @@ pub mod typescript {
             amount: Word,
             asset_id: AssetId,
             tx_pointer: TxPointer,
-            maturity: BlockHeight,
             predicate_gas_used: Word,
             predicate: Vec<u8>,
             predicate_data: Vec<u8>,
@@ -973,7 +953,6 @@ pub mod typescript {
                 asset_id,
                 tx_pointer,
                 witness_index: Empty::new(),
-                maturity,
                 predicate_gas_used,
                 predicate,
                 predicate_data,
@@ -988,7 +967,6 @@ pub mod typescript {
             asset_id: AssetId,
             tx_pointer: TxPointer,
             witness_index: u8,
-            maturity: BlockHeight,
         ) -> Input {
             Input(Box::new(crate::Input::CoinSigned(CoinSigned {
                 utxo_id,
@@ -997,7 +975,6 @@ pub mod typescript {
                 asset_id,
                 tx_pointer,
                 witness_index,
-                maturity,
                 predicate_gas_used: Empty::new(),
                 predicate: Empty::new(),
                 predicate_data: Empty::new(),

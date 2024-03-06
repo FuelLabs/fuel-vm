@@ -102,7 +102,6 @@ fn example_file_read() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -162,7 +161,6 @@ fn example_counter() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -226,7 +224,6 @@ fn example_shared_counter() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()

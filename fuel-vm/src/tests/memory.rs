@@ -34,7 +34,6 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
     let script = program.into_iter().collect();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -42,7 +41,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     let mut vm = Transactor::new(storage, interpreter_params);
     vm.transact(tx);
@@ -369,7 +368,7 @@ fn test_meq(
     if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
         if count == 0 {
             assert_eq!(*ra, 1); // Empty ranges always equal
-            return
+            return;
         }
         match pattern {
             "equal" => {

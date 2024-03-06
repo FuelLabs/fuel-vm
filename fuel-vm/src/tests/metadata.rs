@@ -49,6 +49,7 @@ use crate::prelude::{
     GasCosts,
     *,
 };
+
 #[test]
 fn metadata() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -67,7 +68,7 @@ fn metadata() {
         op::gm_args(0x10, GMArgs::IsCallerExternal),
         op::gm_args(0x11, GMArgs::GetCaller),
         op::log(0x10, 0x00, 0x00, 0x00),
-        op::movi(0x20,  ContractId::LEN as Immediate18),
+        op::movi(0x20, ContractId::LEN as Immediate18),
         op::logd(0x00, 0x00, 0x11, 0x20),
         op::ret(RegId::ONE),
     ];
@@ -85,7 +86,6 @@ fn metadata() {
     let output = Output::contract_created(contract_metadata, state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
-        .gas_price(gas_price)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -93,7 +93,7 @@ fn metadata() {
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    let interpreter_params = InterpreterParams::from(&consensus_params);
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     // Deploy the contract into the blockchain
     assert!(
@@ -136,7 +136,6 @@ fn metadata() {
     let output = Output::contract_created(contract_call, state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
-        .gas_price(gas_price)
         .maturity(maturity)
         .add_random_fee_input()
         .add_output(output)
@@ -194,7 +193,6 @@ fn metadata() {
     let script = script.iter().copied().collect::<Vec<u8>>();
 
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(inputs[0].clone())
@@ -246,7 +244,7 @@ fn get_metadata_chain_id() {
         MemoryClient::<NotSupportedEcal>::new(Default::default(), interpreter_params);
 
     #[rustfmt::skip]
-        let get_chain_id = vec![
+    let get_chain_id = vec![
         op::gm_args(0x10, GMArgs::GetChainId),
         op::ret(0x10),
     ];
@@ -277,9 +275,9 @@ fn get_transaction_fields() {
 
     let mut client = MemoryClient::default();
 
-    let gas_price = 1;
     let witness_limit = 1234;
     let max_fee_limit = 4321;
+    let tip = 4321;
     let gas_limit = 10_000_000;
     let maturity = 50.into();
     let height = 122.into();
@@ -297,7 +295,13 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_output(Output::contract_created(contract_id, state_root))
-        .add_random_fee_input()
+        .add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            max_fee_limit,
+            AssetId::zeroed(),
+            rng.gen(),
+        )
         .finalize_checked(height);
 
     client.deploy(tx);
@@ -314,7 +318,6 @@ fn get_transaction_fields() {
         1_500,
         rng.gen(),
         rng.gen(),
-        100.into(),
         gas_costs.ret,
         predicate.clone(),
         predicate_data.clone(),
@@ -349,10 +352,8 @@ fn get_transaction_fields() {
     let asset_amt = 27;
 
     let tx = TransactionBuilder::script(vec![], vec![])
-        .prepare_script(true)
         .maturity(maturity)
         .with_gas_costs(gas_costs)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
@@ -360,7 +361,6 @@ fn get_transaction_fields() {
             input,
             AssetId::zeroed(),
             rng.gen(),
-            maturity,
         )
         .add_input(input_coin_predicate)
         .add_input(Input::contract(
@@ -391,19 +391,31 @@ fn get_transaction_fields() {
             asset_amt,
             asset,
             rng.gen(),
-            maturity,
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
+        .add_output(Output::change(rng.gen(), rng.gen_range(10..1000), asset))
         .finalize_checked(height);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();
     let witnesses = tx.as_ref().witnesses();
 
-    let inputs_bytes: Vec<Vec<u8>> =
-        inputs.iter().map(|i| i.clone().to_bytes()).collect();
-    let outputs_bytes: Vec<Vec<u8>> =
-        outputs.iter().map(|o| o.clone().to_bytes()).collect();
+    let inputs_bytes: Vec<Vec<u8>> = inputs
+        .iter()
+        .map(|v| {
+            let mut v = v.clone();
+            v.prepare_init_execute();
+            v.clone().to_bytes()
+        })
+        .collect();
+    let outputs_bytes: Vec<Vec<u8>> = outputs
+        .iter()
+        .map(|v| {
+            let mut v = *v;
+            v.prepare_init_execute();
+            v.clone().to_bytes()
+        })
+        .collect();
     let witnesses_bytes: Vec<Vec<u8>> =
         witnesses.iter().map(|w| w.clone().to_bytes()).collect();
 
@@ -437,8 +449,8 @@ fn get_transaction_fields() {
         outputs[1].balance_root().unwrap().to_vec(), // 21 - OutputContractBalanceRoot
         outputs[1].state_root().unwrap().to_vec(), // 22 - OutputContractStateRoot
         witnesses[1].as_ref().to_vec(), // 23 - WitnessData
-        inputs[0].tx_pointer().unwrap().clone().to_bytes(), // 24 - InputCoinTxPointer
-        inputs[2].tx_pointer().unwrap().clone().to_bytes(), // 25 - InputContractTxPointer
+        outputs[3].asset_id().unwrap().to_vec(), // 24 - OutputCoinAssetId
+        outputs[3].to().unwrap().to_vec(), // 25 - OutputCoinTo
     ];
 
     // hardcoded metadata of script len so it can be checked at runtime
@@ -472,9 +484,9 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x11, gas_price as Immediate18),
+        op::movi(0x11, tip as Immediate18),
         op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::PolicyGasPrice),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyTip),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -562,12 +574,8 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::ScriptReceiptsRoot),
-        op::movi(0x11, cases[3].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Skip over ReceiptsRoot which is always zero
+        op::addi(0x30, 0x30, cases[3].len().try_into().unwrap()),
 
         op::movi(0x11, script_offset as Immediate18),
         op::movi(0x19, 0x00),
@@ -587,12 +595,8 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxId),
-        op::movi(0x11, cases[4].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Skip over CoinTxId which is always zero
+        op::addi(0x30, 0x30, cases[4].len().try_into().unwrap()),
 
         op::movi(0x11, inputs[0].utxo_id().unwrap().output_index() as Immediate18),
         op::movi(0x19, 0x00),
@@ -629,12 +633,6 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x11, *inputs[0].maturity().unwrap() as Immediate18),
-        op::movi(0x19, 0x00),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinMaturity),
-        op::eq(0x10, 0x10, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
         op::movi(0x11, predicate.len() as Immediate18),
         op::movi(0x19, 0x01),
         op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateLength),
@@ -661,39 +659,10 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateGasUsed),
-        op::movi(0x11, 0 as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxId),
-        op::movi(0x11, cases[9].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x11, 0x01),
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractOutputIndex),
-        op::eq(0x10, 0x10, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractBalanceRoot),
-        op::movi(0x11, cases[10].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractStateRoot),
-        op::movi(0x11, cases[11].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Skip over always-zero InputContract fields
+        op::addi(0x30, 0x30, cases[9].len().try_into().unwrap()),
+        op::addi(0x30, 0x30, cases[10].len().try_into().unwrap()),
+        op::addi(0x30, 0x30, cases[11].len().try_into().unwrap()),
 
         op::movi(0x19, contract_input_index as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::InputContractId),
@@ -728,8 +697,6 @@ fn get_transaction_fields() {
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
-
-
 
         op::movi(0x11, 0x02),
         op::movi(0x19, 0x03),
@@ -821,19 +788,9 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::OutputContractBalanceRoot),
-        op::movi(0x11, cases[21].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
-
-        op::movi(0x19, 0x01),
-        op::gtf_args(0x10, 0x19, GTFArgs::OutputContractStateRoot),
-        op::movi(0x11, cases[22].len() as Immediate18),
-        op::meq(0x10, 0x10, 0x30, 0x11),
-        op::add(0x30, 0x30, 0x11),
-        op::and(0x20, 0x20, 0x10),
+        // Skip over always-zero OutputContract fields
+        op::addi(0x30, 0x30, cases[21].len().try_into().unwrap()),
+        op::addi(0x30, 0x30, cases[22].len().try_into().unwrap()),
 
         op::movi(0x11, witnesses[1].as_ref().len() as Immediate18),
         op::movi(0x19, 0x01),
@@ -848,15 +805,15 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, 0),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxPointer),
+        op::movi(0x19, 0x03),
+        op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinAssetId),
         op::movi(0x11, cases[24].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
-        op::movi(0x19, contract_input_index as Immediate18),
-        op::gtf_args(0x10, 0x19, GTFArgs::InputContractTxPointer),
+        op::movi(0x19, 0x03),
+        op::gtf_args(0x10, 0x19, GTFArgs::OutputCoinTo),
         op::movi(0x11, cases[25].len() as Immediate18),
         op::meq(0x10, 0x10, 0x30, 0x11),
         op::add(0x30, 0x30, 0x11),
@@ -887,8 +844,8 @@ fn get_transaction_fields() {
     });
 
     let tx = builder
+        .tip(tip)
         .maturity(maturity)
-        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)

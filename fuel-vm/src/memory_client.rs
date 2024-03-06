@@ -15,6 +15,7 @@ use crate::interpreter::{
 };
 use fuel_tx::{
     Create,
+    FeeParameters,
     GasCosts,
     Receipt,
     Script,
@@ -120,6 +121,17 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     /// Gas costs for opcodes
     pub fn gas_costs(&self) -> &GasCosts {
         self.transactor.gas_costs()
+    }
+
+    /// Fee parameters
+    pub fn fee_params(&self) -> &FeeParameters {
+        self.transactor.fee_params()
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Sets the gas price of the `Interpreter`
+    pub fn set_gas_price(&mut self, gas_price: u64) {
+        self.transactor.set_gas_price(gas_price);
     }
 }
 

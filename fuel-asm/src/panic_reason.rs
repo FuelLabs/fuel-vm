@@ -156,7 +156,7 @@ mod tests {
         assert_eq!(reason, PanicReason::UnknownPanicReason);
 
         for i in 1..last_known_panic_reason {
-            let reason = PanicReason::try_from(i).unwrap();
+            let reason = PanicReason::from(i);
             let i2 = reason as u8;
             assert_eq!(i, i2);
         }

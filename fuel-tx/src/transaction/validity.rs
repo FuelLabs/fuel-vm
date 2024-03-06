@@ -113,7 +113,7 @@ impl Input {
                 };
 
                 if owner != &recovered_address {
-                    return Err(ValidityError::InputInvalidSignature { index })
+                    return Err(ValidityError::InputInvalidSignature { index });
                 }
 
                 Ok(())
@@ -332,10 +332,6 @@ where
         Err(ValidityError::TransactionPoliciesAreInvalid)?
     }
 
-    if tx.policies().get(PolicyType::GasPrice).is_none() {
-        Err(ValidityError::TransactionNoGasPricePolicy)?
-    }
-
     if let Some(witness_limit) = tx.policies().get(PolicyType::WitnessLimit) {
         let witness_size = tx.witnesses().size_dynamic();
         if witness_size as u64 > witness_limit {
@@ -348,11 +344,9 @@ where
         Err(ValidityError::TransactionMaxGasExceeded)?
     }
 
-    if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
-        if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
-            Err(ValidityError::TransactionMaxFeeLimitExceeded)?
-        }
-    }
+    if !tx.policies().is_set(PolicyType::MaxFee) {
+        Err(ValidityError::TransactionMaxFeeNotSet)?
+    };
 
     if tx.maturity() > block_height {
         Err(ValidityError::TransactionMaturity)?;
@@ -406,7 +400,7 @@ where
             {
                 return Err(ValidityError::TransactionOutputChangeAssetIdDuplicated(
                     *input_asset_id,
-                ))
+                ));
             }
 
             Ok(())
@@ -419,20 +413,20 @@ where
         .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
 
     if let Some(utxo_id) = next_duplicate(duplicated_utxo_id).copied() {
-        return Err(ValidityError::DuplicateInputUtxoId { utxo_id })
+        return Err(ValidityError::DuplicateInputUtxoId { utxo_id });
     }
 
     // Check for duplicated input contract id
     let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
 
     if let Some(contract_id) = next_duplicate(duplicated_contract_id).copied() {
-        return Err(ValidityError::DuplicateInputContractId { contract_id })
+        return Err(ValidityError::DuplicateInputContractId { contract_id });
     }
 
     // Check for duplicated input message id
     let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
     if let Some(message_id) = next_duplicate(duplicated_message_id) {
-        return Err(ValidityError::DuplicateMessageInputId { message_id })
+        return Err(ValidityError::DuplicateMessageInputId { message_id });
     }
 
     // Validate the inputs without checking signature
@@ -461,7 +455,7 @@ where
                 {
                     return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
                         *asset_id,
-                    ))
+                    ));
                 }
             }
 
@@ -472,7 +466,7 @@ where
                 {
                     return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
                         *asset_id,
-                    ))
+                    ));
                 }
             }
 

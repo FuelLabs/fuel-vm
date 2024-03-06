@@ -16,7 +16,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         cb: 1,
         cfei: 1,
         cfsi: 1,
-        croo: 16,
         div: 1,
         divi: 1,
         eck1: 951,
@@ -107,6 +106,10 @@ pub fn default_gas_costs() -> GasCostsValues {
         ccp: DependentCost::LightOperation {
             base: 15,
             units_per_gas: 103,
+        },
+        croo: DependentCost::LightOperation {
+            base: 1,
+            units_per_gas: 1,
         },
         csiz: DependentCost::LightOperation {
             base: 17,

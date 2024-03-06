@@ -134,7 +134,7 @@ impl Create {
 impl crate::UniqueIdentifier for Create {
     fn id(&self, chain_id: &ChainId) -> crate::TxId {
         if let Some(id) = self.cached_id() {
-            return id
+            return id;
         }
 
         let mut clone = self.clone();
@@ -241,13 +241,13 @@ impl FormatValidityChecks for Create {
         if bytecode_witness_len > contract_params.contract_max_size
             || bytecode_witness_len / 4 != self.bytecode_length
         {
-            return Err(ValidityError::TransactionCreateBytecodeLen)
+            return Err(ValidityError::TransactionCreateBytecodeLen);
         }
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
         if self.storage_slots.len() as u64 > contract_params.max_storage_slots {
-            return Err(ValidityError::TransactionCreateStorageSlotMax)
+            return Err(ValidityError::TransactionCreateStorageSlotMax);
         }
 
         // Verify storage slots are sorted
@@ -257,7 +257,7 @@ impl FormatValidityChecks for Create {
             .windows(2)
             .all(|s| s[0] < s[1])
         {
-            return Err(ValidityError::TransactionCreateStorageSlotOrder)
+            return Err(ValidityError::TransactionCreateStorageSlotOrder);
         }
 
         self.inputs
@@ -307,13 +307,13 @@ impl FormatValidityChecks for Create {
                     state_root,
                 } if contract_id != &contract_id_calculated
                     || state_root != &state_root_calculated =>
-                {
-                    Err(
-                        ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
-                            index,
-                        },
-                    )
-                }
+                    {
+                        Err(
+                            ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
+                                index,
+                            },
+                        )
+                    }
 
                 // TODO: Output::ContractCreated { contract_id, state_root } if
                 // contract_id == &id && state_root == &storage_root
@@ -475,7 +475,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_offset.get(idx).cloned()
+                return inputs_offset.get(idx).cloned();
             }
 
             if idx < self.inputs.len() {
@@ -500,7 +500,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_predicate_offset.get(idx).cloned().unwrap_or(None)
+                return inputs_predicate_offset.get(idx).cloned().unwrap_or(None);
             }
 
             self.inputs().get(idx).and_then(|input| {
@@ -528,7 +528,7 @@ mod field {
         #[inline(always)]
         fn outputs_offset(&self) -> usize {
             if let Some(CreateMetadata { outputs_offset, .. }) = &self.metadata {
-                return *outputs_offset
+                return *outputs_offset;
             }
 
             self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
@@ -541,7 +541,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return outputs_offset.get(idx).cloned()
+                return outputs_offset.get(idx).cloned();
             }
 
             if idx < self.outputs.len() {
@@ -577,7 +577,7 @@ mod field {
                 witnesses_offset, ..
             }) = &self.metadata
             {
-                return *witnesses_offset
+                return *witnesses_offset;
             }
 
             self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
@@ -590,7 +590,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return witnesses_offset.get(idx).cloned()
+                return witnesses_offset.get(idx).cloned();
             }
 
             if idx < self.witnesses.len() {

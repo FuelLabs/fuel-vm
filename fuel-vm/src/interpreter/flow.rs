@@ -26,13 +26,11 @@ use crate::{
             ProfileGas,
         },
         internal::{
-            append_receipt,
             current_contract,
             external_asset_id_balance_sub,
             inc_pc,
             internal_contract_or_default,
             set_frame_pointer,
-            AppendReceipt,
         },
         receipts::ReceiptsCtx,
         ExecutableTransaction,
@@ -69,7 +67,6 @@ use fuel_tx::{
     DependentCost,
     PanicReason,
     Receipt,
-    Script,
 };
 use fuel_types::{
     canonical::Serialize,
@@ -99,16 +96,11 @@ where
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
-        let tx_offset = self.tx_offset();
         let input = RetCtx {
-            append: AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset,
-                memory: &mut self.memory,
-            },
+            receipts: &mut self.receipts,
             frames: &mut self.frames,
             registers: &mut self.registers,
+            memory: &self.memory,
             context: &mut self.context,
             current_contract,
         };
@@ -119,16 +111,11 @@ where
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
                 .copied();
-        let tx_offset = self.tx_offset();
         let input = RetCtx {
-            append: AppendReceipt {
-                receipts: &mut self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset,
-                memory: &mut self.memory,
-            },
             frames: &mut self.frames,
             registers: &mut self.registers,
+            memory: &mut self.memory,
+            receipts: &mut self.receipts,
             context: &mut self.context,
             current_contract,
         };
@@ -139,15 +126,8 @@ where
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
                 .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
-        let tx_offset = self.tx_offset();
-        let append = AppendReceipt {
-            receipts: &mut self.receipts,
-            script: self.tx.as_script_mut(),
-            tx_offset,
-            memory: &mut self.memory,
-        };
         revert(
-            append,
+            &mut self.receipts,
             current_contract,
             self.registers.pc(),
             self.registers.is(),
@@ -170,7 +150,8 @@ where
         };
         self.panic_context = PanicContext::None;
 
-        self.append_receipt(receipt)
+        self.receipts
+            .push(receipt)
             .expect("Appending a panic receipt cannot fail");
     }
 }
@@ -178,7 +159,8 @@ where
 struct RetCtx<'vm> {
     frames: &'vm mut Vec<CallFrame>,
     registers: &'vm mut [Word; VM_REGISTER_COUNT],
-    append: AppendReceipt<'vm>,
+    memory: &'vm [u8; MEM_SIZE],
+    receipts: &'vm mut ReceiptsCtx,
     context: &'vm mut Context,
     current_contract: Option<ContractId>,
 }
@@ -226,7 +208,7 @@ impl RetCtx<'_> {
             set_frame_pointer(context, registers.fp_mut(), fp);
         }
 
-        append_receipt(self.append, receipt)?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.registers.pc_mut())?)
     }
@@ -239,7 +221,7 @@ impl RetCtx<'_> {
             a,
             self.registers[RegId::PC],
             self.registers[RegId::IS],
-            self.append.memory[range.usizes()].to_vec(),
+            self.memory[range.usizes()].to_vec(),
         );
         let digest = *receipt
             .digest()
@@ -255,7 +237,7 @@ impl RetCtx<'_> {
 }
 
 pub(crate) fn revert(
-    append: AppendReceipt,
+    receipts: &mut ReceiptsCtx,
     current_contract: Option<ContractId>,
     pc: Reg<PC>,
     is: Reg<IS>,
@@ -268,7 +250,7 @@ pub(crate) fn revert(
         *is,
     );
 
-    append_receipt(append, receipt)
+    receipts.push(receipt)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -411,8 +393,6 @@ where
             ),
             new_storage_gas_per_byte,
             receipts: &mut self.receipts,
-            script: self.tx.as_script_mut(),
-            tx_offset: 0,
             frames: &mut self.frames,
             current_contract,
             profiler: &mut self.profiler,
@@ -484,8 +464,6 @@ struct PrepareCallCtx<'vm, S, I> {
     storage: &'vm mut S,
     input_contracts: InputContracts<'vm, I>,
     receipts: &'vm mut ReceiptsCtx,
-    script: Option<&'vm mut Script>,
-    tx_offset: usize,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
     profiler: &'vm mut Profiler,
@@ -638,15 +616,7 @@ where
             *self.registers.system_registers.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.script,
-                tx_offset: self.tx_offset,
-                memory: self.memory.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         self.frames.push(frame);
 

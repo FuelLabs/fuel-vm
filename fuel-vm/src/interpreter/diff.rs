@@ -22,7 +22,6 @@ use hashbrown::{
 use fuel_asm::Word;
 use fuel_storage::{
     Mappable,
-    MerkleRootStorage,
     StorageInspect,
     StorageMutate,
 };
@@ -37,7 +36,6 @@ use crate::{
     context::Context,
     storage::{
         ContractsAssets,
-        ContractsInfo,
         ContractsRawCode,
         ContractsState,
     },

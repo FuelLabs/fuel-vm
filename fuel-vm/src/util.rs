@@ -121,7 +121,10 @@ pub mod test_helpers {
         RegId,
     };
     use fuel_tx::{
-        field::Outputs,
+        field::{
+            Outputs,
+            ReceiptsRoot,
+        },
         ConsensusParameters,
         Contract,
         ContractParameters,
@@ -171,6 +174,7 @@ pub mod test_helpers {
     pub struct TestBuilder {
         rng: StdRng,
         gas_price: Word,
+        max_fee_limit: Word,
         script_gas_limit: Word,
         builder: TransactionBuilder<Script>,
         storage: MemoryStorage,
@@ -184,6 +188,7 @@ pub mod test_helpers {
             TestBuilder {
                 rng: StdRng::seed_from_u64(seed),
                 gas_price: 0,
+                max_fee_limit: 0,
                 script_gas_limit: 100,
                 builder: TransactionBuilder::script(bytecode, vec![]),
                 storage: MemoryStorage::default(),
@@ -203,14 +208,17 @@ pub mod test_helpers {
         ) -> &mut Self {
             let bytecode = script.into_iter().collect();
             self.builder = TransactionBuilder::script(bytecode, script_data);
-            self.builder.gas_price(self.gas_price);
             self.builder.script_gas_limit(self.script_gas_limit);
             self
         }
 
         pub fn gas_price(&mut self, price: Word) -> &mut TestBuilder {
-            self.builder.gas_price(price);
             self.gas_price = price;
+            self
+        }
+
+        pub fn max_fee_limit(&mut self, max_fee_limit: Word) -> &mut TestBuilder {
+            self.max_fee_limit = max_fee_limit;
             self
         }
 
@@ -269,7 +277,6 @@ pub mod test_helpers {
                 self.rng.gen(),
                 amount,
                 asset_id,
-                self.rng.gen(),
                 Default::default(),
             );
             self
@@ -317,6 +324,7 @@ pub mod test_helpers {
         }
 
         pub fn build(&mut self) -> Checked<Script> {
+            self.builder.max_fee_limit(self.max_fee_limit);
             self.builder.with_tx_params(*self.get_tx_params());
             self.builder
                 .with_contract_params(*self.get_contract_params());
@@ -422,7 +430,7 @@ pub mod test_helpers {
             let contract_id = contract.id(&salt, &contract_root, &storage_root);
 
             let tx = TransactionBuilder::create(program, salt, storage_slots)
-                .gas_price(self.gas_price)
+                .max_fee_limit(self.max_fee_limit)
                 .maturity(Default::default())
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
@@ -438,11 +446,7 @@ pub mod test_helpers {
             // set initial contract balance
             if let Some((asset_id, amount)) = initial_balance {
                 self.storage
-                    .merkle_contract_asset_id_balance_insert(
-                        &contract_id,
-                        &asset_id,
-                        amount,
-                    )
+                    .contract_asset_id_balance_insert(&contract_id, &asset_id, amount)
                     .unwrap();
             }
 
@@ -470,7 +474,7 @@ pub mod test_helpers {
             let storage = transactor.as_mut().clone();
 
             if let Some(e) = transactor.error() {
-                return Err(anyhow!("{:?}", e))
+                return Err(anyhow!("{:?}", e));
             }
             let is_reverted = transactor.is_reverted();
 
@@ -483,11 +487,16 @@ pub mod test_helpers {
             let tx_offset = self.get_tx_params().tx_offset();
             let mut tx_mem =
                 &interpreter.memory()[tx_offset..(tx_offset + transaction.size())];
-            let deser_tx = Transaction::decode(&mut tx_mem).unwrap();
+            let mut deser_tx = Transaction::decode(&mut tx_mem).unwrap();
+
+            // Patch the tx with correct receipts root
+            if let Transaction::Script(ref mut s) = deser_tx {
+                *s.receipts_root_mut() = interpreter.compute_receipts_root();
+            }
 
             assert_eq!(deser_tx, transaction);
             if is_reverted {
-                return Ok(state)
+                return Ok(state);
             }
 
             // save storage between client instances
@@ -500,7 +509,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Create>,
         ) -> anyhow::Result<StateTransition<Create>> {
-            let interpreter_params = InterpreterParams::from(&self.consensus_params);
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -511,7 +521,8 @@ pub mod test_helpers {
             &mut self,
             checked: Checked<Script>,
         ) -> anyhow::Result<StateTransition<Script>> {
-            let interpreter_params = (&self.consensus_params).into();
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -521,8 +532,10 @@ pub mod test_helpers {
         pub fn execute_tx_with_backtrace(
             &mut self,
             checked: Checked<Script>,
+            gas_price: u64,
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
-            let interpreter_params = (&self.consensus_params).into();
+            let interpreter_params =
+                InterpreterParams::new(gas_price, &self.consensus_params);
             let mut transactor =
                 Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
 
@@ -584,18 +597,18 @@ pub mod test_helpers {
         );
     }
 
-    fn check_expected_reason_for_instructions_with_client(
+    pub fn check_expected_reason_for_instructions_with_client(
         mut client: MemoryClient,
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) {
-        let gas_price = 0;
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
         let gas_limit = tx_params.max_gas_per_tx / 2;
         let maturity = Default::default();
         let height = Default::default();
+        let zero_fee_limit = 0;
 
         // setup contract with state tests
         let contract: Witness = instructions.into_iter().collect::<Vec<u8>>().into();
@@ -607,6 +620,7 @@ pub mod test_helpers {
             Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
+            .max_fee_limit(zero_fee_limit)
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
@@ -633,7 +647,7 @@ pub mod test_helpers {
             .collect();
 
         let tx_deploy_loader = TransactionBuilder::script(script, script_data)
-            .gas_price(gas_price)
+            .max_fee_limit(zero_fee_limit)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .with_tx_params(tx_params)

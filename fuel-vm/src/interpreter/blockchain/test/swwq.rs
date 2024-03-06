@@ -7,6 +7,7 @@ use alloc::{
 
 use crate::storage::{
     ContractsState,
+    ContractsStateData,
     MemoryStorage,
 };
 
@@ -16,7 +17,7 @@ use test_case::test_case;
 
 struct SWWQInput {
     input: StateWriteQWord,
-    storage_slots: Vec<([u8; 32], [u8; 32])>,
+    storage_slots: Vec<([u8; 32], ContractsStateData)>,
     memory: Memory<MEM_SIZE>,
 }
 
@@ -25,7 +26,7 @@ struct SWWQInput {
         input: StateWriteQWord::new(2, 34, 1).unwrap(),
         storage_slots: vec![],
         memory: mem(&[&[0; 2], &key(27), &[5; 32]]),
-    } => (vec![(key(27), [5; 32])], 1)
+    } => (vec![(key(27), data(&[5; 32]))], 1)
     ; "Single slot write w/ offset key in memory"
 )]
 #[test_case(
@@ -33,15 +34,15 @@ struct SWWQInput {
         input: StateWriteQWord::new(0, 32, 2).unwrap(),
         storage_slots: vec![],
         memory: mem(&[&key(27), &[5; 32], &[6; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], 2)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32]))], 2)
     ; "Two slot write"
 )]
 #[test_case(
     SWWQInput{
         input: StateWriteQWord::new(0, 32, 2).unwrap(),
-        storage_slots: vec![(key(27), [2; 32])],
+        storage_slots: vec![(key(27), data(&[2; 32]))],
         memory: mem(&[&key(27), &[5; 32], &[6; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], 1)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32]))], 1)
     ; "Two slot writes with one pre-existing slot set"
 )]
 #[test_case(
@@ -49,7 +50,7 @@ struct SWWQInput {
         input: StateWriteQWord::new(0, 32, 2).unwrap(),
         storage_slots: vec![],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32])], 2)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32]))], 2)
     ; "Only writes two slots when memory has more data available"
 )]
 #[test_case(
@@ -57,42 +58,44 @@ struct SWWQInput {
         input: StateWriteQWord::new(0, 32, 3).unwrap(),
         storage_slots: vec![],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], 3)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))], 3)
     ; "Three slot write"
 )]
 #[test_case(
     SWWQInput{
         input: StateWriteQWord::new(0, 32, 3).unwrap(),
-        storage_slots: vec![(key(29), [8; 32])],
+        storage_slots: vec![(key(29), data(&[8; 32]))],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], 2)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))], 2)
     ; "Three slot write with one pre-existing slot set"
 )]
 #[test_case(
     SWWQInput{
         input: StateWriteQWord::new(0, 32, 3).unwrap(),
-        storage_slots: vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])],
+        storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32])], 0)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))], 0)
     ; "Three slot write with all slots previously set"
 )]
 #[test_case(
     SWWQInput{
         input: StateWriteQWord::new(0, 32, 2).unwrap(),
-        storage_slots: vec![(key(29), [8; 32])],
+        storage_slots: vec![(key(29), data(&[8; 32]))],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [8; 32])], 2)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[8; 32]))], 2)
     ; "Does not override slots that aren't being written to (adjacent)"
 )]
 #[test_case(
     SWWQInput{
         input: StateWriteQWord::new(0, 32, 3).unwrap(),
-        storage_slots: vec![(key(100), [8; 32])],
+        storage_slots: vec![(key(100), data(&[8; 32]))],
         memory: mem(&[&key(27), &[5; 32], &[6; 32], &[7; 32]]),
-    } => (vec![(key(27), [5; 32]), (key(28), [6; 32]), (key(29), [7; 32]), (key(100), [8; 32])], 3)
+    } => (vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32])), (key(100), data(&[8; 32]))], 3)
     ; "Does not override slots that aren't being written to (non-adjacent)"
 )]
-fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, u64) {
+fn test_state_write_qword(
+    input: SWWQInput,
+) -> (Vec<([u8; 32], ContractsStateData)>, u64) {
     let SWWQInput {
         input,
         storage_slots,
@@ -105,7 +108,7 @@ fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, u64) 
             .storage::<ContractsState>()
             .insert(
                 &(&ContractId::default(), &Bytes32::new(k)).into(),
-                &Bytes32::new(v),
+                v.as_ref(),
             )
             .unwrap();
     }
@@ -133,7 +136,7 @@ fn test_state_write_qword(input: SWWQInput) -> (Vec<([u8; 32], [u8; 32])>, u64) 
 
     let results = storage
         .all_contract_state()
-        .map(|(key, v)| (**key.state_key(), **v))
+        .map(|(key, v)| (**key.state_key(), v.clone()))
         .collect();
     (results, result_register)
 }

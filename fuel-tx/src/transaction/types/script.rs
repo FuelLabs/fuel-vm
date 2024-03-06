@@ -89,7 +89,6 @@ impl Default for Script {
             script,
             script_data: Default::default(),
             policies: Policies::new()
-                .with_gas_price(0)
                 .with_maturity(0.into())
                 .with_witness_limit(10000),
             inputs: Default::default(),
@@ -101,10 +100,23 @@ impl Default for Script {
     }
 }
 
+impl Script {
+    /// Prepare script for execution by clearing malleable fields.
+    pub fn prepare_init_execute(&mut self) {
+        *self.receipts_root_mut() = Default::default();
+        self.inputs_mut()
+            .iter_mut()
+            .for_each(Input::prepare_init_execute);
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(Output::prepare_init_execute);
+    }
+}
+
 impl crate::UniqueIdentifier for Script {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
-            return id
+            return id;
         }
 
         let mut clone = self.clone();
@@ -293,7 +305,7 @@ mod field {
                 script_data_offset, ..
             }) = &self.metadata
             {
-                return *script_data_offset
+                return *script_data_offset;
             }
 
             self.script_offset() + bytes::padded_len(self.script.as_slice())
@@ -335,7 +347,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *inputs_offset
+                return *inputs_offset;
             }
 
             self.policies_offset() + self.policies.size_dynamic()
@@ -351,7 +363,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_offset_at.get(idx).cloned()
+                return inputs_offset_at.get(idx).cloned();
             }
 
             if idx < self.inputs.len() {
@@ -380,7 +392,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None)
+                return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None);
             }
 
             self.inputs().get(idx).and_then(|input| {
@@ -412,7 +424,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *outputs_offset
+                return *outputs_offset;
             }
 
             self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
@@ -428,7 +440,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return outputs_offset_at.get(idx).cloned()
+                return outputs_offset_at.get(idx).cloned();
             }
 
             if idx < self.outputs.len() {
@@ -468,7 +480,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return *witnesses_offset
+                return *witnesses_offset;
             }
 
             self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
@@ -485,7 +497,7 @@ mod field {
                 ..
             }) = &self.metadata
             {
-                return witnesses_offset_at.get(idx).cloned()
+                return witnesses_offset_at.get(idx).cloned();
             }
 
             if idx < self.witnesses.len() {

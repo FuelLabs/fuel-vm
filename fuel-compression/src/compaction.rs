@@ -72,8 +72,7 @@ impl<'a, R: RegistryDb> CompactionContext<'a, R> {
     /// If necessary, store the value in the changeset and allocate a new key.
     pub fn to_key<T: Table>(&mut self, value: T::Type) -> anyhow::Result<Key<T>>
     where
-        KeyPerTable: access::AccessCopy<T, Key<T>>,
-        KeyPerTable: access::AccessMut<T, Key<T>>,
+        KeyPerTable: access::AccessCopy<T, Key<T>> + access::AccessMut<T, Key<T>>
         ChangesPerTable:
             access::AccessRef<T, WriteTo<T>> + access::AccessMut<T, WriteTo<T>>,
     {

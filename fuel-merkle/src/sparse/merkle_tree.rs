@@ -639,7 +639,7 @@ where
             .into_iter()
             .map(|side_node| *side_node.hash())
             .collect::<Vec<_>>();
-        let proof = if path == actual_leaf.leaf_key() {
+        let proof = if !actual_leaf.is_placeholder() && actual_leaf.leaf_key() == path {
             // If the requested key is part of the tree, build an inclusion
             // proof.
             let inclusion_proof = InclusionProof { proof_set };

@@ -9,6 +9,7 @@ use crate::{
         proof::Proof,
         MerkleTree,
         MerkleTreeKey,
+        Node,
         Primitive,
     },
 };
@@ -151,5 +152,22 @@ proptest! {
 
         // Then
         prop_assert!(exclusion)
+    }
+
+    #[test]
+    fn exclusion_proof__verify__returns_false_for_inlcuded_key((key_values, tree) in random_tree(1, 100), key: Key) {
+        // Given
+        prop_assume!(!key_values.iter().any(|(k, _)| *k == key));
+        let Proof::Exclusion(mut exlucion_proof) = tree.generate_proof(key).expect("Infallible") else { panic!("Expected ExclusionProof") };
+        let (inlucded_key, inlucded_value) = key_values[0];
+        let Proof::Inclusion(inclusion_proof) = tree.generate_proof(inlucded_key).expect("Infallible")  else { panic!("Expected InclusionProof") };
+        exlucion_proof.proof_set = inclusion_proof.proof_set;
+        exlucion_proof.leaf = Node::create_leaf(&inlucded_key.into(), inlucded_value);
+
+        // When
+        let exclusion = exlucion_proof.verify(key);
+
+        // Then
+        prop_assert!(!exclusion)
     }
 }

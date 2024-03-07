@@ -126,7 +126,7 @@ proptest! {
     }
 
     #[test]
-    fn inclusion_proof__verify__returns_false_with_correct_key_and_incorrect_value((key_values, tree) in random_tree(1, 100), arb_num: usize, value: Bytes32) {
+    fn inclusion_proof__verify__returns_false_with_correct_key_and_incorrect_value((key_values, tree) in random_tree(1, 100), arb_num: usize, value: Value) {
         let root = tree.root();
 
         // Given
@@ -137,7 +137,7 @@ proptest! {
 
         // When
         let inclusion = match proof {
-            Proof::Inclusion(proof) => proof.verify(&root, &key, &value.as_ref()),
+            Proof::Inclusion(proof) => proof.verify(&root, &key, value.as_ref()),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
 

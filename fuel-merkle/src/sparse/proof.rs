@@ -225,7 +225,7 @@ mod test {
 
         {
             // Given
-            let proof = tree.generate_proof(&k3.into()).unwrap();
+            let proof = tree.generate_proof(&k3).unwrap();
 
             // When
             let inclusion = match proof {
@@ -626,7 +626,7 @@ mod test_random {
         let root = tree.root();
 
         // Given
-        let proof = tree.generate_proof(&key.into()).unwrap();
+        let proof = tree.generate_proof(&key).unwrap();
 
         // When
         let inclusion = match proof {

@@ -72,7 +72,7 @@ where
         let tx_size = Word::from_be_bytes(
             read_bytes(
                 &self.memory,
-                (tx_offset - 8)// Tx size is stored just below the tx bytes
+                (tx_offset - 8) // Tx size is stored just below the tx bytes
                     .try_into()
                     .expect("tx offset impossibly large"),
             )

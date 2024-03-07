@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#692](https://github.com/FuelLabs/fuel-vm/pull/692): Add GTF getters for tx size and address.
+
 ## [Version 0.47.1]
 
 ### Added

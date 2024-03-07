@@ -19,15 +19,21 @@ use crate::{
     },
 };
 
-use crate::sparse::{
-    branch::{
-        merge_branches,
-        Branch,
+use crate::{
+    common::{
+        Bit,
+        Msb,
     },
-    proof::{
-        ExclusionProof,
-        InclusionProof,
-        Proof,
+    sparse::{
+        branch::{
+            merge_branches,
+            Branch,
+        },
+        proof::{
+            ExclusionProof,
+            InclusionProof,
+            Proof,
+        },
     },
 };
 use alloc::{
@@ -121,6 +127,28 @@ impl Debug for MerkleTreeKey {
 impl From<MerkleTreeKey> for Bytes32 {
     fn from(value: MerkleTreeKey) -> Self {
         value.0
+    }
+}
+
+impl AsRef<[u8]> for MerkleTreeKey {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl AsRef<Bytes32> for MerkleTreeKey {
+    fn as_ref(&self) -> &Bytes32 {
+        &self.0
+    }
+}
+
+impl Msb for MerkleTreeKey {
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit> {
+        self.0.get_bit_at_index_from_msb(index)
+    }
+
+    fn common_prefix_count(&self, other: &[u8]) -> u32 {
+        self.0.common_prefix_count(other.as_ref())
     }
 }
 
@@ -590,12 +618,11 @@ where
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
-    pub fn generate_proof<K: Into<Bytes32>>(
+    pub fn generate_proof(
         &self,
-        key: K,
+        key: MerkleTreeKey,
     ) -> Result<Proof, MerkleTreeError<StorageError>> {
         let path = key.into();
-        let root = self.root();
         let (path_nodes, side_nodes) = self.path_set(path)?;
         // Identify the closest leaf that is included in the tree to the
         // requested leaf. The closest leaf, as returned by the path set
@@ -616,7 +643,7 @@ where
         let proof = if path == *actual_leaf.leaf_key() {
             // If the requested key is part of the tree, build an inclusion
             // proof.
-            let inclusion_proof = InclusionProof { root, proof_set };
+            let inclusion_proof = InclusionProof { proof_set };
             Proof::Inclusion(inclusion_proof)
         } else {
             // If the requested key is not part of the tree, we are verifying
@@ -642,7 +669,6 @@ where
             // divergence equates to this hash.
             //
             let exclusion_proof = ExclusionProof {
-                root,
                 proof_set,
                 leaf: actual_leaf.clone(),
             };
@@ -1482,23 +1508,23 @@ mod test {
         let n1 = Node::create_node(&n0, &Node::create_placeholder(), 253);
         let n2 = Node::create_node(&n1, &l2, 254);
         let n3 = Node::create_node(&l0, &n2, 255);
-        let n4 = Node::create_node(&n3, &Node::create_placeholder(), 256);
 
         {
             // When
-            let proof = tree.generate_proof(k0).expect("Expected proof");
-            let expected_root = *n4.hash();
+            let proof = tree
+                .generate_proof(MerkleTreeKey::new_without_hash(k0))
+                .expect("Expected proof");
             let expected_proof_set = [*n2.hash(), *Node::create_placeholder().hash()];
 
             // Then
-            assert_eq!(*proof.root(), expected_root);
             assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
         {
             // When
-            let proof = tree.generate_proof(k1).expect("Expected proof");
-            let expected_root = *n4.hash();
+            let proof = tree
+                .generate_proof(MerkleTreeKey::new_without_hash(k1))
+                .expect("Expected proof");
             let expected_proof_set = [
                 *l3.hash(),
                 *Node::create_placeholder().hash(),
@@ -1508,26 +1534,26 @@ mod test {
             ];
 
             // Then
-            assert_eq!(*proof.root(), expected_root);
             assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
         {
             // When
-            let proof = tree.generate_proof(k2).expect("Expected proof");
-            let expected_root = *n4.hash();
+            let proof = tree
+                .generate_proof(MerkleTreeKey::new_without_hash(k2))
+                .expect("Expected proof");
             let expected_proof_set =
                 [*n1.hash(), *l0.hash(), *Node::create_placeholder().hash()];
 
             // Then
-            assert_eq!(*proof.root(), expected_root);
             assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
         {
             // When
-            let proof = tree.generate_proof(k3).expect("Expected proof");
-            let expected_root = *n4.hash();
+            let proof = tree
+                .generate_proof(MerkleTreeKey::new_without_hash(k3))
+                .expect("Expected proof");
             let expected_proof_set = [
                 *l1.hash(),
                 *Node::create_placeholder().hash(),
@@ -1537,7 +1563,6 @@ mod test {
             ];
 
             // Then
-            assert_eq!(*proof.root(), expected_root);
             assert_eq!(*proof.proof_set(), expected_proof_set);
         }
 
@@ -1547,12 +1572,12 @@ mod test {
 
             // When
             let key = [255u8; 32];
-            let proof = tree.generate_proof(key).expect("Expected proof");
-            let expected_root = *n4.hash();
+            let proof = tree
+                .generate_proof(MerkleTreeKey::new_without_hash(key))
+                .expect("Expected proof");
             let expected_proof_set = [*n3.hash()];
 
             // Then
-            assert_eq!(*proof.root(), expected_root);
             assert_eq!(*proof.proof_set(), expected_proof_set);
         }
     }
@@ -1600,7 +1625,9 @@ mod test {
             .expect("Expected successful update");
 
         // When
-        let proof = tree.generate_proof(k1).expect("Expected proof");
+        let proof = tree
+            .generate_proof(MerkleTreeKey::new_without_hash(k1))
+            .expect("Expected proof");
 
         // Then
         assert!(proof.is_inclusion());
@@ -1650,7 +1677,9 @@ mod test {
 
         // When
         let key = [255u8; 32];
-        let proof = tree.generate_proof(key).expect("Expected proof");
+        let proof = tree
+            .generate_proof(MerkleTreeKey::new_without_hash(key))
+            .expect("Expected proof");
 
         // Then
         assert!(proof.is_exclusion());

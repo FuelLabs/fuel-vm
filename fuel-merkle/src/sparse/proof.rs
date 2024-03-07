@@ -8,7 +8,10 @@ use crate::{
         Prefix,
         ProofSet,
     },
-    sparse::Node,
+    sparse::{
+        MerkleTreeKey,
+        Node,
+    },
 };
 
 use alloc::vec::Vec;
@@ -24,13 +27,6 @@ pub enum Proof {
 }
 
 impl Proof {
-    pub fn root(&self) -> &Bytes32 {
-        match self {
-            Proof::Inclusion(proof) => &proof.root,
-            Proof::Exclusion(proof) => &proof.root,
-        }
-    }
-
     pub fn proof_set(&self) -> &ProofSet {
         match self {
             Proof::Inclusion(proof) => &proof.proof_set,
@@ -52,15 +48,13 @@ impl Proof {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct InclusionProof {
-    pub root: Bytes32,
     pub proof_set: ProofSet,
 }
 
 impl InclusionProof {
-    pub fn verify<K: Into<Bytes32>, V: AsRef<[u8]>>(&self, key: K, value: &V) -> bool {
-        let Self { root, proof_set } = self;
-        let key = key.into();
-        let leaf = Node::create_leaf(&key, value);
+    pub fn verify(&self, root: &Bytes32, key: MerkleTreeKey, value: &[u8]) -> bool {
+        let Self { proof_set } = self;
+        let leaf = Node::create_leaf(key.as_ref(), value);
         let mut current = *leaf.hash();
         for (i, side_hash) in proof_set.iter().enumerate() {
             let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
@@ -78,7 +72,6 @@ impl Debug for InclusionProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let proof_set = self.proof_set.iter().map(hex::encode).collect::<Vec<_>>();
         f.debug_struct("InclusionProof")
-            .field("Root", &hex::encode(self.root))
             .field("Proof set", &proof_set)
             .finish()
     }
@@ -86,19 +79,16 @@ impl Debug for InclusionProof {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct ExclusionProof {
-    pub root: Bytes32,
     pub proof_set: ProofSet,
     pub(crate) leaf: Node,
 }
 
 impl ExclusionProof {
-    pub fn verify<K: Into<Bytes32>>(&self, key: K) -> bool {
-        let Self {
-            root,
-            proof_set,
-            leaf,
-        } = self;
-        let key = key.into();
+    pub fn verify(&self, root: &Bytes32, key: MerkleTreeKey) -> bool {
+        let Self { proof_set, leaf } = self;
+        if key.as_ref() == *leaf.leaf_key() {
+            return false;
+        }
         let mut current = *leaf.hash();
         for (i, side_hash) in proof_set.iter().enumerate() {
             let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
@@ -116,7 +106,6 @@ impl Debug for ExclusionProof {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let proof_set = self.proof_set.iter().map(hex::encode).collect::<Vec<_>>();
         f.debug_struct("ExclusionProof")
-            .field("Root", &hex::encode(self.root))
             .field("Proof set", &proof_set)
             .field("Leaf", &self.leaf)
             .finish()
@@ -134,6 +123,8 @@ mod test {
         sparse::{
             proof::Proof,
             MerkleTree,
+            MerkleTreeKey,
+            Node,
             Primitive,
         },
     };
@@ -190,13 +181,15 @@ mod test {
         tree.update(k3.into(), v3)
             .expect("Expected successful update");
 
+        let root = tree.root();
+
         {
             // Given
-            let proof = tree.generate_proof(k0).unwrap();
+            let proof = tree.generate_proof(k0.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k0, b"DATA_0"),
+                Proof::Inclusion(proof) => proof.verify(&root, k0.into(), b"DATA_0"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
 
@@ -206,11 +199,11 @@ mod test {
 
         {
             // Given
-            let proof = tree.generate_proof(k1).unwrap();
+            let proof = tree.generate_proof(k1.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k1, b"DATA_1"),
+                Proof::Inclusion(proof) => proof.verify(&root, k1.into(), b"DATA_1"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
 
@@ -220,11 +213,11 @@ mod test {
 
         {
             // Given
-            let proof = tree.generate_proof(k2).unwrap();
+            let proof = tree.generate_proof(k2.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k2, b"DATA_2"),
+                Proof::Inclusion(proof) => proof.verify(&root, k2.into(), b"DATA_2"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
 
@@ -234,11 +227,11 @@ mod test {
 
         {
             // Given
-            let proof = tree.generate_proof(k3).unwrap();
+            let proof = tree.generate_proof(k3.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k3, b"DATA_3"),
+                Proof::Inclusion(proof) => proof.verify(&root, k3.into(), b"DATA_3"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
 
@@ -288,13 +281,15 @@ mod test {
         tree.update(k3.into(), v3)
             .expect("Expected successful update");
 
+        let root = tree.root();
+
         {
             // Given
-            let proof = tree.generate_proof(k0).unwrap();
+            let proof = tree.generate_proof(k0.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k0, b"DATA_100"),
+                Proof::Inclusion(proof) => proof.verify(&root, k0.into(), b"DATA_100"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
 
@@ -304,11 +299,11 @@ mod test {
 
         {
             // Given
-            let proof = tree.generate_proof(k1).unwrap();
+            let proof = tree.generate_proof(k1.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k1, b"DATA_100"),
+                Proof::Inclusion(proof) => proof.verify(&root, k1.into(), b"DATA_100"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
 
@@ -318,11 +313,11 @@ mod test {
 
         {
             // Given
-            let proof = tree.generate_proof(k2).unwrap();
+            let proof = tree.generate_proof(k2.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k2, b"DATA_100"),
+                Proof::Inclusion(proof) => proof.verify(&root, k2.into(), b"DATA_100"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
 
@@ -332,11 +327,11 @@ mod test {
 
         {
             // Given
-            let proof = tree.generate_proof(k3).unwrap();
+            let proof = tree.generate_proof(k3.into()).unwrap();
 
             // When
             let inclusion = match proof {
-                Proof::Inclusion(proof) => proof.verify(k3, b"DATA_100"),
+                Proof::Inclusion(proof) => proof.verify(&root, k3.into(), b"DATA_100"),
                 Proof::Exclusion(_) => panic!("Expected InclusionProof"),
             };
             // Then
@@ -385,13 +380,15 @@ mod test {
         tree.update(k3.into(), v3)
             .expect("Expected successful update");
 
+        let root = tree.root();
+
         // Given
-        let proof = tree.generate_proof(k3).unwrap();
+        let proof = tree.generate_proof(k3.into()).unwrap();
 
         // When
         let key = [1u8; 32];
         let inclusion = match proof {
-            Proof::Inclusion(proof) => proof.verify(key, b"DATA_3"),
+            Proof::Inclusion(proof) => proof.verify(&root, key.into(), b"DATA_3"),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
 
@@ -440,14 +437,16 @@ mod test {
         tree.update(k3.into(), v3)
             .expect("Expected successful update");
 
+        let root = tree.root();
+
         // Given
         let key = [0xffu8; 32];
-        let proof = tree.generate_proof(key).unwrap();
+        let proof = tree.generate_proof(key.into()).unwrap();
 
         // When
         let exclusion = match proof {
             Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
-            Proof::Exclusion(proof) => proof.verify(key),
+            Proof::Exclusion(proof) => proof.verify(&root, key.into()),
         };
 
         // Then
@@ -495,14 +494,81 @@ mod test {
         tree.update(k3.into(), v3)
             .expect("Expected successful update");
 
+        let root = tree.root();
+
         // Given
         let key = [0xffu8; 32];
-        let proof = tree.generate_proof(key).unwrap();
+        let proof = tree
+            .generate_proof(MerkleTreeKey::new_without_hash(key))
+            .unwrap();
 
         // When
         let exclusion = match proof {
             Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
-            Proof::Exclusion(proof) => proof.verify(k1),
+            Proof::Exclusion(proof) => proof.verify(&root, k1.into()),
+        };
+
+        // Then
+        assert!(!exclusion);
+    }
+
+    #[test]
+    fn exclusion_proof__verify__returns_test() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        // 256:           N4
+        //               /  \
+        // 255:         N3   \
+        //             /  \   \
+        // 254:       /   N2   \
+        //           /   /  \   \
+        // 253:     /   N1   \   \
+        //         /   /  \   \   \
+        // 252:   /   N0   \   \   \
+        // ...   /   /  \   \   \   \
+        //   0: L0  L1  L3  P1  L2  P0
+        //      K0  K1  K3      K2
+
+        let k0 = [0u8; 32];
+        let v0 = b"DATA_0";
+        tree.update(k0.into(), v0)
+            .expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01000000;
+        let v1 = b"DATA_1";
+        tree.update(k1.into(), v1)
+            .expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01100000;
+        let v2 = b"DATA_2";
+        tree.update(k2.into(), v2)
+            .expect("Expected successful update");
+
+        let mut k3 = [0u8; 32];
+        k3[0] = 0b01001000;
+        let v3 = b"DATA_3";
+        tree.update(k3.into(), v3)
+            .expect("Expected successful update");
+
+        let root = tree.root();
+
+        // Given
+        let key = [0xffu8; 32];
+        let proof = tree
+            .generate_proof(MerkleTreeKey::new_without_hash(key))
+            .unwrap();
+
+        // When
+        let exclusion = match proof {
+            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
+            Proof::Exclusion(mut proof) => {
+                proof.proof_set = vec![];
+                proof.leaf = Node::create_placeholder();
+                proof.verify(&root, k1.into())
+            }
         };
 
         // Then
@@ -567,12 +633,14 @@ mod test_random {
             tree.update(key.into(), &value).unwrap();
         }
 
+        let root = tree.root();
+
         // Given
-        let proof = tree.generate_proof(key).unwrap();
+        let proof = tree.generate_proof(key.into()).unwrap();
 
         // When
         let inclusion = match proof {
-            Proof::Inclusion(proof) => proof.verify(key, &value),
+            Proof::Inclusion(proof) => proof.verify(&root, key.into(), &value),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
 
@@ -596,12 +664,14 @@ mod test_random {
             tree.update(key.into(), &value).unwrap();
         }
 
+        let root = tree.root();
+
         // Given
-        let proof = tree.generate_proof(key).unwrap();
+        let proof = tree.generate_proof(key.into()).unwrap();
 
         // When
         let inclusion = match proof {
-            Proof::Inclusion(proof) => proof.verify(key, b"DATA"),
+            Proof::Inclusion(proof) => proof.verify(&root, key.into(), b"DATA"),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
 
@@ -629,6 +699,8 @@ mod test_random {
             tree.update(key, &value).unwrap();
         }
 
+        let root = tree.root();
+
         // Given
         // - Generate a proof with key_1
         let proof = tree.generate_proof(key_1).unwrap();
@@ -636,7 +708,7 @@ mod test_random {
         // When
         // - Attempt to verify the proof with key_2
         let inclusion = match proof {
-            Proof::Inclusion(proof) => proof.verify(key_2, &value_2),
+            Proof::Inclusion(proof) => proof.verify(&root, key_2, &value_2),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
 
@@ -656,6 +728,8 @@ mod test_random {
             tree.update(key.into(), &value).unwrap();
         }
 
+        let root = tree.root();
+
         // Given
         let key: MerkleTreeKey = random_bytes32(&mut rng).into();
         let proof = tree.generate_proof(key).unwrap();
@@ -663,7 +737,7 @@ mod test_random {
         // When
         let exclusion = match proof {
             Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
-            Proof::Exclusion(proof) => proof.verify(key),
+            Proof::Exclusion(proof) => proof.verify(&root, key),
         };
 
         // Then
@@ -675,15 +749,16 @@ mod test_random {
         let mut rng = StdRng::seed_from_u64(0xDEADBEEF);
         let mut storage = StorageMap::<TestTable>::new();
         let tree = MerkleTree::new(&mut storage);
+        let root = tree.root();
 
         // Given
         let key = random_bytes32(&mut rng);
-        let proof = tree.generate_proof(key).unwrap();
+        let proof = tree.generate_proof(key.into()).unwrap();
 
         // When
         let exclusion = match proof {
             Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
-            Proof::Exclusion(proof) => proof.verify(key),
+            Proof::Exclusion(proof) => proof.verify(&root, key.into()),
         };
 
         // Then

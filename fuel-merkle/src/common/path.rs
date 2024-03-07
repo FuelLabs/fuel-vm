@@ -22,7 +22,7 @@ pub trait Path {
 }
 
 pub trait ComparablePath {
-    fn common_path_length(&self, other: &Self) -> u32;
+    fn common_path_length(&self, other: &[u8]) -> u32;
 }
 
 impl<T> Path for T
@@ -38,7 +38,7 @@ impl<T> ComparablePath for T
 where
     T: Msb,
 {
-    fn common_path_length(&self, other: &Self) -> u32 {
+    fn common_path_length(&self, other: &[u8]) -> u32 {
         self.common_prefix_count(other)
     }
 }

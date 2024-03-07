@@ -179,7 +179,7 @@ impl MerkleTree {
         self.tree.root()
     }
 
-    pub fn generate_proof<K: Into<Bytes32>>(&self, key: K) -> Option<Proof> {
+    pub fn generate_proof(&self, key: MerkleTreeKey) -> Option<Proof> {
         self.tree.generate_proof(key).ok()
     }
 }

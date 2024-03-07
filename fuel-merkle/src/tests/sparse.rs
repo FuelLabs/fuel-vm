@@ -113,11 +113,11 @@ proptest! {
         let index = arb_num % key_values.len();
         let (key, value) = key_values[index];
         let key = MerkleTreeKey::new(key);
-        let proof = tree.generate_proof(key).expect("Infallible");
+        let proof = tree.generate_proof(&key).expect("Infallible");
 
         // When
         let inclusion = match proof {
-            Proof::Inclusion(proof) => proof.verify(&root, key, value.as_ref()),
+            Proof::Inclusion(proof) => proof.verify(&root, &key, value.as_ref()),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
 
@@ -133,11 +133,11 @@ proptest! {
         let index = arb_num % key_values.len();
         let (key, _) = key_values[index];
         let key = MerkleTreeKey::new(key);
-        let proof = tree.generate_proof(key).expect("Infallible");
+        let proof = tree.generate_proof(&key).expect("Infallible");
 
         // When
         let inclusion = match proof {
-            Proof::Inclusion(proof) => proof.verify(&root, key, &value.as_ref()),
+            Proof::Inclusion(proof) => proof.verify(&root, &key, &value.as_ref()),
             Proof::Exclusion(_) => panic!("Expected InclusionProof"),
         };
 
@@ -152,12 +152,12 @@ proptest! {
         // Given
         prop_assume!(!key_values.iter().any(|(k, _)| *k == key));
         let key = MerkleTreeKey::new(key);
-        let proof = tree.generate_proof(key).expect("Infallible");
+        let proof = tree.generate_proof(&key).expect("Infallible");
 
         // When
         let exclusion = match proof {
             Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
-            Proof::Exclusion(proof) => proof.verify(&root, key),
+            Proof::Exclusion(proof) => proof.verify(&root, &key),
         };
 
         // Then
@@ -169,17 +169,17 @@ proptest! {
         let root = tree.root();
 
         // Given
-        let (inlucded_key, inlucded_value) = key_values[0];
-        let inlucded_key = MerkleTreeKey::new(inlucded_key);
-        let Proof::Inclusion(inclusion_proof) = tree.generate_proof(inlucded_key).expect("Infallible")  else { panic!("Expected InclusionProof") };
+        let (included_key, included_value) = key_values[0];
+        let included_key = MerkleTreeKey::new(included_key);
+        let Proof::Inclusion(inclusion_proof) = tree.generate_proof(&included_key).expect("Infallible")  else { panic!("Expected InclusionProof") };
         let exlucion_proof = ExclusionProof {
             proof_set: inclusion_proof.proof_set.clone(),
-            leaf: Node::create_leaf(&inlucded_key.into(), inlucded_value),
+            leaf: Node::create_leaf(&included_key.into(), included_value),
         };
 
         // When
-        let inclusion_result = inclusion_proof.verify(&root, inlucded_key, inlucded_value.as_ref());
-        let exclusion_result = exlucion_proof.verify(&root, inlucded_key);
+        let inclusion_result = inclusion_proof.verify(&root, &included_key, included_value.as_ref());
+        let exclusion_result = exlucion_proof.verify(&root, &included_key);
 
         // Then
         prop_assert!(inclusion_result);

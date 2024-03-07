@@ -51,7 +51,7 @@ impl PositionPathIter {
         Self {
             rightmost_position: Position::from_leaf_index(leaves_count - 1),
             current_side_node: None,
-            path_iter: root.as_path_iter(leaf.leaf_key()),
+            path_iter: root.as_path_iter(&leaf.leaf_key()),
         }
     }
 }

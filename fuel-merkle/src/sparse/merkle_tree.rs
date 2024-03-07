@@ -235,7 +235,7 @@ where
 
     fn path_set(
         &self,
-        leaf_key: Bytes32,
+        leaf_key: &Bytes32,
     ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
@@ -421,15 +421,14 @@ where
             return Ok(())
         }
 
-        let key = key.into();
-        let leaf_node = Node::create_leaf(&key, data);
+        let leaf_node = Node::create_leaf(key.as_ref(), data);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
         } else {
-            let (path_nodes, side_nodes) = self.path_set(key)?;
+            let (path_nodes, side_nodes) = self.path_set(key.as_ref())?;
             self.update_with_path_set(
                 &leaf_node,
                 path_nodes.as_slice(),
@@ -450,13 +449,13 @@ where
             return Ok(())
         }
 
-        let key = key.into();
-        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(key)?;
+        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) =
+            self.path_set(key.as_ref())?;
 
         match path_nodes.first() {
-            Some(node) if node.leaf_key() == &key => {
+            Some(node) if *node.leaf_key() == key.as_ref() => {
                 self.delete_with_path_set(
-                    &key,
+                    key.as_ref(),
                     path_nodes.as_slice(),
                     side_nodes.as_slice(),
                 )?;
@@ -620,9 +619,9 @@ where
 {
     pub fn generate_proof(
         &self,
-        key: MerkleTreeKey,
+        key: &MerkleTreeKey,
     ) -> Result<Proof, MerkleTreeError<StorageError>> {
-        let path = key.into();
+        let path = key.as_ref();
         let (path_nodes, side_nodes) = self.path_set(path)?;
         // Identify the closest leaf that is included in the tree to the
         // requested leaf. The closest leaf, as returned by the path set
@@ -640,7 +639,7 @@ where
             .into_iter()
             .map(|side_node| *side_node.hash())
             .collect::<Vec<_>>();
-        let proof = if path == *actual_leaf.leaf_key() {
+        let proof = if path == actual_leaf.leaf_key() {
             // If the requested key is part of the tree, build an inclusion
             // proof.
             let inclusion_proof = InclusionProof { proof_set };
@@ -1511,9 +1510,7 @@ mod test {
 
         {
             // When
-            let proof = tree
-                .generate_proof(MerkleTreeKey::new_without_hash(k0))
-                .expect("Expected proof");
+            let proof = tree.generate_proof(&k0.into()).expect("Expected proof");
             let expected_proof_set = [*n2.hash(), *Node::create_placeholder().hash()];
 
             // Then
@@ -1522,9 +1519,7 @@ mod test {
 
         {
             // When
-            let proof = tree
-                .generate_proof(MerkleTreeKey::new_without_hash(k1))
-                .expect("Expected proof");
+            let proof = tree.generate_proof(&k1.into()).expect("Expected proof");
             let expected_proof_set = [
                 *l3.hash(),
                 *Node::create_placeholder().hash(),
@@ -1539,9 +1534,7 @@ mod test {
 
         {
             // When
-            let proof = tree
-                .generate_proof(MerkleTreeKey::new_without_hash(k2))
-                .expect("Expected proof");
+            let proof = tree.generate_proof(&k2.into()).expect("Expected proof");
             let expected_proof_set =
                 [*n1.hash(), *l0.hash(), *Node::create_placeholder().hash()];
 
@@ -1551,9 +1544,7 @@ mod test {
 
         {
             // When
-            let proof = tree
-                .generate_proof(MerkleTreeKey::new_without_hash(k3))
-                .expect("Expected proof");
+            let proof = tree.generate_proof(&k3.into()).expect("Expected proof");
             let expected_proof_set = [
                 *l1.hash(),
                 *Node::create_placeholder().hash(),
@@ -1572,9 +1563,7 @@ mod test {
 
             // When
             let key = [255u8; 32];
-            let proof = tree
-                .generate_proof(MerkleTreeKey::new_without_hash(key))
-                .expect("Expected proof");
+            let proof = tree.generate_proof(&key.into()).expect("Expected proof");
             let expected_proof_set = [*n3.hash()];
 
             // Then
@@ -1625,9 +1614,7 @@ mod test {
             .expect("Expected successful update");
 
         // When
-        let proof = tree
-            .generate_proof(MerkleTreeKey::new_without_hash(k1))
-            .expect("Expected proof");
+        let proof = tree.generate_proof(&k1.into()).expect("Expected proof");
 
         // Then
         assert!(proof.is_inclusion());
@@ -1677,9 +1664,7 @@ mod test {
 
         // When
         let key = [255u8; 32];
-        let proof = tree
-            .generate_proof(MerkleTreeKey::new_without_hash(key))
-            .expect("Expected proof");
+        let proof = tree.generate_proof(&key.into()).expect("Expected proof");
 
         // Then
         assert!(proof.is_exclusion());

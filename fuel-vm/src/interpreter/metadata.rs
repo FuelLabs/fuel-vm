@@ -10,6 +10,7 @@ use crate::{
     context::Context,
     convert,
     error::SimpleResult,
+    interpreter::memory::read_bytes,
 };
 
 use fuel_asm::{
@@ -68,11 +69,21 @@ where
         imm: Immediate12,
     ) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
+        let tx_size = Word::from_be_bytes(
+            read_bytes(
+                &self.memory,
+                (tx_offset - 8)// Tx size is stored just below the tx bytes
+                    .try_into()
+                    .expect("tx offset impossibly large"),
+            )
+            .expect("Tx length not in memory"),
+        );
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = GTFInput {
             tx: &self.tx,
             tx_offset,
+            tx_size,
             pc,
         };
         input.get_transaction_field(result, b, imm)
@@ -134,6 +145,7 @@ pub(crate) fn metadata(
 struct GTFInput<'vm, Tx> {
     tx: &'vm Tx,
     tx_offset: usize,
+    tx_size: Word,
     pc: RegMut<'vm, PC>,
 }
 
@@ -198,6 +210,8 @@ impl<Tx> GTFInput<'_, Tx> {
                     .witnesses_offset_at(b)
                     .ok_or(PanicReason::WitnessNotFound)?) as Word
             }
+            GTFArgs::TxStartAddress => ofs as Word,
+            GTFArgs::TxLength => self.tx_size,
 
             // Input
             GTFArgs::InputType => {

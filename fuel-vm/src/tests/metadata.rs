@@ -484,6 +484,19 @@ fn get_transaction_fields() {
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::TxStartAddress),
+        op::movi(0x11, TxParameters::DEFAULT.tx_offset() as u32),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::TxLength),
+        op::movi(0x11, 100), // Tx lenght is too complicated to backpatch
+        op::gt(0x10, 0x10, 0x11), // so just make sure it's over some arbitrary number
+        op::and(0x20, 0x20, 0x10),
+        op::movi(0x11, 10_000), // and
+        op::lt(0x10, 0x10, 0x11), // below some arbitrary number
+        op::and(0x20, 0x20, 0x10),
+
         op::movi(0x11, tip as Immediate18),
         op::movi(0x19, 0x00),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyTip),

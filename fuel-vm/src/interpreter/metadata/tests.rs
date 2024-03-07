@@ -35,6 +35,7 @@ fn test_get_transaction_field() {
     let input = GTFInput {
         tx: &tx,
         tx_offset: 0,
+        tx_size: fuel_tx::TxParameters::DEFAULT.tx_offset() as Word,
         pc: RegMut::new(&mut pc),
     };
     let mut result = 1;

@@ -84,15 +84,6 @@ pub struct ExclusionLeaf {
     leaf_value: Bytes32,
 }
 
-impl Debug for ExclusionLeaf {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExclusionLeaf")
-            .field("Leaf key", &hex::encode(self.leaf_key))
-            .field("Leaf value", &hex::encode(self.leaf_value))
-            .finish()
-    }
-}
-
 impl ExclusionLeaf {
     fn leaf_key(&self) -> &Bytes32 {
         &self.leaf_key
@@ -121,6 +112,15 @@ impl From<Node> for ExclusionLeaf {
             leaf_key: *node.leaf_key(),
             leaf_value: *node.leaf_data(),
         }
+    }
+}
+
+impl Debug for ExclusionLeaf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExclusionLeaf")
+            .field("Leaf key", &hex::encode(self.leaf_key))
+            .field("Leaf value", &hex::encode(self.leaf_value))
+            .finish()
     }
 }
 

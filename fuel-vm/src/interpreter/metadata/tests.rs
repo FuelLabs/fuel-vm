@@ -1,6 +1,9 @@
 use alloc::vec;
 
-use fuel_tx::Script;
+use fuel_tx::{
+    Script,
+    TxParameters,
+};
 use fuel_types::BlockHeight;
 use test_case::test_case;
 
@@ -22,6 +25,7 @@ fn test_metadata() {
         &mut result,
         imm,
         ChainId::default(),
+        TxParameters::default().tx_offset() as Word,
     )
     .unwrap();
     assert_eq!(pc, 8);
@@ -35,6 +39,7 @@ fn test_get_transaction_field() {
     let input = GTFInput {
         tx: &tx,
         tx_offset: 0,
+        tx_size: fuel_tx::TxParameters::DEFAULT.tx_offset() as Word,
         pc: RegMut::new(&mut pc),
     };
     let mut result = 1;
@@ -66,6 +71,7 @@ fn get_chain_id(context: Context, chain_id: u64) {
         &mut result,
         imm,
         chain_id.into(),
+        TxParameters::default().tx_offset() as Word,
     )
     .unwrap();
 

@@ -90,7 +90,7 @@ crate::enum_try_from! {
         ScriptWitnessAtIndex = 0x00D,
 
         /// Set `$rA` to size of the transaction in memory, in bytes
-        TxLength = 0x00F,
+        TxLength = 0x00E,
 
         /// Set `$rA` to `tx.bytecodeLength`
         CreateBytecodeLength = 0x100,

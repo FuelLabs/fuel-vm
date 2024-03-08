@@ -86,6 +86,9 @@ pub struct ExclusionProof {
 impl ExclusionProof {
     pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey) -> bool {
         let Self { proof_set, leaf } = self;
+        if !leaf.is_leaf() {
+            return false
+        }
         if !leaf.is_placeholder() && *leaf.leaf_key() == key.as_ref() {
             return false;
         }

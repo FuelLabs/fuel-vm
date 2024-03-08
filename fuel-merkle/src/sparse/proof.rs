@@ -507,6 +507,126 @@ mod test {
         // Then
         assert!(!exclusion);
     }
+
+    #[test]
+    fn exclusion_proof__verify__returns_true_for_placeholder() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        // 256:           N4
+        //               /  \
+        // 255:         N3   \
+        //             /  \   \
+        // 254:       /   N2   \
+        //           /   /  \   \
+        // 253:     /   N1   \   \
+        //         /   /  \   \   \
+        // 252:   /   N0   \   \   \
+        // ...   /   /  \   \   \   \
+        //   0: P1  L1  L3  P0  L2  P2
+        //      K0  K1  K3      K2
+
+        let mut k0 = [0u8; 32];
+        k0[0] = 0b01000000;
+        let k0 = k0.into();
+        let v0 = b"DATA_0";
+        tree.update(k0, v0).expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01100000;
+        let k1 = k1.into();
+        let v1 = b"DATA_1";
+        tree.update(k1, v1).expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01001000;
+        let k2 = k2.into();
+        let v2 = b"DATA_2";
+        tree.update(k2, v2).expect("Expected successful update");
+
+        let root = tree.root();
+
+        // Given
+        let key = [0u8; 32].into();
+        let proof = tree.generate_proof(&key).unwrap();
+
+        // When
+        let exclusion = match proof {
+            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
+            Proof::Exclusion(proof) => proof.verify(&root, &key),
+        };
+
+        // Then
+        assert!(exclusion);
+    }
+
+    #[test]
+    fn exclusion_proof__verify__returns_false_for_node_data() {
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        // 256:           N4
+        //               /  \
+        // 255:         N3   \
+        //             /  \   \
+        // 254:       /   N2   \
+        //           /   /  \   \
+        // 253:     /   N1   \   \
+        //         /   /  \   \   \
+        // 252:   /   N0   \   \   \
+        // ...   /   /  \   \   \   \
+        //   0: L0  L1  L3  P1  L2  P0
+        //      K0  K1  K3      K2
+
+        let k0 = [0u8; 32].into();
+        let v0 = b"DATA_0";
+        tree.update(k0, v0).expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01000000;
+        let k1 = k1.into();
+        let v1 = b"DATA_1";
+        tree.update(k1, v1).expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01100000;
+        let k2 = k2.into();
+        let v2 = b"DATA_2";
+        tree.update(k2, v2).expect("Expected successful update");
+
+        let mut k3 = [0u8; 32];
+        k3[0] = 0b01001000;
+        let k3 = k3.into();
+        let v3 = b"DATA_3";
+        tree.update(k3, v3).expect("Expected successful update");
+
+        let root = tree.root();
+
+        let l0 = Node::create_leaf(&k0.into(), v0);
+        let l1 = Node::create_leaf(&k1.into(), v1);
+        let l2 = Node::create_leaf(&k2.into(), v2);
+        let l3 = Node::create_leaf(&k3.into(), v3);
+        let n0 = Node::create_node(&l1, &l3, 252);
+        let n1 = Node::create_node(&n0, &Node::create_placeholder(), 253);
+        let n2 = Node::create_node(&n1, &l2, 254);
+        let n3 = Node::create_node(&l0, &n2, 255);
+
+        // Given
+        let key = [0xffu8; 32].into();
+        let proof = tree.generate_proof(&key).unwrap();
+
+        // When
+        let exclusion = match proof {
+            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
+            Proof::Exclusion(mut proof) => {
+                proof.leaf = n3;
+                proof.verify(&root, &key)
+            }
+        };
+
+        // Then
+        assert!(!exclusion);
+    }
 }
 
 #[cfg(test)]
@@ -686,58 +806,6 @@ mod test_random {
 
         // Given
         let key = random_bytes32(&mut rng).into();
-        let proof = tree.generate_proof(&key).unwrap();
-
-        // When
-        let exclusion = match proof {
-            Proof::Inclusion(_) => panic!("Expected ExclusionProof"),
-            Proof::Exclusion(proof) => proof.verify(&root, &key),
-        };
-
-        // Then
-        assert!(exclusion);
-    }
-
-    #[test]
-    fn exclusion_proof__verify__returns_true_for_placeholder() {
-        let mut storage = StorageMap::<TestTable>::new();
-        let mut tree = MerkleTree::new(&mut storage);
-
-        // 256:           N4
-        //               /  \
-        // 255:         N3   \
-        //             /  \   \
-        // 254:       /   N2   \
-        //           /   /  \   \
-        // 253:     /   N1   \   \
-        //         /   /  \   \   \
-        // 252:   /   N0   \   \   \
-        // ...   /   /  \   \   \   \
-        //   0: P1  L1  L3  P0  L2  P2
-        //      K0  K1  K3      K2
-
-        let mut k0 = [0u8; 32];
-        k0[0] = 0b01000000;
-        let k0 = k0.into();
-        let v0 = b"DATA_0";
-        tree.update(k0, v0).expect("Expected successful update");
-
-        let mut k1 = [0u8; 32];
-        k1[0] = 0b01100000;
-        let k1 = k1.into();
-        let v1 = b"DATA_1";
-        tree.update(k1, v1).expect("Expected successful update");
-
-        let mut k2 = [0u8; 32];
-        k2[0] = 0b01001000;
-        let k2 = k2.into();
-        let v2 = b"DATA_2";
-        tree.update(k2, v2).expect("Expected successful update");
-
-        let root = tree.root();
-
-        // Given
-        let key = [0u8; 32].into();
         let proof = tree.generate_proof(&key).unwrap();
 
         // When

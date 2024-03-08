@@ -87,8 +87,8 @@ pub struct ExclusionLeaf {
 impl Debug for ExclusionLeaf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExclusionLeaf")
-            .field("Leaf key", &hex::encode(&self.leaf_key))
-            .field("Leaf value", &hex::encode(&self.leaf_value))
+            .field("Leaf key", &hex::encode(self.leaf_key))
+            .field("Leaf value", &hex::encode(self.leaf_value))
             .finish()
     }
 }

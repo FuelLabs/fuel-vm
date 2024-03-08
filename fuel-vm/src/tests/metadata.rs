@@ -292,7 +292,7 @@ fn get_metadata_tx_start() {
         .expect("Failed to transact")
         .to_owned();
 
-        if let Receipt::Return { val, .. } = receipts[0].clone() {
+    if let Receipt::Return { val, .. } = receipts[0].clone() {
         assert_eq!(val, TxParameters::DEFAULT.tx_offset() as Word);
     } else {
         panic!("expected return receipt, instead of {:?}", receipts[0])

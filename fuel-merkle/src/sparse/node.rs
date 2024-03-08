@@ -195,22 +195,22 @@ impl Node {
     }
 
     pub fn leaf_key(&self) -> &Bytes32 {
-        assert!(self.is_leaf());
+        debug_assert!(self.is_leaf());
         self.bytes_lo()
     }
 
     pub fn leaf_data(&self) -> &Bytes32 {
-        assert!(self.is_leaf());
+        debug_assert!(self.is_leaf());
         self.bytes_hi()
     }
 
     pub fn left_child_key(&self) -> &Bytes32 {
-        assert!(self.is_node());
+        debug_assert!(self.is_node());
         self.bytes_lo()
     }
 
     pub fn right_child_key(&self) -> &Bytes32 {
-        assert!(self.is_node());
+        debug_assert!(self.is_node());
         self.bytes_hi()
     }
 

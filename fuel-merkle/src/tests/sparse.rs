@@ -16,13 +16,11 @@ use crate::{
         Primitive,
     },
 };
+use fuel_storage::Mappable;
+
 use core::fmt::{
     Debug,
     Formatter,
-};
-use fuel_storage::{
-    Mappable,
-    StorageInspect,
 };
 use proptest::{
     arbitrary::any,
@@ -177,7 +175,7 @@ proptest! {
         let Proof::Inclusion(inclusion_proof) = tree.generate_proof(&included_key).expect("Infallible")  else { panic!("Expected InclusionProof") };
         let exlucion_proof = ExclusionProof {
             proof_set: inclusion_proof.proof_set.clone(),
-            leaf: Node::create_leaf(&included_key.into(), included_value),
+            leaf: Node::create_leaf(&included_key.into(), included_value).into(),
         };
 
         // When

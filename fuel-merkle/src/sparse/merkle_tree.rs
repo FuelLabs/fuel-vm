@@ -667,10 +667,8 @@ where
             // the zero sum. The hash of any placeholder under this point of
             // divergence equates to this hash.
             //
-            let exclusion_proof = ExclusionProof {
-                proof_set,
-                leaf: actual_leaf.clone(),
-            };
+            let leaf = actual_leaf.clone().into();
+            let exclusion_proof = ExclusionProof { proof_set, leaf };
             Proof::Exclusion(exclusion_proof)
         };
         Ok(proof)

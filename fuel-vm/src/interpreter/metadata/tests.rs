@@ -1,6 +1,9 @@
 use alloc::vec;
 
-use fuel_tx::Script;
+use fuel_tx::{
+    Script,
+    TxParameters,
+};
 use fuel_types::BlockHeight;
 use test_case::test_case;
 
@@ -22,6 +25,7 @@ fn test_metadata() {
         &mut result,
         imm,
         ChainId::default(),
+        TxParameters::default().tx_offset() as Word,
     )
     .unwrap();
     assert_eq!(pc, 8);
@@ -67,6 +71,7 @@ fn get_chain_id(context: Context, chain_id: u64) {
         &mut result,
         imm,
         chain_id.into(),
+        TxParameters::default().tx_offset() as Word,
     )
     .unwrap();
 

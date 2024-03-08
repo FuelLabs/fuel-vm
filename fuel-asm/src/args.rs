@@ -27,6 +27,9 @@ crate::enum_try_from! {
 
         /// Get the Chain ID this VM is operating within
         GetChainId = 0x04,
+
+        /// Get memory address where the transaction is located
+        TxStart = 0x05,
     },
     Immediate18
 }
@@ -86,11 +89,8 @@ crate::enum_try_from! {
         /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
         ScriptWitnessAtIndex = 0x00D,
 
-        /// Set `$rA` to `Memory address of tx`
-        TxStartAddress = 0x0A0,
-
-        /// Set `$rA` to `Memory address of tx`
-        TxLength = 0x0A1,
+        /// Set `$rA` to size of the transaction in memory, in bytes
+        TxLength = 0x00F,
 
         /// Set `$rA` to `tx.bytecodeLength`
         CreateBytecodeLength = 0x100,
@@ -295,8 +295,6 @@ fn encode_gtf_args() {
         GTFArgs::ScriptInputAtIndex,
         GTFArgs::ScriptOutputAtIndex,
         GTFArgs::ScriptWitnessAtIndex,
-        GTFArgs::TxStartAddress,
-        GTFArgs::TxLength,
         GTFArgs::CreateBytecodeLength,
         GTFArgs::CreateBytecodeWitnessIndex,
         GTFArgs::CreateStorageSlotsCount,

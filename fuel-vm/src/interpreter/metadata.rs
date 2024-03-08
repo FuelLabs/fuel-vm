@@ -56,10 +56,19 @@ where
         ra: RegisterId,
         imm: Immediate18,
     ) -> SimpleResult<()> {
+        let tx_offset = self.tx_offset() as Word;
         let chain_id = self.chain_id();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        metadata(&self.context, &self.frames, pc, result, imm, chain_id)
+        metadata(
+            &self.context,
+            &self.frames,
+            pc,
+            result,
+            imm,
+            chain_id,
+            tx_offset,
+        )
     }
 
     pub(crate) fn get_transaction_field(
@@ -97,6 +106,7 @@ pub(crate) fn metadata(
     result: &mut Word,
     imm: Immediate18,
     chain_id: ChainId,
+    tx_offset: Word,
 ) -> SimpleResult<()> {
     let external = context.is_external();
     let args = GMArgs::try_from(imm)?;
@@ -112,6 +122,10 @@ pub(crate) fn metadata(
 
             GMArgs::GetChainId => {
                 *result = chain_id.into();
+            }
+
+            GMArgs::TxStart => {
+                *result = tx_offset;
             }
 
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
@@ -134,6 +148,11 @@ pub(crate) fn metadata(
             GMArgs::GetChainId => {
                 *result = chain_id.into();
             }
+
+            GMArgs::TxStart => {
+                *result = tx_offset;
+            }
+
             _ => return Err(PanicReason::ExpectedInternalContext.into()),
         }
     }
@@ -210,7 +229,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     .witnesses_offset_at(b)
                     .ok_or(PanicReason::WitnessNotFound)?) as Word
             }
-            GTFArgs::TxStartAddress => ofs as Word,
             GTFArgs::TxLength => self.tx_size,
 
             // Input

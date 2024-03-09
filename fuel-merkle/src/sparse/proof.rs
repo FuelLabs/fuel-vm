@@ -592,7 +592,6 @@ mod test {
         // Given
         let key = [0b00000000; 32].into();
         let proof = tree.generate_proof(&key).unwrap();
-        dbg!(&proof);
 
         // When
         let exclusion = match proof {

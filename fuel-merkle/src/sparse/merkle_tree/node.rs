@@ -26,10 +26,6 @@ use crate::{
             Primitive,
             PrimitiveView,
         },
-        proof::{
-            ExclusionLeaf,
-            ExclusionLeafData,
-        },
         zero_sum,
     },
     storage::{
@@ -316,19 +312,6 @@ impl TryFrom<Primitive> for Node {
         let bytes_hi = *primitive.bytes_hi();
         let node = Self::new(height, prefix, bytes_lo, bytes_hi);
         Ok(node)
-    }
-}
-
-impl From<Node> for ExclusionLeaf {
-    fn from(node: Node) -> Self {
-        if node.is_placeholder() {
-            ExclusionLeaf::Placeholder
-        } else {
-            ExclusionLeaf::Leaf(ExclusionLeafData {
-                leaf_key: *node.leaf_key(),
-                leaf_value: *node.leaf_data(),
-            })
-        }
     }
 }
 

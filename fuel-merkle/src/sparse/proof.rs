@@ -58,9 +58,15 @@ pub struct InclusionProof {
 impl InclusionProof {
     pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey, value: &[u8]) -> bool {
         let Self { proof_set } = self;
+
+        if proof_set.len() > u32::MAX as usize {
+            return false;
+        }
+
         let mut current = calculate_leaf_hash(key, &sum(value));
         for (i, side_hash) in proof_set.iter().enumerate() {
-            let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
+            let index =
+                u32::try_from(proof_set.len() - 1 - i).expect("We've checked it above");
             current = match key.get_instruction(index).expect("Infallible") {
                 Instruction::Left => calculate_node_hash(&current, side_hash),
                 Instruction::Right => calculate_node_hash(side_hash, &current),
@@ -79,7 +85,7 @@ impl Debug for InclusionProof {
     }
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ExclusionLeaf {
     Leaf(ExclusionLeafData),
     Placeholder,
@@ -87,29 +93,22 @@ pub enum ExclusionLeaf {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct ExclusionLeafData {
+    /// The leaf key.
     pub leaf_key: Bytes32,
+    /// Hash of the value of the leaf.
     pub leaf_value: Bytes32,
 }
 
+impl Debug for ExclusionLeafData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExclusionLeafData")
+            .field("Leaf key", &hex::encode(self.leaf_key))
+            .field("Leaf value", &hex::encode(self.leaf_value))
+            .finish()
+    }
+}
+
 impl ExclusionLeaf {
-    fn leaf_key(&self) -> &Bytes32 {
-        match self {
-            ExclusionLeaf::Leaf(data) => &data.leaf_key,
-            ExclusionLeaf::Placeholder => zero_sum(),
-        }
-    }
-
-    fn leaf_value(&self) -> &Bytes32 {
-        match self {
-            ExclusionLeaf::Leaf(data) => &data.leaf_value,
-            ExclusionLeaf::Placeholder => zero_sum(),
-        }
-    }
-
-    fn is_placeholder(&self) -> bool {
-        &Self::Placeholder == self
-    }
-
     fn hash(&self) -> Bytes32 {
         match self {
             ExclusionLeaf::Leaf(data) => {
@@ -117,15 +116,6 @@ impl ExclusionLeaf {
             }
             ExclusionLeaf::Placeholder => *zero_sum(),
         }
-    }
-}
-
-impl Debug for ExclusionLeaf {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExclusionLeaf")
-            .field("Leaf key", &hex::encode(self.leaf_key()))
-            .field("Leaf value", &hex::encode(self.leaf_value()))
-            .finish()
     }
 }
 
@@ -138,12 +128,21 @@ pub struct ExclusionProof {
 impl ExclusionProof {
     pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey) -> bool {
         let Self { proof_set, leaf } = self;
-        if !leaf.is_placeholder() && *leaf.leaf_key() == key.as_ref() {
+
+        if let ExclusionLeaf::Leaf(data) = leaf {
+            if data.leaf_key == key.as_ref() {
+                return false;
+            }
+        }
+
+        if proof_set.len() > u32::MAX as usize {
             return false;
         }
+
         let mut current = leaf.hash();
         for (i, side_hash) in proof_set.iter().enumerate() {
-            let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
+            let index =
+                u32::try_from(proof_set.len() - 1 - i).expect("We've checked it above");
             current = match key.get_instruction(index).expect("Infallible") {
                 Instruction::Left => calculate_node_hash(&current, side_hash),
                 Instruction::Right => calculate_node_hash(side_hash, &current),

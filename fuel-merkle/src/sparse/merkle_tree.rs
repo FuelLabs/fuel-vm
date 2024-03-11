@@ -23,6 +23,8 @@ use crate::{
     sparse::{
         empty_sum,
         proof::{
+            ExclusionLeaf,
+            ExclusionLeafData,
             ExclusionProof,
             InclusionProof,
             Proof,
@@ -35,7 +37,6 @@ use crate::{
         StorageMutate,
     },
 };
-
 use alloc::{
     format,
     vec::Vec,
@@ -676,7 +677,15 @@ where
             // the zero sum. The hash of any placeholder under this point of
             // divergence equates to this hash.
             //
-            let leaf = actual_leaf.clone().into();
+            let leaf = if actual_leaf.is_placeholder() {
+                ExclusionLeaf::Placeholder
+            } else {
+                ExclusionLeaf::Leaf(ExclusionLeafData {
+                    leaf_key: *actual_leaf.leaf_key(),
+                    leaf_value: *actual_leaf.leaf_data(),
+                })
+            };
+
             let exclusion_proof = ExclusionProof { proof_set, leaf };
             Proof::Exclusion(exclusion_proof)
         };

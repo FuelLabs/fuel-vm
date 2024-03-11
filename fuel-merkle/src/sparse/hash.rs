@@ -15,7 +15,7 @@ pub fn calculate_hash(
     bytes_lo: &Bytes32,
     bytes_hi: &Bytes32,
 ) -> Bytes32 {
-    let input = vec![prefix.as_ref(), bytes_lo.as_ref(), bytes_hi.as_ref()];
+    let input = [prefix.as_ref(), bytes_lo.as_ref(), bytes_hi.as_ref()];
     sum_iter(input)
 }
 

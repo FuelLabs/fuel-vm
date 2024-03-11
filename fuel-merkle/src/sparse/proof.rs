@@ -59,7 +59,7 @@ impl InclusionProof {
     pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey, value: &[u8]) -> bool {
         let Self { proof_set } = self;
 
-        if proof_set.len() > u32::MAX as usize {
+        if proof_set.len() > 256usize {
             return false;
         }
 
@@ -135,7 +135,7 @@ impl ExclusionProof {
             }
         }
 
-        if proof_set.len() > u32::MAX as usize {
+        if proof_set.len() > 256usize {
             return false;
         }
 

@@ -87,8 +87,8 @@ pub enum ExclusionLeaf {
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct ExclusionLeafData {
-    leaf_key: Bytes32,
-    leaf_value: Bytes32,
+    pub leaf_key: Bytes32,
+    pub leaf_value: Bytes32,
 }
 
 impl ExclusionLeaf {

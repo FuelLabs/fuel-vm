@@ -12,12 +12,25 @@ use crate::{
             Instruction,
             Path,
         },
+        sum,
         Bytes32,
         Prefix,
     },
     sparse::{
+        hash::{
+            calculate_hash,
+            calculate_leaf_hash,
+            calculate_node_hash,
+        },
+        primitive::{
+            Primitive,
+            PrimitiveView,
+        },
+        proof::{
+            ExclusionLeaf,
+            ExclusionLeafData,
+        },
         zero_sum,
-        Primitive,
     },
     storage::{
         Mappable,
@@ -25,18 +38,6 @@ use crate::{
     },
 };
 
-use crate::{
-    common::sum,
-    sparse::{
-        hash::{
-            calculate_hash,
-            calculate_leaf_hash,
-            calculate_node_hash,
-        },
-        primitive::PrimitiveView,
-        proof::ExclusionLeaf,
-    },
-};
 use core::{
     cmp,
     fmt,
@@ -163,21 +164,21 @@ impl Node {
         }
     }
 
-    pub fn prefix(&self) -> Prefix {
+    fn prefix(&self) -> Prefix {
         match self {
             Node::Node { prefix, .. } => *prefix,
             Node::Placeholder => Prefix::Leaf,
         }
     }
 
-    pub fn bytes_lo(&self) -> &Bytes32 {
+    fn bytes_lo(&self) -> &Bytes32 {
         match self {
             Node::Node { bytes_lo, .. } => bytes_lo,
             Node::Placeholder => zero_sum(),
         }
     }
 
-    pub fn bytes_hi(&self) -> &Bytes32 {
+    fn bytes_hi(&self) -> &Bytes32 {
         match self {
             Node::Node { bytes_hi, .. } => bytes_hi,
             Node::Placeholder => zero_sum(),
@@ -192,22 +193,66 @@ impl Node {
         self.prefix() == Prefix::Node
     }
 
-    pub fn leaf_key(&self) -> &Bytes32 {
+    /// Get the leaf key of a leaf node.
+    ///
+    /// The leaf key is the lower 32 bytes stored in a leaf node.
+    /// This method expects the node to be a leaf node, and this precondition
+    /// must be guaranteed at the call site for correctness. This method should
+    /// only be used within contexts where this precondition can be guaranteed,
+    /// such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not a leaf node to
+    /// indicate to the developer that there is a potential problem in the
+    /// tree's implementation.  
+    pub(super) fn leaf_key(&self) -> &Bytes32 {
         debug_assert!(self.is_leaf());
         self.bytes_lo()
     }
 
-    pub fn leaf_data(&self) -> &Bytes32 {
+    /// Get the leaf data of a leaf node.
+    ///
+    /// The leaf key is the upper 32 bytes stored in a leaf node.
+    /// This method expects the node to be a leaf node, and this precondition
+    /// must be guaranteed at the call site for correctness. This method should
+    /// only be used within contexts where this precondition can be guaranteed,
+    /// such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not a leaf node to
+    /// indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn leaf_data(&self) -> &Bytes32 {
         debug_assert!(self.is_leaf());
         self.bytes_hi()
     }
 
-    pub fn left_child_key(&self) -> &Bytes32 {
+    /// Get the left child key of an internal node.
+    ///
+    /// The left child key is the lower 32 bytes stored in an internal node.
+    /// This method expects the node to be an internal node, and this
+    /// precondition must be guaranteed at the call site for correctness. This
+    /// method should only be used within contexts where this precondition can
+    /// be guaranteed, such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not an internal node
+    /// to indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn left_child_key(&self) -> &Bytes32 {
         debug_assert!(self.is_node());
         self.bytes_lo()
     }
 
-    pub fn right_child_key(&self) -> &Bytes32 {
+    /// Get the right child key of an internal node.
+    ///
+    /// The right child key is the upper 32 bytes stored in an internal node.
+    /// This method expects the node to be an internal node, and this
+    /// precondition must be guaranteed at the call site for correctness. This
+    /// method should only be used within contexts where this precondition can
+    /// be guaranteed, such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not an internal node
+    /// to indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn right_child_key(&self) -> &Bytes32 {
         debug_assert!(self.is_node());
         self.bytes_hi()
     }
@@ -276,9 +321,13 @@ impl TryFrom<Primitive> for Node {
 
 impl From<Node> for ExclusionLeaf {
     fn from(node: Node) -> Self {
-        ExclusionLeaf {
-            leaf_key: *node.leaf_key(),
-            leaf_value: *node.leaf_data(),
+        if node.is_placeholder() {
+            ExclusionLeaf::Placeholder
+        } else {
+            ExclusionLeaf::Leaf(ExclusionLeafData {
+                leaf_key: *node.leaf_key(),
+                leaf_value: *node.leaf_data(),
+            })
         }
     }
 }

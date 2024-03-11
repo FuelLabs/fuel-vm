@@ -8,6 +8,7 @@ use crate::{
     sparse::{
         proof::{
             ExclusionLeaf,
+            ExclusionLeafData,
             ExclusionProof,
             Proof,
         },
@@ -182,10 +183,10 @@ proptest! {
         let Proof::Inclusion(inclusion_proof) = tree.generate_proof(&included_key).expect("Infallible")  else { panic!("Expected InclusionProof") };
         let exlucion_proof = ExclusionProof {
             proof_set: inclusion_proof.proof_set.clone(),
-            leaf: ExclusionLeaf {
+            leaf: ExclusionLeaf::Leaf(ExclusionLeafData {
                 leaf_key: included_key.into(),
                 leaf_value: included_value.into(),
-            }
+            })
         };
 
         // When

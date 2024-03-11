@@ -5,16 +5,18 @@ use crate::{
             Path,
         },
         Bytes32,
-        Prefix,
         ProofSet,
     },
     sparse::{
         zero_sum,
         MerkleTreeKey,
-        Node,
     },
 };
 
+use crate::sparse::hash::{
+    calculate_leaf_hash,
+    calculate_node_hash,
+};
 use alloc::vec::Vec;
 use core::{
     fmt,
@@ -50,23 +52,6 @@ impl Proof {
 #[derive(Clone, Eq, PartialEq)]
 pub struct InclusionProof {
     pub proof_set: ProofSet,
-}
-
-impl InclusionProof {
-    pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey, value: &[u8]) -> bool {
-        let Self { proof_set } = self;
-        let leaf = Node::create_leaf(key.as_ref(), value);
-        let mut current = *leaf.hash();
-        for (i, side_hash) in proof_set.iter().enumerate() {
-            let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
-            let prefix = Prefix::Node;
-            current = match key.get_instruction(index).expect("Infallible") {
-                Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
-                Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
-            };
-        }
-        current == *root
-    }
 }
 
 impl Debug for InclusionProof {
@@ -112,22 +97,9 @@ impl ExclusionLeaf {
     fn hash(&self) -> Bytes32 {
         match self {
             ExclusionLeaf::Leaf(data) => {
-                Node::calculate_hash(&Prefix::Leaf, &data.leaf_key, &data.leaf_value)
+                calculate_leaf_hash(&data.leaf_key, &data.leaf_value)
             }
             ExclusionLeaf::Placeholder => *zero_sum(),
-        }
-    }
-}
-
-impl From<Node> for ExclusionLeaf {
-    fn from(node: Node) -> Self {
-        if node.is_placeholder() {
-            ExclusionLeaf::Placeholder
-        } else {
-            ExclusionLeaf::Leaf(ExclusionLeafData {
-                leaf_key: *node.leaf_key(),
-                leaf_value: *node.leaf_data(),
-            })
         }
     }
 }
@@ -156,10 +128,9 @@ impl ExclusionProof {
         let mut current = leaf.hash();
         for (i, side_hash) in proof_set.iter().enumerate() {
             let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
-            let prefix = Prefix::Node;
             current = match key.get_instruction(index).expect("Infallible") {
-                Instruction::Left => Node::calculate_hash(&prefix, &current, side_hash),
-                Instruction::Right => Node::calculate_hash(&prefix, side_hash, &current),
+                Instruction::Left => calculate_node_hash(&current, side_hash),
+                Instruction::Right => calculate_node_hash(side_hash, &current),
             };
         }
         current == *root

@@ -16,7 +16,6 @@ use crate::{
         Prefix,
     },
     sparse::{
-        hash::sum,
         zero_sum,
         Primitive,
     },
@@ -26,6 +25,22 @@ use crate::{
     },
 };
 
+use crate::{
+    common::sum,
+    sparse::{
+        hash::{
+            calculate_hash,
+            calculate_leaf_hash,
+            calculate_node_hash,
+        },
+        primitive::PrimitiveView,
+        proof::{
+            ExclusionLeaf,
+            InclusionProof,
+        },
+        MerkleTreeKey,
+    },
+};
 use core::{
     cmp,
     fmt,
@@ -33,7 +48,7 @@ use core::{
 };
 
 #[derive(Clone, PartialEq, Eq)]
-pub(crate) enum Node {
+pub(super) enum Node {
     Node {
         hash: Bytes32,
         height: u32,
@@ -45,19 +60,6 @@ pub(crate) enum Node {
 }
 
 impl Node {
-    pub fn calculate_hash(
-        prefix: &Prefix,
-        bytes_lo: &Bytes32,
-        bytes_hi: &Bytes32,
-    ) -> Bytes32 {
-        use digest::Digest;
-        let mut hash = sha2::Sha256::new();
-        hash.update(prefix);
-        hash.update(bytes_lo);
-        hash.update(bytes_hi);
-        hash.finalize().into()
-    }
-
     pub fn max_height() -> u32 {
         Node::key_size_in_bits()
     }
@@ -69,7 +71,7 @@ impl Node {
         bytes_hi: Bytes32,
     ) -> Self {
         Self::Node {
-            hash: Self::calculate_hash(&prefix, &bytes_lo, &bytes_hi),
+            hash: calculate_hash(&prefix, &bytes_lo, &bytes_hi),
             height,
             prefix,
             bytes_lo,
@@ -80,7 +82,7 @@ impl Node {
     pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes32, data: D) -> Self {
         let bytes_hi = sum(data);
         Self::Node {
-            hash: Self::calculate_hash(&Prefix::Leaf, key, &bytes_hi),
+            hash: calculate_leaf_hash(key, &bytes_hi),
             height: 0u32,
             prefix: Prefix::Leaf,
             bytes_lo: *key,
@@ -92,7 +94,7 @@ impl Node {
         let bytes_lo = *left_child.hash();
         let bytes_hi = *right_child.hash();
         Self::Node {
-            hash: Self::calculate_hash(&Prefix::Node, &bytes_lo, &bytes_hi),
+            hash: calculate_node_hash(&bytes_lo, &bytes_hi),
             height,
             prefix: Prefix::Node,
             bytes_lo,
@@ -252,6 +254,39 @@ impl NodeTrait for Node {
     }
 }
 
+impl From<&Node> for Primitive {
+    fn from(node: &Node) -> Self {
+        (
+            node.height(),
+            node.prefix() as u8,
+            *node.bytes_lo(),
+            *node.bytes_hi(),
+        )
+    }
+}
+
+impl TryFrom<Primitive> for Node {
+    type Error = DeserializeError;
+
+    fn try_from(primitive: Primitive) -> Result<Self, Self::Error> {
+        let height = primitive.height();
+        let prefix = primitive.prefix()?;
+        let bytes_lo = *primitive.bytes_lo();
+        let bytes_hi = *primitive.bytes_hi();
+        let node = Self::new(height, prefix, bytes_lo, bytes_hi);
+        Ok(node)
+    }
+}
+
+impl From<Node> for ExclusionLeaf {
+    fn from(node: Node) -> Self {
+        ExclusionLeaf {
+            leaf_key: *node.leaf_key(),
+            leaf_value: *node.leaf_data(),
+        }
+    }
+}
+
 impl fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {
@@ -272,7 +307,24 @@ impl fmt::Debug for Node {
     }
 }
 
-pub(crate) struct StorageNode<'storage, TableType, StorageType> {
+impl InclusionProof {
+    pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey, value: &[u8]) -> bool {
+        let Self { proof_set } = self;
+        let leaf = Node::create_leaf(key.as_ref(), value);
+        let mut current = *leaf.hash();
+        for (i, side_hash) in proof_set.iter().enumerate() {
+            let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
+            let prefix = Prefix::Node;
+            current = match key.get_instruction(index).expect("Infallible") {
+                Instruction::Left => calculate_hash(&prefix, &current, side_hash),
+                Instruction::Right => calculate_hash(&prefix, side_hash, &current),
+            };
+        }
+        current == *root
+    }
+}
+
+pub(super) struct StorageNode<'storage, TableType, StorageType> {
     storage: &'storage StorageType,
     node: Node,
     phantom_table: PhantomData<TableType>,
@@ -410,17 +462,17 @@ where
 
 #[cfg(test)]
 mod test_node {
+    use super::Node;
     use crate::{
         common::{
             error::DeserializeError,
+            sum,
             Bytes32,
             Prefix,
             PrefixError,
         },
         sparse::{
-            hash::sum,
             zero_sum,
-            Node,
             Primitive,
         },
     };
@@ -580,6 +632,11 @@ mod test_node {
 
 #[cfg(test)]
 mod test_storage_node {
+    use super::{
+        Node,
+        StorageNode,
+        StorageNodeError,
+    };
     use crate::{
         common::{
             error::DeserializeError,
@@ -587,17 +644,12 @@ mod test_storage_node {
                 ChildError,
                 ParentNode,
             },
+            sum,
             Bytes32,
             PrefixError,
             StorageMap,
         },
-        sparse::{
-            hash::sum,
-            node::StorageNodeError,
-            Node,
-            Primitive,
-            StorageNode,
-        },
+        sparse::Primitive,
         storage::{
             Mappable,
             StorageMutate,

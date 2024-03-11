@@ -7,15 +7,16 @@ use crate::{
     },
     sparse::{
         proof::{
+            ExclusionLeaf,
             ExclusionProof,
             Proof,
         },
         MerkleTree,
         MerkleTreeKey,
-        Node,
         Primitive,
     },
 };
+
 use fuel_storage::Mappable;
 
 use core::fmt::{
@@ -79,6 +80,12 @@ impl Debug for Value {
 impl AsRef<[u8]> for Value {
     fn as_ref(&self) -> &[u8] {
         &self.0
+    }
+}
+
+impl From<Value> for Bytes32 {
+    fn from(value: Value) -> Self {
+        value.0
     }
 }
 
@@ -175,7 +182,10 @@ proptest! {
         let Proof::Inclusion(inclusion_proof) = tree.generate_proof(&included_key).expect("Infallible")  else { panic!("Expected InclusionProof") };
         let exlucion_proof = ExclusionProof {
             proof_set: inclusion_proof.proof_set.clone(),
-            leaf: Node::create_leaf(&included_key.into(), included_value).into(),
+            leaf: ExclusionLeaf {
+                leaf_key: included_key.into(),
+                leaf_value: included_value.into(),
+            }
         };
 
         // When

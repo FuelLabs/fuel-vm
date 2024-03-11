@@ -193,7 +193,7 @@ impl Default for MerkleTree {
 #[cfg(test)]
 mod test {
     use super::*;
-    use sparse::hash::sum;
+    use crate::common::sum;
 
     fn key(data: &[u8]) -> MerkleTreeKey {
         MerkleTreeKey::new_without_hash(sum(data))

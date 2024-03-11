@@ -4,22 +4,20 @@ use crate::{
             Instruction,
             Path,
         },
+        sum,
         Bytes32,
         ProofSet,
     },
     sparse::{
+        hash::{
+            calculate_leaf_hash,
+            calculate_node_hash,
+        },
         zero_sum,
         MerkleTreeKey,
     },
 };
 
-use crate::{
-    common::sum,
-    sparse::hash::{
-        calculate_leaf_hash,
-        calculate_node_hash,
-    },
-};
 use alloc::vec::Vec;
 use core::{
     fmt,

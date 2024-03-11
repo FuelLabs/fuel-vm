@@ -48,8 +48,8 @@ use core::{
     },
     iter,
     marker::PhantomData,
+    ops::Deref,
 };
-use std::ops::Deref;
 
 #[derive(Debug, Clone, derive_more::Display)]
 pub enum MerkleTreeError<StorageError> {

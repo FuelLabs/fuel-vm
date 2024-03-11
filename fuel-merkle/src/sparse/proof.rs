@@ -79,38 +79,55 @@ impl Debug for InclusionProof {
 }
 
 #[derive(Clone, Eq, PartialEq)]
-pub struct ExclusionLeaf {
+pub enum ExclusionLeaf {
+    Leaf(ExclusionLeafData),
+    Placeholder,
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct ExclusionLeafData {
     leaf_key: Bytes32,
     leaf_value: Bytes32,
 }
 
 impl ExclusionLeaf {
     fn leaf_key(&self) -> &Bytes32 {
-        &self.leaf_key
+        match self {
+            ExclusionLeaf::Leaf(data) => &data.leaf_key,
+            ExclusionLeaf::Placeholder => zero_sum(),
+        }
     }
 
     fn leaf_value(&self) -> &Bytes32 {
-        &self.leaf_value
+        match self {
+            ExclusionLeaf::Leaf(data) => &data.leaf_value,
+            ExclusionLeaf::Placeholder => zero_sum(),
+        }
     }
 
     fn is_placeholder(&self) -> bool {
-        self.leaf_value() == zero_sum()
+        &Self::Placeholder == self
     }
 
     fn hash(&self) -> Bytes32 {
-        if self.is_placeholder() {
-            *zero_sum()
-        } else {
-            Node::calculate_hash(&Prefix::Leaf, self.leaf_key(), self.leaf_value())
+        match self {
+            ExclusionLeaf::Leaf(data) => {
+                Node::calculate_hash(&Prefix::Leaf, &data.leaf_key, &data.leaf_value)
+            }
+            ExclusionLeaf::Placeholder => *zero_sum(),
         }
     }
 }
 
 impl From<Node> for ExclusionLeaf {
     fn from(node: Node) -> Self {
-        ExclusionLeaf {
-            leaf_key: *node.leaf_key(),
-            leaf_value: *node.leaf_data(),
+        if node.is_placeholder() {
+            ExclusionLeaf::Placeholder
+        } else {
+            ExclusionLeaf::Leaf(ExclusionLeafData {
+                leaf_key: *node.leaf_key(),
+                leaf_value: *node.leaf_data(),
+            })
         }
     }
 }
@@ -118,8 +135,8 @@ impl From<Node> for ExclusionLeaf {
 impl Debug for ExclusionLeaf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExclusionLeaf")
-            .field("Leaf key", &hex::encode(self.leaf_key))
-            .field("Leaf value", &hex::encode(self.leaf_value))
+            .field("Leaf key", &hex::encode(self.leaf_key()))
+            .field("Leaf value", &hex::encode(self.leaf_value()))
             .finish()
     }
 }

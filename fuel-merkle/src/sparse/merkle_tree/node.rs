@@ -34,11 +34,7 @@ use crate::{
             calculate_node_hash,
         },
         primitive::PrimitiveView,
-        proof::{
-            ExclusionLeaf,
-            InclusionProof,
-        },
-        MerkleTreeKey,
+        proof::ExclusionLeaf,
     },
 };
 use core::{
@@ -304,23 +300,6 @@ impl fmt::Debug for Node {
                 .field("Leaf data", &hex::encode(self.leaf_data()))
                 .finish()
         }
-    }
-}
-
-impl InclusionProof {
-    pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey, value: &[u8]) -> bool {
-        let Self { proof_set } = self;
-        let leaf = Node::create_leaf(key.as_ref(), value);
-        let mut current = *leaf.hash();
-        for (i, side_hash) in proof_set.iter().enumerate() {
-            let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
-            let prefix = Prefix::Node;
-            current = match key.get_instruction(index).expect("Infallible") {
-                Instruction::Left => calculate_hash(&prefix, &current, side_hash),
-                Instruction::Right => calculate_hash(&prefix, side_hash, &current),
-            };
-        }
-        current == *root
     }
 }
 

@@ -46,6 +46,7 @@ use core::{
     iter,
     marker::PhantomData,
 };
+use std::ops::Deref;
 
 #[derive(Debug, Clone, derive_more::Display)]
 pub enum MerkleTreeError<StorageError> {
@@ -135,6 +136,14 @@ impl AsRef<[u8]> for MerkleTreeKey {
 
 impl AsRef<Bytes32> for MerkleTreeKey {
     fn as_ref(&self) -> &Bytes32 {
+        &self.0
+    }
+}
+
+impl Deref for MerkleTreeKey {
+    type Target = Bytes32;
+
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }

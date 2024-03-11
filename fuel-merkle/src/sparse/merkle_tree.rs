@@ -1,8 +1,9 @@
 mod branch;
+#[allow(clippy::module_inception)]
 mod merkle_tree;
 mod node;
 
-pub(self) use node::{
+use node::{
     Node,
     StorageNode,
     StorageNodeError,

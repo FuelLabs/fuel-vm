@@ -13,9 +13,16 @@ use crate::{
     },
 };
 
-use crate::sparse::hash::{
-    calculate_leaf_hash,
-    calculate_node_hash,
+use crate::{
+    common::{
+        sum,
+        Prefix,
+    },
+    sparse::hash::{
+        calculate_hash,
+        calculate_leaf_hash,
+        calculate_node_hash,
+    },
 };
 use alloc::vec::Vec;
 use core::{
@@ -52,6 +59,22 @@ impl Proof {
 #[derive(Clone, Eq, PartialEq)]
 pub struct InclusionProof {
     pub proof_set: ProofSet,
+}
+
+impl InclusionProof {
+    pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey, value: &[u8]) -> bool {
+        let Self { proof_set } = self;
+        let mut current = calculate_leaf_hash(key, &sum(value));
+        for (i, side_hash) in proof_set.iter().enumerate() {
+            let index = u32::try_from(proof_set.len() - 1 - i).expect("Index is valid");
+            let prefix = Prefix::Node;
+            current = match key.get_instruction(index).expect("Infallible") {
+                Instruction::Left => calculate_hash(&prefix, &current, side_hash),
+                Instruction::Right => calculate_hash(&prefix, side_hash, &current),
+            };
+        }
+        current == *root
+    }
 }
 
 impl Debug for InclusionProof {

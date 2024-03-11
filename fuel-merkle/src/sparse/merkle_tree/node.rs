@@ -164,6 +164,25 @@ impl Node {
         }
     }
 
+    pub fn is_leaf(&self) -> bool {
+        self.prefix() == Prefix::Leaf || self.is_placeholder()
+    }
+
+    pub fn is_node(&self) -> bool {
+        self.prefix() == Prefix::Node
+    }
+
+    pub fn is_placeholder(&self) -> bool {
+        &Self::Placeholder == self
+    }
+
+    pub fn hash(&self) -> &Bytes32 {
+        match self {
+            Node::Node { hash, .. } => hash,
+            Node::Placeholder => zero_sum(),
+        }
+    }
+
     fn prefix(&self) -> Prefix {
         match self {
             Node::Node { prefix, .. } => *prefix,
@@ -183,14 +202,6 @@ impl Node {
             Node::Node { bytes_hi, .. } => bytes_hi,
             Node::Placeholder => zero_sum(),
         }
-    }
-
-    pub fn is_leaf(&self) -> bool {
-        self.prefix() == Prefix::Leaf || self.is_placeholder()
-    }
-
-    pub fn is_node(&self) -> bool {
-        self.prefix() == Prefix::Node
     }
 
     /// Get the leaf key of a leaf node.
@@ -255,17 +266,6 @@ impl Node {
     pub(super) fn right_child_key(&self) -> &Bytes32 {
         debug_assert!(self.is_node());
         self.bytes_hi()
-    }
-
-    pub fn is_placeholder(&self) -> bool {
-        &Self::Placeholder == self
-    }
-
-    pub fn hash(&self) -> &Bytes32 {
-        match self {
-            Node::Node { hash, .. } => hash,
-            Node::Placeholder => zero_sum(),
-        }
     }
 }
 

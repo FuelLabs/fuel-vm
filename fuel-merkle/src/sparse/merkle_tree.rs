@@ -1,16 +1,33 @@
+mod branch;
+mod node;
+
+use branch::{
+    merge_branches,
+    Branch,
+};
+use node::{
+    Node,
+    StorageNode,
+    StorageNodeError,
+};
+
 use crate::{
     common::{
         error::DeserializeError,
         node::ChildError,
         AsPathIterator,
+        Bit,
         Bytes32,
+        Msb,
     },
     sparse::{
         empty_sum,
-        primitive::Primitive,
-        Node,
-        StorageNode,
-        StorageNodeError,
+        proof::{
+            ExclusionProof,
+            InclusionProof,
+            Proof,
+        },
+        Primitive,
     },
     storage::{
         Mappable,
@@ -19,23 +36,6 @@ use crate::{
     },
 };
 
-use crate::{
-    common::{
-        Bit,
-        Msb,
-    },
-    sparse::{
-        branch::{
-            merge_branches,
-            Branch,
-        },
-        proof::{
-            ExclusionProof,
-            InclusionProof,
-            Proof,
-        },
-    },
-};
 use alloc::{
     format,
     vec::Vec,
@@ -48,6 +48,7 @@ use core::{
     },
     iter,
     marker::PhantomData,
+    ops::Deref,
 };
 
 #[derive(Debug, Clone, derive_more::Display)]
@@ -138,6 +139,14 @@ impl AsRef<[u8]> for MerkleTreeKey {
 
 impl AsRef<Bytes32> for MerkleTreeKey {
     fn as_ref(&self) -> &Bytes32 {
+        &self.0
+    }
+}
+
+impl Deref for MerkleTreeKey {
+    type Target = Bytes32;
+
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
@@ -678,18 +687,18 @@ where
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod test {
+    use super::Node;
     use crate::{
         common::{
+            sum,
             Bytes32,
             StorageMap,
         },
         sparse::{
             empty_sum,
-            hash::sum,
             MerkleTree,
             MerkleTreeError,
             MerkleTreeKey,
-            Node,
             Primitive,
         },
     };
@@ -716,7 +725,7 @@ mod test {
     }
 
     fn key<B: AsRef<[u8]>>(data: B) -> MerkleTreeKey {
-        MerkleTreeKey::new_without_hash(sum(data.as_ref()))
+        MerkleTreeKey::new(data.as_ref())
     }
 
     #[test]

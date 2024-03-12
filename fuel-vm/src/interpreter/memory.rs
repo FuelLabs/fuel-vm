@@ -19,13 +19,99 @@ use fuel_types::{
     Word,
 };
 
-use alloc::boxed::Box;
 use core::{
     ops,
-    ops::Range,
+    ops::{
+        Index,
+        IndexMut,
+        Range,
+        RangeFrom,
+        RangeTo,
+    },
 };
+use std::collections::VecDeque;
 
-pub type Memory<const SIZE: usize> = Box<[u8; SIZE]>;
+/// The memory of the VM, represented as a fixed-size array.
+// pub type Memory = Box<[u8; SIZE]>;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Memory {
+    stack: Vec<u8>,
+    heap: VecDeque<u8>,
+}
+
+impl Memory {
+    pub fn new() -> Self {
+        Self {
+            stack: Vec::new(),
+            heap: VecDeque::new(),
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn get(&self, index: Range<usize>) -> Option<&[u8]> {
+        self.data.get(index)
+    }
+
+    #[inline]
+    #[track_caller]
+    #[must_use]
+    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [u8], &mut [u8]) {
+        self.data.split_at_mut(mid)
+    }
+}
+
+impl Index<Range<usize>> for Memory {
+    type Output = [u8];
+
+    fn index(&self, index: Range<usize>) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl Index<RangeFrom<usize>> for Memory {
+    type Output = [u8];
+
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl Index<RangeTo<usize>> for Memory {
+    type Output = [u8];
+
+    fn index(&self, index: RangeTo<usize>) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl IndexMut<Range<usize>> for Memory {
+    fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
+        &mut self.data[index]
+    }
+}
+
+impl Index<usize> for Memory {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+impl IndexMut<usize> for Memory {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.data[index]
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl From<Vec<u8>> for Memory {
+    fn from(value: Vec<u8>) -> Self {
+        Self { data: value }
+    }
+}
 
 #[cfg(test)]
 mod tests;
@@ -186,12 +272,12 @@ impl MemoryRange {
     }
 
     /// Get the memory slice for this range.
-    pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8] {
+    pub fn read(self, memory: &Memory) -> &[u8] {
         &memory[self.0]
     }
 
     /// Get the mutable memory slice for this range.
-    pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8] {
+    pub fn write(self, memory: &mut Memory) -> &mut [u8] {
         &mut memory[self.0]
     }
 }
@@ -366,7 +452,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn push_selected_registers(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
@@ -398,7 +484,7 @@ pub(crate) fn push_selected_registers(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pop_selected_registers(
-    memory: &[u8; MEM_SIZE],
+    memory: &Memory,
     sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
@@ -432,7 +518,7 @@ pub(crate) fn pop_selected_registers(
 }
 
 pub(crate) fn load_byte(
-    memory: &[u8; MEM_SIZE],
+    memory: &Memory,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -444,7 +530,7 @@ pub(crate) fn load_byte(
 }
 
 pub(crate) fn load_word(
-    memory: &[u8; MEM_SIZE],
+    memory: &Memory,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -459,7 +545,7 @@ pub(crate) fn load_word(
 
 #[allow(clippy::cast_possible_truncation)]
 pub(crate) fn store_byte(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -471,7 +557,7 @@ pub(crate) fn store_byte(
 }
 
 pub(crate) fn store_word(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -507,7 +593,7 @@ pub(crate) fn malloc(
 }
 
 pub(crate) fn memclear(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -520,7 +606,7 @@ pub(crate) fn memclear(
 }
 
 pub(crate) fn memcopy(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -553,7 +639,7 @@ pub(crate) fn memcopy(
 }
 
 pub(crate) fn memeq(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     result: &mut Word,
     pc: RegMut<PC>,
     b: Word,
@@ -656,7 +742,7 @@ pub(crate) fn try_mem_write<A: ToAddr>(
     addr: A,
     data: &[u8],
     owner: OwnershipRegisters,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
 ) -> SimpleResult<()> {
     let range = MemoryRange::new(addr, data.len())?;
     owner.verify_ownership(&range)?;
@@ -668,7 +754,7 @@ pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
     addr: A,
     len: B,
     owner: OwnershipRegisters,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
 ) -> SimpleResult<()> {
     let range = MemoryRange::new(addr, len)?;
     owner.verify_ownership(&range)?;
@@ -679,7 +765,7 @@ pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
 /// Reads a constant-sized byte array from memory, performing overflow and memory range
 /// checks.
 pub(crate) fn read_bytes<const COUNT: usize>(
-    memory: &[u8; MEM_SIZE],
+    memory: &Memory,
     addr: Word,
 ) -> Result<[u8; COUNT], PanicReason> {
     let range = MemoryRange::new_const::<_, COUNT>(addr)?;
@@ -690,7 +776,7 @@ pub(crate) fn read_bytes<const COUNT: usize>(
 /// Writes a constant-sized byte array to memory, performing overflow, memory range and
 /// ownership checks.
 pub(crate) fn write_bytes<const COUNT: usize>(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     addr: Word,
     bytes: [u8; COUNT],
@@ -704,7 +790,7 @@ pub(crate) fn write_bytes<const COUNT: usize>(
 /// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
 /// Performs overflow and memory range checks, but no ownership checks.
 pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     src: &[u8],
     dst_addr: A,
     src_offset: usize,

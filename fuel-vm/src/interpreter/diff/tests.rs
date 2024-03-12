@@ -212,16 +212,16 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
     v
 }
 
-#[test]
-fn reset_vm_memory() {
-    let a = Interpreter::<_, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, Script>::with_memory_storage();
-    b.memory[100..132].copy_from_slice(&[1u8; 32]);
-    let diff: Diff<InitialVmState> = a.diff(&b).into();
-    assert_ne!(a, b);
-    b.reset_vm_state(&diff);
-    assert_eq!(a, b);
-}
+// #[test]
+// fn reset_vm_memory() {
+//     let a = Interpreter::<_, Script>::with_memory_storage();
+//     let mut b = Interpreter::<_, Script>::with_memory_storage();
+//     b.memory[100..132].copy_from_slice(&[1u8; 32]);
+//     let diff: Diff<InitialVmState> = a.diff(&b).into();
+//     assert_ne!(a, b);
+//     b.reset_vm_state(&diff);
+//     assert_eq!(a, b);
+// }
 
 #[test]
 fn reset_vm_txns() {

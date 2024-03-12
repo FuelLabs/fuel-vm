@@ -1,6 +1,7 @@
 use super::{
     ExecutableTransaction,
     Interpreter,
+    Memory,
     MemoryRange,
     RuntimeBalances,
 };
@@ -9,7 +10,6 @@ use crate::{
         reg_key::*,
         CheckedMemConstLen,
     },
-    consts::*,
     context::Context,
     error::SimpleResult,
 };
@@ -54,7 +54,7 @@ where
 /// and the serialized tx in vm memory.
 pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     tx_offset: usize,
     idx: usize,
     variable: Output,
@@ -85,7 +85,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
 
 pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     tx_offset: usize,
     idx: usize,
 ) -> SimpleResult<()> {
@@ -149,11 +149,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     }
 
     pub(crate) fn internal_contract_or_default(&self) -> ContractId {
-        internal_contract_or_default(
-            &self.context,
-            self.registers.fp(),
-            self.memory.as_ref(),
-        )
+        internal_contract_or_default(&self.context, self.registers.fp(), &self.memory)
     }
 
     pub(crate) fn get_block_height(&self) -> Result<BlockHeight, PanicReason> {
@@ -191,7 +187,7 @@ pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), PanicReason> {
         .map(|i| *pc = i)
 }
 
-pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
+pub(crate) fn tx_id(memory: &Memory) -> &Bytes32 {
     let memory = (&memory[..Bytes32::LEN])
         .try_into()
         .expect("Bytes32::LEN < MEM_SIZE");
@@ -203,7 +199,7 @@ pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
 pub(crate) fn base_asset_balance_sub(
     base_asset_id: &AssetId,
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     value: Word,
 ) -> SimpleResult<()> {
     external_asset_id_balance_sub(balances, memory, base_asset_id, value)
@@ -212,7 +208,7 @@ pub(crate) fn base_asset_balance_sub(
 /// Reduces the unspent balance of a given asset ID
 pub(crate) fn external_asset_id_balance_sub(
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     asset_id: &AssetId,
     value: Word,
 ) -> SimpleResult<()> {
@@ -226,7 +222,7 @@ pub(crate) fn external_asset_id_balance_sub(
 pub(crate) fn internal_contract_or_default(
     context: &Context,
     register: Reg<FP>,
-    memory: &[u8; MEM_SIZE],
+    memory: &Memory,
 ) -> ContractId {
     internal_contract(context, register, memory)
         .map_or(Default::default(), |contract| *contract)
@@ -235,7 +231,7 @@ pub(crate) fn internal_contract_or_default(
 pub(crate) fn current_contract<'a>(
     context: &Context,
     fp: Reg<FP>,
-    memory: &'a [u8; MEM_SIZE],
+    memory: &'a Memory,
 ) -> Result<Option<&'a ContractId>, PanicReason> {
     if context.is_internal() {
         Ok(Some(internal_contract(context, fp, memory)?))
@@ -247,7 +243,7 @@ pub(crate) fn current_contract<'a>(
 pub(crate) fn internal_contract<'a>(
     context: &Context,
     register: Reg<FP>,
-    memory: &'a [u8; MEM_SIZE],
+    memory: &'a Memory,
 ) -> Result<&'a ContractId, PanicReason> {
     let range = internal_contract_bounds(context, register)?;
 

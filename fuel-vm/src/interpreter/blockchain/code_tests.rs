@@ -16,7 +16,7 @@ use fuel_tx::Contract;
 #[test]
 fn test_load_contract() -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let hp = 2000;
     let mut cgas = 1000;
@@ -73,7 +73,7 @@ fn test_load_contract() -> IoResult<(), Infallible> {
 #[test]
 fn test_code_copy() -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut cgas = 1000;
     let mut ggas = 1000;
     let mut pc = 4;

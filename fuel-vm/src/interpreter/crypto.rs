@@ -12,10 +12,10 @@ use super::{
     },
     ExecutableTransaction,
     Interpreter,
+    Memory,
 };
 use crate::{
     constraints::reg_key::*,
-    consts::*,
     error::SimpleResult,
     prelude::MemoryRange,
 };
@@ -83,7 +83,7 @@ where
 }
 
 pub(crate) fn secp256k1_recover(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -112,7 +112,7 @@ pub(crate) fn secp256k1_recover(
 }
 
 pub(crate) fn secp256r1_recover(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -139,7 +139,7 @@ pub(crate) fn secp256r1_recover(
 }
 
 pub(crate) fn ed25519_verify(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
     a: Word,
@@ -161,7 +161,7 @@ pub(crate) fn ed25519_verify(
 }
 
 pub(crate) fn keccak256(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -183,7 +183,7 @@ pub(crate) fn keccak256(
 }
 
 pub(crate) fn sha256(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,

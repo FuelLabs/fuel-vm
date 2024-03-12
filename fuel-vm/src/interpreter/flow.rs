@@ -36,6 +36,7 @@ use crate::{
         ExecutableTransaction,
         InputContracts,
         Interpreter,
+        Memory,
         MemoryRange,
         PanicContext,
         RuntimeBalances,
@@ -94,8 +95,7 @@ where
 
     pub(crate) fn ret(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
-                .copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let input = RetCtx {
             receipts: &mut self.receipts,
             frames: &mut self.frames,
@@ -109,8 +109,7 @@ where
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
-                .copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let input = RetCtx {
             frames: &mut self.frames,
             registers: &mut self.registers,
@@ -124,7 +123,7 @@ where
 
     pub(crate) fn revert(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
+            current_contract(&self.context, self.registers.fp(), &self.memory)
                 .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
         revert(
             &mut self.receipts,
@@ -159,7 +158,7 @@ where
 struct RetCtx<'vm> {
     frames: &'vm mut Vec<CallFrame>,
     registers: &'vm mut [Word; VM_REGISTER_COUNT],
-    memory: &'vm [u8; MEM_SIZE],
+    memory: &'vm Memory,
     receipts: &'vm mut ReceiptsCtx,
     context: &'vm mut Context,
     current_contract: Option<ContractId>,
@@ -374,9 +373,8 @@ where
         // We will charge for the frame size in the `prepare_call`.
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
-                .copied();
-        let memory = PrepareCallMemory::try_from((self.memory.as_mut(), &params))?;
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
+        let memory = PrepareCallMemory::try_from((&mut self.memory, &params))?;
         let input_contracts = self.tx.input_contracts().copied().collect::<Vec<_>>();
 
         PrepareCallCtx {
@@ -448,7 +446,7 @@ impl<'a> PrepareCallRegisters<'a> {
 }
 
 struct PrepareCallMemory<'a> {
-    memory: &'a mut [u8; MEM_SIZE],
+    memory: &'a mut Memory,
     call_params: CheckedMemValue<Call>,
     asset_id: CheckedMemValue<AssetId>,
 }
@@ -628,7 +626,7 @@ fn write_call_to_memory<S>(
     frame: &CallFrame,
     frame_bytes: Vec<u8>,
     code_mem_range: MemoryRange,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     storage: &S,
 ) -> IoResult<Word, S::Error>
 where
@@ -749,13 +747,11 @@ impl<'reg> From<SystemRegisters<'reg>>
     }
 }
 
-impl<'mem> TryFrom<(&'mem mut [u8; MEM_SIZE], &PrepareCallParams)>
-    for PrepareCallMemory<'mem>
-{
+impl<'mem> TryFrom<(&'mem mut Memory, &PrepareCallParams)> for PrepareCallMemory<'mem> {
     type Error = PanicReason;
 
     fn try_from(
-        (memory, params): (&'mem mut [u8; MEM_SIZE], &PrepareCallParams),
+        (memory, params): (&'mem mut Memory, &PrepareCallParams),
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             memory,

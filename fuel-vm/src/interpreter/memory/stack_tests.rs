@@ -32,7 +32,7 @@ fn test_push_pop(
     )]
     bitmask: u32,
 ) {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 0;
 
@@ -91,7 +91,7 @@ fn test_push_pop(
 
 #[test]
 fn test_push_stack_overflow() {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 10;
     let hp = 14;
@@ -115,7 +115,7 @@ fn test_push_stack_overflow() {
 
 #[test]
 fn test_pop_from_empty_stack() {
-    let memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 32;
     let ssp = 16;
@@ -139,7 +139,7 @@ fn test_pop_from_empty_stack() {
 
 #[test]
 fn test_pop_sp_overflow() {
-    let memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 16;
     let ssp = 0;

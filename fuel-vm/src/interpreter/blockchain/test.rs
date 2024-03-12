@@ -28,7 +28,7 @@ mod swwq;
 fn mem(chains: &[&[u8]]) -> Memory {
     let mut vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();
     vec.resize(MEM_SIZE, 0);
-    vec.try_into().unwrap()
+    vec.into()
 }
 const fn key(k: u8) -> [u8; 32] {
     [

@@ -1,12 +1,10 @@
+use super::Node;
 use crate::{
     common::{
         path::ComparablePath,
         Bytes32,
     },
-    sparse::{
-        Node,
-        Primitive,
-    },
+    sparse::Primitive,
 };
 use fuel_storage::{
     Mappable,
@@ -15,7 +13,7 @@ use fuel_storage::{
 
 use core::iter;
 
-pub(crate) struct Branch {
+pub(super) struct Branch {
     pub bits: Bytes32,
     pub node: Node,
 }
@@ -29,7 +27,7 @@ impl From<Node> for Branch {
     }
 }
 
-pub(crate) fn merge_branches<Storage, Table>(
+pub(super) fn merge_branches<Storage, Table>(
     storage: &mut Storage,
     mut left_branch: Branch,
     mut right_branch: Branch,

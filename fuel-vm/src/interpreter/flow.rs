@@ -587,6 +587,7 @@ where
         );
         *self.registers.system_registers.sp = new_sp;
         *self.registers.system_registers.ssp = new_sp;
+        self.memory.memory.grow_stack(new_sp)?;
 
         let code_frame_mem_range =
             MemoryRange::new(*self.registers.system_registers.fp, len)?;

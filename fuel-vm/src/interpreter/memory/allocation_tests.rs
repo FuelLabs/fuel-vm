@@ -16,8 +16,15 @@ use crate::error::PanicOrBug;
 #[test_case(20, 10, 10 => Ok(10); "Allocation size equal to available memory")]
 #[test_case(20, 10, 5 => Ok(15); "Allocation size smaller than available memory")]
 fn test_malloc(mut hp: Word, sp: Word, a: Word) -> SimpleResult<Word> {
+    let mut memory = Memory::new();
     let mut pc = 4;
-    malloc(RegMut::new(&mut hp), Reg::new(&sp), RegMut::new(&mut pc), a)?;
+    malloc(
+        RegMut::new(&mut hp),
+        Reg::new(&sp),
+        RegMut::new(&mut pc),
+        a,
+        &mut memory,
+    )?;
     assert_eq!(pc, 8);
 
     Ok(hp)
@@ -130,6 +137,7 @@ fn test_stack_pointer_overflow(
     hp: Word,
     v: Word,
 ) -> SimpleResult<()> {
+    let mut memory = Memory::new();
     let mut pc = 4;
     let old_sp = sp;
 
@@ -144,6 +152,7 @@ fn test_stack_pointer_overflow(
             Word::overflowing_sub
         },
         v,
+        &mut memory,
     )?;
 
     assert_eq!(pc, 8);

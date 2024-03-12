@@ -617,6 +617,7 @@ where
         let new_stack = dst_range.words().end;
         *self.sp = new_stack;
         *self.ssp = new_stack;
+        self.memory.grow_stack(new_stack)?;
 
         // Copy the code. Ownership checks are not used as the stack is adjusted above.
         copy_from_slice_zero_fill_noownerchecks(

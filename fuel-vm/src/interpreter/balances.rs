@@ -324,7 +324,7 @@ fn checked_add_and_sub_works() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut memory = Interpreter::<_, Script>::without_storage().memory;
+    let mut memory = vec![0u8; MEM_SIZE].into();
 
     let asset: AssetId = rng.gen();
 

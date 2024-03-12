@@ -162,6 +162,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         if overflow || !self.is_external_context() && ssp > self.registers[RegId::SP] {
             Err(PanicReason::MemoryOverflow)
         } else {
+            self.memory.grow_stack(ssp)?;
             Ok(mem::replace(&mut self.registers[RegId::SSP], ssp))
         }
     }

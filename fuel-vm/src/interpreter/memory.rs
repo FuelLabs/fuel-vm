@@ -29,36 +29,148 @@ use core::{
         RangeTo,
     },
 };
-use std::collections::VecDeque;
 
-/// The memory of the VM, represented as a fixed-size array.
-// pub type Memory = Box<[u8; SIZE]>;
+#[cfg(feature = "alloc")]
+use alloc::{
+    vec,
+    vec::Vec,
+};
 
+trait Heap {
+    /// Resize the heap to at least `new_len` bytes, filling the new space with `value`.
+    /// If `new_len` is less than the current length, the function does nothing.
+    /// The functions may grow the size more than `new_len` to avoid frequent
+    /// reallocations.
+    fn reverse_resize_at_least(&mut self, new_len: usize, value: u8);
+}
+
+impl Heap for Vec<u8> {
+    fn reverse_resize_at_least(&mut self, new_len: usize, value: u8) {
+        let len = self.len();
+
+        if new_len > len {
+            // It is how `Vec::resize` calculates a new capacity.
+            let cap = core::cmp::max(len * 2, new_len);
+            let cap = core::cmp::min(cap, MEM_SIZE);
+            let diff = cap - len;
+            let mut new_vec = vec![value; cap];
+            new_vec[diff..].copy_from_slice(self.as_slice());
+            *self = new_vec;
+        }
+    }
+}
+
+/// The memory of the VM, represented as stack and heap.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Memory {
     stack: Vec<u8>,
-    heap: VecDeque<u8>,
+    hp: usize,
+    heap_offset: usize,
+    heap: Vec<u8>,
+}
+
+impl Default for Memory {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Memory {
+    /// Create a new VM memory.
     pub fn new() -> Self {
         Self {
             stack: Vec::new(),
-            heap: VecDeque::new(),
+            hp: MEM_SIZE,
+            heap_offset: MEM_SIZE,
+            heap: Vec::new(),
         }
     }
 
+    /// Returns a linear memory representation where stack is at the beginning and heap is
+    /// at the end.
+    pub fn into_linear_memory(self) -> Vec<u8> {
+        let uninit_memory_size = MEM_SIZE
+            .saturating_sub(self.stack.len())
+            .saturating_sub(self.heap.len());
+        let uninit_memory = vec![0u8; uninit_memory_size];
+        let mut memory = self.stack;
+        memory.extend(uninit_memory);
+        memory.extend(self.heap);
+        memory
+    }
+
+    /// Grows the stack to be at least `new_sp` bytes.
+    pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
+        let new_sp = u32::try_from(new_sp).unwrap_or(u32::MAX) as usize;
+        let new_sp = core::cmp::min(new_sp, MEM_SIZE);
+        if new_sp > self.stack.len() {
+            if new_sp > self.hp {
+                return Err(PanicReason::MemoryGrowthOverlap)
+            }
+
+            self.stack.resize(new_sp, 0);
+        }
+        Ok(())
+    }
+
+    /// Grows the heap to be at least `new_hp` bytes.
+    pub fn grow_heap(&mut self, new_hp: Word) -> Result<(), PanicReason> {
+        let new_hp = u32::try_from(new_hp).unwrap_or(u32::MAX) as usize;
+        let new_hp = core::cmp::min(new_hp, MEM_SIZE);
+        if self.hp < new_hp {
+            return Ok(())
+        }
+
+        if new_hp < self.stack.len() {
+            return Err(PanicReason::MemoryGrowthOverlap)
+        }
+
+        let new_allocated_heap_size = MEM_SIZE - new_hp;
+
+        self.heap
+            .reverse_resize_at_least(new_allocated_heap_size, 0);
+        self.hp = new_hp;
+        self.heap_offset = MEM_SIZE.saturating_sub(self.heap.len());
+        Ok(())
+    }
+
+    /// Returns a reference to a subslice depending on the `index`.
     #[inline]
     #[must_use]
     pub fn get(&self, index: Range<usize>) -> Option<&[u8]> {
-        self.data.get(index)
+        if index.start >= self.hp {
+            let relative_range =
+                (index.start - self.heap_offset)..(index.end - self.heap_offset);
+            self.heap.get(relative_range)
+        } else if index.end <= self.stack.len() {
+            self.stack.get(index)
+        } else {
+            None
+        }
     }
 
+    /// Returns a mutable reference to a subslice depending on the `index`.
+    #[inline]
+    #[must_use]
+    pub fn get_mut(&mut self, index: Range<usize>) -> Option<&mut [u8]> {
+        if index.start >= self.hp {
+            let relative_range =
+                (index.start - self.heap_offset)..(index.end - self.heap_offset);
+            self.heap.get_mut(relative_range)
+        } else if index.end <= self.stack.len() {
+            self.stack.get_mut(index)
+        } else {
+            None
+        }
+    }
+
+    /// Copies the memory from `src` to `dst`.
     #[inline]
     #[track_caller]
-    #[must_use]
-    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [u8], &mut [u8]) {
-        self.data.split_at_mut(mid)
+    // TODO: Implement more optimal version of this function.
+    pub fn memcopy(&mut self, dst: Range<usize>, src: Range<usize>) {
+        let copy = self[src].to_vec();
+        self[dst].copy_from_slice(&copy);
     }
 }
 
@@ -66,7 +178,7 @@ impl Index<Range<usize>> for Memory {
     type Output = [u8];
 
     fn index(&self, index: Range<usize>) -> &Self::Output {
-        &self.data[index]
+        self.get(index).expect("Memory range out of bounds")
     }
 }
 
@@ -74,7 +186,12 @@ impl Index<RangeFrom<usize>> for Memory {
     type Output = [u8];
 
     fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
-        &self.data[index]
+        if index.start >= self.hp {
+            let relative_range = (index.start - self.heap_offset)..;
+            &self.heap[relative_range]
+        } else {
+            &self.stack[index]
+        }
     }
 }
 
@@ -82,13 +199,13 @@ impl Index<RangeTo<usize>> for Memory {
     type Output = [u8];
 
     fn index(&self, index: RangeTo<usize>) -> &Self::Output {
-        &self.data[index]
+        &self.stack[index]
     }
 }
 
 impl IndexMut<Range<usize>> for Memory {
     fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
-        &mut self.data[index]
+        self.get_mut(index).expect("Memory range out of bounds")
     }
 }
 
@@ -96,20 +213,35 @@ impl Index<usize> for Memory {
     type Output = u8;
 
     fn index(&self, index: usize) -> &Self::Output {
-        &self.data[index]
+        if index >= self.hp {
+            let relative_index = index - self.heap_offset;
+            &self.heap[relative_index]
+        } else {
+            &self.stack[index]
+        }
     }
 }
 
 impl IndexMut<usize> for Memory {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.data[index]
+        if index >= self.hp {
+            let relative_index = index - self.heap_offset;
+            &mut self.heap[relative_index]
+        } else {
+            &mut self.stack[index]
+        }
     }
 }
 
 #[cfg(feature = "test-helpers")]
 impl From<Vec<u8>> for Memory {
-    fn from(value: Vec<u8>) -> Self {
-        Self { data: value }
+    fn from(stack: Vec<u8>) -> Self {
+        Self {
+            stack,
+            hp: MEM_SIZE,
+            heap_offset: MEM_SIZE,
+            heap: vec![],
+        }
     }
 }
 
@@ -298,7 +430,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             },
             _,
         ) = split_registers(&mut self.registers);
-        stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v)
+        stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v, &mut self.memory)
     }
 
     pub(crate) fn push_selected_registers(
@@ -336,7 +468,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             mut program_regs,
         ) = split_registers(&mut self.registers);
         pop_selected_registers(
-            &self.memory,
+            &mut self.memory,
             sp,
             ssp.as_ref(),
             hp.as_ref(),
@@ -382,13 +514,13 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Expand heap by `a` bytes.
     pub fn allocate(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
-        try_allocate(hp, sp.as_ref(), a)
+        try_allocate(hp, sp.as_ref(), a, &mut self.memory)
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, pc, .. }, _) =
             split_registers(&mut self.registers);
-        malloc(hp, sp.as_ref(), pc, a)
+        malloc(hp, sp.as_ref(), pc, a, &mut self.memory)
     }
 
     pub(crate) fn memclear(&mut self, a: Word, b: Word) -> SimpleResult<()> {
@@ -420,11 +552,13 @@ pub(crate) fn try_update_stack_pointer(
     ssp: Reg<SSP>,
     hp: Reg<HP>,
     new_sp: Word,
+    memory: &mut Memory,
 ) -> SimpleResult<()> {
     if new_sp >= *hp || new_sp < *ssp {
         Err(PanicReason::MemoryOverflow.into())
     } else {
         *sp = new_sp;
+        memory.grow_stack(new_sp)?;
         Ok(())
     }
 }
@@ -436,6 +570,7 @@ pub(crate) fn stack_pointer_overflow<F>(
     pc: RegMut<PC>,
     f: F,
     v: Word,
+    memory: &mut Memory,
 ) -> SimpleResult<()>
 where
     F: FnOnce(Word, Word) -> (Word, bool),
@@ -446,7 +581,7 @@ where
         return Err(PanicReason::MemoryOverflow.into())
     }
 
-    try_update_stack_pointer(sp, ssp, hp, new_sp)?;
+    try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
     Ok(inc_pc(pc)?)
 }
 
@@ -466,7 +601,7 @@ pub(crate) fn push_selected_registers(
     // First update the new stack pointer, as that's the only error condition
     let count: u64 = bitmask.count_ones().into();
     let stack_range = MemoryRange::new(*sp, count * 8)?;
-    try_update_stack_pointer(sp, ssp, hp, stack_range.words().end)?;
+    try_update_stack_pointer(sp, ssp, hp, stack_range.words().end, memory)?;
 
     // Write the registers to the stack
     let mut it = memory[stack_range.usizes()].chunks_exact_mut(8);
@@ -484,7 +619,7 @@ pub(crate) fn push_selected_registers(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pop_selected_registers(
-    memory: &Memory,
+    memory: &mut Memory,
     sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
@@ -501,7 +636,7 @@ pub(crate) fn pop_selected_registers(
     let new_sp = sp
         .checked_sub(size_in_stack)
         .ok_or(PanicReason::MemoryOverflow)?;
-    try_update_stack_pointer(sp, ssp, hp, new_sp)?;
+    try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
     let stack_range = MemoryRange::new(new_sp, size_in_stack)?.usizes();
 
     // Restore registers from the stack
@@ -571,12 +706,18 @@ pub(crate) fn store_word(
     Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn try_allocate(mut hp: RegMut<HP>, sp: Reg<SP>, a: Word) -> SimpleResult<()> {
+pub(crate) fn try_allocate(
+    mut hp: RegMut<HP>,
+    sp: Reg<SP>,
+    a: Word,
+    memory: &mut Memory,
+) -> SimpleResult<()> {
     let (result, overflow) = hp.overflowing_sub(a);
 
     if overflow || result < *sp {
         Err(PanicReason::MemoryOverflow.into())
     } else {
+        memory.grow_heap(result)?;
         *hp = result;
         Ok(())
     }
@@ -587,8 +728,9 @@ pub(crate) fn malloc(
     sp: Reg<SP>,
     pc: RegMut<PC>,
     a: Word,
+    memory: &mut Memory,
 ) -> SimpleResult<()> {
-    try_allocate(hp, sp, a)?;
+    try_allocate(hp, sp, a, memory)?;
     Ok(inc_pc(pc)?)
 }
 
@@ -626,14 +768,7 @@ pub(crate) fn memcopy(
         return Err(PanicReason::MemoryWriteOverlap.into())
     }
 
-    let len = src_range.len();
-    if a <= b {
-        let (dst, src) = memory.split_at_mut(src_range.start);
-        dst[dst_range.usizes()].copy_from_slice(&src[..len]);
-    } else {
-        let (src, dst) = memory.split_at_mut(dst_range.start);
-        dst[..len].copy_from_slice(&src[src_range.usizes()]);
-    }
+    memory.memcopy(dst_range.usizes(), src_range.usizes());
 
     Ok(inc_pc(pc)?)
 }

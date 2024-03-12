@@ -32,7 +32,7 @@ fn test_burn(
     sub_id: [u8; 32],
 ) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
@@ -115,7 +115,7 @@ fn test_mint(
     sub_id: [u8; 32],
 ) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
@@ -188,7 +188,7 @@ fn test_mint(
 #[test]
 fn test_block_hash() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -219,7 +219,7 @@ fn test_block_height() {
 #[test]
 fn test_coinbase() {
     let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
@@ -316,7 +316,7 @@ fn test_code_root() {
 fn test_code_size() {
     let contract_id = ContractId::new([3u8; ContractId::LEN]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .write(&ContractId::from([3u8; 32]), vec![1u8; 100])

@@ -22,7 +22,7 @@ mod scwq;
 mod srwq;
 mod swwq;
 
-fn mem(chains: &[&[u8]]) -> Memory<MEM_SIZE> {
+fn mem(chains: &[&[u8]]) -> Memory {
     let mut vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();
     vec.resize(MEM_SIZE, 0);
     vec.try_into().unwrap()
@@ -61,7 +61,7 @@ fn test_state_read_word(
     key: Word,
 ) -> Result<(Word, Word), RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let is = 4;
@@ -131,7 +131,7 @@ fn test_state_write_word(
     key: Word,
 ) -> Result<Word, RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let mut pc = 4;

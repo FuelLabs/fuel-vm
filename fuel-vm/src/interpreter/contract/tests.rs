@@ -23,7 +23,7 @@ use test_case::test_case;
 
 #[test_case(0, 32 => Ok(()); "Can read contract balance")]
 fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..(b as usize + AssetId::LEN)]
         .copy_from_slice(&[2u8; AssetId::LEN][..]);
     memory[c as usize..(c as usize + ContractId::LEN)]
@@ -92,7 +92,7 @@ fn test_transfer(
     let mut cgas = 10_000;
     let mut ggas = 10_000;
 
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[real_contract_id_offset as usize
         ..(real_contract_id_offset as usize + ContractId::LEN)]
         .copy_from_slice(RECIPIENT_CONTRACT_ID.as_ref());
@@ -234,7 +234,7 @@ fn test_transfer_output(
     let mut cgas = 10_000;
     let mut ggas = 10_000;
 
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
 
     memory
         [real_recipient_offset as usize..(real_recipient_offset as usize + Address::LEN)]

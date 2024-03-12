@@ -42,7 +42,7 @@ fn test_return() {
     };
 
     let mut receipts = Default::default();
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
     input(
         &mut frames,
         &mut registers,
@@ -150,7 +150,7 @@ fn input<'a>(
     frames: &'a mut Vec<CallFrame>,
     registers: &'a mut [Word; VM_REGISTER_COUNT],
     receipts: &'a mut ReceiptsCtx,
-    memory: &'a mut [u8; MEM_SIZE],
+    memory: &'a mut Memory,
     context: &'a mut Context,
 ) -> RetCtx<'a> {
     RetCtx {

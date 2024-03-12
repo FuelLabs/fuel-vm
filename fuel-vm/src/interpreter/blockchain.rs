@@ -44,6 +44,7 @@ use crate::{
         ExecutableTransaction,
         InputContracts,
         Interpreter,
+        Memory,
         MemoryRange,
         RuntimeBalances,
     },
@@ -108,8 +109,7 @@ where
         self.gas_charge(gas_cost.base())?;
         let contract_max_size = self.contract_max_size();
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
-                .copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let (
             SystemRegisters {
                 cgas,
@@ -214,8 +214,7 @@ where
         self.gas_charge(gas_cost.base())?;
 
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
-                .copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let owner = self.ownership_registers();
         let (
             SystemRegisters {
@@ -296,8 +295,7 @@ where
         // We will charge for the contracts size in the `code_size`.
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?
-                .copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let (
             SystemRegisters {
                 cgas, ggas, pc, is, ..
@@ -470,7 +468,7 @@ where
         state_write_qword(
             &contract_id?,
             storage,
-            memory.as_mut(),
+            memory,
             &mut self.profiler,
             new_storage_per_byte,
             self.frames.last().map(|frame| frame.to()).copied(),
@@ -528,7 +526,7 @@ where
 
 struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     profiler: &'vm mut Profiler,
     input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
@@ -755,7 +753,7 @@ where
 }
 
 struct CodeCopyCtx<'vm, S, I> {
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     profiler: &'vm mut Profiler,
@@ -830,7 +828,7 @@ where
 
 pub(crate) fn block_hash<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -864,7 +862,7 @@ pub(crate) fn block_height(
 
 pub(crate) fn coinbase<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -876,7 +874,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 }
 
 struct CodeRootCtx<'vm, S, I> {
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     owner: OwnershipRegisters,
@@ -911,7 +909,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
 
 struct CodeSizeCtx<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
     input_contracts: InputContracts<'vm, I>,
@@ -959,7 +957,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
 
 pub(crate) struct StateReadWordCtx<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm [u8; MEM_SIZE],
+    pub memory: &'vm Memory,
     pub context: &'vm Context,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
@@ -1003,7 +1001,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
 
 pub(crate) struct StateWriteWordCtx<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm [u8; MEM_SIZE],
+    pub memory: &'vm Memory,
     pub context: &'vm Context,
     pub profiler: &'vm mut Profiler,
     pub new_storage_gas_per_byte: Word,
@@ -1094,7 +1092,7 @@ where
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     tx_offset: usize,
     receipts: &'vm mut ReceiptsCtx,
     tx: &'vm mut Tx,
@@ -1215,7 +1213,7 @@ impl StateReadQWord {
 fn state_read_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &S,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateReadQWord,
@@ -1279,7 +1277,7 @@ impl StateWriteQWord {
 fn state_write_qword<'vm, S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
-    memory: &[u8; MEM_SIZE],
+    memory: &Memory,
     profiler: &'vm mut Profiler,
     new_storage_gas_per_byte: Word,
     current_contract: Option<ContractId>,
@@ -1354,7 +1352,7 @@ impl StateClearQWord {
 fn state_clear_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
-    memory: &[u8; MEM_SIZE],
+    memory: &Memory,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateClearQWord,

@@ -16,6 +16,7 @@ use super::{
     memory::read_bytes,
     ExecutableTransaction,
     Interpreter,
+    Memory,
     RuntimeBalances,
 };
 use crate::{
@@ -193,7 +194,7 @@ where
 
 struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     pc: RegMut<'vm, PC>,
     input_contracts: InputContracts<'vm, I>,
 }
@@ -226,7 +227,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
 }
 struct TransferCtx<'vm, S, Tx> {
     storage: &'vm mut S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,

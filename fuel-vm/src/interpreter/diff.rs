@@ -350,25 +350,25 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         );
         diff.changes.extend(balances);
 
-        let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
-
-        while let Some(((start, s_from), s_to)) = memory
-            .by_ref()
-            .find(|((_, a), b)| a != b)
-            .map(|((n, a), b)| ((n, *a), *b))
-        {
-            let (mut from, mut to): (Vec<_>, Vec<_>) = memory
-                .by_ref()
-                .take_while(|((_, a), b)| a != b)
-                .map(|((_, a), b)| (*a, *b))
-                .unzip();
-            from.splice(..0, core::iter::once(s_from)).next();
-            to.splice(..0, core::iter::once(s_to)).next();
-            diff.changes.push(Change::Memory(Delta {
-                from: Memory { start, bytes: from },
-                to: Memory { start, bytes: to },
-            }));
-        }
+        // let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
+        //
+        // while let Some(((start, s_from), s_to)) = memory
+        //     .by_ref()
+        //     .find(|((_, a), b)| a != b)
+        //     .map(|((n, a), b)| ((n, *a), *b))
+        // {
+        //     let (mut from, mut to): (Vec<_>, Vec<_>) = memory
+        //         .by_ref()
+        //         .take_while(|((_, a), b)| a != b)
+        //         .map(|((_, a), b)| (*a, *b))
+        //         .unzip();
+        //     from.splice(..0, core::iter::once(s_from)).next();
+        //     to.splice(..0, core::iter::once(s_to)).next();
+        //     diff.changes.push(Change::Memory(Delta {
+        //         from: Memory { start, bytes: from },
+        //         to: Memory { start, bytes: to },
+        //     }));
+        // }
 
         if self.context != other.context {
             diff.changes.push(Change::Context(Delta {

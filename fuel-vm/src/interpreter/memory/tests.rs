@@ -254,7 +254,7 @@ fn test_mem_write(
     data: &[u8],
     registers: OwnershipRegisters,
 ) -> (bool, [u8; 100]) {
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
     let r = try_mem_write(addr, data, registers, &mut memory).is_ok();
     let memory: [u8; 100] = memory[..100].try_into().unwrap();
     (r, memory)
@@ -310,7 +310,7 @@ fn test_try_zeroize(
     len: usize,
     registers: OwnershipRegisters,
 ) -> (bool, [u8; 100]) {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let r = try_zeroize(addr, len, registers, &mut memory).is_ok();
     let memory: [u8; 100] = memory[..100].try_into().unwrap();
     (r, memory)
@@ -347,7 +347,7 @@ fn test_copy_from_slice_zero_fill_noownerchecks(
     src_offset: usize,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
-    let mut memory: Memory<MEM_SIZE> = vec![0xffu8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![0xffu8; MEM_SIZE].try_into().unwrap();
     let r = copy_from_slice_zero_fill_noownerchecks(
         &mut memory,
         src_data,

@@ -80,7 +80,10 @@ pub use ecal::{
     EcalHandler,
     PredicateErrorEcal,
 };
-pub use memory::MemoryRange;
+pub use memory::{
+    Memory,
+    MemoryRange,
+};
 
 use crate::checked_transaction::{
     CreateCheckedMetadata,
@@ -90,8 +93,6 @@ use crate::checked_transaction::{
     RetryableAmount,
     ScriptCheckedMetadata,
 };
-
-use self::memory::Memory;
 
 #[cfg(feature = "test-helpers")]
 pub use self::receipts::ReceiptsCtx;
@@ -114,7 +115,7 @@ pub struct NotSupportedEcal;
 #[derive(Debug, Clone)]
 pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Memory<MEM_SIZE>,
+    memory: Memory,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
     tx: Tx,
@@ -217,13 +218,13 @@ pub(crate) enum PanicContext {
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Returns the current state of the VM memory
-    pub fn memory(&self) -> &[u8] {
-        self.memory.as_slice()
+    pub fn memory(&self) -> &Memory {
+        &self.memory
     }
 
     /// Returns mutable access to the vm memory
-    pub fn memory_mut(&mut self) -> &mut [u8] {
-        self.memory.as_mut()
+    pub fn memory_mut(&mut self) -> &mut Memory {
+        &mut self.memory
     }
 
     /// Returns the current state of the registers

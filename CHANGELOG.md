@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#648](https://github.com/FuelLabs/fuel-vm/pull/648): Added support for generating proofs for Sparse Merkle Trees (SMTs) and proof verification. Proofs can be used to attest to the inclusion or exclusion of data from the set.
+
 ### Changed
 
 #### Breaking

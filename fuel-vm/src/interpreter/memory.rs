@@ -101,8 +101,6 @@ impl Memory {
 
     /// Grows the stack to be at least `new_sp` bytes.
     pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
-        // Because SP still should be accessible, we need to allocate one more byte.
-        let new_sp = new_sp.saturating_add(1);
         let new_sp = u32::try_from(new_sp).unwrap_or(u32::MAX) as usize;
         let new_sp = core::cmp::min(new_sp, MEM_SIZE);
         if new_sp > self.stack.len() {
@@ -170,9 +168,23 @@ impl Memory {
     #[inline]
     #[track_caller]
     // TODO: Implement more optimal version of this function.
-    pub fn memcopy(&mut self, dst: Range<usize>, src: Range<usize>) {
+    pub fn memcopy(
+        &mut self,
+        dst: Range<usize>,
+        src: Range<usize>,
+    ) -> Result<(), PanicReason> {
+        if dst.start <= src.start && src.start < dst.end
+            || src.start <= dst.start && dst.start < src.end
+            || dst.start < src.end && src.end <= dst.end
+            || src.start < dst.end && dst.end <= src.end
+        {
+            return Err(PanicReason::MemoryWriteOverlap)
+        }
+
         let copy = self[src].to_vec();
         self[dst].copy_from_slice(&copy);
+
+        Ok(())
     }
 }
 
@@ -762,15 +774,7 @@ pub(crate) fn memcopy(
 
     owner.verify_ownership(&dst_range)?;
 
-    if dst_range.start <= src_range.start && src_range.start < dst_range.end
-        || src_range.start <= dst_range.start && dst_range.start < src_range.end
-        || dst_range.start < src_range.end && src_range.end <= dst_range.end
-        || src_range.start < dst_range.end && dst_range.end <= src_range.end
-    {
-        return Err(PanicReason::MemoryWriteOverlap.into())
-    }
-
-    memory.memcopy(dst_range.usizes(), src_range.usizes());
+    memory.memcopy(dst_range.usizes(), src_range.usizes())?;
 
     Ok(inc_pc(pc)?)
 }

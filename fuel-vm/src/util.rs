@@ -259,7 +259,7 @@ pub mod test_helpers {
                 .expect("expected contract input with matching contract id");
 
             self.builder.add_output(Output::contract(
-                u8::try_from(input_idx.0).expect("The input index is more than allowed"),
+                u16::try_from(input_idx.0).expect("The input index is more than allowed"),
                 self.rng.gen(),
                 self.rng.gen(),
             ));

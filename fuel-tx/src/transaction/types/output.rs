@@ -74,7 +74,7 @@ impl Output {
     }
 
     pub const fn contract(
-        input_index: u8,
+        input_index: u16,
         balance_root: Bytes32,
         state_root: Bytes32,
     ) -> Self {
@@ -135,7 +135,7 @@ impl Output {
         }
     }
 
-    pub const fn input_index(&self) -> Option<u8> {
+    pub const fn input_index(&self) -> Option<u16> {
         match self {
             Output::Contract(Contract { input_index, .. }) => Some(*input_index),
             _ => None,
@@ -286,7 +286,7 @@ pub mod typescript {
 
         #[wasm_bindgen]
         pub fn contract(
-            input_index: u8,
+            input_index: u16,
             balance_root: Bytes32,
             state_root: Bytes32,
         ) -> Output {

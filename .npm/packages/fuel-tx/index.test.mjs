@@ -46,7 +46,7 @@ describe('fuel-tx [mjs]', () => {
         [5, 6, 7, 8],
       ),
       tx.Input.coin_signed(
-        new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
+        new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b001a"),
         tx.Address.zeroed(),
         BigInt(1234),
         tx.AssetId.zeroed(),
@@ -54,7 +54,7 @@ describe('fuel-tx [mjs]', () => {
         2,
       ),
       tx.Input.contract(
-        new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
+        new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b001a"),
         tx.Bytes32.zeroed(),
         tx.Bytes32.zeroed(),
         new tx.TxPointer("0123456789ab"),
@@ -159,7 +159,7 @@ describe('fuel-tx [mjs]', () => {
       [tx.Mint, tx.Transaction.mint(
         new tx.TxPointer("0123456789ab"),
         new tx.InputContract(
-          new tx.UtxoId("0xc49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2:18"),
+          new tx.UtxoId("0xc49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2:18ab"),
           tx.Bytes32.zeroed(),
           tx.Bytes32.zeroed(),
           new tx.TxPointer("0123456789ab"),
@@ -206,7 +206,7 @@ describe('fuel-tx [mjs]', () => {
 
   it('should validate input correctly', () => {
     let input = tx.Input.coin_signed(
-      new tx.UtxoId("0xc49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2:18"),
+      new tx.UtxoId("0xc49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2:18ab"),
       tx.Address.from_bytes(hexToBytes("f1e92c42b90934aa6372e30bc568a326f6e66a1a0288595e6e3fbd392a4f3e6e")),
       10599410012256088338n,
       tx.AssetId.from_bytes(hexToBytes("2cafad611543e0265d89f1c2b60d9ebf5d56ad7e23d9827d6b522fd4d6e44bc3")),

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Breaking
 
 - [#692](https://github.com/FuelLabs/fuel-vm/pull/692): Add GTF getters for tx size and address.
+- [#698](https://github.com/FuelLabs/fuel-vm/pull/698): Store input, output and witness limits to u16, while keeping the values limited to 255.
 
 ## [Version 0.47.1]
 

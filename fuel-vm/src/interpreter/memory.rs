@@ -182,11 +182,15 @@ impl Memory {
         }
 
         let copy = self
-            .get(src)
-            .expect("The source address it not initialized")
+            .get(src.clone())
+            .unwrap_or_else(|| {
+                panic!("The source `{:?}` address it not initialized", src)
+            })
             .to_vec();
-        self.get_mut(dst)
-            .expect("The destination address it not initialized")
+        self.get_mut(dst.clone())
+            .unwrap_or_else(|| {
+                panic!("The destination `{:?}` address it not initialized", dst)
+            })
             .copy_from_slice(&copy);
 
         Ok(())

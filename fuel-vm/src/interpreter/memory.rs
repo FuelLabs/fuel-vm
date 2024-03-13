@@ -101,6 +101,8 @@ impl Memory {
 
     /// Grows the stack to be at least `new_sp` bytes.
     pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
+        // Because SP still should be accessible, we need to allocate one more byte.
+        let new_sp = new_sp.saturating_add(1);
         let new_sp = u32::try_from(new_sp).unwrap_or(u32::MAX) as usize;
         let new_sp = core::cmp::min(new_sp, MEM_SIZE);
         if new_sp > self.stack.len() {

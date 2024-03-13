@@ -7,11 +7,7 @@ use fuel_tx::{
     ConsensusParameters,
     TransactionBuilder,
 };
-use fuel_types::BlockHeight;
-use fuel_vm::{
-    interpreter::InterpreterParams,
-    prelude::*,
-};
+use fuel_vm::prelude::*;
 use rand::{
     rngs::StdRng,
     Rng,

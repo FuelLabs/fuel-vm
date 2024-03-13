@@ -40,7 +40,7 @@ fn cannot_exceed_max_inputs() {
             rng.gen(),
         ));
     }
-    let tx = script
+    script
         .finalize()
         .into_checked(0u32.into(), &params)
         .expect_err("Tx is invalid and shouldn't validate");
@@ -58,7 +58,7 @@ fn cannot_exceed_max_outputs() {
     for _ in 0..=params.tx_params.max_outputs {
         script.add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()));
     }
-    let tx = script
+    script
         .finalize()
         .into_checked(0u32.into(), &params)
         .expect_err("Tx is invalid and shouldn't validate");
@@ -76,7 +76,7 @@ fn cannot_exceed_max_witnesses() {
     for _ in 0..=params.tx_params.max_witnesses {
         script.add_witness(Witness::from(vec![rng.gen::<u8>(); 1]));
     }
-    let tx = script
+    script
         .finalize()
         .into_checked(0u32.into(), &params)
         .expect_err("Tx is invalid and shouldn't validate");

@@ -19,7 +19,7 @@ describe('fuel-tx [mjs]', () => {
   })
 
   it('should serialize and deserialize UtxoId correctly', () => {
-    let utxo_id = new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a");
+    let utxo_id = new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b001a");
     let bytes = utxo_id.to_bytes();
     let utxo_id2 = tx.UtxoId.from_bytes(bytes);
     expect(utxo_id.toString()).to.equal(utxo_id2.toString())
@@ -36,7 +36,7 @@ describe('fuel-tx [mjs]', () => {
   it('should serialize and deserialize all input variants correctly', () => {
     [
       tx.Input.coin_predicate(
-        new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b1a"),
+        new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b001a"),
         tx.Address.zeroed(),
         BigInt(1234),
         tx.AssetId.zeroed(),

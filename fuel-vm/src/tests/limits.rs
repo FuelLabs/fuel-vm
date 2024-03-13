@@ -1,4 +1,3 @@
-use core::str::FromStr;
 use fuel_asm::{
     op,
     RegId,

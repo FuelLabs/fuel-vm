@@ -181,8 +181,13 @@ impl Memory {
             return Err(PanicReason::MemoryWriteOverlap)
         }
 
-        let copy = self[src].to_vec();
-        self[dst].copy_from_slice(&copy);
+        let copy = self
+            .get(src)
+            .expect("The source address it not initialized")
+            .to_vec();
+        self.get_mut(dst)
+            .expect("The destination address it not initialized")
+            .copy_from_slice(&copy);
 
         Ok(())
     }

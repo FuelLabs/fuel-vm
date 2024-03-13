@@ -170,7 +170,7 @@ fn input<'a>(
 #[test]
 fn test_revert() {
     let mut receipts = Default::default();
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
     let append = AppendReceipt {
         receipts: &mut receipts,
         script: None,

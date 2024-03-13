@@ -239,7 +239,7 @@ fn test_coinbase() {
 fn test_code_root() {
     let contract_id = ContractId::new([3u8; ContractId::LEN]);
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     let owner = OwnershipRegisters {
         sp: 1000,

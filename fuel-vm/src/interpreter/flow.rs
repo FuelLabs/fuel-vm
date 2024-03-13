@@ -98,8 +98,7 @@ where
 
     pub(crate) fn ret(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?
-                .copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let tx_offset = self.tx_offset();
         let input = RetCtx {
             append: AppendReceipt {
@@ -118,8 +117,7 @@ where
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?
-                .copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
         let tx_offset = self.tx_offset();
         let input = RetCtx {
             append: AppendReceipt {

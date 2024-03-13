@@ -26,7 +26,7 @@ fn tx_with_signed_coin_snapshot() {
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(&bytes);
+    let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -51,7 +51,7 @@ fn tx_with_predicate_coin_snapshot() {
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(&bytes);
+    let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -71,7 +71,7 @@ fn tx_with_contract_snapshot() {
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(&bytes);
+    let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -96,7 +96,7 @@ fn tx_with_signed_message_coin() {
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(&bytes);
+    let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -120,7 +120,7 @@ fn tx_with_predicate_message_coin() {
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(&bytes);
+    let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -145,7 +145,7 @@ fn tx_with_signed_message_data() {
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(&bytes);
+    let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -169,6 +169,6 @@ fn tx_with_predicate_message_data() {
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(&bytes);
+    let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
 }

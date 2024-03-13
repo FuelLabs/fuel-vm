@@ -125,7 +125,7 @@ pub(crate) struct AppendReceipt<'vm> {
     pub receipts: &'vm mut ReceiptsCtx,
     pub script: Option<&'vm mut Script>,
     pub tx_offset: usize,
-    pub memory: &'vm mut [u8; MEM_SIZE],
+    pub memory: &'vm mut Memory,
 }
 
 pub(crate) fn append_receipt(input: AppendReceipt, receipt: Receipt) -> SimpleResult<()> {

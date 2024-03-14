@@ -14,7 +14,7 @@ use fuel_types::ContractId;
 use fuel_types::canonical::Deserialize;
 
 use crate::{
-    consts::MEM_SIZE,
+    interpreter::Memory,
     prelude::MemoryRange,
 };
 
@@ -42,7 +42,7 @@ impl<T> CheckedMemValue<T> {
     }
 
     /// Try to read a value of type `T` from memory.
-    pub fn try_from(self, memory: &[u8; MEM_SIZE]) -> Result<T, PanicReason>
+    pub fn try_from(self, memory: &Memory) -> Result<T, PanicReason>
     where
         T: for<'a> TryFrom<&'a [u8]>,
         PanicReason: for<'a> From<<T as TryFrom<&'a [u8]>>::Error>,
@@ -62,7 +62,7 @@ impl<T> CheckedMemValue<T> {
 
     #[cfg(test)]
     /// Inspect a value of type `T` from memory.
-    pub fn inspect(self, memory: &[u8; MEM_SIZE]) -> T
+    pub fn inspect(self, memory: &Memory) -> T
     where
         T: Deserialize,
     {
@@ -78,14 +78,14 @@ impl<const LEN: usize> CheckedMemConstLen<LEN> {
     }
 
     /// Get the memory slice for this range.
-    pub fn read(self, memory: &[u8; MEM_SIZE]) -> &[u8; LEN] {
+    pub fn read(self, memory: &Memory) -> &[u8; LEN] {
         (&memory[self.0.usizes()]).try_into().expect(
             "This is always correct as the address and LEN are checked on construction.",
         )
     }
 
     /// Get the mutable memory slice for this range.
-    pub fn write(self, memory: &mut [u8; MEM_SIZE]) -> &mut [u8; LEN] {
+    pub fn write(self, memory: &mut Memory) -> &mut [u8; LEN] {
         (&mut memory[self.0.usizes()]).try_into().expect(
             "This is always correct as the address and LEN are checked on construction.",
         )

@@ -348,7 +348,10 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         );
         diff.changes.extend(balances);
 
-        let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
+        let other_memory = other.memory.clone().into_linear_memory();
+        let this_memory = self.memory.clone().into_linear_memory();
+
+        let mut memory = this_memory.iter().enumerate().zip(other_memory.iter());
 
         while let Some(((start, s_from), s_to)) = memory
             .by_ref()

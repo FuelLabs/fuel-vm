@@ -20,7 +20,10 @@ use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
-use super::MemoryRange;
+use super::{
+    Memory,
+    MemoryRange,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
@@ -110,7 +113,7 @@ impl RuntimeBalances {
 
     fn set_memory_balance_inner(
         balance: &Balance,
-        memory: &mut [u8; MEM_SIZE],
+        memory: &mut Memory,
     ) -> SimpleResult<Word> {
         let value = balance.value();
         let offset = balance.offset();
@@ -133,7 +136,7 @@ impl RuntimeBalances {
     /// ordered, as in the protocol.
     pub fn checked_balance_add(
         &mut self,
-        memory: &mut [u8; MEM_SIZE],
+        memory: &mut Memory,
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -148,7 +151,7 @@ impl RuntimeBalances {
     /// appropriate offset
     pub fn checked_balance_sub(
         &mut self,
-        memory: &mut [u8; MEM_SIZE],
+        memory: &mut Memory,
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -321,7 +324,7 @@ fn checked_add_and_sub_works() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut memory = Interpreter::<_, Script>::without_storage().memory;
+    let mut memory = vec![0u8; MEM_SIZE].into();
 
     let asset: AssetId = rng.gen();
 

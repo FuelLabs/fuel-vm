@@ -6,11 +6,11 @@ use super::{
     receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
+    Memory,
     MemoryRange,
 };
 use crate::{
     constraints::reg_key::*,
-    consts::*,
     context::Context,
     error::SimpleResult,
 };
@@ -61,7 +61,7 @@ where
 }
 
 struct LogInput<'vm> {
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut Memory,
     context: &'vm Context,
     receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,

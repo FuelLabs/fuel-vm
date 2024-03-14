@@ -214,8 +214,9 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
 
 #[test]
 fn reset_vm_memory() {
-    let a = Interpreter::<_, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    let mut a = Interpreter::<_, Script>::with_memory_storage();
+    a.memory.grow_stack(132).unwrap();
+    let mut b = a.clone();
     b.memory[100..132].copy_from_slice(&[1u8; 32]);
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);

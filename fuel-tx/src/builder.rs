@@ -2,8 +2,8 @@ use crate::{
     input,
     output,
     transaction::{
-        field,
         field::{
+            self,
             BytecodeLength,
             BytecodeWitnessIndex,
             Maturity,
@@ -110,7 +110,7 @@ pub struct TransactionBuilder<Tx> {
     // We take the key by reference so this lib won't have the responsibility to properly
     // zeroize the keys
     // Maps signing keys -> witness indexes
-    sign_keys: BTreeMap<SecretKey, u8>,
+    sign_keys: BTreeMap<SecretKey, u16>,
 }
 
 impl TransactionBuilder<Script> {
@@ -401,9 +401,13 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     /// Adds a secret to the builder, and adds a corresponding witness if it's a new entry
-    fn upsert_secret(&mut self, secret_key: SecretKey) -> u8 {
-        let witness_len = u8::try_from(self.witnesses().len())
-            .expect("The number of witnesses can't exceed `u8::MAX`");
+    fn upsert_secret(&mut self, secret_key: SecretKey) -> u16 {
+        let witness_len = u16::try_from(self.witnesses().len())
+            .expect("The number of witnesses can't exceed `u16::MAX`");
+
+        if u32::from(witness_len) > self.params.tx_params.max_witnesses {
+            panic!("Max witnesses exceeded");
+        }
 
         let witness_index = self.sign_keys.entry(secret_key).or_insert_with(|| {
             // if this private key hasn't been used before,

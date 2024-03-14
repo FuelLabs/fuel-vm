@@ -215,7 +215,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
 
     /// Returns the gas used by the inputs.
     fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> Word {
-        let mut witness_cache: HashSet<u8> = HashSet::new();
+        let mut witness_cache: HashSet<u16> = HashSet::new();
         self.inputs()
             .iter()
             .filter(|input| match input {

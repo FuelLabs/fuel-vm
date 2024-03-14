@@ -56,7 +56,7 @@ impl Input {
         outputs: &[Output],
         witnesses: &[Witness],
         predicate_params: &PredicateParameters,
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
         self.check_signature(index, txhash, witnesses, recovery_cache)?;
@@ -69,7 +69,7 @@ impl Input {
         index: usize,
         txhash: &Bytes32,
         witnesses: &[Witness],
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         match self {
             Self::CoinSigned(CoinSigned {

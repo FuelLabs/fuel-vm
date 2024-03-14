@@ -112,7 +112,7 @@ impl CreateMetadata {
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
     pub(crate) bytecode_length: Word,
-    pub(crate) bytecode_witness_index: u8,
+    pub(crate) bytecode_witness_index: u16,
     pub(crate) policies: Policies,
     pub(crate) storage_slots: Vec<StorageSlot>,
     pub(crate) inputs: Vec<Input>,
@@ -373,12 +373,12 @@ mod field {
 
     impl BytecodeWitnessIndex for Create {
         #[inline(always)]
-        fn bytecode_witness_index(&self) -> &u8 {
+        fn bytecode_witness_index(&self) -> &u16 {
             &self.bytecode_witness_index
         }
 
         #[inline(always)]
-        fn bytecode_witness_index_mut(&mut self) -> &mut u8 {
+        fn bytecode_witness_index_mut(&mut self) -> &mut u16 {
             &mut self.bytecode_witness_index
         }
 

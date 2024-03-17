@@ -36,14 +36,14 @@ impl Mappable for ContractsRawCode {
     type Value = [u8];
 }
 
-/// The macro defines a new type of double storage key. It is a merge of the two types
-/// into one general type that represents the storage key of some entity.
+/// The macro defines a new type of double storage key. It is a merge of the two
+/// types into one general type that represents the storage key of some entity.
 ///
 /// Both types are represented by one big array. It is done from the performance
-/// perspective to minimize the number of copies. The current code doesn't use consumed
-/// values and uses it in most cases as on big key(except tests, which require access to
-/// sub-keys). But in the future, we may change the layout of the fields based on
-/// the performance measurements/new business logic.
+/// perspective to minimize the number of copies. The current code doesn't use
+/// consumed values and uses it in most cases as on big key(except tests, which
+/// require access to sub-keys). But in the future, we may change the layout of the
+/// fields based on the performance measurements/new business logic.
 #[macro_export]
 macro_rules! double_key {
     (
@@ -52,6 +52,30 @@ macro_rules! double_key {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         /// The FuelVM storage double key.
         pub struct $i([u8; { $first::LEN + $second::LEN }]);
+
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $i {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                use serde_with::SerializeAs;
+                serde_with::Bytes::serialize_as(&self.0, serializer)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'a> serde::Deserialize<'a> for $i {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'a>,
+            {
+                use serde_with::DeserializeAs;
+                let bytes: [u8; $i::LEN] =
+                    serde_with::Bytes::deserialize_as(deserializer)?;
+                Ok(Self(bytes))
+            }
+        }
 
         impl Default for $i {
             fn default() -> Self {

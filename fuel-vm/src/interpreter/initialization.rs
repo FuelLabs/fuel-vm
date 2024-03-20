@@ -53,6 +53,9 @@ where
 
         self.push_stack(self.transaction().id(&self.chain_id()).as_ref())?;
 
+        let base_asset_id = self.interpreter_params.base_asset_id;
+        self.push_stack(&*base_asset_id)?;
+
         runtime_balances.to_vm(self);
 
         let tx_size = self.transaction().size() as Word;

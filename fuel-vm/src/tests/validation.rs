@@ -62,9 +62,8 @@ fn malleable_fields_do_not_affect_validity() {
 
     let params = ConsensusParameters::default();
 
-    let tx_size_ptr =
-        32 + (params.tx_params.max_inputs as usize * (AssetId::LEN + WORD_SIZE));
-    let tx_start_ptr = tx_size_ptr + 8;
+    let tx_start_ptr = params.tx_params.tx_offset();
+    let tx_size_ptr = tx_start_ptr - 8;
 
     let tx = TransactionBuilder::script(
         vec![
@@ -133,6 +132,8 @@ fn malleable_fields_do_not_affect_validity() {
         let mut client = MemoryClient::from_txtor(vm.into());
         let receipts =
             client.transact(tx.into_checked(0u32.into(), &params).expect("valid tx"));
+
+        dbg!(&receipts);
 
         let start_id = receipts[0].data().unwrap();
         let computed_id = receipts[1].data().unwrap();

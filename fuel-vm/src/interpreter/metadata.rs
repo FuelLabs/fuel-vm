@@ -126,6 +126,10 @@ pub(crate) fn metadata(
             *result = chain_id.into();
         }
 
+        (GMArgs::BsaeAssetId, _) => {
+            *result = tx_offset;
+        }
+
         (GMArgs::TxStart, _) => {
             *result = tx_offset;
         }

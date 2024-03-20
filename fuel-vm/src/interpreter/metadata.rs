@@ -108,53 +108,37 @@ pub(crate) fn metadata(
     chain_id: ChainId,
     tx_offset: Word,
 ) -> SimpleResult<()> {
-    let external = context.is_external();
     let args = GMArgs::try_from(imm)?;
+    let parent = context
+        .is_internal()
+        .then(|| frames.last().map(|f| f.registers()[RegId::FP]))
+        .flatten();
 
-    if external {
-        match args {
-            GMArgs::GetVerifyingPredicate => {
-                *result = context
-                    .predicate()
-                    .map(|p| p.idx() as Word)
-                    .ok_or(PanicReason::TransactionValidity)?;
-            }
-
-            GMArgs::GetChainId => {
-                *result = chain_id.into();
-            }
-
-            GMArgs::TxStart => {
-                *result = tx_offset;
-            }
-
-            _ => return Err(PanicReason::ExpectedInternalContext.into()),
+    match (args, parent) {
+        (GMArgs::GetVerifyingPredicate, None) => {
+            *result = context
+                .predicate()
+                .map(|p| p.idx() as Word)
+                .ok_or(PanicReason::TransactionValidity)?;
         }
-    } else {
-        let parent = frames
-            .last()
-            .map(|f| f.registers()[RegId::FP])
-            .expect("External context will always have a frame");
 
-        match args {
-            GMArgs::IsCallerExternal => {
-                *result = (parent == 0) as Word;
-            }
-
-            GMArgs::GetCaller if parent != 0 => {
-                *result = parent;
-            }
-
-            GMArgs::GetChainId => {
-                *result = chain_id.into();
-            }
-
-            GMArgs::TxStart => {
-                *result = tx_offset;
-            }
-
-            _ => return Err(PanicReason::ExpectedInternalContext.into()),
+        (GMArgs::GetChainId, _) => {
+            *result = chain_id.into();
         }
+
+        (GMArgs::TxStart, _) => {
+            *result = tx_offset;
+        }
+
+        (GMArgs::GetCaller, Some(parent)) if parent != 0 => {
+            *result = parent;
+        }
+
+        (GMArgs::IsCallerExternal, Some(parent)) => {
+            *result = (parent == 0) as Word;
+        }
+
+        _ => return Err(PanicReason::ExpectedInternalContext.into()),
     }
 
     inc_pc(pc)?;

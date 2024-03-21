@@ -108,42 +108,29 @@ pub(crate) fn metadata(
     chain_id: ChainId,
     tx_offset: Word,
 ) -> SimpleResult<()> {
-    let args = GMArgs::try_from(imm)?;
     let parent = context
         .is_internal()
         .then(|| frames.last().map(|f| f.registers()[RegId::FP]))
         .flatten();
 
-    match (args, parent) {
-        (GMArgs::GetVerifyingPredicate, None) => {
-            *result = context
-                .predicate()
-                .map(|p| p.idx() as Word)
-                .ok_or(PanicReason::TransactionValidity)?;
-        }
-
-        (GMArgs::GetChainId, _) => {
-            *result = chain_id.into();
-        }
-
-        (GMArgs::BaseAssetId, _) => {
-            *result = tx_offset;
-        }
-
-        (GMArgs::TxStart, _) => {
-            *result = tx_offset;
-        }
-
-        (GMArgs::GetCaller, Some(parent)) if parent != 0 => {
-            *result = parent;
-        }
-
-        (GMArgs::IsCallerExternal, Some(parent)) => {
-            *result = (parent == 0) as Word;
-        }
-
-        _ => return Err(PanicReason::ExpectedInternalContext.into()),
-    }
+    *result = match GMArgs::try_from(imm)? {
+        GMArgs::GetVerifyingPredicate => context
+            .predicate()
+            .map(|p| p.idx() as Word)
+            .ok_or(PanicReason::TransactionValidity)?,
+        GMArgs::GetChainId => chain_id.into(),
+        GMArgs::BaseAssetId => VM_MEMORY_BASE_ASSET_ID_OFFSET as Word,
+        GMArgs::TxStart => tx_offset,
+        GMArgs::GetCaller => match parent {
+            Some(0) => return Err(PanicReason::ExpectedNestedCaller.into()),
+            Some(parent) => parent,
+            None => return Err(PanicReason::ExpectedInternalContext.into()),
+        },
+        GMArgs::IsCallerExternal => match parent {
+            Some(p) => (p == 0) as Word,
+            None => return Err(PanicReason::ExpectedInternalContext.into()),
+        },
+    };
 
     inc_pc(pc)?;
     Ok(())

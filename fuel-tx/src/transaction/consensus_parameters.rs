@@ -811,7 +811,7 @@ pub mod typescript {
 
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-    pub struct PredicateParameters(Box<PredicateParametersRust>);
+    pub struct PredicateParameters(alloc::boxed::Box<PredicateParametersRust>);
 
     impl AsRef<PredicateParametersRust> for PredicateParameters {
         fn as_ref(&self) -> &PredicateParametersRust {
@@ -821,11 +821,6 @@ pub mod typescript {
 
     #[wasm_bindgen]
     impl PredicateParameters {
-        #[wasm_bindgen(constructor)]
-        pub fn typescript_default() -> Self {
-            PredicateParameters(PredicateParametersRust::DEFAULT.into())
-        }
-
         #[wasm_bindgen(constructor)]
         pub fn typescript_new(
             max_predicate_length: u64,

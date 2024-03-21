@@ -15,21 +15,14 @@ pub use gas::{
 };
 
 const MAX_GAS: u64 = 100_000_000;
-const MAX_SIZE: u64 = 17 * 1024 * 1024;
+const MAX_SIZE: u64 = 110 * 1024;
 
-/// A collection of parameters for convenience
+/// A versioned set of consensus parameters.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct ConsensusParameters {
-    pub tx_params: TxParameters,
-    pub predicate_params: PredicateParameters,
-    pub script_params: ScriptParameters,
-    pub contract_params: ContractParameters,
-    pub fee_params: FeeParameters,
-    pub chain_id: ChainId,
-    pub gas_costs: GasCosts,
-    pub base_asset_id: AssetId,
+pub enum ConsensusParameters {
+    /// Version 1 of the consensus parameters
+    V1(ConsensusParametersV1),
 }
 
 impl Default for ConsensusParameters {
@@ -41,6 +34,188 @@ impl Default for ConsensusParameters {
 impl ConsensusParameters {
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
+        ConsensusParametersV1::standard().into()
+    }
+
+    /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
+    pub fn standard_with_id(chain_id: ChainId) -> Self {
+        ConsensusParametersV1::standard_with_id(chain_id).into()
+    }
+
+    /// Constructor for the `ConsensusParameters`
+    pub const fn new(
+        tx_params: TxParameters,
+        predicate_params: PredicateParameters,
+        script_params: ScriptParameters,
+        contract_params: ContractParameters,
+        fee_params: FeeParameters,
+        chain_id: ChainId,
+        gas_costs: GasCosts,
+        base_asset_id: AssetId,
+        block_gas_limit: u64,
+    ) -> Self {
+        Self::V1(ConsensusParametersV1 {
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+            chain_id,
+            gas_costs,
+            base_asset_id,
+            block_gas_limit,
+        })
+    }
+
+    /// Get the transaction parameters
+    pub fn tx_params(&self) -> &TxParameters {
+        match self {
+            Self::V1(params) => &params.tx_params,
+        }
+    }
+
+    /// Get the predicate parameters
+    pub fn predicate_params(&self) -> &PredicateParameters {
+        match self {
+            Self::V1(params) => &params.predicate_params,
+        }
+    }
+
+    /// Get the script parameters
+    pub fn script_params(&self) -> &ScriptParameters {
+        match self {
+            Self::V1(params) => &params.script_params,
+        }
+    }
+
+    /// Get the contract parameters
+    pub fn contract_params(&self) -> &ContractParameters {
+        match self {
+            Self::V1(params) => &params.contract_params,
+        }
+    }
+
+    /// Get the fee parameters
+    pub fn fee_params(&self) -> &FeeParameters {
+        match self {
+            Self::V1(params) => &params.fee_params,
+        }
+    }
+
+    /// Get the chain ID
+    pub fn chain_id(&self) -> ChainId {
+        match self {
+            Self::V1(params) => params.chain_id,
+        }
+    }
+
+    /// Get the gas costs
+    pub fn gas_costs(&self) -> &GasCosts {
+        match self {
+            Self::V1(params) => &params.gas_costs,
+        }
+    }
+
+    /// Get the base asset ID
+    pub fn base_asset_id(&self) -> &AssetId {
+        match self {
+            Self::V1(params) => &params.base_asset_id,
+        }
+    }
+
+    /// Get the block gas limit
+    pub fn block_gas_limit(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.block_gas_limit,
+        }
+    }
+}
+
+#[cfg(feature = "builder")]
+impl ConsensusParameters {
+    /// Set the transaction parameters.
+    pub fn set_tx_params(&mut self, tx_params: TxParameters) {
+        match self {
+            Self::V1(params) => params.tx_params = tx_params,
+        }
+    }
+
+    /// Set the predicate parameters.
+    pub fn set_predicate_params(&mut self, predicate_params: PredicateParameters) {
+        match self {
+            Self::V1(params) => params.predicate_params = predicate_params,
+        }
+    }
+
+    /// Set the script parameters.
+    pub fn set_script_params(&mut self, script_params: ScriptParameters) {
+        match self {
+            Self::V1(params) => params.script_params = script_params,
+        }
+    }
+
+    /// Set the contract parameters.
+    pub fn set_contract_params(&mut self, contract_params: ContractParameters) {
+        match self {
+            Self::V1(params) => params.contract_params = contract_params,
+        }
+    }
+
+    /// Set the fee parameters.
+    pub fn set_fee_params(&mut self, fee_params: FeeParameters) {
+        match self {
+            Self::V1(params) => params.fee_params = fee_params,
+        }
+    }
+
+    /// Set the chain ID.
+    pub fn set_chain_id(&mut self, chain_id: ChainId) {
+        match self {
+            Self::V1(params) => params.chain_id = chain_id,
+        }
+    }
+
+    /// Set the gas costs.
+    pub fn set_gas_costs(&mut self, gas_costs: GasCosts) {
+        match self {
+            Self::V1(params) => params.gas_costs = gas_costs,
+        }
+    }
+
+    /// Set the base asset ID.
+    pub fn set_base_asset_id(&mut self, base_asset_id: AssetId) {
+        match self {
+            Self::V1(params) => params.base_asset_id = base_asset_id,
+        }
+    }
+
+    /// Set the block gas limit.
+    pub fn set_block_gas_limit(&mut self, block_gas_limit: u64) {
+        match self {
+            Self::V1(params) => params.block_gas_limit = block_gas_limit,
+        }
+    }
+}
+
+/// A collection of parameters for convenience
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
+pub struct ConsensusParametersV1 {
+    pub tx_params: TxParameters,
+    pub predicate_params: PredicateParameters,
+    pub script_params: ScriptParameters,
+    pub contract_params: ContractParameters,
+    pub fee_params: FeeParameters,
+    pub chain_id: ChainId,
+    pub gas_costs: GasCosts,
+    pub base_asset_id: AssetId,
+    pub block_gas_limit: u64,
+}
+
+impl ConsensusParametersV1 {
+    /// Constructor for the `ConsensusParameters` with Standard values.
+    pub fn standard() -> Self {
         Self {
             tx_params: TxParameters::DEFAULT,
             predicate_params: PredicateParameters::DEFAULT,
@@ -50,6 +225,7 @@ impl ConsensusParameters {
             chain_id: ChainId::default(),
             gas_costs: GasCosts::default(),
             base_asset_id: Default::default(),
+            block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx,
         }
     }
 
@@ -64,69 +240,20 @@ impl ConsensusParameters {
             chain_id,
             gas_costs: GasCosts::default(),
             base_asset_id: Default::default(),
+            block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx,
         }
     }
+}
 
-    /// Constructor for the `ConsensusParameters`
-    pub const fn new(
-        tx_params: TxParameters,
-        predicate_params: PredicateParameters,
-        script_params: ScriptParameters,
-        contract_params: ContractParameters,
-        fee_params: FeeParameters,
-        chain_id: ChainId,
-        gas_costs: GasCosts,
-        base_asset_id: AssetId,
-    ) -> Self {
-        Self {
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            chain_id,
-            gas_costs,
-            base_asset_id,
-        }
+impl Default for ConsensusParametersV1 {
+    fn default() -> Self {
+        Self::standard()
     }
+}
 
-    /// Get the transaction parameters
-    pub fn tx_params(&self) -> &TxParameters {
-        &self.tx_params
-    }
-
-    /// Get the predicate parameters
-    pub fn predicate_params(&self) -> &PredicateParameters {
-        &self.predicate_params
-    }
-
-    /// Get the script parameters
-    pub fn script_params(&self) -> &ScriptParameters {
-        &self.script_params
-    }
-
-    /// Get the contract parameters
-    pub fn contract_params(&self) -> &ContractParameters {
-        &self.contract_params
-    }
-
-    /// Get the fee parameters
-    pub fn fee_params(&self) -> &FeeParameters {
-        &self.fee_params
-    }
-
-    pub fn base_asset_id(&self) -> &AssetId {
-        &self.base_asset_id
-    }
-
-    /// Get the chain ID
-    pub fn chain_id(&self) -> ChainId {
-        self.chain_id
-    }
-
-    /// Get the gas costs
-    pub fn gas_costs(&self) -> &GasCosts {
-        &self.gas_costs
+impl From<ConsensusParametersV1> for ConsensusParameters {
+    fn from(params: ConsensusParametersV1) -> Self {
+        Self::V1(params)
     }
 }
 
@@ -346,7 +473,7 @@ pub struct ContractParameters {
 impl ContractParameters {
     /// Default consensus parameters with settings suggested in fuel-specs
     pub const DEFAULT: Self = Self {
-        contract_max_size: 16 * 1024 * 1024,
+        contract_max_size: 100 * 1024,
         max_storage_slots: 255,
     };
 
@@ -382,46 +509,4 @@ mod typescript {
             Self::DEFAULT
         }
     }
-}
-
-/// Arbitrary default consensus parameters. While best-efforts are made to adjust these to
-/// reasonable settings, they may not be useful for every network instantiation.
-#[deprecated(since = "0.12.2", note = "use `ConsensusParameters` instead.")]
-pub mod default_parameters {
-    use crate::{
-        transaction::consensus_parameters::{
-            PredicateParameters,
-            ScriptParameters,
-            TxParameters,
-        },
-        ContractParameters,
-        FeeParameters,
-    };
-    use fuel_types::ChainId;
-
-    pub const CONTRACT_MAX_SIZE: u64 = ContractParameters::DEFAULT.contract_max_size;
-    pub const MAX_INPUTS: u16 = TxParameters::DEFAULT.max_inputs;
-    pub const MAX_OUTPUTS: u16 = TxParameters::DEFAULT.max_outputs;
-    pub const MAX_WITNESSES: u32 = TxParameters::DEFAULT.max_witnesses;
-    pub const MAX_GAS_PER_TX: u64 = TxParameters::DEFAULT.max_gas_per_tx;
-
-    pub const MAX_SCRIPT_LENGTH: u64 = ScriptParameters::DEFAULT.max_script_length;
-    pub const MAX_SCRIPT_DATA_LENGTH: u64 =
-        ScriptParameters::DEFAULT.max_script_data_length;
-
-    pub const MAX_STORAGE_SLOTS: u64 = ContractParameters::DEFAULT.max_storage_slots;
-
-    pub const MAX_PREDICATE_LENGTH: u64 =
-        PredicateParameters::DEFAULT.max_predicate_length;
-    pub const MAX_PREDICATE_DATA_LENGTH: u64 =
-        PredicateParameters::DEFAULT.max_predicate_data_length;
-    pub const MAX_MESSAGE_DATA_LENGTH: u64 =
-        PredicateParameters::DEFAULT.max_message_data_length;
-
-    pub const MAX_GAS_PER_PREDICATE: u64 =
-        PredicateParameters::DEFAULT.max_gas_per_predicate;
-    pub const GAS_PRICE_FACTOR: u64 = FeeParameters::DEFAULT.gas_price_factor;
-    pub const GAS_PER_BYTE: u64 = FeeParameters::DEFAULT.gas_per_byte;
-
-    pub const CHAIN_ID: ChainId = ChainId::new(0);
 }

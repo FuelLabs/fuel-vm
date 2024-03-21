@@ -349,7 +349,7 @@ fn get_transaction_fields() {
         1_500,
         rng.gen(),
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -373,7 +373,7 @@ fn get_transaction_fields() {
         owner,
         7_500,
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),

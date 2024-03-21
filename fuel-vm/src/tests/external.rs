@@ -32,7 +32,7 @@ impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
         _: RegId,
         _: RegId,
     ) -> ::fuel_vm::error::SimpleResult<()> {
-        vm.gas_charge(vm.gas_costs().noop)
+        vm.gas_charge(vm.gas_costs().noop())
     }
 }
 

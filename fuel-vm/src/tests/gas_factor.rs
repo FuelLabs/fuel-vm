@@ -49,11 +49,9 @@ fn gas_factor_rounds_correctly() {
 
     let profiler = GasProfiler::default();
 
-    let consensus_params = ConsensusParameters {
-        fee_params,
-        gas_costs,
-        ..ConsensusParameters::standard()
-    };
+    let mut consensus_params = ConsensusParameters::standard();
+    consensus_params.set_gas_costs(gas_costs);
+    consensus_params.set_fee_params(fee_params);
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
     let storage = MemoryStorage::default();

@@ -63,7 +63,7 @@ fn malleable_fields_do_not_affect_validity() {
     let params = ConsensusParameters::default();
 
     let tx_size_ptr =
-        32 + (params.tx_params.max_inputs as usize * (AssetId::LEN + WORD_SIZE));
+        32 + (params.tx_params().max_inputs as usize * (AssetId::LEN + WORD_SIZE));
     let tx_start_ptr = tx_size_ptr + 8;
 
     let tx = TransactionBuilder::script(
@@ -114,7 +114,7 @@ fn malleable_fields_do_not_affect_validity() {
         ]
         .into_iter()
         .collect(),
-        params.chain_id.to_be_bytes().to_vec(),
+        params.chain_id().to_be_bytes().to_vec(),
     )
     .add_unsigned_coin_input(
         SecretKey::random(rng),
@@ -127,7 +127,7 @@ fn malleable_fields_do_not_affect_validity() {
     .finalize();
 
     let run_tx = |tx: Script| {
-        let original_id = tx.id(&params.chain_id);
+        let original_id = tx.id(&params.chain_id());
 
         let vm = Interpreter::<_, Script>::with_memory_storage();
         let mut client = MemoryClient::from_txtor(vm.into());

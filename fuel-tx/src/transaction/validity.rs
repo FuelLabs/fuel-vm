@@ -317,14 +317,11 @@ pub(crate) fn check_common_part<T>(
 where
     T: canonical::Serialize + Chargeable + field::Outputs,
 {
-    let ConsensusParameters {
-        tx_params,
-        predicate_params,
-        base_asset_id,
-        gas_costs,
-        fee_params,
-        ..
-    } = consensus_params;
+    let tx_params = consensus_params.tx_params();
+    let predicate_params = consensus_params.predicate_params();
+    let base_asset_id = consensus_params.base_asset_id();
+    let gas_costs = consensus_params.gas_costs();
+    let fee_params = consensus_params.fee_params();
 
     check_size(tx, tx_params)?;
 

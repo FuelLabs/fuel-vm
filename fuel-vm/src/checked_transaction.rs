@@ -297,7 +297,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
-            .check_signatures(&consensus_params.chain_id)?
+            .check_signatures(&consensus_params.chain_id())?
             .check_predicates(&check_predicate_params)
     }
 
@@ -350,7 +350,7 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
     fn from(value: &ConsensusParameters) -> Self {
         CheckPredicateParams {
             gas_costs: value.gas_costs().clone(),
-            chain_id: value.chain_id,
+            chain_id: value.chain_id(),
             max_gas_per_predicate: value.predicate_params().max_gas_per_predicate,
             max_gas_per_tx: value.tx_params().max_gas_per_tx,
             max_inputs: value.tx_params().max_inputs,
@@ -358,7 +358,7 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
             max_message_data_length: value.predicate_params().max_message_data_length,
             tx_offset: value.tx_params().tx_offset(),
             fee_params: *(value.fee_params()),
-            base_asset_id: value.base_asset_id,
+            base_asset_id: *value.base_asset_id(),
         }
     }
 }
@@ -762,6 +762,7 @@ mod tests {
             ScriptParameters::default(),
             ContractParameters::default(),
             FeeParameters::default().with_gas_price_factor(factor),
+            Default::default(),
             Default::default(),
             Default::default(),
             Default::default(),
@@ -1764,10 +1765,8 @@ mod tests {
 
         let tx = predicate_tx(&mut rng, 1000000, 1000000, 1000000, gas_costs.ret());
 
-        let consensus_params = ConsensusParameters {
-            gas_costs,
-            ..ConsensusParameters::standard()
-        };
+        let mut consensus_params = ConsensusParameters::standard();
+        consensus_params.set_gas_costs(gas_costs);
 
         let check_predicate_params = CheckPredicateParams::from(&consensus_params);
 

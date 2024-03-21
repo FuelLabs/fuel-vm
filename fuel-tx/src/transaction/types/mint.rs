@@ -111,7 +111,7 @@ impl FormatValidityChecks for Mint {
         }
 
         // It is temporary check until https://github.com/FuelLabs/fuel-core/issues/1205
-        if self.mint_asset_id != consensus_params.base_asset_id {
+        if &self.mint_asset_id != consensus_params.base_asset_id() {
             return Err(ValidityError::TransactionMintNonBaseAsset);
         }
 

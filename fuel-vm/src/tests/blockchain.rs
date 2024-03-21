@@ -701,10 +701,8 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     // make gas costs free
     let gas_costs = GasCosts::default();
 
-    let consensus_params = ConsensusParameters {
-        gas_costs,
-        ..Default::default()
-    };
+    let mut consensus_params = ConsensusParameters::default();
+    consensus_params.set_gas_costs(gas_costs);
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 

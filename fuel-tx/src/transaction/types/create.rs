@@ -223,12 +223,9 @@ impl FormatValidityChecks for Create {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
-        let ConsensusParameters {
-            contract_params,
-            chain_id,
-            base_asset_id,
-            ..
-        } = consensus_params;
+        let contract_params = consensus_params.contract_params();
+        let chain_id = consensus_params.chain_id();
+        let base_asset_id = consensus_params.base_asset_id();
 
         check_common_part(self, block_height, consensus_params)?;
 
@@ -281,7 +278,7 @@ impl FormatValidityChecks for Create {
             if let Some(metadata) = &self.metadata {
                 (metadata.state_root, metadata.contract_id)
             } else {
-                let metadata = CreateMetadata::compute(self, chain_id)?;
+                let metadata = CreateMetadata::compute(self, &chain_id)?;
                 (metadata.state_root, metadata.contract_id)
             };
 

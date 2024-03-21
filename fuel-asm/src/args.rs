@@ -32,7 +32,7 @@ crate::enum_try_from! {
         TxStart = 0x05,
 
         /// Get memory address of base asset ID
-        BsaeAssetId = 0x06,
+        BaseAssetId = 0x06,
     },
     Immediate18
 }
@@ -272,7 +272,7 @@ fn encode_gm_args() {
         GMArgs::GetVerifyingPredicate,
         GMArgs::GetChainId,
         GMArgs::TxStart,
-        GMArgs::BsaeAssetId,
+        GMArgs::BaseAssetId,
     ];
 
     args.into_iter().for_each(|a| {

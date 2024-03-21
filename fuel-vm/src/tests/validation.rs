@@ -23,8 +23,6 @@ use rand::{
 #[cfg(feature = "alloc")]
 use alloc::vec;
 
-use crate::consts::WORD_SIZE;
-
 #[test]
 fn transaction_can_be_executed_after_maturity() {
     const MATURITY: BlockHeight = BlockHeight::new(1);
@@ -132,8 +130,6 @@ fn malleable_fields_do_not_affect_validity() {
         let mut client = MemoryClient::from_txtor(vm.into());
         let receipts =
             client.transact(tx.into_checked(0u32.into(), &params).expect("valid tx"));
-
-        dbg!(&receipts);
 
         let start_id = receipts[0].data().unwrap();
         let computed_id = receipts[1].data().unwrap();

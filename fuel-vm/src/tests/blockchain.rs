@@ -367,12 +367,12 @@ fn ldc__gas_cost_is_not_dependent_on_rC() {
     let mut client = MemoryClient::default();
 
     let gas_costs = client.gas_costs();
-    let ldc_cost = gas_costs.ldc;
+    let ldc_cost = gas_costs.ldc();
     let ldc_dep_len = match ldc_cost {
         DependentCost::LightOperation { units_per_gas, .. } => units_per_gas,
         DependentCost::HeavyOperation { gas_per_unit, .. } => gas_per_unit,
     };
-    let noop_cost = gas_costs.noop;
+    let noop_cost = gas_costs.noop();
 
     let contract_size = 1000;
     let offset = 0;
@@ -472,7 +472,7 @@ fn ldc__offset_affects_read_code() {
     let mut client = MemoryClient::default();
 
     let gas_costs = client.gas_costs();
-    let noop_cost = gas_costs.noop;
+    let noop_cost = gas_costs.noop();
 
     let number_of_opcodes = 25;
     let offset = 0;
@@ -504,7 +504,7 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
     let mut client = MemoryClient::default();
 
     let gas_costs = client.gas_costs();
-    let ldc_cost = gas_costs.ldc;
+    let ldc_cost = gas_costs.ldc();
     let ldc_dep_len = match ldc_cost {
         DependentCost::LightOperation { units_per_gas, .. } => units_per_gas,
         DependentCost::HeavyOperation { gas_per_unit, .. } => gas_per_unit,

@@ -1111,9 +1111,9 @@ mod tests {
 
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + 3 * gas_costs.ecr1
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + 3 * gas_costs.ecr1()
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1164,9 +1164,9 @@ mod tests {
         // be recovered once. Therefore, we charge only once for the address
         // recovery of the signed inputs.
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.ecr1
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.ecr1()
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1230,15 +1230,15 @@ mod tests {
 
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.size() as u64 * fee_params.gas_per_byte
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
-            + 3 * gas_costs.vm_initialization.resolve(tx.size() as u64)
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.contract_root().resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_3.len() as u64)
+            + 3 * gas_costs.vm_initialization().resolve(tx.size() as u64)
             + 50
             + 100
             + 200
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1316,16 +1316,16 @@ mod tests {
 
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + 3 * gas_costs.ecr1
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
-            + 3 * gas_costs.vm_initialization.resolve(tx.size() as u64)
+            + 3 * gas_costs.ecr1()
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.contract_root().resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_3.len() as u64)
+            + 3 * gas_costs.vm_initialization().resolve(tx.size() as u64)
             + 50
             + 100
             + 200
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1358,11 +1358,11 @@ mod tests {
 
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.state_root.resolve(storage_slots_len as Word)
-            + gas_costs.contract_root.resolve(bytecode_len as Word)
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.s256.resolve(100)
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.state_root().resolve(storage_slots_len as Word)
+            + gas_costs.contract_root().resolve(bytecode_len as Word)
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.s256().resolve(100)
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1392,11 +1392,11 @@ mod tests {
 
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.state_root.resolve(0)
-            + gas_costs.contract_root.resolve(0)
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.s256.resolve(100)
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.state_root().resolve(0)
+            + gas_costs.contract_root().resolve(0)
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.s256().resolve(100)
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1762,7 +1762,7 @@ mod tests {
         let block_height = 1.into();
         let gas_costs = GasCosts::default();
 
-        let tx = predicate_tx(&mut rng, 1000000, 1000000, 1000000, gas_costs.ret);
+        let tx = predicate_tx(&mut rng, 1000000, 1000000, 1000000, gas_costs.ret());
 
         let consensus_params = ConsensusParameters {
             gas_costs,
@@ -1810,7 +1810,7 @@ mod tests {
             .saturating_add(gas_used_by_metadata)
             .saturating_add(
                 gas_costs
-                    .vm_initialization
+                    .vm_initialization()
                     .resolve(tx.metered_bytes_size() as u64),
             );
 
@@ -1851,7 +1851,7 @@ mod tests {
             .saturating_add(gas_used_by_metadata)
             .saturating_add(
                 gas_costs
-                    .vm_initialization
+                    .vm_initialization()
                     .resolve(tx.metered_bytes_size() as u64),
             );
         let total = gas as u128 * gas_price as u128;

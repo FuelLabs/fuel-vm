@@ -124,7 +124,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let bytes_size = self.metered_bytes_size();
 
         let vm_initialization_gas =
-            gas_costs.vm_initialization.resolve(bytes_size as Word);
+            gas_costs.vm_initialization().resolve(bytes_size as Word);
 
         let bytes_gas = bytes_size as u64 * fee.gas_per_byte;
         // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
@@ -239,7 +239,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 // Charge EC recovery cost for signed inputs
                 Input::CoinSigned(_)
                 | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.ecr1,
+                | Input::MessageDataSigned(_) => gas_costs.ecr1(),
                 // Charge the cost of the contract root for predicate inputs
                 Input::CoinPredicate(CoinPredicate {
                     predicate,
@@ -258,9 +258,9 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 }) => {
                     let bytes_size = self.metered_bytes_size();
                     let vm_initialization_gas =
-                        gas_costs.vm_initialization.resolve(bytes_size as Word);
+                        gas_costs.vm_initialization().resolve(bytes_size as Word);
                     gas_costs
-                        .contract_root
+                        .contract_root()
                         .resolve(predicate.len() as u64)
                         .saturating_add(*predicate_gas_used)
                         .saturating_add(vm_initialization_gas)

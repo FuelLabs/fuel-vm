@@ -145,7 +145,7 @@ impl Chargeable for Script {
         let remaining_allowed_witness = self
             .witness_limit()
             .saturating_sub(self.witnesses().size_dynamic() as u64)
-            .saturating_mul(fee.gas_per_byte);
+            .saturating_mul(fee.gas_per_byte());
 
         self.min_gas(gas_costs, fee)
             .saturating_add(remaining_allowed_witness)

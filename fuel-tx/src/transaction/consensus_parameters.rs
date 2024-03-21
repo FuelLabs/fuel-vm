@@ -257,37 +257,85 @@ impl From<ConsensusParametersV1> for ConsensusParameters {
     }
 }
 
+/// The versioned fee parameters.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum FeeParameters {
+    V1(FeeParametersV1),
+}
+
+impl FeeParameters {
+    /// Default fee parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(FeeParametersV1::DEFAULT);
+
+    /// Replace the gas price factor with the given argument
+    pub const fn with_gas_price_factor(self, gas_price_factor: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.gas_price_factor = gas_price_factor;
+                Self::V1(params)
+            }
+        }
+    }
+
+    pub const fn with_gas_per_byte(self, gas_per_byte: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.gas_per_byte = gas_per_byte;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl FeeParameters {
+    /// Get the gas price factor
+    pub fn gas_price_factor(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.gas_price_factor,
+        }
+    }
+
+    /// Get the gas per byte
+    pub fn gas_per_byte(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.gas_per_byte,
+        }
+    }
+}
+
+impl Default for FeeParameters {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl From<FeeParametersV1> for FeeParameters {
+    fn from(params: FeeParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
-pub struct FeeParameters {
+pub struct FeeParametersV1 {
     /// Factor to convert between gas and transaction assets value.
     pub gas_price_factor: u64,
     /// A fixed ratio linking metered bytes to gas price
     pub gas_per_byte: u64,
 }
 
-impl FeeParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
-    pub const DEFAULT: Self = Self {
+impl FeeParametersV1 {
+    /// Default fee parameters just for tests.
+    pub const DEFAULT: Self = FeeParametersV1 {
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
     };
-
-    /// Replace the gas price factor with the given argument
-    pub const fn with_gas_price_factor(mut self, gas_price_factor: u64) -> Self {
-        self.gas_price_factor = gas_price_factor;
-        self
-    }
-
-    pub const fn with_gas_per_byte(mut self, gas_per_byte: u64) -> Self {
-        self.gas_per_byte = gas_per_byte;
-        self
-    }
 }
 
-impl Default for FeeParameters {
+impl Default for FeeParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
     }

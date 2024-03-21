@@ -609,7 +609,7 @@ pub mod test_helpers {
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
-        let gas_limit = tx_params.max_gas_per_tx / 2;
+        let gas_limit = tx_params.max_gas_per_tx() / 2;
         let maturity = Default::default();
         let height = Default::default();
         let zero_fee_limit = 0;

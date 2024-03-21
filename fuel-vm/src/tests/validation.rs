@@ -63,7 +63,7 @@ fn malleable_fields_do_not_affect_validity() {
     let params = ConsensusParameters::default();
 
     let tx_size_ptr =
-        32 + (params.tx_params().max_inputs as usize * (AssetId::LEN + WORD_SIZE));
+        32 + (params.tx_params().max_inputs() as usize * (AssetId::LEN + WORD_SIZE));
     let tx_start_ptr = tx_size_ptr + 8;
 
     let tx = TransactionBuilder::script(

@@ -302,7 +302,7 @@ pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), Vali
 where
     T: canonical::Serialize,
 {
-    if tx.size() as u64 > tx_params.max_size {
+    if tx.size() as u64 > tx_params.max_size() {
         Err(ValidityError::TransactionSizeLimitExceeded)?;
     }
 
@@ -337,7 +337,7 @@ where
     }
 
     let max_gas = tx.max_gas(gas_costs, fee_params);
-    if max_gas > tx_params.max_gas_per_tx {
+    if max_gas > tx_params.max_gas_per_tx() {
         Err(ValidityError::TransactionMaxGasExceeded)?
     }
 
@@ -349,15 +349,15 @@ where
         Err(ValidityError::TransactionMaturity)?;
     }
 
-    if tx.inputs().len() > tx_params.max_inputs as usize {
+    if tx.inputs().len() > tx_params.max_inputs() as usize {
         Err(ValidityError::TransactionInputsMax)?
     }
 
-    if tx.outputs().len() > tx_params.max_outputs as usize {
+    if tx.outputs().len() > tx_params.max_outputs() as usize {
         Err(ValidityError::TransactionOutputsMax)?
     }
 
-    if tx.witnesses().len() > tx_params.max_witnesses as usize {
+    if tx.witnesses().len() > tx_params.max_witnesses() as usize {
         Err(ValidityError::TransactionWitnessesMax)?
     }
 

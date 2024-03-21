@@ -162,7 +162,7 @@ impl Default for InterpreterParams {
         Self {
             gas_price: 0,
             gas_costs: Default::default(),
-            max_inputs: TxParameters::DEFAULT.max_inputs,
+            max_inputs: TxParameters::DEFAULT.max_inputs(),
             contract_max_size: ContractParameters::DEFAULT.contract_max_size(),
             tx_offset: TxParameters::DEFAULT.tx_offset(),
             max_message_data_length: PredicateParameters::DEFAULT

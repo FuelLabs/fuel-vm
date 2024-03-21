@@ -158,7 +158,7 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() as u64 > predicate_params.max_predicate_length =>
+                if predicate.len() as u64 > predicate_params.max_predicate_length() =>
             {
                 Err(ValidityError::InputPredicateLength { index })
             }
@@ -170,7 +170,7 @@ impl Input {
             | Self::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
             }) if predicate_data.len() as u64
-                > predicate_params.max_predicate_data_length =>
+                > predicate_params.max_predicate_data_length() =>
             {
                 Err(ValidityError::InputPredicateDataLength { index })
             }
@@ -203,7 +203,7 @@ impl Input {
             Self::MessageDataSigned(MessageDataSigned { data, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
                 if data.is_empty()
-                    || data.len() as u64 > predicate_params.max_message_data_length =>
+                    || data.len() as u64 > predicate_params.max_message_data_length() =>
             {
                 Err(ValidityError::InputMessageDataLength { index })
             }
@@ -496,7 +496,7 @@ where
 #[cfg(feature = "typescript")]
 mod typescript {
     use crate::{
-        PredicateParameters,
+        transaction::consensus_parameters::typescript::PredicateParameters,
         Witness,
     };
     use fuel_types::Bytes32;
@@ -540,7 +540,7 @@ mod typescript {
                 txhash,
                 &outputs,
                 &witnesses,
-                predicate_params,
+                predicate_params.as_ref(),
                 &mut None,
             )
             .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))

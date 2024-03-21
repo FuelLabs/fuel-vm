@@ -542,8 +542,8 @@ fn script__check__happy_path() {
     let asset_id: AssetId = rng.gen();
 
     TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -564,8 +564,8 @@ fn script__check__cannot_create_contract() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -591,8 +591,8 @@ fn script__check__errors_if_script_too_long() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -615,8 +615,8 @@ fn script__check__errors_if_script_data_too_long() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -843,7 +843,7 @@ fn create__check__something_else() {
     let secret = SecretKey::random(rng);
 
     TransactionBuilder::create(
-        vec![0xfa; CONTRACT_PARAMS.contract_max_size as usize / 4].into(),
+        vec![0xfa; CONTRACT_PARAMS.contract_max_size() as usize / 4].into(),
         rng.gen(),
         vec![],
     )
@@ -865,7 +865,7 @@ fn create__check__errors_if_witness_bytecode_too_long() {
     let secret = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(
-        vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size as usize].into(),
+        vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size() as usize].into(),
         rng.gen(),
         vec![],
     )
@@ -940,7 +940,7 @@ fn create__check__can_max_out_storage_slots() {
 
     let secret = SecretKey::random(rng);
 
-    let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
+    let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots())
         .map(|i| {
             let mut slot_data = StorageSlot::default().to_bytes();
             slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
@@ -972,7 +972,7 @@ fn create__check__cannot_exceed_max_storage_slot() {
     let secret = SecretKey::random(rng);
 
     // Test max slots can't be exceeded
-    let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots)
+    let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots())
         .map(|i| {
             let mut slot_data = StorageSlot::default().to_bytes();
             slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering

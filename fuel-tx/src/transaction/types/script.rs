@@ -191,11 +191,11 @@ impl FormatValidityChecks for Script {
     ) -> Result<(), ValidityError> {
         check_common_part(self, block_height, consensus_params)?;
         let script_params = consensus_params.script_params();
-        if self.script.len() as u64 > script_params.max_script_length {
+        if self.script.len() as u64 > script_params.max_script_length() {
             Err(ValidityError::TransactionScriptLength)?;
         }
 
-        if self.script_data.len() as u64 > script_params.max_script_data_length {
+        if self.script_data.len() as u64 > script_params.max_script_data_length() {
             Err(ValidityError::TransactionScriptDataLength)?;
         }
 

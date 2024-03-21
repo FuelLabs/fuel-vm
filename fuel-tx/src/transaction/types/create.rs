@@ -235,7 +235,7 @@ impl FormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(ValidityError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > contract_params.contract_max_size
+        if bytecode_witness_len > contract_params.contract_max_size()
             || bytecode_witness_len / 4 != self.bytecode_length
         {
             return Err(ValidityError::TransactionCreateBytecodeLen);
@@ -243,7 +243,7 @@ impl FormatValidityChecks for Create {
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
-        if self.storage_slots.len() as u64 > contract_params.max_storage_slots {
+        if self.storage_slots.len() as u64 > contract_params.max_storage_slots() {
             return Err(ValidityError::TransactionCreateStorageSlotMax);
         }
 

@@ -341,12 +341,111 @@ impl Default for FeeParametersV1 {
     }
 }
 
+/// Versioned predicate parameters.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PredicateParameters {
+    V1(PredicateParametersV1),
+}
+
+impl PredicateParameters {
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(PredicateParametersV1::DEFAULT);
+
+    /// Replace the max predicate length with the given argument
+    pub const fn with_max_predicate_length(self, max_predicate_length: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_predicate_length = max_predicate_length;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max predicate data length with the given argument
+    pub const fn with_max_predicate_data_length(
+        self,
+        max_predicate_data_length: u64,
+    ) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_predicate_data_length = max_predicate_data_length;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max message data length with the given argument
+    pub const fn with_max_message_data_length(
+        self,
+        max_message_data_length: u64,
+    ) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_message_data_length = max_message_data_length;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max gas per predicate.
+    pub const fn with_max_gas_per_predicate(self, max_gas_per_predicate: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_gas_per_predicate = max_gas_per_predicate;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl PredicateParameters {
+    /// Get the maximum predicate length
+    pub fn max_predicate_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_predicate_length,
+        }
+    }
+
+    /// Get the maximum predicate data length
+    pub fn max_predicate_data_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_predicate_data_length,
+        }
+    }
+
+    /// Get the maximum message data length
+    pub fn max_message_data_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_message_data_length,
+        }
+    }
+
+    /// Get the maximum gas per predicate
+    pub fn max_gas_per_predicate(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_gas_per_predicate,
+        }
+    }
+}
+
+impl From<PredicateParametersV1> for PredicateParameters {
+    fn from(params: PredicateParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
+impl Default for PredicateParameters {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
-pub struct PredicateParameters {
+pub struct PredicateParametersV1 {
     /// Maximum length of predicate, in instructions.
     pub max_predicate_length: u64,
     /// Maximum length of predicate data, in bytes.
@@ -357,41 +456,17 @@ pub struct PredicateParameters {
     pub max_gas_per_predicate: u64,
 }
 
-impl PredicateParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
+impl PredicateParametersV1 {
+    /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
         max_predicate_length: 1024 * 1024,
         max_predicate_data_length: 1024 * 1024,
         max_message_data_length: 1024 * 1024,
         max_gas_per_predicate: MAX_GAS,
     };
-
-    /// Replace the max predicate length with the given argument
-    pub const fn with_max_predicate_length(mut self, max_predicate_length: u64) -> Self {
-        self.max_predicate_length = max_predicate_length;
-        self
-    }
-
-    /// Replace the max predicate data length with the given argument
-    pub const fn with_max_predicate_data_length(
-        mut self,
-        max_predicate_data_length: u64,
-    ) -> Self {
-        self.max_predicate_data_length = max_predicate_data_length;
-        self
-    }
-
-    /// Replace the max message data length with the given argument
-    pub const fn with_max_message_data_length(
-        mut self,
-        max_message_data_length: u64,
-    ) -> Self {
-        self.max_message_data_length = max_message_data_length;
-        self
-    }
 }
 
-impl Default for PredicateParameters {
+impl Default for PredicateParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
     }
@@ -414,7 +489,7 @@ pub struct TxParameters {
 }
 
 impl TxParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
+    /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
         max_inputs: 255,
         max_outputs: 255,
@@ -468,36 +543,57 @@ impl Default for TxParameters {
     }
 }
 
+/// Versioned script parameters.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct ScriptParameters {
-    /// Maximum length of script, in instructions.
-    pub max_script_length: u64,
-    /// Maximum length of script data, in bytes.
-    pub max_script_data_length: u64,
+pub enum ScriptParameters {
+    V1(ScriptParametersV1),
 }
 
 impl ScriptParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
-    pub const DEFAULT: Self = Self {
-        max_script_length: 1024 * 1024,
-        max_script_data_length: 1024 * 1024,
-    };
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(ScriptParametersV1::DEFAULT);
 
     /// Replace the max script length with the given argument
-    pub const fn with_max_script_length(mut self, max_script_length: u64) -> Self {
-        self.max_script_length = max_script_length;
-        self
+    pub const fn with_max_script_length(self, max_script_length: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_script_length = max_script_length;
+                Self::V1(params)
+            }
+        }
     }
 
     /// Replace the max script data length with the given argument
-    pub const fn with_max_script_data_length(
-        mut self,
-        max_script_data_length: u64,
-    ) -> Self {
-        self.max_script_data_length = max_script_data_length;
-        self
+    pub const fn with_max_script_data_length(self, max_script_data_length: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_script_data_length = max_script_data_length;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl ScriptParameters {
+    /// Get the maximum script length
+    pub fn max_script_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_script_length,
+        }
+    }
+
+    /// Get the maximum script data length
+    pub fn max_script_data_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_script_data_length,
+        }
+    }
+}
+
+impl From<ScriptParametersV1> for ScriptParameters {
+    fn from(params: ScriptParametersV1) -> Self {
+        Self::V1(params)
     }
 }
 
@@ -510,31 +606,78 @@ impl Default for ScriptParameters {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(default))]
-pub struct ContractParameters {
-    /// Maximum contract size, in bytes.
-    pub contract_max_size: u64,
+pub struct ScriptParametersV1 {
+    /// Maximum length of script, in instructions.
+    pub max_script_length: u64,
+    /// Maximum length of script data, in bytes.
+    pub max_script_data_length: u64,
+}
 
-    /// Maximum number of initial storage slots.
-    pub max_storage_slots: u64,
+impl ScriptParametersV1 {
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self {
+        max_script_length: 1024 * 1024,
+        max_script_data_length: 1024 * 1024,
+    };
+}
+
+impl Default for ScriptParametersV1 {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+/// Versioned contract parameters.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ContractParameters {
+    V1(ContractParametersV1),
 }
 
 impl ContractParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
-    pub const DEFAULT: Self = Self {
-        contract_max_size: 100 * 1024,
-        max_storage_slots: 255,
-    };
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(ContractParametersV1::DEFAULT);
 
     /// Replace the max contract size with the given argument
-    pub const fn with_contract_max_size(mut self, contract_max_size: u64) -> Self {
-        self.contract_max_size = contract_max_size;
-        self
+    pub const fn with_contract_max_size(self, contract_max_size: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.contract_max_size = contract_max_size;
+                Self::V1(params)
+            }
+        }
     }
 
     /// Replace the max storage slots with the given argument
-    pub const fn with_max_storage_slots(mut self, max_storage_slots: u64) -> Self {
-        self.max_storage_slots = max_storage_slots;
-        self
+    pub const fn with_max_storage_slots(self, max_storage_slots: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_storage_slots = max_storage_slots;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl ContractParameters {
+    /// Get the maximum contract size
+    pub fn contract_max_size(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.contract_max_size,
+        }
+    }
+
+    /// Get the maximum storage slots
+    pub fn max_storage_slots(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_storage_slots,
+        }
+    }
+}
+
+impl From<ContractParametersV1> for ContractParameters {
+    fn from(params: ContractParametersV1) -> Self {
+        Self::V1(params)
     }
 }
 
@@ -544,17 +687,68 @@ impl Default for ContractParameters {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(default))]
+pub struct ContractParametersV1 {
+    /// Maximum contract size, in bytes.
+    pub contract_max_size: u64,
+
+    /// Maximum number of initial storage slots.
+    pub max_storage_slots: u64,
+}
+
+impl ContractParametersV1 {
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self {
+        contract_max_size: 100 * 1024,
+        max_storage_slots: 255,
+    };
+}
+
+impl Default for ContractParametersV1 {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 #[cfg(feature = "typescript")]
-mod typescript {
+pub mod typescript {
     use wasm_bindgen::prelude::*;
 
-    use super::PredicateParameters;
+    use super::PredicateParameters as PredicateParametersRust;
+
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+    pub struct PredicateParameters(Box<PredicateParametersRust>);
+
+    impl AsRef<PredicateParametersRust> for PredicateParameters {
+        fn as_ref(&self) -> &PredicateParametersRust {
+            &self.0
+        }
+    }
 
     #[wasm_bindgen]
     impl PredicateParameters {
         #[wasm_bindgen(constructor)]
-        pub fn typescript_new() -> Self {
-            Self::DEFAULT
+        pub fn typescript_default() -> Self {
+            PredicateParameters(PredicateParametersRust::DEFAULT.into())
+        }
+
+        #[wasm_bindgen(constructor)]
+        pub fn typescript_new(
+            max_predicate_length: u64,
+            max_predicate_data_length: u64,
+            max_message_data_length: u64,
+            max_gas_per_predicate: u64,
+        ) -> Self {
+            let params = PredicateParametersRust::default()
+                .with_max_predicate_length(max_predicate_length)
+                .with_max_predicate_data_length(max_predicate_data_length)
+                .with_max_message_data_length(max_message_data_length)
+                .with_max_gas_per_predicate(max_gas_per_predicate);
+
+            PredicateParameters(params.into())
         }
     }
 }

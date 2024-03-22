@@ -23,8 +23,6 @@ use rand::{
 #[cfg(feature = "alloc")]
 use alloc::vec;
 
-use crate::consts::WORD_SIZE;
-
 #[test]
 fn transaction_can_be_executed_after_maturity() {
     const MATURITY: BlockHeight = BlockHeight::new(1);
@@ -62,9 +60,8 @@ fn malleable_fields_do_not_affect_validity() {
 
     let params = ConsensusParameters::default();
 
-    let tx_size_ptr =
-        32 + (params.tx_params().max_inputs() as usize * (AssetId::LEN + WORD_SIZE));
-    let tx_start_ptr = tx_size_ptr + 8;
+    let tx_start_ptr = params.tx_params().tx_offset();
+    let tx_size_ptr = tx_start_ptr - 8;
 
     let tx = TransactionBuilder::script(
         vec![
@@ -99,9 +96,10 @@ fn malleable_fields_do_not_affect_validity() {
             op::mcl(0x26, 0x27),
             // Zero out witness count
             op::gtf_args(0x26, 0x00, GTFArgs::Script),
-            op::sub(0x26, 0x26, 32 + 8), // Offset to get the witness count address
+            op::subi(0x26, 0x26, 8), // Offset to get the witness count address
+            op::sub(0x26, 0x26, 0x20), // Offset in relative to the tx bytes
             op::add(0x26, 0x26, RegId::HP), // Redirect the pointer to heap
-            op::sub(0x26, 0x26, 0x20),   // Offset in relative to the tx bytes
+            op::addi(0x26, 0x26, 32 + 8), // Offset of tx bytes in heap
             op::sw(0x26, RegId::ZERO, 0), // Zero out the witness count
             // Actually hash
             op::subi(0x24, 0x21, 64 + 8 - 8), // Offset ptr

@@ -50,10 +50,8 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     }
 
     let fee_params = FeeParameters::default().with_gas_price_factor(1);
-    let consensus_params = ConsensusParameters {
-        fee_params,
-        ..Default::default()
-    };
+    let mut consensus_params = ConsensusParameters::default();
+    consensus_params.set_fee_params(fee_params);
 
     let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),

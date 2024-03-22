@@ -112,7 +112,7 @@ impl CreateMetadata {
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Create {
     pub(crate) bytecode_length: Word,
-    pub(crate) bytecode_witness_index: u8,
+    pub(crate) bytecode_witness_index: u16,
     pub(crate) policies: Policies,
     pub(crate) storage_slots: Vec<StorageSlot>,
     pub(crate) inputs: Vec<Input>,
@@ -174,19 +174,19 @@ impl Chargeable for Create {
             .map(|c| c.as_ref().len())
             .unwrap_or(0);
 
-        let contract_root_gas = gas_costs.contract_root.resolve(contract_len as Word);
+        let contract_root_gas = gas_costs.contract_root().resolve(contract_len as Word);
         let state_root_length = storage_slots.len() as Word;
-        let state_root_gas = gas_costs.state_root.resolve(state_root_length);
+        let state_root_gas = gas_costs.state_root().resolve(state_root_length);
 
         // See https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md
         let contract_id_input_length = core::mem::size_of::<Bytes4>()
             + core::mem::size_of::<Salt>()
             + core::mem::size_of::<Bytes32>()
             + core::mem::size_of::<Bytes32>();
-        let contract_id_gas = gas_costs.s256.resolve(contract_id_input_length as Word);
+        let contract_id_gas = gas_costs.s256().resolve(contract_id_input_length as Word);
         let bytes = canonical::Serialize::size(self);
         // Gas required to calculate the `tx_id`.
-        let tx_id_gas = gas_costs.s256.resolve(bytes as u64);
+        let tx_id_gas = gas_costs.s256().resolve(bytes as u64);
 
         contract_root_gas
             .saturating_add(state_root_gas)
@@ -223,12 +223,9 @@ impl FormatValidityChecks for Create {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
-        let ConsensusParameters {
-            contract_params,
-            chain_id,
-            base_asset_id,
-            ..
-        } = consensus_params;
+        let contract_params = consensus_params.contract_params();
+        let chain_id = consensus_params.chain_id();
+        let base_asset_id = consensus_params.base_asset_id();
 
         check_common_part(self, block_height, consensus_params)?;
 
@@ -281,7 +278,7 @@ impl FormatValidityChecks for Create {
             if let Some(metadata) = &self.metadata {
                 (metadata.state_root, metadata.contract_id)
             } else {
-                let metadata = CreateMetadata::compute(self, chain_id)?;
+                let metadata = CreateMetadata::compute(self, &chain_id)?;
                 (metadata.state_root, metadata.contract_id)
             };
 
@@ -373,12 +370,12 @@ mod field {
 
     impl BytecodeWitnessIndex for Create {
         #[inline(always)]
-        fn bytecode_witness_index(&self) -> &u8 {
+        fn bytecode_witness_index(&self) -> &u16 {
             &self.bytecode_witness_index
         }
 
         #[inline(always)]
-        fn bytecode_witness_index_mut(&mut self) -> &mut u8 {
+        fn bytecode_witness_index_mut(&mut self) -> &mut u16 {
             &mut self.bytecode_witness_index
         }
 

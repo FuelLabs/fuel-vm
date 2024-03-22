@@ -107,10 +107,6 @@ pub use transaction::{
 };
 
 #[cfg(feature = "alloc")]
-#[allow(deprecated)]
-pub use transaction::consensus_parameters::default_parameters;
-
-#[cfg(feature = "alloc")]
 pub use contract::Contract;
 
 /// Trait extends the functionality of the `ContractId` type.

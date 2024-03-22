@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#648](https://github.com/FuelLabs/fuel-vm/pull/648): Added support for generating proofs for Sparse Merkle Trees (SMTs) and proof verification. Proofs can be used to attest to the inclusion or exclusion of data from the set.
+
+### Changed
+
+#### Breaking
+
+- [#701](https://github.com/FuelLabs/fuel-vm/pull/701): Wrapped `ConsensusParameters` and `GasCosts` into an enum to support versioning. Moved `block_gas_limit` from `fuel_core_chain_config::ChainConfig` to `ConsensusPataremeters`. Reduced default `MAX_SIZE` to be [110kb](https://github.com/FuelLabs/fuel-core/pull/1761) and `MAX_CONTRACT_SIZE` to be [100kb](https://github.com/FuelLabs/fuel-core/pull/1761).
+- [#692](https://github.com/FuelLabs/fuel-vm/pull/692): Add GTF getters for tx size and address.
+- [#698](https://github.com/FuelLabs/fuel-vm/pull/698): Store input, output and witness limits to u16, while keeping the values limited to 255.
+
 ## [Version 0.47.1]
 
 ### Added

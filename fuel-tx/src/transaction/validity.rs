@@ -56,7 +56,7 @@ impl Input {
         outputs: &[Output],
         witnesses: &[Witness],
         predicate_params: &PredicateParameters,
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
         self.check_signature(index, txhash, witnesses, recovery_cache)?;
@@ -69,7 +69,7 @@ impl Input {
         index: usize,
         txhash: &Bytes32,
         witnesses: &[Witness],
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         match self {
             Self::CoinSigned(CoinSigned {
@@ -317,14 +317,11 @@ pub(crate) fn check_common_part<T>(
 where
     T: canonical::Serialize + Chargeable + field::Outputs,
 {
-    let ConsensusParameters {
-        tx_params,
-        predicate_params,
-        base_asset_id,
-        gas_costs,
-        fee_params,
-        ..
-    } = consensus_params;
+    let tx_params = consensus_params.tx_params();
+    let predicate_params = consensus_params.predicate_params();
+    let base_asset_id = consensus_params.base_asset_id();
+    let gas_costs = consensus_params.gas_costs();
+    let fee_params = consensus_params.fee_params();
 
     check_size(tx, tx_params)?;
 

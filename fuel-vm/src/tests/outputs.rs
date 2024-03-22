@@ -168,6 +168,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         context.get_chain_id(),
         context.get_gas_costs().to_owned(),
         *context.get_base_asset_id(),
+        context.get_block_gas_limit(),
     );
     let create = create
         .into_checked_basic(context.get_block_height(), &consensus_params)

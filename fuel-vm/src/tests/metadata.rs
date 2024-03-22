@@ -269,6 +269,37 @@ fn get_metadata_chain_id() {
 }
 
 #[test]
+fn get_metadata_tx_start() {
+    let gas_limit = 1_000_000;
+    let height = BlockHeight::default();
+    let mut storage = MemoryStorage::default();
+
+    let script = TransactionBuilder::script(
+        vec![op::gm_args(0x20, GMArgs::TxStart), op::ret(0x20)]
+            .into_iter()
+            .collect(),
+        vec![],
+    )
+    .script_gas_limit(gas_limit)
+    .add_random_fee_input()
+    .finalize()
+    .into_checked(height, &ConsensusParameters::default())
+    .unwrap();
+
+    let receipts = Transactor::<_, _>::new(&mut storage, InterpreterParams::default())
+        .transact(script)
+        .receipts()
+        .expect("Failed to transact")
+        .to_owned();
+
+    if let Receipt::Return { val, .. } = receipts[0].clone() {
+        assert_eq!(val, TxParameters::DEFAULT.tx_offset() as Word);
+    } else {
+        panic!("expected return receipt, instead of {:?}", receipts[0])
+    }
+}
+
+#[test]
 fn get_transaction_fields() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_costs = GasCosts::default();
@@ -318,7 +349,7 @@ fn get_transaction_fields() {
         1_500,
         rng.gen(),
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -342,7 +373,7 @@ fn get_transaction_fields() {
         owner,
         7_500,
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
@@ -482,6 +513,14 @@ fn get_transaction_fields() {
         op::movi(0x11, TransactionRepr::Script as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::Type),
         op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::TxLength),
+        op::movi(0x11, 100), // Tx lenght is too complicated to backpatch
+        op::gt(0x10, 0x10, 0x11), // so just make sure it's over some arbitrary number
+        op::and(0x20, 0x20, 0x10),
+        op::movi(0x11, 10_000), // and
+        op::lt(0x10, 0x10, 0x11), // below some arbitrary number
         op::and(0x20, 0x20, 0x10),
 
         op::movi(0x11, tip as Immediate18),

@@ -102,7 +102,7 @@ fn input_coin_message_signature() {
                     amount,
                     asset_id,
                     tx_pointer,
-                    witness_index as u8,
+                    witness_index as u16,
                 )
             })
             .expect("Failed to validate transaction");
@@ -125,7 +125,7 @@ fn input_coin_message_signature() {
                     nonce,
                     amount,
                     data.clone(),
-                    witness_index as u8,
+                    witness_index as u16,
                 )
             })
             .expect("Failed to validate transaction");

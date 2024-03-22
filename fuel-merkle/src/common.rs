@@ -1,3 +1,4 @@
+mod hash;
 mod msb;
 mod path_iterator;
 mod position;
@@ -34,6 +35,11 @@ pub type Bytes32 = [u8; 32];
 
 use alloc::vec::Vec;
 pub type ProofSet = Vec<Bytes32>;
+
+pub use hash::{
+    sum,
+    sum_iter,
+};
 
 // Merkle Tree hash of an empty list
 // MTH({}) = Hash()

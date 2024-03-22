@@ -368,8 +368,8 @@ where
             asset_id_mem_address,
             amount_of_gas_to_forward,
         };
-        let gas_cost = self.gas_costs().call;
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let gas_cost = self.gas_costs().call();
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         // Charge only for the `base` execution.
         // We will charge for the frame size in the `prepare_call`.
         self.gas_charge(gas_cost.base())?;

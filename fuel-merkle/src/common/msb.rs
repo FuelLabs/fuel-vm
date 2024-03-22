@@ -25,7 +25,7 @@ impl GetBit for u8 {
 
 pub trait Msb {
     fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit>;
-    fn common_prefix_count(&self, other: &Self) -> u32;
+    fn common_prefix_count(&self, other: &[u8]) -> u32;
 }
 
 impl<const N: usize> Msb for [u8; N] {
@@ -38,7 +38,7 @@ impl<const N: usize> Msb for [u8; N] {
             .and_then(|byte| byte.get_bit(byte_bit_index))
     }
 
-    fn common_prefix_count(&self, other: &Self) -> u32 {
+    fn common_prefix_count(&self, other: &[u8]) -> u32 {
         let mut count = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
             // For each pair of bytes, compute the similarity of each byte using

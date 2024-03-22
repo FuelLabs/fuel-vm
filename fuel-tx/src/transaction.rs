@@ -140,7 +140,7 @@ impl Transaction {
     }
 
     pub fn create(
-        bytecode_witness_index: u8,
+        bytecode_witness_index: u16,
         policies: Policies,
         salt: Salt,
         mut storage_slots: Vec<StorageSlot>,
@@ -366,7 +366,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        witness_index: u8,
+        witness_index: u16,
     ) {
         let owner = Input::owner(owner);
 
@@ -396,7 +396,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
-        witness_index: u8,
+        witness_index: u16,
     ) {
         let input = if data.is_empty() {
             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
@@ -702,8 +702,8 @@ pub mod field {
     }
 
     pub trait BytecodeWitnessIndex {
-        fn bytecode_witness_index(&self) -> &u8;
-        fn bytecode_witness_index_mut(&mut self) -> &mut u8;
+        fn bytecode_witness_index(&self) -> &u16;
+        fn bytecode_witness_index_mut(&mut self) -> &mut u16;
         fn bytecode_witness_index_offset(&self) -> usize {
             Self::bytecode_witness_index_offset_static()
         }
@@ -873,7 +873,7 @@ pub mod typescript {
 
         #[wasm_bindgen]
         pub fn create(
-            bytecode_witness_index: u8,
+            bytecode_witness_index: u16,
             policies: Policies,
             salt: crate::Salt,
             storage_slots: Vec<crate::StorageSlot>,

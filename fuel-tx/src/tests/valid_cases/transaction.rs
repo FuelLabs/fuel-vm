@@ -1006,7 +1006,9 @@ fn script__check__transaction_at_maximum_size_is_valid() {
     let block_height = 100.into();
     let mut params = test_params();
     let max_size = 1024usize;
-    params.tx_params.max_size = max_size as u64;
+    let mut tx_params = *params.tx_params();
+    tx_params.max_size = max_size as u64;
+    params.set_tx_params(tx_params);
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
@@ -1038,7 +1040,9 @@ fn script__check__transaction_exceeding_maximum_size_is_invalid() {
     let block_height = 100.into();
     let mut params = test_params();
     let max_size = 1024usize;
-    params.tx_params.max_size = max_size as u64;
+    let mut tx_params = *params.tx_params();
+    tx_params.max_size = max_size as u64;
+    params.set_tx_params(tx_params);
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])

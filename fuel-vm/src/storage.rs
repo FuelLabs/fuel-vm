@@ -53,30 +53,6 @@ macro_rules! double_key {
         /// The FuelVM storage double key.
         pub struct $i([u8; { $first::LEN + $second::LEN }]);
 
-        #[cfg(feature = "serde")]
-        impl serde::Serialize for $i {
-            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-            where
-                S: serde::Serializer,
-            {
-                use serde_with::SerializeAs;
-                serde_with::Bytes::serialize_as(&self.0, serializer)
-            }
-        }
-
-        #[cfg(feature = "serde")]
-        impl<'a> serde::Deserialize<'a> for $i {
-            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-            where
-                D: serde::Deserializer<'a>,
-            {
-                use serde_with::DeserializeAs;
-                let bytes: [u8; $i::LEN] =
-                    serde_with::Bytes::deserialize_as(deserializer)?;
-                Ok(Self(bytes))
-            }
-        }
-
         impl Default for $i {
             fn default() -> Self {
                 Self([0; { Self::second_end() }])
@@ -160,6 +136,38 @@ macro_rules! double_key {
         impl From<$i> for [u8; { $first::LEN + $second::LEN }] {
             fn from(key: $i) -> [u8; { $first::LEN + $second::LEN }] {
                 key.0
+            }
+        }
+
+        impl TryFrom<&[u8]> for $i {
+            type Error = core::array::TryFromSliceError;
+
+            fn try_from(slice: &[u8]) -> Result<Self, Self::Error> {
+                $i::from_slice(slice)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $i {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                use serde_with::SerializeAs;
+                serde_with::Bytes::serialize_as(&self.0, serializer)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'a> serde::Deserialize<'a> for $i {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'a>,
+            {
+                use serde_with::DeserializeAs;
+                let bytes: [u8; $i::LEN] =
+                    serde_with::Bytes::deserialize_as(deserializer)?;
+                Ok(Self(bytes))
             }
         }
     };

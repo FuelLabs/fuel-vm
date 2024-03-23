@@ -39,6 +39,7 @@ pub fn test_params() -> ConsensusParameters {
         Default::default(),
         Default::default(),
         Default::default(),
+        Default::default(),
     )
 }
 

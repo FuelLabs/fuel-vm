@@ -3,7 +3,7 @@ use super::*;
 /// hash
 pub const GIT: &str = "98341e564b75d1157e61d7d5f38612f6224a5b30";
 pub fn default_gas_costs() -> GasCostsValues {
-    GasCostsValues {
+    GasCostsValuesV1 {
         add: 1,
         addi: 1,
         aloc: 1,
@@ -180,4 +180,5 @@ pub fn default_gas_costs() -> GasCostsValues {
             gas_per_unit: 0,
         },
     }
+    .into()
 }

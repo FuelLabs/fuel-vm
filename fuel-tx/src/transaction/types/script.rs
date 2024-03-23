@@ -161,7 +161,7 @@ impl Chargeable for Script {
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
         let bytes = Serialize::size(self);
         // Gas required to calculate the `tx_id`.
-        gas_cost.s256.resolve(bytes as u64)
+        gas_cost.s256().resolve(bytes as u64)
     }
 }
 

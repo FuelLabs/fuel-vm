@@ -274,10 +274,8 @@ fn get_metadata_base_asset_id() {
     let height = BlockHeight::default();
     let mut storage = MemoryStorage::default();
 
-    let params = ConsensusParameters {
-        base_asset_id: AssetId::from([5; 32]),
-        ..Default::default()
-    };
+    let mut params = ConsensusParameters::standard();
+    params.set_base_asset_id(AssetId::from([5; 32]));
 
     let script = TransactionBuilder::script(
         vec![
@@ -299,7 +297,7 @@ fn get_metadata_base_asset_id() {
     let receipts = Transactor::<_, _>::new(
         &mut storage,
         InterpreterParams {
-            base_asset_id: params.base_asset_id,
+            base_asset_id: *params.base_asset_id(),
             ..Default::default()
         },
     )
@@ -309,7 +307,7 @@ fn get_metadata_base_asset_id() {
     .to_owned();
 
     if let Receipt::LogData { data, .. } = receipts[0].clone() {
-        assert_eq!(data.unwrap(), params.base_asset_id.to_bytes());
+        assert_eq!(data.unwrap(), params.base_asset_id().to_bytes());
     } else {
         panic!("expected LogData receipt, instead of {:?}", receipts[0]);
     }
@@ -396,7 +394,7 @@ fn get_transaction_fields() {
         1_500,
         rng.gen(),
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -420,7 +418,7 @@ fn get_transaction_fields() {
         owner,
         7_500,
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),

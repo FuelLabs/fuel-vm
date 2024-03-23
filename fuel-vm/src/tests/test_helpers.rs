@@ -44,7 +44,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
             SecretKey::random(&mut rng),
             rng.gen(),
             arb_max_fee,
-            consensus_params.base_asset_id,
+            *consensus_params.base_asset_id(),
             Default::default(),
         )
         .finalize()

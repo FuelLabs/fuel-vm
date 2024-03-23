@@ -37,7 +37,7 @@ fn external_balance() {
     let height = Default::default();
     let gas_price = 0;
     let gas_costs = GasCosts::default();
-    let fee_params = ConsensusParameters::standard().fee_params;
+    let fee_params = *ConsensusParameters::standard().fee_params();
 
     let script = op::ret(0x01).to_bytes().to_vec();
     let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
@@ -132,7 +132,7 @@ fn variable_output_updates_in_memory() {
         .into_ready(
             zero_gas_price,
             &GasCosts::default(),
-            &consensus_params.fee_params,
+            consensus_params.fee_params(),
         )
         .unwrap();
 

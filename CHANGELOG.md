@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#706](https://github.com/FuelLabs/fuel-vm/pull/706): Unified `Create` and `Script` logic via `ChargeableTransaction`. The change is breaking because affects JSON serialization and deserialization. Now `Script` and `Create` transactions have `body` fields that include unique transactions.
 - [#703](https://github.com/FuelLabs/fuel-vm/pull/703): Reshuffled fields `Script` and `Create` transactions to unify part used by all chargeable transactions. It breaks the serialization and deserialization and requires adoption on the SDK side.
 - [#702](https://github.com/FuelLabs/fuel-vm/pull/702): Wrapped `FeeParameters`, `PredicateParameters`, `TxParameters`, `ScriptParameters` and `ContractParameters` into an enum to support versioning. 
 - [#701](https://github.com/FuelLabs/fuel-vm/pull/701): Wrapped `ConsensusParameters` and `GasCosts` into an enum to support versioning. Moved `block_gas_limit` from `fuel_core_chain_config::ChainConfig` to `ConsensusPataremeters`. Reduced default `MAX_SIZE` to be [110kb](https://github.com/FuelLabs/fuel-core/pull/1761) and `MAX_CONTRACT_SIZE` to be [100kb](https://github.com/FuelLabs/fuel-core/pull/1761).

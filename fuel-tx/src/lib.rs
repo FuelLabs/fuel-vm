@@ -102,6 +102,7 @@ pub use transaction::{
 };
 
 pub use transaction::{
+    PrepareSign,
     Signable,
     UniqueIdentifier,
 };

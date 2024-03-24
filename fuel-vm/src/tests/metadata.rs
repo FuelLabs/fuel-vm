@@ -435,7 +435,7 @@ fn get_transaction_fields() {
         .iter()
         .map(|v| {
             let mut v = v.clone();
-            v.prepare_init_execute();
+            v.prepare_sign();
             v.clone().to_bytes()
         })
         .collect();

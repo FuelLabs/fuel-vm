@@ -725,7 +725,7 @@ impl Input {
     }
 
     /// Empties fields that should be zero during the signing.
-    pub(crate) fn prepare_sign(&mut self) {
+    pub fn prepare_sign(&mut self) {
         match self {
             Input::CoinSigned(coin) => coin.prepare_sign(),
             Input::CoinPredicate(coin) => coin.prepare_sign(),
@@ -768,11 +768,6 @@ impl Input {
         P: AsRef<[u8]>,
     {
         owner == &Self::predicate_owner(predicate)
-    }
-
-    /// Prepare the output for script or predicate execution
-    pub fn prepare_init_execute(&mut self) {
-        self.prepare_sign(); // This currently does the same thing
     }
 }
 

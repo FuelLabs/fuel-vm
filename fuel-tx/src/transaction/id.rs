@@ -21,6 +21,12 @@ use fuel_types::{
     ChainId,
 };
 
+/// Prepares transaction for signing.
+pub trait PrepareSign {
+    /// Prepares transaction for signing zeroing required fields.
+    fn prepare_sign(&mut self);
+}
+
 /// Means that transaction has a unique identifier.
 pub trait UniqueIdentifier {
     /// The unique identifier of the transaction is based on its content.

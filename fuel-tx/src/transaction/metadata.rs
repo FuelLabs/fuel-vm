@@ -42,7 +42,7 @@ impl Cacheable for super::Transaction {
 
 /// Common metadata for `Script` and `Create` transactions.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct CommonMetadata {
+pub struct CommonMetadata {
     pub id: Bytes32,
     pub inputs_offset: usize,
     pub inputs_offset_at: Vec<usize>,

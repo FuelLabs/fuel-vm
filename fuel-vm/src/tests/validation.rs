@@ -23,8 +23,6 @@ use rand::{
 #[cfg(feature = "alloc")]
 use alloc::vec;
 
-use crate::consts::WORD_SIZE;
-
 #[test]
 fn transaction_can_be_executed_after_maturity() {
     const MATURITY: BlockHeight = BlockHeight::new(1);
@@ -62,9 +60,8 @@ fn malleable_fields_do_not_affect_validity() {
 
     let params = ConsensusParameters::default();
 
-    let tx_size_ptr =
-        32 + (params.tx_params().max_inputs() as usize * (AssetId::LEN + WORD_SIZE));
-    let tx_start_ptr = tx_size_ptr + 8;
+    let tx_start_ptr = params.tx_params().tx_offset();
+    let tx_size_ptr = tx_start_ptr - 8;
 
     let tx = TransactionBuilder::script(
         vec![

@@ -1,6 +1,7 @@
 //! VM parameters
 
 use fuel_types::{
+    AssetId,
     Bytes32,
     Word,
 };
@@ -41,7 +42,11 @@ static_assertions::const_assert!(VM_MAX_RAM < usize::MAX as u64);
 // no limits to heap for now.
 
 /// Offset for the assets balances in VM memory
-pub const VM_MEMORY_BALANCES_OFFSET: usize = Bytes32::LEN;
+pub const VM_MEMORY_BASE_ASSET_ID_OFFSET: usize = Bytes32::LEN;
+
+/// Offset for the assets balances in VM memory
+pub const VM_MEMORY_BALANCES_OFFSET: usize =
+    VM_MEMORY_BASE_ASSET_ID_OFFSET + AssetId::LEN;
 
 /// Encoded len of a register id in an instruction (unused)
 pub const VM_REGISTER_WIDTH: u8 = 6;

@@ -364,6 +364,10 @@ pub mod test_helpers {
             self.consensus_params.block_gas_limit()
         }
 
+        pub fn get_privileged_address(&self) -> &Address {
+            self.consensus_params.privileged_address()
+        }
+
         pub fn get_chain_id(&self) -> ChainId {
             self.consensus_params.chain_id()
         }

@@ -15,7 +15,9 @@ pub use gas::{
     GasUnit,
 };
 
+#[cfg(feature = "test-helpers")]
 const MAX_GAS: u64 = 100_000_000;
+#[cfg(feature = "test-helpers")]
 const MAX_SIZE: u64 = 110 * 1024;
 
 /// A versioned set of consensus parameters.
@@ -26,6 +28,7 @@ pub enum ConsensusParameters {
     V1(ConsensusParametersV1),
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for ConsensusParameters {
     fn default() -> Self {
         Self::standard()
@@ -33,11 +36,13 @@ impl Default for ConsensusParameters {
 }
 
 impl ConsensusParameters {
+    #[cfg(feature = "test-helpers")]
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
         ConsensusParametersV1::standard().into()
     }
 
+    #[cfg(feature = "test-helpers")]
     /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
     pub fn standard_with_id(chain_id: ChainId) -> Self {
         ConsensusParametersV1::standard_with_id(chain_id).into()
@@ -141,7 +146,6 @@ impl ConsensusParameters {
     }
 }
 
-#[cfg(feature = "builder")]
 impl ConsensusParameters {
     /// Set the transaction parameters.
     pub fn set_tx_params(&mut self, tx_params: TxParameters) {
@@ -217,7 +221,6 @@ impl ConsensusParameters {
 /// A collection of parameters for convenience
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct ConsensusParametersV1 {
     pub tx_params: TxParameters,
     pub predicate_params: PredicateParameters,
@@ -233,6 +236,7 @@ pub struct ConsensusParametersV1 {
     pub privileged_address: Address,
 }
 
+#[cfg(feature = "test-helpers")]
 impl ConsensusParametersV1 {
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
@@ -256,6 +260,7 @@ impl ConsensusParametersV1 {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for ConsensusParametersV1 {
     fn default() -> Self {
         Self::standard()
@@ -276,6 +281,7 @@ pub enum FeeParameters {
 }
 
 impl FeeParameters {
+    #[cfg(feature = "test-helpers")]
     /// Default fee parameters just for testing.
     pub const DEFAULT: Self = Self::V1(FeeParametersV1::DEFAULT);
 
@@ -315,6 +321,7 @@ impl FeeParameters {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for FeeParameters {
     fn default() -> Self {
         Self::DEFAULT
@@ -330,7 +337,6 @@ impl From<FeeParametersV1> for FeeParameters {
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct FeeParametersV1 {
     /// Factor to convert between gas and transaction assets value.
     pub gas_price_factor: u64,
@@ -338,6 +344,7 @@ pub struct FeeParametersV1 {
     pub gas_per_byte: u64,
 }
 
+#[cfg(feature = "test-helpers")]
 impl FeeParametersV1 {
     /// Default fee parameters just for tests.
     pub const DEFAULT: Self = FeeParametersV1 {
@@ -346,6 +353,7 @@ impl FeeParametersV1 {
     };
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for FeeParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
@@ -360,6 +368,7 @@ pub enum PredicateParameters {
 }
 
 impl PredicateParameters {
+    #[cfg(feature = "test-helpers")]
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self::V1(PredicateParametersV1::DEFAULT);
 
@@ -446,6 +455,7 @@ impl From<PredicateParametersV1> for PredicateParameters {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for PredicateParameters {
     fn default() -> Self {
         Self::DEFAULT
@@ -455,7 +465,6 @@ impl Default for PredicateParameters {
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct PredicateParametersV1 {
     /// Maximum length of predicate, in instructions.
     pub max_predicate_length: u64,
@@ -467,6 +476,7 @@ pub struct PredicateParametersV1 {
     pub max_gas_per_predicate: u64,
 }
 
+#[cfg(feature = "test-helpers")]
 impl PredicateParametersV1 {
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
@@ -477,6 +487,7 @@ impl PredicateParametersV1 {
     };
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for PredicateParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
@@ -492,6 +503,7 @@ pub enum TxParameters {
 }
 
 impl TxParameters {
+    #[cfg(feature = "test-helpers")]
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self::V1(TxParametersV1::DEFAULT);
 
@@ -592,13 +604,13 @@ impl TxParameters {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for TxParameters {
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
-#[cfg(feature = "builder")]
 impl TxParameters {
     pub fn set_max_size(&mut self, max_size: u64) {
         match self {
@@ -615,7 +627,6 @@ impl From<TxParametersV1> for TxParameters {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct TxParametersV1 {
     /// Maximum number of inputs.
     pub max_inputs: u16,
@@ -629,6 +640,7 @@ pub struct TxParametersV1 {
     pub max_size: u64,
 }
 
+#[cfg(feature = "test-helpers")]
 impl TxParametersV1 {
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
@@ -640,6 +652,7 @@ impl TxParametersV1 {
     };
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for TxParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
@@ -654,6 +667,7 @@ pub enum ScriptParameters {
 }
 
 impl ScriptParameters {
+    #[cfg(feature = "test-helpers")]
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self::V1(ScriptParametersV1::DEFAULT);
 
@@ -700,6 +714,7 @@ impl From<ScriptParametersV1> for ScriptParameters {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for ScriptParameters {
     fn default() -> Self {
         Self::DEFAULT
@@ -708,7 +723,6 @@ impl Default for ScriptParameters {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct ScriptParametersV1 {
     /// Maximum length of script, in instructions.
     pub max_script_length: u64,
@@ -716,6 +730,7 @@ pub struct ScriptParametersV1 {
     pub max_script_data_length: u64,
 }
 
+#[cfg(feature = "test-helpers")]
 impl ScriptParametersV1 {
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
@@ -724,6 +739,7 @@ impl ScriptParametersV1 {
     };
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for ScriptParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
@@ -738,6 +754,7 @@ pub enum ContractParameters {
 }
 
 impl ContractParameters {
+    #[cfg(feature = "test-helpers")]
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self::V1(ContractParametersV1::DEFAULT);
 
@@ -784,6 +801,7 @@ impl From<ContractParametersV1> for ContractParameters {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for ContractParameters {
     fn default() -> Self {
         Self::DEFAULT
@@ -792,7 +810,6 @@ impl Default for ContractParameters {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
 pub struct ContractParametersV1 {
     /// Maximum contract size, in bytes.
     pub contract_max_size: u64,
@@ -801,6 +818,7 @@ pub struct ContractParametersV1 {
     pub max_storage_slots: u64,
 }
 
+#[cfg(feature = "test-helpers")]
 impl ContractParametersV1 {
     /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
@@ -809,6 +827,7 @@ impl ContractParametersV1 {
     };
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for ContractParametersV1 {
     fn default() -> Self {
         Self::DEFAULT

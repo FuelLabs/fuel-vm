@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#708](https://github.com/FuelLabs/fuel-vm/pull/708): Hidden `Default` params under the "test-helper" feature to avoid accidental use in production code. It is a huge breaking change for any code that has used them before in production, and instead, it should be fetched from the network. In the case of tests simply use the "test-helper" feature in your `[dev-dependencies]` section.
 - [#702](https://github.com/FuelLabs/fuel-vm/pull/702): Wrapped `FeeParameters`, `PredicateParameters`, `TxParameters`, `ScriptParameters` and `ContractParameters` into an enum to support versioning. 
 - [#701](https://github.com/FuelLabs/fuel-vm/pull/701): Wrapped `ConsensusParameters` and `GasCosts` into an enum to support versioning. Moved `block_gas_limit` from `fuel_core_chain_config::ChainConfig` to `ConsensusPataremeters`. Reduced default `MAX_SIZE` to be [110kb](https://github.com/FuelLabs/fuel-core/pull/1761) and `MAX_CONTRACT_SIZE` to be [100kb](https://github.com/FuelLabs/fuel-core/pull/1761).
 - [#692](https://github.com/FuelLabs/fuel-vm/pull/692): Add GTF getters for tx size and address.

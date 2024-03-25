@@ -28,19 +28,16 @@ use fuel_tx::{
     },
     output,
     Chargeable,
-    ContractParameters,
     Create,
     Executable,
     FeeParameters,
     GasCosts,
     Input,
     Output,
-    PredicateParameters,
     Receipt,
     Script,
     Transaction,
     TransactionRepr,
-    TxParameters,
     UniqueIdentifier,
     ValidityError,
 };
@@ -157,15 +154,16 @@ pub struct InterpreterParams {
     pub base_asset_id: AssetId,
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for InterpreterParams {
     fn default() -> Self {
         Self {
             gas_price: 0,
             gas_costs: Default::default(),
-            max_inputs: TxParameters::DEFAULT.max_inputs(),
-            contract_max_size: ContractParameters::DEFAULT.contract_max_size(),
-            tx_offset: TxParameters::DEFAULT.tx_offset(),
-            max_message_data_length: PredicateParameters::DEFAULT
+            max_inputs: fuel_tx::TxParameters::DEFAULT.max_inputs(),
+            contract_max_size: fuel_tx::ContractParameters::DEFAULT.contract_max_size(),
+            tx_offset: fuel_tx::TxParameters::DEFAULT.tx_offset(),
+            max_message_data_length: fuel_tx::PredicateParameters::DEFAULT
                 .max_message_data_length(),
             chain_id: ChainId::default(),
             fee_params: FeeParameters::default(),

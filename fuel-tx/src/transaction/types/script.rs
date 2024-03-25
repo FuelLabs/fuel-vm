@@ -85,7 +85,7 @@ impl Default for Script {
             // We want to use any values much less than `max_gas_per_tx`
             // to avoid the `TransactionMaxGasExceeded` error. For example,
             // `max_gas_per_tx / 4`.
-            script_gas_limit: TxParameters::DEFAULT.max_gas_per_tx / 4,
+            script_gas_limit: TxParameters::DEFAULT.max_gas_per_tx() / 4,
             script,
             script_data: Default::default(),
             policies: Policies::new()
@@ -145,7 +145,7 @@ impl Chargeable for Script {
         let remaining_allowed_witness = self
             .witness_limit()
             .saturating_sub(self.witnesses().size_dynamic() as u64)
-            .saturating_mul(fee.gas_per_byte);
+            .saturating_mul(fee.gas_per_byte());
 
         self.min_gas(gas_costs, fee)
             .saturating_add(remaining_allowed_witness)
@@ -191,11 +191,11 @@ impl FormatValidityChecks for Script {
     ) -> Result<(), ValidityError> {
         check_common_part(self, block_height, consensus_params)?;
         let script_params = consensus_params.script_params();
-        if self.script.len() as u64 > script_params.max_script_length {
+        if self.script.len() as u64 > script_params.max_script_length() {
             Err(ValidityError::TransactionScriptLength)?;
         }
 
-        if self.script_data.len() as u64 > script_params.max_script_data_length {
+        if self.script_data.len() as u64 > script_params.max_script_data_length() {
             Err(ValidityError::TransactionScriptDataLength)?;
         }
 

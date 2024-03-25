@@ -410,7 +410,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         let witness_len = u16::try_from(self.witnesses().len())
             .expect("The number of witnesses can't exceed `u16::MAX`");
 
-        if u32::from(witness_len) > self.params.tx_params().max_witnesses {
+        if u32::from(witness_len) > self.params.tx_params().max_witnesses() {
             panic!("Max witnesses exceeded");
         }
 

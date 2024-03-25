@@ -55,7 +55,7 @@ fn gas_limit() {
         .expect("Failed to validate transaction");
 
     let err = Transaction::script(
-        TX_PARAMS.max_gas_per_tx + 1,
+        TX_PARAMS.max_gas_per_tx() + 1,
         generate_bytes(rng),
         generate_bytes(rng),
         Policies::new().with_max_fee(0),
@@ -328,11 +328,11 @@ fn max_iow() {
         rng.gen(),
     );
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -348,7 +348,7 @@ fn max_iow() {
     builder.maturity(maturity);
 
     let secrets =
-        cmp::min(TX_PARAMS.max_inputs as u32, TX_PARAMS.max_witnesses - 1) as usize;
+        cmp::min(TX_PARAMS.max_inputs() as u32, TX_PARAMS.max_witnesses() - 1) as usize;
     let secrets: Vec<SecretKey> = (0..secrets - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -358,11 +358,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), asset_id, rng.gen());
     });
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -377,7 +377,7 @@ fn max_iow() {
 
     builder.maturity(maturity);
 
-    let secrets: Vec<SecretKey> = (0..1 + TX_PARAMS.max_inputs as usize
+    let secrets: Vec<SecretKey> = (0..1 + TX_PARAMS.max_inputs() as usize
         - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -386,11 +386,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -407,7 +407,7 @@ fn max_iow() {
 
     builder.maturity(maturity);
 
-    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs as usize
+    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs() as usize
         - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -416,11 +416,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
-    while builder.outputs().len() < 1 + TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < 1 + TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -437,7 +437,7 @@ fn max_iow() {
 
     builder.maturity(maturity);
 
-    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs as usize
+    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs() as usize
         - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -446,11 +446,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
     }
 
-    while builder.witnesses().len() < 1 + TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < 1 + TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -542,8 +542,8 @@ fn script__check__happy_path() {
     let asset_id: AssetId = rng.gen();
 
     TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -564,8 +564,8 @@ fn script__check__cannot_create_contract() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -591,8 +591,8 @@ fn script__check__errors_if_script_too_long() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -615,8 +615,8 @@ fn script__check__errors_if_script_data_too_long() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -843,7 +843,7 @@ fn create__check__something_else() {
     let secret = SecretKey::random(rng);
 
     TransactionBuilder::create(
-        vec![0xfa; CONTRACT_PARAMS.contract_max_size as usize / 4].into(),
+        vec![0xfa; CONTRACT_PARAMS.contract_max_size() as usize / 4].into(),
         rng.gen(),
         vec![],
     )
@@ -865,7 +865,7 @@ fn create__check__errors_if_witness_bytecode_too_long() {
     let secret = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(
-        vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size as usize].into(),
+        vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size() as usize].into(),
         rng.gen(),
         vec![],
     )
@@ -940,7 +940,7 @@ fn create__check__can_max_out_storage_slots() {
 
     let secret = SecretKey::random(rng);
 
-    let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
+    let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots())
         .map(|i| {
             let mut slot_data = StorageSlot::default().to_bytes();
             slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
@@ -972,7 +972,7 @@ fn create__check__cannot_exceed_max_storage_slot() {
     let secret = SecretKey::random(rng);
 
     // Test max slots can't be exceeded
-    let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots)
+    let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots())
         .map(|i| {
             let mut slot_data = StorageSlot::default().to_bytes();
             slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
@@ -1007,7 +1007,7 @@ fn script__check__transaction_at_maximum_size_is_valid() {
     let mut params = test_params();
     let max_size = 1024usize;
     let mut tx_params = *params.tx_params();
-    tx_params.max_size = max_size as u64;
+    tx_params.set_max_size(max_size as u64);
     params.set_tx_params(tx_params);
 
     let base_size = {
@@ -1041,7 +1041,7 @@ fn script__check__transaction_exceeding_maximum_size_is_invalid() {
     let mut params = test_params();
     let max_size = 1024usize;
     let mut tx_params = *params.tx_params();
-    tx_params.max_size = max_size as u64;
+    tx_params.set_max_size(max_size as u64);
     params.set_tx_params(tx_params);
 
     let base_size = {

@@ -25,7 +25,7 @@ fn cannot_exceed_max_inputs() {
         vec![op::ret(RegId::ONE)].into_iter().collect(),
         vec![],
     );
-    for _ in 0..=params.tx_params().max_inputs {
+    for _ in 0..=params.tx_params().max_inputs() {
         script.add_input(Input::coin_signed(
             rng.gen(),
             rng.gen(),
@@ -50,7 +50,7 @@ fn cannot_exceed_max_outputs() {
         vec![op::ret(RegId::ONE)].into_iter().collect(),
         vec![],
     );
-    for _ in 0..=params.tx_params().max_outputs {
+    for _ in 0..=params.tx_params().max_outputs() {
         script.add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()));
     }
     script
@@ -68,7 +68,7 @@ fn cannot_exceed_max_witnesses() {
         vec![op::ret(RegId::ONE)].into_iter().collect(),
         vec![],
     );
-    for _ in 0..=params.tx_params().max_witnesses {
+    for _ in 0..=params.tx_params().max_witnesses() {
         script.add_witness(Witness::from(vec![rng.gen::<u8>(); 1]));
     }
     script

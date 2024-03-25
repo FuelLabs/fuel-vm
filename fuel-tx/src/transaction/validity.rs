@@ -158,7 +158,7 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() as u64 > predicate_params.max_predicate_length =>
+                if predicate.len() as u64 > predicate_params.max_predicate_length() =>
             {
                 Err(ValidityError::InputPredicateLength { index })
             }
@@ -170,7 +170,7 @@ impl Input {
             | Self::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
             }) if predicate_data.len() as u64
-                > predicate_params.max_predicate_data_length =>
+                > predicate_params.max_predicate_data_length() =>
             {
                 Err(ValidityError::InputPredicateDataLength { index })
             }
@@ -203,7 +203,7 @@ impl Input {
             Self::MessageDataSigned(MessageDataSigned { data, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
                 if data.is_empty()
-                    || data.len() as u64 > predicate_params.max_message_data_length =>
+                    || data.len() as u64 > predicate_params.max_message_data_length() =>
             {
                 Err(ValidityError::InputMessageDataLength { index })
             }
@@ -302,7 +302,7 @@ pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), Vali
 where
     T: canonical::Serialize,
 {
-    if tx.size() as u64 > tx_params.max_size {
+    if tx.size() as u64 > tx_params.max_size() {
         Err(ValidityError::TransactionSizeLimitExceeded)?;
     }
 
@@ -337,7 +337,7 @@ where
     }
 
     let max_gas = tx.max_gas(gas_costs, fee_params);
-    if max_gas > tx_params.max_gas_per_tx {
+    if max_gas > tx_params.max_gas_per_tx() {
         Err(ValidityError::TransactionMaxGasExceeded)?
     }
 
@@ -349,15 +349,15 @@ where
         Err(ValidityError::TransactionMaturity)?;
     }
 
-    if tx.inputs().len() > tx_params.max_inputs as usize {
+    if tx.inputs().len() > tx_params.max_inputs() as usize {
         Err(ValidityError::TransactionInputsMax)?
     }
 
-    if tx.outputs().len() > tx_params.max_outputs as usize {
+    if tx.outputs().len() > tx_params.max_outputs() as usize {
         Err(ValidityError::TransactionOutputsMax)?
     }
 
-    if tx.witnesses().len() > tx_params.max_witnesses as usize {
+    if tx.witnesses().len() > tx_params.max_witnesses() as usize {
         Err(ValidityError::TransactionWitnessesMax)?
     }
 
@@ -496,7 +496,7 @@ where
 #[cfg(feature = "typescript")]
 mod typescript {
     use crate::{
-        PredicateParameters,
+        transaction::consensus_parameters::typescript::PredicateParameters,
         Witness,
     };
     use fuel_types::Bytes32;
@@ -540,7 +540,7 @@ mod typescript {
                 txhash,
                 &outputs,
                 &witnesses,
-                predicate_params,
+                predicate_params.as_ref(),
                 &mut None,
             )
             .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))

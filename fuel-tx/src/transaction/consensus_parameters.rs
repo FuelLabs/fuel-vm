@@ -1,5 +1,6 @@
 use fuel_types::{
     bytes::WORD_SIZE,
+    Address,
     AssetId,
     Bytes32,
     ChainId,
@@ -53,6 +54,7 @@ impl ConsensusParameters {
         gas_costs: GasCosts,
         base_asset_id: AssetId,
         block_gas_limit: u64,
+        privileged_address: Address,
     ) -> Self {
         Self::V1(ConsensusParametersV1 {
             tx_params,
@@ -64,6 +66,7 @@ impl ConsensusParameters {
             gas_costs,
             base_asset_id,
             block_gas_limit,
+            privileged_address,
         })
     }
 
@@ -127,6 +130,13 @@ impl ConsensusParameters {
     pub fn block_gas_limit(&self) -> u64 {
         match self {
             Self::V1(params) => params.block_gas_limit,
+        }
+    }
+
+    /// Get the privileged address
+    pub const fn privileged_address(&self) -> &Address {
+        match self {
+            Self::V1(params) => &params.privileged_address,
         }
     }
 }
@@ -195,6 +205,13 @@ impl ConsensusParameters {
             Self::V1(params) => params.block_gas_limit = block_gas_limit,
         }
     }
+
+    /// Set the privileged address.
+    pub fn set_privileged_address(&mut self, privileged_address: Address) {
+        match self {
+            Self::V1(params) => params.privileged_address = privileged_address,
+        }
+    }
 }
 
 /// A collection of parameters for convenience
@@ -211,22 +228,15 @@ pub struct ConsensusParametersV1 {
     pub gas_costs: GasCosts,
     pub base_asset_id: AssetId,
     pub block_gas_limit: u64,
+    /// The privileged address(user or predicate) that can perform permissioned
+    /// operations(like upgrading the network).
+    pub privileged_address: Address,
 }
 
 impl ConsensusParametersV1 {
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
-        Self {
-            tx_params: TxParameters::DEFAULT,
-            predicate_params: PredicateParameters::DEFAULT,
-            script_params: ScriptParameters::DEFAULT,
-            contract_params: ContractParameters::DEFAULT,
-            fee_params: FeeParameters::DEFAULT,
-            chain_id: ChainId::default(),
-            gas_costs: GasCosts::default(),
-            base_asset_id: Default::default(),
-            block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx,
-        }
+        Self::standard_with_id(ChainId::default())
     }
 
     /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
@@ -241,6 +251,7 @@ impl ConsensusParametersV1 {
             gas_costs: GasCosts::default(),
             base_asset_id: Default::default(),
             block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx,
+            privileged_address: Default::default(),
         }
     }
 }

@@ -838,7 +838,10 @@ impl Default for ContractParametersV1 {
 pub mod typescript {
     use wasm_bindgen::prelude::*;
 
-    use super::PredicateParameters as PredicateParametersRust;
+    use super::{
+        PredicateParameters as PredicateParametersRust,
+        PredicateParametersV1,
+    };
 
     #[derive(Clone, Debug, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
@@ -859,11 +862,13 @@ pub mod typescript {
             max_message_data_length: u64,
             max_gas_per_predicate: u64,
         ) -> Self {
-            let params = PredicateParametersRust::default()
-                .with_max_predicate_length(max_predicate_length)
-                .with_max_predicate_data_length(max_predicate_data_length)
-                .with_max_message_data_length(max_message_data_length)
-                .with_max_gas_per_predicate(max_gas_per_predicate);
+            let params: PredicateParametersRust = PredicateParametersV1 {
+                max_predicate_length,
+                max_predicate_data_length,
+                max_message_data_length,
+                max_gas_per_predicate,
+            }
+            .into();
 
             PredicateParameters(params.into())
         }

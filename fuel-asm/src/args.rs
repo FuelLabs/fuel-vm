@@ -30,6 +30,9 @@ crate::enum_try_from! {
 
         /// Get memory address where the transaction is located
         TxStart = 0x05,
+
+        /// Get memory address of base asset ID
+        BaseAssetId = 0x06,
     },
     Immediate18
 }
@@ -268,6 +271,8 @@ fn encode_gm_args() {
         GMArgs::GetCaller,
         GMArgs::GetVerifyingPredicate,
         GMArgs::GetChainId,
+        GMArgs::TxStart,
+        GMArgs::BaseAssetId,
     ];
 
     args.into_iter().for_each(|a| {

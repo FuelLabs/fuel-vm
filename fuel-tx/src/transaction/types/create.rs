@@ -172,10 +172,10 @@ impl UniqueFormatValidityChecks for Create {
             .enumerate()
             .try_for_each(|(index, input)| match input {
                 Input::Contract(_) => {
-                    Err(ValidityError::TransactionCreateInputContract { index })
+                    Err(ValidityError::TransactionInputContainsContract { index })
                 }
                 Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
-                    Err(ValidityError::TransactionCreateMessageData { index })
+                    Err(ValidityError::TransactionInputContainsMessageData { index })
                 }
                 _ => Ok(()),
             })?;

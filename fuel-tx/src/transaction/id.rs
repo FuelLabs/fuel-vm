@@ -40,17 +40,19 @@ pub trait UniqueIdentifier {
 impl UniqueIdentifier for Transaction {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         match self {
-            Transaction::Script(script) => script.id(chain_id),
-            Transaction::Create(create) => create.id(chain_id),
-            Self::Mint(mint) => mint.id(chain_id),
+            Self::Script(tx) => tx.id(chain_id),
+            Self::Create(tx) => tx.id(chain_id),
+            Self::Mint(tx) => tx.id(chain_id),
+            Self::Upgrade(tx) => tx.id(chain_id),
         }
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
         match self {
-            Transaction::Script(script) => script.cached_id(),
-            Transaction::Create(create) => create.cached_id(),
-            Self::Mint(mint) => mint.cached_id(),
+            Self::Script(tx) => tx.cached_id(),
+            Self::Create(tx) => tx.cached_id(),
+            Self::Mint(tx) => tx.cached_id(),
+            Self::Upgrade(tx) => tx.cached_id(),
         }
     }
 }
@@ -124,6 +126,10 @@ mod tests {
         Serialize,
     };
 
+    use crate::test_helper::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    };
     use fuel_tx::{
         field::*,
         input,
@@ -146,10 +152,6 @@ mod tests {
         StorageSlot,
         Transaction,
         UtxoId,
-    };
-    use fuel_tx_test_helpers::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
     };
     use fuel_types::ChainId;
     use rand::{

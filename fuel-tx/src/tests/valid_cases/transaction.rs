@@ -13,6 +13,7 @@ use crate::{
         Policies,
         PolicyType,
     },
+    test_helper::generate_bytes,
     transaction::field::Policies as PoliciesField,
     *,
 };
@@ -21,7 +22,6 @@ use fuel_crypto::{
     SecretKey,
     Signature,
 };
-use fuel_tx_test_helpers::generate_bytes;
 use fuel_types::canonical::{
     Deserialize,
     Serialize,
@@ -575,7 +575,7 @@ fn script__check__cannot_create_contract() {
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(
-        ValidityError::TransactionScriptOutputContractCreated { index: 0 },
+        ValidityError::TransactionOutputContainsContractCreated { index: 0 },
         err
     );
 }
@@ -671,7 +671,7 @@ fn create__check__cannot_have_contract_input() {
 
     assert_eq!(
         err,
-        ValidityError::TransactionCreateInputContract { index: 0 }
+        ValidityError::TransactionInputContainsContract { index: 0 }
     );
 }
 
@@ -701,7 +701,7 @@ fn create__check__cannot_have_message_input() {
 
     assert_eq!(
         err,
-        ValidityError::TransactionCreateMessageData { index: 0 }
+        ValidityError::TransactionInputContainsMessageData { index: 0 }
     );
 }
 

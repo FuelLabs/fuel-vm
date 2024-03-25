@@ -51,6 +51,9 @@ mod transaction;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+pub mod test_helper;
+
 #[cfg(feature = "builder")]
 pub use builder::{
     Buildable,
@@ -96,6 +99,9 @@ pub use transaction::{
     TransactionRepr,
     TxId,
     TxParameters,
+    Upgrade,
+    UpgradeBody,
+    UpgradePurpose,
     UtxoId,
     ValidityError,
     Witness,

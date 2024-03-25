@@ -19,8 +19,7 @@ const MAX_GAS: u64 = 100_000_000;
 const MAX_SIZE: u64 = 110 * 1024;
 
 /// A versioned set of consensus parameters.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ConsensusParameters {
     /// Version 1 of the consensus parameters
     V1(ConsensusParametersV1),
@@ -215,9 +214,8 @@ impl ConsensusParameters {
 }
 
 /// A collection of parameters for convenience
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct ConsensusParametersV1 {
     pub tx_params: TxParameters,
     pub predicate_params: PredicateParameters,
@@ -269,8 +267,9 @@ impl From<ConsensusParametersV1> for ConsensusParameters {
 }
 
 /// The versioned fee parameters.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum FeeParameters {
     V1(FeeParametersV1),
 }
@@ -328,9 +327,10 @@ impl From<FeeParametersV1> for FeeParameters {
 }
 
 /// Consensus configurable parameters used for verifying transactions
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(default)]
 pub struct FeeParametersV1 {
     /// Factor to convert between gas and transaction assets value.
     pub gas_price_factor: u64,
@@ -353,8 +353,9 @@ impl Default for FeeParametersV1 {
 }
 
 /// Versioned predicate parameters.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum PredicateParameters {
     V1(PredicateParametersV1),
 }
@@ -453,9 +454,10 @@ impl Default for PredicateParameters {
 }
 
 /// Consensus configurable parameters used for verifying transactions
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(default)]
 pub struct PredicateParametersV1 {
     /// Maximum length of predicate, in instructions.
     pub max_predicate_length: u64,
@@ -484,8 +486,9 @@ impl Default for PredicateParametersV1 {
 }
 
 /// Versioned transaction parameters.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum TxParameters {
     /// Version 1 of the transaction parameters.
     V1(TxParametersV1),
@@ -612,9 +615,10 @@ impl From<TxParametersV1> for TxParameters {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(default)]
 pub struct TxParametersV1 {
     /// Maximum number of inputs.
     pub max_inputs: u16,
@@ -646,8 +650,9 @@ impl Default for TxParametersV1 {
 }
 
 /// Versioned script parameters.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum ScriptParameters {
     V1(ScriptParametersV1),
 }
@@ -705,9 +710,10 @@ impl Default for ScriptParameters {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(default)]
 pub struct ScriptParametersV1 {
     /// Maximum length of script, in instructions.
     pub max_script_length: u64,
@@ -730,8 +736,9 @@ impl Default for ScriptParametersV1 {
 }
 
 /// Versioned contract parameters.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum ContractParameters {
     V1(ContractParametersV1),
 }
@@ -789,9 +796,10 @@ impl Default for ContractParameters {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(default)]
 pub struct ContractParametersV1 {
     /// Maximum contract size, in bytes.
     pub contract_max_size: u64,

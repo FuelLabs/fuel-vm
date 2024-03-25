@@ -97,6 +97,7 @@ pub enum Transaction {
     Script(Script),
     Create(Create),
     Mint(Mint),
+    Upgrade(Upgrade),
 }
 
 impl Default for Transaction {
@@ -425,37 +426,45 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}
 
 impl From<Script> for Transaction {
-    fn from(script: Script) -> Self {
-        Transaction::Script(script)
+    fn from(tx: Script) -> Self {
+        Self::Script(tx)
     }
 }
 
 impl From<Create> for Transaction {
-    fn from(create: Create) -> Self {
-        Transaction::Create(create)
+    fn from(tx: Create) -> Self {
+        Self::Create(tx)
     }
 }
 
 impl From<Mint> for Transaction {
-    fn from(mint: Mint) -> Self {
-        Transaction::Mint(mint)
+    fn from(tx: Mint) -> Self {
+        Self::Mint(tx)
+    }
+}
+
+impl From<Upgrade> for Transaction {
+    fn from(tx: Upgrade) -> Self {
+        Self::Upgrade(tx)
     }
 }
 
 impl Serialize for Transaction {
     fn size_static(&self) -> usize {
         match self {
-            Transaction::Script(script) => script.size_static(),
-            Transaction::Create(create) => create.size_static(),
-            Transaction::Mint(mint) => mint.size_static(),
+            Self::Script(tx) => tx.size_static(),
+            Self::Create(tx) => tx.size_static(),
+            Self::Mint(tx) => tx.size_static(),
+            Self::Upgrade(tx) => tx.size_static(),
         }
     }
 
     fn size_dynamic(&self) -> usize {
         match self {
-            Transaction::Script(script) => script.size_dynamic(),
-            Transaction::Create(create) => create.size_dynamic(),
-            Transaction::Mint(mint) => mint.size_dynamic(),
+            Self::Script(tx) => tx.size_dynamic(),
+            Self::Create(tx) => tx.size_dynamic(),
+            Self::Mint(tx) => tx.size_dynamic(),
+            Self::Upgrade(tx) => tx.size_dynamic(),
         }
     }
 
@@ -464,9 +473,10 @@ impl Serialize for Transaction {
         buffer: &mut O,
     ) -> Result<(), Error> {
         match self {
-            Transaction::Script(script) => script.encode_static(buffer),
-            Transaction::Create(create) => create.encode_static(buffer),
-            Transaction::Mint(mint) => mint.encode_static(buffer),
+            Self::Script(tx) => tx.encode_static(buffer),
+            Self::Create(tx) => tx.encode_static(buffer),
+            Self::Mint(tx) => tx.encode_static(buffer),
+            Self::Upgrade(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -475,9 +485,10 @@ impl Serialize for Transaction {
         buffer: &mut O,
     ) -> Result<(), Error> {
         match self {
-            Transaction::Script(script) => script.encode_dynamic(buffer),
-            Transaction::Create(create) => create.encode_dynamic(buffer),
-            Transaction::Mint(mint) => mint.encode_dynamic(buffer),
+            Self::Script(tx) => tx.encode_dynamic(buffer),
+            Self::Create(tx) => tx.encode_dynamic(buffer),
+            Self::Mint(tx) => tx.encode_dynamic(buffer),
+            Self::Upgrade(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -502,6 +513,9 @@ impl Deserialize for Transaction {
             TransactionRepr::Mint => {
                 Ok(<Mint as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::Upgrade => {
+                Ok(<Upgrade as Deserialize>::decode_static(buffer)?.into())
+            }
         }
     }
 
@@ -510,9 +524,10 @@ impl Deserialize for Transaction {
         buffer: &mut I,
     ) -> Result<(), Error> {
         match self {
-            Transaction::Script(script) => script.decode_dynamic(buffer),
-            Transaction::Create(create) => create.decode_dynamic(buffer),
-            Transaction::Mint(mint) => mint.decode_dynamic(buffer),
+            Self::Script(tx) => tx.decode_dynamic(buffer),
+            Self::Create(tx) => tx.decode_dynamic(buffer),
+            Self::Mint(tx) => tx.decode_dynamic(buffer),
+            Self::Upgrade(tx) => tx.decode_dynamic(buffer),
         }
     }
 }
@@ -527,6 +542,7 @@ pub mod field {
         Input,
         Output,
         StorageSlot,
+        UpgradePurpose as UpgradePurposeType,
         Witness,
     };
     use fuel_types::{
@@ -804,6 +820,12 @@ pub mod field {
 
         /// Returns the offset to the `Witness` at `idx` index, if any.
         fn witnesses_offset_at(&self, idx: usize) -> Option<usize>;
+    }
+
+    pub trait UpgradePurpose {
+        fn upgrade_purpose(&self) -> &UpgradePurposeType;
+        fn upgrade_purpose_mut(&mut self) -> &mut UpgradePurposeType;
+        fn upgrade_purpose_offset_static() -> usize;
     }
 }
 

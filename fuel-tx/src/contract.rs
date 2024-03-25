@@ -171,7 +171,9 @@ impl TryFrom<&Transaction> for Contract {
     fn try_from(tx: &Transaction) -> Result<Self, Self::Error> {
         match tx {
             Transaction::Create(create) => TryFrom::try_from(create),
-            _ => Err(ValidityError::TransactionScriptOutputContractCreated { index: 0 }),
+            _ => {
+                Err(ValidityError::TransactionOutputContainsContractCreated { index: 0 })
+            }
         }
     }
 }

@@ -132,7 +132,7 @@ impl UniqueFormatValidityChecks for Script {
             .enumerate()
             .try_for_each(|(index, output)| match output {
                 Output::ContractCreated { .. } => {
-                    Err(ValidityError::TransactionScriptOutputContractCreated { index })
+                    Err(ValidityError::TransactionOutputContainsContractCreated { index })
                 }
                 _ => Ok(()),
             })?;

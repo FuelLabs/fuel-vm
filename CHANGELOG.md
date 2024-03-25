@@ -281,6 +281,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   affected types.
 - [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Re-worked the size calculation of the canonical
   serialization/deserialization.
+- [#700](https://github.com/FuelLabs/fuel-vm/pull/700): Add `BASE_ASSET_ID` to `GM` instruction.
+
 
 #### Removed
 

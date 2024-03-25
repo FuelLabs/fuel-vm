@@ -129,6 +129,9 @@ enum_from! {
         /// Attempt to use sequential memory instructions with too large slot count,
         /// typically because it cannot fit into usize
         TooManySlots = 0x2d,
+        /// Caller of this internal context is also expected to be internal,
+        /// i.e. $fp->$fp must be non-zero.
+        ExpectedNestedCaller = 0x2e,
     }
 }
 

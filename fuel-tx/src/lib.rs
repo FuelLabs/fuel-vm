@@ -36,7 +36,7 @@ pub use fuel_types::{
 };
 pub use tx_pointer::TxPointer;
 
-#[cfg(feature = "builder")]
+#[cfg(feature = "test-helpers")]
 mod builder;
 
 #[cfg(feature = "alloc")]
@@ -51,7 +51,7 @@ mod transaction;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "builder")]
+#[cfg(feature = "test-helpers")]
 pub use builder::{
     Buildable,
     Finalizable,

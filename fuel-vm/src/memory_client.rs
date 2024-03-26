@@ -135,6 +135,7 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl<Ecal: EcalHandler + Default> From<MemoryStorage> for MemoryClient<Ecal> {
     fn from(s: MemoryStorage) -> Self {
         Self::new(s, InterpreterParams::default())

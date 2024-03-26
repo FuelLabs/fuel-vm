@@ -100,6 +100,7 @@ pub enum Transaction {
     Upgrade(Upgrade),
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for Transaction {
     fn default() -> Self {
         Script::default().into()
@@ -108,7 +109,7 @@ impl Default for Transaction {
 
 impl Transaction {
     /// Return default valid transaction useful for tests.
-    #[cfg(all(feature = "rand", feature = "std", feature = "builder"))]
+    #[cfg(all(feature = "rand", feature = "std", feature = "test-helpers"))]
     pub fn default_test_tx() -> Self {
         use crate::Finalizable;
 

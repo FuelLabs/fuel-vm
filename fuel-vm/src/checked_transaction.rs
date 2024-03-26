@@ -35,6 +35,7 @@ use fuel_tx::{
 };
 
 mod balances;
+#[cfg(feature = "test-helpers")]
 pub mod builder;
 pub mod types;
 
@@ -334,6 +335,7 @@ pub struct CheckPredicateParams {
     pub base_asset_id: AssetId,
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for CheckPredicateParams {
     fn default() -> Self {
         CheckPredicateParams::from(&ConsensusParameters::standard())

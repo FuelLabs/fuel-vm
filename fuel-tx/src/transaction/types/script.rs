@@ -1,7 +1,6 @@
 use crate::{
     field::WitnessLimit,
     transaction::{
-        consensus_parameters::TxParameters,
         field::{
             ReceiptsRoot,
             Script as ScriptField,
@@ -68,10 +67,7 @@ impl Default for ScriptBody {
         let script = fuel_asm::op::ret(0x10).to_bytes().to_vec();
 
         Self {
-            // We want to use any values much less than `max_gas_per_tx`
-            // to avoid the `TransactionMaxGasExceeded` error. For example,
-            // `max_gas_per_tx / 4`.
-            script_gas_limit: TxParameters::DEFAULT.max_gas_per_tx() / 4,
+            script_gas_limit: Default::default(),
             receipts_root: Default::default(),
             script,
             script_data: Default::default(),

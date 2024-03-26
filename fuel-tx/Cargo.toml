@@ -33,7 +33,7 @@ wasm-bindgen = { version = "0.2.88", optional = true }
 [dev-dependencies]
 bincode = { workspace = true }
 fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
-fuel-tx = { path = ".", features = ["builder", "random", "serde"] }
+fuel-tx = { path = ".", features = ["random", "serde", "test-helpers"] }
 fuel-types = { workspace = true, default-features = false, features = ["random"] }
 hex = { version = "0.4", default-features = false }
 insta = "1.0"
@@ -45,7 +45,7 @@ serde_json = { version = "1.0" }
 
 [features]
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]
-builder = ["alloc", "internals"]
+test-helpers = ["alloc", "internals"]
 internals = []
 typescript = ["alloc", "js-sys", "wasm-bindgen", "serde", "serde-wasm-bindgen", "fuel-types/typescript"]
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]

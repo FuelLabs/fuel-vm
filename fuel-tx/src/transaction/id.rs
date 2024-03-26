@@ -23,7 +23,7 @@ use fuel_types::{
 
 /// Prepares transaction for signing.
 pub trait PrepareSign {
-    /// Prepares transaction for signing zeroing required fields.
+    /// Prepares transaction for signing, zeroing required fields.
     fn prepare_sign(&mut self);
 }
 

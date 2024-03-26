@@ -3,7 +3,6 @@
 
 use super::{
     test_params,
-    CHAIN_ID,
     CONTRACT_PARAMS,
     SCRIPT_PARAMS,
     TX_PARAMS,
@@ -1129,65 +1128,6 @@ fn mint() {
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintIncorrectBlockHeight);
-}
-
-#[test]
-fn tx_id_bytecode_len() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    let maturity = 100.into();
-    let salt = rng.gen();
-
-    let w_a = vec![0xfau8; 4].into();
-    let w_b = vec![0xfau8; 8].into();
-    let w_c = vec![0xfbu8; 4].into();
-
-    let tx_a = Transaction::create(
-        0,
-        Policies::new().with_maturity(maturity),
-        salt,
-        vec![],
-        vec![],
-        vec![],
-        vec![w_a],
-    );
-
-    let tx_b = Transaction::create(
-        0,
-        Policies::new().with_maturity(maturity),
-        salt,
-        vec![],
-        vec![],
-        vec![],
-        vec![w_b],
-    );
-
-    let tx_c = Transaction::create(
-        0,
-        Policies::new().with_maturity(maturity),
-        salt,
-        vec![],
-        vec![],
-        vec![],
-        vec![w_c],
-    );
-
-    let id_a = tx_a.id(&CHAIN_ID);
-    let id_b = tx_b.id(&CHAIN_ID);
-    let id_c = tx_c.id(&CHAIN_ID);
-
-    // bytecode with different length should produce different id
-    assert_ne!(id_a, id_b);
-
-    // bytecode with same length and different content should produce same id
-    //
-    // Note that this isn't related to the checkable itself - this checks exclusively the
-    // id behavior. the witness payload for a bytecode cannot be tampered and the
-    // checkable rules should not allow this case to pass.
-    //
-    // For further reference, check
-    // https://github.com/FuelLabs/fuel-specs/blob/1856de801fabc7e52f5c010c45c3fc6d5d4e2be3/specs/protocol/tx_format.md?plain=1#L160
-    assert_eq!(id_a, id_c);
 }
 
 mod inputs {

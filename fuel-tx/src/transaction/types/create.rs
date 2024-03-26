@@ -113,12 +113,12 @@ impl CreateMetadata {
 pub struct Create {
     pub(crate) bytecode_length: Word,
     pub(crate) bytecode_witness_index: u16,
-    pub(crate) policies: Policies,
+    pub(crate) salt: Salt,
     pub(crate) storage_slots: Vec<StorageSlot>,
+    pub(crate) policies: Policies,
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
-    pub(crate) salt: Salt,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
@@ -385,20 +385,6 @@ mod field {
         }
     }
 
-    impl PoliciesField for Create {
-        fn policies(&self) -> &Policies {
-            &self.policies
-        }
-
-        fn policies_mut(&mut self) -> &mut Policies {
-            &mut self.policies
-        }
-
-        fn policies_offset(&self) -> usize {
-            Self::salt_offset_static() + Salt::LEN
-        }
-    }
-
     impl SaltField for Create {
         #[inline(always)]
         fn salt(&self) -> &Salt {
@@ -413,11 +399,6 @@ mod field {
         #[inline(always)]
         fn salt_offset_static() -> usize {
             Self::bytecode_witness_index_offset_static() + WORD_SIZE
-                + WORD_SIZE // Policies size
-                + WORD_SIZE // Storage slots size
-                + WORD_SIZE // Inputs size
-                + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
         }
     }
 
@@ -435,16 +416,36 @@ mod field {
         }
 
         #[inline(always)]
-        fn storage_slots_offset(&self) -> usize {
-            self.policies_offset() + self.policies.size_dynamic()
+        fn storage_slots_offset_static() -> usize {
+            Self::salt_offset_static() + Salt::LEN
+                + WORD_SIZE // Policies size
+                + WORD_SIZE // Storage slots size
+                + WORD_SIZE // Inputs size
+                + WORD_SIZE // Outputs size
+                + WORD_SIZE // Witnesses size
         }
 
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
             if idx < self.storage_slots.len() {
-                Some(self.storage_slots_offset() + idx * StorageSlot::SLOT_SIZE)
+                Some(Self::storage_slots_offset_static() + idx * StorageSlot::SLOT_SIZE)
             } else {
                 None
             }
+        }
+    }
+
+    impl PoliciesField for Create {
+        fn policies(&self) -> &Policies {
+            &self.policies
+        }
+
+        fn policies_mut(&mut self) -> &mut Policies {
+            &mut self.policies
+        }
+
+        fn policies_offset(&self) -> usize {
+            Self::storage_slots_offset_static()
+                + self.storage_slots.len() * StorageSlot::SLOT_SIZE
         }
     }
 
@@ -461,8 +462,7 @@ mod field {
 
         #[inline(always)]
         fn inputs_offset(&self) -> usize {
-            self.storage_slots_offset()
-                + self.storage_slots.len() * StorageSlot::SLOT_SIZE
+            self.policies_offset() + self.policies.size_dynamic()
         }
 
         #[inline(always)]

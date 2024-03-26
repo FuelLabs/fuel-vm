@@ -58,6 +58,7 @@ pub(crate) struct ScriptMetadata {
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct Script {
     pub(crate) script_gas_limit: Word,
+    pub(crate) receipts_root: Bytes32,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script: Vec<u8>,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
@@ -66,7 +67,6 @@ pub struct Script {
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
-    pub(crate) receipts_root: Bytes32,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
@@ -258,12 +258,6 @@ mod field {
         #[inline(always)]
         fn receipts_root_offset_static() -> usize {
             Self::script_gas_limit_offset_static() + WORD_SIZE
-                + WORD_SIZE // Script size
-                + WORD_SIZE // Script data size
-                + WORD_SIZE // Policies size
-                + WORD_SIZE // Inputs size
-                + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
         }
     }
 
@@ -280,7 +274,14 @@ mod field {
 
         #[inline(always)]
         fn script_offset_static() -> usize {
-            Self::receipts_root_offset_static() + Bytes32::LEN // Receipts root
+            Self::receipts_root_offset_static()
+                + Bytes32::LEN // Receipts root
+                + WORD_SIZE // Script size
+                + WORD_SIZE // Script data size
+                + WORD_SIZE // Policies size
+                + WORD_SIZE // Inputs size
+                + WORD_SIZE // Outputs size
+                + WORD_SIZE // Witnesses size
         }
     }
 

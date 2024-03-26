@@ -725,7 +725,7 @@ pub mod field {
     pub trait StorageSlots {
         fn storage_slots(&self) -> &Vec<StorageSlot>;
         fn storage_slots_mut(&mut self) -> StorageSlotRef;
-        fn storage_slots_offset(&self) -> usize;
+        fn storage_slots_offset_static() -> usize;
 
         /// Returns the offset to the `StorageSlot` at `idx` index, if any.
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize>;

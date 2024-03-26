@@ -5,16 +5,16 @@ use crate::{
         ScriptData,
     },
     policies::Policies,
+    test_helper::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    },
     *,
 };
 use fuel_asm::{
     op,
     PanicInstruction,
     PanicReason,
-};
-use fuel_tx_test_helpers::{
-    generate_bytes,
-    generate_nonempty_padded_bytes,
 };
 use fuel_types::{
     bytes,

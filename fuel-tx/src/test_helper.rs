@@ -40,11 +40,14 @@ where
 
 #[cfg(feature = "std")]
 mod use_std {
-    use core::marker::PhantomData;
-    use fuel_crypto::SecretKey;
-    use fuel_tx::{
+    use super::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    };
+    use crate::{
         field,
         Buildable,
+        ConsensusParameters,
         Contract,
         Create,
         Finalizable,
@@ -54,6 +57,13 @@ mod use_std {
         Script,
         Transaction,
         TransactionBuilder,
+        Upgrade,
+        UpgradePurpose,
+    };
+    use core::marker::PhantomData;
+    use fuel_crypto::{
+        Hasher,
+        SecretKey,
     };
     use fuel_types::canonical::Deserialize;
     use rand::{
@@ -66,11 +76,7 @@ mod use_std {
         Rng,
         SeedableRng,
     };
-
-    use crate::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
-    };
+    use strum::EnumCount;
 
     pub struct TransactionFactory<R, Tx>
     where
@@ -87,7 +93,6 @@ mod use_std {
         R: Rng + CryptoRng,
     {
         fn from(rng: R) -> Self {
-            use strum::EnumCount;
             let input_sampler = Uniform::from(0..Input::COUNT);
             let output_sampler = Uniform::from(0..Output::COUNT);
 
@@ -124,6 +129,7 @@ mod use_std {
                         Transaction::Script(_) => (),
                         Transaction::Create(_) => (),
                         Transaction::Mint(_) => (),
+                        Transaction::Upgrade(_) => (),
                     })
                     .unwrap_or(());
 
@@ -365,6 +371,41 @@ mod use_std {
         }
     }
 
+    impl<R> TransactionFactory<R, Upgrade>
+    where
+        R: Rng + CryptoRng,
+    {
+        pub fn transaction(&mut self) -> Upgrade {
+            self.transaction_with_keys().0
+        }
+
+        pub fn transaction_with_keys(&mut self) -> (Upgrade, Vec<SecretKey>) {
+            let variant = self.rng.gen_range(0..UpgradePurpose::COUNT);
+            let consensus_params =
+                postcard::to_allocvec(&ConsensusParameters::default()).unwrap();
+            let checksum = Hasher::hash(consensus_params.as_slice());
+
+            let purpose = match variant {
+                0 => UpgradePurpose::StateTransition {
+                    bytecode_hash: self.rng.gen(),
+                },
+                1 => UpgradePurpose::ConsensusParameters {
+                    witness_index: 0,
+                    checksum,
+                },
+                _ => {
+                    panic!("Not supported")
+                }
+            };
+
+            let mut builder = TransactionBuilder::<Upgrade>::upgrade(purpose);
+            builder.add_witness(consensus_params.into());
+
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
+        }
+    }
+
     impl<R> TransactionFactory<R, Mint>
     where
         R: Rng + CryptoRng,
@@ -402,6 +443,17 @@ mod use_std {
         type Item = (Script, Vec<SecretKey>);
 
         fn next(&mut self) -> Option<(Script, Vec<SecretKey>)> {
+            Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Upgrade>
+    where
+        R: Rng + CryptoRng,
+    {
+        type Item = (Upgrade, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Upgrade, Vec<SecretKey>)> {
             Some(self.transaction_with_keys())
         }
     }

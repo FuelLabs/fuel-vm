@@ -5,5 +5,6 @@ mod valid_cases;
 mod bytes;
 #[cfg(feature = "serde")]
 mod display;
+
 #[cfg(not(feature = "serde"))]
 use bincode as _;

@@ -28,6 +28,8 @@ use crate::{
     Transaction,
     TxParameters,
     TxPointer,
+    Upgrade,
+    UpgradePurpose,
     Witness,
 };
 
@@ -45,6 +47,7 @@ use crate::{
     transaction::{
         CreateBody,
         ScriptBody,
+        UpgradeBody,
     },
 };
 use alloc::{
@@ -163,6 +166,20 @@ impl TransactionBuilder<Create> {
 
         tx.witnesses_mut().push(bytecode);
 
+        Self::with_tx(tx)
+    }
+}
+
+impl TransactionBuilder<Upgrade> {
+    pub fn upgrade(purpose: UpgradePurpose) -> Self {
+        let tx = Upgrade {
+            body: UpgradeBody { purpose },
+            policies: Policies::new().with_max_fee(0),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            metadata: None,
+        };
         Self::with_tx(tx)
     }
 }
@@ -480,22 +497,15 @@ impl Finalizable<Mint> for TransactionBuilder<Mint> {
     }
 }
 
-impl Finalizable<Create> for TransactionBuilder<Create> {
-    fn finalize(&self) -> Create {
+impl<Tx> Finalizable<Tx> for TransactionBuilder<Tx>
+where
+    Tx: Buildable,
+{
+    fn finalize(&self) -> Tx {
         self.finalize_inner()
     }
 
-    fn finalize_without_signature(&self) -> Create {
-        self.finalize_without_signature_inner()
-    }
-}
-
-impl Finalizable<Script> for TransactionBuilder<Script> {
-    fn finalize(&self) -> Script {
-        self.finalize_inner()
-    }
-
-    fn finalize_without_signature(&self) -> Script {
+    fn finalize_without_signature(&self) -> Tx {
         self.finalize_without_signature_inner()
     }
 }

@@ -1,20 +1,21 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use super::PREDICATE_PARAMS;
-
-use fuel_crypto::{
-    PublicKey,
-    SecretKey,
-};
-use fuel_tx::{
+use crate::{
+    builder::TransactionBuilder,
+    field,
     field::Witnesses,
+    test_helper::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+        TransactionFactory,
+    },
     ConsensusParameters,
     *,
 };
-use fuel_tx_test_helpers::{
-    generate_bytes,
-    generate_nonempty_padded_bytes,
-    TransactionFactory,
+use fuel_crypto::{
+    PublicKey,
+    SecretKey,
 };
 use fuel_types::ChainId;
 use rand::{
@@ -92,10 +93,8 @@ fn input_coin_message_signature() {
             let tx_pointer = rng.gen();
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
-                let witness_index =
-                    <Tx as fuel_tx::field::Witnesses>::witnesses(tx).len();
-                <Tx as fuel_tx::field::Witnesses>::witnesses_mut(tx)
-                    .push(fuel_tx::Witness::default());
+                let witness_index = <Tx as field::Witnesses>::witnesses(tx).len();
+                <Tx as field::Witnesses>::witnesses_mut(tx).push(Witness::default());
                 tx.add_unsigned_coin_input(
                     utxo_id,
                     public,
@@ -115,10 +114,8 @@ fn input_coin_message_signature() {
             let data = generate_bytes(rng);
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
-                let witness_index =
-                    <Tx as fuel_tx::field::Witnesses>::witnesses(tx).len();
-                <Tx as fuel_tx::field::Witnesses>::witnesses_mut(tx)
-                    .push(fuel_tx::Witness::default());
+                let witness_index = <Tx as field::Witnesses>::witnesses(tx).len();
+                <Tx as field::Witnesses>::witnesses_mut(tx).push(Witness::default());
                 tx.add_unsigned_message_input(
                     sender,
                     Input::owner(public),

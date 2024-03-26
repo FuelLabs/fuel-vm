@@ -151,7 +151,6 @@ impl GasUnit {
 #[cfg(feature = "alloc")]
 pub struct GasCosts(Arc<GasCostsValues>);
 
-#[cfg(feature = "serde")]
 #[cfg(feature = "alloc")]
 impl<'de> serde::Deserialize<'de> for GasCosts {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -164,7 +163,6 @@ impl<'de> serde::Deserialize<'de> for GasCosts {
     }
 }
 
-#[cfg(feature = "serde")]
 #[cfg(feature = "alloc")]
 impl serde::Serialize for GasCosts {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -199,8 +197,7 @@ impl Default for GasCostsValues {
 }
 
 /// The versioned gas costs for every op.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum GasCostsValues {
     /// Version 1 of the gas costs.
     V1(GasCostsValuesV1),
@@ -871,8 +868,7 @@ impl GasCostsValues {
 
 /// Gas costs for every op.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct GasCostsValuesV1 {
     pub add: Word,
     pub addi: Word,
@@ -996,8 +992,9 @@ pub struct GasCostsValuesV1 {
 }
 
 /// Dependent cost is a cost that depends on the number of units.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum DependentCost {
     /// When an operation is dependent on the magnitude of its inputs, and the
     /// time per unit of input is less than a single no-op operation

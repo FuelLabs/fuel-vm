@@ -10,6 +10,8 @@ use fuel_types::{
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum ValidityError {
+    /// The actual and calculated metadata of the transaction mismatch.
+    TransactionMetadataMismatch,
     /// Transaction doesn't have spendable input message or coin.
     NoSpendableInput,
     InputWitnessIndexBounds {
@@ -48,11 +50,12 @@ pub enum ValidityError {
     OutputContractInputIndex {
         index: usize,
     },
-    TransactionCreateInputContract {
+    /// One of inputs is a `Input::Contract` when it is not allowed.
+    TransactionInputContainsContract {
         index: usize,
     },
-    /// The `Create` transaction contains (retryable) message input.
-    TransactionCreateMessageData {
+    /// One of inputs contains retryable message when it is not allowed.
+    TransactionInputContainsMessageData {
         index: usize,
     },
     TransactionCreateOutputContract {
@@ -76,7 +79,8 @@ pub enum ValidityError {
     TransactionCreateStorageSlotOrder,
     TransactionScriptLength,
     TransactionScriptDataLength,
-    TransactionScriptOutputContractCreated {
+    /// The output contains a `Output::ContractCreated` which is not allowed.
+    TransactionOutputContainsContractCreated {
         index: usize,
     },
     /// The block height of the checking doesn't match the transaction's block height.
@@ -86,6 +90,14 @@ pub enum ValidityError {
     TransactionMintIncorrectOutputIndex,
     /// The `Output.mint_base_asset` is not base asset.
     TransactionMintNonBaseAsset,
+    /// The `Upgrade` transaction doesn't have the privileged address as the input
+    /// owner.
+    TransactionUpgradeNoPrivilegedAddress,
+    /// The `Upgrade` transaction's checksum doesn't match the consensus parameters from
+    /// witness.
+    TransactionUpgradeConsensusParametersChecksumMismatch,
+    /// The `Upgrade` transaction's consensus parameters deserialization failed.
+    TransactionUpgradeConsensusParametersDeserialization,
     /// The transaction exceeded the size limit.
     TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded

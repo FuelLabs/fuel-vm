@@ -25,17 +25,19 @@ pub trait Cacheable {
 impl Cacheable for super::Transaction {
     fn is_computed(&self) -> bool {
         match self {
-            Self::Script(script) => script.is_computed(),
-            Self::Create(create) => create.is_computed(),
-            Self::Mint(mint) => mint.is_computed(),
+            Self::Script(tx) => tx.is_computed(),
+            Self::Create(tx) => tx.is_computed(),
+            Self::Mint(tx) => tx.is_computed(),
+            Self::Upgrade(tx) => tx.is_computed(),
         }
     }
 
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         match self {
-            Self::Script(script) => script.precompute(chain_id),
-            Self::Create(create) => create.precompute(chain_id),
-            Self::Mint(mint) => mint.precompute(chain_id),
+            Self::Script(tx) => tx.precompute(chain_id),
+            Self::Create(tx) => tx.precompute(chain_id),
+            Self::Mint(tx) => tx.precompute(chain_id),
+            Self::Upgrade(tx) => tx.precompute(chain_id),
         }
     }
 }

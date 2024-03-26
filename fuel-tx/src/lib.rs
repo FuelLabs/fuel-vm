@@ -52,6 +52,9 @@ mod transaction;
 mod tests;
 
 #[cfg(feature = "test-helpers")]
+pub mod test_helper;
+
+#[cfg(feature = "test-helpers")]
 pub use builder::{
     Buildable,
     Finalizable,
@@ -96,6 +99,9 @@ pub use transaction::{
     TransactionRepr,
     TxId,
     TxParameters,
+    Upgrade,
+    UpgradeBody,
+    UpgradePurpose,
     UtxoId,
     ValidityError,
     Witness,

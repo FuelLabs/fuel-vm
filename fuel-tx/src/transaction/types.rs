@@ -5,6 +5,7 @@ mod mint;
 pub mod output;
 mod script;
 mod storage;
+mod upgrade;
 mod utxo_id;
 mod witness;
 
@@ -18,6 +19,11 @@ pub use script::{
     ScriptBody,
 };
 pub use storage::StorageSlot;
+pub use upgrade::{
+    Upgrade,
+    UpgradeBody,
+    UpgradePurpose,
+};
 pub use utxo_id::UtxoId;
 pub use witness::Witness;
 

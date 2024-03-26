@@ -21,7 +21,6 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field::{
-        BytecodeLength,
         BytecodeWitnessIndex,
         Salt,
         Script as ScriptField,
@@ -533,9 +532,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     }
 
                     // Create
-                    (None, Some(create), GTFArgs::CreateBytecodeLength) => {
-                        *create.bytecode_length() as Word
-                    }
                     (None, Some(create), GTFArgs::CreateBytecodeWitnessIndex) => {
                         *create.bytecode_witness_index() as Word
                     }

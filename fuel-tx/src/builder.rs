@@ -42,6 +42,10 @@ use crate::{
         WitnessLimit,
     },
     policies::Policies,
+    transaction::{
+        CreateBody,
+        ScriptBody,
+    },
 };
 use alloc::{
     collections::BTreeMap,
@@ -116,14 +120,16 @@ pub struct TransactionBuilder<Tx> {
 impl TransactionBuilder<Script> {
     pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
         let tx = Script {
-            script_gas_limit: Default::default(),
-            script,
-            script_data,
+            body: ScriptBody {
+                script_gas_limit: Default::default(),
+                receipts_root: Default::default(),
+                script,
+                script_data,
+            },
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
-            receipts_root: Default::default(),
             metadata: None,
         };
         Self::with_tx(tx)
@@ -139,10 +145,12 @@ impl TransactionBuilder<Create> {
         // sort the storage slots before initializing the builder
         storage_slots.sort();
         let mut tx = Create {
-            bytecode_length: Default::default(),
-            bytecode_witness_index: Default::default(),
-            salt,
-            storage_slots,
+            body: CreateBody {
+                bytecode_length: Default::default(),
+                bytecode_witness_index: Default::default(),
+                salt,
+                storage_slots,
+            },
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),

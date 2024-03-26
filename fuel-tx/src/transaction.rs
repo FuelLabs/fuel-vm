@@ -81,7 +81,10 @@ pub use validity::{
 #[cfg(feature = "alloc")]
 pub use id::Signable;
 
-pub use id::UniqueIdentifier;
+pub use id::{
+    PrepareSign,
+    UniqueIdentifier,
+};
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
@@ -128,10 +131,12 @@ impl Transaction {
         let receipts_root = Bytes32::zeroed();
 
         Script {
-            script_gas_limit: gas_limit,
-            receipts_root,
-            script,
-            script_data,
+            body: ScriptBody {
+                script_gas_limit: gas_limit,
+                receipts_root,
+                script,
+                script_data,
+            },
             policies,
             inputs,
             outputs,
@@ -161,11 +166,13 @@ impl Transaction {
         storage_slots.sort();
 
         Create {
-            bytecode_length,
-            bytecode_witness_index,
+            body: CreateBody {
+                bytecode_length,
+                bytecode_witness_index,
+                salt,
+                storage_slots,
+            },
             policies,
-            salt,
-            storage_slots,
             inputs,
             outputs,
             witnesses,
@@ -686,6 +693,12 @@ pub mod field {
         fn script_data_offset(&self) -> usize;
     }
 
+    pub trait ChargeableBody<Body> {
+        fn body(&self) -> &Body;
+        fn body_mut(&mut self) -> &mut Body;
+        fn body_offset_end(&self) -> usize;
+    }
+
     pub trait Policies {
         fn policies(&self) -> &policies::Policies;
         fn policies_mut(&mut self) -> &mut policies::Policies;
@@ -806,9 +819,6 @@ pub mod typescript {
             Policies,
         },
         AssetId,
-        Create,
-        Mint,
-        Script,
         Witness,
         Word,
     };
@@ -819,10 +829,25 @@ pub mod typescript {
         vec::Vec,
     };
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[wasm_bindgen]
     pub struct Transaction(#[wasm_bindgen(skip)] pub Box<crate::Transaction>);
+
+    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Create(#[wasm_bindgen(skip)] pub Box<crate::Create>);
+
+    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Script(#[wasm_bindgen(skip)] pub Box<crate::Script>);
+
+    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Mint(#[wasm_bindgen(skip)] pub Box<crate::Mint>);
 
     #[wasm_bindgen]
     impl Transaction {
@@ -861,14 +886,17 @@ pub mod typescript {
             outputs: Vec<Output>,
             witnesses: Vec<Witness>,
         ) -> Script {
-            crate::Transaction::script(
-                gas_limit,
-                script,
-                script_data,
-                policies,
-                inputs.into_iter().map(|v| *v.0).collect(),
-                outputs.into_iter().map(|v| *v.0).collect(),
-                witnesses,
+            Script(
+                crate::Transaction::script(
+                    gas_limit,
+                    script,
+                    script_data,
+                    policies,
+                    inputs.into_iter().map(|v| *v.0).collect(),
+                    outputs.into_iter().map(|v| *v.0).collect(),
+                    witnesses,
+                )
+                .into(),
             )
         }
 
@@ -882,14 +910,17 @@ pub mod typescript {
             outputs: Vec<Output>,
             witnesses: Vec<Witness>,
         ) -> Create {
-            crate::Transaction::create(
-                bytecode_witness_index,
-                policies,
-                salt,
-                storage_slots,
-                inputs.into_iter().map(|v| *v.0).collect(),
-                outputs.into_iter().map(|v| *v.0).collect(),
-                witnesses,
+            Create(
+                crate::Transaction::create(
+                    bytecode_witness_index,
+                    policies,
+                    salt,
+                    storage_slots,
+                    inputs.into_iter().map(|v| *v.0).collect(),
+                    outputs.into_iter().map(|v| *v.0).collect(),
+                    witnesses,
+                )
+                .into(),
             )
         }
 
@@ -901,15 +932,18 @@ pub mod typescript {
             mint_asset_id: AssetId,
             gas_price: Word,
         ) -> Mint {
-            Mint {
-                tx_pointer,
-                input_contract,
-                output_contract,
-                mint_amount,
-                mint_asset_id,
-                gas_price,
-                metadata: None,
-            }
+            Mint(
+                crate::Mint {
+                    tx_pointer,
+                    input_contract,
+                    output_contract,
+                    mint_amount,
+                    mint_asset_id,
+                    gas_price,
+                    metadata: None,
+                }
+                .into(),
+            )
         }
     }
 
@@ -919,7 +953,7 @@ pub mod typescript {
             impl $t {
                 #[wasm_bindgen(js_name = as_tx)]
                 pub fn typescript_wrap_tx(self) -> Transaction {
-                    Transaction(Box::new($tx(self)))
+                    Transaction(Box::new($tx(self.0.as_ref().clone())))
                 }
 
                 #[wasm_bindgen(constructor)]
@@ -941,14 +975,15 @@ pub mod typescript {
                 #[wasm_bindgen(js_name = to_bytes)]
                 pub fn typescript_to_bytes(&self) -> Vec<u8> {
                     use fuel_types::canonical::Serialize;
-                    <Self as Serialize>::to_bytes(self)
+                    <_ as Serialize>::to_bytes(self.0.as_ref())
                 }
 
                 #[wasm_bindgen(js_name = from_bytes)]
                 pub fn typescript_from_bytes(value: &[u8]) -> Result<$t, js_sys::Error> {
                     use fuel_types::canonical::Deserialize;
-                    <Self as Deserialize>::from_bytes(value)
-                        .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+                    let res = <_ as Deserialize>::from_bytes(value)
+                        .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
+                    Ok(Self(Box::new(res)))
                 }
             }
         };

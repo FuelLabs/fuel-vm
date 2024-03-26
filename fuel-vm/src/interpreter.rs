@@ -20,20 +20,15 @@ use fuel_asm::{
     PanicReason,
 };
 use fuel_tx::{
-    field::{
-        self,
-        Inputs,
-        Outputs,
-        ReceiptsRoot,
-    },
+    field,
     output,
     Chargeable,
     Create,
     Executable,
     FeeParameters,
     GasCosts,
-    Input,
     Output,
+    PrepareSign,
     Receipt,
     Script,
     Transaction,
@@ -365,6 +360,7 @@ pub trait ExecutableTransaction:
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
+    + PrepareSign
     + fuel_types::canonical::Serialize
 {
     /// Casts the `Self` transaction into `&Script` if any.
@@ -493,7 +489,9 @@ pub trait ExecutableTransaction:
     }
 
     /// Prepares the transaction for execution.
-    fn prepare_init_execute(&mut self);
+    fn prepare_init_execute(&mut self) {
+        self.prepare_sign()
+    }
 }
 
 impl ExecutableTransaction for Create {
@@ -539,16 +537,6 @@ impl ExecutableTransaction for Script {
 
     fn transaction_type() -> Word {
         TransactionRepr::Script as Word
-    }
-
-    fn prepare_init_execute(&mut self) {
-        *self.receipts_root_mut() = Default::default();
-        self.inputs_mut()
-            .iter_mut()
-            .for_each(Input::prepare_init_execute);
-        self.outputs_mut()
-            .iter_mut()
-            .for_each(Output::prepare_init_execute);
     }
 }
 

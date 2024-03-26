@@ -197,7 +197,7 @@ impl Output {
     }
 
     /// Empties fields that should be zero during the signing.
-    pub(crate) fn prepare_sign(&mut self) {
+    pub fn prepare_sign(&mut self) {
         match self {
             Output::Contract(contract) => contract.prepare_sign(),
 

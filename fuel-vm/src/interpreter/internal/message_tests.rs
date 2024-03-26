@@ -9,7 +9,11 @@ use crate::{
 };
 
 use super::*;
-use fuel_tx::Create;
+use fuel_tx::{
+    field::Policies as PoliciesField,
+    policies::Policies,
+    Create,
+};
 use test_case::test_case;
 
 #[test_case(0, 0, 0 => None)]
@@ -28,6 +32,7 @@ fn test_absolute_output_offset(
     num_outputs: usize,
 ) -> Option<usize> {
     let mut tx = Create::default();
+    *tx.policies_mut() = Policies::default();
     *tx.outputs_mut() = vec![Output::default(); num_outputs];
 
     absolute_output_offset(&tx, tx_offset, idx)
@@ -51,6 +56,7 @@ fn test_absolute_output_offset(
 )]
 fn test_update_memory_output(tx_offset: usize) -> SimpleResult<Memory<MEM_SIZE>> {
     let mut tx = Create::default();
+    *tx.policies_mut() = Policies::default();
     *tx.outputs_mut() = vec![Output::default()];
     let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
     update_memory_output(&mut tx, &mut memory, tx_offset, 0).map(|_| memory)

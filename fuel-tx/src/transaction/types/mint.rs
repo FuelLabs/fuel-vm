@@ -51,7 +51,6 @@ impl MintMetadata {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.

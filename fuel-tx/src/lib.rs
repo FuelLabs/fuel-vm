@@ -66,6 +66,7 @@ pub use receipt::{
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
+    consensus_parameters,
     field,
     input,
     input::Input,

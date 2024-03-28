@@ -63,9 +63,9 @@ impl Distribution<UtxoId> for Standard {
 impl fmt::LowerHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#x}{:02x}", self.tx_id, self.output_index)
+            write!(f, "{:#x}{:04x}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:x}{:02x}", self.tx_id, self.output_index)
+            write!(f, "{:x}{:04x}", self.tx_id, self.output_index)
         }
     }
 }
@@ -73,9 +73,9 @@ impl fmt::LowerHex for UtxoId {
 impl fmt::UpperHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#X}{:02X}", self.tx_id, self.output_index)
+            write!(f, "{:#X}{:04X}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:X}{:02X}", self.tx_id, self.output_index)
+            write!(f, "{:X}{:04X}", self.tx_id, self.output_index)
         }
     }
 }
@@ -83,9 +83,9 @@ impl fmt::UpperHex for UtxoId {
 impl core::fmt::Display for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#x}{:02x}", self.tx_id, self.output_index)
+            write!(f, "{:#x}{:04x}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:x}{:02x}", self.tx_id, self.output_index)
+            write!(f, "{:x}{:04x}", self.tx_id, self.output_index)
         }
     }
 }
@@ -170,7 +170,27 @@ mod tests {
     use fuel_types::Bytes32;
 
     #[test]
-    fn fmt_utxo_id() {
+    fn fmt_utxo_id_with_one_bytes_output_index() {
+        let mut tx_id = Bytes32::zeroed();
+        *tx_id.get_mut(0).unwrap() = 12;
+        *tx_id.get_mut(31).unwrap() = 11;
+
+        let utxo_id = UtxoId {
+            tx_id,
+            output_index: 0xab,
+        };
+        assert_eq!(
+            format!("{utxo_id:#x}"),
+            "0x0c0000000000000000000000000000000000000000000000000000000000000b00ab"
+        );
+        assert_eq!(
+            format!("{utxo_id:x}"),
+            "0c0000000000000000000000000000000000000000000000000000000000000b00ab"
+        );
+    }
+
+    #[test]
+    fn fmt_utxo_id_with_two_bytes_output_index() {
         let mut tx_id = Bytes32::zeroed();
         *tx_id.get_mut(0).unwrap() = 12;
         *tx_id.get_mut(31).unwrap() = 11;

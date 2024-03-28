@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.48.0]
+
 ### Added
 
 - [#705](https://github.com/FuelLabs/fuel-vm/pull/705): Added `privileged_address` to the `ConsensusParameters` for permissioned operations(like upgrade of the network).

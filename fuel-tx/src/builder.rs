@@ -4,7 +4,6 @@ use crate::{
     transaction::{
         field::{
             self,
-            BytecodeLength,
             BytecodeWitnessIndex,
             Maturity,
             Tip,
@@ -149,7 +148,6 @@ impl TransactionBuilder<Create> {
         storage_slots.sort();
         let mut tx = Create {
             body: CreateBody {
-                bytecode_length: Default::default(),
                 bytecode_witness_index: Default::default(),
                 salt,
                 storage_slots,
@@ -161,7 +159,6 @@ impl TransactionBuilder<Create> {
             metadata: None,
         };
 
-        *tx.bytecode_length_mut() = (bytecode.as_ref().len() / 4) as Word;
         *tx.bytecode_witness_index_mut() = 0;
 
         tx.witnesses_mut().push(bytecode);

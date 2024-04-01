@@ -1,7 +1,6 @@
 use crate::{
     transaction::{
         field::{
-            BytecodeLength,
             BytecodeWitnessIndex,
             Salt as SaltField,
             StorageSlots,
@@ -76,7 +75,6 @@ impl CreateMetadata {
 #[canonical(prefix = TransactionRepr::Create)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct CreateBody {
-    pub(crate) bytecode_length: Word,
     pub(crate) bytecode_witness_index: u16,
     pub(crate) salt: Salt,
     pub(crate) storage_slots: Vec<StorageSlot>,
@@ -144,9 +142,7 @@ impl UniqueFormatValidityChecks for Create {
             .map(|w| w.as_ref().len() as Word)
             .ok_or(ValidityError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > contract_params.contract_max_size()
-            || bytecode_witness_len / 4 != self.body.bytecode_length
-        {
+        if bytecode_witness_len > contract_params.contract_max_size() {
             return Err(ValidityError::TransactionCreateBytecodeLen);
         }
 
@@ -266,23 +262,6 @@ mod field {
         StorageSlotRef,
     };
 
-    impl BytecodeLength for Create {
-        #[inline(always)]
-        fn bytecode_length(&self) -> &Word {
-            &self.body.bytecode_length
-        }
-
-        #[inline(always)]
-        fn bytecode_length_mut(&mut self) -> &mut Word {
-            &mut self.body.bytecode_length
-        }
-
-        #[inline(always)]
-        fn bytecode_length_offset_static() -> usize {
-            WORD_SIZE // `Transaction` enum discriminant
-        }
-    }
-
     impl BytecodeWitnessIndex for Create {
         #[inline(always)]
         fn bytecode_witness_index(&self) -> &u16 {
@@ -296,7 +275,7 @@ mod field {
 
         #[inline(always)]
         fn bytecode_witness_index_offset_static() -> usize {
-            Self::bytecode_length_offset_static() + WORD_SIZE
+            WORD_SIZE // `Transaction` enum discriminant
         }
     }
 

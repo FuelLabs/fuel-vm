@@ -17,12 +17,12 @@ use fuel_tx::{
 use test_case::test_case;
 
 #[test_case(0, 0, 0 => None)]
-#[test_case(0, 0, 1 => Some(96))]
-#[test_case(88, 0, 1 => Some(184))]
-#[test_case(0, 1, 2 => Some(168))]
-#[test_case(0, 2, 3 => Some(240))]
-#[test_case(0, 1, 3 => Some(168))]
-#[test_case(44, 2, 3 => Some(284))]
+#[test_case(0, 0, 1 => Some(88))]
+#[test_case(88, 0, 1 => Some(176))]
+#[test_case(0, 1, 2 => Some(160))]
+#[test_case(0, 2, 3 => Some(232))]
+#[test_case(0, 1, 3 => Some(160))]
+#[test_case(44, 2, 3 => Some(276))]
 #[test_case(88, 1, 1 => None)]
 // #[test_case(usize::MAX, 0, 1 => None ; "tx_offset and num_outputs should be constrained
 // but they aren't")]
@@ -39,11 +39,11 @@ fn test_absolute_output_offset(
 }
 
 #[test_case(
-    0 => with |r: Result<_, _>| check_memory(r.unwrap(), &[(96, Output::default().to_bytes())])
+    0 => with |r: Result<_, _>| check_memory(r.unwrap(), &[(88, Output::default().to_bytes())])
     ; "Output at start of memory"
 )]
 #[test_case(
-    200 => with |r: Result<_, _>| check_memory(r.unwrap(), &[(200 + 96, Output::default().to_bytes())])
+    200 => with |r: Result<_, _>| check_memory(r.unwrap(), &[(200 + 88, Output::default().to_bytes())])
     ; "Output at 200 in memory"
 )]
 #[test_case(

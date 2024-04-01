@@ -869,6 +869,7 @@ impl GasCostsValues {
 /// Gas costs for every op.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(default = "GasCostsValuesV1::unit")]
 pub struct GasCostsValuesV1 {
     pub add: Word,
     pub addi: Word,
@@ -1034,7 +1035,19 @@ impl GasCosts {
 impl GasCostsValues {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
-        GasCostsValuesV1 {
+        GasCostsValuesV1::free().into()
+    }
+
+    /// Create costs that are all set to one.
+    pub fn unit() -> Self {
+        GasCostsValuesV1::unit().into()
+    }
+}
+
+impl GasCostsValuesV1 {
+    /// Create costs that are all set to zero.
+    pub fn free() -> Self {
+        Self {
             add: 0,
             addi: 0,
             aloc: 0,
@@ -1148,12 +1161,11 @@ impl GasCostsValues {
             new_storage_per_byte: 0,
             vm_initialization: DependentCost::free(),
         }
-        .into()
     }
 
     /// Create costs that are all set to one.
     pub fn unit() -> Self {
-        GasCostsValuesV1 {
+        Self {
             add: 1,
             addi: 1,
             aloc: 1,
@@ -1267,7 +1279,6 @@ impl GasCostsValues {
             new_storage_per_byte: 1,
             vm_initialization: DependentCost::unit(),
         }
-        .into()
     }
 }
 

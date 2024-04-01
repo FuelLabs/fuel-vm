@@ -155,20 +155,11 @@ impl Transaction {
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
     ) -> Create {
-        // TODO consider split this function in two; one that will trust a provided
-        // bytecod len, and other that will return a resulting, failing if the
-        // witness index isn't present
-        let bytecode_length = witnesses
-            .get(bytecode_witness_index as usize)
-            .map(|witness| witness.as_ref().len() as Word / 4)
-            .unwrap_or(0);
-
         // sort incoming storage slots
         storage_slots.sort();
 
         Create {
             body: CreateBody {
-                bytecode_length,
                 bytecode_witness_index,
                 salt,
                 storage_slots,
@@ -719,16 +710,6 @@ pub mod field {
         fn policies(&self) -> &policies::Policies;
         fn policies_mut(&mut self) -> &mut policies::Policies;
         fn policies_offset(&self) -> usize;
-    }
-
-    pub trait BytecodeLength {
-        fn bytecode_length(&self) -> &Word;
-        fn bytecode_length_mut(&mut self) -> &mut Word;
-        fn bytecode_length_offset(&self) -> usize {
-            Self::bytecode_length_offset_static()
-        }
-
-        fn bytecode_length_offset_static() -> usize;
     }
 
     pub trait BytecodeWitnessIndex {

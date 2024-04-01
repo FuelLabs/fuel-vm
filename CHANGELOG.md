@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.48.0]
+
 ### Added
 
 - [#705](https://github.com/FuelLabs/fuel-vm/pull/705): Added `privileged_address` to the `ConsensusParameters` for permissioned operations(like upgrade of the network).
@@ -16,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#709](https://github.com/FuelLabs/fuel-vm/pull/709): Removed `bytecode_length` from the `Create` transaction.
 - [#706](https://github.com/FuelLabs/fuel-vm/pull/706): Unified `Create` and `Script` logic via `ChargeableTransaction`. The change is breaking because affects JSON serialization and deserialization. Now `Script` and `Create` transactions have `body` fields that include unique transactions.
 - [#703](https://github.com/FuelLabs/fuel-vm/pull/703): Reshuffled fields `Script` and `Create` transactions to unify part used by all chargeable transactions. It breaks the serialization and deserialization and requires adoption on the SDK side.
 - [#708](https://github.com/FuelLabs/fuel-vm/pull/708): Hidden `Default` params under the "test-helper" feature to avoid accidental use in production code. It is a huge breaking change for any code that has used them before in production, and instead, it should be fetched from the network. In the case of tests simply use the "test-helper" feature in your `[dev-dependencies]` section.

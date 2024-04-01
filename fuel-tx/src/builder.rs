@@ -372,8 +372,8 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self.add_unsigned_coin_input(
             SecretKey::random(&mut rng),
             rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            u32::MAX as u64,
+            *self.params.base_asset_id(),
             Default::default(),
         )
     }

@@ -50,6 +50,10 @@ pub enum ValidityError {
     OutputContractInputIndex {
         index: usize,
     },
+    /// One of inputs' `AssetId` is not base asset id.
+    TransactionInputContainsNonBaseAssetId {
+        index: usize,
+    },
     /// One of inputs is a `Input::Contract` when it is not allowed.
     TransactionInputContainsContract {
         index: usize,
@@ -58,13 +62,16 @@ pub enum ValidityError {
     TransactionInputContainsMessageData {
         index: usize,
     },
-    TransactionCreateOutputContract {
+    /// One of outputs is a `Output::Contract` when it is not allowed.
+    TransactionOutputContainsContract {
         index: usize,
     },
-    TransactionCreateOutputVariable {
+    /// One of outputs is a `Output::Variable` when it is not allowed.
+    TransactionOutputContainsVariable {
         index: usize,
     },
-    TransactionCreateOutputChangeNotBaseAsset {
+    /// One of `Output::Change` outputs uses a non-base asset id.
+    TransactionChangeChangeUsesNotBaseAsset {
         index: usize,
     },
     TransactionCreateOutputContractCreatedDoesntMatch {
@@ -96,6 +103,8 @@ pub enum ValidityError {
     /// The `Upgrade` transaction's checksum doesn't match the consensus parameters from
     /// witness.
     TransactionUpgradeConsensusParametersChecksumMismatch,
+    /// The `Upgrade` transaction's consensus parameters serialization failed.
+    TransactionUpgradeConsensusParametersSerialization,
     /// The `Upgrade` transaction's consensus parameters deserialization failed.
     TransactionUpgradeConsensusParametersDeserialization,
     /// The transaction exceeded the size limit.

@@ -92,7 +92,7 @@ impl UpgradeMetadata {
 
 /// The types describe the purpose of the upgrade performed by the [`Upgrade`]
 /// transaction.
-#[derive(Clone, Derivative, strum_macros::EnumCount)]
+#[derive(Copy, Clone, Derivative, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
@@ -205,14 +205,26 @@ impl UniqueFormatValidityChecks for Upgrade {
         self.inputs
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| match input {
-                Input::Contract(_) => {
-                    Err(ValidityError::TransactionInputContainsContract { index })
+            .try_for_each(|(index, input)| {
+                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id()) {
+                    if asset_id != consensus_params.base_asset_id() {
+                        return Err(
+                            ValidityError::TransactionInputContainsNonBaseAssetId {
+                                index,
+                            },
+                        );
+                    }
                 }
-                Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
-                    Err(ValidityError::TransactionInputContainsMessageData { index })
+
+                match input {
+                    Input::Contract(_) => {
+                        Err(ValidityError::TransactionInputContainsContract { index })
+                    }
+                    Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                        Err(ValidityError::TransactionInputContainsMessageData { index })
+                    }
+                    _ => Ok(()),
                 }
-                _ => Ok(()),
             })?;
 
         // The upgrade transaction can't create a contract.
@@ -220,6 +232,20 @@ impl UniqueFormatValidityChecks for Upgrade {
             .iter()
             .enumerate()
             .try_for_each(|(index, output)| match output {
+                Output::Contract(_) => {
+                    Err(ValidityError::TransactionOutputContainsContract { index })
+                }
+
+                Output::Variable { .. } => {
+                    Err(ValidityError::TransactionOutputContainsVariable { index })
+                }
+
+                Output::Change { asset_id, .. }
+                    if asset_id != consensus_params.base_asset_id() =>
+                {
+                    Err(ValidityError::TransactionChangeChangeUsesNotBaseAsset { index })
+                }
+
                 Output::ContractCreated { .. } => {
                     Err(ValidityError::TransactionOutputContainsContractCreated { index })
                 }

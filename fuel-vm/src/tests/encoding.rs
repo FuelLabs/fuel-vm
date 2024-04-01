@@ -3,7 +3,7 @@ use alloc::{
     vec::Vec,
 };
 
-use fuel_vm::{
+use crate::{
     consts::*,
     prelude::*,
 };
@@ -197,7 +197,7 @@ fn output() {
 }
 
 #[test]
-fn transaction() {
+fn transaction_canonical_serialization_deserialization() {
     let i = Input::contract(
         UtxoId::new([0xaa; 32].into(), 0),
         [0xbb; 32].into(),
@@ -331,7 +331,7 @@ fn transaction() {
                 .with_max_fee(Word::MAX >> 5),
             [0xdd; 32].into(),
             vec![],
-            vec![i],
+            vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
@@ -359,7 +359,7 @@ fn transaction() {
             vec![],
             vec![],
             vec![],
-            vec![w],
+            vec![w.clone()],
         ),
         Transaction::create(
             0xba,
@@ -390,6 +390,116 @@ fn transaction() {
             Policies::new(),
             [0xdd; 32].into(),
             vec![],
+            vec![],
+            vec![],
+            vec![],
+        ),
+    ]);
+    assert_encoding_correct(&[
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![i.clone()],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![i],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![w],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![],
             vec![],
             vec![],

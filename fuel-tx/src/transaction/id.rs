@@ -117,20 +117,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use core::{
-        mem,
-        ops::Not,
-    };
-    use fuel_types::canonical::{
-        Deserialize,
-        Serialize,
-    };
-
-    use crate::test_helper::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
-    };
-    use fuel_tx::{
+    use crate::{
         field::*,
         input,
         input::{
@@ -146,14 +133,29 @@ mod tests {
             },
         },
         output,
+        test_helper::{
+            generate_bytes,
+            generate_nonempty_padded_bytes,
+        },
         Buildable,
         Input,
         Output,
         StorageSlot,
         Transaction,
+        UpgradePurpose as UpgradePurposeType,
         UtxoId,
     };
-    use fuel_types::ChainId;
+    use core::{
+        mem,
+        ops::Not,
+    };
+    use fuel_types::{
+        canonical::{
+            Deserialize,
+            Serialize,
+        },
+        ChainId,
+    };
     use rand::{
         rngs::StdRng,
         Rng,
@@ -684,6 +686,15 @@ mod tests {
         let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let storage_slots = vec![vec![], vec![rng.gen(), rng.gen()]];
+        let purposes = [
+            UpgradePurposeType::ConsensusParameters {
+                witness_index: rng.gen(),
+                checksum: rng.gen(),
+            },
+            UpgradePurposeType::StateTransition {
+                bytecode_hash: rng.gen(),
+            },
+        ];
 
         for inputs in inputs.iter() {
             for outputs in outputs.iter() {
@@ -733,6 +744,30 @@ mod tests {
                         }
 
                         assert_id_common_attrs(&tx);
+                    }
+
+                    for purpose in purposes.iter() {
+                        let tx = Transaction::upgrade(
+                            *purpose,
+                            rng.gen(),
+                            inputs.clone(),
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
+
+                        assert_id_common_attrs(&tx);
+                        assert_id_ne(&tx, |t| match t.upgrade_purpose_mut() {
+                            UpgradePurposeType::ConsensusParameters {
+                                witness_index,
+                                checksum,
+                            } => {
+                                *witness_index = witness_index.not();
+                                invert(checksum);
+                            }
+                            UpgradePurposeType::StateTransition { bytecode_hash } => {
+                                invert(bytecode_hash);
+                            }
+                        });
                     }
                 }
             }

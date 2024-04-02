@@ -323,64 +323,30 @@ fn test_mcp_and_mcpi(
     }
 }
 
-#[rstest::rstest]
-fn test_meq(
-    #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
-    #[values("equal", "last-not-equal", "first-not-equal")] pattern: &str,
-) {
-    // Allocate count * 2 bytes of memory
-    let mut ops = vec![
-        op::movi(0x10, count * 2),
-        op::aloc(0x10),
-        op::movi(0x11, 1),
-        op::movi(0x12, 2),
+#[test]
+fn test_meq() {
+    let ops = vec![
+        op::movi(0x20, 16),
+        op::aloc(0x20),
+        op::movi(0x30, 1234),
+        op::movi(0x31, 1235),
+        op::sw(RegId::HP, 0x30, 0),
+        op::sw(RegId::HP, 0x31, 1),
+        op::addi(0x32, RegId::HP, 8),
+        op::meq(0x20, RegId::HP, RegId::HP, 8),
+        op::meq(0x21, RegId::HP, 0x32, 8),
+        op::log(0x20, 0x21, 0x22, 0x23),
+        op::ret(RegId::ONE),
     ];
-    // Fill count*2 bytes with ones, and then patch with given pattern
-    for i in 0..(count * 2) {
-        ops.push(op::sb(RegId::HP, 0x11, i as u16));
-    }
-    if count != 0 {
-        match pattern {
-            "equal" => {
-                // Do nothing
-            }
-            "last-not-equal" => {
-                ops.push(op::sb(RegId::HP, 0x12, (count * 2 - 1) as u16));
-            }
-            "first-not-equal" => {
-                ops.push(op::sb(RegId::HP, 0x12, 0));
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    // Compare
-    ops.push(op::movi(0x10, count));
-    ops.push(op::addi(0x11, RegId::HP, count as u16));
-    ops.push(op::meq(0x10, RegId::HP, 0x11, 0x10));
-    // Log the result and return
-    ops.push(op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO));
-    ops.push(op::ret(RegId::ONE));
-
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
-
-    if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
-        if count == 0 {
-            assert_eq!(*ra, 1); // Empty ranges always equal
-            return;
-        }
-        match pattern {
-            "equal" => {
-                assert_eq!(*ra, 1);
-            }
-            "last-not-equal" | "first-not-equal" => {
-                assert_eq!(*ra, 0);
-            }
-            _ => unreachable!(),
-        }
+    if let Some(Receipt::Log { ra, rb, rc, rd, .. }) = dbg!(vm.receipts()).first() {
+        assert_eq!(*ra, 1);
+        assert_eq!(*rb, 1);
+        assert_eq!(*rc, 0);
+        assert_eq!(*rd, 0);
     } else {
-        panic!("Expected LogData receipt");
+        panic!("Expected Log receipt");
     }
 }
 

@@ -286,7 +286,7 @@ fn test_transfer_output(
     let tx_offset = 512;
 
     let output_range =
-        absolute_output_mem_range(&tx, tx_offset, output_index as usize)?.unwrap();
+        absolute_output_mem_range(&tx, tx_offset, output_index as usize).unwrap();
 
     let transfer_ctx = TransferCtx {
         storage: &mut storage,

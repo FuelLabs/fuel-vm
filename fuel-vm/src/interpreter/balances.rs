@@ -13,17 +13,17 @@ use fuel_asm::{
     Word,
 };
 use fuel_tx::ValidityError;
-use fuel_types::AssetId;
+use fuel_types::{
+    canonical::Serialize,
+    AssetId,
+};
 use itertools::Itertools;
 
 use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
-use super::{
-    Memory,
-    MemoryRange,
-};
+use super::Memory;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
@@ -119,9 +119,7 @@ impl RuntimeBalances {
         let offset = balance.offset();
 
         let offset = offset + AssetId::LEN;
-        let range = MemoryRange::new_const::<_, WORD_SIZE>(offset)?;
-
-        range.write(memory).copy_from_slice(&value.to_be_bytes());
+        memory.write_bytes_noownerchecks(offset, value.to_be_bytes())?;
 
         Ok(value)
     }
@@ -178,9 +176,12 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory[ofs..ofs + AssetId::LEN].copy_from_slice(asset.as_ref());
-            vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]
-                .copy_from_slice(&value.to_be_bytes());
+            vm.memory
+                .write_bytes_noownerchecks(ofs, **asset)
+                .expect("Assets must fit in memory");
+            vm.memory
+                .write_bytes_noownerchecks(ofs + AssetId::LEN, value.to_be_bytes())
+                .expect("Assets must fit in memory");
         });
 
         vm.balances = self;
@@ -243,6 +244,7 @@ fn writes_to_memory_correctly() {
 
     let balances = assets.into_iter();
 
+    interpreter.registers_mut()[RegId::HP] = VM_MAX_RAM;
     RuntimeBalances::try_from_iter(balances)
         .expect("failed to generate balances")
         .to_vm(&mut interpreter);

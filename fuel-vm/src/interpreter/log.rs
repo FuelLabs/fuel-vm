@@ -1,13 +1,12 @@
 use super::{
     internal::{
         inc_pc,
-        internal_contract_or_default,
+        internal_contract,
     },
     receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
     Memory,
-    MemoryRange,
 };
 use crate::{
     constraints::reg_key::*,
@@ -72,7 +71,7 @@ struct LogInput<'vm> {
 impl LogInput<'_> {
     pub(crate) fn log(self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
         let receipt = Receipt::log(
-            internal_contract_or_default(self.context, self.fp, self.memory),
+            internal_contract(self.context, self.fp, self.memory).unwrap_or_default(),
             a,
             b,
             c,
@@ -87,16 +86,16 @@ impl LogInput<'_> {
     }
 
     pub(crate) fn log_data(self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
-        let range = MemoryRange::new(c, d)?;
+        let data = self.memory.read(c, d)?.to_vec();
 
         let receipt = Receipt::log_data(
-            internal_contract_or_default(self.context, self.fp, self.memory),
+            internal_contract(self.context, self.fp, self.memory).unwrap_or_default(),
             a,
             b,
             c,
             *self.pc,
             *self.is,
-            self.memory[range.usizes()].to_vec(),
+            data,
         );
 
         self.receipts.push(receipt)?;

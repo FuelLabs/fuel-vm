@@ -485,8 +485,10 @@ pub mod test_helpers {
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
             let tx_offset = self.get_tx_params().tx_offset();
-            let mut tx_mem =
-                &interpreter.memory()[tx_offset..(tx_offset + transaction.size())];
+            let mut tx_mem = interpreter
+                .memory()
+                .read(tx_offset, transaction.size())
+                .unwrap();
             let mut deser_tx = Transaction::decode(&mut tx_mem).unwrap();
 
             // Patch the tx with correct receipts root

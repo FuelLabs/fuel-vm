@@ -36,36 +36,31 @@ use alloc::{
     vec::Vec,
 };
 
-trait Heap {
-    /// Resize the heap to at least `new_len` bytes, filling the new space with `value`.
-    /// If `new_len` is less than the current length, the function does nothing.
-    /// The functions may grow the size more than `new_len` to avoid frequent
-    /// reallocations.
-    fn reverse_resize_at_least(&mut self, new_len: usize, value: u8);
-}
-
-impl Heap for Vec<u8> {
-    fn reverse_resize_at_least(&mut self, new_len: usize, value: u8) {
-        let len = self.len();
-
-        if new_len > len {
-            // It is how `Vec::resize` calculates a new capacity.
-            let cap = core::cmp::max(len * 2, new_len);
-            let cap = core::cmp::min(cap, MEM_SIZE);
-            let diff = cap - len;
-            let mut new_vec = vec![value; cap];
-            new_vec[diff..].copy_from_slice(self.as_slice());
-            *self = new_vec;
-        }
+/// Resize the heap to at least `new_len` bytes, filling the new space with zeros.
+/// If `new_len` is less than the current length, the function does nothing.
+/// The function may grow the size more than `new_len` to avoid frequent
+/// reallocations.
+fn reverse_resize_at_least(vec: &mut Vec<u8>, new_len: usize) {
+    if vec.len() >= new_len {
+        return
     }
+
+    // To reduce small allocations, allocate at least 256 bytes at once.
+    // After that, double the allocation every time.
+    let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);
+    let mut new_vec = Vec::new();
+    new_vec.reserve_exact(cap);
+    new_vec.extend(core::iter::repeat(0).take(cap - vec.len()));
+    new_vec.extend(vec.iter().copied());
+    *vec = new_vec;
 }
 
 /// The memory of the VM, represented as stack and heap.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Memory {
+    /// Stack. Grow upwards.
     stack: Vec<u8>,
-    hp: usize,
-    heap_offset: usize,
+    /// Heap. Grows downwards from MEM_SIZE.
     heap: Vec<u8>,
 }
 
@@ -80,10 +75,13 @@ impl Memory {
     pub fn new() -> Self {
         Self {
             stack: Vec::new(),
-            hp: MEM_SIZE,
-            heap_offset: MEM_SIZE,
             heap: Vec::new(),
         }
+    }
+
+    /// Offset of the heap section
+    fn heap_offset(&self) -> usize {
+        MEM_SIZE.saturating_sub(self.heap.len())
     }
 
     /// Returns a linear memory representation where stack is at the beginning and heap is
@@ -100,11 +98,12 @@ impl Memory {
     }
 
     /// Grows the stack to be at least `new_sp` bytes.
-    pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
-        let new_sp = u32::try_from(new_sp).unwrap_or(u32::MAX) as usize;
-        let new_sp = core::cmp::min(new_sp, MEM_SIZE);
+    pub fn grow_stack(&mut self, hp: Reg<HP>, new_sp: Word) -> Result<(), PanicReason> {
+        let new_sp_word = new_sp.min(MEM_SIZE as Word);
+        #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
+        let new_sp = new_sp_word as usize;
         if new_sp > self.stack.len() {
-            if new_sp > self.hp {
+            if new_sp_word > *hp {
                 return Err(PanicReason::MemoryGrowthOverlap)
             }
 
@@ -115,121 +114,169 @@ impl Memory {
 
     /// Grows the heap to be at least `new_hp` bytes.
     pub fn grow_heap(&mut self, new_hp: Word) -> Result<(), PanicReason> {
-        let new_hp = u32::try_from(new_hp).unwrap_or(u32::MAX) as usize;
-        let new_hp = core::cmp::min(new_hp, MEM_SIZE);
-        if self.hp < new_hp {
+        #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
+        let new_hp = new_hp.min(MEM_SIZE as Word) as usize;
+
+        if self.heap_offset() < new_hp {
             return Ok(())
         }
 
         if new_hp < self.stack.len() {
             return Err(PanicReason::MemoryGrowthOverlap)
         }
+        println!("Growing heap to {}, size={}", new_hp, MEM_SIZE - new_hp);
 
-        let new_allocated_heap_size = MEM_SIZE - new_hp;
+        reverse_resize_at_least(&mut self.heap, MEM_SIZE - new_hp);
 
-        self.heap
-            .reverse_resize_at_least(new_allocated_heap_size, 0);
-        self.hp = new_hp;
-        self.heap_offset = MEM_SIZE.saturating_sub(self.heap.len());
+        println!(
+            "After this heap size={} and offset={}",
+            self.heap.len(),
+            self.heap_offset()
+        );
+
         Ok(())
     }
 
-    /// Returns a reference to a subslice depending on the `index`.
-    #[inline]
-    #[must_use]
-    pub fn get(&self, index: Range<usize>) -> Option<&[u8]> {
-        if index.start >= self.hp {
-            let relative_range =
-                (index.start - self.heap_offset)..(index.end - self.heap_offset);
-            self.heap.get(relative_range)
-        } else if index.end <= self.stack.len() {
-            self.stack.get(index)
+    /// Verify that the memory range is accessble and return it as a range.
+    pub fn verify<A: ToAddr, B: ToAddr>(
+        &self,
+        addr: A,
+        count: B,
+    ) -> Result<MemoryRange, PanicReason> {
+        let start = addr.to_addr()?;
+        let len = count.to_addr()?;
+        let end = start.saturating_add(len);
+        if end > MEM_SIZE {
+            return Err(PanicReason::MemoryOverflow)
+        }
+
+        if end <= self.stack.len() || start >= self.heap_offset() {
+            Ok(MemoryRange(start..end))
         } else {
-            None
+            Err(PanicReason::UninitalizedMemoryAccess)
         }
     }
 
-    /// Returns a mutable reference to a subslice depending on the `index`.
-    #[inline]
-    #[must_use]
-    pub fn get_mut(&mut self, index: Range<usize>) -> Option<&mut [u8]> {
-        if index.start >= self.hp {
-            let relative_range =
-                (index.start - self.heap_offset)..(index.end - self.heap_offset);
-            self.heap.get_mut(relative_range)
-        } else if index.end <= self.stack.len() {
-            self.stack.get_mut(index)
+    /// Verify a constant-sized memory range.
+    pub fn verify_const<A: ToAddr, const C: usize>(
+        &self,
+        addr: A,
+    ) -> Result<MemoryRange, PanicReason> {
+        self.verify(addr, C)
+    }
+
+    /// Returns a reference to memory for reading, if possible.
+    pub fn read<A: ToAddr, C: ToAddr>(
+        &self,
+        addr: A,
+        count: C,
+    ) -> Result<&[u8], PanicReason> {
+        let range = self.verify(addr, count)?;
+
+        if range.end() <= self.stack.len() {
+            Ok(&self.stack[range.usizes()])
+        } else if range.start() >= self.heap_offset() {
+            Ok(&self.heap
+                [range.start() - self.heap_offset()..range.end() - self.heap_offset()])
         } else {
-            None
+            unreachable!("Range was verified to be valid")
         }
+    }
+
+    /// Reads a constant-sized byte array from memory, if possible.
+    pub fn read_bytes<A: ToAddr, const C: usize>(
+        &self,
+        at: A,
+    ) -> Result<[u8; C], PanicReason> {
+        let mut result = [0; C];
+        result.copy_from_slice(self.read(at, C)?);
+        Ok(result)
+    }
+
+    /// Gets write access to memory, if possible.
+    /// Doesn't perform any ownership checks.
+    pub fn write_noownerchecks<A: ToAddr, B: ToAddr>(
+        &mut self,
+        addr: A,
+        len: B,
+    ) -> Result<&mut [u8], PanicReason> {
+        let range = self.verify(addr, len)?;
+        if range.end() <= self.stack.len() {
+            Ok(&mut self.stack[range.usizes()])
+        } else if range.start() >= self.heap_offset() {
+            let heap_range = range.relative_to(self.heap_offset());
+            Ok(&mut self.heap[heap_range.usizes()])
+        } else {
+            unreachable!("Range was verified to be valid")
+        }
+    }
+
+    /// Writes a constant-sized byte array to memory, if possible.
+    /// Doesn't perform any ownership checks.
+    pub fn write_bytes_noownerchecks<A: ToAddr, const C: usize>(
+        &mut self,
+        addr: A,
+        data: [u8; C],
+    ) -> Result<(), PanicReason> {
+        self.write_noownerchecks(addr, C)?.copy_from_slice(&data);
+        Ok(())
+    }
+
+    /// Checks that memory is writable and returns a mutable slice to it.
+    pub fn write<A: ToAddr, C: ToAddr>(
+        &mut self,
+        owner: OwnershipRegisters,
+        addr: A,
+        len: C,
+    ) -> Result<&mut [u8], PanicReason> {
+        let range = self.verify(addr, len)?;
+        owner.verify_ownership(&range.words())?;
+        self.write_noownerchecks(range.start(), range.len())
+    }
+
+    /// Writes a constant-sized byte array to memory, checking for ownership.
+    pub fn write_bytes<A: ToAddr, const C: usize>(
+        &mut self,
+        owner: OwnershipRegisters,
+        addr: A,
+        data: [u8; C],
+    ) -> Result<(), PanicReason> {
+        self.write(owner, addr, data.len())?.copy_from_slice(&data);
+        Ok(())
     }
 
     /// Copies the memory from `src` to `dst`.
     #[inline]
     #[track_caller]
-    // TODO: Implement more optimal version of this function.
-    pub fn memcopy(&mut self, dst: Range<usize>, src: Range<usize>) {
-        let copy = self[src].to_vec();
-        self[dst].copy_from_slice(&copy);
+    pub fn memcopy_noownerchecks<A: ToAddr, B: ToAddr, C: ToAddr>(
+        &mut self,
+        dst: A,
+        src: B,
+        len: C,
+    ) -> Result<(), PanicReason> {
+        // TODO: Optimize
+
+        let src = src.to_addr()?;
+        let dst = dst.to_addr()?;
+        let len = len.to_addr()?;
+
+        let tmp = self.read(src, len)?.to_vec();
+        self.write_noownerchecks(dst, len)?.copy_from_slice(&tmp);
+        Ok(())
     }
-}
 
-impl Index<Range<usize>> for Memory {
-    type Output = [u8];
-
-    fn index(&self, index: Range<usize>) -> &Self::Output {
-        self.get(index).expect("Memory range out of bounds")
+    /// Memory access to the raw stack buffer.
+    /// Note that for efficiency reasons this might not match sp value.
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn stack_raw(&self) -> &[u8] {
+        &self.stack
     }
-}
 
-impl Index<RangeFrom<usize>> for Memory {
-    type Output = [u8];
-
-    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
-        if index.start >= self.hp {
-            let relative_range = (index.start - self.heap_offset)..;
-            &self.heap[relative_range]
-        } else {
-            &self.stack[index]
-        }
-    }
-}
-
-impl Index<RangeTo<usize>> for Memory {
-    type Output = [u8];
-
-    fn index(&self, index: RangeTo<usize>) -> &Self::Output {
-        &self.stack[index]
-    }
-}
-
-impl IndexMut<Range<usize>> for Memory {
-    fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
-        self.get_mut(index).expect("Memory range out of bounds")
-    }
-}
-
-impl Index<usize> for Memory {
-    type Output = u8;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        if index >= self.hp {
-            let relative_index = index - self.heap_offset;
-            &self.heap[relative_index]
-        } else {
-            &self.stack[index]
-        }
-    }
-}
-
-impl IndexMut<usize> for Memory {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index >= self.hp {
-            let relative_index = index - self.heap_offset;
-            &mut self.heap[relative_index]
-        } else {
-            &mut self.stack[index]
-        }
+    /// Memory access to the raw heap buffer.
+    /// Note that for efficiency reasons this might not match hp value.
+    #[cfg(any(test, feature = "test-helpers"))]
+    pub fn heap_raw(&self) -> &[u8] {
+        &self.heap
     }
 }
 
@@ -238,10 +285,44 @@ impl From<Vec<u8>> for Memory {
     fn from(stack: Vec<u8>) -> Self {
         Self {
             stack,
-            hp: MEM_SIZE,
-            heap_offset: MEM_SIZE,
             heap: vec![],
         }
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl Index<Range<usize>> for Memory {
+    type Output = [u8];
+
+    fn index(&self, index: Range<usize>) -> &Self::Output {
+        self.read(index.start, index.len())
+            .expect("Memory range out of bounds")
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl Index<RangeFrom<usize>> for Memory {
+    type Output = [u8];
+
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        &self[index.start..MEM_SIZE]
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl Index<RangeTo<usize>> for Memory {
+    type Output = [u8];
+
+    fn index(&self, index: RangeTo<usize>) -> &Self::Output {
+        &self[0..index.end]
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl IndexMut<Range<usize>> for Memory {
+    fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
+        self.write_noownerchecks(index.start, index.len())
+            .expect("Memory range out of bounds")
     }
 }
 
@@ -291,96 +372,50 @@ impl ToAddr for i32 {
     }
 }
 
-/// Memory range representation for the VM, checked to be in-bounds on construction.
+/// A range of memory. No guarantees are made about validity of access.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct MemoryRange(ops::Range<usize>);
-
-impl Default for MemoryRange {
-    fn default() -> Self {
-        Self(0..0)
-    }
-}
-
-impl ops::Deref for MemoryRange {
-    type Target = ops::Range<usize>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+pub struct MemoryRange(Range<usize>);
 
 impl MemoryRange {
-    /// Create a new memory range represented as `[address, address + size[`.
-    pub fn new<A: ToAddr, B: ToAddr>(address: A, size: B) -> Result<Self, PanicReason> {
-        let start = address.to_addr()?;
-        let size = size.to_addr()?;
-        let end = start.checked_add(size).ok_or(PanicReason::MemoryOverflow)?;
-
-        if end > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow)
-        }
-
-        Ok(Self(start..end))
+    /// Create a new memory range. Cannot panic, but the range may be invalid.
+    pub const fn new(start: usize, len: usize) -> Self {
+        Self(start..start.saturating_add(len))
     }
 
-    /// Create a new const sized memory range.
-    pub fn new_const<A: ToAddr, const SIZE: usize>(
-        address: A,
-    ) -> Result<Self, PanicReason> {
-        Self::new(address, SIZE)
+    /// Start of the range.
+    pub fn start(&self) -> usize {
+        self.0.start
     }
 
-    /// Uses a overflow-capturing operator to combine `base` and `offset`
-    /// into the start of a memory range, returning an error on overflow,
-    /// and then checks that the resulting range is within the VM memory.
-    pub fn new_overflowing_op<A: ToAddr, T: ToAddr, F>(
-        overflowing_op: F,
-        base: T,
-        offset: T,
-        size: A,
-    ) -> Result<Self, PanicReason>
-    where
-        F: FnOnce(T, T) -> (T, bool),
-    {
-        let (addr, overflow) = overflowing_op(base, offset);
-        if overflow {
-            return Err(PanicReason::MemoryOverflow)
-        }
-        Self::new(addr, size)
+    /// End of the range. One past the last byte.
+    pub fn end(&self) -> usize {
+        self.0.end
     }
 
-    /// Truncate a memory range to a new size if it's smaller then current one.
-    pub fn truncated(&self, limit: usize) -> Self {
-        Self::new(self.start, self.len().min(limit))
-            .expect("Cannot overflow on truncation")
+    /// Length of the range.
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 
-    /// Return `true` if the length is `0`.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
+    /// Returns the range as a `usize` range.
+    pub fn usizes(&self) -> Range<usize> {
+        self.0.clone()
     }
 
-    /// Convert to a raw `usize` range.
-    pub fn usizes(&self) -> ops::Range<usize> {
-        self.start..self.end
+    /// Returns the range as a `Word` range.
+    pub fn words(&self) -> Range<Word> {
+        self.0.start as Word..self.0.end as Word
     }
 
-    /// Convert to a raw `Word` range.
-    pub fn words(&self) -> ops::Range<Word> {
-        self.start as Word..self.end as Word
-    }
+    /// Moves range to be relative to the given address.
+    /// Panics if the address is before the offset.
+    pub fn relative_to(self, index: usize) -> Self {
+        assert!(self.start() >= index);
 
-    /// Return an owned memory slice with a relative address to the heap space
-    /// defined in `r[$hp]`. Panics if the range is not within the heap space.
-    #[cfg(test)]
-    pub fn to_heap<S, Tx, Ecal>(self, vm: &Interpreter<S, Tx, Ecal>) -> Self {
-        let hp = usize::try_from(vm.registers()[RegId::HP]).expect("Truncate");
-        let start = self.start.checked_add(hp).expect("Overflow");
-        let end = self.end.checked_add(hp).expect("Overflow");
-        if end > MEM_SIZE {
-            panic!("Invalid heap range");
-        }
+        let start = self.start() - index;
+        let end = self.end() - index;
+
         Self(start..end)
     }
 
@@ -389,28 +424,6 @@ impl MemoryRange {
         let mid = self.0.start + at;
         assert!(mid <= self.0.end);
         (Self(self.0.start..mid), Self(mid..self.0.end))
-    }
-
-    /// This function is safe because it is only used to shrink the range
-    /// and worst case the range will be empty.
-    pub fn shrink_end(&mut self, by: usize) {
-        self.0 = self.0.start..self.0.end.saturating_sub(by);
-    }
-
-    /// This function is safe because it is only used to grow the range
-    /// and worst case the range will be empty.
-    pub fn grow_start(&mut self, by: usize) {
-        self.0 = self.0.start.saturating_add(by)..self.0.end;
-    }
-
-    /// Get the memory slice for this range.
-    pub fn read(self, memory: &Memory) -> &[u8] {
-        &memory[self.0]
-    }
-
-    /// Get the mutable memory slice for this range.
-    pub fn write(self, memory: &mut Memory) -> &mut [u8] {
-        &mut memory[self.0]
     }
 }
 
@@ -558,7 +571,7 @@ pub(crate) fn try_update_stack_pointer(
         Err(PanicReason::MemoryOverflow.into())
     } else {
         *sp = new_sp;
-        memory.grow_stack(new_sp)?;
+        memory.grow_stack(hp, new_sp)?;
         Ok(())
     }
 }
@@ -600,11 +613,14 @@ pub(crate) fn push_selected_registers(
 
     // First update the new stack pointer, as that's the only error condition
     let count: u64 = bitmask.count_ones().into();
-    let stack_range = MemoryRange::new(*sp, count * 8)?;
-    try_update_stack_pointer(sp, ssp, hp, stack_range.words().end, memory)?;
+    let write_size = count * (core::mem::size_of::<Word>() as u64);
+    let write_at = *sp;
+    try_update_stack_pointer(sp, ssp, hp, write_at + write_size, memory)?;
 
     // Write the registers to the stack
-    let mut it = memory[stack_range.usizes()].chunks_exact_mut(8);
+    let mut it = memory
+        .write_noownerchecks(write_at, write_size)?
+        .chunks_exact_mut(8);
     for (i, reg) in program_regs.segment(segment).iter().enumerate() {
         if (bitmask & (1 << i)) != 0 {
             let item = it
@@ -637,10 +653,9 @@ pub(crate) fn pop_selected_registers(
         .checked_sub(size_in_stack)
         .ok_or(PanicReason::MemoryOverflow)?;
     try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
-    let stack_range = MemoryRange::new(new_sp, size_in_stack)?.usizes();
 
     // Restore registers from the stack
-    let mut it = memory[stack_range].chunks_exact(8);
+    let mut it = memory.read(new_sp, size_in_stack)?.chunks_exact(8);
     for (i, reg) in program_regs.segment_mut(segment).iter_mut().enumerate() {
         if (bitmask & (1 << i)) != 0 {
             let mut buf = [0u8; 8];
@@ -659,8 +674,8 @@ pub(crate) fn load_byte(
     b: Word,
     c: Word,
 ) -> SimpleResult<()> {
-    let range = MemoryRange::new_overflowing_op(Word::overflowing_add, b, c, 1u64)?;
-    *result = memory[range.start] as Word;
+    let [b] = memory.read_bytes(b.saturating_add(c))?;
+    *result = b as Word;
     Ok(inc_pc(pc)?)
 }
 
@@ -674,7 +689,7 @@ pub(crate) fn load_word(
     // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
     // immediate value.
     let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
-    *result = Word::from_be_bytes(read_bytes(memory, addr)?);
+    *result = Word::from_be_bytes(memory.read_bytes(addr)?);
     Ok(inc_pc(pc)?)
 }
 
@@ -687,7 +702,7 @@ pub(crate) fn store_byte(
     b: Word,
     c: Word,
 ) -> SimpleResult<()> {
-    write_bytes(memory, owner, a.saturating_add(c), [b as u8])?;
+    memory.write_bytes(owner, a.saturating_add(c), [b as u8])?;
     Ok(inc_pc(pc)?)
 }
 
@@ -701,8 +716,8 @@ pub(crate) fn store_word(
 ) -> SimpleResult<()> {
     // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
     // immediate value.
-    let addr = a.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
-    write_bytes(memory, owner, addr, b.to_be_bytes())?;
+    let addr = a.saturating_add(c * 8);
+    memory.write_bytes(owner, addr, b.to_be_bytes())?;
     Ok(inc_pc(pc)?)
 }
 
@@ -741,9 +756,7 @@ pub(crate) fn memclear(
     a: Word,
     b: Word,
 ) -> SimpleResult<()> {
-    let range = MemoryRange::new(a, b)?;
-    owner.verify_ownership(&range)?;
-    memory[range.usizes()].fill(0);
+    memory.write(owner, a, b)?.fill(0);
     Ok(inc_pc(pc)?)
 }
 
@@ -755,20 +768,20 @@ pub(crate) fn memcopy(
     b: Word,
     c: Word,
 ) -> SimpleResult<()> {
-    let dst_range = MemoryRange::new(a, c)?;
-    let src_range = MemoryRange::new(b, c)?;
+    let dst_range = memory.verify(a, c)?;
+    let src_range = memory.verify(b, c)?;
 
-    owner.verify_ownership(&dst_range)?;
+    owner.verify_ownership(&dst_range.words())?;
 
-    if dst_range.start <= src_range.start && src_range.start < dst_range.end
-        || src_range.start <= dst_range.start && dst_range.start < src_range.end
-        || dst_range.start < src_range.end && src_range.end <= dst_range.end
-        || src_range.start < dst_range.end && dst_range.end <= src_range.end
+    if dst_range.start() <= src_range.start() && src_range.start() < dst_range.end()
+        || src_range.start() <= dst_range.start() && dst_range.start() < src_range.end()
+        || dst_range.start() < src_range.end() && src_range.end() <= dst_range.end()
+        || src_range.start() < dst_range.end() && dst_range.end() <= src_range.end()
     {
         return Err(PanicReason::MemoryWriteOverlap.into())
     }
 
-    memory.memcopy(dst_range.usizes(), src_range.usizes());
+    memory.memcopy_noownerchecks(a, b, c)?;
 
     Ok(inc_pc(pc)?)
 }
@@ -781,9 +794,7 @@ pub(crate) fn memeq(
     c: Word,
     d: Word,
 ) -> SimpleResult<()> {
-    let range1 = MemoryRange::new(b, d)?;
-    let range2 = MemoryRange::new(c, d)?;
-    *result = (memory[range1.usizes()] == memory[range2.usizes()]) as Word;
+    *result = (memory.read(b, d)? == memory.read(c, d)?) as Word;
     Ok(inc_pc(pc)?)
 }
 
@@ -813,7 +824,7 @@ impl OwnershipRegisters {
 
     pub(crate) fn verify_ownership(
         &self,
-        range: &MemoryRange,
+        range: &Range<Word>,
     ) -> Result<(), PanicReason> {
         if self.has_ownership_range(range) {
             Ok(())
@@ -830,8 +841,7 @@ impl OwnershipRegisters {
         }
     }
 
-    pub(crate) fn has_ownership_range(&self, range: &MemoryRange) -> bool {
-        let range = range.words();
+    pub(crate) fn has_ownership_range(&self, range: &Range<Word>) -> bool {
         self.has_ownership_stack(&range) || self.has_ownership_heap(&range)
     }
 
@@ -873,55 +883,6 @@ impl OwnershipRegisters {
     }
 }
 
-pub(crate) fn try_mem_write<A: ToAddr>(
-    addr: A,
-    data: &[u8],
-    owner: OwnershipRegisters,
-    memory: &mut Memory,
-) -> SimpleResult<()> {
-    let range = MemoryRange::new(addr, data.len())?;
-    owner.verify_ownership(&range)?;
-    memory[range.usizes()].copy_from_slice(data);
-    Ok(())
-}
-
-pub(crate) fn try_zeroize<A: ToAddr, B: ToAddr>(
-    addr: A,
-    len: B,
-    owner: OwnershipRegisters,
-    memory: &mut Memory,
-) -> SimpleResult<()> {
-    let range = MemoryRange::new(addr, len)?;
-    owner.verify_ownership(&range)?;
-    memory[range.usizes()].fill(0);
-    Ok(())
-}
-
-/// Reads a constant-sized byte array from memory, performing overflow and memory range
-/// checks.
-pub(crate) fn read_bytes<const COUNT: usize>(
-    memory: &Memory,
-    addr: Word,
-) -> Result<[u8; COUNT], PanicReason> {
-    let range = MemoryRange::new_const::<_, COUNT>(addr)?;
-    Ok(<[u8; COUNT]>::try_from(&memory[range.usizes()])
-        .unwrap_or_else(|_| unreachable!()))
-}
-
-/// Writes a constant-sized byte array to memory, performing overflow, memory range and
-/// ownership checks.
-pub(crate) fn write_bytes<const COUNT: usize>(
-    memory: &mut Memory,
-    owner: OwnershipRegisters,
-    addr: Word,
-    bytes: [u8; COUNT],
-) -> SimpleResult<()> {
-    let range = MemoryRange::new_const::<_, COUNT>(addr)?;
-    owner.verify_ownership(&range)?;
-    memory[range.usizes()].copy_from_slice(&bytes);
-    Ok(())
-}
-
 /// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
 /// Performs overflow and memory range checks, but no ownership checks.
 pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
@@ -931,13 +892,20 @@ pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
     src_offset: usize,
     len: B,
 ) -> SimpleResult<()> {
-    let range = MemoryRange::new(dst_addr, len)?;
+    let range = memory.verify(dst_addr, len)?;
 
     let src_end = src_offset.saturating_add(range.len()).min(src.len());
     let data = src.get(src_offset..src_end).unwrap_or_default();
     let (r_data, r_zero) = range.split_at_offset(data.len());
-    memory[r_data.usizes()].copy_from_slice(data);
-    memory[r_zero.usizes()].fill(0);
+
+    memory
+        .write_noownerchecks(r_data.start(), r_data.len())
+        .expect("Range verified above")
+        .copy_from_slice(data);
+    memory
+        .write_noownerchecks(r_zero.start(), r_zero.len())
+        .expect("Range verified above")
+        .fill(0);
 
     Ok(())
 }

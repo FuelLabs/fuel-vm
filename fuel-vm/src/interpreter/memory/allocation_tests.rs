@@ -172,8 +172,9 @@ fn test_stack_pointer_overflow(
 #[test_case(0, VM_MAX_RAM - 1 => Ok(()); "c eq VM_MAX_RAM - 1")]
 #[test_case(u32::MAX as u64, u32::MAX as u64 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "b + c overflow")]
 fn test_load_byte(b: Word, c: Word) -> SimpleResult<()> {
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory = vec![1u8; MEM_SIZE];
     memory[((b + c) as usize).min(MEM_SIZE - 1)] = 2;
+    let memory: Memory = memory.try_into().unwrap();
     let mut pc = 4;
     let mut result = 0;
 
@@ -239,7 +240,7 @@ fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> SimpleResu
     store_byte(&mut memory, owner, RegMut::new(&mut pc), a, b, c)?;
 
     assert_eq!(pc, 8);
-    assert_eq!(memory[(a + c) as usize], b as u8);
+    assert_eq!(memory.read_bytes(a + c), Ok([b as u8]));
 
     Ok(())
 }
@@ -268,7 +269,7 @@ fn test_store_byte_more(
     match store_byte(&mut memory, owner, RegMut::new(&mut pc), a, b, c) {
         Ok(_) => {
             assert!(!is_error);
-            assert_eq!(memory[(a + c) as usize], b as u8);
+            assert_eq!(memory.read_bytes(a + c), Ok([b as u8]));
         }
         Err(e) => {
             assert!(is_error);

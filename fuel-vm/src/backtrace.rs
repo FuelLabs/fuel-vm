@@ -45,7 +45,7 @@ impl Backtrace {
         result: ScriptExecutionResult,
     ) -> Self {
         let call_stack = vm.call_stack().to_owned();
-        let contract = vm.internal_contract_or_default();
+        let contract = vm.internal_contract().unwrap_or_default();
         let memory = vm.memory().clone();
         let initial_balances = vm.initial_balances().clone();
         let mut registers = [0; VM_REGISTER_COUNT];

@@ -15,6 +15,7 @@ use crate::{
 use fuel_asm::{
     PanicReason,
     RegId,
+    Word,
 };
 
 impl<Tx, Ecal> Interpreter<PredicateStorage, Tx, Ecal>
@@ -33,8 +34,8 @@ where
             .program()
             .words();
 
-        self.registers[RegId::PC] = range.start;
-        self.registers[RegId::IS] = range.start;
+        self.registers[RegId::PC] = range.start as Word;
+        self.registers[RegId::IS] = range.start as Word;
 
         loop {
             if range.end <= self.registers[RegId::PC] {

@@ -407,9 +407,11 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
                 invert_receipts_ctx(&mut self.receipts, value)
             }
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
-            Change::Memory(Previous(Memory { start, bytes })) => {
-                self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])
-            }
+            Change::Memory(Previous(Memory { start, bytes })) => self
+                .memory
+                .write_noownerchecks(*start, bytes.len())
+                .expect("Memory must exist here")
+                .copy_from_slice(&bytes[..]),
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
             Change::Txn(Previous(tx)) => {

@@ -129,8 +129,11 @@ enum_from! {
         /// Attempt to use sequential memory instructions with too large slot count,
         /// typically because it cannot fit into usize
         TooManySlots = 0x2d,
-        /// During memory growth, the stack overlapped with the heap..
+        /// During memory growth, the stack overlapped with the heap
         MemoryGrowthOverlap = 0x2e,
+        /// Attempting to read or write uninitialized memory.
+        /// Also occurs when boundary crosses from stack to heap.
+        UninitalizedMemoryAccess = 0x2f,
     }
 }
 

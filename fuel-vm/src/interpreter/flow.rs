@@ -3,10 +3,7 @@ use crate::{
         Call,
         CallFrame,
     },
-    constraints::{
-        reg_key::*,
-        *,
-    },
+    constraints::reg_key::*,
     consts::*,
     context::Context,
     error::{
@@ -29,7 +26,7 @@ use crate::{
             current_contract,
             external_asset_id_balance_sub,
             inc_pc,
-            internal_contract_or_default,
+            internal_contract,
             set_frame_pointer,
         },
         receipts::ReceiptsCtx,
@@ -37,7 +34,6 @@ use crate::{
         InputContracts,
         Interpreter,
         Memory,
-        MemoryRange,
         PanicContext,
         RuntimeBalances,
     },
@@ -95,7 +91,7 @@ where
 
     pub(crate) fn ret(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let input = RetCtx {
             receipts: &mut self.receipts,
             frames: &mut self.frames,
@@ -109,7 +105,7 @@ where
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
+            current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let input = RetCtx {
             frames: &mut self.frames,
             registers: &mut self.registers,
@@ -124,7 +120,7 @@ where
     pub(crate) fn revert(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
             current_contract(&self.context, self.registers.fp(), &self.memory)
-                .map_or_else(|_| Some(ContractId::zeroed()), Option::<&_>::copied);
+                .map_or_else(|_| Some(ContractId::zeroed()), |c| c);
         revert(
             &mut self.receipts,
             current_contract,
@@ -139,7 +135,7 @@ where
         let is = self.registers[RegId::IS];
 
         let mut receipt =
-            Receipt::panic(self.internal_contract_or_default(), result, pc, is);
+            Receipt::panic(self.internal_contract().unwrap_or_default(), result, pc, is);
 
         match self.panic_context {
             PanicContext::None => {}
@@ -213,14 +209,14 @@ impl RetCtx<'_> {
     }
 
     pub(crate) fn ret_data(self, a: Word, b: Word) -> SimpleResult<Bytes32> {
-        let range = MemoryRange::new(a, b)?;
+        let data = self.memory.read(a, b)?.to_vec();
 
         let receipt = Receipt::return_data(
             self.current_contract.unwrap_or_else(ContractId::zeroed),
             a,
             self.registers[RegId::PC],
             self.registers[RegId::IS],
-            self.memory[range.usizes()].to_vec(),
+            data,
         );
         let digest = *receipt
             .digest()
@@ -356,15 +352,15 @@ where
     /// Prepare a call instruction for execution
     fn prepare_call_inner(
         &mut self,
-        call_params_mem_address: Word,
+        call_params_pointer: Word,
         amount_of_coins_to_forward: Word,
-        asset_id_mem_address: Word,
+        asset_id_pointer: Word,
         amount_of_gas_to_forward: Word,
     ) -> IoResult<(), S::DataError> {
         let params = PrepareCallParams {
-            call_params_mem_address,
+            call_params_pointer,
+            asset_id_pointer,
             amount_of_coins_to_forward,
-            asset_id_mem_address,
             amount_of_gas_to_forward,
         };
         let gas_cost = self.gas_costs().call;
@@ -373,14 +369,13 @@ where
         // We will charge for the frame size in the `prepare_call`.
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?.copied();
-        let memory = PrepareCallMemory::try_from((&mut self.memory, &params))?;
+            current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let input_contracts = self.tx.input_contracts().copied().collect::<Vec<_>>();
 
         PrepareCallCtx {
             params,
             registers: (&mut self.registers).into(),
-            memory,
+            memory: &mut self.memory,
             context: &mut self.context,
             gas_cost,
             runtime_balances: &mut self.balances,
@@ -402,11 +397,11 @@ where
 #[cfg_attr(test, derive(Default))]
 struct PrepareCallParams {
     /// Register A of input
-    pub call_params_mem_address: Word,
+    pub call_params_pointer: Word,
     /// Register B of input
     pub amount_of_coins_to_forward: Word,
     /// Register C of input
-    pub asset_id_mem_address: Word,
+    pub asset_id_pointer: Word,
     /// Register D of input
     pub amount_of_gas_to_forward: Word,
 }
@@ -445,16 +440,10 @@ impl<'a> PrepareCallRegisters<'a> {
     }
 }
 
-struct PrepareCallMemory<'a> {
-    memory: &'a mut Memory,
-    call_params: CheckedMemValue<Call>,
-    asset_id: CheckedMemValue<AssetId>,
-}
-
 struct PrepareCallCtx<'vm, S, I> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
-    memory: PrepareCallMemory<'vm>,
+    memory: &'vm mut Memory,
     context: &'vm mut Context,
     gas_cost: DependentCost,
     runtime_balances: &'vm mut RuntimeBalances,
@@ -479,8 +468,12 @@ where
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
     {
-        let call = self.memory.call_params.try_from(self.memory.memory)?;
-        let asset_id = self.memory.asset_id.try_from(self.memory.memory)?;
+        let call_bytes = self
+            .memory
+            .read(self.params.call_params_pointer, Call::LEN)?;
+        let call = Call::try_from(call_bytes)?;
+        let asset_id =
+            AssetId::new(self.memory.read_bytes(self.params.asset_id_pointer)?);
 
         let mut frame = call_frame(
             self.registers.copy_registers(),
@@ -514,7 +507,7 @@ where
             let amount = self.params.amount_of_coins_to_forward;
             external_asset_id_balance_sub(
                 self.runtime_balances,
-                self.memory.memory,
+                self.memory,
                 frame.asset_id(),
                 amount,
             )?;
@@ -561,41 +554,38 @@ where
         *frame.global_gas_mut() = *self.registers.system_registers.ggas;
 
         let frame_bytes = frame.to_bytes();
-        let len = (frame_bytes.len() as Word)
-            .checked_add(frame.total_code_size() as Word)
+        let len = frame_bytes
+            .len()
+            .checked_add(frame.total_code_size())
             .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
-
-        if len > *self.registers.system_registers.hp
-            || *self.registers.system_registers.sp
-                > *self.registers.system_registers.hp - len
-        {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-        let id = internal_contract_or_default(
-            self.context,
-            self.registers.system_registers.fp.as_ref(),
-            self.memory.memory,
-        );
+        let lenw = len as Word;
 
         let old_sp = *self.registers.system_registers.sp;
-        let new_sp = old_sp.checked_add(len).ok_or(PanicReason::MemoryOverflow)?;
+        let new_sp = old_sp.saturating_add(lenw);
+        self.memory
+            .grow_stack(self.registers.system_registers.hp, new_sp)?;
+        *self.registers.system_registers.sp = new_sp;
+        *self.registers.system_registers.ssp = new_sp;
+
+        let id = internal_contract(
+            self.context,
+            self.registers.system_registers.fp.as_ref(),
+            self.memory,
+        )
+        .unwrap_or_default();
 
         set_frame_pointer(
             self.context,
             self.registers.system_registers.fp.as_mut(),
             old_sp,
         );
-        *self.registers.system_registers.sp = new_sp;
-        *self.registers.system_registers.ssp = new_sp;
-        self.memory.memory.grow_stack(new_sp)?;
 
-        let code_frame_mem_range =
-            MemoryRange::new(*self.registers.system_registers.fp, len)?;
         let frame_end = write_call_to_memory(
             &frame,
             frame_bytes,
-            code_frame_mem_range,
-            self.memory.memory,
+            self.registers.system_registers.fp.as_ref(),
+            len,
+            self.memory,
             self.storage,
         )?;
         *self.registers.system_registers.bal = self.params.amount_of_coins_to_forward;
@@ -626,39 +616,47 @@ where
 fn write_call_to_memory<S>(
     frame: &CallFrame,
     frame_bytes: Vec<u8>,
-    code_mem_range: MemoryRange,
+    fp: Reg<FP>,
+    len: usize,
     memory: &mut Memory,
     storage: &S,
 ) -> IoResult<Word, S::Error>
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
 {
-    let mut code_frame_range = code_mem_range.clone();
     // Addition is safe because code size + padding is always less than len
-    code_frame_range.shrink_end(frame.code_size() + frame.code_size_padding());
-    code_frame_range
-        .clone()
-        .write(memory)
+    let frame_len_with_padding = frame.code_size() + frame.code_size_padding();
+    let content_size = len.saturating_sub(frame_len_with_padding);
+    memory
+        .write_noownerchecks(*fp, content_size)?
         .copy_from_slice(&frame_bytes);
 
-    let mut code_range = code_mem_range.clone();
-    code_range.grow_start(CallFrame::serialized_size());
-    code_range.shrink_end(frame.code_size_padding());
+    let code_start = fp.saturating_add(CallFrame::serialized_size() as Word);
+    let code_len = frame.code_size();
     let bytes_read = storage
         .storage::<ContractsRawCode>()
-        .read(frame.to(), code_range.write(memory))
+        .read(
+            frame.to(),
+            memory
+                .write_noownerchecks(code_start, code_len)
+                .expect("Write access checked above"),
+        )
         .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read != frame.code_size() {
         return Err(PanicReason::ContractMismatch.into())
     }
 
+    let padding_start = code_start.saturating_add(code_len as Word);
+    let padding_size = frame.code_size_padding();
     if frame.code_size_padding() > 0 {
-        let mut padding_range = code_mem_range;
-        padding_range.grow_start(CallFrame::serialized_size() + frame.code_size());
-        padding_range.write(memory).fill(0);
+        memory
+            .write_noownerchecks(padding_start, padding_size)?
+            .fill(0);
     }
-    Ok(code_frame_range.end as Word)
+    Ok((*fp)
+        .checked_add(content_size as Word)
+        .expect("Checked above"))
 }
 
 fn call_frame<S>(
@@ -745,23 +743,5 @@ impl<'reg> From<SystemRegisters<'reg>>
                 flag: registers.flag.into(),
             },
         )
-    }
-}
-
-impl<'mem> TryFrom<(&'mem mut Memory, &PrepareCallParams)> for PrepareCallMemory<'mem> {
-    type Error = PanicReason;
-
-    fn try_from(
-        (memory, params): (&'mem mut Memory, &PrepareCallParams),
-    ) -> Result<Self, Self::Error> {
-        Ok(Self {
-            memory,
-            call_params: CheckedMemValue::new::<{ Call::LEN }>(
-                params.call_params_mem_address,
-            )?,
-            asset_id: CheckedMemValue::new::<{ AssetId::LEN }>(
-                params.asset_id_mem_address,
-            )?,
-        })
     }
 }

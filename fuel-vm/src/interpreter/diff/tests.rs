@@ -16,6 +16,10 @@ use fuel_types::{
 use test_case::test_case;
 
 use crate::{
+    constraints::reg_key::{
+        Reg,
+        HP,
+    },
     consts::*,
     storage::MemoryStorage,
 };
@@ -215,7 +219,9 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
 #[test]
 fn reset_vm_memory() {
     let mut a = Interpreter::<_, Script>::with_memory_storage();
-    a.memory.grow_stack(132).unwrap();
+    a.memory
+        .grow_stack(Reg::<HP>::new(&VM_MAX_RAM), 132)
+        .unwrap();
     let mut b = a.clone();
     b.memory[100..132].copy_from_slice(&[1u8; 32]);
     let diff: Diff<InitialVmState> = a.diff(&b).into();

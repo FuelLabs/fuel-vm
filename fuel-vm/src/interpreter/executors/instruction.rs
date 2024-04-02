@@ -43,29 +43,20 @@ where
         self.instruction(raw_instruction)
     }
 
-    /// Reads instruction bytes at given address,
-    /// returning `None` if the location is unreadable.
-    fn fetch_instruction_bytes(&self, addr: Word) -> Option<RawInstruction> {
-        let start: usize = addr.try_into().ok()?;
-        let end = start.checked_add(Instruction::SIZE)?;
-        let bytes = self.memory.get(start..end)?;
-        Some(RawInstruction::from_be_bytes(
-            bytes.try_into().expect("Slice len mismatch"),
-        ))
-    }
-
     /// Reads the current instruction located in `$m[$pc]`,
     /// performing memory boundary checks.
     fn fetch_instruction(
         &self,
     ) -> Result<RawInstruction, InterpreterError<S::DataError>> {
         let pc = self.registers[RegId::PC];
-        let instruction = self.fetch_instruction_bytes(pc).ok_or(
-            InterpreterError::PanicInstruction(PanicInstruction::error(
-                PanicReason::MemoryOverflow,
-                0, // The value is meaningless since fetch was out-of-bounds
-            )),
-        )?;
+        let instruction = RawInstruction::from_be_bytes(
+            self.memory.read_bytes(pc).map_err(|reason| {
+                InterpreterError::PanicInstruction(PanicInstruction::error(
+                    reason,
+                    0, // The value is meaningless since fetch was out-of-bounds
+                ))
+            })?,
+        );
         if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP] {
             return Err(InterpreterError::PanicInstruction(PanicInstruction::error(
                 PanicReason::MemoryNotExecutable,

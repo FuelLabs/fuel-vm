@@ -22,6 +22,7 @@ use fuel_asm::{
     op,
     Instruction,
     PanicReason::{
+        ContractMaxSize,
         ContractNotInInputs,
         ExpectedUnallocatedStack,
         MemoryOverflow,
@@ -808,7 +809,7 @@ fn ldc_mem_offset_above_reg_hp() {
         TxParameters::DEFAULT.tx_offset()
     );
 
-    ldc_reason_helper(load_contract, MemoryOverflow);
+    ldc_reason_helper(load_contract, ContractMaxSize);
 }
 
 #[test]
@@ -1433,6 +1434,8 @@ fn check_receipts_for_program_call(
         .execute();
 
     let receipts = result.receipts();
+
+    dbg!(receipts);
 
     // Expect the correct receipt
     assert_eq!(

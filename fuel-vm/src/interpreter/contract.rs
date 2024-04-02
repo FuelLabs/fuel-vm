@@ -11,17 +11,13 @@ use super::{
         internal_contract,
         set_variable_output,
     },
-    memory::read_bytes,
     ExecutableTransaction,
     Interpreter,
     Memory,
     RuntimeBalances,
 };
 use crate::{
-    constraints::{
-        reg_key::*,
-        CheckedMemConstLen,
-    },
+    constraints::reg_key::*,
     consts::*,
     context::Context,
     convert,
@@ -208,15 +204,12 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         I: Iterator<Item = &'vm ContractId>,
         S: ContractsAssetsStorage,
     {
-        let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new(b)?;
-        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(c)?;
+        let asset_id = AssetId::new(self.memory.read_bytes(b)?);
+        let contract = ContractId::new(self.memory.read_bytes(c)?);
 
-        let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
-        let contract = ContractId::from_bytes_ref(contract.read(self.memory));
+        self.input_contracts.check(&contract)?;
 
-        self.input_contracts.check(contract)?;
-
-        let balance = balance(self.storage, contract, asset_id)?;
+        let balance = balance(self.storage, &contract, &asset_id)?;
 
         *result = balance;
 
@@ -259,8 +252,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     {
         let amount = transfer_amount;
         let destination =
-            ContractId::from(read_bytes(self.memory, recipient_contract_id_offset)?);
-        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
+            ContractId::from(self.memory.read_bytes(recipient_contract_id_offset)?);
+        let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
 
         InputContracts::new(self.tx.input_contracts(), panic_context)
             .check(&destination)?;
@@ -272,7 +265,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {
             // optimistically attempt to load the internal contract id
-            Ok(source_contract) => Some(*source_contract),
+            Ok(source_contract) => Some(source_contract),
             // revert to external context if no internal contract is set
             Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
@@ -339,8 +332,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;
-        let to = Address::from(read_bytes(self.memory, recipient_offset)?);
-        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
+        let to = Address::from(self.memory.read_bytes(recipient_offset)?);
+        let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
         let amount = transfer_amount;
 
         if amount == 0 {
@@ -350,7 +343,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {
             // optimistically attempt to load the internal contract id
-            Ok(source_contract) => Some(*source_contract),
+            Ok(source_contract) => Some(source_contract),
             // revert to external context if no internal contract is set
             Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors

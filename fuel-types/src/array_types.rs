@@ -150,7 +150,8 @@ macro_rules! key_methods {
             ///
             /// This function will panic if the length of `buf` is smaller than
             /// `Self::LEN`.
-            pub fn from_bytes(bytes: &[u8]) -> Self {
+            #[wasm_bindgen(js_name = from_bytes)]
+            pub fn from_bytes_typescript(bytes: &[u8]) -> Self {
                 Self(bytes.try_into().expect(
                     format!("The size of the arrays it not {} size", $s).as_str(),
                 ))

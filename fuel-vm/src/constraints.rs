@@ -1,15 +1,6 @@
 //! Types to help constrain inputs to functions to only what is used.
 
-use fuel_asm::{
-    PanicReason,
-    Word,
-};
 use fuel_types::ContractId;
-
-#[cfg(test)]
-use fuel_types::canonical::Deserialize;
-
-use crate::interpreter::Memory;
 
 pub mod reg_key;
 

@@ -167,7 +167,7 @@ pub(crate) fn keccak256(
         Keccak256,
     };
     let mut h = Keccak256::new();
-    h.update(&memory.read(b, c)?);
+    h.update(memory.read(b, c)?);
 
     memory.write_bytes(owner, a, *h.finalize().as_ref())?;
 

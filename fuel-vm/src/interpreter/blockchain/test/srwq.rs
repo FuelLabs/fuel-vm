@@ -1,10 +1,7 @@
-use crate::{
-    context::Context,
-    storage::{
-        ContractsState,
-        ContractsStateData,
-        MemoryStorage,
-    },
+use crate::storage::{
+    ContractsState,
+    ContractsStateData,
+    MemoryStorage,
 };
 
 use super::*;
@@ -126,9 +123,11 @@ fn test_state_read_qword(input: SRWQInput) -> (Memory, bool) {
             },
         },
         &mut result_register,
-        destination_pointer,
-        origin_key_pointer,
-        num_slots,
+        StateReadQWordParams {
+            destination_pointer,
+            origin_key_pointer,
+            num_slots,
+        },
     )
     .unwrap();
     (memory, result_register != 0)

@@ -19,15 +19,12 @@ use fuel_types::{
     Word,
 };
 
-use core::{
-    ops,
-    ops::{
-        Index,
-        IndexMut,
-        Range,
-        RangeFrom,
-        RangeTo,
-    },
+use core::ops::{
+    Index,
+    IndexMut,
+    Range,
+    RangeFrom,
+    RangeTo,
 };
 
 #[cfg(feature = "alloc")]
@@ -391,6 +388,11 @@ impl MemoryRange {
     /// End of the range. One past the last byte.
     pub fn end(&self) -> usize {
         self.0.end
+    }
+
+    /// Is the range empty?
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Length of the range.
@@ -842,7 +844,7 @@ impl OwnershipRegisters {
     }
 
     pub(crate) fn has_ownership_range(&self, range: &Range<Word>) -> bool {
-        self.has_ownership_stack(&range) || self.has_ownership_heap(&range)
+        self.has_ownership_stack(range) || self.has_ownership_heap(range)
     }
 
     /// Empty range is owned iff the range.start is owned

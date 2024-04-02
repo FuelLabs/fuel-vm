@@ -6,10 +6,7 @@ use alloc::{
 };
 
 use crate::{
-    interpreter::{
-        memory::Memory,
-        MemoryRange,
-    },
+    interpreter::memory::Memory,
     storage::MemoryStorage,
 };
 

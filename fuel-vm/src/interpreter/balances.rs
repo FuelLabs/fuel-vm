@@ -13,10 +13,7 @@ use fuel_asm::{
     Word,
 };
 use fuel_tx::ValidityError;
-use fuel_types::{
-    canonical::Serialize,
-    AssetId,
-};
+use fuel_types::AssetId;
 use itertools::Itertools;
 
 use alloc::collections::BTreeMap;

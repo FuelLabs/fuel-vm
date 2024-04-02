@@ -65,8 +65,6 @@ use fuel_types::{
     Word,
 };
 
-use super::MemoryRange;
-
 #[cfg(test)]
 mod code_tests;
 #[cfg(test)]
@@ -393,7 +391,19 @@ where
             ..
         } = self;
 
-        state_read_qword(&contract_id?, storage, memory, pc, owner, result, a, c, d)
+        state_read_qword(
+            &contract_id?,
+            storage,
+            memory,
+            pc,
+            owner,
+            result,
+            StateReadQWordParams {
+                destination_pointer: a,
+                origin_key_pointer: c,
+                num_slots: d,
+            },
+        )
     }
 
     pub(crate) fn state_write_word(
@@ -1147,6 +1157,12 @@ where
     }
 }
 
+struct StateReadQWordParams {
+    destination_pointer: Word,
+    origin_key_pointer: Word,
+    num_slots: Word,
+}
+
 fn state_read_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &S,
@@ -1154,10 +1170,14 @@ fn state_read_qword<S: InterpreterStorage>(
     pc: RegMut<PC>,
     ownership_registers: OwnershipRegisters,
     result_register: &mut Word,
-    destination_pointer: Word,
-    origin_key_pointer: Word,
-    num_slots: Word,
+    params: StateReadQWordParams,
 ) -> IoResult<(), S::DataError> {
+    let StateReadQWordParams {
+        destination_pointer,
+        origin_key_pointer,
+        num_slots,
+    } = params;
+
     let num_slots = convert::to_usize(num_slots).ok_or(PanicReason::TooManySlots)?;
     let slots_len = Bytes32::LEN.saturating_mul(num_slots);
     let target_range = memory.verify(destination_pointer, slots_len)?;

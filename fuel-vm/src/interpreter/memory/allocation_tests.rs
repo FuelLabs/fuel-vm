@@ -174,7 +174,7 @@ fn test_stack_pointer_overflow(
 fn test_load_byte(b: Word, c: Word) -> SimpleResult<()> {
     let mut memory = vec![1u8; MEM_SIZE];
     memory[((b + c) as usize).min(MEM_SIZE - 1)] = 2;
-    let memory: Memory = memory.try_into().unwrap();
+    let memory: Memory = memory.into();
     let mut pc = 4;
     let mut result = 0;
 

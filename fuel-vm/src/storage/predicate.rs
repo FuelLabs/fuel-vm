@@ -20,6 +20,7 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
+use fuel_tx::ConsensusParameters;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -202,6 +203,14 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
+    fn consensus_parameters_version(&self) -> Result<u32, Self::DataError> {
+        Err(StorageUnavailable)
+    }
+
+    fn state_transition_version(&self) -> Result<u32, Self::DataError> {
+        Err(StorageUnavailable)
+    }
+
     fn timestamp(&self, _height: BlockHeight) -> Result<Word, StorageUnavailable> {
         Err(StorageUnavailable)
     }
@@ -214,6 +223,29 @@ impl InterpreterStorage for PredicateStorage {
     }
 
     fn coinbase(&self) -> Result<ContractId, StorageUnavailable> {
+        Err(StorageUnavailable)
+    }
+
+    fn set_consensus_parameters(
+        &mut self,
+        _version: u32,
+        _consensus_parameters: &ConsensusParameters,
+    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+        Err(StorageUnavailable)
+    }
+
+    fn contains_state_transition_bytecode_hash(
+        &self,
+        _hash: &Bytes32,
+    ) -> Result<bool, Self::DataError> {
+        Err(StorageUnavailable)
+    }
+
+    fn set_state_transition_bytecode(
+        &mut self,
+        _version: u32,
+        _hash: &Bytes32,
+    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
         Err(StorageUnavailable)
     }
 

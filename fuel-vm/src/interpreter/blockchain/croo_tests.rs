@@ -54,7 +54,7 @@ fn test_code_root() {
     // Given
     let contract_id = new_contract_id();
 
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
@@ -114,7 +114,7 @@ fn test_code_root_contract_not_found() {
     // Given
     let contract_id = new_contract_id();
 
-    let storage = MemoryStorage::new(Default::default(), Default::default());
+    let storage = MemoryStorage::default();
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
@@ -161,7 +161,7 @@ fn test_code_root_contract_not_in_inputs() {
     // Given
     let contract_id = new_contract_id();
 
-    let storage = MemoryStorage::new(Default::default(), Default::default());
+    let storage = MemoryStorage::default();
     let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 

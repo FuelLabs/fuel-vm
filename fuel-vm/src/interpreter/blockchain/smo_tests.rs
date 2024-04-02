@@ -216,7 +216,7 @@ fn test_smo(
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
     let mut receipts = Default::default();
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let old_balance = storage
         .contract_asset_id_balance_insert(
             &ContractId::default(),

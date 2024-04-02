@@ -9,6 +9,10 @@ mod upgrade;
 mod utxo_id;
 mod witness;
 
+pub use chargeable_transaction::{
+    ChargeableMetadata,
+    ChargeableTransaction,
+};
 pub use create::{
     Create,
     CreateBody,
@@ -22,6 +26,7 @@ pub use storage::StorageSlot;
 pub use upgrade::{
     Upgrade,
     UpgradeBody,
+    UpgradeMetadata,
     UpgradePurpose,
 };
 pub use utxo_id::UtxoId;

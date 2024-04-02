@@ -29,7 +29,7 @@ fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
     memory[c as usize..(c as usize + ContractId::LEN)]
         .copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let old_balance = storage
         .contract_asset_id_balance_insert(&contract_id, &AssetId::from([2u8; 32]), 33)
         .unwrap();
@@ -97,7 +97,7 @@ fn test_transfer(
     memory[fp as usize..(fp as usize + ContractId::LEN)]
         .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
 
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
 
     let initial_recipient_contract_balance = 0;
     let initial_source_contract_balance = 60;
@@ -240,7 +240,7 @@ fn test_transfer_output(
     memory[fp as usize..(fp as usize + ContractId::LEN)]
         .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
 
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
 
     let initial_contract_balance = 60;
 
@@ -359,7 +359,7 @@ fn test_balance_increase(
 ) -> IoResult<(), Infallible> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let initial = initial.into();
     if let Some(initial) = initial {
         let old_balance = storage
@@ -397,7 +397,7 @@ fn test_balance_decrease(
 ) -> IoResult<(), Infallible> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let initial = initial.into();
     if let Some(initial) = initial {
         let old_balance = storage

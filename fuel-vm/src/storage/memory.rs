@@ -18,7 +18,10 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::Contract;
+use fuel_tx::{
+    ConsensusParameters,
+    Contract,
+};
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -41,6 +44,12 @@ struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
     contract_state: BTreeMap<ContractsStateKey, ContractsStateData>,
+    /// Mapping from consensus parameters version to consensus parameters.
+    consensus_parameters_versions: BTreeMap<u32, ConsensusParameters>,
+    /// Mapping from state transition bytecode hash to bytecode.
+    state_transition_bytecodes: BTreeMap<Bytes32, Vec<u8>>,
+    /// Mapping from state transition bytecode version to hash.
+    state_transition_bytecodes_versions: BTreeMap<u32, Bytes32>,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +63,8 @@ struct MemoryStorageInner {
 pub struct MemoryStorage {
     block_height: BlockHeight,
     coinbase: ContractId,
+    consensus_parameters_version: u32,
+    state_transition_version: u32,
     memory: MemoryStorageInner,
     transacted: MemoryStorageInner,
     persisted: MemoryStorageInner,
@@ -62,9 +73,21 @@ pub struct MemoryStorage {
 impl MemoryStorage {
     /// Create a new memory storage.
     pub fn new(block_height: BlockHeight, coinbase: ContractId) -> Self {
+        Self::new_with_versions(block_height, coinbase, 0, 0)
+    }
+
+    /// Create a new memory storage with versions.
+    pub fn new_with_versions(
+        block_height: BlockHeight,
+        coinbase: ContractId,
+        consensus_parameters_version: u32,
+        state_transition_version: u32,
+    ) -> Self {
         Self {
             block_height,
             coinbase,
+            consensus_parameters_version,
+            state_transition_version,
             memory: Default::default(),
             transacted: Default::default(),
             persisted: Default::default(),
@@ -362,6 +385,14 @@ impl InterpreterStorage for MemoryStorage {
         Ok(self.block_height)
     }
 
+    fn consensus_parameters_version(&self) -> Result<u32, Self::DataError> {
+        Ok(self.consensus_parameters_version)
+    }
+
+    fn state_transition_version(&self) -> Result<u32, Self::DataError> {
+        Ok(self.state_transition_version)
+    }
+
     fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         const GENESIS: Tai64 = Tai64::UNIX_EPOCH;
         const INTERVAL: Word = 10;
@@ -375,6 +406,37 @@ impl InterpreterStorage for MemoryStorage {
 
     fn coinbase(&self) -> Result<ContractId, Infallible> {
         Ok(self.coinbase)
+    }
+
+    fn set_consensus_parameters(
+        &mut self,
+        version: u32,
+        consensus_parameters: &ConsensusParameters,
+    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+        Ok(self
+            .memory
+            .consensus_parameters_versions
+            .insert(version, consensus_parameters.clone())
+            .map(Cow::Owned))
+    }
+
+    fn contains_state_transition_bytecode_hash(
+        &self,
+        hash: &Bytes32,
+    ) -> Result<bool, Self::DataError> {
+        Ok(self.memory.state_transition_bytecodes.contains_key(hash))
+    }
+
+    fn set_state_transition_bytecode(
+        &mut self,
+        version: u32,
+        bytecode: &Bytes32,
+    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+        Ok(self
+            .memory
+            .state_transition_bytecodes_versions
+            .insert(version, *bytecode)
+            .map(Cow::Owned))
     }
 
     fn contract_state_range(

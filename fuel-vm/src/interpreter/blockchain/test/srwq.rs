@@ -103,7 +103,7 @@ fn test_state_read_qword(input: SRWQInput) -> (Memory<MEM_SIZE>, bool) {
         storage_slots,
         mut memory,
     } = input;
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()

@@ -65,9 +65,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#707](https://github.com/FuelLabs/fuel-vm/pull/707): Side small breaking for tests changes from the `Upgrade` transaction:
   - Moved `fuel-tx-test-helpers` logic into the `fuel_tx::test_helpers` module.
+  - Added a new rule for `Create` transaction: all inputs should use base asset otherwise it returns `TransactionInputContainsNonBaseAssetId` error.
   - Renamed some errors because now they are used for several transactions(`Upgrade` uses some errors from `Create` and some from `Script` transactions):
     - `TransactionScriptOutputContractCreated` -> `TransactionOutputContainsContractCreated`.
-    - `TransactionCreateInputContract` -> `TransactionInputContainsContract`.
+    - `TransactionCreateOutputContract` -> `TransactionOutputContainsContract`.
+    - `TransactionCreateOutputVariable` -> `TransactionOutputContainsVariable`.
+    - `TransactionCreateOutputChangeNotBaseAsset` -> `TransactionChangeChangeUsesNotBaseAsset`.
     - `TransactionCreateInputContract` -> `TransactionInputContainsContract`.
     - `TransactionCreateMessageData` -> `TransactionInputContainsMessageData`.
   - The combination of `serde` and `postcard` is used to serialize and deserialize `ConsensusParameters` during the upgrade. This means the protocol and state transition function requires the `serde` feature by default for `ConsensusParameters` and `fuel-types`.

@@ -42,10 +42,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     Only the privileged address can upgrade the network. The privileged address can be either a real account or a predicate.
     
     Since serialized consensus parameters are small(< 2kb), they can be part of the upgrade transaction and live inside of witness data. The bytecode of the blockchain state transition function is huge ~1.6MB(relative to consensus parameters), and it is impossible to fit it into one transaction. So when we perform the upgrade of the state transition function, it should already be available on the blockchain. The transaction to actually upload the bytecode(`Upload` transaction) will implemented in the https://github.com/FuelLabs/fuel-core/issues/1754.
-    
-    Side changes:
-  - The combination of `serde` and `postcard` is used to serialize and deserialize `ConsensusParameters` during the upgrade. This means the protocol and state transition function requires the `serde` feature by default for `ConsensusParameters` and `fuel-types`.
-  - Used the same pattern everywhere: 
+
+### Changed
+
+- [#707](https://github.com/FuelLabs/fuel-vm/pull/707): Used the same pattern everywhere in the codebase: 
     ```rust
                  Self::Script(tx) => tx.encode_static(buffer),
                  Self::Create(tx) => tx.encode_static(buffer),
@@ -61,8 +61,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
                  Transaction::Upgrade(upgrade) => upgrade.encode_static(buffer),
     ```
 
-### Changed
-
 #### Breaking
 
 - [#707](https://github.com/FuelLabs/fuel-vm/pull/707): Side small breaking for tests changes from the `Upgrade` transaction:
@@ -72,6 +70,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     - `TransactionCreateInputContract` -> `TransactionInputContainsContract`.
     - `TransactionCreateInputContract` -> `TransactionInputContainsContract`.
     - `TransactionCreateMessageData` -> `TransactionInputContainsMessageData`.
+  - The combination of `serde` and `postcard` is used to serialize and deserialize `ConsensusParameters` during the upgrade. This means the protocol and state transition function requires the `serde` feature by default for `ConsensusParameters` and `fuel-types`.
 
 ## [Version 0.48.0]
 

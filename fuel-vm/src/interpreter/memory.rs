@@ -121,15 +121,7 @@ impl Memory {
         if new_hp < self.stack.len() {
             return Err(PanicReason::MemoryGrowthOverlap)
         }
-        println!("Growing heap to {}, size={}", new_hp, MEM_SIZE - new_hp);
-
         reverse_resize_at_least(&mut self.heap, MEM_SIZE - new_hp);
-
-        println!(
-            "After this heap size={} and offset={}",
-            self.heap.len(),
-            self.heap_offset()
-        );
 
         Ok(())
     }

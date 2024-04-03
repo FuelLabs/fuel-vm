@@ -1435,8 +1435,6 @@ fn check_receipts_for_program_call(
 
     let receipts = result.receipts();
 
-    dbg!(receipts);
-
     // Expect the correct receipt
     assert_eq!(
         receipts[1].ra().expect("Register value expected"),

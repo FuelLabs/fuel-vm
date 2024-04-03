@@ -340,7 +340,7 @@ fn test_meq() {
     ];
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
-    if let Some(Receipt::Log { ra, rb, rc, rd, .. }) = dbg!(vm.receipts()).first() {
+    if let Some(Receipt::Log { ra, rb, rc, rd, .. }) = vm.receipts().first() {
         assert_eq!(*ra, 1);
         assert_eq!(*rb, 1);
         assert_eq!(*rc, 0);

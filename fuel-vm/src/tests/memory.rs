@@ -447,7 +447,6 @@ fn test_heap_allocation_zeroes_memory() {
         op::ret(0x24),
     ]);
     let receipts = run_script(script);
-    dbg!(&receipts);
     if let Some(Receipt::Return { val, .. }) = receipts.first() {
         assert_eq!(*val, 0u64);
     } else {

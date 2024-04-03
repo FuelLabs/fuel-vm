@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+#### Breaking
+
+- [#707](https://github.com/FuelLabs/fuel-vm/pull/707): The change adds a new `Upgrade` transaction that allows upgrading either consensus parameters or state transition function used by the network to produce future blocks.
+    The purpose of the upgrade is defined by the `Upgrade Purpose` type:
+    
+    ```rust
+    pub enum UpgradePurpose {
+        /// The upgrade is performed to change the consensus parameters.
+        ConsensusParameters {
+            /// The index of the witness in the [`Witnesses`] field that contains
+            /// the serialized consensus parameters.
+            witness_index: u16,
+            /// The hash of the serialized consensus parameters.
+            /// Since the serialized consensus parameters live inside witnesses(malleable
+            /// data), any party can override them. The `checksum` is used to verify that the
+            /// data was not modified.
+            checksum: Bytes32,
+        },
+        /// The upgrade is performed to change the state transition function.
+        StateTransition {
+            /// The hash of the new bytecode of the state transition function.
+            /// The bytecode must be present on the blockchain(should be known by the
+            /// network) at the moment of inclusion of this transaction.
+            bytecode_hash: Bytes32,
+        },
+    }
+    ```
+    
+    The `Upgrade` transaction is chargeable, and the sender should pay for it. Transaction inputs should contain only base assets.
+    
+    Only the privileged address can upgrade the network. The privileged address can be either a real account or a predicate.
+    
+    Since serialized consensus parameters are small(< 2kb), they can be part of the upgrade transaction and live inside of witness data. The bytecode of the blockchain state transition function is huge ~1.6MB(relative to consensus parameters), and it is impossible to fit it into one transaction. So when we perform the upgrade of the state transition function, it should already be available on the blockchain. The transaction to actually upload the bytecode(`Upload` transaction) will implemented in the https://github.com/FuelLabs/fuel-core/issues/1754.
+    
+    Side changes:
+  - The combination of `serde` and `postcard` is used to serialize and deserialize `ConsensusParameters` during the upgrade. This means the protocol and state transition function requires the `serde` feature by default for `ConsensusParameters` and `fuel-types`.
+  - Used the same pattern everywhere: 
+    ```rust
+                 Self::Script(tx) => tx.encode_static(buffer),
+                 Self::Create(tx) => tx.encode_static(buffer),
+                 Self::Mint(tx) => tx.encode_static(buffer),
+                 Self::Upgrade(tx) => tx.encode_static(buffer),
+    ```
+  
+    Instead of:
+    ```rust
+                 Transaction::Script(script) => script.encode_static(buffer),
+                 Transaction::Create(create) => create.encode_static(buffer),
+                 Transaction::Mint(mint) => mint.encode_static(buffer),
+                 Transaction::Upgrade(upgrade) => upgrade.encode_static(buffer),
+    ```
+
+### Changed
+
+#### Breaking
+
+- [#707](https://github.com/FuelLabs/fuel-vm/pull/707): Side small breaking for tests changes from the `Upgrade` transaction:
+  - Moved `fuel-tx-test-helpers` logic into the `fuel_tx::test_helpers` module.
+  - Renamed some errors because now they are used for several transactions(`Upgrade` uses some errors from `Create` and some from `Script` transactions):
+    - `TransactionScriptOutputContractCreated` -> `TransactionOutputContainsContractCreated`.
+    - `TransactionCreateInputContract` -> `TransactionInputContainsContract`.
+    - `TransactionCreateInputContract` -> `TransactionInputContainsContract`.
+    - `TransactionCreateMessageData` -> `TransactionInputContainsMessageData`.
+
 ## [Version 0.48.0]
 
 ### Added

@@ -86,3 +86,18 @@ fn reads_cannot_cross_from_stack_to_heap() {
         .write_noownerchecks(partition - 2, 4)
         .expect_err("Cannot read across stack/heap boundary");
 }
+
+#[test]
+fn reading_from_internally_allocated_heap_below_hp_fails() {
+    let mut memory = Memory::new();
+
+    // Allocate small heap
+    memory
+        .grow_heap(Reg::<SP>::new(&0), VM_MAX_RAM - 10)
+        .expect("Can grow heap");
+
+    // Attempt to read the heap that's now allocated internally but is not accessible
+    memory
+        .write_noownerchecks(VM_MAX_RAM - 16, 16)
+        .expect_err("Cannot read across stack/heap boundary");
+}

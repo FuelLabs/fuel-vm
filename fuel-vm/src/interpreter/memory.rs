@@ -71,6 +71,9 @@ pub struct Memory {
     stack: Vec<u8>,
     /// Heap. Grows downwards from MEM_SIZE.
     heap: Vec<u8>,
+    /// Lowest allowed heap address, i.e. hp register value.
+    /// This is needed since we can allocate extra heap for performance reasons.
+    hp: usize,
 }
 
 impl Default for Memory {
@@ -85,6 +88,7 @@ impl Memory {
         Self {
             stack: Vec::new(),
             heap: Vec::new(),
+            hp: MEM_SIZE,
         }
     }
 
@@ -133,6 +137,7 @@ impl Memory {
 
         // Expand the heap allocation
         reverse_resize_at_least(&mut self.heap, MEM_SIZE - new_hp);
+        self.hp = new_hp;
 
         // If heap enters region where stack has been, truncate the stack
         self.stack.truncate(new_hp);
@@ -153,9 +158,7 @@ impl Memory {
             return Err(PanicReason::MemoryOverflow)
         }
 
-        if end <= self.stack.len()
-            || (start >= self.heap_offset() && start >= self.stack.len())
-        {
+        if end <= self.stack.len() || (start >= self.hp && start >= self.stack.len()) {
             Ok(MemoryRange(start..end))
         } else {
             Err(PanicReason::UninitalizedMemoryAccess)
@@ -290,7 +293,7 @@ impl From<Vec<u8>> for Memory {
     fn from(stack: Vec<u8>) -> Self {
         Self {
             stack,
-            heap: vec![],
+            ..Self::new()
         }
     }
 }

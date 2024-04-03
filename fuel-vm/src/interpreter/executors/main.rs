@@ -519,13 +519,15 @@ where
                 }
             }
             UpgradePurpose::StateTransition { bytecode_hash } => {
-                storage
+                let exists = storage
                     .contains_state_transition_bytecode_hash(bytecode_hash)
-                    .map_err(RuntimeError::Storage)?
-                    .then_some(())
-                    .ok_or(InterpreterError::Panic(
+                    .map_err(RuntimeError::Storage)?;
+
+                if !exists {
+                    return Err(InterpreterError::Panic(
                         PanicReason::UnknownStateTransactionBytecodeHash,
-                    ))?;
+                    ))
+                }
 
                 let current_version = storage
                     .state_transition_version()

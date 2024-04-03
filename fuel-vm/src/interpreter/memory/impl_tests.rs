@@ -6,6 +6,8 @@ use super::{
     VM_MAX_RAM,
 };
 
+use alloc::vec;
+
 #[test]
 fn grow_heap_over_old_stack() {
     let mut memory = Memory::new();

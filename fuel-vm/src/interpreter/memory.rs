@@ -1,3 +1,5 @@
+#![cfg(feature = "alloc")]
+
 use super::{
     internal::inc_pc,
     Interpreter,
@@ -19,15 +21,16 @@ use fuel_types::{
     Word,
 };
 
+use core::ops::Range;
+
+#[cfg(any(test, feature = "test-helpers"))]
 use core::ops::{
     Index,
     IndexMut,
-    Range,
     RangeFrom,
     RangeTo,
 };
 
-#[cfg(feature = "alloc")]
 use alloc::{
     vec,
     vec::Vec,

@@ -95,8 +95,8 @@ fn breakpoint_script() {
         .expect("failed to generate checked tx")
         .into_ready(
             gas_price,
-            &consensus_params.gas_costs,
-            &consensus_params.fee_params,
+            consensus_params.gas_costs(),
+            consensus_params.fee_params(),
         )
         .unwrap();
 
@@ -174,8 +174,8 @@ fn single_stepping() {
         .expect("failed to generate checked tx")
         .into_ready(
             gas_price,
-            &consensus_params.gas_costs,
-            &consensus_params.fee_params,
+            consensus_params.gas_costs(),
+            consensus_params.fee_params(),
         )
         .unwrap();
 

@@ -102,7 +102,7 @@ fn input_coin_message_signature() {
                     amount,
                     asset_id,
                     tx_pointer,
-                    witness_index as u8,
+                    witness_index as u16,
                 )
             })
             .expect("Failed to validate transaction");
@@ -125,7 +125,7 @@ fn input_coin_message_signature() {
                     nonce,
                     amount,
                     data.clone(),
-                    witness_index as u8,
+                    witness_index as u16,
                 )
             })
             .expect("Failed to validate transaction");
@@ -380,7 +380,7 @@ fn message_metadata() {
 
     assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 
-    let data = vec![0xff; PREDICATE_PARAMS.max_message_data_length as usize + 1];
+    let data = vec![0xff; PREDICATE_PARAMS.max_message_data_length() as usize + 1];
 
     let err = Input::message_data_signed(
         rng.gen(),
@@ -417,7 +417,7 @@ fn message_metadata() {
 
     assert_eq!(ValidityError::InputMessageDataLength { index: 1 }, err,);
 
-    let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length as usize + 1];
+    let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length() as usize + 1];
 
     let err = Input::message_data_predicate(
         rng.gen(),
@@ -435,7 +435,7 @@ fn message_metadata() {
     assert_eq!(ValidityError::InputPredicateLength { index: 1 }, err,);
 
     let predicate_data =
-        vec![0xff; PREDICATE_PARAMS.max_predicate_data_length as usize + 1];
+        vec![0xff; PREDICATE_PARAMS.max_predicate_data_length() as usize + 1];
 
     let err = Input::message_data_predicate(
         rng.gen(),
@@ -503,7 +503,7 @@ fn message_message_coin() {
 
     assert_eq!(ValidityError::InputPredicateOwner { index: 1 }, err);
 
-    let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length as usize + 1];
+    let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length() as usize + 1];
 
     let err = Input::message_coin_predicate(
         rng.gen(),
@@ -520,7 +520,7 @@ fn message_message_coin() {
     assert_eq!(ValidityError::InputPredicateLength { index: 1 }, err,);
 
     let predicate_data =
-        vec![0xff; PREDICATE_PARAMS.max_predicate_data_length as usize + 1];
+        vec![0xff; PREDICATE_PARAMS.max_predicate_data_length() as usize + 1];
 
     let err = Input::message_coin_predicate(
         rng.gen(),

@@ -96,7 +96,7 @@ where
         contract_offset: Word,
         length_unpadded: Word,
     ) -> IoResult<(), S::DataError> {
-        let gas_cost = self.gas_costs().ldc;
+        let gas_cost = self.gas_costs().ldc();
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `load_contract_code`.
         self.gas_charge(gas_cost.base())?;
@@ -156,7 +156,7 @@ where
     }
 
     pub(crate) fn mint(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         let (
             SystemRegisters {
                 cgas,
@@ -191,7 +191,7 @@ where
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
-        let gas_cost = self.gas_costs().ccp;
+        let gas_cost = self.gas_costs().ccp();
         // Charge only for the `base` execution.
         // We will charge for the contract's size in the `code_copy`.
         self.gas_charge(gas_cost.base())?;
@@ -254,7 +254,7 @@ where
     }
 
     pub(crate) fn code_root(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
-        let gas_cost = self.gas_costs().croo;
+        let gas_cost = self.gas_costs().croo();
         self.gas_charge(gas_cost.base())?;
         let current_contract =
             current_contract(&self.context, self.registers.fp(), &self.memory)?;
@@ -289,7 +289,7 @@ where
         ra: RegisterId,
         b: Word,
     ) -> IoResult<(), S::DataError> {
-        let gas_cost = self.gas_costs().csiz;
+        let gas_cost = self.gas_costs().csiz();
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `code_size`.
         self.gas_charge(gas_cost.base())?;
@@ -412,7 +412,7 @@ where
         rb: RegisterId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         let (
             SystemRegisters {
                 cgas,
@@ -458,7 +458,7 @@ where
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
-        let new_storage_per_byte = self.gas_costs().new_storage_per_byte;
+        let new_storage_per_byte = self.gas_costs().new_storage_per_byte();
         let contract_id = self.internal_contract();
         let (
             SystemRegisters {

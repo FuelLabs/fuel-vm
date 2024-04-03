@@ -20,7 +20,6 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field::{
-        BytecodeLength,
         BytecodeWitnessIndex,
         Salt,
         Script as ScriptField,
@@ -105,54 +104,29 @@ pub(crate) fn metadata(
     chain_id: ChainId,
     tx_offset: Word,
 ) -> SimpleResult<()> {
-    let external = context.is_external();
-    let args = GMArgs::try_from(imm)?;
+    let parent = context
+        .is_internal()
+        .then(|| frames.last().map(|f| f.registers()[RegId::FP]))
+        .flatten();
 
-    if external {
-        match args {
-            GMArgs::GetVerifyingPredicate => {
-                *result = context
-                    .predicate()
-                    .map(|p| p.idx() as Word)
-                    .ok_or(PanicReason::TransactionValidity)?;
-            }
-
-            GMArgs::GetChainId => {
-                *result = chain_id.into();
-            }
-
-            GMArgs::TxStart => {
-                *result = tx_offset;
-            }
-
-            _ => return Err(PanicReason::ExpectedInternalContext.into()),
-        }
-    } else {
-        let parent = frames
-            .last()
-            .map(|f| f.registers()[RegId::FP])
-            .expect("External context will always have a frame");
-
-        match args {
-            GMArgs::IsCallerExternal => {
-                *result = (parent == 0) as Word;
-            }
-
-            GMArgs::GetCaller if parent != 0 => {
-                *result = parent;
-            }
-
-            GMArgs::GetChainId => {
-                *result = chain_id.into();
-            }
-
-            GMArgs::TxStart => {
-                *result = tx_offset;
-            }
-
-            _ => return Err(PanicReason::ExpectedInternalContext.into()),
-        }
-    }
+    *result = match GMArgs::try_from(imm)? {
+        GMArgs::GetVerifyingPredicate => context
+            .predicate()
+            .map(|p| p.idx() as Word)
+            .ok_or(PanicReason::TransactionValidity)?,
+        GMArgs::GetChainId => chain_id.into(),
+        GMArgs::BaseAssetId => VM_MEMORY_BASE_ASSET_ID_OFFSET as Word,
+        GMArgs::TxStart => tx_offset,
+        GMArgs::GetCaller => match parent {
+            Some(0) => return Err(PanicReason::ExpectedNestedCaller.into()),
+            Some(parent) => parent,
+            None => return Err(PanicReason::ExpectedInternalContext.into()),
+        },
+        GMArgs::IsCallerExternal => match parent {
+            Some(p) => (p == 0) as Word,
+            None => return Err(PanicReason::ExpectedInternalContext.into()),
+        },
+    };
 
     inc_pc(pc)?;
     Ok(())
@@ -555,9 +529,6 @@ impl<Tx> GTFInput<'_, Tx> {
                     }
 
                     // Create
-                    (None, Some(create), GTFArgs::CreateBytecodeLength) => {
-                        *create.bytecode_length() as Word
-                    }
                     (None, Some(create), GTFArgs::CreateBytecodeWitnessIndex) => {
                         *create.bytecode_witness_index() as Word
                     }

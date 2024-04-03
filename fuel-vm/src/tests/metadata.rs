@@ -269,6 +269,51 @@ fn get_metadata_chain_id() {
 }
 
 #[test]
+fn get_metadata_base_asset_id() {
+    let gas_limit = 1_000_000;
+    let height = BlockHeight::default();
+    let mut storage = MemoryStorage::default();
+
+    let mut params = ConsensusParameters::standard();
+    params.set_base_asset_id(AssetId::from([5; 32]));
+
+    let script = TransactionBuilder::script(
+        vec![
+            op::gm_args(0x20, GMArgs::BaseAssetId),
+            op::movi(0x21, AssetId::LEN.try_into().unwrap()),
+            op::logd(RegId::ZERO, RegId::ZERO, 0x20, 0x21),
+            op::ret(RegId::ONE),
+        ]
+        .into_iter()
+        .collect(),
+        vec![],
+    )
+    .script_gas_limit(gas_limit)
+    .add_random_fee_input()
+    .finalize()
+    .into_checked(height, &params)
+    .unwrap();
+
+    let receipts = Transactor::<_, _>::new(
+        &mut storage,
+        InterpreterParams {
+            base_asset_id: *params.base_asset_id(),
+            ..Default::default()
+        },
+    )
+    .transact(script)
+    .receipts()
+    .expect("Failed to transact")
+    .to_owned();
+
+    if let Receipt::LogData { data, .. } = receipts[0].clone() {
+        assert_eq!(data.unwrap(), params.base_asset_id().to_bytes());
+    } else {
+        panic!("expected LogData receipt, instead of {:?}", receipts[0]);
+    }
+}
+
+#[test]
 fn get_metadata_tx_start() {
     let gas_limit = 1_000_000;
     let height = BlockHeight::default();
@@ -349,7 +394,7 @@ fn get_transaction_fields() {
         1_500,
         rng.gen(),
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         predicate.clone(),
         predicate_data.clone(),
     );
@@ -373,7 +418,7 @@ fn get_transaction_fields() {
         owner,
         7_500,
         rng.gen(),
-        gas_costs.ret,
+        gas_costs.ret(),
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
@@ -435,7 +480,7 @@ fn get_transaction_fields() {
         .iter()
         .map(|v| {
             let mut v = v.clone();
-            v.prepare_init_execute();
+            v.prepare_sign();
             v.clone().to_bytes()
         })
         .collect();

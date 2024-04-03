@@ -259,7 +259,7 @@ pub mod test_helpers {
                 .expect("expected contract input with matching contract id");
 
             self.builder.add_output(Output::contract(
-                u8::try_from(input_idx.0).expect("The input index is more than allowed"),
+                u16::try_from(input_idx.0).expect("The input index is more than allowed"),
                 self.rng.gen(),
                 self.rng.gen(),
             ));
@@ -314,12 +314,12 @@ pub mod test_helpers {
         }
 
         pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut TestBuilder {
-            self.consensus_params.fee_params = fee_params;
+            self.consensus_params.set_fee_params(fee_params);
             self
         }
 
         pub fn base_asset_id(&mut self, base_asset_id: AssetId) -> &mut TestBuilder {
-            self.consensus_params.base_asset_id = base_asset_id;
+            self.consensus_params.set_base_asset_id(base_asset_id);
             self
         }
 
@@ -358,6 +358,14 @@ pub mod test_helpers {
 
         pub fn get_base_asset_id(&self) -> &AssetId {
             self.consensus_params.base_asset_id()
+        }
+
+        pub fn get_block_gas_limit(&self) -> u64 {
+            self.consensus_params.block_gas_limit()
+        }
+
+        pub fn get_privileged_address(&self) -> &Address {
+            self.consensus_params.privileged_address()
         }
 
         pub fn get_chain_id(&self) -> ChainId {
@@ -607,7 +615,7 @@ pub mod test_helpers {
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
-        let gas_limit = tx_params.max_gas_per_tx / 2;
+        let gas_limit = tx_params.max_gas_per_tx() / 2;
         let maturity = Default::default();
         let height = Default::default();
         let zero_fee_limit = 0;

@@ -35,6 +35,7 @@ use fuel_tx::{
 };
 
 mod balances;
+#[cfg(feature = "test-helpers")]
 pub mod builder;
 pub mod types;
 
@@ -297,7 +298,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
-            .check_signatures(&consensus_params.chain_id)?
+            .check_signatures(&consensus_params.chain_id())?
             .check_predicates(&check_predicate_params)
     }
 
@@ -321,7 +322,7 @@ pub struct CheckPredicateParams {
     /// Maximum gas per transaction
     pub max_gas_per_tx: u64,
     /// Maximum number of inputs
-    pub max_inputs: u8,
+    pub max_inputs: u16,
     /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
     /// Maximum length of the message data
@@ -334,6 +335,7 @@ pub struct CheckPredicateParams {
     pub base_asset_id: AssetId,
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for CheckPredicateParams {
     fn default() -> Self {
         CheckPredicateParams::from(&ConsensusParameters::standard())
@@ -350,15 +352,15 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
     fn from(value: &ConsensusParameters) -> Self {
         CheckPredicateParams {
             gas_costs: value.gas_costs().clone(),
-            chain_id: value.chain_id,
-            max_gas_per_predicate: value.predicate_params().max_gas_per_predicate,
-            max_gas_per_tx: value.tx_params().max_gas_per_tx,
-            max_inputs: value.tx_params().max_inputs,
-            contract_max_size: value.contract_params().contract_max_size,
-            max_message_data_length: value.predicate_params().max_message_data_length,
+            chain_id: value.chain_id(),
+            max_gas_per_predicate: value.predicate_params().max_gas_per_predicate(),
+            max_gas_per_tx: value.tx_params().max_gas_per_tx(),
+            max_inputs: value.tx_params().max_inputs(),
+            contract_max_size: value.contract_params().contract_max_size(),
+            max_message_data_length: value.predicate_params().max_message_data_length(),
             tx_offset: value.tx_params().tx_offset(),
             fee_params: *(value.fee_params()),
-            base_asset_id: value.base_asset_id,
+            base_asset_id: *value.base_asset_id(),
         }
     }
 }
@@ -765,6 +767,8 @@ mod tests {
             Default::default(),
             Default::default(),
             Default::default(),
+            Default::default(),
+            Default::default(),
         )
     }
 
@@ -1110,10 +1114,11 @@ mod tests {
                 .unwrap();
 
         let min_fee = fee.min_fee();
-        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + 3 * gas_costs.ecr1
-            + gas_costs.s256.resolve(tx.size() as u64))
+        let expected_min_fee = (tx.metered_bytes_size() as u64
+            * fee_params.gas_per_byte()
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + 3 * gas_costs.ecr1()
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1163,10 +1168,11 @@ mod tests {
         // Because all inputs are owned by the same address, the address will only need to
         // be recovered once. Therefore, we charge only once for the address
         // recovery of the signed inputs.
-        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.ecr1
-            + gas_costs.s256.resolve(tx.size() as u64))
+        let expected_min_fee = (tx.metered_bytes_size() as u64
+            * fee_params.gas_per_byte()
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.ecr1()
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1229,16 +1235,16 @@ mod tests {
                 .unwrap();
 
         let min_fee = fee.min_fee();
-        let expected_min_fee = (tx.size() as u64 * fee_params.gas_per_byte
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
-            + 3 * gas_costs.vm_initialization.resolve(tx.size() as u64)
+        let expected_min_fee = (tx.size() as u64 * fee_params.gas_per_byte()
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.contract_root().resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_3.len() as u64)
+            + 3 * gas_costs.vm_initialization().resolve(tx.size() as u64)
             + 50
             + 100
             + 200
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1315,17 +1321,18 @@ mod tests {
                 .unwrap();
 
         let min_fee = fee.min_fee();
-        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + 3 * gas_costs.ecr1
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.contract_root.resolve(predicate_1.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_2.len() as u64)
-            + gas_costs.contract_root.resolve(predicate_3.len() as u64)
-            + 3 * gas_costs.vm_initialization.resolve(tx.size() as u64)
+        let expected_min_fee = (tx.metered_bytes_size() as u64
+            * fee_params.gas_per_byte()
+            + 3 * gas_costs.ecr1()
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.contract_root().resolve(predicate_1.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_2.len() as u64)
+            + gas_costs.contract_root().resolve(predicate_3.len() as u64)
+            + 3 * gas_costs.vm_initialization().resolve(tx.size() as u64)
             + 50
             + 100
             + 200
-            + gas_costs.s256.resolve(tx.size() as u64))
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
@@ -1357,19 +1364,20 @@ mod tests {
                 .unwrap();
 
         let min_fee = fee.min_fee();
-        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.state_root.resolve(storage_slots_len as Word)
-            + gas_costs.contract_root.resolve(bytecode_len as Word)
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.s256.resolve(100)
-            + gas_costs.s256.resolve(tx.size() as u64))
+        let expected_min_fee = (tx.metered_bytes_size() as u64
+            * fee_params.gas_per_byte()
+            + gas_costs.state_root().resolve(storage_slots_len as Word)
+            + gas_costs.contract_root().resolve(bytecode_len as Word)
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.s256().resolve(100)
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
         let max_fee = fee.max_fee();
         let expected_max_fee = min_fee
             + (witness_limit - bytecode.size() as u64)
-                * fee_params.gas_per_byte
+                * fee_params.gas_per_byte()
                 * gas_price;
         assert_eq!(max_fee, expected_max_fee);
     }
@@ -1391,19 +1399,20 @@ mod tests {
                 .unwrap();
 
         let min_fee = fee.min_fee();
-        let expected_min_fee = (tx.metered_bytes_size() as u64 * fee_params.gas_per_byte
-            + gas_costs.state_root.resolve(0)
-            + gas_costs.contract_root.resolve(0)
-            + gas_costs.vm_initialization.resolve(tx.size() as u64)
-            + gas_costs.s256.resolve(100)
-            + gas_costs.s256.resolve(tx.size() as u64))
+        let expected_min_fee = (tx.metered_bytes_size() as u64
+            * fee_params.gas_per_byte()
+            + gas_costs.state_root().resolve(0)
+            + gas_costs.contract_root().resolve(0)
+            + gas_costs.vm_initialization().resolve(tx.size() as u64)
+            + gas_costs.s256().resolve(100)
+            + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
 
         let max_fee = fee.max_fee();
         let expected_max_fee = min_fee
             + (witness_limit - bytecode.size_static() as u64)
-                * fee_params.gas_per_byte
+                * fee_params.gas_per_byte()
                 * gas_price;
         assert_eq!(max_fee, expected_max_fee);
     }
@@ -1762,12 +1771,10 @@ mod tests {
         let block_height = 1.into();
         let gas_costs = GasCosts::default();
 
-        let tx = predicate_tx(&mut rng, 1000000, 1000000, 1000000, gas_costs.ret);
+        let tx = predicate_tx(&mut rng, 1000000, 1000000, 1000000, gas_costs.ret());
 
-        let consensus_params = ConsensusParameters {
-            gas_costs,
-            ..ConsensusParameters::standard()
-        };
+        let mut consensus_params = ConsensusParameters::standard();
+        consensus_params.set_gas_costs(gas_costs);
 
         let check_predicate_params = CheckPredicateParams::from(&consensus_params);
 
@@ -1801,7 +1808,7 @@ mod tests {
 
         // cant overflow as metered bytes * gas_per_byte < u64::MAX
         let gas_used_by_bytes = fee_params
-            .gas_per_byte
+            .gas_per_byte()
             .saturating_mul(tx.metered_bytes_size() as u64);
         let gas_used_by_inputs = tx.gas_used_by_inputs(gas_costs);
         let gas_used_by_metadata = tx.gas_used_by_metadata(gas_costs);
@@ -1810,7 +1817,7 @@ mod tests {
             .saturating_add(gas_used_by_metadata)
             .saturating_add(
                 gas_costs
-                    .vm_initialization
+                    .vm_initialization()
                     .resolve(tx.metered_bytes_size() as u64),
             );
 
@@ -1818,11 +1825,11 @@ mod tests {
         let witness_limit_allowance = tx
             .witness_limit()
             .saturating_sub(tx.witnesses().size_dynamic() as u64)
-            .saturating_mul(fee_params.gas_per_byte);
+            .saturating_mul(fee_params.gas_per_byte());
         let max_gas = min_gas
             .saturating_add(*tx.script_gas_limit())
             .saturating_add(witness_limit_allowance);
-        let max_fee = gas_to_fee(max_gas, gas_price, fee_params.gas_price_factor);
+        let max_fee = gas_to_fee(max_gas, gas_price, fee_params.gas_price_factor());
 
         let max_fee_with_tip = max_fee.saturating_add(tx.tip() as u128);
 
@@ -1842,7 +1849,7 @@ mod tests {
         // cant overflow as (metered bytes + gas_used_by_predicates) * gas_per_byte <
         // u64::MAX
         let gas_used_by_bytes = fee_params
-            .gas_per_byte
+            .gas_per_byte()
             .saturating_mul(tx.metered_bytes_size() as u64);
         let gas_used_by_inputs = tx.gas_used_by_inputs(gas_costs);
         let gas_used_by_metadata = tx.gas_used_by_metadata(gas_costs);
@@ -1851,14 +1858,14 @@ mod tests {
             .saturating_add(gas_used_by_metadata)
             .saturating_add(
                 gas_costs
-                    .vm_initialization
+                    .vm_initialization()
                     .resolve(tx.metered_bytes_size() as u64),
             );
         let total = gas as u128 * gas_price as u128;
         // use different division mechanism than impl
-        let fee = total / fee_params.gas_price_factor as u128;
+        let fee = total / fee_params.gas_price_factor() as u128;
         let fee_remainder =
-            (total.rem_euclid(fee_params.gas_price_factor as u128) > 0) as u128;
+            (total.rem_euclid(fee_params.gas_price_factor() as u128) > 0) as u128;
         let rounded_fee = fee
             .saturating_add(fee_remainder)
             .saturating_add(tx.tip() as u128);

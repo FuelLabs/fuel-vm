@@ -2,7 +2,6 @@
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
 use super::{
-    EcalHandler,
     ExecutableTransaction,
     Interpreter,
     Memory,
@@ -16,7 +15,6 @@ use crate::{
         PanicContext,
     },
     state::Debugger,
-    storage::MemoryStorage,
 };
 
 use alloc::vec;
@@ -25,6 +23,12 @@ use alloc::vec;
 use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
+
+#[cfg(feature = "test-helpers")]
+use crate::{
+    interpreter::EcalHandler,
+    storage::MemoryStorage,
+};
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
@@ -98,6 +102,7 @@ where
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl<S, Tx, Ecal> Default for Interpreter<S, Tx, Ecal>
 where
     S: Default,
@@ -126,6 +131,7 @@ where
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
@@ -139,6 +145,7 @@ where
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,

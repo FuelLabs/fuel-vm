@@ -20,27 +20,19 @@ use fuel_asm::{
     PanicReason,
 };
 use fuel_tx::{
-    field::{
-        self,
-        Inputs,
-        Outputs,
-        ReceiptsRoot,
-    },
+    field,
     output,
     Chargeable,
-    ContractParameters,
     Create,
     Executable,
     FeeParameters,
     GasCosts,
-    Input,
     Output,
-    PredicateParameters,
+    PrepareSign,
     Receipt,
     Script,
     Transaction,
     TransactionRepr,
-    TxParameters,
     UniqueIdentifier,
     ValidityError,
 };
@@ -143,7 +135,7 @@ pub struct InterpreterParams {
     /// Gas costs
     pub gas_costs: GasCosts,
     /// Maximum number of inputs
-    pub max_inputs: u8,
+    pub max_inputs: u16,
     /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
     /// Offset of the transaction data in the memory
@@ -158,15 +150,17 @@ pub struct InterpreterParams {
     pub base_asset_id: AssetId,
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for InterpreterParams {
     fn default() -> Self {
         Self {
             gas_price: 0,
             gas_costs: Default::default(),
-            max_inputs: TxParameters::DEFAULT.max_inputs,
-            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
-            tx_offset: TxParameters::DEFAULT.tx_offset(),
-            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
+            max_inputs: fuel_tx::TxParameters::DEFAULT.max_inputs(),
+            contract_max_size: fuel_tx::ContractParameters::DEFAULT.contract_max_size(),
+            tx_offset: fuel_tx::TxParameters::DEFAULT.tx_offset(),
+            max_message_data_length: fuel_tx::PredicateParameters::DEFAULT
+                .max_message_data_length(),
             chain_id: ChainId::default(),
             fee_params: FeeParameters::default(),
             base_asset_id: Default::default(),
@@ -245,7 +239,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     }
 
     /// Get max_inputs value
-    pub fn max_inputs(&self) -> u8 {
+    pub fn max_inputs(&self) -> u16 {
         self.interpreter_params.max_inputs
     }
 
@@ -367,6 +361,7 @@ pub trait ExecutableTransaction:
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
+    + PrepareSign
     + fuel_types::canonical::Serialize
 {
     /// Casts the `Self` transaction into `&Script` if any.
@@ -495,7 +490,9 @@ pub trait ExecutableTransaction:
     }
 
     /// Prepares the transaction for execution.
-    fn prepare_init_execute(&mut self);
+    fn prepare_init_execute(&mut self) {
+        self.prepare_sign()
+    }
 }
 
 impl ExecutableTransaction for Create {
@@ -541,16 +538,6 @@ impl ExecutableTransaction for Script {
 
     fn transaction_type() -> Word {
         TransactionRepr::Script as Word
-    }
-
-    fn prepare_init_execute(&mut self) {
-        *self.receipts_root_mut() = Default::default();
-        self.inputs_mut()
-            .iter_mut()
-            .for_each(Input::prepare_init_execute);
-        self.outputs_mut()
-            .iter_mut()
-            .for_each(Output::prepare_init_execute);
     }
 }
 

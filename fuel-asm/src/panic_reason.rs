@@ -129,11 +129,14 @@ enum_from! {
         /// Attempt to use sequential memory instructions with too large slot count,
         /// typically because it cannot fit into usize
         TooManySlots = 0x2d,
+        /// Caller of this internal context is also expected to be internal,
+        /// i.e. $fp->$fp must be non-zero.
+        ExpectedNestedCaller = 0x2e,
         /// During memory growth, the stack overlapped with the heap
-        MemoryGrowthOverlap = 0x2e,
+        MemoryGrowthOverlap = 0x2f,
         /// Attempting to read or write uninitialized memory.
         /// Also occurs when boundary crosses from stack to heap.
-        UninitalizedMemoryAccess = 0x2f,
+        UninitalizedMemoryAccess = 0x30,
     }
 }
 

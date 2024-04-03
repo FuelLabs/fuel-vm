@@ -36,7 +36,7 @@ pub use fuel_types::{
 };
 pub use tx_pointer::TxPointer;
 
-#[cfg(feature = "builder")]
+#[cfg(feature = "test-helpers")]
 mod builder;
 
 #[cfg(feature = "alloc")]
@@ -51,7 +51,7 @@ mod transaction;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "builder")]
+#[cfg(feature = "test-helpers")]
 pub use builder::{
     Buildable,
     Finalizable,
@@ -66,6 +66,7 @@ pub use receipt::{
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
+    consensus_parameters,
     field,
     input,
     input::Input,
@@ -102,13 +103,10 @@ pub use transaction::{
 };
 
 pub use transaction::{
+    PrepareSign,
     Signable,
     UniqueIdentifier,
 };
-
-#[cfg(feature = "alloc")]
-#[allow(deprecated)]
-pub use transaction::consensus_parameters::default_parameters;
 
 #[cfg(feature = "alloc")]
 pub use contract::Contract;

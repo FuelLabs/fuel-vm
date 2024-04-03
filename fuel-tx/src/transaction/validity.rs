@@ -56,7 +56,7 @@ impl Input {
         outputs: &[Output],
         witnesses: &[Witness],
         predicate_params: &PredicateParameters,
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
         self.check_signature(index, txhash, witnesses, recovery_cache)?;
@@ -69,7 +69,7 @@ impl Input {
         index: usize,
         txhash: &Bytes32,
         witnesses: &[Witness],
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         match self {
             Self::CoinSigned(CoinSigned {
@@ -158,7 +158,7 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() as u64 > predicate_params.max_predicate_length =>
+                if predicate.len() as u64 > predicate_params.max_predicate_length() =>
             {
                 Err(ValidityError::InputPredicateLength { index })
             }
@@ -170,7 +170,7 @@ impl Input {
             | Self::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
             }) if predicate_data.len() as u64
-                > predicate_params.max_predicate_data_length =>
+                > predicate_params.max_predicate_data_length() =>
             {
                 Err(ValidityError::InputPredicateDataLength { index })
             }
@@ -203,7 +203,7 @@ impl Input {
             Self::MessageDataSigned(MessageDataSigned { data, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
                 if data.is_empty()
-                    || data.len() as u64 > predicate_params.max_message_data_length =>
+                    || data.len() as u64 > predicate_params.max_message_data_length() =>
             {
                 Err(ValidityError::InputMessageDataLength { index })
             }
@@ -302,7 +302,7 @@ pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), Vali
 where
     T: canonical::Serialize,
 {
-    if tx.size() as u64 > tx_params.max_size {
+    if tx.size() as u64 > tx_params.max_size() {
         Err(ValidityError::TransactionSizeLimitExceeded)?;
     }
 
@@ -317,14 +317,11 @@ pub(crate) fn check_common_part<T>(
 where
     T: canonical::Serialize + Chargeable + field::Outputs,
 {
-    let ConsensusParameters {
-        tx_params,
-        predicate_params,
-        base_asset_id,
-        gas_costs,
-        fee_params,
-        ..
-    } = consensus_params;
+    let tx_params = consensus_params.tx_params();
+    let predicate_params = consensus_params.predicate_params();
+    let base_asset_id = consensus_params.base_asset_id();
+    let gas_costs = consensus_params.gas_costs();
+    let fee_params = consensus_params.fee_params();
 
     check_size(tx, tx_params)?;
 
@@ -340,7 +337,7 @@ where
     }
 
     let max_gas = tx.max_gas(gas_costs, fee_params);
-    if max_gas > tx_params.max_gas_per_tx {
+    if max_gas > tx_params.max_gas_per_tx() {
         Err(ValidityError::TransactionMaxGasExceeded)?
     }
 
@@ -352,15 +349,15 @@ where
         Err(ValidityError::TransactionMaturity)?;
     }
 
-    if tx.inputs().len() > tx_params.max_inputs as usize {
+    if tx.inputs().len() > tx_params.max_inputs() as usize {
         Err(ValidityError::TransactionInputsMax)?
     }
 
-    if tx.outputs().len() > tx_params.max_outputs as usize {
+    if tx.outputs().len() > tx_params.max_outputs() as usize {
         Err(ValidityError::TransactionOutputsMax)?
     }
 
-    if tx.witnesses().len() > tx_params.max_witnesses as usize {
+    if tx.witnesses().len() > tx_params.max_witnesses() as usize {
         Err(ValidityError::TransactionWitnessesMax)?
     }
 
@@ -499,7 +496,7 @@ where
 #[cfg(feature = "typescript")]
 mod typescript {
     use crate::{
-        PredicateParameters,
+        transaction::consensus_parameters::typescript::PredicateParameters,
         Witness,
     };
     use fuel_types::Bytes32;
@@ -543,7 +540,7 @@ mod typescript {
                 txhash,
                 &outputs,
                 &witnesses,
-                predicate_params,
+                predicate_params.as_ref(),
                 &mut None,
             )
             .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))

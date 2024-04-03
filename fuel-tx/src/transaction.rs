@@ -81,7 +81,10 @@ pub use validity::{
 #[cfg(feature = "alloc")]
 pub use id::Signable;
 
-pub use id::UniqueIdentifier;
+pub use id::{
+    PrepareSign,
+    UniqueIdentifier,
+};
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
@@ -96,6 +99,7 @@ pub enum Transaction {
     Mint(Mint),
 }
 
+#[cfg(feature = "test-helpers")]
 impl Default for Transaction {
     fn default() -> Self {
         Script::default().into()
@@ -104,7 +108,7 @@ impl Default for Transaction {
 
 impl Transaction {
     /// Return default valid transaction useful for tests.
-    #[cfg(all(feature = "rand", feature = "std", feature = "builder"))]
+    #[cfg(all(feature = "rand", feature = "std", feature = "test-helpers"))]
     pub fn default_test_tx() -> Self {
         use crate::Finalizable;
 
@@ -127,10 +131,12 @@ impl Transaction {
         let receipts_root = Bytes32::zeroed();
 
         Script {
-            script_gas_limit: gas_limit,
-            receipts_root,
-            script,
-            script_data,
+            body: ScriptBody {
+                script_gas_limit: gas_limit,
+                receipts_root,
+                script,
+                script_data,
+            },
             policies,
             inputs,
             outputs,
@@ -140,7 +146,7 @@ impl Transaction {
     }
 
     pub fn create(
-        bytecode_witness_index: u8,
+        bytecode_witness_index: u16,
         policies: Policies,
         salt: Salt,
         mut storage_slots: Vec<StorageSlot>,
@@ -148,23 +154,16 @@ impl Transaction {
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
     ) -> Create {
-        // TODO consider split this function in two; one that will trust a provided
-        // bytecod len, and other that will return a resulting, failing if the
-        // witness index isn't present
-        let bytecode_length = witnesses
-            .get(bytecode_witness_index as usize)
-            .map(|witness| witness.as_ref().len() as Word / 4)
-            .unwrap_or(0);
-
         // sort incoming storage slots
         storage_slots.sort();
 
         Create {
-            bytecode_length,
-            bytecode_witness_index,
+            body: CreateBody {
+                bytecode_witness_index,
+                salt,
+                storage_slots,
+            },
             policies,
-            salt,
-            storage_slots,
             inputs,
             outputs,
             witnesses,
@@ -366,7 +365,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        witness_index: u8,
+        witness_index: u16,
     ) {
         let owner = Input::owner(owner);
 
@@ -396,7 +395,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
-        witness_index: u8,
+        witness_index: u16,
     ) {
         let input = if data.is_empty() {
             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
@@ -685,25 +684,21 @@ pub mod field {
         fn script_data_offset(&self) -> usize;
     }
 
+    pub trait ChargeableBody<Body> {
+        fn body(&self) -> &Body;
+        fn body_mut(&mut self) -> &mut Body;
+        fn body_offset_end(&self) -> usize;
+    }
+
     pub trait Policies {
         fn policies(&self) -> &policies::Policies;
         fn policies_mut(&mut self) -> &mut policies::Policies;
         fn policies_offset(&self) -> usize;
     }
 
-    pub trait BytecodeLength {
-        fn bytecode_length(&self) -> &Word;
-        fn bytecode_length_mut(&mut self) -> &mut Word;
-        fn bytecode_length_offset(&self) -> usize {
-            Self::bytecode_length_offset_static()
-        }
-
-        fn bytecode_length_offset_static() -> usize;
-    }
-
     pub trait BytecodeWitnessIndex {
-        fn bytecode_witness_index(&self) -> &u8;
-        fn bytecode_witness_index_mut(&mut self) -> &mut u8;
+        fn bytecode_witness_index(&self) -> &u16;
+        fn bytecode_witness_index_mut(&mut self) -> &mut u16;
         fn bytecode_witness_index_offset(&self) -> usize {
             Self::bytecode_witness_index_offset_static()
         }
@@ -724,7 +719,7 @@ pub mod field {
     pub trait StorageSlots {
         fn storage_slots(&self) -> &Vec<StorageSlot>;
         fn storage_slots_mut(&mut self) -> StorageSlotRef;
-        fn storage_slots_offset(&self) -> usize;
+        fn storage_slots_offset_static() -> usize;
 
         /// Returns the offset to the `StorageSlot` at `idx` index, if any.
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize>;
@@ -805,9 +800,6 @@ pub mod typescript {
             Policies,
         },
         AssetId,
-        Create,
-        Mint,
-        Script,
         Witness,
         Word,
     };
@@ -818,10 +810,25 @@ pub mod typescript {
         vec::Vec,
     };
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[wasm_bindgen]
     pub struct Transaction(#[wasm_bindgen(skip)] pub Box<crate::Transaction>);
+
+    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Create(#[wasm_bindgen(skip)] pub Box<crate::Create>);
+
+    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Script(#[wasm_bindgen(skip)] pub Box<crate::Script>);
+
+    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Mint(#[wasm_bindgen(skip)] pub Box<crate::Mint>);
 
     #[wasm_bindgen]
     impl Transaction {
@@ -860,20 +867,23 @@ pub mod typescript {
             outputs: Vec<Output>,
             witnesses: Vec<Witness>,
         ) -> Script {
-            crate::Transaction::script(
-                gas_limit,
-                script,
-                script_data,
-                policies,
-                inputs.into_iter().map(|v| *v.0).collect(),
-                outputs.into_iter().map(|v| *v.0).collect(),
-                witnesses,
+            Script(
+                crate::Transaction::script(
+                    gas_limit,
+                    script,
+                    script_data,
+                    policies,
+                    inputs.into_iter().map(|v| *v.0).collect(),
+                    outputs.into_iter().map(|v| *v.0).collect(),
+                    witnesses,
+                )
+                .into(),
             )
         }
 
         #[wasm_bindgen]
         pub fn create(
-            bytecode_witness_index: u8,
+            bytecode_witness_index: u16,
             policies: Policies,
             salt: crate::Salt,
             storage_slots: Vec<crate::StorageSlot>,
@@ -881,14 +891,17 @@ pub mod typescript {
             outputs: Vec<Output>,
             witnesses: Vec<Witness>,
         ) -> Create {
-            crate::Transaction::create(
-                bytecode_witness_index,
-                policies,
-                salt,
-                storage_slots,
-                inputs.into_iter().map(|v| *v.0).collect(),
-                outputs.into_iter().map(|v| *v.0).collect(),
-                witnesses,
+            Create(
+                crate::Transaction::create(
+                    bytecode_witness_index,
+                    policies,
+                    salt,
+                    storage_slots,
+                    inputs.into_iter().map(|v| *v.0).collect(),
+                    outputs.into_iter().map(|v| *v.0).collect(),
+                    witnesses,
+                )
+                .into(),
             )
         }
 
@@ -900,15 +913,18 @@ pub mod typescript {
             mint_asset_id: AssetId,
             gas_price: Word,
         ) -> Mint {
-            Mint {
-                tx_pointer,
-                input_contract,
-                output_contract,
-                mint_amount,
-                mint_asset_id,
-                gas_price,
-                metadata: None,
-            }
+            Mint(
+                crate::Mint {
+                    tx_pointer,
+                    input_contract,
+                    output_contract,
+                    mint_amount,
+                    mint_asset_id,
+                    gas_price,
+                    metadata: None,
+                }
+                .into(),
+            )
         }
     }
 
@@ -918,7 +934,7 @@ pub mod typescript {
             impl $t {
                 #[wasm_bindgen(js_name = as_tx)]
                 pub fn typescript_wrap_tx(self) -> Transaction {
-                    Transaction(Box::new($tx(self)))
+                    Transaction(Box::new($tx(self.0.as_ref().clone())))
                 }
 
                 #[wasm_bindgen(constructor)]
@@ -940,14 +956,15 @@ pub mod typescript {
                 #[wasm_bindgen(js_name = to_bytes)]
                 pub fn typescript_to_bytes(&self) -> Vec<u8> {
                     use fuel_types::canonical::Serialize;
-                    <Self as Serialize>::to_bytes(self)
+                    <_ as Serialize>::to_bytes(self.0.as_ref())
                 }
 
                 #[wasm_bindgen(js_name = from_bytes)]
                 pub fn typescript_from_bytes(value: &[u8]) -> Result<$t, js_sys::Error> {
                     use fuel_types::canonical::Deserialize;
-                    <Self as Deserialize>::from_bytes(value)
-                        .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
+                    let res = <_ as Deserialize>::from_bytes(value)
+                        .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
+                    Ok(Self(Box::new(res)))
                 }
             }
         };

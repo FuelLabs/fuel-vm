@@ -92,7 +92,7 @@ where
         b: Word,
         c: Word,
     ) -> IoResult<(), S::DataError> {
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         let tx_offset = self.tx_offset();
         let (
             SystemRegisters {
@@ -132,7 +132,7 @@ where
         d: Word,
     ) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         let (
             SystemRegisters {
                 cgas,

@@ -198,12 +198,683 @@ impl Default for GasCostsValues {
     }
 }
 
+/// The versioned gas costs for every op.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum GasCostsValues {
+    /// Version 1 of the gas costs.
+    V1(GasCostsValuesV1),
+}
+
+#[allow(missing_docs)]
+impl GasCostsValues {
+    pub fn add(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.add,
+        }
+    }
+
+    pub fn addi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.addi,
+        }
+    }
+
+    pub fn aloc(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.aloc,
+        }
+    }
+
+    pub fn and(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.and,
+        }
+    }
+
+    pub fn andi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.andi,
+        }
+    }
+
+    pub fn bal(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.bal,
+        }
+    }
+
+    pub fn bhei(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.bhei,
+        }
+    }
+
+    pub fn bhsh(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.bhsh,
+        }
+    }
+
+    pub fn burn(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.burn,
+        }
+    }
+
+    pub fn cb(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.cb,
+        }
+    }
+
+    pub fn cfei(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.cfei,
+        }
+    }
+
+    pub fn cfsi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.cfsi,
+        }
+    }
+
+    pub fn div(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.div,
+        }
+    }
+
+    pub fn divi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.divi,
+        }
+    }
+
+    pub fn eck1(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.eck1,
+        }
+    }
+
+    pub fn ecr1(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.ecr1,
+        }
+    }
+
+    pub fn ed19(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.ed19,
+        }
+    }
+
+    pub fn eq_(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.eq,
+        }
+    }
+
+    pub fn exp(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.exp,
+        }
+    }
+
+    pub fn expi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.expi,
+        }
+    }
+
+    pub fn flag(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.flag,
+        }
+    }
+
+    pub fn gm(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.gm,
+        }
+    }
+
+    pub fn gt(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.gt,
+        }
+    }
+
+    pub fn gtf(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.gtf,
+        }
+    }
+
+    pub fn ji(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.ji,
+        }
+    }
+
+    pub fn jmp(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jmp,
+        }
+    }
+
+    pub fn jne(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jne,
+        }
+    }
+
+    pub fn jnei(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jnei,
+        }
+    }
+
+    pub fn jnzi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jnzi,
+        }
+    }
+
+    pub fn jmpf(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jmpf,
+        }
+    }
+
+    pub fn jmpb(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jmpb,
+        }
+    }
+
+    pub fn jnzf(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jnzf,
+        }
+    }
+
+    pub fn jnzb(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jnzb,
+        }
+    }
+
+    pub fn jnef(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jnef,
+        }
+    }
+
+    pub fn jneb(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.jneb,
+        }
+    }
+
+    pub fn lb(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.lb,
+        }
+    }
+
+    pub fn log(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.log,
+        }
+    }
+
+    pub fn lt(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.lt,
+        }
+    }
+
+    pub fn lw(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.lw,
+        }
+    }
+
+    pub fn mint(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.mint,
+        }
+    }
+
+    pub fn mlog(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.mlog,
+        }
+    }
+
+    pub fn mod_op(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.mod_op,
+        }
+    }
+
+    pub fn modi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.modi,
+        }
+    }
+
+    pub fn move_op(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.move_op,
+        }
+    }
+
+    pub fn movi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.movi,
+        }
+    }
+
+    pub fn mroo(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.mroo,
+        }
+    }
+
+    pub fn mul(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.mul,
+        }
+    }
+
+    pub fn muli(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.muli,
+        }
+    }
+
+    pub fn mldv(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.mldv,
+        }
+    }
+
+    pub fn noop(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.noop,
+        }
+    }
+
+    pub fn not(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.not,
+        }
+    }
+
+    pub fn or(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.or,
+        }
+    }
+
+    pub fn ori(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.ori,
+        }
+    }
+
+    pub fn poph(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.poph,
+        }
+    }
+
+    pub fn popl(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.popl,
+        }
+    }
+
+    pub fn pshh(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.pshh,
+        }
+    }
+
+    pub fn pshl(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.pshl,
+        }
+    }
+
+    pub fn ret(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.ret,
+        }
+    }
+
+    pub fn rvrt(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.rvrt,
+        }
+    }
+
+    pub fn sb(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.sb,
+        }
+    }
+
+    pub fn sll(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.sll,
+        }
+    }
+
+    pub fn slli(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.slli,
+        }
+    }
+
+    pub fn srl(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.srl,
+        }
+    }
+
+    pub fn srli(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.srli,
+        }
+    }
+
+    pub fn srw(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.srw,
+        }
+    }
+
+    pub fn sub(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.sub,
+        }
+    }
+
+    pub fn subi(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.subi,
+        }
+    }
+
+    pub fn sw(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.sw,
+        }
+    }
+
+    pub fn sww(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.sww,
+        }
+    }
+
+    pub fn time(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.time,
+        }
+    }
+
+    pub fn tr(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.tr,
+        }
+    }
+
+    pub fn tro(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.tro,
+        }
+    }
+
+    pub fn wdcm(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wdcm,
+        }
+    }
+
+    pub fn wqcm(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wqcm,
+        }
+    }
+
+    pub fn wdop(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wdop,
+        }
+    }
+
+    pub fn wqop(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wqop,
+        }
+    }
+
+    pub fn wdml(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wdml,
+        }
+    }
+
+    pub fn wqml(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wqml,
+        }
+    }
+
+    pub fn wddv(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wddv,
+        }
+    }
+
+    pub fn wqdv(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wqdv,
+        }
+    }
+
+    pub fn wdmd(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wdmd,
+        }
+    }
+
+    pub fn wqmd(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wqmd,
+        }
+    }
+
+    pub fn wdam(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wdam,
+        }
+    }
+
+    pub fn wqam(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wqam,
+        }
+    }
+
+    pub fn wdmm(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wdmm,
+        }
+    }
+
+    pub fn wqmm(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.wqmm,
+        }
+    }
+
+    pub fn xor(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.xor,
+        }
+    }
+
+    pub fn xori(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.xori,
+        }
+    }
+
+    pub fn call(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.call,
+        }
+    }
+
+    pub fn ccp(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.ccp,
+        }
+    }
+
+    pub fn croo(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.croo,
+        }
+    }
+
+    pub fn csiz(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.csiz,
+        }
+    }
+
+    pub fn k256(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.k256,
+        }
+    }
+
+    pub fn ldc(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.ldc,
+        }
+    }
+
+    pub fn logd(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.logd,
+        }
+    }
+
+    pub fn mcl(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.mcl,
+        }
+    }
+
+    pub fn mcli(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.mcli,
+        }
+    }
+
+    pub fn mcp(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.mcp,
+        }
+    }
+
+    pub fn mcpi(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.mcpi,
+        }
+    }
+
+    pub fn meq(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.meq,
+        }
+    }
+
+    pub fn retd(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.retd,
+        }
+    }
+
+    pub fn s256(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.s256,
+        }
+    }
+
+    pub fn scwq(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.scwq,
+        }
+    }
+
+    pub fn smo(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.smo,
+        }
+    }
+
+    pub fn srwq(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.srwq,
+        }
+    }
+
+    pub fn swwq(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.swwq,
+        }
+    }
+
+    pub fn contract_root(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.contract_root,
+        }
+    }
+
+    pub fn state_root(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.state_root,
+        }
+    }
+
+    pub fn new_storage_per_byte(&self) -> Word {
+        match self {
+            GasCostsValues::V1(v1) => v1.new_storage_per_byte,
+        }
+    }
+
+    pub fn vm_initialization(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => v1.vm_initialization,
+        }
+    }
+}
+
 /// Gas costs for every op.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default = "GasCostsValues::unit"))]
-pub struct GasCostsValues {
+#[cfg_attr(feature = "serde", serde(default = "GasCostsValuesV1::unit"))]
+pub struct GasCostsValuesV1 {
     pub add: Word,
     pub addi: Word,
     pub aloc: Word,
@@ -365,6 +1036,18 @@ impl GasCosts {
 }
 
 impl GasCostsValues {
+    /// Create costs that are all set to zero.
+    pub fn free() -> Self {
+        GasCostsValuesV1::free().into()
+    }
+
+    /// Create costs that are all set to one.
+    pub fn unit() -> Self {
+        GasCostsValuesV1::unit().into()
+    }
+}
+
+impl GasCostsValuesV1 {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
         Self {
@@ -694,6 +1377,12 @@ impl From<GasCostsValues> for GasCosts {
 impl From<GasCosts> for GasCostsValues {
     fn from(i: GasCosts) -> Self {
         (*i.0).clone()
+    }
+}
+
+impl From<GasCostsValuesV1> for GasCostsValues {
+    fn from(i: GasCostsValuesV1) -> Self {
+        GasCostsValues::V1(i)
     }
 }
 

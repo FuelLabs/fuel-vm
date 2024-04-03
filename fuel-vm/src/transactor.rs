@@ -325,6 +325,7 @@ where
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl<S, Tx, Ecal> Default for Transactor<S, Tx, Ecal>
 where
     S: InterpreterStorage + Default,

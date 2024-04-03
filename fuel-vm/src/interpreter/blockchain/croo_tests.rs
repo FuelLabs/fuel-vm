@@ -65,7 +65,7 @@ fn test_code_root() {
         .storage_contract_insert(&contract_id, &contract)
         .expect("Failed to insert contract");
 
-    let gas_cost = GasCosts::default().croo;
+    let gas_cost = GasCosts::default().croo();
     let ownership_registers = initialize_ownership_registers();
     let SystemRegisters {
         mut pc,
@@ -118,7 +118,7 @@ fn test_code_root_contract_not_found() {
     let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
-    let gas_cost = GasCosts::default().croo;
+    let gas_cost = GasCosts::default().croo();
     let ownership_registers = initialize_ownership_registers();
     let SystemRegisters {
         mut pc,
@@ -165,7 +165,7 @@ fn test_code_root_contract_not_in_inputs() {
     let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
-    let gas_cost = GasCosts::default().croo;
+    let gas_cost = GasCosts::default().croo();
     let ownership_registers = initialize_ownership_registers();
     let SystemRegisters {
         mut pc,

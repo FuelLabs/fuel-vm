@@ -1,5 +1,6 @@
 use fuel_types::{
     bytes::WORD_SIZE,
+    Address,
     AssetId,
     Bytes32,
     ChainId,
@@ -14,14 +15,213 @@ pub use gas::{
     GasUnit,
 };
 
+#[cfg(feature = "test-helpers")]
 const MAX_GAS: u64 = 100_000_000;
-const MAX_SIZE: u64 = 17 * 1024 * 1024;
+#[cfg(feature = "test-helpers")]
+const MAX_SIZE: u64 = 110 * 1024;
+
+/// A versioned set of consensus parameters.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ConsensusParameters {
+    /// Version 1 of the consensus parameters
+    V1(ConsensusParametersV1),
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for ConsensusParameters {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl ConsensusParameters {
+    #[cfg(feature = "test-helpers")]
+    /// Constructor for the `ConsensusParameters` with Standard values.
+    pub fn standard() -> Self {
+        ConsensusParametersV1::standard().into()
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
+    pub fn standard_with_id(chain_id: ChainId) -> Self {
+        ConsensusParametersV1::standard_with_id(chain_id).into()
+    }
+
+    /// Constructor for the `ConsensusParameters`
+    pub const fn new(
+        tx_params: TxParameters,
+        predicate_params: PredicateParameters,
+        script_params: ScriptParameters,
+        contract_params: ContractParameters,
+        fee_params: FeeParameters,
+        chain_id: ChainId,
+        gas_costs: GasCosts,
+        base_asset_id: AssetId,
+        block_gas_limit: u64,
+        privileged_address: Address,
+    ) -> Self {
+        Self::V1(ConsensusParametersV1 {
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+            chain_id,
+            gas_costs,
+            base_asset_id,
+            block_gas_limit,
+            privileged_address,
+        })
+    }
+
+    /// Get the transaction parameters
+    pub const fn tx_params(&self) -> &TxParameters {
+        match self {
+            Self::V1(params) => &params.tx_params,
+        }
+    }
+
+    /// Get the predicate parameters
+    pub const fn predicate_params(&self) -> &PredicateParameters {
+        match self {
+            Self::V1(params) => &params.predicate_params,
+        }
+    }
+
+    /// Get the script parameters
+    pub const fn script_params(&self) -> &ScriptParameters {
+        match self {
+            Self::V1(params) => &params.script_params,
+        }
+    }
+
+    /// Get the contract parameters
+    pub const fn contract_params(&self) -> &ContractParameters {
+        match self {
+            Self::V1(params) => &params.contract_params,
+        }
+    }
+
+    /// Get the fee parameters
+    pub const fn fee_params(&self) -> &FeeParameters {
+        match self {
+            Self::V1(params) => &params.fee_params,
+        }
+    }
+
+    /// Get the chain ID
+    pub const fn chain_id(&self) -> ChainId {
+        match self {
+            Self::V1(params) => params.chain_id,
+        }
+    }
+
+    /// Get the gas costs
+    pub const fn gas_costs(&self) -> &GasCosts {
+        match self {
+            Self::V1(params) => &params.gas_costs,
+        }
+    }
+
+    /// Get the base asset ID
+    pub const fn base_asset_id(&self) -> &AssetId {
+        match self {
+            Self::V1(params) => &params.base_asset_id,
+        }
+    }
+
+    /// Get the block gas limit
+    pub const fn block_gas_limit(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.block_gas_limit,
+        }
+    }
+
+    /// Get the privileged address
+    pub const fn privileged_address(&self) -> &Address {
+        match self {
+            Self::V1(params) => &params.privileged_address,
+        }
+    }
+}
+
+impl ConsensusParameters {
+    /// Set the transaction parameters.
+    pub fn set_tx_params(&mut self, tx_params: TxParameters) {
+        match self {
+            Self::V1(params) => params.tx_params = tx_params,
+        }
+    }
+
+    /// Set the predicate parameters.
+    pub fn set_predicate_params(&mut self, predicate_params: PredicateParameters) {
+        match self {
+            Self::V1(params) => params.predicate_params = predicate_params,
+        }
+    }
+
+    /// Set the script parameters.
+    pub fn set_script_params(&mut self, script_params: ScriptParameters) {
+        match self {
+            Self::V1(params) => params.script_params = script_params,
+        }
+    }
+
+    /// Set the contract parameters.
+    pub fn set_contract_params(&mut self, contract_params: ContractParameters) {
+        match self {
+            Self::V1(params) => params.contract_params = contract_params,
+        }
+    }
+
+    /// Set the fee parameters.
+    pub fn set_fee_params(&mut self, fee_params: FeeParameters) {
+        match self {
+            Self::V1(params) => params.fee_params = fee_params,
+        }
+    }
+
+    /// Set the chain ID.
+    pub fn set_chain_id(&mut self, chain_id: ChainId) {
+        match self {
+            Self::V1(params) => params.chain_id = chain_id,
+        }
+    }
+
+    /// Set the gas costs.
+    pub fn set_gas_costs(&mut self, gas_costs: GasCosts) {
+        match self {
+            Self::V1(params) => params.gas_costs = gas_costs,
+        }
+    }
+
+    /// Set the base asset ID.
+    pub fn set_base_asset_id(&mut self, base_asset_id: AssetId) {
+        match self {
+            Self::V1(params) => params.base_asset_id = base_asset_id,
+        }
+    }
+
+    /// Set the block gas limit.
+    pub fn set_block_gas_limit(&mut self, block_gas_limit: u64) {
+        match self {
+            Self::V1(params) => params.block_gas_limit = block_gas_limit,
+        }
+    }
+
+    /// Set the privileged address.
+    pub fn set_privileged_address(&mut self, privileged_address: Address) {
+        match self {
+            Self::V1(params) => params.privileged_address = privileged_address,
+        }
+    }
+}
 
 /// A collection of parameters for convenience
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct ConsensusParameters {
+pub struct ConsensusParametersV1 {
     pub tx_params: TxParameters,
     pub predicate_params: PredicateParameters,
     pub script_params: ScriptParameters,
@@ -30,27 +230,17 @@ pub struct ConsensusParameters {
     pub chain_id: ChainId,
     pub gas_costs: GasCosts,
     pub base_asset_id: AssetId,
+    pub block_gas_limit: u64,
+    /// The privileged address(user or predicate) that can perform permissioned
+    /// operations(like upgrading the network).
+    pub privileged_address: Address,
 }
 
-impl Default for ConsensusParameters {
-    fn default() -> Self {
-        Self::standard()
-    }
-}
-
-impl ConsensusParameters {
+#[cfg(feature = "test-helpers")]
+impl ConsensusParametersV1 {
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
-        Self {
-            tx_params: TxParameters::DEFAULT,
-            predicate_params: PredicateParameters::DEFAULT,
-            script_params: ScriptParameters::DEFAULT,
-            contract_params: ContractParameters::DEFAULT,
-            fee_params: FeeParameters::DEFAULT,
-            chain_id: ChainId::default(),
-            gas_costs: GasCosts::default(),
-            base_asset_id: Default::default(),
-        }
+        Self::standard_with_id(ChainId::default())
     }
 
     /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
@@ -64,103 +254,209 @@ impl ConsensusParameters {
             chain_id,
             gas_costs: GasCosts::default(),
             base_asset_id: Default::default(),
+            block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx(),
+            privileged_address: Default::default(),
+        }
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for ConsensusParametersV1 {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl From<ConsensusParametersV1> for ConsensusParameters {
+    fn from(params: ConsensusParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
+/// The versioned fee parameters.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum FeeParameters {
+    V1(FeeParametersV1),
+}
+
+impl FeeParameters {
+    #[cfg(feature = "test-helpers")]
+    /// Default fee parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(FeeParametersV1::DEFAULT);
+
+    /// Replace the gas price factor with the given argument
+    pub const fn with_gas_price_factor(self, gas_price_factor: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.gas_price_factor = gas_price_factor;
+                Self::V1(params)
+            }
         }
     }
 
-    /// Constructor for the `ConsensusParameters`
-    pub const fn new(
-        tx_params: TxParameters,
-        predicate_params: PredicateParameters,
-        script_params: ScriptParameters,
-        contract_params: ContractParameters,
-        fee_params: FeeParameters,
-        chain_id: ChainId,
-        gas_costs: GasCosts,
-        base_asset_id: AssetId,
-    ) -> Self {
-        Self {
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            chain_id,
-            gas_costs,
-            base_asset_id,
+    pub const fn with_gas_per_byte(self, gas_per_byte: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.gas_per_byte = gas_per_byte;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl FeeParameters {
+    /// Get the gas price factor
+    pub const fn gas_price_factor(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.gas_price_factor,
         }
     }
 
-    /// Get the transaction parameters
-    pub fn tx_params(&self) -> &TxParameters {
-        &self.tx_params
+    /// Get the gas per byte
+    pub const fn gas_per_byte(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.gas_per_byte,
+        }
     }
+}
 
-    /// Get the predicate parameters
-    pub fn predicate_params(&self) -> &PredicateParameters {
-        &self.predicate_params
+#[cfg(feature = "test-helpers")]
+impl Default for FeeParameters {
+    fn default() -> Self {
+        Self::DEFAULT
     }
+}
 
-    /// Get the script parameters
-    pub fn script_params(&self) -> &ScriptParameters {
-        &self.script_params
-    }
-
-    /// Get the contract parameters
-    pub fn contract_params(&self) -> &ContractParameters {
-        &self.contract_params
-    }
-
-    /// Get the fee parameters
-    pub fn fee_params(&self) -> &FeeParameters {
-        &self.fee_params
-    }
-
-    pub fn base_asset_id(&self) -> &AssetId {
-        &self.base_asset_id
-    }
-
-    /// Get the chain ID
-    pub fn chain_id(&self) -> ChainId {
-        self.chain_id
-    }
-
-    /// Get the gas costs
-    pub fn gas_costs(&self) -> &GasCosts {
-        &self.gas_costs
+impl From<FeeParametersV1> for FeeParameters {
+    fn from(params: FeeParametersV1) -> Self {
+        Self::V1(params)
     }
 }
 
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct FeeParameters {
+pub struct FeeParametersV1 {
     /// Factor to convert between gas and transaction assets value.
     pub gas_price_factor: u64,
     /// A fixed ratio linking metered bytes to gas price
     pub gas_per_byte: u64,
 }
 
-impl FeeParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
-    pub const DEFAULT: Self = Self {
+#[cfg(feature = "test-helpers")]
+impl FeeParametersV1 {
+    /// Default fee parameters just for tests.
+    pub const DEFAULT: Self = FeeParametersV1 {
         gas_price_factor: 1_000_000_000,
         gas_per_byte: 4,
     };
+}
 
-    /// Replace the gas price factor with the given argument
-    pub const fn with_gas_price_factor(mut self, gas_price_factor: u64) -> Self {
-        self.gas_price_factor = gas_price_factor;
-        self
-    }
-
-    pub const fn with_gas_per_byte(mut self, gas_per_byte: u64) -> Self {
-        self.gas_per_byte = gas_per_byte;
-        self
+#[cfg(feature = "test-helpers")]
+impl Default for FeeParametersV1 {
+    fn default() -> Self {
+        Self::DEFAULT
     }
 }
 
-impl Default for FeeParameters {
+/// Versioned predicate parameters.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum PredicateParameters {
+    V1(PredicateParametersV1),
+}
+
+impl PredicateParameters {
+    #[cfg(feature = "test-helpers")]
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(PredicateParametersV1::DEFAULT);
+
+    /// Replace the max predicate length with the given argument
+    pub const fn with_max_predicate_length(self, max_predicate_length: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_predicate_length = max_predicate_length;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max predicate data length with the given argument
+    pub const fn with_max_predicate_data_length(
+        self,
+        max_predicate_data_length: u64,
+    ) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_predicate_data_length = max_predicate_data_length;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max message data length with the given argument
+    pub const fn with_max_message_data_length(
+        self,
+        max_message_data_length: u64,
+    ) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_message_data_length = max_message_data_length;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max gas per predicate.
+    pub const fn with_max_gas_per_predicate(self, max_gas_per_predicate: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_gas_per_predicate = max_gas_per_predicate;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl PredicateParameters {
+    /// Get the maximum predicate length
+    pub const fn max_predicate_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_predicate_length,
+        }
+    }
+
+    /// Get the maximum predicate data length
+    pub const fn max_predicate_data_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_predicate_data_length,
+        }
+    }
+
+    /// Get the maximum message data length
+    pub const fn max_message_data_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_message_data_length,
+        }
+    }
+
+    /// Get the maximum gas per predicate
+    pub const fn max_gas_per_predicate(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_gas_per_predicate,
+        }
+    }
+}
+
+impl From<PredicateParametersV1> for PredicateParameters {
+    fn from(params: PredicateParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for PredicateParameters {
     fn default() -> Self {
         Self::DEFAULT
     }
@@ -168,10 +464,8 @@ impl Default for FeeParameters {
 
 /// Consensus configurable parameters used for verifying transactions
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct PredicateParameters {
+pub struct PredicateParametersV1 {
     /// Maximum length of predicate, in instructions.
     pub max_predicate_length: u64,
     /// Maximum length of predicate data, in bytes.
@@ -182,54 +476,162 @@ pub struct PredicateParameters {
     pub max_gas_per_predicate: u64,
 }
 
-impl PredicateParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
+#[cfg(feature = "test-helpers")]
+impl PredicateParametersV1 {
+    /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
         max_predicate_length: 1024 * 1024,
         max_predicate_data_length: 1024 * 1024,
         max_message_data_length: 1024 * 1024,
         max_gas_per_predicate: MAX_GAS,
     };
-
-    /// Replace the max predicate length with the given argument
-    pub const fn with_max_predicate_length(mut self, max_predicate_length: u64) -> Self {
-        self.max_predicate_length = max_predicate_length;
-        self
-    }
-
-    /// Replace the max predicate data length with the given argument
-    pub const fn with_max_predicate_data_length(
-        mut self,
-        max_predicate_data_length: u64,
-    ) -> Self {
-        self.max_predicate_data_length = max_predicate_data_length;
-        self
-    }
-
-    /// Replace the max message data length with the given argument
-    pub const fn with_max_message_data_length(
-        mut self,
-        max_message_data_length: u64,
-    ) -> Self {
-        self.max_message_data_length = max_message_data_length;
-        self
-    }
 }
 
-impl Default for PredicateParameters {
+#[cfg(feature = "test-helpers")]
+impl Default for PredicateParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
+/// Versioned transaction parameters.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct TxParameters {
+pub enum TxParameters {
+    /// Version 1 of the transaction parameters.
+    V1(TxParametersV1),
+}
+
+impl TxParameters {
+    #[cfg(feature = "test-helpers")]
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(TxParametersV1::DEFAULT);
+
+    /// Transaction memory offset in VM runtime
+    pub const fn tx_offset(&self) -> usize {
+        Bytes32::LEN // Tx ID
+            + AssetId::LEN // Base asset ID
+            // Asset ID/Balance coin input pairs
+            + self.max_inputs() as usize * (AssetId::LEN + WORD_SIZE)
+            + WORD_SIZE // Tx size
+    }
+
+    /// Replace the max inputs with the given argument
+    pub const fn with_max_inputs(self, max_inputs: u16) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_inputs = max_inputs;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max outputs with the given argument
+    pub const fn with_max_outputs(self, max_outputs: u16) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_outputs = max_outputs;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max witnesses with the given argument
+    pub const fn with_max_witnesses(self, max_witnesses: u32) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_witnesses = max_witnesses;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max gas per transaction with the given argument
+    pub const fn with_max_gas_per_tx(self, max_gas_per_tx: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_gas_per_tx = max_gas_per_tx;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max size of the transaction with the given argument
+    pub const fn with_max_size(self, max_size: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_size = max_size;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl TxParameters {
+    /// Get the maximum number of inputs
+    pub const fn max_inputs(&self) -> u16 {
+        match self {
+            Self::V1(params) => params.max_inputs,
+        }
+    }
+
+    /// Get the maximum number of outputs
+    pub const fn max_outputs(&self) -> u16 {
+        match self {
+            Self::V1(params) => params.max_outputs,
+        }
+    }
+
+    /// Get the maximum number of witnesses
+    pub const fn max_witnesses(&self) -> u32 {
+        match self {
+            Self::V1(params) => params.max_witnesses,
+        }
+    }
+
+    /// Get the maximum gas per transaction
+    pub const fn max_gas_per_tx(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_gas_per_tx,
+        }
+    }
+
+    /// Get the maximum size in bytes
+    pub const fn max_size(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_size,
+        }
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for TxParameters {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl TxParameters {
+    pub fn set_max_size(&mut self, max_size: u64) {
+        match self {
+            Self::V1(params) => params.max_size = max_size,
+        }
+    }
+}
+
+impl From<TxParametersV1> for TxParameters {
+    fn from(params: TxParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TxParametersV1 {
     /// Maximum number of inputs.
-    pub max_inputs: u8,
+    pub max_inputs: u16,
     /// Maximum number of outputs.
-    pub max_outputs: u8,
+    pub max_outputs: u16,
     /// Maximum number of witnesses.
     pub max_witnesses: u32,
     /// Maximum gas per transaction.
@@ -238,8 +640,9 @@ pub struct TxParameters {
     pub max_size: u64,
 }
 
-impl TxParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
+#[cfg(feature = "test-helpers")]
+impl TxParametersV1 {
+    /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
         max_inputs: 255,
         max_outputs: 255,
@@ -247,85 +650,71 @@ impl TxParameters {
         max_gas_per_tx: MAX_GAS,
         max_size: MAX_SIZE,
     };
-
-    /// Transaction memory offset in VM runtime
-    pub const fn tx_offset(&self) -> usize {
-        Bytes32::LEN // Tx ID
-            + WORD_SIZE // Tx size
-            // Asset ID/Balance coin input pairs
-            + self.max_inputs as usize * (AssetId::LEN + WORD_SIZE)
-    }
-
-    /// Replace the max inputs with the given argument
-    pub const fn with_max_inputs(mut self, max_inputs: u8) -> Self {
-        self.max_inputs = max_inputs;
-        self
-    }
-
-    /// Replace the max outputs with the given argument
-    pub const fn with_max_outputs(mut self, max_outputs: u8) -> Self {
-        self.max_outputs = max_outputs;
-        self
-    }
-
-    /// Replace the max witnesses with the given argument
-    pub const fn with_max_witnesses(mut self, max_witnesses: u32) -> Self {
-        self.max_witnesses = max_witnesses;
-        self
-    }
-
-    /// Replace the max gas per transaction with the given argument
-    pub const fn with_max_gas_per_tx(mut self, max_gas_per_tx: u64) -> Self {
-        self.max_gas_per_tx = max_gas_per_tx;
-        self
-    }
-
-    /// Replace the max size of the transaction with the given argument
-    pub const fn with_max_size(mut self, max_size: u64) -> Self {
-        self.max_size = max_size;
-        self
-    }
 }
 
-impl Default for TxParameters {
+#[cfg(feature = "test-helpers")]
+impl Default for TxParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
+/// Versioned script parameters.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct ScriptParameters {
-    /// Maximum length of script, in instructions.
-    pub max_script_length: u64,
-    /// Maximum length of script data, in bytes.
-    pub max_script_data_length: u64,
+pub enum ScriptParameters {
+    V1(ScriptParametersV1),
 }
 
 impl ScriptParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
-    pub const DEFAULT: Self = Self {
-        max_script_length: 1024 * 1024,
-        max_script_data_length: 1024 * 1024,
-    };
+    #[cfg(feature = "test-helpers")]
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(ScriptParametersV1::DEFAULT);
 
     /// Replace the max script length with the given argument
-    pub const fn with_max_script_length(mut self, max_script_length: u64) -> Self {
-        self.max_script_length = max_script_length;
-        self
+    pub const fn with_max_script_length(self, max_script_length: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_script_length = max_script_length;
+                Self::V1(params)
+            }
+        }
     }
 
     /// Replace the max script data length with the given argument
-    pub const fn with_max_script_data_length(
-        mut self,
-        max_script_data_length: u64,
-    ) -> Self {
-        self.max_script_data_length = max_script_data_length;
-        self
+    pub const fn with_max_script_data_length(self, max_script_data_length: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_script_data_length = max_script_data_length;
+                Self::V1(params)
+            }
+        }
     }
 }
 
+impl ScriptParameters {
+    /// Get the maximum script length
+    pub const fn max_script_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_script_length,
+        }
+    }
+
+    /// Get the maximum script data length
+    pub const fn max_script_data_length(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_script_data_length,
+        }
+    }
+}
+
+impl From<ScriptParametersV1> for ScriptParameters {
+    fn from(params: ScriptParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
+#[cfg(feature = "test-helpers")]
 impl Default for ScriptParameters {
     fn default() -> Self {
         Self::DEFAULT
@@ -334,8 +723,94 @@ impl Default for ScriptParameters {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(default))]
-pub struct ContractParameters {
+pub struct ScriptParametersV1 {
+    /// Maximum length of script, in instructions.
+    pub max_script_length: u64,
+    /// Maximum length of script data, in bytes.
+    pub max_script_data_length: u64,
+}
+
+#[cfg(feature = "test-helpers")]
+impl ScriptParametersV1 {
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self {
+        max_script_length: 1024 * 1024,
+        max_script_data_length: 1024 * 1024,
+    };
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for ScriptParametersV1 {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+/// Versioned contract parameters.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ContractParameters {
+    V1(ContractParametersV1),
+}
+
+impl ContractParameters {
+    #[cfg(feature = "test-helpers")]
+    /// Default parameters just for testing.
+    pub const DEFAULT: Self = Self::V1(ContractParametersV1::DEFAULT);
+
+    /// Replace the max contract size with the given argument
+    pub const fn with_contract_max_size(self, contract_max_size: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.contract_max_size = contract_max_size;
+                Self::V1(params)
+            }
+        }
+    }
+
+    /// Replace the max storage slots with the given argument
+    pub const fn with_max_storage_slots(self, max_storage_slots: u64) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_storage_slots = max_storage_slots;
+                Self::V1(params)
+            }
+        }
+    }
+}
+
+impl ContractParameters {
+    /// Get the maximum contract size
+    pub const fn contract_max_size(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.contract_max_size,
+        }
+    }
+
+    /// Get the maximum storage slots
+    pub const fn max_storage_slots(&self) -> u64 {
+        match self {
+            Self::V1(params) => params.max_storage_slots,
+        }
+    }
+}
+
+impl From<ContractParametersV1> for ContractParameters {
+    fn from(params: ContractParametersV1) -> Self {
+        Self::V1(params)
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for ContractParameters {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ContractParametersV1 {
     /// Maximum contract size, in bytes.
     pub contract_max_size: u64,
 
@@ -343,85 +818,59 @@ pub struct ContractParameters {
     pub max_storage_slots: u64,
 }
 
-impl ContractParameters {
-    /// Default consensus parameters with settings suggested in fuel-specs
+#[cfg(feature = "test-helpers")]
+impl ContractParametersV1 {
+    /// Default parameters just for testing.
     pub const DEFAULT: Self = Self {
-        contract_max_size: 16 * 1024 * 1024,
+        contract_max_size: 100 * 1024,
         max_storage_slots: 255,
     };
-
-    /// Replace the max contract size with the given argument
-    pub const fn with_contract_max_size(mut self, contract_max_size: u64) -> Self {
-        self.contract_max_size = contract_max_size;
-        self
-    }
-
-    /// Replace the max storage slots with the given argument
-    pub const fn with_max_storage_slots(mut self, max_storage_slots: u64) -> Self {
-        self.max_storage_slots = max_storage_slots;
-        self
-    }
 }
 
-impl Default for ContractParameters {
+#[cfg(feature = "test-helpers")]
+impl Default for ContractParametersV1 {
     fn default() -> Self {
         Self::DEFAULT
     }
 }
 
 #[cfg(feature = "typescript")]
-mod typescript {
+pub mod typescript {
     use wasm_bindgen::prelude::*;
 
-    use super::PredicateParameters;
+    use super::{
+        PredicateParameters as PredicateParametersRust,
+        PredicateParametersV1,
+    };
+
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+    pub struct PredicateParameters(alloc::boxed::Box<PredicateParametersRust>);
+
+    impl AsRef<PredicateParametersRust> for PredicateParameters {
+        fn as_ref(&self) -> &PredicateParametersRust {
+            &self.0
+        }
+    }
 
     #[wasm_bindgen]
     impl PredicateParameters {
         #[wasm_bindgen(constructor)]
-        pub fn typescript_new() -> Self {
-            Self::DEFAULT
+        pub fn typescript_new(
+            max_predicate_length: u64,
+            max_predicate_data_length: u64,
+            max_message_data_length: u64,
+            max_gas_per_predicate: u64,
+        ) -> Self {
+            let params: PredicateParametersRust = PredicateParametersV1 {
+                max_predicate_length,
+                max_predicate_data_length,
+                max_message_data_length,
+                max_gas_per_predicate,
+            }
+            .into();
+
+            PredicateParameters(params.into())
         }
     }
-}
-
-/// Arbitrary default consensus parameters. While best-efforts are made to adjust these to
-/// reasonable settings, they may not be useful for every network instantiation.
-#[deprecated(since = "0.12.2", note = "use `ConsensusParameters` instead.")]
-pub mod default_parameters {
-    use crate::{
-        transaction::consensus_parameters::{
-            PredicateParameters,
-            ScriptParameters,
-            TxParameters,
-        },
-        ContractParameters,
-        FeeParameters,
-    };
-    use fuel_types::ChainId;
-
-    pub const CONTRACT_MAX_SIZE: u64 = ContractParameters::DEFAULT.contract_max_size;
-    pub const MAX_INPUTS: u8 = TxParameters::DEFAULT.max_inputs;
-    pub const MAX_OUTPUTS: u8 = TxParameters::DEFAULT.max_outputs;
-    pub const MAX_WITNESSES: u32 = TxParameters::DEFAULT.max_witnesses;
-    pub const MAX_GAS_PER_TX: u64 = TxParameters::DEFAULT.max_gas_per_tx;
-
-    pub const MAX_SCRIPT_LENGTH: u64 = ScriptParameters::DEFAULT.max_script_length;
-    pub const MAX_SCRIPT_DATA_LENGTH: u64 =
-        ScriptParameters::DEFAULT.max_script_data_length;
-
-    pub const MAX_STORAGE_SLOTS: u64 = ContractParameters::DEFAULT.max_storage_slots;
-
-    pub const MAX_PREDICATE_LENGTH: u64 =
-        PredicateParameters::DEFAULT.max_predicate_length;
-    pub const MAX_PREDICATE_DATA_LENGTH: u64 =
-        PredicateParameters::DEFAULT.max_predicate_data_length;
-    pub const MAX_MESSAGE_DATA_LENGTH: u64 =
-        PredicateParameters::DEFAULT.max_message_data_length;
-
-    pub const MAX_GAS_PER_PREDICATE: u64 =
-        PredicateParameters::DEFAULT.max_gas_per_predicate;
-    pub const GAS_PRICE_FACTOR: u64 = FeeParameters::DEFAULT.gas_price_factor;
-    pub const GAS_PER_BYTE: u64 = FeeParameters::DEFAULT.gas_per_byte;
-
-    pub const CHAIN_ID: ChainId = ChainId::new(0);
 }

@@ -18,10 +18,8 @@ fn memcopy() {
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
     let zero_gas_price = 0;
 
-    let consensus_params = ConsensusParameters {
-        tx_params,
-        ..Default::default()
-    };
+    let mut consensus_params = ConsensusParameters::default();
+    consensus_params.set_tx_params(tx_params);
 
     let mut vm = Interpreter::<_, _>::with_storage(
         MemoryStorage::default(),
@@ -37,8 +35,8 @@ fn memcopy() {
         .expect("default tx should produce a valid checked transaction")
         .into_ready(
             zero_gas_price,
-            &consensus_params.gas_costs,
-            &consensus_params.fee_params,
+            consensus_params.gas_costs(),
+            consensus_params.fee_params(),
         )
         .unwrap();
 
@@ -104,8 +102,8 @@ fn stack_alloc_ownership() {
         .expect("Empty script should be valid")
         .into_ready(
             gas_price,
-            &consensus_params.gas_costs,
-            &consensus_params.fee_params,
+            consensus_params.gas_costs(),
+            consensus_params.fee_params(),
         )
         .unwrap();
     vm.init_script(tx).expect("Failed to init VM");

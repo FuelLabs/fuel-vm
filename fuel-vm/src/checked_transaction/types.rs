@@ -218,7 +218,7 @@ pub mod script {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
                 retryable_balance: RetryableAmount {
                     amount: retryable_balance,
-                    base_asset_id: consensus_params.base_asset_id,
+                    base_asset_id: *consensus_params.base_asset_id(),
                 },
                 block_height,
                 min_gas: self

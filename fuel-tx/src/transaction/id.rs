@@ -21,6 +21,12 @@ use fuel_types::{
     ChainId,
 };
 
+/// Prepares transaction for signing.
+pub trait PrepareSign {
+    /// Prepares transaction for signing zeroing required fields.
+    fn prepare_sign(&mut self);
+}
+
 /// Means that transaction has a unique identifier.
 pub trait UniqueIdentifier {
     /// The unique identifier of the transaction is based on its content.
@@ -162,12 +168,10 @@ mod tests {
 
     fn invert_utxo_id(utxo_id: &mut UtxoId) {
         let mut tx_id = *utxo_id.tx_id();
-        let mut out_idx = [utxo_id.output_index()];
-
         invert(&mut tx_id);
-        invert(&mut out_idx);
+        let out_idx = utxo_id.output_index().not();
 
-        *utxo_id = UtxoId::new(tx_id, out_idx[0])
+        *utxo_id = UtxoId::new(tx_id, out_idx)
     }
 
     fn invert_storage_slot(storage_slot: &mut StorageSlot) {
@@ -609,7 +613,7 @@ mod tests {
                     rng.next_u64(),
                     rng.gen(),
                     rng.gen(),
-                    rng.next_u32().to_be_bytes()[0],
+                    rng.gen(),
                 ),
                 Input::coin_predicate(
                     rng.gen(),
@@ -627,7 +631,7 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
-                    rng.next_u32().to_be_bytes()[0],
+                    rng.gen(),
                 ),
                 Input::message_coin_predicate(
                     rng.gen(),
@@ -643,7 +647,7 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
-                    rng.next_u32().to_be_bytes()[0],
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                 ),
                 Input::message_data_predicate(
@@ -663,7 +667,7 @@ mod tests {
             vec![],
             vec![
                 Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
-                Output::contract(rng.next_u32().to_be_bytes()[0], rng.gen(), rng.gen()),
+                Output::contract(rng.gen(), rng.gen(), rng.gen()),
                 Output::change(rng.gen(), rng.next_u64(), rng.gen()),
                 Output::variable(rng.gen(), rng.next_u64(), rng.gen()),
                 Output::contract_created(rng.gen(), rng.gen()),
@@ -705,7 +709,7 @@ mod tests {
 
                     for storage_slots in storage_slots.iter() {
                         let tx = Transaction::create(
-                            rng.next_u32().to_be_bytes()[0],
+                            rng.gen(),
                             rng.gen(),
                             rng.gen(),
                             storage_slots.clone(),

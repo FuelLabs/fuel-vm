@@ -2,9 +2,8 @@ use crate::{
     input,
     output,
     transaction::{
-        field,
         field::{
-            BytecodeLength,
+            self,
             BytecodeWitnessIndex,
             Maturity,
             Tip,
@@ -42,6 +41,10 @@ use crate::{
         WitnessLimit,
     },
     policies::Policies,
+    transaction::{
+        CreateBody,
+        ScriptBody,
+    },
 };
 use alloc::{
     collections::BTreeMap,
@@ -110,20 +113,22 @@ pub struct TransactionBuilder<Tx> {
     // We take the key by reference so this lib won't have the responsibility to properly
     // zeroize the keys
     // Maps signing keys -> witness indexes
-    sign_keys: BTreeMap<SecretKey, u8>,
+    sign_keys: BTreeMap<SecretKey, u16>,
 }
 
 impl TransactionBuilder<Script> {
     pub fn script(script: Vec<u8>, script_data: Vec<u8>) -> Self {
         let tx = Script {
-            script_gas_limit: Default::default(),
-            script,
-            script_data,
+            body: ScriptBody {
+                script_gas_limit: Default::default(),
+                receipts_root: Default::default(),
+                script,
+                script_data,
+            },
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
-            receipts_root: Default::default(),
             metadata: None,
         };
         Self::with_tx(tx)
@@ -139,10 +144,11 @@ impl TransactionBuilder<Create> {
         // sort the storage slots before initializing the builder
         storage_slots.sort();
         let mut tx = Create {
-            bytecode_length: Default::default(),
-            bytecode_witness_index: Default::default(),
-            salt,
-            storage_slots,
+            body: CreateBody {
+                bytecode_witness_index: Default::default(),
+                salt,
+                storage_slots,
+            },
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),
@@ -150,7 +156,6 @@ impl TransactionBuilder<Create> {
             metadata: None,
         };
 
-        *tx.bytecode_length_mut() = (bytecode.as_ref().len() / 4) as Word;
         *tx.bytecode_witness_index_mut() = 0;
 
         tx.witnesses_mut().push(bytecode);
@@ -228,7 +233,7 @@ impl<Tx> TransactionBuilder<Tx> {
     }
 
     pub fn with_tx_params(&mut self, tx_params: TxParameters) -> &mut Self {
-        self.params.tx_params = tx_params;
+        self.params.set_tx_params(tx_params);
         self
     }
 
@@ -236,12 +241,12 @@ impl<Tx> TransactionBuilder<Tx> {
         &mut self,
         predicate_params: PredicateParameters,
     ) -> &mut Self {
-        self.params.predicate_params = predicate_params;
+        self.params.set_predicate_params(predicate_params);
         self
     }
 
     pub fn with_script_params(&mut self, script_params: ScriptParameters) -> &mut Self {
-        self.params.script_params = script_params;
+        self.params.set_script_params(script_params);
         self
     }
 
@@ -249,22 +254,32 @@ impl<Tx> TransactionBuilder<Tx> {
         &mut self,
         contract_params: ContractParameters,
     ) -> &mut Self {
-        self.params.contract_params = contract_params;
+        self.params.set_contract_params(contract_params);
         self
     }
 
     pub fn with_fee_params(&mut self, fee_params: FeeParameters) -> &mut Self {
-        self.params.fee_params = fee_params;
+        self.params.set_fee_params(fee_params);
         self
     }
 
-    pub fn with_base_asset_id(&mut self, base_asset_id: AssetId) -> &mut Self {
-        self.params.base_asset_id = base_asset_id;
+    pub fn with_chain_id(&mut self, chain_id: ChainId) -> &mut Self {
+        self.params.set_chain_id(chain_id);
         self
     }
 
     pub fn with_gas_costs(&mut self, gas_costs: GasCosts) -> &mut Self {
-        self.params.gas_costs = gas_costs;
+        self.params.set_gas_costs(gas_costs);
+        self
+    }
+
+    pub fn with_base_asset_id(&mut self, base_asset_id: AssetId) -> &mut Self {
+        self.params.set_base_asset_id(base_asset_id);
+        self
+    }
+
+    pub fn with_block_gas_limit(&mut self, block_gas_limit: u64) -> &mut Self {
+        self.params.set_block_gas_limit(block_gas_limit);
         self
     }
 }
@@ -285,11 +300,6 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     {
         self.tx.set_script_gas_limit(gas_limit);
 
-        self
-    }
-
-    pub fn with_chain_id(&mut self, chain_id: ChainId) -> &mut Self {
-        self.params.chain_id = chain_id;
         self
     }
 
@@ -401,9 +411,13 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     /// Adds a secret to the builder, and adds a corresponding witness if it's a new entry
-    fn upsert_secret(&mut self, secret_key: SecretKey) -> u8 {
-        let witness_len = u8::try_from(self.witnesses().len())
-            .expect("The number of witnesses can't exceed `u8::MAX`");
+    fn upsert_secret(&mut self, secret_key: SecretKey) -> u16 {
+        let witness_len = u16::try_from(self.witnesses().len())
+            .expect("The number of witnesses can't exceed `u16::MAX`");
+
+        if u32::from(witness_len) > self.params.tx_params().max_witnesses() {
+            panic!("Max witnesses exceeded");
+        }
 
         let witness_index = self.sign_keys.entry(secret_key).or_insert_with(|| {
             // if this private key hasn't been used before,

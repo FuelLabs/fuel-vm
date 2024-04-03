@@ -1,3 +1,4 @@
+mod chargeable_transaction;
 mod create;
 pub mod input;
 mod mint;
@@ -7,9 +8,15 @@ mod storage;
 mod utxo_id;
 mod witness;
 
-pub use create::Create;
+pub use create::{
+    Create,
+    CreateBody,
+};
 pub use mint::Mint;
-pub use script::Script;
+pub use script::{
+    Script,
+    ScriptBody,
+};
 pub use storage::StorageSlot;
 pub use utxo_id::UtxoId;
 pub use witness::Witness;

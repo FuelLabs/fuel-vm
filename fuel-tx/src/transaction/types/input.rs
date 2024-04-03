@@ -133,6 +133,23 @@ impl AsFieldFmt for u8 {
     }
 }
 
+impl AsField<u16> for u16 {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&u16> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut u16> {
+        Some(self)
+    }
+}
+
+impl AsFieldFmt for u16 {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.to_string().as_str())
+    }
+}
+
 impl AsField<u64> for u64 {
     #[inline(always)]
     fn as_field(&self) -> Option<&u64> {
@@ -242,7 +259,7 @@ impl Input {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        witness_index: u8,
+        witness_index: u16,
     ) -> Self {
         Self::CoinSigned(CoinSigned {
             utxo_id,
@@ -278,7 +295,7 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
-        witness_index: u8,
+        witness_index: u16,
     ) -> Self {
         Self::MessageCoinSigned(MessageCoinSigned {
             sender,
@@ -320,7 +337,7 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
-        witness_index: u8,
+        witness_index: u16,
         data: Vec<u8>,
     ) -> Self {
         Self::MessageDataSigned(MessageDataSigned {
@@ -419,7 +436,7 @@ impl Input {
         }
     }
 
-    pub const fn witness_index(&self) -> Option<u8> {
+    pub const fn witness_index(&self) -> Option<u16> {
         match self {
             Input::CoinSigned(CoinSigned { witness_index, .. })
             | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
@@ -708,7 +725,7 @@ impl Input {
     }
 
     /// Empties fields that should be zero during the signing.
-    pub(crate) fn prepare_sign(&mut self) {
+    pub fn prepare_sign(&mut self) {
         match self {
             Input::CoinSigned(coin) => coin.prepare_sign(),
             Input::CoinPredicate(coin) => coin.prepare_sign(),
@@ -751,11 +768,6 @@ impl Input {
         P: AsRef<[u8]>,
     {
         owner == &Self::predicate_owner(predicate)
-    }
-
-    /// Prepare the output for script or predicate execution
-    pub fn prepare_init_execute(&mut self) {
-        self.prepare_sign(); // This currently does the same thing
     }
 }
 
@@ -966,7 +978,7 @@ pub mod typescript {
             amount: Word,
             asset_id: AssetId,
             tx_pointer: TxPointer,
-            witness_index: u8,
+            witness_index: u16,
         ) -> Input {
             Input(Box::new(crate::Input::CoinSigned(CoinSigned {
                 utxo_id,
@@ -1004,7 +1016,7 @@ pub mod typescript {
             recipient: Address,
             amount: Word,
             nonce: Nonce,
-            witness_index: u8,
+            witness_index: u16,
         ) -> Input {
             Input(Box::new(crate::Input::MessageCoinSigned(
                 MessageCoinSigned {
@@ -1052,7 +1064,7 @@ pub mod typescript {
             recipient: Address,
             amount: Word,
             nonce: Nonce,
-            witness_index: u8,
+            witness_index: u16,
             data: Vec<u8>,
         ) -> Input {
             Input(Box::new(crate::Input::MessageDataSigned(

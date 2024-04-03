@@ -30,6 +30,9 @@ crate::enum_try_from! {
 
         /// Get memory address where the transaction is located
         TxStart = 0x05,
+
+        /// Get memory address of base asset ID
+        BaseAssetId = 0x06,
     },
     Immediate18
 }
@@ -91,9 +94,6 @@ crate::enum_try_from! {
 
         /// Set `$rA` to size of the transaction in memory, in bytes
         TxLength = 0x00E,
-
-        /// Set `$rA` to `tx.bytecodeLength`
-        CreateBytecodeLength = 0x100,
 
         /// Set `$rA` to `tx.bytecodeWitnessIndex`
         CreateBytecodeWitnessIndex = 0x101,
@@ -268,6 +268,8 @@ fn encode_gm_args() {
         GMArgs::GetCaller,
         GMArgs::GetVerifyingPredicate,
         GMArgs::GetChainId,
+        GMArgs::TxStart,
+        GMArgs::BaseAssetId,
     ];
 
     args.into_iter().for_each(|a| {
@@ -295,7 +297,6 @@ fn encode_gtf_args() {
         GTFArgs::ScriptInputAtIndex,
         GTFArgs::ScriptOutputAtIndex,
         GTFArgs::ScriptWitnessAtIndex,
-        GTFArgs::CreateBytecodeLength,
         GTFArgs::CreateBytecodeWitnessIndex,
         GTFArgs::CreateStorageSlotsCount,
         GTFArgs::CreateInputsCount,

@@ -3,7 +3,6 @@
 
 use super::{
     test_params,
-    CHAIN_ID,
     CONTRACT_PARAMS,
     SCRIPT_PARAMS,
     TX_PARAMS,
@@ -55,7 +54,7 @@ fn gas_limit() {
         .expect("Failed to validate transaction");
 
     let err = Transaction::script(
-        TX_PARAMS.max_gas_per_tx + 1,
+        TX_PARAMS.max_gas_per_tx() + 1,
         generate_bytes(rng),
         generate_bytes(rng),
         Policies::new().with_max_fee(0),
@@ -328,11 +327,11 @@ fn max_iow() {
         rng.gen(),
     );
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -348,7 +347,7 @@ fn max_iow() {
     builder.maturity(maturity);
 
     let secrets =
-        cmp::min(TX_PARAMS.max_inputs as u32, TX_PARAMS.max_witnesses - 1) as usize;
+        cmp::min(TX_PARAMS.max_inputs() as u32, TX_PARAMS.max_witnesses() - 1) as usize;
     let secrets: Vec<SecretKey> = (0..secrets - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -358,11 +357,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), asset_id, rng.gen());
     });
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), asset_id));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -377,7 +376,7 @@ fn max_iow() {
 
     builder.maturity(maturity);
 
-    let secrets: Vec<SecretKey> = (0..1 + TX_PARAMS.max_inputs as usize
+    let secrets: Vec<SecretKey> = (0..1 + TX_PARAMS.max_inputs() as usize
         - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -386,11 +385,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -407,7 +406,7 @@ fn max_iow() {
 
     builder.maturity(maturity);
 
-    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs as usize
+    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs() as usize
         - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -416,11 +415,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
-    while builder.outputs().len() < 1 + TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < 1 + TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
     }
 
-    while builder.witnesses().len() < TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -437,7 +436,7 @@ fn max_iow() {
 
     builder.maturity(maturity);
 
-    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs as usize
+    let secrets: Vec<SecretKey> = (0..TX_PARAMS.max_inputs() as usize
         - builder.inputs().len())
         .map(|_| SecretKey::random(rng))
         .collect();
@@ -446,11 +445,11 @@ fn max_iow() {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), rng.gen(), rng.gen());
     });
 
-    while builder.outputs().len() < TX_PARAMS.max_outputs as usize {
+    while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), rng.gen()));
     }
 
-    while builder.witnesses().len() < 1 + TX_PARAMS.max_witnesses as usize {
+    while builder.witnesses().len() < 1 + TX_PARAMS.max_witnesses() as usize {
         builder.add_witness(generate_bytes(rng).into());
     }
 
@@ -542,8 +541,8 @@ fn script__check__happy_path() {
     let asset_id: AssetId = rng.gen();
 
     TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -564,8 +563,8 @@ fn script__check__cannot_create_contract() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -591,8 +590,8 @@ fn script__check__errors_if_script_too_long() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; 1 + SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -615,8 +614,8 @@ fn script__check__errors_if_script_data_too_long() {
     let asset_id: AssetId = rng.gen();
 
     let err = TransactionBuilder::script(
-        vec![0xfa; SCRIPT_PARAMS.max_script_length as usize],
-        vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length as usize],
+        vec![0xfa; SCRIPT_PARAMS.max_script_length() as usize],
+        vec![0xfb; 1 + SCRIPT_PARAMS.max_script_data_length() as usize],
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), asset_id, rng.gen())
@@ -843,7 +842,7 @@ fn create__check__something_else() {
     let secret = SecretKey::random(rng);
 
     TransactionBuilder::create(
-        vec![0xfa; CONTRACT_PARAMS.contract_max_size as usize / 4].into(),
+        vec![0xfa; CONTRACT_PARAMS.contract_max_size() as usize / 4].into(),
         rng.gen(),
         vec![],
     )
@@ -865,7 +864,7 @@ fn create__check__errors_if_witness_bytecode_too_long() {
     let secret = SecretKey::random(rng);
 
     let err = TransactionBuilder::create(
-        vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size as usize].into(),
+        vec![0xfa; 1 + CONTRACT_PARAMS.contract_max_size() as usize].into(),
         rng.gen(),
         vec![],
     )
@@ -940,7 +939,7 @@ fn create__check__can_max_out_storage_slots() {
 
     let secret = SecretKey::random(rng);
 
-    let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots)
+    let storage_slots = (0..CONTRACT_PARAMS.max_storage_slots())
         .map(|i| {
             let mut slot_data = StorageSlot::default().to_bytes();
             slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
@@ -972,7 +971,7 @@ fn create__check__cannot_exceed_max_storage_slot() {
     let secret = SecretKey::random(rng);
 
     // Test max slots can't be exceeded
-    let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots)
+    let mut storage_slots_max = (0..CONTRACT_PARAMS.max_storage_slots())
         .map(|i| {
             let mut slot_data = StorageSlot::default().to_bytes();
             slot_data[..8].copy_from_slice(&i.to_be_bytes()); // Force ordering
@@ -1006,7 +1005,9 @@ fn script__check__transaction_at_maximum_size_is_valid() {
     let block_height = 100.into();
     let mut params = test_params();
     let max_size = 1024usize;
-    params.tx_params.max_size = max_size as u64;
+    let mut tx_params = *params.tx_params();
+    tx_params.set_max_size(max_size as u64);
+    params.set_tx_params(tx_params);
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
@@ -1038,7 +1039,9 @@ fn script__check__transaction_exceeding_maximum_size_is_invalid() {
     let block_height = 100.into();
     let mut params = test_params();
     let max_size = 1024usize;
-    params.tx_params.max_size = max_size as u64;
+    let mut tx_params = *params.tx_params();
+    tx_params.set_max_size(max_size as u64);
+    params.set_tx_params(tx_params);
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
@@ -1125,65 +1128,6 @@ fn mint() {
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(err, ValidityError::TransactionMintIncorrectBlockHeight);
-}
-
-#[test]
-fn tx_id_bytecode_len() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    let maturity = 100.into();
-    let salt = rng.gen();
-
-    let w_a = vec![0xfau8; 4].into();
-    let w_b = vec![0xfau8; 8].into();
-    let w_c = vec![0xfbu8; 4].into();
-
-    let tx_a = Transaction::create(
-        0,
-        Policies::new().with_maturity(maturity),
-        salt,
-        vec![],
-        vec![],
-        vec![],
-        vec![w_a],
-    );
-
-    let tx_b = Transaction::create(
-        0,
-        Policies::new().with_maturity(maturity),
-        salt,
-        vec![],
-        vec![],
-        vec![],
-        vec![w_b],
-    );
-
-    let tx_c = Transaction::create(
-        0,
-        Policies::new().with_maturity(maturity),
-        salt,
-        vec![],
-        vec![],
-        vec![],
-        vec![w_c],
-    );
-
-    let id_a = tx_a.id(&CHAIN_ID);
-    let id_b = tx_b.id(&CHAIN_ID);
-    let id_c = tx_c.id(&CHAIN_ID);
-
-    // bytecode with different length should produce different id
-    assert_ne!(id_a, id_b);
-
-    // bytecode with same length and different content should produce same id
-    //
-    // Note that this isn't related to the checkable itself - this checks exclusively the
-    // id behavior. the witness payload for a bytecode cannot be tampered and the
-    // checkable rules should not allow this case to pass.
-    //
-    // For further reference, check
-    // https://github.com/FuelLabs/fuel-specs/blob/1856de801fabc7e52f5c010c45c3fc6d5d4e2be3/specs/protocol/tx_format.md?plain=1#L160
-    assert_eq!(id_a, id_c);
 }
 
 mod inputs {

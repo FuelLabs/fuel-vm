@@ -124,9 +124,9 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let bytes_size = self.metered_bytes_size();
 
         let vm_initialization_gas =
-            gas_costs.vm_initialization.resolve(bytes_size as Word);
+            gas_costs.vm_initialization().resolve(bytes_size as Word);
 
-        let bytes_gas = bytes_size as u64 * fee.gas_per_byte;
+        let bytes_gas = bytes_size as u64 * fee.gas_per_byte();
         // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
         // validity. In the production, the value always will be lower than
         // `u64::MAX`.
@@ -143,7 +143,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let remaining_allowed_witness_gas = self
             .witness_limit()
             .saturating_sub(self.witnesses().size_dynamic() as u64)
-            .saturating_mul(fee.gas_per_byte);
+            .saturating_mul(fee.gas_per_byte());
 
         self.min_gas(gas_costs, fee)
             .saturating_add(remaining_allowed_witness_gas)
@@ -160,7 +160,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let gas_fee = gas_to_fee(
             self.min_gas(gas_costs, fee),
             gas_price,
-            fee.gas_price_factor,
+            fee.gas_price_factor(),
         );
         gas_fee.saturating_add(tip as u128)
     }
@@ -178,7 +178,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let gas_fee = gas_to_fee(
             self.max_gas(gas_costs, fee),
             gas_price,
-            fee.gas_price_factor,
+            fee.gas_price_factor(),
         );
         gas_fee.saturating_add(tip as u128)
     }
@@ -200,7 +200,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
 
         let total_used_gas = min_gas.saturating_add(used_gas);
         let tip = self.policies().get(PolicyType::Tip).unwrap_or(0);
-        let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor)
+        let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor())
             .saturating_add(tip as u128);
 
         // It is okay to saturate everywhere above because it only can decrease the value
@@ -215,7 +215,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
 
     /// Returns the gas used by the inputs.
     fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> Word {
-        let mut witness_cache: HashSet<u8> = HashSet::new();
+        let mut witness_cache: HashSet<u16> = HashSet::new();
         self.inputs()
             .iter()
             .filter(|input| match input {
@@ -239,7 +239,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 // Charge EC recovery cost for signed inputs
                 Input::CoinSigned(_)
                 | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.ecr1,
+                | Input::MessageDataSigned(_) => gas_costs.ecr1(),
                 // Charge the cost of the contract root for predicate inputs
                 Input::CoinPredicate(CoinPredicate {
                     predicate,
@@ -258,9 +258,9 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 }) => {
                     let bytes_size = self.metered_bytes_size();
                     let vm_initialization_gas =
-                        gas_costs.vm_initialization.resolve(bytes_size as Word);
+                        gas_costs.vm_initialization().resolve(bytes_size as Word);
                     gas_costs
-                        .contract_root
+                        .contract_root()
                         .resolve(predicate.len() as u64)
                         .saturating_add(*predicate_gas_used)
                         .saturating_add(vm_initialization_gas)

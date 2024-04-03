@@ -7,15 +7,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.48.0]
+
 ### Added
 
+- [#705](https://github.com/FuelLabs/fuel-vm/pull/705): Added `privileged_address` to the `ConsensusParameters` for permissioned operations(like upgrade of the network).
 - [#648](https://github.com/FuelLabs/fuel-vm/pull/648): Added support for generating proofs for Sparse Merkle Trees (SMTs) and proof verification. Proofs can be used to attest to the inclusion or exclusion of data from the set.
 
 ### Changed
 
 #### Breaking
 
+- [#709](https://github.com/FuelLabs/fuel-vm/pull/709): Removed `bytecode_length` from the `Create` transaction.
+- [#706](https://github.com/FuelLabs/fuel-vm/pull/706): Unified `Create` and `Script` logic via `ChargeableTransaction`. The change is breaking because affects JSON serialization and deserialization. Now `Script` and `Create` transactions have `body` fields that include unique transactions.
+- [#703](https://github.com/FuelLabs/fuel-vm/pull/703): Reshuffled fields `Script` and `Create` transactions to unify part used by all chargeable transactions. It breaks the serialization and deserialization and requires adoption on the SDK side.
+- [#708](https://github.com/FuelLabs/fuel-vm/pull/708): Hidden `Default` params under the "test-helper" feature to avoid accidental use in production code. It is a huge breaking change for any code that has used them before in production, and instead, it should be fetched from the network. In the case of tests simply use the "test-helper" feature in your `[dev-dependencies]` section.
+- [#702](https://github.com/FuelLabs/fuel-vm/pull/702): Wrapped `FeeParameters`, `PredicateParameters`, `TxParameters`, `ScriptParameters` and `ContractParameters` into an enum to support versioning. 
+- [#701](https://github.com/FuelLabs/fuel-vm/pull/701): Wrapped `ConsensusParameters` and `GasCosts` into an enum to support versioning. Moved `block_gas_limit` from `fuel_core_chain_config::ChainConfig` to `ConsensusPataremeters`. Reduced default `MAX_SIZE` to be [110kb](https://github.com/FuelLabs/fuel-core/pull/1761) and `MAX_CONTRACT_SIZE` to be [100kb](https://github.com/FuelLabs/fuel-core/pull/1761).
 - [#692](https://github.com/FuelLabs/fuel-vm/pull/692): Add GTF getters for tx size and address.
+- [#698](https://github.com/FuelLabs/fuel-vm/pull/698): Store input, output and witness limits to u16, while keeping the values limited to 255.
 
 ## [Version 0.47.1]
 
@@ -278,6 +288,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   affected types.
 - [#588](https://github.com/FuelLabs/fuel-vm/pull/588): Re-worked the size calculation of the canonical
   serialization/deserialization.
+- [#700](https://github.com/FuelLabs/fuel-vm/pull/700): Add `BASE_ASSET_ID` to `GM` instruction.
+
 
 #### Removed
 

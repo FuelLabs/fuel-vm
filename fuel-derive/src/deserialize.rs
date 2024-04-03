@@ -50,6 +50,11 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
         quote! {}
     };
 
+    let mut s = s.clone();
+
+    let variant: &mut synstructure::VariantInfo = &mut s.variants_mut()[0];
+    variant.filter(|binding| !should_skip_field_binding(binding));
+
     s.gen_impl(quote! {
         gen impl ::fuel_types::canonical::Deserialize for @Self {
             fn decode_static<I: ::fuel_types::canonical::Input + ?Sized>(buffer: &mut I) -> ::core::result::Result<Self, ::fuel_types::canonical::Error> {
@@ -137,6 +142,11 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             <::core::primitive::u64 as ::fuel_types::canonical::Deserialize>::decode(buffer)?
         }
     };
+
+    let mut s = s.clone();
+    s.variants_mut().iter_mut().for_each(|v| {
+        v.filter(|binding| !should_skip_field_binding(binding));
+    });
 
     s.gen_impl(quote! {
         gen impl ::fuel_types::canonical::Deserialize for @Self {

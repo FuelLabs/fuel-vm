@@ -421,19 +421,19 @@ where
         let storage_slots = create.storage_slots();
         let contract = Contract::try_from(&*create)?;
         let root = if let Some(m) = metadata {
-            m.contract_root
+            m.body.contract_root
         } else {
             contract.root()
         };
 
         let storage_root = if let Some(m) = metadata {
-            m.state_root
+            m.body.state_root
         } else {
             Contract::initial_state_root(storage_slots.iter())
         };
 
         let id = if let Some(m) = metadata {
-            m.contract_id
+            m.body.contract_id
         } else {
             contract.id(salt, &root, &storage_root)
         };

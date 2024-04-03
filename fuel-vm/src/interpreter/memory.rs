@@ -141,7 +141,9 @@ impl Memory {
             return Err(PanicReason::MemoryOverflow)
         }
 
-        if end <= self.stack.len() || start >= self.heap_offset() {
+        if end <= self.stack.len()
+            || (start >= self.heap_offset() && start >= self.stack.len())
+        {
             Ok(MemoryRange(start..end))
         } else {
             Err(PanicReason::UninitalizedMemoryAccess)
@@ -167,8 +169,8 @@ impl Memory {
         if range.end() <= self.stack.len() {
             Ok(&self.stack[range.usizes()])
         } else if range.start() >= self.heap_offset() {
-            Ok(&self.heap
-                [range.start() - self.heap_offset()..range.end() - self.heap_offset()])
+            let heap_range = range.relative_to(self.heap_offset());
+            Ok(&self.heap[heap_range.usizes()])
         } else {
             unreachable!("Range was verified to be valid")
         }

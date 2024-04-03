@@ -115,10 +115,6 @@ impl Memory {
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
         let new_hp = new_hp_word as usize;
 
-        if self.heap_offset() < new_hp {
-            return Ok(())
-        }
-
         if new_hp_word < *sp {
             return Err(PanicReason::MemoryGrowthOverlap)
         }

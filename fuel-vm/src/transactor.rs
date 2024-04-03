@@ -34,6 +34,7 @@ use fuel_tx::{
     GasCosts,
     Receipt,
     Script,
+    Upgrade,
 };
 
 #[derive(Debug)]
@@ -222,6 +223,30 @@ where
         ready_tx: Ready<Create>,
     ) -> Result<Create, InterpreterError<S::DataError>> {
         self.interpreter.deploy(ready_tx)
+    }
+
+    /// Executes `Upgrade` checked transactions.
+    pub fn upgrade(
+        &mut self,
+        checked: Checked<Upgrade>,
+    ) -> Result<Upgrade, InterpreterError<S::DataError>> {
+        let gas_price = self.interpreter.gas_price();
+        let gas_costs = self.interpreter.gas_costs();
+        let fee_params = self.interpreter.fee_params();
+
+        let ready = checked
+            .into_ready(gas_price, gas_costs, fee_params)
+            .map_err(InterpreterError::CheckError)?;
+
+        self.execute_ready_upgrade_tx(ready)
+    }
+
+    /// Executes a `Ready` transaction directly instead of letting `Transactor` construct
+    pub fn execute_ready_upgrade_tx(
+        &mut self,
+        ready_tx: Ready<Upgrade>,
+    ) -> Result<Upgrade, InterpreterError<S::DataError>> {
+        self.interpreter.upgrade(ready_tx)
     }
 }
 

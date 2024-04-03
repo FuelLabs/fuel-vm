@@ -19,6 +19,7 @@ use fuel_tx::{
     GasCosts,
     Receipt,
     Script,
+    Upgrade,
 };
 
 #[derive(Debug)]
@@ -81,6 +82,11 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     /// Deploys a `Create` transaction.
     pub fn deploy(&mut self, tx: Checked<Create>) -> Option<Create> {
         self.transactor.deploy(tx).ok()
+    }
+
+    /// Executes `Upgrade` transaction.
+    pub fn upgrade(&mut self, tx: Checked<Upgrade>) -> Option<Upgrade> {
+        self.transactor.upgrade(tx).ok()
     }
 
     /// Execute a transaction.

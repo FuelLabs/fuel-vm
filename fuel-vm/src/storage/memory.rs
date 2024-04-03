@@ -140,6 +140,43 @@ impl MemoryStorage {
     pub fn set_block_height(&mut self, block_height: BlockHeight) {
         self.block_height = block_height;
     }
+
+    #[cfg(feature = "test-helpers")]
+    /// Set the consensus parameters version
+    pub fn set_consensus_parameters_version(
+        &mut self,
+        consensus_parameters_version: u32,
+    ) {
+        self.consensus_parameters_version = consensus_parameters_version;
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Set the state transition version
+    pub fn set_state_transition_version(&mut self, state_transition_version: u32) {
+        self.state_transition_version = state_transition_version;
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Returns mutable reference to the consensus parameters versions table.
+    pub fn consensus_parameters_versions_mut(
+        &mut self,
+    ) -> &mut BTreeMap<u32, ConsensusParameters> {
+        &mut self.memory.consensus_parameters_versions
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Returns mutable reference to the state transition bytecodes table.
+    pub fn state_transition_bytecodes_mut(&mut self) -> &mut BTreeMap<Bytes32, Vec<u8>> {
+        &mut self.memory.state_transition_bytecodes
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Returns mutable reference to the state transition bytecodes versions table.
+    pub fn state_transition_bytecodes_versions_mut(
+        &mut self,
+    ) -> &mut BTreeMap<u32, Bytes32> {
+        &mut self.memory.state_transition_bytecodes_versions
+    }
 }
 
 impl Default for MemoryStorage {

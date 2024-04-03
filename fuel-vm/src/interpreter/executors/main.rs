@@ -840,20 +840,50 @@ where
         let (_, checked) = tx.decompose();
         let (mut create, metadata): (Create, <Create as IntoChecked>::Metadata) =
             checked.into();
-        let gas_costs = self.gas_costs().clone();
-        let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
         let gas_price = self.gas_price();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,
             metadata.balances(),
-            &gas_costs,
-            &fee_params,
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
             &base_asset_id,
             gas_price,
         )?;
         Ok(create)
+    }
+}
+
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    S: InterpreterStorage,
+{
+    /// Executes `Upgrade` transaction without initialization VM and without invalidation
+    /// of the last state of execution of the `Script` transaction.
+    ///
+    /// Returns `Upgrade` transaction with all modifications after execution.
+    pub fn upgrade(
+        &mut self,
+        tx: Ready<Upgrade>,
+    ) -> Result<Upgrade, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut upgrade, metadata): (Upgrade, <Upgrade as IntoChecked>::Metadata) =
+            checked.into();
+        let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
+        Self::upgrade_inner(
+            &mut upgrade,
+            &mut self.storage,
+            metadata.balances(),
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
+            &base_asset_id,
+            gas_price,
+        )?;
+        Ok(upgrade)
     }
 }
 

@@ -28,5 +28,6 @@ mod profile_gas;
 mod receipts;
 mod serde_profile;
 mod spec;
+mod upgrade;
 mod validation;
 mod wideint;

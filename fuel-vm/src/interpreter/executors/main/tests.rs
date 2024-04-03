@@ -199,3 +199,51 @@ fn deploy__tx_with_wrong_gas_price_causes_error() {
         InterpreterError::ReadyTransactionWrongGasPrice { .. }
     ));
 }
+
+#[test]
+fn upgrade__tx_with_wrong_gas_price_causes_error() {
+    // given
+    let tx_gas_price = 1;
+    let interpreter_gas_price = 2;
+    let input_amount = 1000;
+    let arb_max_fee = input_amount;
+    let consensus_params = ConsensusParameters::standard();
+
+    let interpreter_params = InterpreterParams {
+        gas_price: interpreter_gas_price,
+        ..Default::default()
+    };
+
+    let ready_tx = TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
+        bytecode_hash: Default::default(),
+    })
+    .max_fee_limit(arb_max_fee)
+    .add_random_fee_input()
+    .add_input(Input::coin_signed(
+        Default::default(),
+        *consensus_params.privileged_address(),
+        input_amount,
+        AssetId::BASE,
+        Default::default(),
+        0,
+    ))
+    .with_params(consensus_params)
+    .finalize_checked_basic(Default::default())
+    .into_ready(
+        tx_gas_price,
+        &interpreter_params.gas_costs,
+        &interpreter_params.fee_params,
+    )
+    .unwrap();
+
+    // when
+    let mut transactor =
+        Transactor::<_, Upgrade>::new(MemoryStorage::default(), interpreter_params);
+    let err = transactor.execute_ready_upgrade_tx(ready_tx).unwrap_err();
+
+    // then
+    assert!(matches!(
+        err,
+        InterpreterError::ReadyTransactionWrongGasPrice { .. }
+    ));
+}

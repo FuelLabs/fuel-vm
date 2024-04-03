@@ -132,10 +132,10 @@ enum_from! {
         /// Caller of this internal context is also expected to be internal,
         /// i.e. $fp->$fp must be non-zero.
         ExpectedNestedCaller = 0x2e,
-        /// The storage doesn't know about the hash of the state transition bytecode.
-        UnknownStateTransactionBytecodeHash = 0x2f,
         /// It is not allowed to override the consensus parameters.
-        OverridingConsensusParameters = 0x30,
+        OverridingConsensusParameters = 0x2f,
+        /// The storage doesn't know about the hash of the state transition bytecode.
+        UnknownStateTransactionBytecodeHash = 0x30,
         /// It is not allowed to override the state transition bytecode.
         OverridingStateTransactionBytecode = 0x31,
     }

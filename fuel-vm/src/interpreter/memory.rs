@@ -565,8 +565,10 @@ pub(crate) fn try_update_stack_pointer(
     new_sp: Word,
     memory: &mut Memory,
 ) -> SimpleResult<()> {
-    if new_sp >= *hp || new_sp < *ssp {
+    if new_sp < *ssp {
         Err(PanicReason::MemoryOverflow.into())
+    } else if new_sp > *hp {
+        Err(PanicReason::MemoryGrowthOverlap.into())
     } else {
         *sp = new_sp;
         memory.grow_stack(hp, new_sp)?;

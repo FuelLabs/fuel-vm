@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_truncation)]
+
 use crate::constraints::reg_key::*;
 
 use super::{

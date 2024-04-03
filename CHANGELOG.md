@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
-- [#697](https://github.com/FuelLabs/fuel-vm/pull/697): Changed the VM to internally use separate buffers for the stack and the heap to improve startup time. After this change, memory that was never part of the stack or the heap cannot be accessed, even for reading. Also, even if the whole memory is allocated, accesses spanning from the stack to the heap are not allowed. This PR also fixes a bug that required one-byte gap between the stack and the heap. Multiple errors have been changed to be more sensible ones, and sometimes the order of which error is returned has changed.
+- [#697](https://github.com/FuelLabs/fuel-vm/pull/697): Changed the VM to internally use separate buffers for the stack and the heap to improve startup time. After this change, memory that was never part of the stack or the heap cannot be accessed, even for reading. Also, even if the whole memory is allocated, accesses spanning from the stack to the heap are not allowed. This PR also fixes a bug that required one-byte gap between the stack and the heap. Multiple errors have been changed to be more sensible ones, and sometimes the order of which error is returned has changed. `ALOC` opcode now zeroes the newly allocated memory.
 
 ## [Version 0.48.0]
 

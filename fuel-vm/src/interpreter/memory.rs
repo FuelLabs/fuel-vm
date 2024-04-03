@@ -55,7 +55,7 @@ fn reverse_resize_at_least(vec: &mut Vec<u8>, new_len: usize) {
 /// The memory of the VM, represented as stack and heap.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Memory {
-    /// Stack. Grow upwards.
+    /// Stack. Grows upwards.
     stack: Vec<u8>,
     /// Heap. Grows downwards from MEM_SIZE.
     heap: Vec<u8>,
@@ -110,18 +110,24 @@ impl Memory {
     }
 
     /// Grows the heap to be at least `new_hp` bytes.
-    pub fn grow_heap(&mut self, new_hp: Word) -> Result<(), PanicReason> {
+    pub fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
+        let new_hp_word = new_hp.min(MEM_SIZE as Word);
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
-        let new_hp = new_hp.min(MEM_SIZE as Word) as usize;
+        let new_hp = new_hp_word as usize;
 
         if self.heap_offset() < new_hp {
             return Ok(())
         }
 
-        if new_hp < self.stack.len() {
+        if new_hp_word < *sp {
             return Err(PanicReason::MemoryGrowthOverlap)
         }
+
+        // Expand the heap allocation
         reverse_resize_at_least(&mut self.heap, MEM_SIZE - new_hp);
+
+        // If heap enters region where stack has been, truncate the stack
+        self.stack.truncate(new_hp);
 
         Ok(())
     }
@@ -723,13 +729,13 @@ pub(crate) fn try_allocate(
 ) -> SimpleResult<()> {
     let (result, overflow) = hp.overflowing_sub(a);
 
-    if overflow || result < *sp {
-        Err(PanicReason::MemoryOverflow.into())
-    } else {
-        memory.grow_heap(result)?;
-        *hp = result;
-        Ok(())
+    if overflow {
+        return Err(PanicReason::MemoryOverflow.into());
     }
+
+    memory.grow_heap(sp, result)?;
+    *hp = result;
+    Ok(())
 }
 
 pub(crate) fn malloc(

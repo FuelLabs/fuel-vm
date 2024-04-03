@@ -33,6 +33,18 @@ use alloc::{
     vec::Vec,
 };
 
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+mod impl_tests;
+
+#[cfg(test)]
+mod allocation_tests;
+
+#[cfg(test)]
+mod stack_tests;
+
 /// Resize the heap to at least `new_len` bytes, filling the new space with zeros.
 /// If `new_len` is less than the current length, the function does nothing.
 /// The function may grow the size more than `new_len` to avoid frequent
@@ -318,15 +330,6 @@ impl IndexMut<Range<usize>> for Memory {
             .expect("Memory range out of bounds")
     }
 }
-
-#[cfg(test)]
-mod tests;
-
-#[cfg(test)]
-mod allocation_tests;
-
-#[cfg(test)]
-mod stack_tests;
 
 /// Used to handle `Word` to `usize` conversions for memory addresses,
 /// as well as checking that the resulting value is withing the VM ram boundaries.

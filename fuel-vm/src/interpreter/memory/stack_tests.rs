@@ -110,7 +110,10 @@ fn test_push_stack_overflow() {
         Imm24::new(1),
     );
 
-    assert_eq!(result, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
+    assert_eq!(
+        result,
+        Err(PanicOrBug::Panic(PanicReason::MemoryGrowthOverlap))
+    );
 }
 
 #[test]

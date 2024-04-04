@@ -34,12 +34,14 @@ pub type Upgrade = ChargeableTransaction<UpgradeBody, UpgradeMetadata>;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UpgradeMetadata {
+    /// The metadata for the upgrade transaction that changes the consensus parameters.
     ConsensusParameters {
         /// Deserialized consensus parameters from the witness.
         consensus_parameters: Box<ConsensusParameters>,
         /// The actual checksum of the serialized consensus parameters.
         calculated_checksum: Bytes32,
     },
+    /// Currently there is no metadata for state transition upgrades, so leave it empty.
     #[default]
     StateTransition,
 }

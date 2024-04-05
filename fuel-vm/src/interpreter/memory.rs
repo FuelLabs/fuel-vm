@@ -189,8 +189,9 @@ impl Memory {
         if range.end() <= self.stack.len() {
             Ok(&self.stack[range.usizes()])
         } else if range.start() >= self.heap_offset() {
-            let heap_range = range.relative_to(self.heap_offset());
-            Ok(&self.heap[heap_range.usizes()])
+            let start = range.start() - self.heap_offset();
+            let end = range.end() - self.heap_offset();
+            Ok(&self.heap[start..end])
         } else {
             unreachable!("Range was verified to be valid")
         }
@@ -217,8 +218,9 @@ impl Memory {
         if range.end() <= self.stack.len() {
             Ok(&mut self.stack[range.usizes()])
         } else if range.start() >= self.heap_offset() {
-            let heap_range = range.relative_to(self.heap_offset());
-            Ok(&mut self.heap[heap_range.usizes()])
+            let start = range.start() - self.heap_offset();
+            let end = range.end() - self.heap_offset();
+            Ok(&mut self.heap[start..end])
         } else {
             unreachable!("Range was verified to be valid")
         }
@@ -415,17 +417,6 @@ impl MemoryRange {
     /// Returns the range as a `Word` range.
     pub fn words(&self) -> Range<Word> {
         self.0.start as Word..self.0.end as Word
-    }
-
-    /// Moves range to be relative to the given address.
-    /// Panics if the address is before the offset.
-    pub fn relative_to(self, index: usize) -> Self {
-        assert!(self.start() >= index);
-
-        let start = self.start() - index;
-        let end = self.end() - index;
-
-        Self(start..end)
     }
 
     /// Splits range at given relative offset. Panics if offset > range length.

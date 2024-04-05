@@ -12,17 +12,3 @@ pub struct InstructionLocation {
     /// Offset from the IS register
     pub offset: u64,
 }
-
-// impl<const LEN: usize> Deref for CheckedMemConstLen<LEN> {
-//     type Target = MemoryRange;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.0
-//     }
-// }
-
-// impl<const LEN: usize> DerefMut for CheckedMemConstLen<LEN> {
-//     fn deref_mut(&mut self) -> &mut Self::Target {
-//         &mut self.0
-//     }
-// }

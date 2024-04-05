@@ -11,6 +11,7 @@ use crate::{
     error::SimpleResult,
 };
 
+use derivative::Derivative;
 use fuel_asm::{
     Imm24,
     PanicReason,
@@ -68,11 +69,13 @@ fn reverse_resize_at_least(vec: &mut Vec<u8>, new_len: usize) {
 }
 
 /// The memory of the VM, represented as stack and heap.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Derivative)]
 pub struct Memory {
     /// Stack. Grows upwards.
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     stack: Vec<u8>,
     /// Heap. Grows downwards from MEM_SIZE.
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     heap: Vec<u8>,
     /// Lowest allowed heap address, i.e. hp register value.
     /// This is needed since we can allocate extra heap for performance reasons.

@@ -31,6 +31,22 @@ struct SCWQInput {
 )]
 #[test_case(
     SCWQInput{
+        input: StateClearQWord::new(u64::MAX - 1, 1).unwrap(),
+        storage_slots: vec![(key(27), data(&[8; 32]))],
+        memory: mem(&[&key(27)]),
+    } => matches Err(_)
+    ; "Fail when $rA + 32 > VM_MAX_RAM"
+)]
+#[test_case(
+    SCWQInput{
+        input: StateClearQWord::new(VM_MAX_RAM - 32, 1).unwrap(),
+        storage_slots: vec![(key(27), data(&[8; 32]))],
+        memory: mem(&[&key(27)]),
+    } => matches Ok(_)
+    ; "Pass when $rA + 32 == VM_MAX_RAM"
+)]
+#[test_case(
+    SCWQInput{
         input: StateClearQWord::new(0, 1).unwrap(),
         storage_slots: vec![(key(27), data(&[8; 32]))],
         memory: mem(&[&key(27)]),

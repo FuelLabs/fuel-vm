@@ -96,6 +96,18 @@ struct SWWQInput {
 #[test_case(
     SWWQInput{
         input: StateWriteQWord {
+            starting_storage_key_pointer: VM_MAX_RAM - 32,
+            source_pointer: 0,
+            num_slots: 1,
+        },
+        storage_slots: vec![],
+        memory: mem(&[&[0; MEM_SIZE]]),
+    } => matches Ok(_)
+    ; "Pass when rA + 32 == VM_MAX_RAM"
+)]
+#[test_case(
+    SWWQInput{
+        input: StateWriteQWord {
             starting_storage_key_pointer: 2,
             source_pointer: 34,
             num_slots: 1,

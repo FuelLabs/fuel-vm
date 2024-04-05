@@ -18,7 +18,6 @@ fn test_load_contract() -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
-    let hp = 2000;
     let mut cgas = 1000;
     let mut ggas = 1000;
     let mut ssp = 1000;
@@ -58,7 +57,6 @@ fn test_load_contract() -> IoResult<(), Infallible> {
         ssp: RegMut::new(&mut ssp),
         sp: RegMut::new(&mut sp),
         fp: Reg::new(&fp),
-        hp: Reg::new(&hp),
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),
     };

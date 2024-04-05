@@ -562,8 +562,7 @@ where
 
         let old_sp = *self.registers.system_registers.sp;
         let new_sp = old_sp.saturating_add(lenw);
-        self.memory
-            .grow_stack(self.registers.system_registers.hp, new_sp)?;
+        self.memory.grow_stack(new_sp)?;
         *self.registers.system_registers.sp = new_sp;
         *self.registers.system_registers.ssp = new_sp;
 

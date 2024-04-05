@@ -117,12 +117,11 @@ impl Memory {
     }
 
     /// Grows the stack to be at least `new_sp` bytes.
-    pub fn grow_stack(&mut self, hp: Reg<HP>, new_sp: Word) -> Result<(), PanicReason> {
-        let new_sp_word = new_sp.min(MEM_SIZE as Word);
+    pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
-        let new_sp = new_sp_word as usize;
+        let new_sp = new_sp.min(MEM_SIZE as Word) as usize;
         if new_sp > self.stack.len() {
-            if new_sp_word > *hp {
+            if new_sp > self.hp {
                 return Err(PanicReason::MemoryGrowthOverlap)
             }
 
@@ -583,7 +582,7 @@ pub(crate) fn try_update_stack_pointer(
         Err(PanicReason::MemoryGrowthOverlap.into())
     } else {
         *sp = new_sp;
-        memory.grow_stack(hp, new_sp)?;
+        memory.grow_stack(new_sp)?;
         Ok(())
     }
 }

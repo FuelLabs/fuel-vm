@@ -14,9 +14,7 @@ use alloc::vec;
 fn grow_heap_over_old_stack() {
     let mut memory = Memory::new();
 
-    memory
-        .grow_stack(Reg::<HP>::new(&VM_MAX_RAM), VM_MAX_RAM - 100)
-        .expect("Can grow stack");
+    memory.grow_stack(VM_MAX_RAM - 100).expect("Can grow stack");
 
     memory
         .write_noownerchecks(0, VM_MAX_RAM - 100)
@@ -75,9 +73,7 @@ fn reads_cannot_cross_from_stack_to_heap() {
 
     // Allocate the whole stack
     let partition = VM_MAX_RAM - 100;
-    memory
-        .grow_stack(Reg::<HP>::new(&VM_MAX_RAM), partition)
-        .expect("Can grow stack");
+    memory.grow_stack(partition).expect("Can grow stack");
     memory
         .grow_heap(Reg::<SP>::new(&partition), partition)
         .expect("Can grow heap");

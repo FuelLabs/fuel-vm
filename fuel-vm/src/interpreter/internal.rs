@@ -106,8 +106,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         if overflow || !self.is_external_context() && new_sp > self.registers[RegId::SP] {
             Err(PanicReason::MemoryOverflow)
         } else {
-            let (SystemRegisters { hp, .. }, _) = split_registers(&mut self.registers);
-            self.memory.grow_stack(hp.as_ref(), new_sp)?;
+            self.memory.grow_stack(new_sp)?;
             Ok(mem::replace(&mut self.registers[RegId::SSP], new_sp))
         }
     }

@@ -109,7 +109,6 @@ where
                 ggas,
                 ssp,
                 sp,
-                hp,
                 fp,
                 pc,
                 is,
@@ -133,7 +132,6 @@ where
             ssp,
             sp,
             fp: fp.as_ref(),
-            hp: hp.as_ref(),
             pc,
             is: is.as_ref(),
         };
@@ -549,7 +547,6 @@ struct LoadContractCodeCtx<'vm, S, I> {
     ssp: RegMut<'vm, SSP>,
     sp: RegMut<'vm, SP>,
     fp: Reg<'vm, FP>,
-    hp: Reg<'vm, HP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
 }
@@ -597,7 +594,7 @@ where
         }
 
         let new_sp = ssp.saturating_add(length);
-        self.memory.grow_stack(self.hp, new_sp)?;
+        self.memory.grow_stack(new_sp)?;
 
         self.input_contracts.check(&contract_id)?;
 

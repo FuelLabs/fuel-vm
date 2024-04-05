@@ -163,7 +163,7 @@ impl Memory {
             return Err(PanicReason::MemoryOverflow)
         }
 
-        if end <= self.stack.len() || (start >= self.hp && start >= self.stack.len()) {
+        if end <= self.stack.len() || start >= self.hp {
             Ok(MemoryRange(start..end))
         } else {
             Err(PanicReason::UninitalizedMemoryAccess)

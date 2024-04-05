@@ -1,15 +1,11 @@
 use super::{
     ExecutableTransaction,
     Interpreter,
-    MemoryRange,
+    Memory,
     RuntimeBalances,
 };
 use crate::{
-    constraints::{
-        reg_key::*,
-        CheckedMemConstLen,
-    },
-    consts::*,
+    constraints::reg_key::*,
     context::Context,
     error::SimpleResult,
 };
@@ -33,7 +29,10 @@ use fuel_types::{
     Word,
 };
 
-use core::mem;
+use core::{
+    mem,
+    ops::Range,
+};
 
 #[cfg(test)]
 mod message_tests;
@@ -54,7 +53,7 @@ where
 /// and the serialized tx in vm memory.
 pub(crate) fn set_variable_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     tx_offset: usize,
     idx: usize,
     variable: Output,
@@ -75,23 +74,21 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
     tx: &Tx,
     tx_offset: usize,
     idx: usize,
-) -> Result<Option<MemoryRange>, PanicReason> {
-    absolute_output_offset(tx, tx_offset, idx)
-        .and_then(|offset| tx.outputs().get(idx).map(|output| (offset, output.size())))
-        .map_or(Ok(None), |(offset, output_size)| {
-            Ok(Some(MemoryRange::new(offset, output_size)?))
-        })
+) -> Option<Range<usize>> {
+    let offset = absolute_output_offset(tx, tx_offset, idx)?;
+    let size = tx.outputs().get(idx)?.size();
+    Some(offset..offset.saturating_add(size))
 }
 
 pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     tx: &mut Tx,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     tx_offset: usize,
     idx: usize,
 ) -> SimpleResult<()> {
-    let mem_range = absolute_output_mem_range(tx, tx_offset, idx)?
+    let range = absolute_output_mem_range(tx, tx_offset, idx)
         .ok_or(PanicReason::OutputNotFound)?;
-    let mut mem = mem_range.write(memory);
+    let mut mem = memory.write_noownerchecks(range.start, range.len())?;
     let output = tx
         .outputs_mut()
         .get_mut(idx)
@@ -104,22 +101,23 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, PanicReason> {
-        let (ssp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
+        let (new_sp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
 
-        if overflow || !self.is_external_context() && ssp > self.registers[RegId::SP] {
+        if overflow || !self.is_external_context() && new_sp > self.registers[RegId::SP] {
             Err(PanicReason::MemoryOverflow)
         } else {
-            Ok(mem::replace(&mut self.registers[RegId::SSP], ssp))
+            self.memory.grow_stack(new_sp)?;
+            Ok(mem::replace(&mut self.registers[RegId::SSP], new_sp))
         }
     }
 
     pub(crate) fn push_stack(&mut self, data: &[u8]) -> SimpleResult<()> {
         let old_ssp = usize::try_from(self.reserve_stack(data.len() as Word)?)
             .expect("SSP couldn't be more than `usize`");
-        let new_ssp = usize::try_from(self.registers[RegId::SSP])
-            .expect("SSP couldn't be more than `usize`");
 
-        self.memory[old_ssp..new_ssp].copy_from_slice(data);
+        self.memory
+            .write_noownerchecks(old_ssp, data.len())?
+            .copy_from_slice(data);
 
         Ok(())
     }
@@ -144,16 +142,8 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         )
     }
 
-    pub(crate) fn internal_contract(&self) -> Result<&ContractId, PanicReason> {
+    pub(crate) fn internal_contract(&self) -> Result<ContractId, PanicReason> {
         internal_contract(&self.context, self.registers.fp(), &self.memory)
-    }
-
-    pub(crate) fn internal_contract_or_default(&self) -> ContractId {
-        internal_contract_or_default(
-            &self.context,
-            self.registers.fp(),
-            self.memory.as_ref(),
-        )
     }
 
     pub(crate) fn get_block_height(&self) -> Result<BlockHeight, PanicReason> {
@@ -191,19 +181,15 @@ pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), PanicReason> {
         .map(|i| *pc = i)
 }
 
-pub(crate) fn tx_id(memory: &[u8; MEM_SIZE]) -> &Bytes32 {
-    let memory = (&memory[..Bytes32::LEN])
-        .try_into()
-        .expect("Bytes32::LEN < MEM_SIZE");
-    // Safety: vm parameters guarantees enough space for txid
-    Bytes32::from_bytes_ref(memory)
+pub(crate) fn tx_id(memory: &Memory) -> Bytes32 {
+    Bytes32::new(memory.read_bytes(0u64).expect("Bytes32::LEN < MEM_SIZE"))
 }
 
 /// Reduces the unspent balance of the base asset
 pub(crate) fn base_asset_balance_sub(
     base_asset_id: &AssetId,
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     value: Word,
 ) -> SimpleResult<()> {
     external_asset_id_balance_sub(balances, memory, base_asset_id, value)
@@ -212,7 +198,7 @@ pub(crate) fn base_asset_balance_sub(
 /// Reduces the unspent balance of a given asset ID
 pub(crate) fn external_asset_id_balance_sub(
     balances: &mut RuntimeBalances,
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     asset_id: &AssetId,
     value: Word,
 ) -> SimpleResult<()> {
@@ -223,20 +209,11 @@ pub(crate) fn external_asset_id_balance_sub(
     Ok(())
 }
 
-pub(crate) fn internal_contract_or_default(
-    context: &Context,
-    register: Reg<FP>,
-    memory: &[u8; MEM_SIZE],
-) -> ContractId {
-    internal_contract(context, register, memory)
-        .map_or(Default::default(), |contract| *contract)
-}
-
-pub(crate) fn current_contract<'a>(
+pub(crate) fn current_contract(
     context: &Context,
     fp: Reg<FP>,
-    memory: &'a [u8; MEM_SIZE],
-) -> Result<Option<&'a ContractId>, PanicReason> {
+    memory: &Memory,
+) -> Result<Option<ContractId>, PanicReason> {
     if context.is_internal() {
         Ok(Some(internal_contract(context, fp, memory)?))
     } else {
@@ -244,25 +221,13 @@ pub(crate) fn current_contract<'a>(
     }
 }
 
-pub(crate) fn internal_contract<'a>(
-    context: &Context,
-    register: Reg<FP>,
-    memory: &'a [u8; MEM_SIZE],
-) -> Result<&'a ContractId, PanicReason> {
-    let range = internal_contract_bounds(context, register)?;
-
-    // Safety: Memory bounds logically verified by the interpreter
-    let contract = ContractId::from_bytes_ref(range.read(memory));
-
-    Ok(contract)
-}
-
-pub(crate) fn internal_contract_bounds(
+pub(crate) fn internal_contract(
     context: &Context,
     fp: Reg<FP>,
-) -> Result<CheckedMemConstLen<{ ContractId::LEN }>, PanicReason> {
+    memory: &Memory,
+) -> Result<ContractId, PanicReason> {
     if context.is_internal() {
-        CheckedMemConstLen::new(*fp)
+        Ok(ContractId::new(memory.read_bytes(*fp)?))
     } else {
         Err(PanicReason::ExpectedInternalContext)
     }

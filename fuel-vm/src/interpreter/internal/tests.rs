@@ -155,7 +155,7 @@ fn variable_output_updates_in_memory() {
     // verify the vm memory is updated properly
     let position = vm.tx_offset() + vm.transaction().outputs_offset_at(0).unwrap();
 
-    let mem_output = Output::decode(&mut &vm.memory()[position..]).unwrap();
+    let mem_output = Output::decode(&mut &vm.memory().stack_raw()[position..]).unwrap();
     assert_eq!(vm.transaction().outputs()[0], mem_output);
 }
 

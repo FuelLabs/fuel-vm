@@ -18,7 +18,10 @@ use fuel_tx::{
     Script,
 };
 use fuel_types::{
-    canonical::Serialize,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
     ContractId,
 };
 use test_case::test_case;
@@ -30,7 +33,7 @@ struct Input {
     balance: Vec<(AssetId, Word)>,
     input_contracts: Vec<ContractId>,
     storage_balance: Vec<(AssetId, Word)>,
-    memory: Memory<MEM_SIZE>,
+    memory: Memory,
     gas_cost: DependentCost,
     storage_contract: Vec<(ContractId, Vec<u8>)>,
     script: Option<Script>,
@@ -75,7 +78,7 @@ struct RegInput {
 #[derive(PartialEq, Eq)]
 enum CheckMem {
     Check(Vec<(usize, Vec<u8>)>),
-    Mem(Memory<MEM_SIZE>),
+    Mem(Memory),
 }
 
 #[derive(PartialEq, Eq)]
@@ -141,8 +144,8 @@ impl Default for Output {
     }
 }
 
-fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
+fn mem(set: &[(usize, Vec<u8>)]) -> Memory {
+    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
     for (addr, data) in set {
         memory[*addr..*addr + data.len()].copy_from_slice(data);
     }
@@ -152,9 +155,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 0,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 21, ggas: 21 },
@@ -168,9 +171,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 2032,
+            call_params_pointer: 2032,
             amount_of_coins_to_forward: 20,
-            asset_id_mem_address: 2000,
+            asset_id_pointer: 2000,
             amount_of_gas_to_forward: 30,
         },
         reg: RegInput{hp: 1000, sp: 200, ssp: 200, fp: 0, pc: 0, is: 0, bal: 0, cgas: 201, ggas: 201 },
@@ -199,9 +202,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 20,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
@@ -218,9 +221,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 20,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 10,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 40, ggas: 80 },
@@ -237,9 +240,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 20,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 100,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 40, ggas: 80 },
@@ -256,9 +259,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 20,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 100, ssp: 100, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
@@ -275,9 +278,9 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 20,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
@@ -288,35 +291,35 @@ fn mem(set: &[(usize, Vec<u8>)]) -> Memory<MEM_SIZE> {
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: VM_MAX_RAM - 40,
+            call_params_pointer: VM_MAX_RAM - 40,
             amount_of_coins_to_forward: 0,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
         context: Context::Script{ block_height: Default::default() },
         ..Default::default()
-    } => using check_output(Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))); "call_params_mem_address overflow"
+    } => using check_output(Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))); "call_params_pointer overflow"
 )]
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 0,
-            asset_id_mem_address: VM_MAX_RAM - 31,
+            asset_id_pointer: VM_MAX_RAM - 31,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
         context: Context::Script{ block_height: Default::default() },
         ..Default::default()
-    } => using check_output(Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))); "asset_id_mem_address overflow"
+    } => using check_output(Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))); "asset_id_pointer overflow"
 )]
 #[test_case(
     Input{
         params: PrepareCallParams {
-            call_params_mem_address: 0,
+            call_params_pointer: 0,
             amount_of_coins_to_forward: 10,
-            asset_id_mem_address: 0,
+            asset_id_pointer: 0,
             amount_of_gas_to_forward: 0,
         },
         reg: RegInput{hp: 1000, sp: 0, ssp: 0, fp: 0, pc: 0, is: 0, bal: 0, cgas: 11, ggas: 11 },
@@ -333,7 +336,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
         balance,
         storage_balance,
         input_contracts,
-        memory: mut mem,
+        mut memory,
         gas_cost,
         storage_contract,
         script,
@@ -349,7 +352,6 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     registers.system_registers.bal = RegMut::new(&mut reg.bal);
     registers.system_registers.cgas = RegMut::new(&mut reg.cgas);
     registers.system_registers.ggas = RegMut::new(&mut reg.ggas);
-    let memory = PrepareCallMemory::try_from((mem.as_mut(), &params))?;
     let mut runtime_balances =
         RuntimeBalances::try_from_iter(balance).expect("Balance should be valid");
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
@@ -372,7 +374,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     let input = PrepareCallCtx {
         params,
         registers,
-        memory,
+        memory: &mut memory,
         context: &mut context,
         gas_cost,
         runtime_balances: &mut runtime_balances,
@@ -387,7 +389,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     input.prepare_call().map(|_| Output {
         reg,
         frames,
-        memory: CheckMem::Mem(mem),
+        memory: CheckMem::Mem(memory),
         receipts,
         context,
         script,
@@ -429,12 +431,14 @@ fn check_output(
         4,
         5,
     ),
-    MemoryRange::new(0, 640).unwrap()
+    Reg::<FP>::new(&0),
+    640
     => Ok(600); "call"
 )]
 fn test_write_call_to_memory(
     call_frame: CallFrame,
-    code_mem_range: MemoryRange,
+    fp: Reg<FP>,
+    len: usize,
 ) -> IoResult<Word, Infallible> {
     let frame_bytes = call_frame.to_bytes();
     let mut storage = MemoryStorage::new(Default::default(), Default::default());
@@ -442,25 +446,20 @@ fn test_write_call_to_memory(
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)
         .unwrap();
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
-    let end = write_call_to_memory(
-        &call_frame,
-        frame_bytes,
-        code_mem_range,
-        memory.as_mut(),
-        &storage,
-    )?;
+    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let end =
+        write_call_to_memory(&call_frame, frame_bytes, fp, len, &mut memory, &storage)?;
     check_memory(memory, call_frame, code);
     Ok(end)
 }
 
-fn check_memory(result: Memory<MEM_SIZE>, expected: CallFrame, code: Vec<u8>) {
-    let frame = CheckedMemValue::<CallFrame>::new::<{ CallFrame::serialized_size() }>(0)
-        .unwrap()
-        .inspect(&result);
+fn check_memory(memory: Memory, expected: CallFrame, code: Vec<u8>) {
+    let frame =
+        CallFrame::from_bytes(memory.read(0, CallFrame::serialized_size()).unwrap())
+            .unwrap();
     assert_eq!(frame, expected);
     assert_eq!(
-        &result[CallFrame::serialized_size()
+        &memory[CallFrame::serialized_size()
             ..(CallFrame::serialized_size() + frame.total_code_size())],
         &code[..]
     );

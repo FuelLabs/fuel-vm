@@ -17,9 +17,9 @@ use crate::{
 };
 use derivative::Derivative;
 
+use crate::interpreter::Memory;
 use fuel_tx::ScriptExecutionResult;
 use fuel_types::{
-    fmt_truncated_hex,
     ContractId,
     Word,
 };
@@ -31,8 +31,7 @@ pub struct Backtrace {
     call_stack: Vec<CallFrame>,
     contract: ContractId,
     registers: [Word; VM_REGISTER_COUNT],
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    memory: Vec<u8>,
+    memory: Memory,
     result: ScriptExecutionResult,
     initial_balances: InitialBalances,
 }
@@ -46,8 +45,8 @@ impl Backtrace {
         result: ScriptExecutionResult,
     ) -> Self {
         let call_stack = vm.call_stack().to_owned();
-        let contract = vm.internal_contract_or_default();
-        let memory = vm.memory().to_owned();
+        let contract = vm.internal_contract().unwrap_or_default();
+        let memory = vm.memory().clone();
         let initial_balances = vm.initial_balances().clone();
         let mut registers = [0; VM_REGISTER_COUNT];
 
@@ -79,8 +78,8 @@ impl Backtrace {
     }
 
     /// Memory of the VM when the error occurred.
-    pub fn memory(&self) -> &[u8] {
-        self.memory.as_slice()
+    pub fn memory(&self) -> &Memory {
+        &self.memory
     }
 
     /// [`ScriptExecutionResult`] of the error that caused this backtrace.
@@ -100,7 +99,7 @@ impl Backtrace {
         Vec<CallFrame>,
         ContractId,
         [Word; VM_REGISTER_COUNT],
-        Vec<u8>,
+        Memory,
         ScriptExecutionResult,
         InitialBalances,
     ) {

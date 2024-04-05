@@ -132,6 +132,11 @@ enum_from! {
         /// Caller of this internal context is also expected to be internal,
         /// i.e. $fp->$fp must be non-zero.
         ExpectedNestedCaller = 0x2e,
+        /// During memory growth, the stack overlapped with the heap
+        MemoryGrowthOverlap = 0x2f,
+        /// Attempting to read or write uninitialized memory.
+        /// Also occurs when boundary crosses from stack to heap.
+        UninitalizedMemoryAccess = 0x30,
     }
 }
 

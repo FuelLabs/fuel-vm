@@ -625,7 +625,7 @@ where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
 {
     // Addition is safe because code size + padding is always less than len
-    let frame_len_with_padding = frame.code_size() + frame.code_size_padding();
+    let frame_len_with_padding = frame.total_code_size();
     let content_size = len.saturating_sub(frame_len_with_padding);
     memory
         .write_noownerchecks(*fp, content_size)?
@@ -649,7 +649,7 @@ where
 
     let padding_start = code_start.saturating_add(code_len as Word);
     let padding_size = frame.code_size_padding();
-    if frame.code_size_padding() > 0 {
+    if padding_size > 0 {
         memory
             .write_noownerchecks(padding_start, padding_size)?
             .fill(0);

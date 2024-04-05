@@ -22,6 +22,7 @@ use fuel_asm::{
     op,
     Instruction,
     PanicReason::{
+        ContractMaxSize,
         ContractNotInInputs,
         ExpectedUnallocatedStack,
         MemoryOverflow,
@@ -806,7 +807,7 @@ fn ldc_mem_offset_above_reg_hp() {
         TxParameters::DEFAULT.tx_offset()
     );
 
-    ldc_reason_helper(load_contract, MemoryOverflow);
+    ldc_reason_helper(load_contract, ContractMaxSize);
 }
 
 #[test]
@@ -841,7 +842,63 @@ fn ldc_contract_not_in_inputs() {
 }
 
 #[test]
+fn load_contract_code_copies_expected_bytes() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
+    ];
+
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let contract_size = program.len();
+    let contract_id = test_context
+        .setup_contract(program_ops, None, None)
+        .contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x12, 0 as Immediate18),
+            op::movi(0x13, contract_size as Immediate18),
+            op::move_(0x22, RegId::SSP),
+            op::ldc(0x11, 0x12, 0x13),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, 0x22, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend(program.as_slice());
+
+    let result = test_context
+        .start_script(script, script_data)
+        .script_gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(1, ret.val().expect("Return value"));
+}
+
+#[test]
 fn load_contract_code_out_of_contract_offset_over_length() {
+    // This test like a `load_contract_code_copies_expected_bytes`, but the offset
+    // is set to be beyond the length of the contract code. The `meq` should fail.
     let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
 
@@ -866,9 +923,10 @@ fn load_contract_code_out_of_contract_offset_over_length() {
             op::add(0x11, RegId::ZERO, 0x20),
             op::movi(0x12, (contract_size + 1) as Immediate18),
             op::movi(0x13, contract_size as Immediate18),
+            op::move_(0x22, RegId::SSP),
             op::ldc(0x11, 0x12, 0x13),
             op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
-            op::meq(0x30, 0x21, RegId::SP, 0x13),
+            op::meq(0x30, 0x21, 0x22, 0x13),
             op::ret(0x30),
         ],
         TxParameters::DEFAULT.tx_offset()

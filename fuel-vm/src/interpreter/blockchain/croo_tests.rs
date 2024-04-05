@@ -55,7 +55,7 @@ fn test_code_root() {
     let contract_id = new_contract_id();
 
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
     let data = alloc::vec![0xffu8; CONTRACT_LEN];
@@ -115,7 +115,7 @@ fn test_code_root_contract_not_found() {
     let contract_id = new_contract_id();
 
     let storage = MemoryStorage::default();
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
     let gas_cost = GasCosts::default().croo();
@@ -162,7 +162,7 @@ fn test_code_root_contract_not_in_inputs() {
     let contract_id = new_contract_id();
 
     let storage = MemoryStorage::default();
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
     let gas_cost = GasCosts::default().croo();

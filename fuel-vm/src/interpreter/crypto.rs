@@ -4,20 +4,14 @@ use super::{
         inc_pc,
         set_err,
     },
-    memory::{
-        read_bytes,
-        try_mem_write,
-        try_zeroize,
-        OwnershipRegisters,
-    },
+    memory::OwnershipRegisters,
     ExecutableTransaction,
     Interpreter,
+    Memory,
 };
 use crate::{
     constraints::reg_key::*,
-    consts::*,
     error::SimpleResult,
-    prelude::MemoryRange,
 };
 
 use fuel_crypto::{
@@ -83,7 +77,7 @@ where
 }
 
 pub(crate) fn secp256k1_recover(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -91,19 +85,19 @@ pub(crate) fn secp256k1_recover(
     b: Word,
     c: Word,
 ) -> SimpleResult<()> {
-    let sig = Bytes64::from(read_bytes(memory, b)?);
-    let msg = Bytes32::from(read_bytes(memory, c)?);
+    let sig = Bytes64::from(memory.read_bytes(b)?);
+    let msg = Bytes32::from(memory.read_bytes(c)?);
 
     let signature = Signature::from_bytes_ref(&sig);
     let message = Message::from_bytes_ref(&msg);
 
     match signature.recover(message) {
         Ok(pub_key) => {
-            try_mem_write(a, pub_key.as_ref(), owner, memory)?;
+            memory.write_bytes(owner, a, *pub_key)?;
             clear_err(err);
         }
         Err(_) => {
-            try_zeroize(a, PublicKey::LEN, owner, memory)?;
+            memory.write_bytes(owner, a, [0; PublicKey::LEN])?;
             set_err(err);
         }
     }
@@ -112,7 +106,7 @@ pub(crate) fn secp256k1_recover(
 }
 
 pub(crate) fn secp256r1_recover(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -120,17 +114,17 @@ pub(crate) fn secp256r1_recover(
     b: Word,
     c: Word,
 ) -> SimpleResult<()> {
-    let sig = Bytes64::from(read_bytes(memory, b)?);
-    let msg = Bytes32::from(read_bytes(memory, c)?);
+    let sig = Bytes64::from(memory.read_bytes(b)?);
+    let msg = Bytes32::from(memory.read_bytes(c)?);
     let message = Message::from_bytes_ref(&msg);
 
     match fuel_crypto::secp256r1::recover(&sig, message) {
         Ok(pub_key) => {
-            try_mem_write(a, &*pub_key, owner, memory)?;
+            memory.write_bytes(owner, a, *pub_key)?;
             clear_err(err);
         }
         Err(_) => {
-            try_zeroize(a, Bytes32::LEN, owner, memory)?;
+            memory.write_bytes(owner, a, [0; PublicKey::LEN])?;
             set_err(err);
         }
     }
@@ -139,16 +133,16 @@ pub(crate) fn secp256r1_recover(
 }
 
 pub(crate) fn ed25519_verify(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
     a: Word,
     b: Word,
     c: Word,
 ) -> SimpleResult<()> {
-    let pub_key = Bytes32::from(read_bytes(memory, a)?);
-    let sig = Bytes64::from(read_bytes(memory, b)?);
-    let msg = Bytes32::from(read_bytes(memory, c)?);
+    let pub_key = Bytes32::from(memory.read_bytes(a)?);
+    let sig = Bytes64::from(memory.read_bytes(b)?);
+    let msg = Bytes32::from(memory.read_bytes(c)?);
     let message = Message::from_bytes_ref(&msg);
 
     if fuel_crypto::ed25519::verify(&pub_key, &sig, message).is_ok() {
@@ -161,7 +155,7 @@ pub(crate) fn ed25519_verify(
 }
 
 pub(crate) fn keccak256(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -172,32 +166,22 @@ pub(crate) fn keccak256(
         Digest,
         Keccak256,
     };
-    let src_range = MemoryRange::new(b, c)?;
-
     let mut h = Keccak256::new();
-    h.update(&memory[src_range.usizes()]);
+    h.update(memory.read(b, c)?);
 
-    try_mem_write(a, h.finalize().as_slice(), owner, memory)?;
+    memory.write_bytes(owner, a, *h.finalize().as_ref())?;
 
     Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn sha256(
-    memory: &mut [u8; MEM_SIZE],
+    memory: &mut Memory,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
     b: Word,
     c: Word,
 ) -> SimpleResult<()> {
-    let src_range = MemoryRange::new(b, c)?;
-
-    try_mem_write(
-        a,
-        Hasher::hash(&memory[src_range.usizes()]).as_ref(),
-        owner,
-        memory,
-    )?;
-
+    memory.write_bytes(owner, a, *Hasher::hash(memory.read(b, c)?))?;
     Ok(inc_pc(pc)?)
 }

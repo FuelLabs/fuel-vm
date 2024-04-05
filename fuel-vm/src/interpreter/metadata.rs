@@ -10,7 +10,6 @@ use crate::{
     context::Context,
     convert,
     error::SimpleResult,
-    interpreter::memory::read_bytes,
 };
 
 use fuel_asm::{
@@ -78,13 +77,11 @@ where
     ) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
         let tx_size = Word::from_be_bytes(
-            read_bytes(
-                &self.memory,
-                (tx_offset - 8) // Tx size is stored just below the tx bytes
-                    .try_into()
-                    .expect("tx offset impossibly large"),
-            )
-            .expect("Tx length not in memory"),
+            self.memory
+                .read_bytes(
+                    tx_offset - 8, // Tx size is stored just below the tx bytes
+                )
+                .expect("Tx length not in memory"),
         );
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];

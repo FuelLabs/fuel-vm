@@ -38,7 +38,6 @@ use fuel_vm::{
         Interpreter,
         IntoChecked,
         MemoryClient,
-        MemoryRange,
     },
     storage::MemoryStorage,
 };
@@ -62,8 +61,7 @@ impl EcalHandler for FileReadEcal {
         vm.gas_charge(b.saturating_add(1))?;
 
         // Extract file path from vm memory
-        let r = MemoryRange::new(c, d)?;
-        let path = String::from_utf8_lossy(&vm.memory()[r.usizes()]);
+        let path = String::from_utf8_lossy(vm.memory().read(c, d)?);
         let path = PathBuf::from(path.as_ref());
 
         // Seek file to correct position
@@ -74,8 +72,8 @@ impl EcalHandler for FileReadEcal {
 
         // Allocate the buffer in the vm memory and read directly from the file into it
         vm.allocate(b)?;
-        let r = MemoryRange::new(vm.registers()[RegId::HP], b)?;
-        file.read(&mut vm.memory_mut()[r.usizes()])
+        let hp = vm.registers()[RegId::HP];
+        file.read(vm.memory_mut().write_noownerchecks(hp, b)?)
             .map_err(|_| PanicReason::EcalError)?;
 
         Ok(())

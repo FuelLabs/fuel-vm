@@ -132,12 +132,17 @@ enum_from! {
         /// Caller of this internal context is also expected to be internal,
         /// i.e. $fp->$fp must be non-zero.
         ExpectedNestedCaller = 0x2e,
+        /// During memory growth, the stack overlapped with the heap
+        MemoryGrowthOverlap = 0x2f,
+        /// Attempting to read or write uninitialized memory.
+        /// Also occurs when boundary crosses from stack to heap.
+        UninitalizedMemoryAccess = 0x30,
         /// It is not allowed to override the consensus parameters.
-        OverridingConsensusParameters = 0x2f,
+        OverridingConsensusParameters = 0x31,
         /// The storage doesn't know about the hash of the state transition bytecode.
-        UnknownStateTransactionBytecodeHash = 0x30,
+        UnknownStateTransactionBytecodeHash = 0x32,
         /// It is not allowed to override the state transition bytecode.
-        OverridingStateTransactionBytecode = 0x31,
+        OverridingStateTransactionBytecode = 0x33,
     }
 }
 

@@ -4,6 +4,7 @@
 use super::{
     ExecutableTransaction,
     Interpreter,
+    Memory,
     RuntimeBalances,
 };
 use crate::{
@@ -60,9 +61,7 @@ where
     ) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
-            memory: vec![0; MEM_SIZE]
-                .try_into()
-                .expect("Failed to allocate memory"),
+            memory: Memory::new(),
             frames: vec![],
             receipts: Default::default(),
             tx: Default::default(),

@@ -20,7 +20,7 @@ use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
-use super::MemoryRange;
+use super::Memory;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
@@ -110,15 +110,13 @@ impl RuntimeBalances {
 
     fn set_memory_balance_inner(
         balance: &Balance,
-        memory: &mut [u8; MEM_SIZE],
+        memory: &mut Memory,
     ) -> SimpleResult<Word> {
         let value = balance.value();
         let offset = balance.offset();
 
         let offset = offset + AssetId::LEN;
-        let range = MemoryRange::new_const::<_, WORD_SIZE>(offset)?;
-
-        range.write(memory).copy_from_slice(&value.to_be_bytes());
+        memory.write_bytes_noownerchecks(offset, value.to_be_bytes())?;
 
         Ok(value)
     }
@@ -133,7 +131,7 @@ impl RuntimeBalances {
     /// ordered, as in the protocol.
     pub fn checked_balance_add(
         &mut self,
-        memory: &mut [u8; MEM_SIZE],
+        memory: &mut Memory,
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -148,7 +146,7 @@ impl RuntimeBalances {
     /// appropriate offset
     pub fn checked_balance_sub(
         &mut self,
-        memory: &mut [u8; MEM_SIZE],
+        memory: &mut Memory,
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -175,9 +173,12 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory[ofs..ofs + AssetId::LEN].copy_from_slice(asset.as_ref());
-            vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]
-                .copy_from_slice(&value.to_be_bytes());
+            vm.memory
+                .write_bytes_noownerchecks(ofs, **asset)
+                .expect("Assets must fit in memory");
+            vm.memory
+                .write_bytes_noownerchecks(ofs + AssetId::LEN, value.to_be_bytes())
+                .expect("Assets must fit in memory");
         });
 
         vm.balances = self;
@@ -240,6 +241,7 @@ fn writes_to_memory_correctly() {
 
     let balances = assets.into_iter();
 
+    interpreter.registers_mut()[RegId::HP] = VM_MAX_RAM;
     RuntimeBalances::try_from_iter(balances)
         .expect("failed to generate balances")
         .to_vm(&mut interpreter);
@@ -321,7 +323,7 @@ fn checked_add_and_sub_works() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut memory = Interpreter::<_, Script>::without_storage().memory;
+    let mut memory = vec![0u8; MEM_SIZE].into();
 
     let asset: AssetId = rng.gen();
 

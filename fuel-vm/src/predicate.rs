@@ -1,21 +1,30 @@
 //! Predicate representations with required data to be executed during VM runtime
 
-use crate::interpreter::MemoryRange;
-
 use fuel_tx::field;
 
+use crate::interpreter::MemoryRange;
+
 /// Runtime representation of a predicate
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RuntimePredicate {
-    program: MemoryRange,
+    range: MemoryRange,
     idx: usize,
 }
 
 impl RuntimePredicate {
+    /// Empty predicate for testing
+    #[cfg(test)]
+    pub const fn empty() -> Self {
+        Self {
+            range: MemoryRange::new(0, 0),
+            idx: 0,
+        }
+    }
+
     /// Memory slice with the program representation of the predicate
     pub const fn program(&self) -> &MemoryRange {
-        &self.program
+        &self.range
     }
 
     /// Index of the transaction input that maps to this predicate
@@ -32,9 +41,8 @@ impl RuntimePredicate {
     {
         let (ofs, len) = tx.inputs_predicate_offset_at(idx)?;
         let addr = ofs.saturating_add(tx_offset);
-        let range = MemoryRange::new(addr, len).expect("Invalid memory range");
         Some(Self {
-            program: range,
+            range: MemoryRange::new(addr, len),
             idx,
         })
     }
@@ -145,7 +153,7 @@ mod tests {
             assert!(interpreter
                 .init_predicate(
                     Context::PredicateVerification {
-                        program: Default::default()
+                        program: RuntimePredicate::empty(),
                     },
                     tx.transaction().clone(),
                     *tx.transaction().script_gas_limit(),

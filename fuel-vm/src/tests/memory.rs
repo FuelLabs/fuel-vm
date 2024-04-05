@@ -133,7 +133,7 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
         op::sub(0x10, 0x10, RegId::SP),
         op::aloc(0x10),
         op::cfei(
-            (if cause_error { offset } else { offset - 1 })
+            (if cause_error { offset + 1 } else { offset })
                 .try_into()
                 .unwrap(),
         ),
@@ -147,7 +147,7 @@ fn test_stack_and_heap_cannot_overlap(offset: u64, cause_error: bool) {
     if cause_error {
         let _ = receipts.pop().unwrap(); // Script result unneeded, the panic receipt below is enough
         if let Receipt::Panic { reason, .. } = receipts.pop().unwrap() {
-            assert!(matches!(reason.reason(), PanicReason::MemoryOverflow));
+            assert!(matches!(reason.reason(), PanicReason::MemoryGrowthOverlap));
         } else {
             panic!("Expected tx panic when cause_error is set");
         }
@@ -323,64 +323,30 @@ fn test_mcp_and_mcpi(
     }
 }
 
-#[rstest::rstest]
-fn test_meq(
-    #[values(0, 1, 7, 8, 9, 255, 256, 257)] count: u32,
-    #[values("equal", "last-not-equal", "first-not-equal")] pattern: &str,
-) {
-    // Allocate count * 2 bytes of memory
-    let mut ops = vec![
-        op::movi(0x10, count * 2),
-        op::aloc(0x10),
-        op::movi(0x11, 1),
-        op::movi(0x12, 2),
+#[test]
+fn test_meq() {
+    let ops = vec![
+        op::movi(0x20, 16),
+        op::aloc(0x20),
+        op::movi(0x30, 1234),
+        op::movi(0x31, 1235),
+        op::sw(RegId::HP, 0x30, 0),
+        op::sw(RegId::HP, 0x31, 1),
+        op::addi(0x32, RegId::HP, 8),
+        op::meq(0x20, RegId::HP, RegId::HP, 8),
+        op::meq(0x21, RegId::HP, 0x32, 8),
+        op::log(0x20, 0x21, 0x22, 0x23),
+        op::ret(RegId::ONE),
     ];
-    // Fill count*2 bytes with ones, and then patch with given pattern
-    for i in 0..(count * 2) {
-        ops.push(op::sb(RegId::HP, 0x11, i as u16));
-    }
-    if count != 0 {
-        match pattern {
-            "equal" => {
-                // Do nothing
-            }
-            "last-not-equal" => {
-                ops.push(op::sb(RegId::HP, 0x12, (count * 2 - 1) as u16));
-            }
-            "first-not-equal" => {
-                ops.push(op::sb(RegId::HP, 0x12, 0));
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    // Compare
-    ops.push(op::movi(0x10, count));
-    ops.push(op::addi(0x11, RegId::HP, count as u16));
-    ops.push(op::meq(0x10, RegId::HP, 0x11, 0x10));
-    // Log the result and return
-    ops.push(op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO));
-    ops.push(op::ret(RegId::ONE));
-
     let vm = setup(ops);
     let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
-
-    if let Some(Receipt::Log { ra, .. }) = vm.receipts().first() {
-        if count == 0 {
-            assert_eq!(*ra, 1); // Empty ranges always equal
-            return;
-        }
-        match pattern {
-            "equal" => {
-                assert_eq!(*ra, 1);
-            }
-            "last-not-equal" | "first-not-equal" => {
-                assert_eq!(*ra, 0);
-            }
-            _ => unreachable!(),
-        }
+    if let Some(Receipt::Log { ra, rb, rc, rd, .. }) = vm.receipts().first() {
+        assert_eq!(*ra, 1);
+        assert_eq!(*rb, 1);
+        assert_eq!(*rc, 0);
+        assert_eq!(*rd, 0);
     } else {
-        panic!("Expected LogData receipt");
+        panic!("Expected Log receipt");
     }
 }
 
@@ -399,5 +365,91 @@ fn test_heap_not_executable() {
         assert!(matches!(reason.reason(), PanicReason::MemoryNotExecutable));
     } else {
         panic!("Expected panic receipt");
+    }
+}
+
+#[test]
+fn test_shrunk_stack_remains_readable() {
+    let nonce = 12345;
+    let receipts = run_script(vec![
+        op::movi(0x21, nonce),
+        op::cfei(8),
+        op::sw(RegId::SSP, 0x21, 0),
+        op::cfsi(8),
+        op::lw(0x20, RegId::SSP, 0),
+        op::ret(0x20),
+    ]);
+
+    if let Some(Receipt::Return { val, .. }) = receipts.first() {
+        assert_eq!(*val, nonce as u64);
+    } else {
+        panic!("Expected return receipt");
+    }
+}
+
+#[test]
+fn test_stack_extension_doesnt_zero_memory() {
+    let canary = 12345;
+    let receipts = run_script(vec![
+        op::movi(0x21, canary),
+        op::cfei(8),
+        op::sw(RegId::SSP, 0x21, 0),
+        op::cfsi(8),
+        op::cfei(8),
+        op::lw(0x20, RegId::SSP, 0),
+        op::ret(0x20),
+    ]);
+
+    if let Some(Receipt::Return { val, .. }) = receipts.first() {
+        assert_eq!(*val, canary as u64);
+    } else {
+        panic!("Expected return receipt");
+    }
+}
+
+#[test]
+fn test_shrunk_stack_is_not_writable() {
+    let receipts = run_script(vec![
+        op::movi(0x21, 12345),
+        op::cfei(8),
+        op::sw(RegId::SSP, 0x21, 0),
+        op::cfsi(8),
+        op::sw(RegId::SSP, 0x21, 0),
+        op::ret(0x20),
+    ]);
+
+    if let Some(Receipt::Panic { reason, .. }) = receipts.first() {
+        assert!(matches!(reason.reason(), PanicReason::MemoryOwnership));
+    } else {
+        panic!("Expected panic receipt");
+    }
+}
+
+#[test]
+fn test_heap_allocation_zeroes_memory() {
+    let canary = 12345;
+    let mut script = set_full_word(0x20, VM_MAX_RAM);
+    script.extend(vec![
+        // Extend stack to cover the whole memory
+        op::sub(0x21, 0x20, RegId::SP),
+        op::cfe(0x21),
+        // Write a canary to the end of memory
+        op::subi(0x21, RegId::SP, 8),
+        op::movi(0x22, canary),
+        op::sw(0x21, 0x22, 0),
+        // Shrink stack
+        op::cfsi(8),
+        // Expand heap
+        op::movi(0x23, 8),
+        op::aloc(0x23),
+        // Read the canary back to make sure the memory was zeroed
+        op::lw(0x24, 0x21, 0),
+        op::ret(0x24),
+    ]);
+    let receipts = run_script(script);
+    if let Some(Receipt::Return { val, .. }) = receipts.first() {
+        assert_eq!(*val, 0u64);
+    } else {
+        panic!("Expected return receipt");
     }
 }

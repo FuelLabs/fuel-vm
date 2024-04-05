@@ -348,7 +348,10 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         );
         diff.changes.extend(balances);
 
-        let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
+        let other_memory = other.memory.clone().into_linear_memory();
+        let this_memory = self.memory.clone().into_linear_memory();
+
+        let mut memory = this_memory.iter().enumerate().zip(other_memory.iter());
 
         while let Some(((start, s_from), s_to)) = memory
             .by_ref()
@@ -404,9 +407,11 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
                 invert_receipts_ctx(&mut self.receipts, value)
             }
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
-            Change::Memory(Previous(Memory { start, bytes })) => {
-                self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])
-            }
+            Change::Memory(Previous(Memory { start, bytes })) => self
+                .memory
+                .write_noownerchecks(*start, bytes.len())
+                .expect("Memory must exist here")
+                .copy_from_slice(&bytes[..]),
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
             Change::Txn(Previous(tx)) => {

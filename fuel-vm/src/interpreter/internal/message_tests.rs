@@ -4,6 +4,7 @@ use alloc::{
 };
 
 use crate::{
+    consts::MEM_SIZE,
     error::PanicOrBug,
     interpreter::memory::Memory,
 };
@@ -54,15 +55,15 @@ fn test_absolute_output_offset(
     MEM_SIZE - 1 - 112 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow))
     ; "Output at MEM_SIZE - 1 - output_size should overflow"
 )]
-fn test_update_memory_output(tx_offset: usize) -> SimpleResult<Memory<MEM_SIZE>> {
+fn test_update_memory_output(tx_offset: usize) -> SimpleResult<Memory> {
     let mut tx = Create::default();
     *tx.policies_mut() = Policies::default();
     *tx.outputs_mut() = vec![Output::default()];
-    let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory = vec![0; MEM_SIZE].try_into().unwrap();
     update_memory_output(&mut tx, &mut memory, tx_offset, 0).map(|_| memory)
 }
 
-fn check_memory(result: Memory<MEM_SIZE>, expected: &[(usize, Vec<u8>)]) {
+fn check_memory(result: Memory, expected: &[(usize, Vec<u8>)]) {
     for (offset, bytes) in expected {
         assert_eq!(
             &result[*offset..*offset + bytes.len()],

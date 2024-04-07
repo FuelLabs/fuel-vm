@@ -123,7 +123,7 @@ pub enum UpgradePurpose {
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[canonical(prefix = TransactionRepr::Script)]
+#[canonical(prefix = TransactionRepr::Upgrade)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct UpgradeBody {
     /// The purpose of the upgrade.

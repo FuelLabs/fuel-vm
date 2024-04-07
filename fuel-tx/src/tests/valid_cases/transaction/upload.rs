@@ -8,6 +8,7 @@ use crate::field::{
     PartIndex,
     PartsNumber,
     ProofSet,
+    Witnesses,
 };
 use fuel_asm::op;
 use fuel_types::BlockHeight;
@@ -19,6 +20,7 @@ fn bytecode() -> Vec<u8> {
     vec![op::ret(1); 4321].into_iter().collect::<Vec<u8>>()
 }
 
+// Creates a predicate that always is valid - returns `true`.
 fn predicate() -> Vec<u8> {
     vec![op::ret(1)].into_iter().collect::<Vec<u8>>()
 }
@@ -676,12 +678,30 @@ fn check__errors_when_parts_number_doesnt_match() {
 }
 
 #[test]
-fn check__errors_when_proof_set_mut_doesnt_match() {
+fn check__errors_when_proof_set_doesnt_match() {
     let block_height = 1000.into();
     let mut tx = valid_upload_transaction().finalize();
 
     // Given
     tx.proof_set_mut().clear();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(
+        Err(ValidityError::TransactionUploadRootVerificationFailed),
+        result
+    );
+}
+
+#[test]
+fn check__errors_when_witness_doesnt_match() {
+    let block_height = 1000.into();
+    let mut tx = valid_upload_transaction().finalize();
+
+    // Given
+    tx.witnesses_mut()[0].as_vec_mut().push(0);
 
     // When
     let result = tx.check(block_height, &test_params());

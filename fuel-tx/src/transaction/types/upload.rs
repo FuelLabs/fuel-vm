@@ -203,7 +203,6 @@ impl UniqueFormatValidityChecks for Upload {
             return Err(ValidityError::TransactionUploadRootVerificationFailed);
         }
 
-        // The upgrade transaction cant touch the contract.
         self.inputs
             .iter()
             .enumerate()
@@ -229,7 +228,6 @@ impl UniqueFormatValidityChecks for Upload {
                 }
             })?;
 
-        // The upgrade transaction can't create a contract.
         self.outputs
             .iter()
             .enumerate()

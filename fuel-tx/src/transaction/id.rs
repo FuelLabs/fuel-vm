@@ -44,6 +44,7 @@ impl UniqueIdentifier for Transaction {
             Self::Create(tx) => tx.id(chain_id),
             Self::Mint(tx) => tx.id(chain_id),
             Self::Upgrade(tx) => tx.id(chain_id),
+            Self::Upload(tx) => tx.id(chain_id),
         }
     }
 
@@ -53,6 +54,7 @@ impl UniqueIdentifier for Transaction {
             Self::Create(tx) => tx.cached_id(),
             Self::Mint(tx) => tx.cached_id(),
             Self::Upgrade(tx) => tx.cached_id(),
+            Self::Upload(tx) => tx.cached_id(),
         }
     }
 }
@@ -143,6 +145,7 @@ mod tests {
         StorageSlot,
         Transaction,
         UpgradePurpose as UpgradePurposeType,
+        UploadBody,
         UtxoId,
     };
     use core::{
@@ -767,6 +770,32 @@ mod tests {
                             UpgradePurposeType::StateTransition { bytecode_hash } => {
                                 invert(bytecode_hash);
                             }
+                        });
+                    }
+
+                    // Upload
+                    {
+                        let tx = Transaction::upload(
+                            UploadBody {
+                                root: rng.gen(),
+                                witness_index: rng.gen(),
+                                part_index: rng.gen(),
+                                parts_number: rng.gen(),
+                                proof_set: vec![rng.gen(), rng.gen(), rng.gen()],
+                            },
+                            rng.gen(),
+                            inputs.clone(),
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
+
+                        assert_id_common_attrs(&tx);
+                        assert_id_ne(&tx, |t| invert(t.bytecode_root_mut()));
+                        assert_id_ne(&tx, |t| not(t.bytecode_witness_index_mut()));
+                        assert_id_ne(&tx, |t| not(t.part_index_mut()));
+                        assert_id_ne(&tx, |t| not(t.parts_number_mut()));
+                        assert_id_ne(&tx, |t| {
+                            t.proof_set_mut().iter_mut().for_each(invert)
                         });
                     }
                 }

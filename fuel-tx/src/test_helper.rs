@@ -59,6 +59,9 @@ mod use_std {
         TransactionBuilder,
         Upgrade,
         UpgradePurpose,
+        Upload,
+        UploadBody,
+        UploadPart,
     };
     use core::marker::PhantomData;
     use fuel_crypto::{
@@ -130,6 +133,7 @@ mod use_std {
                         Transaction::Create(_) => (),
                         Transaction::Mint(_) => (),
                         Transaction::Upgrade(_) => (),
+                        Transaction::Upload(_) => (),
                     })
                     .unwrap_or(());
 
@@ -406,6 +410,39 @@ mod use_std {
         }
     }
 
+    impl<R> TransactionFactory<R, Upload>
+    where
+        R: Rng + CryptoRng,
+    {
+        pub fn transaction(&mut self) -> Upload {
+            self.transaction_with_keys().0
+        }
+
+        pub fn transaction_with_keys(&mut self) -> (Upload, Vec<SecretKey>) {
+            let len = self.rng.gen_range(1..1024 * 1024);
+
+            let mut bytecode = alloc::vec![0u8; len];
+            self.rng.fill_bytes(bytecode.as_mut_slice());
+
+            let part = UploadPart::split_bytecode(&bytecode, len / 10)
+                .expect("Should split the bytecode")[0]
+                .clone();
+
+            let mut builder = TransactionBuilder::<Upload>::upload(UploadBody {
+                root: part.root,
+                witness_index: 0,
+                part_index: part.part_index,
+                parts_number: part.parts_number,
+                proof_set: part.proof_set,
+            });
+            debug_assert_eq!(builder.witnesses().len(), 0);
+            builder.add_witness(part.part_bytecode.into());
+
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
+        }
+    }
+
     impl<R> TransactionFactory<R, Mint>
     where
         R: Rng + CryptoRng,
@@ -454,6 +491,17 @@ mod use_std {
         type Item = (Upgrade, Vec<SecretKey>);
 
         fn next(&mut self) -> Option<(Upgrade, Vec<SecretKey>)> {
+            Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Upload>
+    where
+        R: Rng + CryptoRng,
+    {
+        type Item = (Upload, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Upload, Vec<SecretKey>)> {
             Some(self.transaction_with_keys())
         }
     }

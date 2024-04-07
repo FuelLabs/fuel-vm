@@ -450,7 +450,7 @@ fn tx_offset_upgrade() {
             chargeable_transaction_parts(&tx, &bytes, &mut cases);
             cases.upgrade_purpose = true;
 
-            let ofs = Upgrade::upgrade_purpose_offset_static();
+            let ofs = tx.upgrade_purpose_offset();
             let size = tx.upgrade_purpose().size();
 
             let purpose_p = UpgradePurpose::from_bytes(&bytes[ofs..ofs + size]).unwrap();
@@ -460,6 +460,46 @@ fn tx_offset_upgrade() {
 
     // Upgrade parts
     assert!(cases.upgrade_purpose);
+
+    // Chargeable parts
+    assert!(cases.utxo_id);
+    assert!(cases.owner);
+    assert!(cases.asset_id);
+    assert!(cases.predicate_coin);
+    assert!(cases.predicate_message);
+    assert!(cases.predicate_data_coin);
+    assert!(cases.predicate_data_message);
+    assert!(cases.contract_balance_root);
+    assert!(cases.contract_state_root);
+    assert!(cases.contract_id);
+    assert!(cases.sender);
+    assert!(cases.recipient);
+    assert!(cases.message_data);
+    assert!(cases.message_predicate);
+    assert!(cases.message_predicate_data);
+    assert!(cases.output_to);
+    assert!(cases.output_asset_id);
+    assert!(cases.output_balance_root);
+    assert!(cases.output_contract_state_root);
+    assert!(cases.output_contract_created_state_root);
+    assert!(cases.output_contract_created_id);
+}
+
+#[test]
+fn tx_offset_upload() {
+    let mut cases = TestedFields::default();
+    let number_cases = 100;
+
+    // The seed will define how the transaction factory will generate a new transaction.
+    // Different seeds might implicate on how many of the cases we cover - since we
+    // assert coverage for all scenarios with the boolean variables above, we need to
+    // pick a seed that, with low number of cases, will cover everything.
+    TransactionFactory::<_, Upload>::from_seed(1295)
+        .take(number_cases)
+        .for_each(|(tx, _)| {
+            let bytes = tx.to_bytes();
+            chargeable_transaction_parts(&tx, &bytes, &mut cases);
+        });
 
     // Chargeable parts
     assert!(cases.utxo_id);

@@ -35,6 +35,7 @@ use fuel_tx::{
     TransactionRepr,
     UniqueIdentifier,
     Upgrade,
+    Upload,
     ValidityError,
 };
 use fuel_types::{
@@ -89,6 +90,7 @@ use crate::checked_transaction::{
     RetryableAmount,
     ScriptCheckedMetadata,
     UpgradeCheckedMetadata,
+    UploadCheckedMetadata,
 };
 
 #[cfg(feature = "test-helpers")]
@@ -367,22 +369,44 @@ pub trait ExecutableTransaction:
     + fuel_types::canonical::Serialize
 {
     /// Casts the `Self` transaction into `&Script` if any.
-    fn as_script(&self) -> Option<&Script>;
+    fn as_script(&self) -> Option<&Script> {
+        None
+    }
 
     /// Casts the `Self` transaction into `&mut Script` if any.
-    fn as_script_mut(&mut self) -> Option<&mut Script>;
+    fn as_script_mut(&mut self) -> Option<&mut Script> {
+        None
+    }
 
     /// Casts the `Self` transaction into `&Create` if any.
-    fn as_create(&self) -> Option<&Create>;
+    fn as_create(&self) -> Option<&Create> {
+        None
+    }
 
     /// Casts the `Self` transaction into `&mut Create` if any.
-    fn as_create_mut(&mut self) -> Option<&mut Create>;
+    fn as_create_mut(&mut self) -> Option<&mut Create> {
+        None
+    }
 
     /// Casts the `Self` transaction into `&Upgrade` if any.
-    fn as_upgrade(&self) -> Option<&Upgrade>;
+    fn as_upgrade(&self) -> Option<&Upgrade> {
+        None
+    }
 
     /// Casts the `Self` transaction into `&mut Upgrade` if any.
-    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade>;
+    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
+        None
+    }
+
+    /// Casts the `Self` transaction into `&Upload` if any.
+    fn as_upload(&self) -> Option<&Upload> {
+        None
+    }
+
+    /// Casts the `Self` transaction into `&mut Upload` if any.
+    fn as_upload_mut(&mut self) -> Option<&mut Upload> {
+        None
+    }
 
     /// Returns the type of the transaction like `Transaction::Create` or
     /// `Transaction::Script`.
@@ -504,28 +528,12 @@ pub trait ExecutableTransaction:
 }
 
 impl ExecutableTransaction for Create {
-    fn as_script(&self) -> Option<&Script> {
-        None
-    }
-
-    fn as_script_mut(&mut self) -> Option<&mut Script> {
-        None
-    }
-
     fn as_create(&self) -> Option<&Create> {
         Some(self)
     }
 
     fn as_create_mut(&mut self) -> Option<&mut Create> {
         Some(self)
-    }
-
-    fn as_upgrade(&self) -> Option<&Upgrade> {
-        None
-    }
-
-    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
-        None
     }
 
     fn transaction_type() -> Word {
@@ -544,44 +552,12 @@ impl ExecutableTransaction for Script {
         Some(self)
     }
 
-    fn as_create(&self) -> Option<&Create> {
-        None
-    }
-
-    fn as_create_mut(&mut self) -> Option<&mut Create> {
-        None
-    }
-
-    fn as_upgrade(&self) -> Option<&Upgrade> {
-        None
-    }
-
-    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
-        None
-    }
-
     fn transaction_type() -> Word {
         TransactionRepr::Script as Word
     }
 }
 
 impl ExecutableTransaction for Upgrade {
-    fn as_script(&self) -> Option<&Script> {
-        None
-    }
-
-    fn as_script_mut(&mut self) -> Option<&mut Script> {
-        None
-    }
-
-    fn as_create(&self) -> Option<&Create> {
-        None
-    }
-
-    fn as_create_mut(&mut self) -> Option<&mut Create> {
-        None
-    }
-
     fn as_upgrade(&self) -> Option<&Upgrade> {
         Some(self)
     }
@@ -592,6 +568,20 @@ impl ExecutableTransaction for Upgrade {
 
     fn transaction_type() -> Word {
         TransactionRepr::Upgrade as Word
+    }
+}
+
+impl ExecutableTransaction for Upload {
+    fn as_upload(&self) -> Option<&Upload> {
+        Some(self)
+    }
+
+    fn as_upload_mut(&mut self) -> Option<&mut Upload> {
+        Some(self)
+    }
+
+    fn transaction_type() -> Word {
+        TransactionRepr::Upload as Word
     }
 }
 
@@ -629,6 +619,15 @@ impl CheckedMetadata for CreateCheckedMetadata {
 }
 
 impl CheckedMetadata for UpgradeCheckedMetadata {
+    fn balances(&self) -> InitialBalances {
+        InitialBalances {
+            non_retryable: self.free_balances.clone(),
+            retryable: None,
+        }
+    }
+}
+
+impl CheckedMetadata for UploadCheckedMetadata {
     fn balances(&self) -> InitialBalances {
         InitialBalances {
             non_retryable: self.free_balances.clone(),

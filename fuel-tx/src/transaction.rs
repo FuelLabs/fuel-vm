@@ -101,6 +101,7 @@ pub enum Transaction {
     Create(Create),
     Mint(Mint),
     Upgrade(Upgrade),
+    Upload(Upload),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -244,6 +245,48 @@ impl Transaction {
             witnesses,
             metadata: None,
         })
+    }
+
+    pub fn upload(
+        upload_body: UploadBody,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        witnesses: Vec<Witness>,
+    ) -> Upload {
+        Upload {
+            body: upload_body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
+    }
+
+    pub fn upload_from_part(
+        part: UploadPart,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        mut witnesses: Vec<Witness>,
+    ) -> Upload {
+        let body = UploadBody {
+            root: part.root,
+            witness_index: u16::try_from(witnesses.len()).unwrap_or(u16::MAX),
+            part_index: part.part_index,
+            parts_number: part.parts_number,
+            proof_set: part.proof_set,
+        };
+        witnesses.push(part.part_bytecode.into());
+        Upload {
+            body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
     }
 
     /// Convert the type into a JSON string
@@ -496,6 +539,12 @@ impl From<Upgrade> for Transaction {
     }
 }
 
+impl From<Upload> for Transaction {
+    fn from(tx: Upload) -> Self {
+        Self::Upload(tx)
+    }
+}
+
 impl Serialize for Transaction {
     fn size_static(&self) -> usize {
         match self {
@@ -503,6 +552,7 @@ impl Serialize for Transaction {
             Self::Create(tx) => tx.size_static(),
             Self::Mint(tx) => tx.size_static(),
             Self::Upgrade(tx) => tx.size_static(),
+            Self::Upload(tx) => tx.size_static(),
         }
     }
 
@@ -512,6 +562,7 @@ impl Serialize for Transaction {
             Self::Create(tx) => tx.size_dynamic(),
             Self::Mint(tx) => tx.size_dynamic(),
             Self::Upgrade(tx) => tx.size_dynamic(),
+            Self::Upload(tx) => tx.size_dynamic(),
         }
     }
 
@@ -524,6 +575,7 @@ impl Serialize for Transaction {
             Self::Create(tx) => tx.encode_static(buffer),
             Self::Mint(tx) => tx.encode_static(buffer),
             Self::Upgrade(tx) => tx.encode_static(buffer),
+            Self::Upload(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -536,6 +588,7 @@ impl Serialize for Transaction {
             Self::Create(tx) => tx.encode_dynamic(buffer),
             Self::Mint(tx) => tx.encode_dynamic(buffer),
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
+            Self::Upload(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -563,6 +616,9 @@ impl Deserialize for Transaction {
             TransactionRepr::Upgrade => {
                 Ok(<Upgrade as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::Upload => {
+                Ok(<Upload as Deserialize>::decode_static(buffer)?.into())
+            }
         }
     }
 
@@ -575,6 +631,7 @@ impl Deserialize for Transaction {
             Self::Create(tx) => tx.decode_dynamic(buffer),
             Self::Mint(tx) => tx.decode_dynamic(buffer),
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
+            Self::Upload(tx) => tx.decode_dynamic(buffer),
         }
     }
 }
@@ -862,7 +919,51 @@ pub mod field {
     pub trait UpgradePurpose {
         fn upgrade_purpose(&self) -> &UpgradePurposeType;
         fn upgrade_purpose_mut(&mut self) -> &mut UpgradePurposeType;
+        fn upgrade_purpose_offset(&self) -> usize {
+            Self::upgrade_purpose_offset_static()
+        }
+
         fn upgrade_purpose_offset_static() -> usize;
+    }
+
+    pub trait BytecodeRoot {
+        fn bytecode_root(&self) -> &Bytes32;
+        fn bytecode_root_mut(&mut self) -> &mut Bytes32;
+        fn bytecode_root_offset(&self) -> usize {
+            Self::bytecode_root_offset_static()
+        }
+
+        fn bytecode_root_offset_static() -> usize;
+    }
+
+    pub trait PartIndex {
+        fn part_index(&self) -> &u16;
+        fn part_index_mut(&mut self) -> &mut u16;
+        fn part_index_offset(&self) -> usize {
+            Self::part_index_offset_static()
+        }
+
+        fn part_index_offset_static() -> usize;
+    }
+
+    pub trait PartsNumber {
+        fn parts_number(&self) -> &u16;
+        fn parts_number_mut(&mut self) -> &mut u16;
+        fn parts_number_offset(&self) -> usize {
+            Self::parts_number_offset_static()
+        }
+
+        fn parts_number_offset_static() -> usize;
+    }
+
+    pub trait ProofSet {
+        fn proof_set(&self) -> &Vec<Bytes32>;
+        fn proof_set_mut(&mut self) -> &mut Vec<Bytes32>;
+        fn proof_set_offset(&self) -> usize {
+            Self::proof_set_offset_static()
+        }
+
+        fn proof_set_offset_static() -> usize;
     }
 }
 
@@ -886,6 +987,7 @@ pub mod typescript {
         string::String,
         vec::Vec,
     };
+    use fuel_types::Bytes32;
 
     #[derive(Debug, Clone, Eq, Hash, PartialEq)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -916,6 +1018,11 @@ pub mod typescript {
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[wasm_bindgen]
     pub struct UpgradePurpose(#[wasm_bindgen(skip)] pub Box<crate::UpgradePurpose>);
+
+    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[wasm_bindgen]
+    pub struct Upload(#[wasm_bindgen(skip)] pub Box<crate::Upload>);
 
     #[wasm_bindgen]
     impl Transaction {
@@ -1034,6 +1141,36 @@ pub mod typescript {
                 .into(),
             )
         }
+
+        #[wasm_bindgen]
+        pub fn upload(
+            root: Bytes32,
+            witness_index: u16,
+            part_index: u16,
+            parts_number: u16,
+            proof_set: Vec<Bytes32>,
+            policies: Policies,
+            inputs: Vec<Input>,
+            outputs: Vec<Output>,
+            witnesses: Vec<Witness>,
+        ) -> Upload {
+            Upload(
+                crate::Transaction::upload(
+                    crate::UploadBody {
+                        root,
+                        witness_index,
+                        part_index,
+                        parts_number,
+                        proof_set,
+                    },
+                    policies,
+                    inputs.into_iter().map(|v| *v.0).collect(),
+                    outputs.into_iter().map(|v| *v.0).collect(),
+                    witnesses,
+                )
+                .into(),
+            )
+        }
     }
 
     macro_rules! ts_methods {
@@ -1082,6 +1219,7 @@ pub mod typescript {
     ts_methods!(Create, crate::Transaction::Create);
     ts_methods!(Mint, crate::Transaction::Mint);
     ts_methods!(Upgrade, crate::Transaction::Upgrade);
+    ts_methods!(Upload, crate::Transaction::Upload);
 }
 
 #[cfg(test)]
@@ -1146,7 +1284,7 @@ mod tests {
 
     #[test]
     fn upgrade_metered_data_includes_witnesses() {
-        let create_with_no_witnesses = Transaction::upgrade(
+        let tx_with_no_witnesses = Transaction::upgrade(
             UpgradePurpose::StateTransition {
                 bytecode_hash: Default::default(),
             },
@@ -1155,7 +1293,7 @@ mod tests {
             vec![],
             vec![],
         );
-        let create_with_witnesses = Transaction::upgrade(
+        let tx_with_witnesses = Transaction::upgrade(
             UpgradePurpose::StateTransition {
                 bytecode_hash: Default::default(),
             },
@@ -1165,9 +1303,31 @@ mod tests {
             vec![[0u8; 64].to_vec().into()],
         );
         assert_eq!(
-            create_with_witnesses.metered_bytes_size(),
-            create_with_no_witnesses.metered_bytes_size()
-                + create_with_witnesses.witnesses.size_dynamic()
+            tx_with_witnesses.metered_bytes_size(),
+            tx_with_no_witnesses.metered_bytes_size()
+                + tx_with_witnesses.witnesses.size_dynamic()
+        );
+    }
+
+    #[test]
+    fn upload_metered_data_includes_witnesses() {
+        let tx_with_no_witnesses = Transaction::upload(
+            Default::default(),
+            Default::default(),
+            vec![],
+            vec![],
+            vec![],
+        );
+        let tx_with_witnesses = Transaction::upload(
+            Default::default(),
+            Default::default(),
+            vec![],
+            vec![],
+            vec![[0u8; 64].to_vec().into()],
+        );
+        assert_eq!(
+            tx_with_witnesses.metered_bytes_size(),
+            tx_with_no_witnesses.metered_bytes_size() + 8 /* Witness size */ + 64
         );
     }
 }

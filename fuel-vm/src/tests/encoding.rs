@@ -53,6 +53,21 @@ where
     }
 }
 
+/// The function tests that the encoding of the `Transaction` and the specific `T` variant
+/// of the transaction are correct.
+pub fn assert_transactions_encoding_correct<T>(data: &[T])
+where
+    T: Serialize + Deserialize + Into<Transaction> + fmt::Debug + Clone + PartialEq,
+{
+    assert_encoding_correct(data);
+
+    let txs = data
+        .iter()
+        .map(|d| d.clone().into())
+        .collect::<Vec<Transaction>>();
+    assert_encoding_correct(&txs);
+}
+
 #[test]
 fn call() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -208,7 +223,7 @@ fn transaction_canonical_serialization_deserialization() {
     let o = Output::coin([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into());
     let w = Witness::from(vec![0xbf]);
 
-    assert_encoding_correct(&[
+    assert_transactions_encoding_correct(&[
         Transaction::script(
             Word::MAX >> 2,
             vec![0xfa],
@@ -321,7 +336,7 @@ fn transaction_canonical_serialization_deserialization() {
             vec![],
         ),
     ]);
-    assert_encoding_correct(&[
+    assert_transactions_encoding_correct(&[
         Transaction::create(
             0xba,
             Policies::new()
@@ -395,7 +410,7 @@ fn transaction_canonical_serialization_deserialization() {
             vec![],
         ),
     ]);
-    assert_encoding_correct(&[
+    assert_transactions_encoding_correct(&[
         Transaction::upgrade(
             UpgradePurpose::ConsensusParameters {
                 witness_index: 0,

@@ -177,6 +177,10 @@ impl UniqueFormatValidityChecks for Upload {
         &self,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
+        if self.body.parts_number > consensus_params.tx_params().max_bytecode_parts() {
+            return Err(ValidityError::TransactionUploadTooManyBytecodeParts);
+        }
+
         let index = self.body.witness_index as usize;
         let witness = self
             .witnesses

@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#714](https://github.com/FuelLabs/fuel-vm/pull/714): Added `max_bytecode_parts` field to the `TxParameters` to limit the number of parts that can be uploaded.
 - [#707](https://github.com/FuelLabs/fuel-vm/pull/707): Side small breaking for tests changes from the `Upgrade` transaction:
   - Moved `fuel-tx-test-helpers` logic into the `fuel_tx::test_helpers` module.
   - Added a new rule for `Create` transaction: all inputs should use base asset otherwise it returns `TransactionInputContainsNonBaseAssetId` error.

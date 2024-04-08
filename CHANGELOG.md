@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#715](https://github.com/FuelLabs/fuel-vm/pull/715): The `Interpreter` supports the processing of the `Upload` transaction. The change affects `InterpreterStorage`, adding `StorageMutate<UploadedBytes>` constrain.
 - [#714](https://github.com/FuelLabs/fuel-vm/pull/714): The change adds a new `Upload` transaction that allows uploading huge byte code on chain part by part. This transaction is chargeable and is twice as expensive as the `Create` transaction. Anyone can submit this transaction.
 - [#712](https://github.com/FuelLabs/fuel-vm/pull/712): The `Interpreter` supports the processing of the `Upgrade` transaction. The change affects `InterpreterStorage`, adding 5 new methods that must be implemented.
 - [#707](https://github.com/FuelLabs/fuel-vm/pull/707): The change adds a new `Upgrade` transaction that allows upgrading either consensus parameters or state transition function used by the network to produce future blocks.

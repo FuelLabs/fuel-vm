@@ -6,6 +6,8 @@ use crate::storage::{
     ContractsStateData,
     ContractsStateKey,
     InterpreterStorage,
+    UploadedBytecode,
+    UploadedBytecodes,
 };
 
 use fuel_crypto::Hasher;
@@ -46,8 +48,8 @@ struct MemoryStorageInner {
     contract_state: BTreeMap<ContractsStateKey, ContractsStateData>,
     /// Mapping from consensus parameters version to consensus parameters.
     consensus_parameters_versions: BTreeMap<u32, ConsensusParameters>,
-    /// Mapping from state transition bytecode hash to bytecode.
-    state_transition_bytecodes: BTreeMap<Bytes32, Vec<u8>>,
+    /// Mapping from state transition bytecode root to bytecode.
+    state_transition_bytecodes: BTreeMap<Bytes32, UploadedBytecode>,
     /// Mapping from state transition bytecode version to hash.
     state_transition_bytecodes_versions: BTreeMap<u32, Bytes32>,
 }
@@ -166,7 +168,9 @@ impl MemoryStorage {
 
     #[cfg(feature = "test-helpers")]
     /// Returns mutable reference to the state transition bytecodes table.
-    pub fn state_transition_bytecodes_mut(&mut self) -> &mut BTreeMap<Bytes32, Vec<u8>> {
+    pub fn state_transition_bytecodes_mut(
+        &mut self,
+    ) -> &mut BTreeMap<Bytes32, UploadedBytecode> {
         &mut self.memory.state_transition_bytecodes
     }
 
@@ -262,6 +266,48 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
         Ok(self.memory.contracts.get(key).map(|c| c.as_ref().to_vec()))
+    }
+}
+
+impl StorageInspect<UploadedBytecodes> for MemoryStorage {
+    type Error = Infallible;
+
+    fn get(
+        &self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+    ) -> Result<Option<Cow<'_, UploadedBytecode>>, Infallible> {
+        Ok(self
+            .memory
+            .state_transition_bytecodes
+            .get(key)
+            .map(Cow::Borrowed))
+    }
+
+    fn contains_key(
+        &self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+    ) -> Result<bool, Infallible> {
+        Ok(self.memory.state_transition_bytecodes.contains_key(key))
+    }
+}
+
+impl StorageMutate<UploadedBytecodes> for MemoryStorage {
+    fn insert(
+        &mut self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+        value: &<UploadedBytecodes as Mappable>::Value,
+    ) -> Result<Option<UploadedBytecode>, Infallible> {
+        Ok(self
+            .memory
+            .state_transition_bytecodes
+            .insert(*key, value.clone()))
+    }
+
+    fn remove(
+        &mut self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+    ) -> Result<Option<UploadedBytecode>, Infallible> {
+        Ok(self.memory.state_transition_bytecodes.remove(key))
     }
 }
 
@@ -455,13 +501,6 @@ impl InterpreterStorage for MemoryStorage {
             .consensus_parameters_versions
             .insert(version, consensus_parameters.clone())
             .map(Cow::Owned))
-    }
-
-    fn contains_state_transition_bytecode_hash(
-        &self,
-        hash: &Bytes32,
-    ) -> Result<bool, Self::DataError> {
-        Ok(self.memory.state_transition_bytecodes.contains_key(hash))
     }
 
     fn set_state_transition_bytecode(

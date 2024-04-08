@@ -1286,7 +1286,7 @@ mod tests {
     fn upgrade_metered_data_includes_witnesses() {
         let tx_with_no_witnesses = Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: Default::default(),
+                root: Default::default(),
             },
             Default::default(),
             vec![],
@@ -1295,7 +1295,7 @@ mod tests {
         );
         let tx_with_witnesses = Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: Default::default(),
+                root: Default::default(),
             },
             Default::default(),
             vec![],

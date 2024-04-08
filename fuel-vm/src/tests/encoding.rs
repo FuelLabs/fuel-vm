@@ -469,7 +469,7 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)
@@ -482,7 +482,7 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)
@@ -495,7 +495,7 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)
@@ -508,7 +508,7 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)

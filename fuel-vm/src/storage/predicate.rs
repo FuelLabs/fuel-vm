@@ -234,13 +234,6 @@ impl InterpreterStorage for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn contains_state_transition_bytecode_hash(
-        &self,
-        _hash: &Bytes32,
-    ) -> Result<bool, Self::DataError> {
-        Err(StorageUnavailable)
-    }
-
     fn set_state_transition_bytecode(
         &mut self,
         _version: u32,

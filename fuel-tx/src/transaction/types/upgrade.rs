@@ -112,10 +112,10 @@ pub enum UpgradePurpose {
     },
     /// The upgrade is performed to change the state transition function.
     StateTransition {
-        /// The hash of the new bytecode of the state transition function.
+        /// The Merkle root of the new bytecode of the state transition function.
         /// The bytecode must be present on the blockchain(should be known by the
         /// network) at the moment of inclusion of this transaction.
-        bytecode_hash: Bytes32,
+        root: Bytes32,
     },
 }
 
@@ -134,7 +134,7 @@ impl Default for UpgradeBody {
     fn default() -> Self {
         Self {
             purpose: UpgradePurpose::StateTransition {
-                bytecode_hash: Default::default(),
+                root: Default::default(),
             },
         }
     }

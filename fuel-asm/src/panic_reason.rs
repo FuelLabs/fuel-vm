@@ -140,9 +140,13 @@ enum_from! {
         /// It is not allowed to override the consensus parameters.
         OverridingConsensusParameters = 0x31,
         /// The storage doesn't know about the hash of the state transition bytecode.
-        UnknownStateTransactionBytecodeHash = 0x32,
+        UnknownStateTransactionBytecodeRoot = 0x32,
         /// It is not allowed to override the state transition bytecode.
         OverridingStateTransactionBytecode = 0x33,
+        /// The bytecode is already uploaded and cannot be uploaded again.
+        BytecodeAlreadyUploaded = 0x34,
+        /// The part of the bytecode is not sequentially connected to the previous parts.
+        ThePartIsNotSequentiallyConnected = 0x35,
     }
 }
 

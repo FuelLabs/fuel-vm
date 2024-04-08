@@ -2,7 +2,10 @@
 
 use fuel_storage::Mappable;
 use fuel_tx::Contract;
-use fuel_types::ContractId;
+use fuel_types::{
+    Bytes32,
+    ContractId,
+};
 
 mod contracts_assets;
 mod contracts_state;
@@ -25,6 +28,34 @@ pub use interpreter::{
 };
 pub use memory::MemoryStorage;
 pub use predicate::PredicateStorage;
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// The uploaded bytecode can be in two states: fully uploaded or partially uploaded.
+pub enum UploadedBytecode {
+    /// The bytecode is partially uploaded.
+    Uncompleted {
+        /// The cumulative bytecode of `uploaded_parts_number` parts.
+        bytecode: Vec<u8>,
+        /// The number of already included parts of the bytecode.
+        uploaded_parts_number: u16,
+    },
+    /// The bytecode is fully uploaded and ready to be used.
+    Completed(Vec<u8>),
+}
+
+/// The storage table for uploaded bytecode.
+pub struct UploadedBytecodes;
+
+impl Mappable for UploadedBytecodes {
+    /// The key is a Merkle root of the bytecode.
+    type Key = Self::OwnedKey;
+    type OwnedKey = Bytes32;
+    type OwnedValue = UploadedBytecode;
+    type Value = Self::OwnedValue;
+}
 
 /// The storage table for contract's raw byte code.
 pub struct ContractsRawCode;

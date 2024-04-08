@@ -34,6 +34,7 @@ use alloc::{
 
 mod state_transition {
     use super::*;
+    use crate::storage::UploadedBytecode;
     use fuel_tx::UpgradePurpose;
     use fuel_types::Bytes32;
 
@@ -44,7 +45,7 @@ mod state_transition {
         storage.set_state_transition_version(CURRENT_STATE_TRANSITION_VERSION);
         storage
             .state_transition_bytecodes_mut()
-            .insert(hash, bytecode);
+            .insert(hash, UploadedBytecode::Completed(bytecode));
 
         storage
     }
@@ -67,9 +68,7 @@ mod state_transition {
         let outputs = vec![Output::change(owner, 0, AssetId::BASE)];
 
         let upgrade = Transaction::upgrade(
-            UpgradePurpose::StateTransition {
-                bytecode_hash: hash,
-            },
+            UpgradePurpose::StateTransition { root: hash },
             Policies::new().with_max_fee(AMOUNT),
             inputs,
             outputs,
@@ -169,7 +168,7 @@ mod state_transition {
     }
 
     #[test]
-    fn transact_fails_for_unknown_hash() {
+    fn transact_fails_for_unknown_root() {
         let known_state_transition_hash = [1; 32].into();
         let mut client = Interpreter::<_, Upgrade>::with_storage(
             valid_storage(known_state_transition_hash, vec![]),
@@ -186,7 +185,38 @@ mod state_transition {
         // Then
         assert_eq!(
             Err(InterpreterError::Panic(
-                PanicReason::UnknownStateTransactionBytecodeHash
+                PanicReason::UnknownStateTransactionBytecodeRoot
+            )),
+            result
+        );
+    }
+
+    #[test]
+    fn transact_fails_for_known_uncomplete_root() {
+        let known_state_transition_hash = [1; 32].into();
+        let tx = valid_transaction(known_state_transition_hash).test_into_ready();
+
+        // Given
+        let mut storage = valid_storage(known_state_transition_hash, vec![]);
+        storage.state_transition_bytecodes_mut().insert(
+            known_state_transition_hash,
+            UploadedBytecode::Uncompleted {
+                bytecode: vec![],
+                uploaded_parts_number: 0,
+            },
+        );
+        let mut client = Interpreter::<_, Upgrade>::with_storage(
+            storage,
+            InterpreterParams::default(),
+        );
+
+        // When
+        let result = client.transact(tx).map(|_| ());
+
+        // Then
+        assert_eq!(
+            Err(InterpreterError::Panic(
+                PanicReason::UnknownStateTransactionBytecodeRoot
             )),
             result
         );
@@ -396,7 +426,7 @@ mod consensus_parameters {
     }
 
     #[test]
-    fn transact_fails_when_consensus_paramaters_version_overflows() {
+    fn transact_fails_when_consensus_parameters_version_overflows() {
         let mut client = Interpreter::<_, Upgrade>::with_storage(
             valid_storage(),
             InterpreterParams::default(),

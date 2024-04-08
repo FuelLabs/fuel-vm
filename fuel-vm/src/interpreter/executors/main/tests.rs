@@ -215,7 +215,7 @@ fn upgrade__tx_with_wrong_gas_price_causes_error() {
     };
 
     let ready_tx = TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
-        bytecode_hash: Default::default(),
+        root: Default::default(),
     })
     .max_fee_limit(arb_max_fee)
     .add_random_fee_input()
@@ -240,6 +240,54 @@ fn upgrade__tx_with_wrong_gas_price_causes_error() {
     let mut transactor =
         Transactor::<_, Upgrade>::new(MemoryStorage::default(), interpreter_params);
     let err = transactor.execute_ready_upgrade_tx(ready_tx).unwrap_err();
+
+    // then
+    assert!(matches!(
+        err,
+        InterpreterError::ReadyTransactionWrongGasPrice { .. }
+    ));
+}
+
+#[test]
+fn upload__tx_with_wrong_gas_price_causes_error() {
+    // given
+    let tx_gas_price = 1;
+    let interpreter_gas_price = 2;
+    let input_amount = 1000;
+    let arb_max_fee = input_amount;
+    let consensus_params = ConsensusParameters::standard();
+
+    let interpreter_params = InterpreterParams {
+        gas_price: interpreter_gas_price,
+        ..Default::default()
+    };
+
+    let parts =
+        UploadPart::split_bytecode(&vec![123; 1024], 24).expect("Should split bytecode");
+    let part = parts[0].clone();
+    let ready_tx = TransactionBuilder::upload(UploadBody {
+        root: part.root,
+        witness_index: 0,
+        part_index: part.part_index,
+        parts_number: part.parts_number,
+        proof_set: part.proof_set,
+    })
+    .add_witness(part.part_bytecode.into())
+    .max_fee_limit(arb_max_fee)
+    .add_random_fee_input()
+    .with_params(consensus_params)
+    .finalize_checked_basic(Default::default())
+    .into_ready(
+        tx_gas_price,
+        &interpreter_params.gas_costs,
+        &interpreter_params.fee_params,
+    )
+    .unwrap();
+
+    // when
+    let mut transactor =
+        Transactor::<_, Upload>::new(MemoryStorage::default(), interpreter_params);
+    let err = transactor.execute_ready_upload_tx(ready_tx).unwrap_err();
 
     // then
     assert!(matches!(

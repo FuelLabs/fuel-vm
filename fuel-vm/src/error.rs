@@ -367,6 +367,16 @@ pub enum BugVariant {
     /// Receipts context is full, but there's an attempt to add more receipts.
     #[strum(message = "Receipts context is full, cannot add new receipts.")]
     ReceiptsCtxFull,
+
+    /// Witness index is out of bounds.
+    #[strum(message = "Witness index is out of bounds.")]
+    WitnessIndexOutOfBounds,
+
+    /// The witness part index is higher than the total number of parts.
+    #[strum(
+        message = "The witness part index is higher than the total number of parts."
+    )]
+    NextPartIndexIsHigherThanTotalNumberOfParts,
 }
 
 impl fmt::Display for BugVariant {

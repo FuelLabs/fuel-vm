@@ -31,6 +31,8 @@ use crate::{
         ContractsRawCode,
         ContractsState,
         ContractsStateData,
+        UploadedBytecode,
+        UploadedBytecodes,
     },
 };
 use alloc::{
@@ -51,6 +53,7 @@ pub trait InterpreterStorage:
     + StorageWrite<ContractsState, Error = Self::DataError>
     + StorageSize<ContractsState, Error = Self::DataError>
     + StorageRead<ContractsState, Error = Self::DataError>
+    + StorageMutate<UploadedBytecodes, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
@@ -92,11 +95,24 @@ pub trait InterpreterStorage:
         consensus_parameters: &ConsensusParameters,
     ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError>;
 
-    /// Returns `true` if the state transition bytecode is present in the storage.
-    fn contains_state_transition_bytecode_hash(
+    /// Returns `true` if the fully uploaded state transition bytecode is present in the
+    /// storage.
+    fn contains_state_transition_bytecode_root(
         &self,
-        hash: &Bytes32,
-    ) -> Result<bool, Self::DataError>;
+        root: &Bytes32,
+    ) -> Result<bool, Self::DataError> {
+        let bytecode = self.storage::<UploadedBytecodes>().get(root)?;
+
+        if let Some(cow) = bytecode {
+            if let UploadedBytecode::Completed(_) = cow.as_ref() {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            Ok(false)
+        }
+    }
 
     /// Set the state transition bytecode in the storage under the `version`.
     ///
@@ -306,16 +322,6 @@ where
             self.deref_mut(),
             version,
             consensus_parameters,
-        )
-    }
-
-    fn contains_state_transition_bytecode_hash(
-        &self,
-        hash: &Bytes32,
-    ) -> Result<bool, Self::DataError> {
-        <S as InterpreterStorage>::contains_state_transition_bytecode_hash(
-            self.deref(),
-            hash,
         )
     }
 

@@ -20,6 +20,7 @@ use fuel_tx::{
     Receipt,
     Script,
     Upgrade,
+    Upload,
 };
 
 #[derive(Debug)]
@@ -87,6 +88,11 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     /// Executes `Upgrade` transaction.
     pub fn upgrade(&mut self, tx: Checked<Upgrade>) -> Option<Upgrade> {
         self.transactor.upgrade(tx).ok()
+    }
+
+    /// Executes `Upload` transaction.
+    pub fn upload(&mut self, tx: Checked<Upload>) -> Option<Upload> {
+        self.transactor.upload(tx).ok()
     }
 
     /// Execute a transaction.

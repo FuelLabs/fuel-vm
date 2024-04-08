@@ -73,7 +73,7 @@ fn valid_transaction_from_part(part: UploadPart) -> Ready<Upload> {
 }
 
 #[test]
-fn transact_uploads_bytecode_with_one_part() {
+fn transact__uploads_bytecode_with_one_part() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
     let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
     let root = parts[0].root;
@@ -104,7 +104,7 @@ fn transact_uploads_bytecode_with_one_part() {
 }
 
 #[test]
-fn transact_uploads_bytecode_with_several_parts() {
+fn transact__uploads_bytecode_with_several_parts() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
 
     // Given
@@ -132,7 +132,7 @@ fn transact_uploads_bytecode_with_several_parts() {
 }
 
 #[test]
-fn transact_uploads_bytecode_with_half_of_parts() {
+fn transact__uploads_bytecode_with_half_of_parts() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
 
     // Given
@@ -161,7 +161,7 @@ fn transact_uploads_bytecode_with_half_of_parts() {
 }
 
 #[test]
-fn transact_fails_for_completed_bytecode() {
+fn transact__fails_for_completed_bytecode() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
     let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
     assert_eq!(parts.len(), 1);
@@ -183,7 +183,7 @@ fn transact_fails_for_completed_bytecode() {
 }
 
 #[test]
-fn transact_fails_when_the_ordering_of_uploading_is_wrong__missed_first_part() {
+fn transact__fails_when_the_ordering_of_uploading_is_wrong__missed_first_part() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
     let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
     assert!(parts.len() > 1);
@@ -204,7 +204,7 @@ fn transact_fails_when_the_ordering_of_uploading_is_wrong__missed_first_part() {
 }
 
 #[test]
-fn transact_fails_when_the_ordering_of_uploading_is_wrong__skipped_second_part() {
+fn transact__fails_when_the_ordering_of_uploading_is_wrong__skipped_second_part() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
     let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
     assert!(parts.len() >= 3);
@@ -227,7 +227,7 @@ fn transact_fails_when_the_ordering_of_uploading_is_wrong__skipped_second_part()
 }
 
 #[test]
-fn transact_fails_when_the_ordering_of_uploading_is_wrong__second_part_sent_twice() {
+fn transact__fails_when_the_ordering_of_uploading_is_wrong__second_part_sent_twice() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
     let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
     assert!(parts.len() >= 3);
@@ -253,7 +253,7 @@ fn transact_fails_when_the_ordering_of_uploading_is_wrong__second_part_sent_twic
 }
 
 #[test]
-fn check_fails_when_part_index_more_than_total_number() {
+fn check__fails_when_part_index_more_than_total_number() {
     let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
     assert!(parts.len() >= 3);
 
@@ -281,7 +281,7 @@ fn check_fails_when_part_index_more_than_total_number() {
 }
 
 #[test]
-fn check_fails_when_total_number_is_zero() {
+fn check__fails_when_total_number_is_zero() {
     let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
 
     // Given
@@ -308,7 +308,7 @@ fn check_fails_when_total_number_is_zero() {
 }
 
 #[test]
-fn transact_with_zero_gas_price_doesnt_affect_change_output() {
+fn transact__with_zero_gas_price_doesnt_affect_change_output() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
     let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
 
@@ -332,7 +332,7 @@ fn transact_with_zero_gas_price_doesnt_affect_change_output() {
 }
 
 #[test]
-fn transact_with_non_zero_gas_price_affects_change_output() {
+fn transact__with_non_zero_gas_price_affects_change_output() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
     let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
 

@@ -1,10 +1,17 @@
 #![allow(non_snake_case)]
 
+use crate::{
+    checked_transaction::{
+        CheckPredicates,
+        Checked,
+    },
+    interpreter::InterpreterParams,
+    prelude::*,
+};
 use alloc::{
     vec,
     vec::Vec,
 };
-
 use fuel_asm::{
     op,
     RegId,
@@ -17,12 +24,6 @@ use rand::{
     rngs::StdRng,
     Rng,
     SeedableRng,
-};
-
-use crate::{
-    checked_transaction::CheckPredicates,
-    interpreter::InterpreterParams,
-    prelude::*,
 };
 
 #[test]
@@ -248,24 +249,13 @@ fn upgrade__tx_with_wrong_gas_price_causes_error() {
     ));
 }
 
-#[test]
-fn upload__tx_with_wrong_gas_price_causes_error() {
-    // given
-    let tx_gas_price = 1;
-    let interpreter_gas_price = 2;
+fn valid_upload_tx() -> Checked<Upload> {
     let input_amount = 1000;
     let arb_max_fee = input_amount;
-    let consensus_params = ConsensusParameters::standard();
-
-    let interpreter_params = InterpreterParams {
-        gas_price: interpreter_gas_price,
-        ..Default::default()
-    };
-
     let parts =
         UploadPart::split_bytecode(&vec![123; 1024], 24).expect("Should split bytecode");
     let part = parts[0].clone();
-    let ready_tx = TransactionBuilder::upload(UploadBody {
+    TransactionBuilder::upload(UploadBody {
         root: part.root,
         witness_index: 0,
         part_index: part.part_index,
@@ -275,21 +265,26 @@ fn upload__tx_with_wrong_gas_price_causes_error() {
     .add_witness(part.part_bytecode.into())
     .max_fee_limit(arb_max_fee)
     .add_random_fee_input()
-    .with_params(consensus_params)
     .finalize_checked_basic(Default::default())
-    .into_ready(
-        tx_gas_price,
-        &interpreter_params.gas_costs,
-        &interpreter_params.fee_params,
-    )
-    .unwrap();
+}
 
-    // when
+#[test]
+fn upload__tx_with_wrong_gas_price_causes_error() {
     let mut transactor =
-        Transactor::<_, Upload>::new(MemoryStorage::default(), interpreter_params);
-    let err = transactor.execute_ready_upload_tx(ready_tx).unwrap_err();
+        Transactor::<_, Upload>::new(MemoryStorage::default(), Default::default());
 
-    // then
+    // Given
+    let tx_gas_price = 1;
+    let interpreter_gas_price = 2;
+    transactor.set_gas_price(interpreter_gas_price);
+
+    // When
+    let tx = valid_upload_tx()
+        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .unwrap();
+    let err = transactor.execute_ready_upload_tx(tx).unwrap_err();
+
+    // Then
     assert!(matches!(
         err,
         InterpreterError::ReadyTransactionWrongGasPrice { .. }

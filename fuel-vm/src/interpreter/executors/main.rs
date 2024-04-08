@@ -608,7 +608,7 @@ where
         gas_price: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let root = *upload.bytecode_root();
-        let bytecode = storage
+        let uploaded_bytecode = storage
             .storage_as_ref::<UploadedBytecodes>()
             .get(&root)
             .map_err(RuntimeError::Storage)?
@@ -618,50 +618,12 @@ where
                 uploaded_parts_number: 0,
             });
 
-        let new_bytecode = match bytecode {
+        let new_bytecode = match uploaded_bytecode {
             UploadedBytecode::Uncompleted {
-                mut bytecode,
+                bytecode,
                 uploaded_parts_number,
             } => {
-                let index_of_next_part = uploaded_parts_number;
-
-                if *upload.part_index() != index_of_next_part {
-                    return Err(InterpreterError::Panic(
-                        PanicReason::ThePartIsNotSequentiallyConnected,
-                    ));
-                }
-
-                let bytecode_part = upload
-                    .witnesses()
-                    .get(*upload.bytecode_witness_index() as usize)
-                    .ok_or(InterpreterError::Bug(Bug::new(
-                        // It shouldn't be possible since `Checked<Upload>` guarantees
-                        // the existence of the witness.
-                        BugVariant::WitnessIndexOutOfBounds,
-                    )))?;
-
-                bytecode.extend(bytecode_part.as_ref());
-
-                let new_uploaded_parts_number = uploaded_parts_number
-                    .checked_add(1)
-                    .ok_or(InterpreterError::Panic(PanicReason::ArithmeticOverflow))?;
-
-                // It shouldn't be possible since `Checked<Upload>` guarantees
-                // the validity of the Merkle proof.
-                if new_uploaded_parts_number > *upload.parts_number() {
-                    return Err(InterpreterError::Bug(Bug::new(
-                        BugVariant::NextPartIndexIsHigherThanTotalNumberOfParts,
-                    )))
-                }
-
-                if *upload.parts_number() == new_uploaded_parts_number {
-                    UploadedBytecode::Completed(bytecode)
-                } else {
-                    UploadedBytecode::Uncompleted {
-                        bytecode,
-                        uploaded_parts_number: new_uploaded_parts_number,
-                    }
-                }
+                Self::upload_bytecode_subsection(upload, bytecode, uploaded_parts_number)?
             }
             UploadedBytecode::Completed(_) => {
                 return Err(InterpreterError::Panic(
@@ -688,6 +650,55 @@ where
         )?;
         Ok(())
     }
+
+    fn upload_bytecode_subsection(
+        upload: &Upload,
+        mut uploaded_bytecode: Vec<u8>,
+        uploaded_parts_number: u16,
+    ) -> Result<UploadedBytecode, InterpreterError<S::DataError>> {
+        let index_of_next_part = uploaded_parts_number;
+
+        if *upload.part_index() != index_of_next_part {
+            return Err(InterpreterError::Panic(
+                PanicReason::ThePartIsNotSequentiallyConnected,
+            ));
+        }
+
+        let bytecode_part = upload
+            .witnesses()
+            .get(*upload.bytecode_witness_index() as usize)
+            .ok_or(InterpreterError::Bug(Bug::new(
+                // It shouldn't be possible since `Checked<Upload>` guarantees
+                // the existence of the witness.
+                BugVariant::WitnessIndexOutOfBounds,
+            )))?;
+
+        uploaded_bytecode.extend(bytecode_part.as_ref());
+
+        let new_uploaded_parts_number = uploaded_parts_number
+            .checked_add(1)
+            .ok_or(InterpreterError::Panic(PanicReason::ArithmeticOverflow))?;
+
+        // It shouldn't be possible since `Checked<Upload>` guarantees
+        // the validity of the Merkle proof.
+        if new_uploaded_parts_number > *upload.parts_number() {
+            return Err(InterpreterError::Bug(Bug::new(
+                BugVariant::NextPartIndexIsHigherThanTotalNumberOfParts,
+            )))
+        }
+
+        let updated_uploaded_bytecode =
+            if *upload.parts_number() == new_uploaded_parts_number {
+                UploadedBytecode::Completed(uploaded_bytecode)
+            } else {
+                UploadedBytecode::Uncompleted {
+                    bytecode: uploaded_bytecode,
+                    uploaded_parts_number: new_uploaded_parts_number,
+                }
+            };
+
+        Ok(updated_uploaded_bytecode)
+    }
 }
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
@@ -706,6 +717,7 @@ where
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
         // TODO: Remove `Create`, `Upgrade`, and `Upload` from here
+        //  https://github.com/FuelLabs/fuel-vm/issues/251
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();

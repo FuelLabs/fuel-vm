@@ -61,7 +61,7 @@ mod use_std {
         UpgradePurpose,
         Upload,
         UploadBody,
-        UploadPart,
+        UploadSubsection,
     };
     use core::marker::PhantomData;
     use fuel_crypto::{
@@ -424,19 +424,19 @@ mod use_std {
             let mut bytecode = alloc::vec![0u8; len];
             self.rng.fill_bytes(bytecode.as_mut_slice());
 
-            let part = UploadPart::split_bytecode(&bytecode, len / 10)
+            let subsection = UploadSubsection::split_bytecode(&bytecode, len / 10)
                 .expect("Should split the bytecode")[0]
                 .clone();
 
             let mut builder = TransactionBuilder::<Upload>::upload(UploadBody {
-                root: part.root,
+                root: subsection.root,
                 witness_index: 0,
-                part_index: part.part_index,
-                parts_number: part.parts_number,
-                proof_set: part.proof_set,
+                subsection_index: subsection.subsection_index,
+                subsections_number: subsection.subsections_number,
+                proof_set: subsection.proof_set,
             });
             debug_assert_eq!(builder.witnesses().len(), 0);
-            builder.add_witness(part.part_bytecode.into());
+            builder.add_witness(subsection.subsection.into());
 
             let keys = self.fill_transaction(&mut builder);
             (builder.finalize(), keys)

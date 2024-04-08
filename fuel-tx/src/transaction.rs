@@ -264,21 +264,21 @@ impl Transaction {
         }
     }
 
-    pub fn upload_from_part(
-        part: UploadPart,
+    pub fn upload_from_subsection(
+        subsection: UploadSubsection,
         policies: Policies,
         inputs: Vec<Input>,
         outputs: Vec<Output>,
         mut witnesses: Vec<Witness>,
     ) -> Upload {
         let body = UploadBody {
-            root: part.root,
+            root: subsection.root,
             witness_index: u16::try_from(witnesses.len()).unwrap_or(u16::MAX),
-            part_index: part.part_index,
-            parts_number: part.parts_number,
-            proof_set: part.proof_set,
+            subsection_index: subsection.subsection_index,
+            subsections_number: subsection.subsections_number,
+            proof_set: subsection.proof_set,
         };
-        witnesses.push(part.part_bytecode.into());
+        witnesses.push(subsection.subsection.into());
         Upload {
             body,
             policies,
@@ -936,24 +936,24 @@ pub mod field {
         fn bytecode_root_offset_static() -> usize;
     }
 
-    pub trait PartIndex {
-        fn part_index(&self) -> &u16;
-        fn part_index_mut(&mut self) -> &mut u16;
-        fn part_index_offset(&self) -> usize {
-            Self::part_index_offset_static()
+    pub trait SubsectionIndex {
+        fn subsection_index(&self) -> &u16;
+        fn subsection_index_mut(&mut self) -> &mut u16;
+        fn subsection_index_offset(&self) -> usize {
+            Self::subsection_index_offset_static()
         }
 
-        fn part_index_offset_static() -> usize;
+        fn subsection_index_offset_static() -> usize;
     }
 
-    pub trait PartsNumber {
-        fn parts_number(&self) -> &u16;
-        fn parts_number_mut(&mut self) -> &mut u16;
-        fn parts_number_offset(&self) -> usize {
-            Self::parts_number_offset_static()
+    pub trait SubsectionsNumber {
+        fn subsections_number(&self) -> &u16;
+        fn subsections_number_mut(&mut self) -> &mut u16;
+        fn subsections_number_offset(&self) -> usize {
+            Self::subsections_number_offset_static()
         }
 
-        fn parts_number_offset_static() -> usize;
+        fn subsections_number_offset_static() -> usize;
     }
 
     pub trait ProofSet {
@@ -1146,8 +1146,8 @@ pub mod typescript {
         pub fn upload(
             root: Bytes32,
             witness_index: u16,
-            part_index: u16,
-            parts_number: u16,
+            subsection_index: u16,
+            subsections_number: u16,
             proof_set: Vec<Bytes32>,
             policies: Policies,
             inputs: Vec<Input>,
@@ -1159,8 +1159,8 @@ pub mod typescript {
                     crate::UploadBody {
                         root,
                         witness_index,
-                        part_index,
-                        parts_number,
+                        subsection_index,
+                        subsections_number,
                         proof_set,
                     },
                     policies,

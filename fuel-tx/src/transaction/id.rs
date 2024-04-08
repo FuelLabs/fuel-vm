@@ -777,8 +777,8 @@ mod tests {
                             UploadBody {
                                 root: rng.gen(),
                                 witness_index: rng.gen(),
-                                part_index: rng.gen(),
-                                parts_number: rng.gen(),
+                                subsection_index: rng.gen(),
+                                subsections_number: rng.gen(),
                                 proof_set: vec![rng.gen(), rng.gen(), rng.gen()],
                             },
                             rng.gen(),
@@ -790,8 +790,8 @@ mod tests {
                         assert_id_common_attrs(&tx);
                         assert_id_ne(&tx, |t| invert(t.bytecode_root_mut()));
                         assert_id_ne(&tx, |t| not(t.bytecode_witness_index_mut()));
-                        assert_id_ne(&tx, |t| not(t.part_index_mut()));
-                        assert_id_ne(&tx, |t| not(t.parts_number_mut()));
+                        assert_id_ne(&tx, |t| not(t.subsection_index_mut()));
+                        assert_id_ne(&tx, |t| not(t.subsections_number_mut()));
                         assert_id_ne(&tx, |t| {
                             t.proof_set_mut().iter_mut().for_each(invert)
                         });

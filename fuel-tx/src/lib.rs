@@ -109,7 +109,7 @@ pub use transaction::{
     Upload,
     UploadBody,
     UploadMetadata,
-    UploadPart,
+    UploadSubsection,
     UtxoId,
     ValidityError,
     Witness,

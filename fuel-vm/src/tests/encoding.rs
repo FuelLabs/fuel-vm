@@ -525,8 +525,8 @@ fn transaction_canonical_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
@@ -542,8 +542,8 @@ fn transaction_canonical_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
@@ -559,8 +559,8 @@ fn transaction_canonical_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
@@ -576,8 +576,8 @@ fn transaction_canonical_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()

@@ -47,79 +47,81 @@ pub struct UploadBody {
     pub root: Bytes32,
     /// The witness index of the part of the bytecode.
     pub witness_index: u16,
-    /// The index of the part.
-    pub part_index: u16,
-    /// The total number of parts on which bytecode was divided.
-    pub parts_number: u16,
-    /// The proof set helps to verify the connection of the part to the `root`.
+    /// The index of the subsection of the bytecode.
+    pub subsection_index: u16,
+    /// The total number of subsections on which bytecode was divided.
+    pub subsections_number: u16,
+    /// The proof set helps to verify the connection of the subsection to the `root`.
     pub proof_set: Vec<Bytes32>,
 }
 
 #[derive(Clone, Default, Eq, PartialEq, Hash, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct UploadPart {
+pub struct UploadSubsection {
     /// The root of the Merkle tree is created over the bytecode.
     pub root: Bytes32,
-    /// The part of the bytecode.
-    pub part_bytecode: Vec<u8>,
-    /// The index of the part.
-    pub part_index: u16,
-    /// The total number of parts on which bytecode was divided.
-    pub parts_number: u16,
-    /// The proof set helps to verify the connection of the part to the `root`.
+    /// The subsection of the bytecode.
+    pub subsection: Vec<u8>,
+    /// The index of the subsection.
+    pub subsection_index: u16,
+    /// The total number of subsections on which bytecode was divided.
+    pub subsections_number: u16,
+    /// The proof set helps to verify the connection of the subsection to the `root`.
     pub proof_set: Vec<Bytes32>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SplitError {
-    /// The size of the part is too small to fit all parts into `u16::MAX`.
-    PartSizeTooSmall,
+    /// The size of the subsection is too small to fit all subsections into `u16::MAX`.
+    SubsectionSizeTooSmall,
 }
 
-impl UploadPart {
-    /// Splits the bytecode into verifiable parts and returns a vector of [`UploadPart`]s.
+impl UploadSubsection {
+    /// Splits the bytecode into verifiable subsections and returns a vector of
+    /// [`UploadSubsection`]s.
     pub fn split_bytecode(
         bytecode: &[u8],
-        part_size: usize,
-    ) -> Result<Vec<UploadPart>, SplitError> {
-        let parts = bytecode
-            .chunks(part_size)
-            .map(|part| part.to_vec())
+        subsection_size: usize,
+    ) -> Result<Vec<UploadSubsection>, SplitError> {
+        let subsections = bytecode
+            .chunks(subsection_size)
+            .map(|subsection| subsection.to_vec())
             .collect::<Vec<_>>();
 
-        if parts.len() > u16::MAX as usize {
-            return Err(SplitError::PartSizeTooSmall);
+        if subsections.len() > u16::MAX as usize {
+            return Err(SplitError::SubsectionSizeTooSmall);
         }
-        let parts_number =
-            u16::try_from(parts.len()).expect("We've just checked it; qed");
+        let subsections_number =
+            u16::try_from(subsections.len()).expect("We've just checked it; qed");
 
         let mut merkle_tree = fuel_merkle::binary::in_memory::MerkleTree::new();
-        parts.iter().for_each(|part| merkle_tree.push(part));
+        subsections.iter().for_each(|part| merkle_tree.push(part));
 
         let merkle_root = merkle_tree.root();
 
-        let parts = parts
+        let subsections = subsections
             .into_iter()
             .enumerate()
-            .map(|(index, part)| {
+            .map(|(index, subsection)| {
                 let (root, proof_set) = merkle_tree
                     .prove(index as u64)
                     .expect("We've just created a merkle tree, so it is valid; qed");
                 debug_assert_eq!(root, merkle_root);
 
-                UploadPart {
+                UploadSubsection {
                     root: merkle_root.into(),
-                    part_bytecode: part,
-                    part_index: u16::try_from(index)
-                        .expect("The total number of parts is less than u16::MAX; qed"),
-                    parts_number,
+                    subsection,
+                    subsection_index: u16::try_from(index).expect(
+                        "The total number of subsections is less than u16::MAX; qed",
+                    ),
+                    subsections_number,
                     proof_set: proof_set.into_iter().map(Into::into).collect(),
                 }
             })
             .collect();
 
-        Ok(parts)
+        Ok(subsections)
     }
 }
 
@@ -163,8 +165,9 @@ impl Chargeable for Upload {
             .unwrap_or(0);
 
         let leaf_hash_gas = gas_cost.s256().resolve(bytecode_len as u64);
-        let verify_proof_gas =
-            gas_cost.state_root().resolve(self.body.parts_number as u64);
+        let verify_proof_gas = gas_cost
+            .state_root()
+            .resolve(self.body.subsections_number as u64);
 
         tx_id_gas
             .saturating_add(leaf_hash_gas)
@@ -177,8 +180,10 @@ impl UniqueFormatValidityChecks for Upload {
         &self,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
-        if self.body.parts_number > consensus_params.tx_params().max_bytecode_parts() {
-            return Err(ValidityError::TransactionUploadTooManyBytecodeParts);
+        if self.body.subsections_number
+            > consensus_params.tx_params().max_bytecode_subsections()
+        {
+            return Err(ValidityError::TransactionUploadTooManyBytecodeSubsections);
         }
 
         let index = self.body.witness_index as usize;
@@ -199,8 +204,8 @@ impl UniqueFormatValidityChecks for Upload {
             self.body.root.deref(),
             witness,
             &proof_set,
-            self.body.part_index as u64,
-            self.body.parts_number as u64,
+            self.body.subsection_index as u64,
+            self.body.subsections_number as u64,
         );
 
         if !result {
@@ -281,9 +286,9 @@ mod field {
         BytecodeRoot,
         BytecodeWitnessIndex,
         ChargeableBody,
-        PartIndex,
-        PartsNumber,
         ProofSet,
+        SubsectionIndex,
+        SubsectionsNumber,
     };
 
     impl BytecodeRoot for Upload {
@@ -320,37 +325,37 @@ mod field {
         }
     }
 
-    impl PartIndex for Upload {
+    impl SubsectionIndex for Upload {
         #[inline(always)]
-        fn part_index(&self) -> &u16 {
-            &self.body.part_index
+        fn subsection_index(&self) -> &u16 {
+            &self.body.subsection_index
         }
 
         #[inline(always)]
-        fn part_index_mut(&mut self) -> &mut u16 {
-            &mut self.body.part_index
+        fn subsection_index_mut(&mut self) -> &mut u16 {
+            &mut self.body.subsection_index
         }
 
         #[inline(always)]
-        fn part_index_offset_static() -> usize {
+        fn subsection_index_offset_static() -> usize {
             Self::bytecode_witness_index_offset_static() + WORD_SIZE
         }
     }
 
-    impl PartsNumber for Upload {
+    impl SubsectionsNumber for Upload {
         #[inline(always)]
-        fn parts_number(&self) -> &u16 {
-            &self.body.parts_number
+        fn subsections_number(&self) -> &u16 {
+            &self.body.subsections_number
         }
 
         #[inline(always)]
-        fn parts_number_mut(&mut self) -> &mut u16 {
-            &mut self.body.parts_number
+        fn subsections_number_mut(&mut self) -> &mut u16 {
+            &mut self.body.subsections_number
         }
 
         #[inline(always)]
-        fn parts_number_offset_static() -> usize {
-            Self::part_index_offset_static() + WORD_SIZE
+        fn subsections_number_offset_static() -> usize {
+            Self::subsection_index_offset_static() + WORD_SIZE
         }
     }
 
@@ -367,7 +372,7 @@ mod field {
 
         #[inline(always)]
         fn proof_set_offset_static() -> usize {
-            Self::parts_number_offset_static() + WORD_SIZE
+            Self::subsections_number_offset_static() + WORD_SIZE
                 + WORD_SIZE // Proof set size
                 + WORD_SIZE // Policies size
                 + WORD_SIZE // Inputs size

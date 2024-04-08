@@ -502,8 +502,8 @@ fn transaction_serde_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
@@ -519,8 +519,8 @@ fn transaction_serde_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
@@ -536,8 +536,8 @@ fn transaction_serde_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
@@ -553,8 +553,8 @@ fn transaction_serde_serialization_deserialization() {
             UploadBody {
                 root: [6; 32].into(),
                 witness_index: 0,
-                part_index: 0x1234,
-                parts_number: 0x4321,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
                 proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
@@ -969,10 +969,10 @@ fn upload_input_coin_data_offset() {
                 let offset = inputs.len();
                 inputs.push(input_coin.clone());
 
-                let parts = UploadPart::split_bytecode(&[123; 2048], 1023)
+                let subsections = UploadSubsection::split_bytecode(&[123; 2048], 1023)
                     .expect("Failed to split bytecode");
-                let tx = Transaction::upload_from_part(
-                    parts[0].clone(),
+                let tx = Transaction::upload_from_subsection(
+                    subsections[0].clone(),
                     Policies::new().with_maturity(maturity),
                     inputs,
                     outputs.clone(),

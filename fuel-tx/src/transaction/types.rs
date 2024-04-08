@@ -34,7 +34,7 @@ pub use upload::{
     Upload,
     UploadBody,
     UploadMetadata,
-    UploadPart,
+    UploadSubsection,
 };
 pub use utxo_id::UtxoId;
 pub use witness::Witness;

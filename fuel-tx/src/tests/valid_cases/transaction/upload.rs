@@ -5,16 +5,16 @@ use super::*;
 use crate::field::{
     BytecodeRoot,
     BytecodeWitnessIndex,
-    PartIndex,
-    PartsNumber,
     ProofSet,
+    SubsectionIndex,
+    SubsectionsNumber,
     Witnesses,
 };
 use fuel_asm::op;
 use fuel_types::BlockHeight;
 use std::ops::Deref;
 
-const PART_SIZE: usize = 256;
+const SUBSECTION_SIZE: usize = 256;
 
 fn bytecode() -> Vec<u8> {
     vec![op::ret(1); 4321].into_iter().collect::<Vec<u8>>()
@@ -30,17 +30,17 @@ fn test_params() -> ConsensusParameters {
 }
 
 fn valid_upload_transaction() -> TransactionBuilder<Upload> {
-    let parts = UploadPart::split_bytecode(&bytecode(), PART_SIZE)
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
         .expect("Should be able to split bytecode");
-    let part = parts[0].clone();
+    let subsection = subsections[0].clone();
     let mut builder = TransactionBuilder::upload(UploadBody {
-        root: part.root,
+        root: subsection.root,
         witness_index: 0,
-        part_index: part.part_index,
-        parts_number: part.parts_number,
-        proof_set: part.proof_set,
+        subsection_index: subsection.subsection_index,
+        subsections_number: subsection.subsections_number,
+        proof_set: subsection.proof_set,
     });
-    builder.add_witness(part.part_bytecode.into());
+    builder.add_witness(subsection.subsection.into());
     builder.max_fee_limit(0);
     builder.add_input(Input::coin_predicate(
         Default::default(),
@@ -59,24 +59,24 @@ fn valid_upload_transaction() -> TransactionBuilder<Upload> {
 #[test]
 fn split_bytecode__can_recover_bytecode() {
     // Given
-    let parts = UploadPart::split_bytecode(&bytecode(), PART_SIZE)
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
         .expect("Should be able to split bytecode");
-    let expected_root = parts[0].root;
-    let len = parts.len();
+    let expected_root = subsections[0].root;
+    let len = subsections.len();
     let mut recovered_bytecode = vec![];
     let mut recovered_merkle = fuel_merkle::binary::in_memory::MerkleTree::new();
 
     // When
-    for (i, part) in parts.into_iter().enumerate() {
-        recovered_merkle.push(&part.part_bytecode);
-        recovered_bytecode.extend_from_slice(&part.part_bytecode);
+    for (i, subsection) in subsections.into_iter().enumerate() {
+        recovered_merkle.push(&subsection.subsection);
+        recovered_bytecode.extend_from_slice(&subsection.subsection);
 
         // Then
-        assert_eq!(expected_root, part.root);
-        assert!(!part.part_bytecode.is_empty());
-        assert_eq!(i, part.part_index as usize);
-        assert_eq!(len, part.parts_number as usize);
-        assert!(!part.proof_set.is_empty());
+        assert_eq!(expected_root, subsection.root);
+        assert!(!subsection.subsection.is_empty());
+        assert_eq!(i, subsection.subsection_index as usize);
+        assert_eq!(len, subsection.subsections_number as usize);
+        assert!(!subsection.proof_set.is_empty());
     }
 
     // Then
@@ -85,24 +85,24 @@ fn split_bytecode__can_recover_bytecode() {
 }
 
 #[test]
-fn split_bytecode__generated_parts_are_provable() {
+fn split_bytecode__generated_subsections_are_provable() {
     // Given
-    let parts = UploadPart::split_bytecode(&bytecode(), PART_SIZE)
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
         .expect("Should be able to split bytecode");
 
-    for part in parts.into_iter() {
+    for subsection in subsections.into_iter() {
         // When
-        let proof_set = part
+        let proof_set = subsection
             .proof_set
             .iter()
             .map(|p| (*p).into())
             .collect::<Vec<_>>();
         let result = fuel_merkle::binary::verify(
-            part.root.deref(),
-            &part.part_bytecode,
+            subsection.root.deref(),
+            &subsection.subsection,
             &proof_set,
-            part.part_index as u64,
-            part.parts_number as u64,
+            subsection.subsection_index as u64,
+            subsection.subsections_number as u64,
         );
 
         // Then
@@ -112,13 +112,13 @@ fn split_bytecode__generated_parts_are_provable() {
 
 #[test]
 fn split_bytecode__generates_valid_transactions() {
-    let parts = UploadPart::split_bytecode(&bytecode(), PART_SIZE)
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
         .expect("Should be able to split bytecode");
 
-    for part in parts.into_iter() {
+    for subsection in subsections.into_iter() {
         // Given
-        let tx = Transaction::upload_from_part(
-            part,
+        let tx = Transaction::upload_from_subsection(
+            subsection,
             Policies::new().with_max_fee(0),
             vec![Input::coin_predicate(
                 Default::default(),
@@ -185,7 +185,7 @@ fn check__not_set_witness_limit_success() {
 fn check__set_witness_limit_for_empty_witness_success() {
     // Given
     let block_height = 1000.into();
-    let limit = PART_SIZE + Signature::LEN + 2 * vec![0u8; 0].size_static();
+    let limit = SUBSECTION_SIZE + Signature::LEN + 2 * vec![0u8; 0].size_static();
     let tx = valid_upload_transaction()
         .witness_limit(limit as u64)
         .add_witness(vec![0; Signature::LEN].into())
@@ -201,7 +201,7 @@ fn check__set_witness_limit_for_empty_witness_success() {
 #[test]
 fn script_set_witness_limit_less_than_witness_data_size_fails() {
     let block_height = 1000.into();
-    let limit = PART_SIZE + Signature::LEN + 2 * vec![0u8; 0].size_static();
+    let limit = SUBSECTION_SIZE + Signature::LEN + 2 * vec![0u8; 0].size_static();
 
     // Given
     let failing_limit = limit - 1;
@@ -604,20 +604,20 @@ fn check__errors_when_transactions_too_big() {
 }
 
 #[test]
-fn check__errors_when_parts_number_is_too_big() {
+fn check__errors_when_subsections_number_is_too_big() {
     let block_height = 1000.into();
     let tx = valid_upload_transaction().finalize();
 
     // Given
     let mut params = test_params();
-    params.set_tx_params(TxParameters::default().with_max_bytecode_parts(0));
+    params.set_tx_params(TxParameters::default().with_max_bytecode_subsections(0));
 
     // When
     let result = tx.check(block_height, &params);
 
     // Then
     assert_eq!(
-        Err(ValidityError::TransactionUploadTooManyBytecodeParts),
+        Err(ValidityError::TransactionUploadTooManyBytecodeSubsections),
         result
     );
 }
@@ -661,12 +661,12 @@ fn check__errors_when_root_doesnt_match() {
 }
 
 #[test]
-fn check__errors_when_part_index_doesnt_match() {
+fn check__errors_when_subsection_index_doesnt_match() {
     let block_height = 1000.into();
     let mut tx = valid_upload_transaction().finalize();
 
     // Given
-    *tx.part_index_mut() = u16::MAX;
+    *tx.subsection_index_mut() = u16::MAX;
 
     // When
     let result = tx.check(block_height, &test_params());
@@ -681,12 +681,12 @@ fn check__errors_when_part_index_doesnt_match() {
 // TODO: Remove `#[ignore]` when https://github.com/FuelLabs/fuel-vm/issues/716 is resolved
 #[ignore]
 #[test]
-fn check__errors_when_parts_number_doesnt_match() {
+fn check__errors_when_subsections_number_doesnt_match() {
     let block_height = 1000.into();
     let mut tx = valid_upload_transaction().finalize();
 
     // Given
-    *tx.parts_number_mut() = *tx.parts_number() + 1;
+    *tx.subsections_number_mut() = *tx.subsections_number() + 1;
 
     // When
     let result = tx.check(block_height, &test_params());

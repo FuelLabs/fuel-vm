@@ -202,7 +202,7 @@ mod state_transition {
             known_state_transition_hash,
             UploadedBytecode::Uncompleted {
                 bytecode: vec![],
-                uploaded_parts_number: 0,
+                uploaded_subsections_number: 0,
             },
         );
         let mut client = Interpreter::<_, Upgrade>::with_storage(

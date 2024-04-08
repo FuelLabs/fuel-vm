@@ -67,13 +67,13 @@ use fuel_tx::{
     field::{
         BytecodeRoot,
         BytecodeWitnessIndex,
-        PartIndex,
-        PartsNumber,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
         ScriptGasLimit,
         StorageSlots,
+        SubsectionIndex,
+        SubsectionsNumber,
         UpgradePurpose as UpgradePurposeField,
         Witnesses,
     },
@@ -615,16 +615,18 @@ where
             .map(|x| x.into_owned())
             .unwrap_or_else(|| UploadedBytecode::Uncompleted {
                 bytecode: vec![],
-                uploaded_parts_number: 0,
+                uploaded_subsections_number: 0,
             });
 
         let new_bytecode = match uploaded_bytecode {
             UploadedBytecode::Uncompleted {
                 bytecode,
-                uploaded_parts_number,
-            } => {
-                Self::upload_bytecode_subsection(upload, bytecode, uploaded_parts_number)?
-            }
+                uploaded_subsections_number,
+            } => Self::upload_bytecode_subsection(
+                upload,
+                bytecode,
+                uploaded_subsections_number,
+            )?,
             UploadedBytecode::Completed(_) => {
                 return Err(InterpreterError::Panic(
                     PanicReason::BytecodeAlreadyUploaded,
@@ -654,17 +656,17 @@ where
     fn upload_bytecode_subsection(
         upload: &Upload,
         mut uploaded_bytecode: Vec<u8>,
-        uploaded_parts_number: u16,
+        uploaded_subsections_number: u16,
     ) -> Result<UploadedBytecode, InterpreterError<S::DataError>> {
-        let index_of_next_part = uploaded_parts_number;
+        let index_of_next_subsection = uploaded_subsections_number;
 
-        if *upload.part_index() != index_of_next_part {
+        if *upload.subsection_index() != index_of_next_subsection {
             return Err(InterpreterError::Panic(
                 PanicReason::ThePartIsNotSequentiallyConnected,
             ));
         }
 
-        let bytecode_part = upload
+        let bytecode_subsection = upload
             .witnesses()
             .get(*upload.bytecode_witness_index() as usize)
             .ok_or(InterpreterError::Bug(Bug::new(
@@ -673,27 +675,27 @@ where
                 BugVariant::WitnessIndexOutOfBounds,
             )))?;
 
-        uploaded_bytecode.extend(bytecode_part.as_ref());
+        uploaded_bytecode.extend(bytecode_subsection.as_ref());
 
-        let new_uploaded_parts_number = uploaded_parts_number
+        let new_uploaded_subsections_number = uploaded_subsections_number
             .checked_add(1)
             .ok_or(InterpreterError::Panic(PanicReason::ArithmeticOverflow))?;
 
         // It shouldn't be possible since `Checked<Upload>` guarantees
         // the validity of the Merkle proof.
-        if new_uploaded_parts_number > *upload.parts_number() {
+        if new_uploaded_subsections_number > *upload.subsections_number() {
             return Err(InterpreterError::Bug(Bug::new(
-                BugVariant::NextPartIndexIsHigherThanTotalNumberOfParts,
+                BugVariant::NextSubsectionIndexIsHigherThanTotalNumberOfParts,
             )))
         }
 
         let updated_uploaded_bytecode =
-            if *upload.parts_number() == new_uploaded_parts_number {
+            if *upload.subsections_number() == new_uploaded_subsections_number {
                 UploadedBytecode::Completed(uploaded_bytecode)
             } else {
                 UploadedBytecode::Uncompleted {
                     bytecode: uploaded_bytecode,
-                    uploaded_parts_number: new_uploaded_parts_number,
+                    uploaded_subsections_number: new_uploaded_subsections_number,
                 }
             };
 

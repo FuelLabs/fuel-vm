@@ -16,7 +16,7 @@ use fuel_tx::{
     Output,
     Transaction,
     Upload,
-    UploadPart,
+    UploadSubsection,
     ValidityError,
 };
 use fuel_types::AssetId;
@@ -59,9 +59,9 @@ fn valid_input() -> Input {
     )
 }
 
-fn valid_transaction_from_part(part: UploadPart) -> Ready<Upload> {
-    Transaction::upload_from_part(
-        part,
+fn valid_transaction_from_subsection(subsection: UploadSubsection) -> Ready<Upload> {
+    Transaction::upload_from_subsection(
+        subsection,
         Policies::new().with_max_fee(AMOUNT),
         vec![valid_input()],
         vec![Output::change(Default::default(), 0, AssetId::BASE)],
@@ -73,14 +73,15 @@ fn valid_transaction_from_part(part: UploadPart) -> Ready<Upload> {
 }
 
 #[test]
-fn transact__uploads_bytecode_with_one_part() {
+fn transact__uploads_bytecode_with_one_subsection() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
-    let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
-    let root = parts[0].root;
-    assert_eq!(parts.len(), 1);
+    let subsections =
+        UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
+    let root = subsections[0].root;
+    assert_eq!(subsections.len(), 1);
 
     // Given
-    let tx = valid_transaction_from_part(parts[0].clone());
+    let tx = valid_transaction_from_subsection(subsections[0].clone());
     assert!(!client
         .as_ref()
         .storage_as_ref::<UploadedBytecodes>()
@@ -104,17 +105,17 @@ fn transact__uploads_bytecode_with_one_part() {
 }
 
 #[test]
-fn transact__uploads_bytecode_with_several_parts() {
+fn transact__uploads_bytecode_with_several_subsections() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
 
     // Given
-    let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
-    let root = parts[0].root;
-    assert!(parts.len() > 1);
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
+    let root = subsections[0].root;
+    assert!(subsections.len() > 1);
 
     // When
-    for part in parts {
-        let tx = valid_transaction_from_part(part);
+    for subsection in subsections {
+        let tx = valid_transaction_from_subsection(subsection);
         let _ = client.transact(tx).expect("Failed to transact");
     }
 
@@ -132,18 +133,18 @@ fn transact__uploads_bytecode_with_several_parts() {
 }
 
 #[test]
-fn transact__uploads_bytecode_with_half_of_parts() {
+fn transact__uploads_bytecode_with_half_of_subsections() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
 
     // Given
-    let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
-    let root = parts[0].root;
-    let len = parts.len();
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
+    let root = subsections[0].root;
+    let len = subsections.len();
     assert!(len > 3);
 
     // When
-    for part in parts.into_iter().take(len / 2) {
-        let tx = valid_transaction_from_part(part);
+    for subsection in subsections.into_iter().take(len / 2) {
+        let tx = valid_transaction_from_subsection(subsection);
         let _ = client.transact(tx).expect("Failed to transact");
     }
 
@@ -163,11 +164,12 @@ fn transact__uploads_bytecode_with_half_of_parts() {
 #[test]
 fn transact__fails_for_completed_bytecode() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
-    let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
-    assert_eq!(parts.len(), 1);
+    let subsections =
+        UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
+    assert_eq!(subsections.len(), 1);
 
     // Given
-    let tx = valid_transaction_from_part(parts[0].clone());
+    let tx = valid_transaction_from_subsection(subsections[0].clone());
     let _ = client.transact(tx.clone()).expect("Failed to transact");
 
     // When
@@ -183,16 +185,16 @@ fn transact__fails_for_completed_bytecode() {
 }
 
 #[test]
-fn transact__fails_when_the_ordering_of_uploading_is_wrong__missed_first_part() {
+fn transact__fails_when_the_ordering_of_uploading_is_wrong__missed_first_subsection() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
-    let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
-    assert!(parts.len() > 1);
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
+    assert!(subsections.len() > 1);
 
     // Given
-    let second_part = valid_transaction_from_part(parts[1].clone());
+    let second_subsection = valid_transaction_from_subsection(subsections[1].clone());
 
     // When
-    let result = client.transact(second_part);
+    let result = client.transact(second_subsection);
 
     // Then
     assert_eq!(
@@ -204,44 +206,20 @@ fn transact__fails_when_the_ordering_of_uploading_is_wrong__missed_first_part() 
 }
 
 #[test]
-fn transact__fails_when_the_ordering_of_uploading_is_wrong__skipped_second_part() {
+fn transact__fails_when_the_ordering_of_uploading_is_wrong__skipped_second_subsection() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
-    let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
-    assert!(parts.len() >= 3);
-    let first_part = valid_transaction_from_part(parts[0].clone());
-    let _ = client.transact(first_part).expect("Should add first part");
-
-    // Given
-    let third_part = valid_transaction_from_part(parts[2].clone());
-
-    // When
-    let result = client.transact(third_part);
-
-    // Then
-    assert_eq!(
-        result,
-        Err(InterpreterError::Panic(
-            PanicReason::ThePartIsNotSequentiallyConnected
-        ))
-    );
-}
-
-#[test]
-fn transact__fails_when_the_ordering_of_uploading_is_wrong__second_part_sent_twice() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
-    let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
-    assert!(parts.len() >= 3);
-    let first_part = valid_transaction_from_part(parts[0].clone());
-    let _ = client.transact(first_part).expect("Should add first part");
-
-    // Given
-    let second_part = valid_transaction_from_part(parts[1].clone());
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
+    assert!(subsections.len() >= 3);
+    let first_subsection = valid_transaction_from_subsection(subsections[0].clone());
     let _ = client
-        .transact(second_part.clone())
-        .expect("Should add second part");
+        .transact(first_subsection)
+        .expect("Should add first subsection");
+
+    // Given
+    let third_subsection = valid_transaction_from_subsection(subsections[2].clone());
 
     // When
-    let result = client.transact(second_part);
+    let result = client.transact(third_subsection);
 
     // Then
     assert_eq!(
@@ -253,17 +231,46 @@ fn transact__fails_when_the_ordering_of_uploading_is_wrong__second_part_sent_twi
 }
 
 #[test]
-fn check__fails_when_part_index_more_than_total_number() {
-    let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
-    assert!(parts.len() >= 3);
+fn transact__fails_when_the_ordering_of_uploading_is_wrong__second_subsection_sent_twice()
+{
+    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
+    assert!(subsections.len() >= 3);
+    let first_subsection = valid_transaction_from_subsection(subsections[0].clone());
+    let _ = client
+        .transact(first_subsection)
+        .expect("Should add first subsection");
 
     // Given
-    let mut part = parts[0].clone();
-    part.part_index = part.parts_number;
+    let second_subsection = valid_transaction_from_subsection(subsections[1].clone());
+    let _ = client
+        .transact(second_subsection.clone())
+        .expect("Should add second subsection");
 
     // When
-    let result = Transaction::upload_from_part(
-        part,
+    let result = client.transact(second_subsection);
+
+    // Then
+    assert_eq!(
+        result,
+        Err(InterpreterError::Panic(
+            PanicReason::ThePartIsNotSequentiallyConnected
+        ))
+    );
+}
+
+#[test]
+fn check__fails_when_subsection_index_more_than_total_number() {
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
+    assert!(subsections.len() >= 3);
+
+    // Given
+    let mut subsection = subsections[0].clone();
+    subsection.subsection_index = subsection.subsections_number;
+
+    // When
+    let result = Transaction::upload_from_subsection(
+        subsection,
         Policies::new().with_max_fee(AMOUNT),
         vec![valid_input()],
         vec![],
@@ -282,15 +289,15 @@ fn check__fails_when_part_index_more_than_total_number() {
 
 #[test]
 fn check__fails_when_total_number_is_zero() {
-    let parts = UploadPart::split_bytecode(&bytecode(), 123).unwrap();
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
 
     // Given
-    let mut part = parts[0].clone();
-    part.parts_number = 0;
+    let mut subsection = subsections[0].clone();
+    subsection.subsections_number = 0;
 
     // When
-    let result = Transaction::upload_from_part(
-        part,
+    let result = Transaction::upload_from_subsection(
+        subsection,
         Policies::new().with_max_fee(AMOUNT),
         vec![valid_input()],
         vec![],
@@ -310,12 +317,13 @@ fn check__fails_when_total_number_is_zero() {
 #[test]
 fn transact__with_zero_gas_price_doesnt_affect_change_output() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
-    let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
+    let subsections =
+        UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
 
     // Given
     let gas_price = 0;
     client.set_gas_price(gas_price);
-    let tx = valid_transaction_from_part(parts[0].clone());
+    let tx = valid_transaction_from_subsection(subsections[0].clone());
 
     // When
     let state = client.transact(tx).expect("failed to transact");
@@ -334,13 +342,14 @@ fn transact__with_zero_gas_price_doesnt_affect_change_output() {
 #[test]
 fn transact__with_non_zero_gas_price_affects_change_output() {
     let mut client = Interpreter::<_, Upload>::with_memory_storage();
-    let parts = UploadPart::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
+    let subsections =
+        UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
 
     // Given
     let gas_price = 1;
     client.set_gas_price(gas_price);
-    let tx = Transaction::upload_from_part(
-        parts[0].clone(),
+    let tx = Transaction::upload_from_subsection(
+        subsections[0].clone(),
         Policies::new().with_max_fee(AMOUNT),
         vec![valid_input()],
         vec![Output::change(Default::default(), 0, AssetId::BASE)],

@@ -252,17 +252,17 @@ fn upgrade__tx_with_wrong_gas_price_causes_error() {
 fn valid_upload_tx() -> Checked<Upload> {
     let input_amount = 1000;
     let arb_max_fee = input_amount;
-    let parts =
-        UploadPart::split_bytecode(&vec![123; 1024], 24).expect("Should split bytecode");
-    let part = parts[0].clone();
+    let subsections = UploadSubsection::split_bytecode(&vec![123; 1024], 24)
+        .expect("Should split bytecode");
+    let subsection = subsections[0].clone();
     TransactionBuilder::upload(UploadBody {
-        root: part.root,
+        root: subsection.root,
         witness_index: 0,
-        part_index: part.part_index,
-        parts_number: part.parts_number,
-        proof_set: part.proof_set,
+        subsection_index: subsection.subsection_index,
+        subsections_number: subsection.subsections_number,
+        proof_set: subsection.proof_set,
     })
-    .add_witness(part.part_bytecode.into())
+    .add_witness(subsection.subsection.into())
     .max_fee_limit(arb_max_fee)
     .add_random_fee_input()
     .finalize_checked_basic(Default::default())

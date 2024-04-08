@@ -37,10 +37,10 @@ use alloc::vec::Vec;
 pub enum UploadedBytecode {
     /// The bytecode is partially uploaded.
     Uncompleted {
-        /// The cumulative bytecode of `uploaded_parts_number` parts.
+        /// The cumulative bytecode of `uploaded_subsections_number` parts.
         bytecode: Vec<u8>,
-        /// The number of already included parts of the bytecode.
-        uploaded_parts_number: u16,
+        /// The number of already included subsections of the bytecode.
+        uploaded_subsections_number: u16,
     },
     /// The bytecode is fully uploaded and ready to be used.
     Completed(Vec<u8>),

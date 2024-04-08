@@ -372,11 +372,11 @@ pub enum BugVariant {
     #[strum(message = "Witness index is out of bounds.")]
     WitnessIndexOutOfBounds,
 
-    /// The witness part index is higher than the total number of parts.
+    /// The witness subsection index is higher than the total number of parts.
     #[strum(
-        message = "The witness part index is higher than the total number of parts."
+        message = "The witness subsection index is higher than the total number of parts."
     )]
-    NextPartIndexIsHigherThanTotalNumberOfParts,
+    NextSubsectionIndexIsHigherThanTotalNumberOfParts,
 }
 
 impl fmt::Display for BugVariant {

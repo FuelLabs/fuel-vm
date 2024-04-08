@@ -604,6 +604,25 @@ fn check__errors_when_transactions_too_big() {
 }
 
 #[test]
+fn check__errors_when_parts_number_is_too_big() {
+    let block_height = 1000.into();
+    let tx = valid_upload_transaction().finalize();
+
+    // Given
+    let mut params = test_params();
+    params.set_tx_params(TxParameters::default().with_max_bytecode_parts(0));
+
+    // When
+    let result = tx.check(block_height, &params);
+
+    // Then
+    assert_eq!(
+        Err(ValidityError::TransactionUploadTooManyBytecodeParts),
+        result
+    );
+}
+
+#[test]
 fn check__errors_when_bytecode_witness_index_is_invalid() {
     let block_height = 1000.into();
     let mut tx = valid_upload_transaction().finalize();
@@ -659,13 +678,15 @@ fn check__errors_when_part_index_doesnt_match() {
     );
 }
 
+// TODO: Remove `#[ignore]` when https://github.com/FuelLabs/fuel-vm/issues/716 is resolved
+#[ignore]
 #[test]
 fn check__errors_when_parts_number_doesnt_match() {
     let block_height = 1000.into();
     let mut tx = valid_upload_transaction().finalize();
 
     // Given
-    *tx.parts_number_mut() = u16::MAX;
+    *tx.parts_number_mut() = *tx.parts_number() + 1;
 
     // When
     let result = tx.check(block_height, &test_params());

@@ -568,6 +568,16 @@ impl TxParameters {
             }
         }
     }
+
+    /// Replace the max bytecode parts with the given argument
+    pub const fn with_max_bytecode_parts(self, max_bytecode_parts: u16) -> Self {
+        match self {
+            Self::V1(mut params) => {
+                params.max_bytecode_parts = max_bytecode_parts;
+                Self::V1(params)
+            }
+        }
+    }
 }
 
 impl TxParameters {
@@ -605,6 +615,13 @@ impl TxParameters {
             Self::V1(params) => params.max_size,
         }
     }
+
+    /// Get the maximum number of bytecode parts
+    pub const fn max_bytecode_parts(&self) -> u16 {
+        match self {
+            Self::V1(params) => params.max_bytecode_parts,
+        }
+    }
 }
 
 #[cfg(feature = "test-helpers")]
@@ -614,6 +631,7 @@ impl Default for TxParameters {
     }
 }
 
+#[cfg(feature = "test-helpers")]
 impl TxParameters {
     pub fn set_max_size(&mut self, max_size: u64) {
         match self {
@@ -642,6 +660,8 @@ pub struct TxParametersV1 {
     pub max_gas_per_tx: u64,
     /// Maximum size in bytes
     pub max_size: u64,
+    /// Maximum number of bytecode parts.
+    pub max_bytecode_parts: u16,
 }
 
 #[cfg(feature = "test-helpers")]
@@ -653,6 +673,7 @@ impl TxParametersV1 {
         max_witnesses: 255,
         max_gas_per_tx: MAX_GAS,
         max_size: MAX_SIZE,
+        max_bytecode_parts: 255,
     };
 }
 

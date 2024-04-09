@@ -40,17 +40,19 @@ pub trait UniqueIdentifier {
 impl UniqueIdentifier for Transaction {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         match self {
-            Transaction::Script(script) => script.id(chain_id),
-            Transaction::Create(create) => create.id(chain_id),
-            Self::Mint(mint) => mint.id(chain_id),
+            Self::Script(tx) => tx.id(chain_id),
+            Self::Create(tx) => tx.id(chain_id),
+            Self::Mint(tx) => tx.id(chain_id),
+            Self::Upgrade(tx) => tx.id(chain_id),
         }
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
         match self {
-            Transaction::Script(script) => script.cached_id(),
-            Transaction::Create(create) => create.cached_id(),
-            Self::Mint(mint) => mint.cached_id(),
+            Self::Script(tx) => tx.cached_id(),
+            Self::Create(tx) => tx.cached_id(),
+            Self::Mint(tx) => tx.cached_id(),
+            Self::Upgrade(tx) => tx.cached_id(),
         }
     }
 }
@@ -115,16 +117,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use core::{
-        mem,
-        ops::Not,
-    };
-    use fuel_types::canonical::{
-        Deserialize,
-        Serialize,
-    };
-
-    use fuel_tx::{
+    use crate::{
         field::*,
         input,
         input::{
@@ -140,18 +133,29 @@ mod tests {
             },
         },
         output,
+        test_helper::{
+            generate_bytes,
+            generate_nonempty_padded_bytes,
+        },
         Buildable,
         Input,
         Output,
         StorageSlot,
         Transaction,
+        UpgradePurpose as UpgradePurposeType,
         UtxoId,
     };
-    use fuel_tx_test_helpers::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
+    use core::{
+        mem,
+        ops::Not,
     };
-    use fuel_types::ChainId;
+    use fuel_types::{
+        canonical::{
+            Deserialize,
+            Serialize,
+        },
+        ChainId,
+    };
     use rand::{
         rngs::StdRng,
         Rng,
@@ -682,6 +686,15 @@ mod tests {
         let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let storage_slots = vec![vec![], vec![rng.gen(), rng.gen()]];
+        let purposes = [
+            UpgradePurposeType::ConsensusParameters {
+                witness_index: rng.gen(),
+                checksum: rng.gen(),
+            },
+            UpgradePurposeType::StateTransition {
+                bytecode_hash: rng.gen(),
+            },
+        ];
 
         for inputs in inputs.iter() {
             for outputs in outputs.iter() {
@@ -731,6 +744,30 @@ mod tests {
                         }
 
                         assert_id_common_attrs(&tx);
+                    }
+
+                    for purpose in purposes.iter() {
+                        let tx = Transaction::upgrade(
+                            *purpose,
+                            rng.gen(),
+                            inputs.clone(),
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
+
+                        assert_id_common_attrs(&tx);
+                        assert_id_ne(&tx, |t| match t.upgrade_purpose_mut() {
+                            UpgradePurposeType::ConsensusParameters {
+                                witness_index,
+                                checksum,
+                            } => {
+                                *witness_index = witness_index.not();
+                                invert(checksum);
+                            }
+                            UpgradePurposeType::StateTransition { bytecode_hash } => {
+                                invert(bytecode_hash);
+                            }
+                        });
                     }
                 }
             }

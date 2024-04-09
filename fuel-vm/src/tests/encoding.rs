@@ -3,7 +3,7 @@ use alloc::{
     vec::Vec,
 };
 
-use fuel_vm::{
+use crate::{
     consts::*,
     prelude::*,
 };
@@ -51,6 +51,21 @@ where
             T::decode(&mut &buffer[..]).expect_err("Decoding should fail");
         }
     }
+}
+
+/// The function tests that the encoding of the `Transaction` and the specific `T` variant
+/// of the transaction are correct.
+pub fn assert_transactions_encoding_correct<T>(data: &[T])
+where
+    T: Serialize + Deserialize + Into<Transaction> + fmt::Debug + Clone + PartialEq,
+{
+    assert_encoding_correct(data);
+
+    let txs = data
+        .iter()
+        .map(|d| d.clone().into())
+        .collect::<Vec<Transaction>>();
+    assert_encoding_correct(&txs);
 }
 
 #[test]
@@ -197,7 +212,7 @@ fn output() {
 }
 
 #[test]
-fn transaction() {
+fn transaction_canonical_serialization_deserialization() {
     let i = Input::contract(
         UtxoId::new([0xaa; 32].into(), 0),
         [0xbb; 32].into(),
@@ -208,7 +223,7 @@ fn transaction() {
     let o = Output::coin([0xaa; 32].into(), Word::MAX >> 1, [0xbb; 32].into());
     let w = Witness::from(vec![0xbf]);
 
-    assert_encoding_correct(&[
+    assert_transactions_encoding_correct(&[
         Transaction::script(
             Word::MAX >> 2,
             vec![0xfa],
@@ -321,7 +336,7 @@ fn transaction() {
             vec![],
         ),
     ]);
-    assert_encoding_correct(&[
+    assert_transactions_encoding_correct(&[
         Transaction::create(
             0xba,
             Policies::new()
@@ -331,7 +346,7 @@ fn transaction() {
                 .with_max_fee(Word::MAX >> 5),
             [0xdd; 32].into(),
             vec![],
-            vec![i],
+            vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
@@ -359,7 +374,7 @@ fn transaction() {
             vec![],
             vec![],
             vec![],
-            vec![w],
+            vec![w.clone()],
         ),
         Transaction::create(
             0xba,
@@ -390,6 +405,116 @@ fn transaction() {
             Policies::new(),
             [0xdd; 32].into(),
             vec![],
+            vec![],
+            vec![],
+            vec![],
+        ),
+    ]);
+    assert_transactions_encoding_correct(&[
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![i.clone()],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::ConsensusParameters {
+                witness_index: 0,
+                checksum: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![i],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![w],
+        ),
+        Transaction::upgrade(
+            UpgradePurpose::StateTransition {
+                bytecode_hash: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
             vec![],
             vec![],
             vec![],

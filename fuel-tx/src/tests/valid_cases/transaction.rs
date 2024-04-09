@@ -1,6 +1,8 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(non_snake_case)]
 
+mod upgrade;
+
 use super::{
     test_params,
     CONTRACT_PARAMS,
@@ -12,6 +14,7 @@ use crate::{
         Policies,
         PolicyType,
     },
+    test_helper::generate_bytes,
     transaction::field::Policies as PoliciesField,
     *,
 };
@@ -20,7 +23,6 @@ use fuel_crypto::{
     SecretKey,
     Signature,
 };
-use fuel_tx_test_helpers::generate_bytes;
 use fuel_types::canonical::{
     Deserialize,
     Serialize,
@@ -352,7 +354,7 @@ fn max_iow() {
         .map(|_| SecretKey::random(rng))
         .collect();
 
-    let asset_id: AssetId = rng.gen();
+    let asset_id: AssetId = AssetId::BASE;
     secrets.iter().for_each(|k| {
         builder.add_unsigned_coin_input(*k, rng.gen(), rng.gen(), asset_id, rng.gen());
     });
@@ -574,7 +576,7 @@ fn script__check__cannot_create_contract() {
     .expect_err("Expected erroneous transaction");
 
     assert_eq!(
-        ValidityError::TransactionScriptOutputContractCreated { index: 0 },
+        ValidityError::TransactionOutputContainsContractCreated { index: 0 },
         err
     );
 }
@@ -634,11 +636,9 @@ fn create__check__happy_path() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    let secret = SecretKey::random(rng);
-
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        .add_random_fee_input()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate tx");
@@ -670,7 +670,7 @@ fn create__check__cannot_have_contract_input() {
 
     assert_eq!(
         err,
-        ValidityError::TransactionCreateInputContract { index: 0 }
+        ValidityError::TransactionInputContainsContract { index: 0 }
     );
 }
 
@@ -700,7 +700,7 @@ fn create__check__cannot_have_message_input() {
 
     assert_eq!(
         err,
-        ValidityError::TransactionCreateMessageData { index: 0 }
+        ValidityError::TransactionInputContainsMessageData { index: 0 }
     );
 }
 
@@ -711,11 +711,9 @@ fn create__check__cannot_have_variable_output() {
     let maturity = 100.into();
     let block_height = 1000.into();
 
-    let secret = SecretKey::random(rng);
-
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        .add_random_fee_input()
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize()
         .check(block_height, &test_params())
@@ -723,7 +721,7 @@ fn create__check__cannot_have_variable_output() {
 
     assert_eq!(
         err,
-        ValidityError::TransactionCreateOutputVariable { index: 0 }
+        ValidityError::TransactionOutputContainsVariable { index: 0 }
     );
 }
 
@@ -760,7 +758,7 @@ fn create__check__cannot_have_multiple_change_outputs() {
 }
 
 #[test]
-fn create__check__errors_if_change_is_wrong_asset() {
+fn create__check__errors_if_input_non_base_asset_id() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let maturity = 100.into();
@@ -773,15 +771,9 @@ fn create__check__errors_if_change_is_wrong_asset() {
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-        )
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::BASE, rng.gen())
         .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), asset_id, rng.gen())
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
+        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .add_output(Output::change(rng.gen(), rng.gen(), asset_id))
         .finalize()
         .check(block_height, &test_params())
@@ -789,7 +781,7 @@ fn create__check__errors_if_change_is_wrong_asset() {
 
     assert_eq!(
         err,
-        ValidityError::TransactionCreateOutputChangeNotBaseAsset { index: 1 },
+        ValidityError::TransactionInputContainsNonBaseAssetId { index: 1 },
     );
 }
 
@@ -801,7 +793,6 @@ fn create__check__cannot_create_multiple_contract_outputs() {
     let block_height = 1000.into();
 
     let secret = SecretKey::random(rng);
-    let secret_b = SecretKey::random(rng);
 
     let witness = generate_bytes(rng);
     let contract = Contract::from(witness.as_ref());
@@ -812,14 +803,7 @@ fn create__check__cannot_create_multiple_contract_outputs() {
 
     let err = TransactionBuilder::create(witness.into(), salt, storage_slots)
         .maturity(maturity)
-        .add_unsigned_coin_input(
-            secret,
-            rng.gen(),
-            rng.gen(),
-            AssetId::default(),
-            rng.gen(),
-        )
-        .add_unsigned_coin_input(secret_b, rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::BASE, rng.gen())
         .add_output(Output::contract_created(contract_id, state_root))
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize()

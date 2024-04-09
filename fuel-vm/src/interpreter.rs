@@ -34,6 +34,7 @@ use fuel_tx::{
     Transaction,
     TransactionRepr,
     UniqueIdentifier,
+    Upgrade,
     ValidityError,
 };
 use fuel_types::{
@@ -87,6 +88,7 @@ use crate::checked_transaction::{
     NonRetryableFreeBalances,
     RetryableAmount,
     ScriptCheckedMetadata,
+    UpgradeCheckedMetadata,
 };
 
 #[cfg(feature = "test-helpers")]
@@ -376,6 +378,12 @@ pub trait ExecutableTransaction:
     /// Casts the `Self` transaction into `&mut Create` if any.
     fn as_create_mut(&mut self) -> Option<&mut Create>;
 
+    /// Casts the `Self` transaction into `&Upgrade` if any.
+    fn as_upgrade(&self) -> Option<&Upgrade>;
+
+    /// Casts the `Self` transaction into `&mut Upgrade` if any.
+    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade>;
+
     /// Returns the type of the transaction like `Transaction::Create` or
     /// `Transaction::Script`.
     fn transaction_type() -> Word;
@@ -512,6 +520,14 @@ impl ExecutableTransaction for Create {
         Some(self)
     }
 
+    fn as_upgrade(&self) -> Option<&Upgrade> {
+        None
+    }
+
+    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
+        None
+    }
+
     fn transaction_type() -> Word {
         TransactionRepr::Create as Word
     }
@@ -536,8 +552,46 @@ impl ExecutableTransaction for Script {
         None
     }
 
+    fn as_upgrade(&self) -> Option<&Upgrade> {
+        None
+    }
+
+    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
+        None
+    }
+
     fn transaction_type() -> Word {
         TransactionRepr::Script as Word
+    }
+}
+
+impl ExecutableTransaction for Upgrade {
+    fn as_script(&self) -> Option<&Script> {
+        None
+    }
+
+    fn as_script_mut(&mut self) -> Option<&mut Script> {
+        None
+    }
+
+    fn as_create(&self) -> Option<&Create> {
+        None
+    }
+
+    fn as_create_mut(&mut self) -> Option<&mut Create> {
+        None
+    }
+
+    fn as_upgrade(&self) -> Option<&Upgrade> {
+        Some(self)
+    }
+
+    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
+        Some(self)
+    }
+
+    fn transaction_type() -> Word {
+        TransactionRepr::Upgrade as Word
     }
 }
 
@@ -566,6 +620,15 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 }
 
 impl CheckedMetadata for CreateCheckedMetadata {
+    fn balances(&self) -> InitialBalances {
+        InitialBalances {
+            non_retryable: self.free_balances.clone(),
+            retryable: None,
+        }
+    }
+}
+
+impl CheckedMetadata for UpgradeCheckedMetadata {
     fn balances(&self) -> InitialBalances {
         InitialBalances {
             non_retryable: self.free_balances.clone(),

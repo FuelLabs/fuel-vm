@@ -269,9 +269,10 @@ pub trait FormatValidityChecks {
 impl FormatValidityChecks for Transaction {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         match self {
-            Transaction::Script(script) => script.check_signatures(chain_id),
-            Transaction::Create(create) => create.check_signatures(chain_id),
-            Transaction::Mint(mint) => mint.check_signatures(chain_id),
+            Self::Script(tx) => tx.check_signatures(chain_id),
+            Self::Create(tx) => tx.check_signatures(chain_id),
+            Self::Mint(tx) => tx.check_signatures(chain_id),
+            Self::Upgrade(tx) => tx.check_signatures(chain_id),
         }
     }
 
@@ -281,14 +282,15 @@ impl FormatValidityChecks for Transaction {
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
         match self {
-            Transaction::Script(script) => {
-                script.check_without_signatures(block_height, consensus_params)
+            Self::Script(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
             }
-            Transaction::Create(create) => {
-                create.check_without_signatures(block_height, consensus_params)
+            Self::Create(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
             }
-            Transaction::Mint(mint) => {
-                mint.check_without_signatures(block_height, consensus_params)
+            Self::Mint(tx) => tx.check_without_signatures(block_height, consensus_params),
+            Self::Upgrade(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
             }
         }
     }

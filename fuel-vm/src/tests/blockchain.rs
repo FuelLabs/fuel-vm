@@ -1744,7 +1744,6 @@ fn smo_instruction_works() {
                 amount: 0,
                 asset_id: Default::default(),
             })
-            .add_random_fee_input()
             .finalize_checked(block_height);
 
         let non_retryable_free_balance =

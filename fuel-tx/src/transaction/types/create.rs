@@ -166,14 +166,26 @@ impl UniqueFormatValidityChecks for Create {
         self.inputs
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| match input {
-                Input::Contract(_) => {
-                    Err(ValidityError::TransactionCreateInputContract { index })
+            .try_for_each(|(index, input)| {
+                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id()) {
+                    if asset_id != consensus_params.base_asset_id() {
+                        return Err(
+                            ValidityError::TransactionInputContainsNonBaseAssetId {
+                                index,
+                            },
+                        );
+                    }
                 }
-                Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
-                    Err(ValidityError::TransactionCreateMessageData { index })
+
+                match input {
+                    Input::Contract(_) => {
+                        Err(ValidityError::TransactionInputContainsContract { index })
+                    }
+                    Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                        Err(ValidityError::TransactionInputContainsMessageData { index })
+                    }
+                    _ => Ok(()),
                 }
-                _ => Ok(()),
             })?;
 
         debug_assert!(
@@ -194,15 +206,15 @@ impl UniqueFormatValidityChecks for Create {
             .enumerate()
             .try_for_each(|(index, output)| match output {
                 Output::Contract(_) => {
-                    Err(ValidityError::TransactionCreateOutputContract { index })
+                    Err(ValidityError::TransactionOutputContainsContract { index })
                 }
 
                 Output::Variable { .. } => {
-                    Err(ValidityError::TransactionCreateOutputVariable { index })
+                    Err(ValidityError::TransactionOutputContainsVariable { index })
                 }
 
                 Output::Change { asset_id, .. } if asset_id != base_asset_id => {
-                    Err(ValidityError::TransactionCreateOutputChangeNotBaseAsset { index })
+                    Err(ValidityError::TransactionChangeChangeUsesNotBaseAsset { index })
                 }
 
                 Output::ContractCreated {

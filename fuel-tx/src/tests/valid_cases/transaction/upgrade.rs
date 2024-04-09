@@ -130,7 +130,7 @@ fn check__no_max_fee_fails() {
 }
 
 #[test]
-fn max_iow_reached_max_inputs() {
+fn reached_max_inputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let mut builder = valid_upgrade_transaction();
@@ -166,7 +166,7 @@ fn max_iow_reached_max_inputs() {
 }
 
 #[test]
-fn max_iow_reached_max_outputs() {
+fn reached_max_outputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let mut builder = valid_upgrade_transaction();
@@ -202,7 +202,7 @@ fn max_iow_reached_max_outputs() {
 }
 
 #[test]
-fn max_iow_reached_max_witnesses() {
+fn reached_max_witnesses() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let mut builder = valid_upgrade_transaction();

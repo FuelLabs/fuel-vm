@@ -613,7 +613,8 @@ fn check__errors_when_consensus_parameters_different_than_calculated_metadata() 
     assert_eq!(Err(ValidityError::TransactionMetadataMismatch), result);
 }
 
-mod inputs {
+// The module tests that `Upgrade` transaction can work with different input types.
+mod check_inputs {
     use super::*;
     use itertools::Itertools;
 

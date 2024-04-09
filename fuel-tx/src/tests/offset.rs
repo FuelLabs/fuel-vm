@@ -1,3 +1,8 @@
+//! This module tests the offset calculation for each field of each transaction type in
+//! canonical representation. Since each transaction can be executed inside FuelVM
+//! it lives inside VM's memory. The predicate or script may want to have access to
+//! different fields of transactions. An offset is used to access it.
+
 use crate::{
     field::{
         InputContract,

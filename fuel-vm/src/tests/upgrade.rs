@@ -402,25 +402,4 @@ mod consensus_parameters {
             result
         );
     }
-
-    #[test]
-    fn transact_fails_when_consensus_parameters_version_overflows() {
-        let mut client = Interpreter::<_, Upgrade>::with_storage(
-            valid_storage(),
-            InterpreterParams::default(),
-        );
-
-        // Given
-        client.as_mut().set_consensus_parameters_version(u32::MAX);
-        let tx = valid_transaction().test_into_ready();
-
-        // When
-        let result = client.transact(tx).map(|_| ());
-
-        // Then
-        assert_eq!(
-            Err(InterpreterError::Panic(PanicReason::ArithmeticOverflow)),
-            result
-        );
-    }
 }

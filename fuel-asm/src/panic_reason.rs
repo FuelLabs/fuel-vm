@@ -140,7 +140,7 @@ enum_from! {
         /// Overriding consensus parameters is not allowed.
         OverridingConsensusParameters = 0x31,
         /// The storage doesn't know about the hash of the state transition bytecode.
-        UnknownStateTransactionBytecodeHash = 0x32,
+        UnknownStateTransactionBytecodeRoot = 0x32,
         /// Overriding the state transition bytecode is not allowed.
         OverridingStateTransactionBytecode = 0x33,
         /// The bytecode is already uploaded and cannot be uploaded again.

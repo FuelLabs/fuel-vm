@@ -811,6 +811,17 @@ fn ldc_mem_offset_above_reg_hp() {
 }
 
 #[test]
+fn ldc_contract_size_overflow() {
+    ldc_reason_helper(
+        vec![
+            op::not(0x20, RegId::ZERO),
+            op::ldc(RegId::ZERO, RegId::ZERO, 0x10),
+        ],
+        MemoryOverflow,
+    );
+}
+
+#[test]
 fn ldc_contract_id_end_beyond_max_ram() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;

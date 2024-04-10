@@ -55,5 +55,8 @@ fn padded_len_value() {
     assert_eq!(padded_len_usize(7), Some(8));
     assert_eq!(padded_len_usize(8), Some(8));
     assert_eq!(padded_len_usize(9), Some(16));
-    assert_eq!(padded_len_usize(usize::MAX), None);
+    for i in 0..7 {
+        assert_eq!(padded_len_usize(usize::MAX - i), None);
+    }
+    assert_eq!(padded_len_usize(usize::MAX - 7), Some(usize::MAX - 7));
 }

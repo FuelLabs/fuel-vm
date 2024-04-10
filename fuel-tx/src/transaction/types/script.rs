@@ -233,7 +233,9 @@ mod field {
                 return body.script_data_offset;
             }
 
-            self.script_offset() + bytes::padded_len(self.body.script.as_slice())
+            self.script_offset().saturating_add(
+                bytes::padded_len(self.body.script.as_slice()).unwrap_or(usize::MAX),
+            )
         }
     }
 
@@ -247,8 +249,9 @@ mod field {
         }
 
         fn body_offset_end(&self) -> usize {
-            self.script_data_offset()
-                + bytes::padded_len(self.body.script_data.as_slice())
+            self.script_data_offset().saturating_add(
+                bytes::padded_len(self.body.script_data.as_slice()).unwrap_or(usize::MAX),
+            )
         }
     }
 }

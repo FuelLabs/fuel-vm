@@ -66,8 +66,10 @@ macro_rules! script_with_data_offset {
                     prelude::Immediate18,
                 };
                 ($tx_offset
-                    + Script::script_offset_static()
-                    + padded_len(script_bytes.as_slice())) as Immediate18
+                    .saturating_add(Script::script_offset_static())
+                    .saturating_add(
+                        padded_len(script_bytes.as_slice()).unwrap_or(usize::MAX),
+                    ) as Immediate18)
             }
         };
         // re-evaluate and return the finalized script with the correct data offset length

@@ -160,7 +160,7 @@ mod tests {
                 )
                 .is_ok());
 
-            let pad = bytes::padded_len(&predicate) - predicate.len();
+            let pad = bytes::padded_len(&predicate).unwrap() - predicate.len();
 
             // assert we are testing an edge case
             assert_ne!(0, pad);

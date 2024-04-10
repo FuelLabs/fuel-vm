@@ -11,8 +11,8 @@ cargo-fuzz = true
 [dependencies]
 arbitrary = { version = "1.0", features = ["derive"] }
 fuel-vm = { path = "..", features = ["arbitrary", "test-helpers"] }
-libfuzzer-sys = { features = ["arbitrary-derive"], package = "libafl_libfuzzer" }
-#libfuzzer-sys = "0.4"
+# For LibAFL: libfuzzer-sys = { features = ["arbitrary-derive"], package = "libafl_libfuzzer" }
+libfuzzer-sys = "0.4"
 clap = { version = "4.0", features = ["derive"] }
 hex = "*"
 
@@ -41,10 +41,6 @@ doc = false
 [[bin]]
 name = "seed"
 path = "src/seed.rs"
-
-[[bin]]
-name = "libafl"
-path = "src/libafl.rs"
 
 [[bin]]
 name = "execute"

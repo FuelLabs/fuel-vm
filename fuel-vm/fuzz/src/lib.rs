@@ -1,25 +1,14 @@
-use fuel_vm::checked_transaction::IntoChecked;
-use fuel_vm::consts::WORD_SIZE;
 use fuel_vm::fuel_asm::op;
-use fuel_vm::fuel_asm::{Instruction, InvalidOpcode, RawInstruction};
-use fuel_vm::fuel_crypto::coins_bip32::ecdsa::signature::digest::typenum::Pow;
-use fuel_vm::fuel_crypto::coins_bip32::ecdsa::signature::digest::Reset;
-use fuel_vm::fuel_crypto::rand;
-use fuel_vm::fuel_crypto::rand::Rng;
-use fuel_vm::fuel_crypto::rand::SeedableRng;
+use fuel_vm::fuel_asm::{Instruction, InvalidOpcode};
 use fuel_vm::fuel_types::Word;
 use fuel_vm::prelude::field::Script;
 use fuel_vm::prelude::*;
 
-use fuel_vm::util::test_helpers::{find_change, TestBuilder};
+use fuel_vm::util::test_helpers::TestBuilder;
 use fuel_vm::{fuel_asm, script_with_data_offset};
-
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::hint::black_box;
+use fuel_vm::fuel_types::canonical::Serialize;
 use std::io::Read;
 use std::ops::Range;
-use std::path::PathBuf;
 
 const SEP: [u8; 8] = [0x00u8, 0xAD, 0xBE, 0xEF, 0x55, 0x66, 0xCE, 0xAA];
 
@@ -124,7 +113,7 @@ pub fn execute(data: FuzzData) -> ExecuteResult {
         .contract_id;
 
     let max_program_length = 2usize.pow(18)
-        - test_context.tx_offset()
+        - test_context.get_tx_params().tx_offset()
         - <fuel_vm::prelude::Script as Script>::script_offset_static()
         - 256; // TODO reevalute this one
 
@@ -133,7 +122,7 @@ pub fn execute(data: FuzzData) -> ExecuteResult {
     let (script_ops, script_data_offset): (Vec<u8>, Immediate18) = script_with_data_offset!(
         script_data_offset,
         actual_program.to_vec(),
-        test_context.tx_offset()
+        test_context.get_tx_params().tx_offset()
     );
 
     let call = Call::new(contract_id, 0, script_data_offset as Word).to_bytes();
@@ -150,7 +139,7 @@ pub fn execute(data: FuzzData) -> ExecuteResult {
 
     let transfer_tx = test_context
         .start_script_bytes(script_ops.iter().copied().collect(), script_data)
-        .gas_limit(gas_limit)
+        .script_gas_limit(gas_limit)
         .gas_price(0)
         .coin_input(asset_id, 1000)
         .contract_input(contract_id)

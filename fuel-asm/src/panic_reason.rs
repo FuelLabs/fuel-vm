@@ -141,7 +141,7 @@ enum_from! {
         OverridingConsensusParameters = 0x31,
         /// The storage doesn't know about the hash of the state transition bytecode.
         UnknownStateTransactionBytecodeHash = 0x32,
-        /// It is not allowed to override the state transition bytecode.
+        /// Overriding the state transition bytecode is not allowed.
         OverridingStateTransactionBytecode = 0x33,
     }
 }

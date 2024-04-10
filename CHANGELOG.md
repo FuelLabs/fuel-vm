@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#719](https://github.com/FuelLabs/fuel-vm/pull/719): Fix overflow in `LDC` instruction when contract size with padding would overflow.
 - [#707](https://github.com/FuelLabs/fuel-vm/pull/707): The change adds a new `Upgrade` transaction that allows upgrading either consensus parameters or state transition function used by the network to produce future blocks.
     The purpose of the upgrade is defined by the `Upgrade Purpose` type:
     

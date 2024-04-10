@@ -380,7 +380,7 @@ fn get_transaction_fields() {
         )
         .finalize_checked(height);
 
-    client.deploy(tx);
+    client.deploy(tx).unwrap();
 
     let predicate = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
     let mut predicate_data = vec![0u8; 512];

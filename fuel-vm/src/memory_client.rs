@@ -3,16 +3,17 @@
 use crate::{
     backtrace::Backtrace,
     checked_transaction::Checked,
+    error::InterpreterError,
+    interpreter::{
+        EcalHandler,
+        InterpreterParams,
+        NotSupportedEcal,
+    },
     state::StateTransitionRef,
     storage::MemoryStorage,
     transactor::Transactor,
 };
-
-use crate::interpreter::{
-    EcalHandler,
-    InterpreterParams,
-    NotSupportedEcal,
-};
+use core::convert::Infallible;
 use fuel_tx::{
     Create,
     FeeParameters,
@@ -81,13 +82,19 @@ impl<Ecal: EcalHandler> MemoryClient<Ecal> {
     }
 
     /// Deploys a `Create` transaction.
-    pub fn deploy(&mut self, tx: Checked<Create>) -> Option<Create> {
-        self.transactor.deploy(tx).ok()
+    pub fn deploy(
+        &mut self,
+        tx: Checked<Create>,
+    ) -> Result<Create, InterpreterError<Infallible>> {
+        self.transactor.deploy(tx)
     }
 
     /// Executes `Upgrade` transaction.
-    pub fn upgrade(&mut self, tx: Checked<Upgrade>) -> Option<Upgrade> {
-        self.transactor.upgrade(tx).ok()
+    pub fn upgrade(
+        &mut self,
+        tx: Checked<Upgrade>,
+    ) -> Result<Upgrade, InterpreterError<Infallible>> {
+        self.transactor.upgrade(tx)
     }
 
     /// Executes `Upload` transaction.

@@ -518,9 +518,7 @@ where
                 let current_version = storage
                     .consensus_parameters_version()
                     .map_err(RuntimeError::Storage)?;
-                let next_version = current_version
-                    .checked_add(1)
-                    .ok_or(InterpreterError::Panic(PanicReason::ArithmeticOverflow))?;
+                let next_version = current_version.saturating_add(1);
 
                 let prev = storage
                     .set_consensus_parameters(next_version, &consensus_parameters)
@@ -546,9 +544,7 @@ where
                 let current_version = storage
                     .state_transition_version()
                     .map_err(RuntimeError::Storage)?;
-                let next_version = current_version
-                    .checked_add(1)
-                    .ok_or(InterpreterError::Panic(PanicReason::ArithmeticOverflow))?;
+                let next_version = current_version.saturating_add(1);
 
                 let prev = storage
                     .set_state_transition_bytecode(next_version, root)

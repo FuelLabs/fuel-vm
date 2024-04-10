@@ -248,28 +248,6 @@ mod state_transition {
             result
         );
     }
-
-    #[test]
-    fn transact_fails_when_version_overflows() {
-        let state_transition_hash = [1; 32].into();
-        let mut client = Interpreter::<_, Upgrade>::with_storage(
-            valid_storage(state_transition_hash, vec![]),
-            InterpreterParams::default(),
-        );
-
-        // Given
-        client.as_mut().set_state_transition_version(u32::MAX);
-        let tx = valid_transaction(state_transition_hash).test_into_ready();
-
-        // When
-        let result = client.transact(tx).map(|_| ());
-
-        // Then
-        assert_eq!(
-            Err(InterpreterError::Panic(PanicReason::ArithmeticOverflow)),
-            result
-        );
-    }
 }
 
 mod consensus_parameters {

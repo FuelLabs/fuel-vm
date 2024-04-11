@@ -815,7 +815,7 @@ fn ldc_contract_size_overflow() {
     ldc_reason_helper(
         vec![
             op::not(0x20, RegId::ZERO),
-            op::ldc(RegId::ZERO, RegId::ZERO, 0x10),
+            op::ldc(RegId::HP, RegId::ZERO, 0x20),
         ],
         MemoryOverflow,
     );

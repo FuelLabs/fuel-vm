@@ -200,7 +200,7 @@ fn generate_test_3_leaf_invalid_num_leaves() -> ProofTest {
     let function_name = function_name!().to_string();
     let description = "\
         Build a proof from a binary Merkle tree consisting of 3 leaves and manually set the number of leaves to 4. \
-        This proof is invalid because root is not generated from canonical Merkle tree construction. \
+        This proof is invalid because the proof reports 4 leaves when it was generated from a tree with 3 leaves. \
         Verification is expected to fail."
         .to_string();
     let value = [

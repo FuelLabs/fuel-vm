@@ -20,8 +20,10 @@ use rand::{
 };
 
 use crate::{
-    checked_transaction::CheckPredicates,
-    interpreter::InterpreterParams,
+    checked_transaction::{
+        CheckPredicates,
+        Checked,
+    },
     prelude::*,
 };
 
@@ -109,139 +111,107 @@ fn estimate_gas_gives_proper_gas_used() {
     assert!(check_res.is_ok());
 }
 
-#[test]
-fn transact__tx_with_wrong_gas_price_causes_error() {
-    let mut rng = &mut StdRng::seed_from_u64(2322u64);
-
-    // given
-    let tx_gas_price = 1;
-    let interpreter_gas_price = 2;
+fn valid_script_tx() -> Checked<Script> {
     let input_amount = 1000;
     let arb_max_fee = input_amount;
 
-    let interpreter_params = InterpreterParams {
-        gas_price: interpreter_gas_price,
-        ..Default::default()
-    };
-
-    let ready_tx = TransactionBuilder::script(vec![], vec![])
+    TransactionBuilder::script(vec![], vec![])
         .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(
-            SecretKey::random(&mut rng),
-            rng.gen(),
-            input_amount,
-            AssetId::default(),
-            rng.gen(),
-        )
+        .add_random_fee_input()
         .finalize_checked_basic(Default::default())
-        .into_ready(
-            tx_gas_price,
-            &interpreter_params.gas_costs,
-            &interpreter_params.fee_params,
-        )
-        .unwrap();
-
-    // when
-    let mut transactor =
-        Transactor::<_, _>::new(MemoryStorage::default(), interpreter_params);
-    transactor.transact_ready_tx(ready_tx);
-
-    // then
-    let err = transactor.error().expect("Expected error");
-    assert!(matches!(
-        *err,
-        InterpreterError::ReadyTransactionWrongGasPrice { .. }
-    ));
 }
 
 #[test]
-fn deploy__tx_with_wrong_gas_price_causes_error() {
-    let mut rng = &mut StdRng::seed_from_u64(2322u64);
+fn transact__tx_with_wrong_gas_price_causes_error() {
+    let mut interpreter = Interpreter::<_, Script>::with_memory_storage();
 
-    // given
+    // Given
     let tx_gas_price = 1;
     let interpreter_gas_price = 2;
-    let input_amount = 1000;
-    let arb_max_fee = input_amount;
+    interpreter.set_gas_price(interpreter_gas_price);
 
-    let interpreter_params = InterpreterParams {
-        gas_price: interpreter_gas_price,
-        ..Default::default()
-    };
-    let witness = Witness::default();
-    let salt = rng.gen();
-
-    let ready_tx = TransactionBuilder::create(witness, salt, vec![])
-        .max_fee_limit(arb_max_fee)
-        .add_unsigned_coin_input(
-            SecretKey::random(&mut rng),
-            rng.gen(),
-            input_amount,
-            AssetId::default(),
-            rng.gen(),
-        )
-        .finalize_checked_basic(Default::default())
-        .into_ready(
-            tx_gas_price,
-            &interpreter_params.gas_costs,
-            &interpreter_params.fee_params,
-        )
+    // When
+    let tx = valid_script_tx()
+        .into_ready(tx_gas_price, &Default::default(), &Default::default())
         .unwrap();
+    let err = interpreter.transact(tx).unwrap_err();
 
-    // when
-    let mut transactor =
-        Transactor::<_, Create>::new(MemoryStorage::default(), interpreter_params);
-    let err = transactor.deploy_ready_tx(ready_tx).unwrap_err();
-
-    // then
+    // Then
     assert!(matches!(
         err,
         InterpreterError::ReadyTransactionWrongGasPrice { .. }
     ));
 }
 
-#[test]
-fn upgrade__tx_with_wrong_gas_price_causes_error() {
-    // given
-    let tx_gas_price = 1;
-    let interpreter_gas_price = 2;
+fn valid_create_tx() -> Checked<Create> {
     let input_amount = 1000;
     let arb_max_fee = input_amount;
-    let consensus_params = ConsensusParameters::standard();
+    let witness = Witness::default();
+    let salt = [123; 32].into();
 
-    let interpreter_params = InterpreterParams {
-        gas_price: interpreter_gas_price,
-        ..Default::default()
-    };
+    TransactionBuilder::create(witness, salt, vec![])
+        .max_fee_limit(arb_max_fee)
+        .add_random_fee_input()
+        .finalize_checked_basic(Default::default())
+}
 
-    let ready_tx = TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
+#[test]
+fn deploy__tx_with_wrong_gas_price_causes_error() {
+    let mut interpreter = Interpreter::<_, Create>::with_memory_storage();
+
+    // Given
+    let tx_gas_price = 1;
+    let interpreter_gas_price = 2;
+    interpreter.set_gas_price(interpreter_gas_price);
+
+    // When
+    let tx = valid_create_tx()
+        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .unwrap();
+    let err = interpreter.deploy(tx).unwrap_err();
+
+    // Then
+    assert!(matches!(
+        err,
+        InterpreterError::ReadyTransactionWrongGasPrice { .. }
+    ));
+}
+
+fn valid_upgrade_tx() -> Checked<Upgrade> {
+    let input_amount = 1000;
+    let arb_max_fee = input_amount;
+    TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
         bytecode_hash: Default::default(),
     })
     .max_fee_limit(arb_max_fee)
-    .add_random_fee_input()
     .add_input(Input::coin_signed(
         Default::default(),
-        *consensus_params.privileged_address(),
+        *ConsensusParameters::standard().privileged_address(),
         input_amount,
         AssetId::BASE,
         Default::default(),
         0,
     ))
-    .with_params(consensus_params)
+    .add_random_fee_input()
     .finalize_checked_basic(Default::default())
-    .into_ready(
-        tx_gas_price,
-        &interpreter_params.gas_costs,
-        &interpreter_params.fee_params,
-    )
-    .unwrap();
+}
 
-    // when
-    let mut transactor =
-        Transactor::<_, Upgrade>::new(MemoryStorage::default(), interpreter_params);
-    let err = transactor.execute_ready_upgrade_tx(ready_tx).unwrap_err();
+#[test]
+fn upgrade__tx_with_wrong_gas_price_causes_error() {
+    let mut interpreter = Interpreter::<_, Upgrade>::with_memory_storage();
 
-    // then
+    // Given
+    let tx_gas_price = 1;
+    let interpreter_gas_price = 2;
+    interpreter.set_gas_price(interpreter_gas_price);
+
+    // When
+    let tx = valid_upgrade_tx()
+        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .unwrap();
+    let err = interpreter.upgrade(tx).unwrap_err();
+
+    // Then
     assert!(matches!(
         err,
         InterpreterError::ReadyTransactionWrongGasPrice { .. }

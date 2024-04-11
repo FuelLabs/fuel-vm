@@ -4,4 +4,5 @@ use datatest_stable as _;
 use serde_yaml as _;
 
 mod binary;
+mod binary_proof;
 mod sparse;

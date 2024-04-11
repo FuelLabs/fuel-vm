@@ -9,6 +9,7 @@ use fuel_storage::{
     StorageWrite,
 };
 use fuel_tx::{
+    ConsensusParameters,
     Contract,
     StorageSlot,
 };
@@ -61,6 +62,13 @@ pub trait InterpreterStorage:
     /// executed.
     fn block_height(&self) -> Result<BlockHeight, Self::DataError>;
 
+    /// Provide the current version of consensus parameters used to execute transaction.
+    fn consensus_parameters_version(&self) -> Result<u32, Self::DataError>;
+
+    /// Provide the current version of state transition function used to execute
+    /// transaction.
+    fn state_transition_version(&self) -> Result<u32, Self::DataError>;
+
     /// Return the timestamp of a given block
     ///
     /// This isn't optional because the VM is expected to panic if an invalid block height
@@ -74,6 +82,30 @@ pub trait InterpreterStorage:
 
     /// Provide the coinbase address for the VM instructions implementation.
     fn coinbase(&self) -> Result<ContractId, Self::DataError>;
+
+    /// Set the consensus parameters in the storage under the `version`.
+    ///
+    /// Returns the previous consensus parameters if they were set.
+    fn set_consensus_parameters(
+        &mut self,
+        version: u32,
+        consensus_parameters: &ConsensusParameters,
+    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError>;
+
+    /// Returns `true` if the state transition bytecode is present in the storage.
+    fn contains_state_transition_bytecode_hash(
+        &self,
+        hash: &Bytes32,
+    ) -> Result<bool, Self::DataError>;
+
+    /// Set the state transition bytecode in the storage under the `version`.
+    ///
+    /// Returns the previous bytecode if it was set.
+    fn set_state_transition_bytecode(
+        &mut self,
+        version: u32,
+        hash: &Bytes32,
+    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError>;
 
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
@@ -245,6 +277,14 @@ where
         <S as InterpreterStorage>::block_height(self.deref())
     }
 
+    fn consensus_parameters_version(&self) -> Result<u32, Self::DataError> {
+        <S as InterpreterStorage>::consensus_parameters_version(self.deref())
+    }
+
+    fn state_transition_version(&self) -> Result<u32, Self::DataError> {
+        <S as InterpreterStorage>::state_transition_version(self.deref())
+    }
+
     fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         <S as InterpreterStorage>::timestamp(self.deref(), height)
     }
@@ -255,6 +295,40 @@ where
 
     fn coinbase(&self) -> Result<ContractId, Self::DataError> {
         <S as InterpreterStorage>::coinbase(self.deref())
+    }
+
+    fn set_consensus_parameters(
+        &mut self,
+        version: u32,
+        consensus_parameters: &ConsensusParameters,
+    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+        <S as InterpreterStorage>::set_consensus_parameters(
+            self.deref_mut(),
+            version,
+            consensus_parameters,
+        )
+    }
+
+    fn contains_state_transition_bytecode_hash(
+        &self,
+        hash: &Bytes32,
+    ) -> Result<bool, Self::DataError> {
+        <S as InterpreterStorage>::contains_state_transition_bytecode_hash(
+            self.deref(),
+            hash,
+        )
+    }
+
+    fn set_state_transition_bytecode(
+        &mut self,
+        version: u32,
+        hash: &Bytes32,
+    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+        <S as InterpreterStorage>::set_state_transition_bytecode(
+            self.deref_mut(),
+            version,
+            hash,
+        )
     }
 
     fn storage_contract_size(

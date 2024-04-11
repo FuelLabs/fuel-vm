@@ -1,3 +1,4 @@
+use alloc::borrow::Cow;
 use core::fmt::Debug;
 use hashbrown::HashMap;
 
@@ -6,6 +7,7 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
+use fuel_tx::ConsensusParameters;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -395,6 +397,14 @@ where
         self.0.block_height()
     }
 
+    fn consensus_parameters_version(&self) -> Result<u32, Self::DataError> {
+        self.0.consensus_parameters_version()
+    }
+
+    fn state_transition_version(&self) -> Result<u32, Self::DataError> {
+        self.0.state_transition_version()
+    }
+
     fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         self.0.timestamp(height)
     }
@@ -405,6 +415,30 @@ where
 
     fn coinbase(&self) -> Result<fuel_types::ContractId, Self::DataError> {
         self.0.coinbase()
+    }
+
+    fn set_consensus_parameters(
+        &mut self,
+        version: u32,
+        consensus_parameters: &ConsensusParameters,
+    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+        self.0
+            .set_consensus_parameters(version, consensus_parameters)
+    }
+
+    fn contains_state_transition_bytecode_hash(
+        &self,
+        hash: &Bytes32,
+    ) -> Result<bool, Self::DataError> {
+        self.0.contains_state_transition_bytecode_hash(hash)
+    }
+
+    fn set_state_transition_bytecode(
+        &mut self,
+        version: u32,
+        hash: &Bytes32,
+    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+        self.0.set_state_transition_bytecode(version, hash)
     }
 
     fn contract_state_range(

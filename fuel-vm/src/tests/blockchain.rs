@@ -602,7 +602,7 @@ fn ldc__load_len_of_target_contract<'a>(
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
 
-    client.deploy(tx_create_target);
+    client.deploy(tx_create_target).unwrap();
 
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
@@ -740,7 +740,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    client.deploy(tx_create_target);
+    client.deploy(tx_create_target).unwrap();
 
     let load_contract = cmd;
 

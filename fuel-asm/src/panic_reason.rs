@@ -137,6 +137,12 @@ enum_from! {
         /// Attempting to read or write uninitialized memory.
         /// Also occurs when boundary crosses from stack to heap.
         UninitalizedMemoryAccess = 0x30,
+        /// Overriding consensus parameters is not allowed.
+        OverridingConsensusParameters = 0x31,
+        /// The storage doesn't know about the hash of the state transition bytecode.
+        UnknownStateTransactionBytecodeHash = 0x32,
+        /// Overriding the state transition bytecode is not allowed.
+        OverridingStateTransactionBytecode = 0x33,
     }
 }
 

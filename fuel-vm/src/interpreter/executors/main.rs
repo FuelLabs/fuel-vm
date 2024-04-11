@@ -45,6 +45,7 @@ use crate::{
 
 use crate::{
     checked_transaction::{
+        CheckError,
         CheckPredicateParams,
         Ready,
     },
@@ -61,6 +62,7 @@ use fuel_tx::{
         Script as ScriptField,
         ScriptGasLimit,
         StorageSlots,
+        UpgradePurpose as UpgradePurposeField,
     },
     input::{
         coin::CoinPredicate,
@@ -69,6 +71,7 @@ use fuel_tx::{
             MessageDataPredicate,
         },
     },
+    ConsensusParameters,
     Contract,
     Create,
     FeeParameters,
@@ -76,6 +79,10 @@ use fuel_tx::{
     Input,
     Receipt,
     ScriptExecutionResult,
+    Upgrade,
+    UpgradeMetadata,
+    UpgradePurpose,
+    ValidityError,
 };
 use fuel_types::{
     AssetId,
@@ -469,6 +476,109 @@ where
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
+{
+    fn upgrade_inner(
+        upgrade: &mut Upgrade,
+        storage: &mut S,
+        initial_balances: InitialBalances,
+        gas_costs: &GasCosts,
+        fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
+        gas_price: Word,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        let metadata = upgrade.metadata().as_ref();
+        debug_assert!(
+            metadata.is_some(),
+            "`upgrade_inner` is called without cached metadata"
+        );
+
+        match upgrade.upgrade_purpose() {
+            UpgradePurpose::ConsensusParameters { .. } => {
+                let consensus_parameters = if let Some(metadata) = metadata {
+                    Self::get_consensus_parameters(&metadata.body)?
+                } else {
+                    let metadata = UpgradeMetadata::compute(upgrade)?;
+                    Self::get_consensus_parameters(&metadata)?
+                };
+
+                let current_version = storage
+                    .consensus_parameters_version()
+                    .map_err(RuntimeError::Storage)?;
+                let next_version = current_version.saturating_add(1);
+
+                let prev = storage
+                    .set_consensus_parameters(next_version, &consensus_parameters)
+                    .map_err(RuntimeError::Storage)?;
+
+                if prev.is_some() {
+                    return Err(InterpreterError::Panic(
+                        PanicReason::OverridingConsensusParameters,
+                    ));
+                }
+            }
+            UpgradePurpose::StateTransition { bytecode_hash } => {
+                let exists = storage
+                    .contains_state_transition_bytecode_hash(bytecode_hash)
+                    .map_err(RuntimeError::Storage)?;
+
+                if !exists {
+                    return Err(InterpreterError::Panic(
+                        PanicReason::UnknownStateTransactionBytecodeHash,
+                    ))
+                }
+
+                let current_version = storage
+                    .state_transition_version()
+                    .map_err(RuntimeError::Storage)?;
+                let next_version = current_version.saturating_add(1);
+
+                let prev = storage
+                    .set_state_transition_bytecode(next_version, bytecode_hash)
+                    .map_err(RuntimeError::Storage)?;
+
+                if prev.is_some() {
+                    return Err(InterpreterError::Panic(
+                        PanicReason::OverridingStateTransactionBytecode,
+                    ));
+                }
+            }
+        }
+
+        Self::finalize_outputs(
+            upgrade,
+            gas_costs,
+            fee_params,
+            base_asset_id,
+            false,
+            0,
+            &initial_balances,
+            &RuntimeBalances::try_from(initial_balances.clone())?,
+            gas_price,
+        )?;
+        Ok(())
+    }
+
+    fn get_consensus_parameters(
+        metadata: &UpgradeMetadata,
+    ) -> Result<ConsensusParameters, InterpreterError<S::DataError>> {
+        match &metadata {
+            UpgradeMetadata::ConsensusParameters {
+                consensus_parameters,
+                ..
+            } => Ok(consensus_parameters.as_ref().clone()),
+            UpgradeMetadata::StateTransition => {
+                // It shouldn't be possible since `Check<Upgrade>` guarantees that.
+                Err(InterpreterError::CheckError(CheckError::Validity(
+                    ValidityError::TransactionMetadataMismatch,
+                )))
+            }
+        }
+    }
+}
+
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {
@@ -481,7 +591,7 @@ where
     }
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
-        // TODO: Remove `Create` from here
+        // TODO: Remove `Create` and `Upgrade` from here
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
@@ -496,7 +606,17 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
-            self.update_transaction_outputs()?;
+            ProgramState::Return(1)
+        } else if let Some(upgrade) = self.tx.as_upgrade_mut() {
+            Self::upgrade_inner(
+                upgrade,
+                &mut self.storage,
+                self.initial_balances.clone(),
+                &gas_costs,
+                &fee_params,
+                &base_asset_id,
+                gas_price,
+            )?;
             ProgramState::Return(1)
         } else {
             if self.transaction().inputs().iter().any(|input| {
@@ -592,10 +712,10 @@ where
                 &self.balances,
                 gas_price,
             )?;
-            self.update_transaction_outputs()?;
 
             program
         };
+        self.update_transaction_outputs()?;
 
         Ok(state)
     }
@@ -718,20 +838,50 @@ where
         let (_, checked) = tx.decompose();
         let (mut create, metadata): (Create, <Create as IntoChecked>::Metadata) =
             checked.into();
-        let gas_costs = self.gas_costs().clone();
-        let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
         let gas_price = self.gas_price();
         Self::deploy_inner(
             &mut create,
             &mut self.storage,
             metadata.balances(),
-            &gas_costs,
-            &fee_params,
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
             &base_asset_id,
             gas_price,
         )?;
         Ok(create)
+    }
+}
+
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    S: InterpreterStorage,
+{
+    /// Executes `Upgrade` transaction without initialization VM and without invalidation
+    /// of the last state of execution of the `Script` transaction.
+    ///
+    /// Returns `Upgrade` transaction with all modifications after execution.
+    pub fn upgrade(
+        &mut self,
+        tx: Ready<Upgrade>,
+    ) -> Result<Upgrade, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut upgrade, metadata): (Upgrade, <Upgrade as IntoChecked>::Metadata) =
+            checked.into();
+        let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
+        Self::upgrade_inner(
+            &mut upgrade,
+            &mut self.storage,
+            metadata.balances(),
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
+            &base_asset_id,
+            gas_price,
+        )?;
+        Ok(upgrade)
     }
 }
 

@@ -33,6 +33,7 @@ pub use predicate::PredicateStorage;
 use alloc::vec::Vec;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// The uploaded bytecode can be in two states: fully uploaded or partially uploaded.
 pub enum UploadedBytecode {
     /// The bytecode is partially uploaded.

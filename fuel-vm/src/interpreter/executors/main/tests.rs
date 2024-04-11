@@ -179,7 +179,7 @@ fn valid_upgrade_tx() -> Checked<Upgrade> {
     let input_amount = 1000;
     let arb_max_fee = input_amount;
     TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
-        bytecode_hash: Default::default(),
+        root: Default::default(),
     })
     .max_fee_limit(arb_max_fee)
     .add_input(Input::coin_signed(

@@ -1,4 +1,3 @@
-use alloc::borrow::Cow;
 use core::fmt::Debug;
 use hashbrown::HashMap;
 
@@ -447,7 +446,7 @@ where
         &mut self,
         version: u32,
         consensus_parameters: &ConsensusParameters,
-    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+    ) -> Result<Option<ConsensusParameters>, Self::DataError> {
         self.0
             .set_consensus_parameters(version, consensus_parameters)
     }
@@ -456,7 +455,7 @@ where
         &mut self,
         version: u32,
         hash: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Bytes32>, Self::DataError> {
         self.0.set_state_transition_bytecode(version, hash)
     }
 

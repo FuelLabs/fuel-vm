@@ -230,7 +230,7 @@ impl InterpreterStorage for PredicateStorage {
         &mut self,
         _version: u32,
         _consensus_parameters: &ConsensusParameters,
-    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+    ) -> Result<Option<ConsensusParameters>, Self::DataError> {
         Err(StorageUnavailable)
     }
 
@@ -238,7 +238,7 @@ impl InterpreterStorage for PredicateStorage {
         &mut self,
         _version: u32,
         _hash: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Bytes32>, Self::DataError> {
         Err(StorageUnavailable)
     }
 

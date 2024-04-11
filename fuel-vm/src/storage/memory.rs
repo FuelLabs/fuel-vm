@@ -495,24 +495,22 @@ impl InterpreterStorage for MemoryStorage {
         &mut self,
         version: u32,
         consensus_parameters: &ConsensusParameters,
-    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+    ) -> Result<Option<ConsensusParameters>, Self::DataError> {
         Ok(self
             .memory
             .consensus_parameters_versions
-            .insert(version, consensus_parameters.clone())
-            .map(Cow::Owned))
+            .insert(version, consensus_parameters.clone()))
     }
 
     fn set_state_transition_bytecode(
         &mut self,
         version: u32,
         bytecode: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Bytes32>, Self::DataError> {
         Ok(self
             .memory
             .state_transition_bytecodes_versions
-            .insert(version, *bytecode)
-            .map(Cow::Owned))
+            .insert(version, *bytecode))
     }
 
     fn contract_state_range(

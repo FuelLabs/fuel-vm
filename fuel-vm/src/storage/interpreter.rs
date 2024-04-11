@@ -93,7 +93,7 @@ pub trait InterpreterStorage:
         &mut self,
         version: u32,
         consensus_parameters: &ConsensusParameters,
-    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError>;
+    ) -> Result<Option<ConsensusParameters>, Self::DataError>;
 
     /// Returns `true` if the fully uploaded state transition bytecode is present in the
     /// storage.
@@ -121,7 +121,7 @@ pub trait InterpreterStorage:
         &mut self,
         version: u32,
         hash: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError>;
+    ) -> Result<Option<Bytes32>, Self::DataError>;
 
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
@@ -317,7 +317,7 @@ where
         &mut self,
         version: u32,
         consensus_parameters: &ConsensusParameters,
-    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+    ) -> Result<Option<ConsensusParameters>, Self::DataError> {
         <S as InterpreterStorage>::set_consensus_parameters(
             self.deref_mut(),
             version,
@@ -329,7 +329,7 @@ where
         &mut self,
         version: u32,
         hash: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Bytes32>, Self::DataError> {
         <S as InterpreterStorage>::set_state_transition_bytecode(
             self.deref_mut(),
             version,

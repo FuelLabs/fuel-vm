@@ -1,0 +1,17 @@
+name: Test 3 Leaves Invalid Num Leaves
+function_name: generate_test_3_leaf_invalid_num_leaves
+description: Build a proof from a binary Merkle tree consisting of 3 leaves and manually set the number of leaves to 4. This proof is invalid because root is not generated from canonical Merkle tree construction. Verification is expected to fail.
+root:
+  value: f6d1543b16c810e99a8ee38d619474a2c63bfd1a5a205688a3cc15c74350ddb5
+  encoding: hex
+data:
+  value: '0000000000000000000000000000000000000000000000000000000000000000'
+  encoding: hex
+proof_set:
+- value: 7f9c9e31ac8256ca2f258583df262dbc7d6f68f2a03043d5c99a4ae5a7396ce9
+  encoding: hex
+- value: 7f9c9e31ac8256ca2f258583df262dbc7d6f68f2a03043d5c99a4ae5a7396ce9
+  encoding: hex
+proof_index: 0
+num_leaves: 4
+expected_verification: false

@@ -328,6 +328,14 @@ impl Transaction {
         matches!(self, Self::Mint { .. })
     }
 
+    pub const fn is_upgrade(&self) -> bool {
+        matches!(self, Self::Upgrade { .. })
+    }
+
+    pub const fn is_upload(&self) -> bool {
+        matches!(self, Self::Upload { .. })
+    }
+
     pub const fn as_script(&self) -> Option<&Script> {
         match self {
             Self::Script(script) => Some(script),
@@ -366,6 +374,34 @@ impl Transaction {
     pub fn as_mint_mut(&mut self) -> Option<&mut Mint> {
         match self {
             Self::Mint(mint) => Some(mint),
+            _ => None,
+        }
+    }
+
+    pub const fn as_upgrade(&self) -> Option<&Upgrade> {
+        match self {
+            Self::Upgrade(tx) => Some(tx),
+            _ => None,
+        }
+    }
+
+    pub fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
+        match self {
+            Self::Upgrade(tx) => Some(tx),
+            _ => None,
+        }
+    }
+
+    pub const fn as_upload(&self) -> Option<&Upload> {
+        match self {
+            Self::Upload(tx) => Some(tx),
+            _ => None,
+        }
+    }
+
+    pub fn as_upload_mut(&mut self) -> Option<&mut Upload> {
+        match self {
+            Self::Upload(tx) => Some(tx),
             _ => None,
         }
     }

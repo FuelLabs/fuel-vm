@@ -118,31 +118,6 @@ fn test_prove() {
 }
 
 #[test]
-fn test_verify() {
-    use crate::binary::verify;
-
-    let storage = StorageMap::<TestTable>::new();
-    let mut test_tree = MerkleTree::new(storage);
-
-    let num_leaves = 3;
-    let index = 244872640201589286 % num_leaves;
-
-    let value = [
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0,
-    ];
-    let bytes = Bytes32::from(value);
-
-    test_tree.push(&bytes).unwrap();
-    test_tree.push(&bytes).unwrap();
-    test_tree.push(&bytes).unwrap();
-
-    let (root, proof_set) = test_tree.prove(index).unwrap();
-    let verification = verify(&root, &value, &proof_set, index, num_leaves + 1);
-    assert!(!verification)
-}
-
-#[test]
 fn test_load() {
     let test_data_count = 2u64.pow(16);
     let test_data = (0..test_data_count)

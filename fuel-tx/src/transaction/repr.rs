@@ -9,6 +9,7 @@ pub enum TransactionRepr {
     Create = 0x01,
     Mint = 0x02,
     Upgrade = 0x03,
+    Upload = 0x04,
 }
 
 impl From<&Transaction> for TransactionRepr {
@@ -18,6 +19,7 @@ impl From<&Transaction> for TransactionRepr {
             Transaction::Create { .. } => Self::Create,
             Transaction::Mint { .. } => Self::Mint,
             Transaction::Upgrade { .. } => Self::Upgrade,
+            Transaction::Upload { .. } => Self::Upload,
         }
     }
 }

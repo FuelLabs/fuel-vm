@@ -6,6 +6,7 @@ pub mod output;
 mod script;
 mod storage;
 mod upgrade;
+mod upload;
 mod utxo_id;
 mod witness;
 
@@ -28,6 +29,12 @@ pub use upgrade::{
     UpgradeBody,
     UpgradeMetadata,
     UpgradePurpose,
+};
+pub use upload::{
+    Upload,
+    UploadBody,
+    UploadMetadata,
+    UploadSubsection,
 };
 pub use utxo_id::UtxoId;
 pub use witness::Witness;

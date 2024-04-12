@@ -487,6 +487,7 @@ impl EstimatePredicates for Transaction {
             Self::Create(tx) => tx.estimate_predicates(params),
             Self::Mint(_) => Ok(()),
             Self::Upgrade(tx) => tx.estimate_predicates(params),
+            Self::Upload(tx) => tx.estimate_predicates(params),
         }
     }
 
@@ -499,6 +500,7 @@ impl EstimatePredicates for Transaction {
             Self::Create(tx) => tx.estimate_predicates_async::<E>(params).await,
             Self::Mint(_) => Ok(()),
             Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params).await,
+            Self::Upload(tx) => tx.estimate_predicates_async::<E>(params).await,
         }
     }
 }
@@ -539,6 +541,9 @@ impl CheckPredicates for Checked<Transaction> {
             CheckedTransaction::Upgrade(tx) => {
                 CheckPredicates::check_predicates(tx, params)?.into()
             }
+            CheckedTransaction::Upload(tx) => {
+                CheckPredicates::check_predicates(tx, params)?.into()
+            }
         };
         Ok(checked_transaction.into())
     }
@@ -573,6 +578,11 @@ impl CheckPredicates for Checked<Transaction> {
                     .await?
                     .into()
             }
+            CheckedTransaction::Upload(tx) => {
+                CheckPredicates::check_predicates_async::<E>(tx, params)
+                    .await?
+                    .into()
+            }
         };
 
         Ok(checked_transaction.into())
@@ -591,6 +601,7 @@ pub enum CheckedTransaction {
     Create(Checked<Create>),
     Mint(Checked<Mint>),
     Upgrade(Checked<Upgrade>),
+    Upload(Checked<Upload>),
 }
 
 impl From<Checked<Transaction>> for CheckedTransaction {
@@ -615,6 +626,9 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Upgrade(transaction), CheckedMetadata::Upgrade(metadata)) => {
                 Self::Upgrade(Checked::new(transaction, metadata, checks_bitmask))
             }
+            (Transaction::Upload(transaction), CheckedMetadata::Upload(metadata)) => {
+                Self::Upload(Checked::new(transaction, metadata, checks_bitmask))
+            }
             // The code should produce the `CheckedMetadata` for the corresponding
             // transaction variant. It is done in the implementation of the
             // `IntoChecked` trait for `Transaction`. With the current
@@ -623,6 +637,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Create(_), _) => unreachable!(),
             (Transaction::Mint(_), _) => unreachable!(),
             (Transaction::Upgrade(_), _) => unreachable!(),
+            (Transaction::Upload(_), _) => unreachable!(),
         }
     }
 }
@@ -651,6 +666,12 @@ impl From<Checked<Upgrade>> for CheckedTransaction {
     }
 }
 
+impl From<Checked<Upload>> for CheckedTransaction {
+    fn from(checked: Checked<Upload>) -> Self {
+        Self::Upload(checked)
+    }
+}
+
 impl From<CheckedTransaction> for Checked<Transaction> {
     fn from(checked: CheckedTransaction) -> Self {
         match checked {
@@ -674,6 +695,11 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 metadata,
                 checks_bitmask,
             }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+            CheckedTransaction::Upload(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
         }
     }
 }
@@ -686,6 +712,7 @@ pub enum CheckedMetadata {
     Create(<Create as IntoChecked>::Metadata),
     Mint(<Mint as IntoChecked>::Metadata),
     Upgrade(<Upgrade as IntoChecked>::Metadata),
+    Upload(<Upload as IntoChecked>::Metadata),
 }
 
 impl From<<Script as IntoChecked>::Metadata> for CheckedMetadata {
@@ -709,6 +736,12 @@ impl From<<Mint as IntoChecked>::Metadata> for CheckedMetadata {
 impl From<<Upgrade as IntoChecked>::Metadata> for CheckedMetadata {
     fn from(metadata: <Upgrade as IntoChecked>::Metadata) -> Self {
         Self::Upgrade(metadata)
+    }
+}
+
+impl From<<Upload as IntoChecked>::Metadata> for CheckedMetadata {
+    fn from(metadata: <Upload as IntoChecked>::Metadata) -> Self {
+        Self::Upload(metadata)
     }
 }
 
@@ -740,6 +773,12 @@ impl IntoChecked for Transaction {
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Upgrade(tx) => {
+                let (transaction, metadata) = tx
+                    .into_checked_basic(block_height, consensus_params)?
+                    .into();
+                Ok((transaction.into(), metadata.into()))
+            }
+            Self::Upload(tx) => {
                 let (transaction, metadata) = tx
                     .into_checked_basic(block_height, consensus_params)?
                     .into();

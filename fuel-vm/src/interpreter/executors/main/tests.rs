@@ -237,19 +237,18 @@ fn valid_upload_tx() -> Checked<Upload> {
 
 #[test]
 fn upload__tx_with_wrong_gas_price_causes_error() {
-    let mut transactor =
-        Transactor::<_, Upload>::new(MemoryStorage::default(), Default::default());
+    let mut interpreter = Interpreter::<_, Upload>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;
     let interpreter_gas_price = 2;
-    transactor.set_gas_price(interpreter_gas_price);
+    interpreter.set_gas_price(interpreter_gas_price);
 
     // When
     let tx = valid_upload_tx()
         .into_ready(tx_gas_price, &Default::default(), &Default::default())
         .unwrap();
-    let err = transactor.execute_ready_upload_tx(tx).unwrap_err();
+    let err = interpreter.upload(tx).unwrap_err();
 
     // Then
     assert!(matches!(

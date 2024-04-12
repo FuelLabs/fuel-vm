@@ -112,10 +112,7 @@ mod test {
             MerkleTree,
             Primitive,
         },
-        common::{
-            Bytes32,
-            StorageMap,
-        },
+        common::StorageMap,
     };
     use fuel_merkle_test_helpers::TEST_DATA;
     use fuel_storage::Mappable;

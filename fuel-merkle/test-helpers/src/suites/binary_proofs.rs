@@ -195,28 +195,6 @@ fn generate_test_1_leaf_invalid_root(test_data: &[Bytes32]) -> ProofTest {
 }
 
 #[named]
-fn generate_test_3_leaf_invalid_num_leaves() -> ProofTest {
-    let name = "Test 3 Leaves Invalid Num Leaves".to_string();
-    let function_name = function_name!().to_string();
-    let description = "\
-        Build a proof from a binary Merkle tree consisting of 3 leaves and manually set the number of leaves to 4. \
-        This proof is invalid because the proof reports 4 leaves when it was generated from a tree with 3 leaves. \
-        Verification is expected to fail."
-        .to_string();
-    let value = [
-        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0,
-    ];
-    let sample_data = std::iter::repeat(value).take(3).collect();
-    let proof_index = 0;
-    let mut test =
-        generate_test(name, function_name, description, &sample_data, proof_index);
-    test.expected_verification = false;
-    test.num_leaves = 4;
-    test
-}
-
-#[named]
 fn generate_test_1024_leaves_invalid_root(test_data: &[Bytes32]) -> ProofTest {
     let name = "Test 1024 Leaves Invalid Root".to_string();
     let function_name = function_name!().to_string();

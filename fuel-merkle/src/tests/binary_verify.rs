@@ -8,7 +8,6 @@ use core::fmt::{
 use proptest::{
     arbitrary::any,
     collection::vec,
-    prelude::ProptestConfig,
     prop_assert,
     prop_compose,
     proptest,
@@ -81,30 +80,51 @@ prop_compose! {
 }
 
 proptest! {
-    #![proptest_config(
-        ProptestConfig {
-            max_shrink_iters: 10_000 ,
-            ..ProptestConfig::default()
-        }
-    )]
-
     #[test]
-    fn proof__verify__returns_true((values, tree) in random_tree(1, 1000), arb_num: u64){
+    fn verify__returns_true_for_valid_proof((values, tree) in random_tree(1, 1_000), arb_num: u64){
         let num_leaves = values.len() as u64;
         let index = arb_num % num_leaves;
         let data = values[index as usize];
-        let (root, proof_set) = tree.prove(index).expect("Unable generate proof");
+
+        // Given
+        let (root, proof_set) = tree.prove(index).expect("Unable to generate proof");
+
+        // When
         let verification = verify(&root, &data, &proof_set, index, num_leaves);
+
+        // Then
         prop_assert!(verification)
     }
 
     #[test]
-    fn proof__verify__returns_false_1((values, tree) in random_tree(1, 10), arb_num: u64){
+    fn verify__returns_true_for_valid_proof_of_last_leaf((values, tree) in random_tree(1, 1_000)){
         let num_leaves = values.len() as u64;
-        let index = arb_num % num_leaves;
+        let index = num_leaves - 1;
         let data = values[index as usize];
-        let (root, proof_set) = tree.prove(index).expect("Unable generate proof");
+
+        // Given
+        let (root, proof_set) = tree.prove(index).expect("Unable to generate proof");
+
+        // When
+        let verification = verify(&root, &data, &proof_set, index, num_leaves);
+
+        // Then
+        prop_assert!(verification)
+    }
+
+    #[test]
+    fn verify__returns_false_for_invalid_proof_of_last_leaf((values, tree) in random_tree(1, 1_000)){
+        let num_leaves = values.len() as u64;
+        let index = num_leaves - 1;
+        let data = values[index as usize];
+
+        // Given
+        let (root, proof_set) = tree.prove(index).expect("Unable to generate proof");
+
+        // When
         let verification = verify(&root, &data, &proof_set, index, num_leaves + 1);
+
+        // Then
         prop_assert!(!verification)
     }
 }

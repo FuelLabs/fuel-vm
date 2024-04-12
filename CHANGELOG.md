@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- [#721](https://github.com/FuelLabs/fuel-vm/pull/721): Added additional logic to the BMT proof verification algorithm to check the length of the provided proof set against the index provided in the proof.
+
 #### Breaking
 
 - [#712](https://github.com/FuelLabs/fuel-vm/pull/712): The `Interpreter` supports the processing of the `Upgrade` transaction. The change affects `InterpreterStorage`, adding 5 new methods that must be implemented.

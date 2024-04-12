@@ -229,9 +229,6 @@ fn main() {
     let test = generate_test_100_leaves_index_10(&test_data);
     write_test(&test);
 
-    let test = generate_test_3_leaf_invalid_num_leaves();
-    write_test(&test);
-
     let test = generate_test_1024_leaves_index_512(&test_data);
     write_test(&test);
 

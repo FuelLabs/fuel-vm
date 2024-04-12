@@ -32,7 +32,7 @@ fn test_params() -> ConsensusParameters {
 fn valid_upload_transaction() -> TransactionBuilder<Upload> {
     let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
         .expect("Should be able to split bytecode");
-    let subsection = subsections[0].clone();
+    let subsection = subsections.last().unwrap().clone();
     let mut builder = TransactionBuilder::upload(UploadBody {
         root: subsection.root,
         witness_index: 0,
@@ -185,7 +185,11 @@ fn check__not_set_witness_limit_success() {
 fn check__set_witness_limit_for_empty_witness_success() {
     // Given
     let block_height = 1000.into();
-    let limit = SUBSECTION_SIZE + Signature::LEN + 2 * vec![0u8; 0].size_static();
+    let subsection_size = valid_upload_transaction()
+        .finalize()
+        .witnesses()
+        .size_dynamic();
+    let limit = subsection_size + Signature::LEN + vec![0u8; 0].size_static();
     let tx = valid_upload_transaction()
         .witness_limit(limit as u64)
         .add_witness(vec![0; Signature::LEN].into())
@@ -199,9 +203,13 @@ fn check__set_witness_limit_for_empty_witness_success() {
 }
 
 #[test]
-fn script_set_witness_limit_less_than_witness_data_size_fails() {
+fn check__set_witness_limit_less_than_witness_data_size_fails() {
     let block_height = 1000.into();
-    let limit = SUBSECTION_SIZE + Signature::LEN + 2 * vec![0u8; 0].size_static();
+    let subsection_size = valid_upload_transaction()
+        .finalize()
+        .witnesses()
+        .size_dynamic();
+    let limit = subsection_size + Signature::LEN + vec![0u8; 0].size_static();
 
     // Given
     let failing_limit = limit - 1;
@@ -679,7 +687,6 @@ fn check__errors_when_subsection_index_doesnt_match() {
 }
 
 // TODO: Remove `#[ignore]` when https://github.com/FuelLabs/fuel-vm/issues/716 is resolved
-#[ignore]
 #[test]
 fn check__errors_when_subsections_number_doesnt_match() {
     let block_height = 1000.into();

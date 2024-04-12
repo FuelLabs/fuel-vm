@@ -97,8 +97,24 @@ proptest! {
         prop_assert!(verification)
     }
 
-        #[test]
-    fn verify__returns_false_for_invalid_proof((values, tree) in random_tree(1, 1_000), arb_num: usize, proof_set: ProofSet){
+    #[test]
+    fn verify__returns_false_for_invalid_root((values, tree) in random_tree(1, 1_000), arb_num: usize, root: Bytes32){
+        let num_leaves = values.len();
+        let index = arb_num % num_leaves;
+        let data = values[index];
+
+        // Given
+        let (_, proof_set) = tree.prove(index  as u64).expect("Unable to generate proof");
+
+        // When
+        let verification = verify(&root, &data, &proof_set, index as u64, num_leaves  as u64);
+
+        // Then
+        prop_assert!(!verification)
+    }
+
+    #[test]
+    fn verify__returns_false_for_invalid_proof_set((values, tree) in random_tree(1, 1_000), arb_num: usize, proof_set: ProofSet){
         let num_leaves = values.len();
         let index = arb_num % num_leaves;
         let data = values[index];

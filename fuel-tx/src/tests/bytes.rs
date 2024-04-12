@@ -909,7 +909,7 @@ fn upgrade_input_coin_data_offset() {
 }
 
 #[test]
-fn upload_input_coin_data_offset() {
+fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let maturity = 10.into();
@@ -965,6 +965,7 @@ fn upload_input_coin_data_offset() {
     for inputs in inputs.iter() {
         for outputs in outputs.iter() {
             for witnesses in witnesses.iter() {
+                // Given
                 let mut inputs = inputs.clone();
                 let offset = inputs.len();
                 inputs.push(input_coin.clone());
@@ -979,10 +980,12 @@ fn upload_input_coin_data_offset() {
                     witnesses.clone(),
                 );
 
+                // WHen
                 let mut tx_p = tx.clone();
                 tx_p.precompute(&Default::default())
                     .expect("Should be able to calculate cache");
 
+                // Then
                 let bytes = tx.to_bytes();
                 let (offset, len) = tx
                     .inputs_predicate_offset_at(offset)

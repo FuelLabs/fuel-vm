@@ -1310,7 +1310,8 @@ mod tests {
     }
 
     #[test]
-    fn upload_metered_data_includes_witnesses() {
+    fn upload_metered_data_includes_witness() {
+        let witness = [0u8; 64].to_vec();
         let tx_with_no_witnesses = Transaction::upload(
             Default::default(),
             Default::default(),
@@ -1323,11 +1324,11 @@ mod tests {
             Default::default(),
             vec![],
             vec![],
-            vec![[0u8; 64].to_vec().into()],
+            vec![witness.clone().into()],
         );
         assert_eq!(
             tx_with_witnesses.metered_bytes_size(),
-            tx_with_no_witnesses.metered_bytes_size() + 8 /* Witness size */ + 64
+            tx_with_no_witnesses.metered_bytes_size() + witness.size()
         );
     }
 }

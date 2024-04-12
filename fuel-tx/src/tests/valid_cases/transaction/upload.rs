@@ -241,7 +241,7 @@ fn check__no_max_fee_fails() {
 }
 
 #[test]
-fn max_iow_reached_max_inputs() {
+fn check__reached_max_inputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let mut builder = valid_upload_transaction();
@@ -277,7 +277,7 @@ fn max_iow_reached_max_inputs() {
 }
 
 #[test]
-fn max_iow_reached_max_outputs() {
+fn check__reached_max_outputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let mut builder = valid_upload_transaction();
@@ -313,7 +313,7 @@ fn max_iow_reached_max_outputs() {
 }
 
 #[test]
-fn max_iow_reached_max_witnesses() {
+fn check__reached_max_witnesses() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let mut builder = valid_upload_transaction();
@@ -686,7 +686,6 @@ fn check__errors_when_subsection_index_doesnt_match() {
     );
 }
 
-// TODO: Remove `#[ignore]` when https://github.com/FuelLabs/fuel-vm/issues/716 is resolved
 #[test]
 fn check__errors_when_subsections_number_doesnt_match() {
     let block_height = 1000.into();

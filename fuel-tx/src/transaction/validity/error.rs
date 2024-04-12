@@ -155,6 +155,6 @@ pub enum ValidityError {
     },
     /// The given coins is too large
     BalanceOverflow,
-    /// The given gas costs is are too large
+    /// The given gas costs are too large
     GasCostsCoinsOverflow,
 }

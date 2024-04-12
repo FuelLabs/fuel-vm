@@ -384,7 +384,7 @@ macro_rules! op_constructor {
     };
 }
 
-// Generate approriate `new` constructor for the instruction
+// Generate appropriate `new` constructor for the instruction
 macro_rules! op_new {
     // Generate a constructor based on the field layout.
     ($Op:ident $ra:ident : RegId) => {
@@ -999,7 +999,7 @@ macro_rules! decl_op_struct {
     () => {};
 }
 
-/// This macro is intentionaly private. See the module-level documentation for a thorough
+/// This macro is intentionally private. See the module-level documentation for a thorough
 /// explanation of how this macro works.
 macro_rules! impl_instructions {
     // Define the `Opcode` enum.

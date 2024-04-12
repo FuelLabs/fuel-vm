@@ -23,7 +23,7 @@ use fuel_types::{
 use alloc::vec::Vec;
 use core::iter;
 
-/// The target size of Merkle tree leaves in bytes. Contract code will will be divided
+/// The target size of Merkle tree leaves in bytes. Contract code will be divided
 /// into chunks of this size and pushed to the Merkle tree.
 ///
 /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md

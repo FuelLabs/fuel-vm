@@ -273,6 +273,7 @@ impl FormatValidityChecks for Transaction {
             Self::Create(tx) => tx.check_signatures(chain_id),
             Self::Mint(tx) => tx.check_signatures(chain_id),
             Self::Upgrade(tx) => tx.check_signatures(chain_id),
+            Self::Upload(tx) => tx.check_signatures(chain_id),
         }
     }
 
@@ -290,6 +291,9 @@ impl FormatValidityChecks for Transaction {
             }
             Self::Mint(tx) => tx.check_without_signatures(block_height, consensus_params),
             Self::Upgrade(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
+            }
+            Self::Upload(tx) => {
                 tx.check_without_signatures(block_height, consensus_params)
             }
         }

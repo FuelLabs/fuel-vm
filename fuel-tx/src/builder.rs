@@ -29,6 +29,8 @@ use crate::{
     TxPointer,
     Upgrade,
     UpgradePurpose,
+    Upload,
+    UploadBody,
     Witness,
 };
 
@@ -171,6 +173,20 @@ impl TransactionBuilder<Upgrade> {
     pub fn upgrade(purpose: UpgradePurpose) -> Self {
         let tx = Upgrade {
             body: UpgradeBody { purpose },
+            policies: Policies::new().with_max_fee(0),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            metadata: None,
+        };
+        Self::with_tx(tx)
+    }
+}
+
+impl TransactionBuilder<Upload> {
+    pub fn upload(body: UploadBody) -> Self {
+        let tx = Upload {
+            body,
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),

@@ -107,6 +107,11 @@ pub enum ValidityError {
     TransactionUpgradeConsensusParametersSerialization,
     /// The `Upgrade` transaction's consensus parameters deserialization failed.
     TransactionUpgradeConsensusParametersDeserialization,
+    /// The verification of the bytecode root of the `Upload` transaction failed.
+    TransactionUploadRootVerificationFailed,
+    /// The total number of bytecode subsections in the `Upload` transaction exceeds the
+    /// limit.
+    TransactionUploadTooManyBytecodeSubsections,
     /// The transaction exceeded the size limit.
     TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded

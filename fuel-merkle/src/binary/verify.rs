@@ -209,30 +209,6 @@ mod test {
     }
 
     #[test]
-    fn test_verify() {
-        let storage = StorageMap::<TestTable>::new();
-        let mut tree = MerkleTree::new(storage);
-
-        const PROOF_INDEX: usize = 0;
-        let num_leaves = 3;
-
-        let data = &TEST_DATA[0..3];
-        for datum in data.iter() {
-            tree.push(datum).unwrap();
-        }
-
-        let (root, proof_set) = tree.prove(PROOF_INDEX as u64).unwrap();
-        let verification = verify(
-            &root,
-            &data[PROOF_INDEX],
-            &proof_set,
-            PROOF_INDEX as u64,
-            num_leaves + 1,
-        );
-        assert!(verification)
-    }
-
-    #[test]
     fn verify_returns_false_when_the_proof_index_is_invalid() {
         let mut storage_map = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage_map);

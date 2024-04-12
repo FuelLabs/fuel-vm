@@ -14,16 +14,21 @@ fn path_length_from_key(key: u64, num_leaves: u64) -> usize {
     while (1 << path_length) < num_leaves {
         path_length += 1
     }
-    let num_leaves_left_sub_tree = 1 << (path_length - 1);
-    if key < num_leaves_left_sub_tree {
+    let num_leaves_left_subtree = 1 << (path_length - 1);
+
+    // If leaf is in left subtree, path length is full height of left subtree
+    if key < num_leaves_left_subtree {
         path_length
-    } else if num_leaves_left_sub_tree == 1 || num_leaves - num_leaves_left_sub_tree <= 1
-    {
+    }
+    // Otherwise, if left or right subtree has only one leaf, path has one additional step
+    else if num_leaves_left_subtree == 1 || num_leaves - num_leaves_left_subtree <= 1 {
         1
-    } else {
+    }
+    // Otherwise, add 1 to height and recurse into right subtree
+    else {
         1 + path_length_from_key(
-            key - num_leaves_left_sub_tree,
-            num_leaves - num_leaves_left_sub_tree,
+            key - num_leaves_left_subtree,
+            num_leaves - num_leaves_left_subtree,
         )
     }
 }

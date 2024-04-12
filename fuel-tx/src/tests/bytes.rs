@@ -908,6 +908,7 @@ fn upgrade_input_coin_data_offset() {
     }
 }
 
+#[allow(non_snake_case)]
 #[test]
 fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
     let rng = &mut StdRng::seed_from_u64(8586);

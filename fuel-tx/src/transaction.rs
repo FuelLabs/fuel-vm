@@ -1222,13 +1222,14 @@ pub mod typescript {
     ts_methods!(Upload, crate::Transaction::Upload);
 }
 
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn script_metered_data_includes_witnesses() {
-        // test script
+    fn script__metered_bytes_size___includes_witnesses() {
+        let witness = [0u8; 64].to_vec();
         let script_with_no_witnesses = Transaction::script(
             Default::default(),
             vec![],
@@ -1245,18 +1246,18 @@ mod tests {
             Default::default(),
             vec![],
             vec![],
-            vec![[0u8; 64].to_vec().into()],
+            vec![witness.clone().into()],
         );
 
         assert_eq!(
             script_with_witnesses.metered_bytes_size(),
-            script_with_no_witnesses.metered_bytes_size()
-                + script_with_witnesses.witnesses.size_dynamic()
+            script_with_no_witnesses.metered_bytes_size() + witness.size()
         );
     }
 
     #[test]
-    fn create_metered_data_includes_witnesses() {
+    fn create__metered_bytes_size___includes_witnesses() {
+        let witness = [0u8; 64].to_vec();
         let create_with_no_witnesses = Transaction::create(
             0,
             Default::default(),
@@ -1273,17 +1274,17 @@ mod tests {
             vec![],
             vec![],
             vec![],
-            vec![[0u8; 64].to_vec().into()],
+            vec![witness.clone().into()],
         );
         assert_eq!(
             create_with_witnesses.metered_bytes_size(),
-            create_with_no_witnesses.metered_bytes_size()
-                + create_with_witnesses.witnesses.size_dynamic()
+            create_with_no_witnesses.metered_bytes_size() + witness.size()
         );
     }
 
     #[test]
-    fn upgrade_metered_data_includes_witnesses() {
+    fn upgrade__metered_bytes_size___includes_witnesses() {
+        let witness = [0u8; 64].to_vec();
         let tx_with_no_witnesses = Transaction::upgrade(
             UpgradePurpose::StateTransition {
                 bytecode_hash: Default::default(),
@@ -1300,17 +1301,16 @@ mod tests {
             Default::default(),
             vec![],
             vec![],
-            vec![[0u8; 64].to_vec().into()],
+            vec![witness.clone().into()],
         );
         assert_eq!(
             tx_with_witnesses.metered_bytes_size(),
-            tx_with_no_witnesses.metered_bytes_size()
-                + tx_with_witnesses.witnesses.size_dynamic()
+            tx_with_no_witnesses.metered_bytes_size() + witness.size()
         );
     }
 
     #[test]
-    fn upload_metered_data_includes_witness() {
+    fn upload__metered_bytes_size__includes_witness() {
         let witness = [0u8; 64].to_vec();
         let tx_with_no_witnesses = Transaction::upload(
             Default::default(),

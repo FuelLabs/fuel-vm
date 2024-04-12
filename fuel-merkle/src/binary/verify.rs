@@ -9,22 +9,16 @@ use crate::{
     },
 };
 
-fn get_starting_bit(num_leaves: u64) -> u64 {
-    let mut starting_bit = 0;
-    while (1 << starting_bit) < num_leaves {
-        starting_bit += 1
+fn path_length_from_key(key: u64, num_leaves: u64) -> usize {
+    let mut path_length = 0;
+    while (1 << path_length) < num_leaves {
+        path_length += 1
     }
-    return 256 - starting_bit
-}
-
-fn path_length_from_key(key: u64, num_leaves: u64) -> u64 {
-    let path_length = 256 - get_starting_bit(num_leaves);
     let num_leaves_left_sub_tree = 1 << (path_length - 1);
-    return if key <= num_leaves_left_sub_tree - 1 {
+    if key < num_leaves_left_sub_tree {
         path_length
-    } else if num_leaves_left_sub_tree == 1 {
-        1
-    } else if num_leaves - num_leaves_left_sub_tree <= 1 {
+    } else if num_leaves_left_sub_tree == 1 || num_leaves - num_leaves_left_sub_tree <= 1
+    {
         1
     } else {
         1 + path_length_from_key(
@@ -44,10 +38,10 @@ pub fn verify<T: AsRef<[u8]>>(
     let mut sum = leaf_sum(data.as_ref());
 
     if num_leaves <= 1 {
-        if proof_set.len() != 0 {
+        if !proof_set.is_empty() {
             return false;
         }
-    } else if proof_set.len() != path_length_from_key(proof_index, num_leaves) as usize {
+    } else if proof_set.len() != path_length_from_key(proof_index, num_leaves) {
         return false;
     }
 

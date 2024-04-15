@@ -354,7 +354,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     registers.system_registers.ggas = RegMut::new(&mut reg.ggas);
     let mut runtime_balances =
         RuntimeBalances::try_from_iter(balance).expect("Balance should be valid");
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     for (id, code) in storage_contract {
         StorageAsMut::storage::<ContractsRawCode>(&mut storage)
             .write(&id, code.as_ref())
@@ -441,7 +441,7 @@ fn test_write_call_to_memory(
     len: usize,
 ) -> IoResult<Word, Infallible> {
     let frame_bytes = call_frame.to_bytes();
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let code = vec![6u8; call_frame.code_size()];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)

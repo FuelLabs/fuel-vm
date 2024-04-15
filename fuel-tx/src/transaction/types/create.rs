@@ -112,10 +112,8 @@ impl Chargeable for Create {
         let state_root_gas = gas_costs.state_root().resolve(state_root_length);
 
         // See https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md
-        let contract_id_input_length = core::mem::size_of::<Bytes4>()
-            + core::mem::size_of::<Salt>()
-            + core::mem::size_of::<Bytes32>()
-            + core::mem::size_of::<Bytes32>();
+        let contract_id_input_length =
+            Bytes4::LEN + Salt::LEN + Bytes32::LEN + Bytes32::LEN;
         let contract_id_gas = gas_costs.s256().resolve(contract_id_input_length as Word);
         let bytes = canonical::Serialize::size(self);
         // Gas required to calculate the `tx_id`.

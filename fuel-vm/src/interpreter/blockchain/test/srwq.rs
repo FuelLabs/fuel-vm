@@ -166,7 +166,7 @@ fn test_state_read_qword(
         origin_key_pointer,
         num_slots,
     } = input;
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()

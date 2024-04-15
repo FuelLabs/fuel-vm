@@ -2,25 +2,45 @@
 #![allow(non_snake_case)]
 
 use super::*;
-use crate::field::UpgradePurpose as UpgradePurposeField;
+use crate::field::{
+    BytecodeRoot,
+    BytecodeWitnessIndex,
+    ProofSet,
+    SubsectionIndex,
+    SubsectionsNumber,
+    Witnesses,
+};
 use fuel_asm::op;
-use fuel_crypto::Hasher;
 use fuel_types::BlockHeight;
+use std::ops::Deref;
 
+const SUBSECTION_SIZE: usize = 256;
+
+fn bytecode() -> Vec<u8> {
+    vec![op::ret(1); 4321].into_iter().collect::<Vec<u8>>()
+}
+
+// Creates a predicate that always is valid - returns `true`.
 fn predicate() -> Vec<u8> {
     vec![op::ret(1)].into_iter().collect::<Vec<u8>>()
 }
 
 fn test_params() -> ConsensusParameters {
-    let mut params = ConsensusParameters::default();
-    params.set_privileged_address(Input::predicate_owner(predicate()));
-    params
+    ConsensusParameters::default()
 }
 
-fn valid_upgrade_transaction() -> TransactionBuilder<Upgrade> {
-    let mut builder = TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
-        root: Default::default(),
+fn valid_upload_transaction() -> TransactionBuilder<Upload> {
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
+        .expect("Should be able to split bytecode");
+    let subsection = subsections.last().unwrap().clone();
+    let mut builder = TransactionBuilder::upload(UploadBody {
+        root: subsection.root,
+        witness_index: 0,
+        subsection_index: subsection.subsection_index,
+        subsections_number: subsection.subsections_number,
+        proof_set: subsection.proof_set,
     });
+    builder.add_witness(subsection.subsection.into());
     builder.max_fee_limit(0);
     builder.add_input(Input::coin_predicate(
         Default::default(),
@@ -32,15 +52,100 @@ fn valid_upgrade_transaction() -> TransactionBuilder<Upgrade> {
         predicate(),
         vec![],
     ));
-    builder.with_params(test_params());
 
     builder
 }
 
 #[test]
-fn valid_upgrade_transaction_can_pass_check() {
+fn split_bytecode__can_recover_bytecode() {
+    // Given
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
+        .expect("Should be able to split bytecode");
+    let expected_root = subsections[0].root;
+    let len = subsections.len();
+    let mut recovered_bytecode = vec![];
+    let mut recovered_merkle = fuel_merkle::binary::in_memory::MerkleTree::new();
+
+    // When
+    for (i, subsection) in subsections.into_iter().enumerate() {
+        recovered_merkle.push(&subsection.subsection);
+        recovered_bytecode.extend_from_slice(&subsection.subsection);
+
+        // Then
+        assert_eq!(expected_root, subsection.root);
+        assert!(!subsection.subsection.is_empty());
+        assert_eq!(i, subsection.subsection_index as usize);
+        assert_eq!(len, subsection.subsections_number as usize);
+        assert!(!subsection.proof_set.is_empty());
+    }
+
+    // Then
+    assert_eq!(bytecode(), recovered_bytecode);
+    assert_eq!(expected_root, recovered_merkle.root().into());
+}
+
+#[test]
+fn split_bytecode__generated_subsections_are_provable() {
+    // Given
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
+        .expect("Should be able to split bytecode");
+
+    for subsection in subsections.into_iter() {
+        // When
+        let proof_set = subsection
+            .proof_set
+            .iter()
+            .map(|p| (*p).into())
+            .collect::<Vec<_>>();
+        let result = fuel_merkle::binary::verify(
+            subsection.root.deref(),
+            &subsection.subsection,
+            &proof_set,
+            subsection.subsection_index as u64,
+            subsection.subsections_number as u64,
+        );
+
+        // Then
+        assert!(result);
+    }
+}
+
+#[test]
+fn split_bytecode__generates_valid_transactions() {
+    let subsections = UploadSubsection::split_bytecode(&bytecode(), SUBSECTION_SIZE)
+        .expect("Should be able to split bytecode");
+
+    for subsection in subsections.into_iter() {
+        // Given
+        let tx = Transaction::upload_from_subsection(
+            subsection,
+            Policies::new().with_max_fee(0),
+            vec![Input::coin_predicate(
+                Default::default(),
+                Input::predicate_owner(predicate()),
+                Default::default(),
+                AssetId::BASE,
+                Default::default(),
+                Default::default(),
+                predicate(),
+                vec![],
+            )],
+            vec![],
+            vec![],
+        );
+
+        // When
+        let result = tx.check(1000.into(), &test_params());
+
+        // Then
+        assert_eq!(Ok(()), result);
+    }
+}
+
+#[test]
+fn valid_upload_transaction_can_pass_check() {
     let block_height: BlockHeight = 1000.into();
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .finalize()
         .check(block_height, &test_params());
     assert_eq!(tx, Ok(()));
@@ -52,7 +157,7 @@ fn maturity() {
     let failing_block_height = block_height.succ().unwrap();
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .maturity(failing_block_height)
         .finalize_as_transaction();
 
@@ -67,7 +172,7 @@ fn maturity() {
 fn check__not_set_witness_limit_success() {
     // Given
     let block_height = 1000.into();
-    let tx = valid_upgrade_transaction().finalize_as_transaction();
+    let tx = valid_upload_transaction().finalize_as_transaction();
 
     // When
     let result = tx.check(block_height, &test_params());
@@ -80,8 +185,12 @@ fn check__not_set_witness_limit_success() {
 fn check__set_witness_limit_for_empty_witness_success() {
     // Given
     let block_height = 1000.into();
-    let limit = Signature::LEN + vec![0u8; 0].size_static();
-    let tx = valid_upgrade_transaction()
+    let subsection_size = valid_upload_transaction()
+        .finalize()
+        .witnesses()
+        .size_dynamic();
+    let limit = subsection_size + Signature::LEN + vec![0u8; 0].size_static();
+    let tx = valid_upload_transaction()
         .witness_limit(limit as u64)
         .add_witness(vec![0; Signature::LEN].into())
         .finalize_as_transaction();
@@ -90,19 +199,23 @@ fn check__set_witness_limit_for_empty_witness_success() {
     let result = tx.check(block_height, &test_params());
 
     // Then
-    assert!(result.is_ok());
+    assert_eq!(Ok(()), result);
 }
 
 #[test]
-fn script_set_witness_limit_less_than_witness_data_size_fails() {
+fn check__set_witness_limit_less_than_witness_data_size_fails() {
     let block_height = 1000.into();
-    let limit = Signature::LEN /* witness from random fee */ + vec![0u8; 0].size_static();
+    let subsection_size = valid_upload_transaction()
+        .finalize()
+        .witnesses()
+        .size_dynamic();
+    let limit = subsection_size + Signature::LEN + vec![0u8; 0].size_static();
 
     // Given
     let failing_limit = limit - 1;
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .witness_limit(failing_limit as u64)
-        .add_random_fee_input()
+        .add_witness(vec![0; Signature::LEN].into())
         .finalize_as_transaction();
 
     // When
@@ -115,9 +228,7 @@ fn script_set_witness_limit_less_than_witness_data_size_fails() {
 #[test]
 fn check__no_max_fee_fails() {
     let block_height = 1000.into();
-    let mut tx = valid_upgrade_transaction()
-        .add_random_fee_input()
-        .finalize();
+    let mut tx = valid_upload_transaction().add_random_fee_input().finalize();
 
     // Given
     tx.policies_mut().set(PolicyType::MaxFee, None);
@@ -130,10 +241,10 @@ fn check__no_max_fee_fails() {
 }
 
 #[test]
-fn reached_max_inputs() {
+fn check__reached_max_inputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
-    let mut builder = valid_upgrade_transaction();
+    let mut builder = valid_upload_transaction();
 
     while builder.outputs().len() < test_params().tx_params().max_outputs() as usize {
         builder.add_output(Output::coin(rng.gen(), rng.gen(), AssetId::BASE));
@@ -166,10 +277,10 @@ fn reached_max_inputs() {
 }
 
 #[test]
-fn reached_max_outputs() {
+fn check__reached_max_outputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
-    let mut builder = valid_upgrade_transaction();
+    let mut builder = valid_upload_transaction();
 
     let secrets: Vec<SecretKey> = (0..test_params().tx_params().max_inputs() as usize
         - builder.inputs().len())
@@ -202,10 +313,10 @@ fn reached_max_outputs() {
 }
 
 #[test]
-fn reached_max_witnesses() {
+fn check__reached_max_witnesses() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
-    let mut builder = valid_upgrade_transaction();
+    let mut builder = valid_upload_transaction();
 
     let secrets: Vec<SecretKey> = (0..test_params().tx_params().max_inputs() as usize
         - builder.inputs().len())
@@ -247,7 +358,7 @@ fn output_change_asset_id_duplicated_output() {
 
     // Given
     let a: AssetId = rng.gen();
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
         .add_output(Output::change(rng.gen(), rng.next_u64(), a))
@@ -270,7 +381,7 @@ fn output_change_asset_id_foreign_asset() {
 
     // Given
     let c: AssetId = rng.gen();
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_output(Output::change(rng.gen(), rng.next_u64(), c))
         .finalize();
 
@@ -290,7 +401,7 @@ fn check__cannot_have_contract_input() {
     let block_height = 1000.into();
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_input(Input::contract(
             rng.gen(),
             rng.gen(),
@@ -318,7 +429,7 @@ fn check__cannot_have_coin_with_non_base_asset_id() {
     let secret = SecretKey::random(rng);
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
         .finalize_as_transaction();
 
@@ -340,7 +451,7 @@ fn check__can_have_message_coin_input() {
 
     // Given
     let empty_data = vec![];
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_unsigned_message_input(secret, rng.gen(), rng.gen(), rng.gen(), empty_data)
         .finalize_as_transaction();
 
@@ -359,7 +470,7 @@ fn check__cannot_have_message_data_input() {
 
     // Given
     let not_empty_data = vec![0x1];
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_unsigned_message_input(
             secret,
             rng.gen(),
@@ -385,7 +496,7 @@ fn check__cannot_have_variable_output() {
     let block_height = 1000.into();
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize_as_transaction();
 
@@ -405,7 +516,7 @@ fn check__cannot_have_contract_output() {
     let block_height = 1000.into();
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_output(Output::Contract(rng.gen()))
         .finalize_as_transaction();
 
@@ -425,7 +536,7 @@ fn check__cannot_have_create_contract_output() {
     let block_height = 1000.into();
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_output(Output::contract_created(rng.gen(), rng.gen()))
         .finalize_as_transaction();
 
@@ -445,7 +556,7 @@ fn check__can_have_change_output() {
     let block_height = 1000.into();
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
         .finalize_as_transaction();
 
@@ -463,7 +574,7 @@ fn check__errors_if_change_is_wrong_asset() {
 
     // Given
     let a: AssetId = rng.gen();
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),
@@ -489,7 +600,7 @@ fn check__errors_when_transactions_too_big() {
     let block_height = 1000.into();
 
     // Given
-    let tx = valid_upgrade_transaction()
+    let tx = valid_upload_transaction()
         .add_witness(vec![0; test_params().tx_params().max_size() as usize].into())
         .finalize_as_transaction();
 
@@ -501,34 +612,31 @@ fn check__errors_when_transactions_too_big() {
 }
 
 #[test]
-fn check__errors_when_owner_is_not_privileged_address() {
+fn check__errors_when_subsections_number_is_too_big() {
     let block_height = 1000.into();
-    let tx = valid_upgrade_transaction().finalize_as_transaction();
+    let tx = valid_upload_transaction().finalize();
 
     // Given
-    let mut actual_params = test_params();
-    actual_params.set_privileged_address([0; 32].into());
+    let mut params = test_params();
+    params.set_tx_params(TxParameters::default().with_max_bytecode_subsections(0));
 
     // When
-    let result = tx.check(block_height, &actual_params);
+    let result = tx.check(block_height, &params);
 
     // Then
     assert_eq!(
-        Err(ValidityError::TransactionUpgradeNoPrivilegedAddress),
+        Err(ValidityError::TransactionUploadTooManyBytecodeSubsections),
         result
     );
 }
 
 #[test]
-fn check__errors_when_consensus_parameters_invalid_witness_index() {
+fn check__errors_when_bytecode_witness_index_is_invalid() {
     let block_height = 1000.into();
-    let mut tx = valid_upgrade_transaction().finalize();
+    let mut tx = valid_upload_transaction().finalize();
 
     // Given
-    *tx.upgrade_purpose_mut() = UpgradePurpose::ConsensusParameters {
-        witness_index: u16::MAX,
-        checksum: Default::default(),
-    };
+    *tx.bytecode_witness_index_mut() = u16::MAX;
 
     // When
     let result = tx.check(block_height, &test_params());
@@ -543,78 +651,96 @@ fn check__errors_when_consensus_parameters_invalid_witness_index() {
 }
 
 #[test]
-fn check__errors_when_consensus_parameters_invalid_checksum() {
+fn check__errors_when_root_doesnt_match() {
     let block_height = 1000.into();
+    let mut tx = valid_upload_transaction().finalize();
 
     // Given
-    let mut tx = valid_upgrade_transaction()
-        .add_witness(vec![123; 1024].into())
-        .finalize();
-    *tx.upgrade_purpose_mut() = UpgradePurpose::ConsensusParameters {
-        witness_index: 0,
-        checksum: Default::default(),
-    };
+    *tx.bytecode_root_mut() = [123; 32].into();
 
     // When
     let result = tx.check(block_height, &test_params());
 
     // Then
     assert_eq!(
-        Err(ValidityError::TransactionUpgradeConsensusParametersChecksumMismatch),
+        Err(ValidityError::TransactionUploadRootVerificationFailed),
         result
     );
 }
 
 #[test]
-fn check__errors_when_consensus_parameters_unable_decode_consensus_parameters() {
+fn check__errors_when_subsection_index_doesnt_match() {
     let block_height = 1000.into();
-    let serialized_consensus_parameters = vec![123; 1024];
+    let mut tx = valid_upload_transaction().finalize();
 
     // Given
-    let mut tx = valid_upgrade_transaction()
-        .add_witness(serialized_consensus_parameters.clone().into())
-        .finalize();
-    *tx.upgrade_purpose_mut() = UpgradePurpose::ConsensusParameters {
-        witness_index: 0,
-        checksum: Hasher::hash(serialized_consensus_parameters.as_slice()),
-    };
+    *tx.subsection_index_mut() = u16::MAX;
 
     // When
     let result = tx.check(block_height, &test_params());
 
     // Then
     assert_eq!(
-        Err(ValidityError::TransactionUpgradeConsensusParametersDeserialization),
+        Err(ValidityError::TransactionUploadRootVerificationFailed),
         result
     );
 }
 
 #[test]
-fn check__errors_when_consensus_parameters_different_than_calculated_metadata() {
+fn check__errors_when_subsections_number_doesnt_match() {
     let block_height = 1000.into();
-    let serialized_consensus_parameters = postcard::to_allocvec(&test_params()).unwrap();
+    let mut tx = valid_upload_transaction().finalize();
 
     // Given
-    // `valid_upgrade_transaction` already returns a transaction with calculated metadata.
-    // Setting a new `UpgradePurpose` below will cause mismatch between the calculated
-    // metadata and the actual metadata.
-    let mut tx = valid_upgrade_transaction()
-        .add_witness(serialized_consensus_parameters.clone().into())
-        .finalize();
-    *tx.upgrade_purpose_mut() = UpgradePurpose::ConsensusParameters {
-        witness_index: 0,
-        checksum: Hasher::hash(serialized_consensus_parameters.as_slice()),
-    };
+    *tx.subsections_number_mut() = *tx.subsections_number() + 1;
 
     // When
     let result = tx.check(block_height, &test_params());
 
     // Then
-    assert_eq!(Err(ValidityError::TransactionMetadataMismatch), result);
+    assert_eq!(
+        Err(ValidityError::TransactionUploadRootVerificationFailed),
+        result
+    );
 }
 
-// The module tests that `Upgrade` transaction can work with different input types.
-mod check_inputs {
+#[test]
+fn check__errors_when_proof_set_doesnt_match() {
+    let block_height = 1000.into();
+    let mut tx = valid_upload_transaction().finalize();
+
+    // Given
+    tx.proof_set_mut().clear();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(
+        Err(ValidityError::TransactionUploadRootVerificationFailed),
+        result
+    );
+}
+
+#[test]
+fn check__errors_when_witness_doesnt_match() {
+    let block_height = 1000.into();
+    let mut tx = valid_upload_transaction().finalize();
+
+    // Given
+    tx.witnesses_mut()[0].as_vec_mut().push(0);
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(
+        Err(ValidityError::TransactionUploadRootVerificationFailed),
+        result
+    );
+}
+
+mod inputs {
     use super::*;
     use itertools::Itertools;
 
@@ -626,7 +752,7 @@ mod check_inputs {
         let owner: Address = Input::predicate_owner(&predicate);
 
         // Given
-        let tx = valid_upgrade_transaction()
+        let tx = valid_upload_transaction()
             .add_input(Input::coin_predicate(
                 rng.gen(),
                 owner,
@@ -654,7 +780,7 @@ mod check_inputs {
         let incorrect_owner: Address = [1; 32].into();
 
         // Given
-        let tx = valid_upgrade_transaction()
+        let tx = valid_upload_transaction()
             .add_input(Input::coin_predicate(
                 rng.gen(),
                 incorrect_owner,
@@ -682,7 +808,7 @@ mod check_inputs {
         let owner: Address = Input::predicate_owner(&predicate);
 
         // Given
-        let tx = valid_upgrade_transaction()
+        let tx = valid_upload_transaction()
             .add_input(Input::message_coin_predicate(
                 rng.gen(),
                 owner,
@@ -709,7 +835,7 @@ mod check_inputs {
         let incorrect_owner: Address = [1; 32].into();
 
         // Given
-        let tx = valid_upgrade_transaction()
+        let tx = valid_upload_transaction()
             .add_input(Input::message_coin_predicate(
                 rng.gen(),
                 incorrect_owner,

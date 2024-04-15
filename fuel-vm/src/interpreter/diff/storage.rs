@@ -6,6 +6,7 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
+use fuel_tx::ConsensusParameters;
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -18,6 +19,8 @@ use crate::storage::{
     ContractsStateData,
     ContractsStateKey,
     InterpreterStorage,
+    UploadedBytecode,
+    UploadedBytecodes,
 };
 
 use super::{
@@ -32,6 +35,7 @@ pub(super) enum StorageDelta {
     State(MappableDelta<ContractsStateKey, ContractsStateData>),
     Assets(MappableDelta<ContractsAssetKey, u64>),
     RawCode(MappableDelta<ContractId, Contract>),
+    UploadedBytecode(MappableDelta<Bytes32, UploadedBytecode>),
 }
 
 /// The set of states that are recorded.
@@ -40,6 +44,7 @@ pub(super) enum StorageState {
     State(MappableState<ContractsStateKey, ContractsStateData>),
     Assets(MappableState<ContractsAssetKey, u64>),
     RawCode(MappableState<ContractId, Contract>),
+    UploadedBytecode(MappableState<Bytes32, UploadedBytecode>),
 }
 
 #[derive(Debug)]
@@ -118,6 +123,10 @@ where
             from: HashMap::new(),
             to: HashMap::new(),
         };
+        let mut uploaded_bytecode = Delta {
+            from: HashMap::new(),
+            to: HashMap::new(),
+        };
 
         for delta in self.storage.1.iter() {
             match delta {
@@ -130,11 +139,19 @@ where
                 StorageDelta::RawCode(delta) => {
                     mappable_delta_to_hashmap(&mut contracts_raw_code, delta)
                 }
+                StorageDelta::UploadedBytecode(delta) => {
+                    mappable_delta_to_hashmap(&mut uploaded_bytecode, delta)
+                }
             }
         }
         storage_state_to_changes(&mut diff, contracts_state, StorageState::State);
         storage_state_to_changes(&mut diff, contracts_assets, StorageState::Assets);
         storage_state_to_changes(&mut diff, contracts_raw_code, StorageState::RawCode);
+        storage_state_to_changes(
+            &mut diff,
+            uploaded_bytecode,
+            StorageState::UploadedBytecode,
+        );
         diff
     }
 }
@@ -202,6 +219,16 @@ where
                                 &mut self.storage,
                                 key,
                                 value.as_ref(),
+                            )
+                            .unwrap();
+                        }
+                    }
+                    StorageState::UploadedBytecode(MappableState { key, value }) => {
+                        if let Some(value) = value {
+                            StorageMutate::<UploadedBytecodes>::insert(
+                                &mut self.storage,
+                                key,
+                                value,
                             )
                             .unwrap();
                         }
@@ -395,6 +422,14 @@ where
         self.0.block_height()
     }
 
+    fn consensus_parameters_version(&self) -> Result<u32, Self::DataError> {
+        self.0.consensus_parameters_version()
+    }
+
+    fn state_transition_version(&self) -> Result<u32, Self::DataError> {
+        self.0.state_transition_version()
+    }
+
     fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         self.0.timestamp(height)
     }
@@ -405,6 +440,23 @@ where
 
     fn coinbase(&self) -> Result<fuel_types::ContractId, Self::DataError> {
         self.0.coinbase()
+    }
+
+    fn set_consensus_parameters(
+        &mut self,
+        version: u32,
+        consensus_parameters: &ConsensusParameters,
+    ) -> Result<Option<ConsensusParameters>, Self::DataError> {
+        self.0
+            .set_consensus_parameters(version, consensus_parameters)
+    }
+
+    fn set_state_transition_bytecode(
+        &mut self,
+        version: u32,
+        hash: &Bytes32,
+    ) -> Result<Option<Bytes32>, Self::DataError> {
+        self.0.set_state_transition_bytecode(version, hash)
     }
 
     fn contract_state_range(
@@ -480,6 +532,24 @@ impl StorageType for ContractsRawCode {
 
     fn record_remove(key: &ContractId, value: Contract) -> StorageDelta {
         StorageDelta::RawCode(MappableDelta::Remove(*key, value))
+    }
+}
+
+impl StorageType for UploadedBytecodes {
+    fn record_insert(
+        key: &Bytes32,
+        value: &UploadedBytecode,
+        existing: Option<UploadedBytecode>,
+    ) -> StorageDelta {
+        StorageDelta::UploadedBytecode(MappableDelta::Insert(
+            *key,
+            value.clone(),
+            existing,
+        ))
+    }
+
+    fn record_remove(key: &Bytes32, value: UploadedBytecode) -> StorageDelta {
+        StorageDelta::UploadedBytecode(MappableDelta::Remove(*key, value))
     }
 }
 

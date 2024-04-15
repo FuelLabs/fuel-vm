@@ -67,7 +67,7 @@ fn test_state_read_word(
     insert: impl Into<Option<Word>>,
     key: Word,
 ) -> Result<(Word, Word), RuntimeError<Infallible>> {
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
@@ -137,7 +137,7 @@ fn test_state_write_word(
     insert: bool,
     key: Word,
 ) -> Result<Word, RuntimeError<Infallible>> {
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);

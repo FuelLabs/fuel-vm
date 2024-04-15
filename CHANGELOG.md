@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Breaking
 
 - [#719](https://github.com/FuelLabs/fuel-vm/pull/719): Fix overflow in `LDC` instruction when contract size with padding would overflow.
+- [#715](https://github.com/FuelLabs/fuel-vm/pull/715): The `Interpreter` supports the processing of the `Upload` transaction. The change affects `InterpreterStorage`, adding `StorageMutate<UploadedBytes>` constrain.
+- [#714](https://github.com/FuelLabs/fuel-vm/pull/714): The change adds a new `Upload` transaction that allows uploading huge byte code on chain subsection by subsection. This transaction is chargeable and is twice as expensive as the `Create` transaction. Anyone can submit this transaction.
+- [#712](https://github.com/FuelLabs/fuel-vm/pull/712): The `Interpreter` supports the processing of the `Upgrade` transaction. The change affects `InterpreterStorage`, adding 5 new methods that must be implemented.
 - [#707](https://github.com/FuelLabs/fuel-vm/pull/707): The change adds a new `Upgrade` transaction that allows upgrading either consensus parameters or state transition function used by the network to produce future blocks.
     The purpose of the upgrade is defined by the `Upgrade Purpose` type:
     
@@ -30,10 +33,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
         },
         /// The upgrade is performed to change the state transition function.
         StateTransition {
-            /// The hash of the new bytecode of the state transition function.
+            /// The Merkle root of the new bytecode of the state transition function.
             /// The bytecode must be present on the blockchain(should be known by the
             /// network) at the moment of inclusion of this transaction.
-            bytecode_hash: Bytes32,
+            root: Bytes32,
         },
     }
     ```
@@ -64,6 +67,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#714](https://github.com/FuelLabs/fuel-vm/pull/714): Added `max_bytecode_subsections` field to the `TxParameters` to limit the number of subsections that can be uploaded.
 - [#707](https://github.com/FuelLabs/fuel-vm/pull/707): Side small breaking for tests changes from the `Upgrade` transaction:
   - Moved `fuel-tx-test-helpers` logic into the `fuel_tx::test_helpers` module.
   - Added a new rule for `Create` transaction: all inputs should use base asset otherwise it returns `TransactionInputContainsNonBaseAssetId` error.

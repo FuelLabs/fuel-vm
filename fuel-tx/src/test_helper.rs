@@ -59,6 +59,9 @@ mod use_std {
         TransactionBuilder,
         Upgrade,
         UpgradePurpose,
+        Upload,
+        UploadBody,
+        UploadSubsection,
     };
     use core::marker::PhantomData;
     use fuel_crypto::{
@@ -130,6 +133,7 @@ mod use_std {
                         Transaction::Create(_) => (),
                         Transaction::Mint(_) => (),
                         Transaction::Upgrade(_) => (),
+                        Transaction::Upload(_) => (),
                     })
                     .unwrap_or(());
 
@@ -387,7 +391,7 @@ mod use_std {
 
             let purpose = match variant {
                 0 => UpgradePurpose::StateTransition {
-                    bytecode_hash: self.rng.gen(),
+                    root: self.rng.gen(),
                 },
                 1 => UpgradePurpose::ConsensusParameters {
                     witness_index: 0,
@@ -400,6 +404,39 @@ mod use_std {
 
             let mut builder = TransactionBuilder::<Upgrade>::upgrade(purpose);
             builder.add_witness(consensus_params.into());
+
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
+        }
+    }
+
+    impl<R> TransactionFactory<R, Upload>
+    where
+        R: Rng + CryptoRng,
+    {
+        pub fn transaction(&mut self) -> Upload {
+            self.transaction_with_keys().0
+        }
+
+        pub fn transaction_with_keys(&mut self) -> (Upload, Vec<SecretKey>) {
+            let len = self.rng.gen_range(1..1024 * 1024);
+
+            let mut bytecode = alloc::vec![0u8; len];
+            self.rng.fill_bytes(bytecode.as_mut_slice());
+
+            let subsection = UploadSubsection::split_bytecode(&bytecode, len / 10)
+                .expect("Should split the bytecode")[0]
+                .clone();
+
+            let mut builder = TransactionBuilder::<Upload>::upload(UploadBody {
+                root: subsection.root,
+                witness_index: 0,
+                subsection_index: subsection.subsection_index,
+                subsections_number: subsection.subsections_number,
+                proof_set: subsection.proof_set,
+            });
+            debug_assert_eq!(builder.witnesses().len(), 0);
+            builder.add_witness(subsection.subsection.into());
 
             let keys = self.fill_transaction(&mut builder);
             (builder.finalize(), keys)
@@ -454,6 +491,17 @@ mod use_std {
         type Item = (Upgrade, Vec<SecretKey>);
 
         fn next(&mut self) -> Option<(Upgrade, Vec<SecretKey>)> {
+            Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Upload>
+    where
+        R: Rng + CryptoRng,
+    {
+        type Item = (Upload, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Upload, Vec<SecretKey>)> {
             Some(self.transaction_with_keys())
         }
     }

@@ -2,6 +2,7 @@
 #![allow(non_snake_case)]
 
 mod upgrade;
+mod upload;
 
 use super::{
     test_params,

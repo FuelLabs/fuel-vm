@@ -6,6 +6,8 @@ use crate::storage::{
     ContractsStateData,
     ContractsStateKey,
     InterpreterStorage,
+    UploadedBytecode,
+    UploadedBytecodes,
 };
 
 use fuel_crypto::Hasher;
@@ -18,7 +20,10 @@ use fuel_storage::{
     StorageSize,
     StorageWrite,
 };
-use fuel_tx::Contract;
+use fuel_tx::{
+    ConsensusParameters,
+    Contract,
+};
 use fuel_types::{
     BlockHeight,
     Bytes32,
@@ -41,6 +46,12 @@ struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
     contract_state: BTreeMap<ContractsStateKey, ContractsStateData>,
+    /// Mapping from consensus parameters version to consensus parameters.
+    consensus_parameters_versions: BTreeMap<u32, ConsensusParameters>,
+    /// Mapping from state transition bytecode root to bytecode.
+    state_transition_bytecodes: BTreeMap<Bytes32, UploadedBytecode>,
+    /// Mapping from state transition bytecode version to hash.
+    state_transition_bytecodes_versions: BTreeMap<u32, Bytes32>,
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +65,8 @@ struct MemoryStorageInner {
 pub struct MemoryStorage {
     block_height: BlockHeight,
     coinbase: ContractId,
+    consensus_parameters_version: u32,
+    state_transition_version: u32,
     memory: MemoryStorageInner,
     transacted: MemoryStorageInner,
     persisted: MemoryStorageInner,
@@ -62,9 +75,21 @@ pub struct MemoryStorage {
 impl MemoryStorage {
     /// Create a new memory storage.
     pub fn new(block_height: BlockHeight, coinbase: ContractId) -> Self {
+        Self::new_with_versions(block_height, coinbase, 0, 0)
+    }
+
+    /// Create a new memory storage with versions.
+    pub fn new_with_versions(
+        block_height: BlockHeight,
+        coinbase: ContractId,
+        consensus_parameters_version: u32,
+        state_transition_version: u32,
+    ) -> Self {
         Self {
             block_height,
             coinbase,
+            consensus_parameters_version,
+            state_transition_version,
             memory: Default::default(),
             transacted: Default::default(),
             persisted: Default::default(),
@@ -116,6 +141,45 @@ impl MemoryStorage {
     /// Set the block height of the chain
     pub fn set_block_height(&mut self, block_height: BlockHeight) {
         self.block_height = block_height;
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Set the consensus parameters version
+    pub fn set_consensus_parameters_version(
+        &mut self,
+        consensus_parameters_version: u32,
+    ) {
+        self.consensus_parameters_version = consensus_parameters_version;
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Set the state transition version
+    pub fn set_state_transition_version(&mut self, state_transition_version: u32) {
+        self.state_transition_version = state_transition_version;
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Returns mutable reference to the consensus parameters versions table.
+    pub fn consensus_parameters_versions_mut(
+        &mut self,
+    ) -> &mut BTreeMap<u32, ConsensusParameters> {
+        &mut self.memory.consensus_parameters_versions
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Returns mutable reference to the state transition bytecodes table.
+    pub fn state_transition_bytecodes_mut(
+        &mut self,
+    ) -> &mut BTreeMap<Bytes32, UploadedBytecode> {
+        &mut self.memory.state_transition_bytecodes
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Returns mutable reference to the state transition bytecodes versions table.
+    pub fn state_transition_bytecodes_versions_mut(
+        &mut self,
+    ) -> &mut BTreeMap<u32, Bytes32> {
+        &mut self.memory.state_transition_bytecodes_versions
     }
 }
 
@@ -202,6 +266,48 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
         Ok(self.memory.contracts.get(key).map(|c| c.as_ref().to_vec()))
+    }
+}
+
+impl StorageInspect<UploadedBytecodes> for MemoryStorage {
+    type Error = Infallible;
+
+    fn get(
+        &self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+    ) -> Result<Option<Cow<'_, UploadedBytecode>>, Infallible> {
+        Ok(self
+            .memory
+            .state_transition_bytecodes
+            .get(key)
+            .map(Cow::Borrowed))
+    }
+
+    fn contains_key(
+        &self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+    ) -> Result<bool, Infallible> {
+        Ok(self.memory.state_transition_bytecodes.contains_key(key))
+    }
+}
+
+impl StorageMutate<UploadedBytecodes> for MemoryStorage {
+    fn insert(
+        &mut self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+        value: &<UploadedBytecodes as Mappable>::Value,
+    ) -> Result<Option<UploadedBytecode>, Infallible> {
+        Ok(self
+            .memory
+            .state_transition_bytecodes
+            .insert(*key, value.clone()))
+    }
+
+    fn remove(
+        &mut self,
+        key: &<UploadedBytecodes as Mappable>::Key,
+    ) -> Result<Option<UploadedBytecode>, Infallible> {
+        Ok(self.memory.state_transition_bytecodes.remove(key))
     }
 }
 
@@ -362,6 +468,14 @@ impl InterpreterStorage for MemoryStorage {
         Ok(self.block_height)
     }
 
+    fn consensus_parameters_version(&self) -> Result<u32, Self::DataError> {
+        Ok(self.consensus_parameters_version)
+    }
+
+    fn state_transition_version(&self) -> Result<u32, Self::DataError> {
+        Ok(self.state_transition_version)
+    }
+
     fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         const GENESIS: Tai64 = Tai64::UNIX_EPOCH;
         const INTERVAL: Word = 10;
@@ -375,6 +489,28 @@ impl InterpreterStorage for MemoryStorage {
 
     fn coinbase(&self) -> Result<ContractId, Infallible> {
         Ok(self.coinbase)
+    }
+
+    fn set_consensus_parameters(
+        &mut self,
+        version: u32,
+        consensus_parameters: &ConsensusParameters,
+    ) -> Result<Option<ConsensusParameters>, Self::DataError> {
+        Ok(self
+            .memory
+            .consensus_parameters_versions
+            .insert(version, consensus_parameters.clone()))
+    }
+
+    fn set_state_transition_bytecode(
+        &mut self,
+        version: u32,
+        bytecode: &Bytes32,
+    ) -> Result<Option<Bytes32>, Self::DataError> {
+        Ok(self
+            .memory
+            .state_transition_bytecodes_versions
+            .insert(version, *bytecode))
     }
 
     fn contract_state_range(

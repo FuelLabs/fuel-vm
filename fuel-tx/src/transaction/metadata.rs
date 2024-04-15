@@ -29,6 +29,7 @@ impl Cacheable for super::Transaction {
             Self::Create(tx) => tx.is_computed(),
             Self::Mint(tx) => tx.is_computed(),
             Self::Upgrade(tx) => tx.is_computed(),
+            Self::Upload(tx) => tx.is_computed(),
         }
     }
 
@@ -38,6 +39,7 @@ impl Cacheable for super::Transaction {
             Self::Create(tx) => tx.precompute(chain_id),
             Self::Mint(tx) => tx.precompute(chain_id),
             Self::Upgrade(tx) => tx.precompute(chain_id),
+            Self::Upload(tx) => tx.precompute(chain_id),
         }
     }
 }

@@ -694,9 +694,7 @@ mod tests {
                 witness_index: rng.gen(),
                 checksum: rng.gen(),
             },
-            UpgradePurposeType::StateTransition {
-                bytecode_hash: rng.gen(),
-            },
+            UpgradePurposeType::StateTransition { root: rng.gen() },
         ];
 
         for inputs in inputs.iter() {
@@ -767,8 +765,8 @@ mod tests {
                                 *witness_index = witness_index.not();
                                 invert(checksum);
                             }
-                            UpgradePurposeType::StateTransition { bytecode_hash } => {
-                                invert(bytecode_hash);
+                            UpgradePurposeType::StateTransition { root } => {
+                                invert(root);
                             }
                         });
                     }

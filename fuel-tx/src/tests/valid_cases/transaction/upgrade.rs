@@ -19,7 +19,7 @@ fn test_params() -> ConsensusParameters {
 
 fn valid_upgrade_transaction() -> TransactionBuilder<Upgrade> {
     let mut builder = TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
-        bytecode_hash: Default::default(),
+        root: Default::default(),
     });
     builder.max_fee_limit(0);
     builder.add_input(Input::coin_predicate(

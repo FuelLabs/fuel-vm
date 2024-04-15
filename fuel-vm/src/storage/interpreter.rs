@@ -31,6 +31,8 @@ use crate::{
         ContractsRawCode,
         ContractsState,
         ContractsStateData,
+        UploadedBytecode,
+        UploadedBytecodes,
     },
 };
 use alloc::{
@@ -51,6 +53,7 @@ pub trait InterpreterStorage:
     + StorageWrite<ContractsState, Error = Self::DataError>
     + StorageSize<ContractsState, Error = Self::DataError>
     + StorageRead<ContractsState, Error = Self::DataError>
+    + StorageMutate<UploadedBytecodes, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
@@ -90,13 +93,26 @@ pub trait InterpreterStorage:
         &mut self,
         version: u32,
         consensus_parameters: &ConsensusParameters,
-    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError>;
+    ) -> Result<Option<ConsensusParameters>, Self::DataError>;
 
-    /// Returns `true` if the state transition bytecode is present in the storage.
-    fn contains_state_transition_bytecode_hash(
+    /// Returns `true` if the fully uploaded state transition bytecode is present in the
+    /// storage.
+    fn contains_state_transition_bytecode_root(
         &self,
-        hash: &Bytes32,
-    ) -> Result<bool, Self::DataError>;
+        root: &Bytes32,
+    ) -> Result<bool, Self::DataError> {
+        let bytecode = self.storage::<UploadedBytecodes>().get(root)?;
+
+        if let Some(cow) = bytecode {
+            if let UploadedBytecode::Completed(_) = cow.as_ref() {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            Ok(false)
+        }
+    }
 
     /// Set the state transition bytecode in the storage under the `version`.
     ///
@@ -105,7 +121,7 @@ pub trait InterpreterStorage:
         &mut self,
         version: u32,
         hash: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError>;
+    ) -> Result<Option<Bytes32>, Self::DataError>;
 
     /// Deploy a contract into the storage with contract id
     fn deploy_contract_with_id(
@@ -301,7 +317,7 @@ where
         &mut self,
         version: u32,
         consensus_parameters: &ConsensusParameters,
-    ) -> Result<Option<Cow<'_, ConsensusParameters>>, Self::DataError> {
+    ) -> Result<Option<ConsensusParameters>, Self::DataError> {
         <S as InterpreterStorage>::set_consensus_parameters(
             self.deref_mut(),
             version,
@@ -309,21 +325,11 @@ where
         )
     }
 
-    fn contains_state_transition_bytecode_hash(
-        &self,
-        hash: &Bytes32,
-    ) -> Result<bool, Self::DataError> {
-        <S as InterpreterStorage>::contains_state_transition_bytecode_hash(
-            self.deref(),
-            hash,
-        )
-    }
-
     fn set_state_transition_bytecode(
         &mut self,
         version: u32,
         hash: &Bytes32,
-    ) -> Result<Option<Cow<'_, Bytes32>>, Self::DataError> {
+    ) -> Result<Option<Bytes32>, Self::DataError> {
         <S as InterpreterStorage>::set_state_transition_bytecode(
             self.deref_mut(),
             version,

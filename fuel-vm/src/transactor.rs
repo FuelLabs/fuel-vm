@@ -35,6 +35,7 @@ use fuel_tx::{
     Receipt,
     Script,
     Upgrade,
+    Upload,
 };
 
 #[derive(Debug)]
@@ -247,6 +248,30 @@ where
         ready_tx: Ready<Upgrade>,
     ) -> Result<Upgrade, InterpreterError<S::DataError>> {
         self.interpreter.upgrade(ready_tx)
+    }
+
+    /// Executes `Upload` checked transactions.
+    pub fn upload(
+        &mut self,
+        checked: Checked<Upload>,
+    ) -> Result<Upload, InterpreterError<S::DataError>> {
+        let gas_price = self.interpreter.gas_price();
+        let gas_costs = self.interpreter.gas_costs();
+        let fee_params = self.interpreter.fee_params();
+
+        let ready = checked
+            .into_ready(gas_price, gas_costs, fee_params)
+            .map_err(InterpreterError::CheckError)?;
+
+        self.execute_ready_upload_tx(ready)
+    }
+
+    /// Executes a `Ready` transaction directly instead of letting `Transactor` construct
+    pub fn execute_ready_upload_tx(
+        &mut self,
+        ready_tx: Ready<Upload>,
+    ) -> Result<Upload, InterpreterError<S::DataError>> {
+        self.interpreter.upload(ready_tx)
     }
 }
 

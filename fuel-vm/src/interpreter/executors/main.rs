@@ -50,19 +50,32 @@ use crate::{
         Ready,
     },
     interpreter::InterpreterParams,
+    storage::{
+        UploadedBytecode,
+        UploadedBytecodes,
+    },
 };
 use fuel_asm::{
     PanicReason,
     RegId,
 };
+use fuel_storage::{
+    StorageAsMut,
+    StorageAsRef,
+};
 use fuel_tx::{
     field::{
+        BytecodeRoot,
+        BytecodeWitnessIndex,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
         ScriptGasLimit,
         StorageSlots,
+        SubsectionIndex,
+        SubsectionsNumber,
         UpgradePurpose as UpgradePurposeField,
+        Witnesses,
     },
     input::{
         coin::CoinPredicate,
@@ -82,6 +95,7 @@ use fuel_tx::{
     Upgrade,
     UpgradeMetadata,
     UpgradePurpose,
+    Upload,
     ValidityError,
 };
 use fuel_types::{
@@ -516,14 +530,14 @@ where
                     ));
                 }
             }
-            UpgradePurpose::StateTransition { bytecode_hash } => {
+            UpgradePurpose::StateTransition { root } => {
                 let exists = storage
-                    .contains_state_transition_bytecode_hash(bytecode_hash)
+                    .contains_state_transition_bytecode_root(root)
                     .map_err(RuntimeError::Storage)?;
 
                 if !exists {
                     return Err(InterpreterError::Panic(
-                        PanicReason::UnknownStateTransactionBytecodeHash,
+                        PanicReason::UnknownStateTransactionBytecodeRoot,
                     ))
                 }
 
@@ -533,7 +547,7 @@ where
                 let next_version = current_version.saturating_add(1);
 
                 let prev = storage
-                    .set_state_transition_bytecode(next_version, bytecode_hash)
+                    .set_state_transition_bytecode(next_version, root)
                     .map_err(RuntimeError::Storage)?;
 
                 if prev.is_some() {
@@ -579,6 +593,115 @@ where
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     S: InterpreterStorage,
+{
+    fn upload_inner(
+        upload: &mut Upload,
+        storage: &mut S,
+        initial_balances: InitialBalances,
+        gas_costs: &GasCosts,
+        fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
+        gas_price: Word,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        let root = *upload.bytecode_root();
+        let uploaded_bytecode = storage
+            .storage_as_ref::<UploadedBytecodes>()
+            .get(&root)
+            .map_err(RuntimeError::Storage)?
+            .map(|x| x.into_owned())
+            .unwrap_or_else(|| UploadedBytecode::Uncompleted {
+                bytecode: vec![],
+                uploaded_subsections_number: 0,
+            });
+
+        let new_bytecode = match uploaded_bytecode {
+            UploadedBytecode::Uncompleted {
+                bytecode,
+                uploaded_subsections_number,
+            } => Self::upload_bytecode_subsection(
+                upload,
+                bytecode,
+                uploaded_subsections_number,
+            )?,
+            UploadedBytecode::Completed(_) => {
+                return Err(InterpreterError::Panic(
+                    PanicReason::BytecodeAlreadyUploaded,
+                ));
+            }
+        };
+
+        storage
+            .storage_as_mut::<UploadedBytecodes>()
+            .insert(&root, &new_bytecode)
+            .map_err(RuntimeError::Storage)?;
+
+        Self::finalize_outputs(
+            upload,
+            gas_costs,
+            fee_params,
+            base_asset_id,
+            false,
+            0,
+            &initial_balances,
+            &RuntimeBalances::try_from(initial_balances.clone())?,
+            gas_price,
+        )?;
+        Ok(())
+    }
+
+    fn upload_bytecode_subsection(
+        upload: &Upload,
+        mut uploaded_bytecode: Vec<u8>,
+        uploaded_subsections_number: u16,
+    ) -> Result<UploadedBytecode, InterpreterError<S::DataError>> {
+        let index_of_next_subsection = uploaded_subsections_number;
+
+        if *upload.subsection_index() != index_of_next_subsection {
+            return Err(InterpreterError::Panic(
+                PanicReason::ThePartIsNotSequentiallyConnected,
+            ));
+        }
+
+        let bytecode_subsection = upload
+            .witnesses()
+            .get(*upload.bytecode_witness_index() as usize)
+            .ok_or(InterpreterError::Bug(Bug::new(
+                // It shouldn't be possible since `Checked<Upload>` guarantees
+                // the existence of the witness.
+                BugVariant::WitnessIndexOutOfBounds,
+            )))?;
+
+        uploaded_bytecode.extend(bytecode_subsection.as_ref());
+
+        let new_uploaded_subsections_number = uploaded_subsections_number
+            .checked_add(1)
+            .ok_or(InterpreterError::Panic(PanicReason::ArithmeticOverflow))?;
+
+        // It shouldn't be possible since `Checked<Upload>` guarantees
+        // the validity of the Merkle proof.
+        if new_uploaded_subsections_number > *upload.subsections_number() {
+            return Err(InterpreterError::Bug(Bug::new(
+                BugVariant::NextSubsectionIndexIsHigherThanTotalNumberOfParts,
+            )))
+        }
+
+        let updated_uploaded_bytecode =
+            if *upload.subsections_number() == new_uploaded_subsections_number {
+                UploadedBytecode::Completed(uploaded_bytecode)
+            } else {
+                UploadedBytecode::Uncompleted {
+                    bytecode: uploaded_bytecode,
+                    uploaded_subsections_number: new_uploaded_subsections_number,
+                }
+            };
+
+        Ok(updated_uploaded_bytecode)
+    }
+}
+
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {
@@ -591,7 +714,8 @@ where
     }
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
-        // TODO: Remove `Create` and `Upgrade` from here
+        // TODO: Remove `Create`, `Upgrade`, and `Upload` from here
+        //  https://github.com/FuelLabs/fuel-vm/issues/251
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
@@ -610,6 +734,17 @@ where
         } else if let Some(upgrade) = self.tx.as_upgrade_mut() {
             Self::upgrade_inner(
                 upgrade,
+                &mut self.storage,
+                self.initial_balances.clone(),
+                &gas_costs,
+                &fee_params,
+                &base_asset_id,
+                gas_price,
+            )?;
+            ProgramState::Return(1)
+        } else if let Some(upload) = self.tx.as_upload_mut() {
+            Self::upload_inner(
+                upload,
                 &mut self.storage,
                 self.initial_balances.clone(),
                 &gas_costs,
@@ -882,6 +1017,38 @@ where
             gas_price,
         )?;
         Ok(upgrade)
+    }
+}
+
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    S: InterpreterStorage,
+{
+    /// Executes `Upload` transaction without initialization VM and without invalidation
+    /// of the last state of execution of the `Script` transaction.
+    ///
+    /// Returns `Upload` transaction with all modifications after execution.
+    pub fn upload(
+        &mut self,
+        tx: Ready<Upload>,
+    ) -> Result<Upload, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut upload, metadata): (Upload, <Upload as IntoChecked>::Metadata) =
+            checked.into();
+        let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
+        Self::upload_inner(
+            &mut upload,
+            &mut self.storage,
+            metadata.balances(),
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
+            &base_asset_id,
+            gas_price,
+        )?;
+        Ok(upload)
     }
 }
 

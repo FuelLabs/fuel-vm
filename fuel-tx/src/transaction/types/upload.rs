@@ -45,7 +45,7 @@ pub struct UploadMetadata;
 pub struct UploadBody {
     /// The root of the Merkle tree is created over the bytecode.
     pub root: Bytes32,
-    /// The witness index of the part of the bytecode.
+    /// The witness index of the subsection of the bytecode.
     pub witness_index: u16,
     /// The index of the subsection of the bytecode.
     pub subsection_index: u16,
@@ -96,7 +96,9 @@ impl UploadSubsection {
             u16::try_from(subsections.len()).expect("We've just checked it; qed");
 
         let mut merkle_tree = fuel_merkle::binary::in_memory::MerkleTree::new();
-        subsections.iter().for_each(|part| merkle_tree.push(part));
+        subsections
+            .iter()
+            .for_each(|subsection| merkle_tree.push(subsection));
 
         let merkle_root = merkle_tree.root();
 
@@ -199,7 +201,8 @@ impl UniqueFormatValidityChecks for Upload {
             .map(|proof| (*proof).into())
             .collect::<Vec<_>>();
 
-        // Verify that part of the bytecode is connected to the `root` of the bytecode.
+        // Verify that subsection of the bytecode is connected to the `root` of the
+        // bytecode.
         let result = fuel_merkle::binary::verify(
             self.body.root.deref(),
             witness,

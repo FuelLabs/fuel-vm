@@ -1,10 +1,16 @@
 #![allow(non_snake_case)]
 
+use crate::{
+    checked_transaction::{
+        CheckPredicates,
+        Checked,
+    },
+    prelude::*,
+};
 use alloc::{
     vec,
     vec::Vec,
 };
-
 use fuel_asm::{
     op,
     RegId,
@@ -17,14 +23,6 @@ use rand::{
     rngs::StdRng,
     Rng,
     SeedableRng,
-};
-
-use crate::{
-    checked_transaction::{
-        CheckPredicates,
-        Checked,
-    },
-    prelude::*,
 };
 
 #[test]
@@ -181,7 +179,7 @@ fn valid_upgrade_tx() -> Checked<Upgrade> {
     let input_amount = 1000;
     let arb_max_fee = input_amount;
     TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
-        bytecode_hash: Default::default(),
+        root: Default::default(),
     })
     .max_fee_limit(arb_max_fee)
     .add_input(Input::coin_signed(
@@ -210,6 +208,47 @@ fn upgrade__tx_with_wrong_gas_price_causes_error() {
         .into_ready(tx_gas_price, &Default::default(), &Default::default())
         .unwrap();
     let err = interpreter.upgrade(tx).unwrap_err();
+
+    // Then
+    assert!(matches!(
+        err,
+        InterpreterError::ReadyTransactionWrongGasPrice { .. }
+    ));
+}
+
+fn valid_upload_tx() -> Checked<Upload> {
+    let input_amount = 1000;
+    let arb_max_fee = input_amount;
+    let subsections = UploadSubsection::split_bytecode(&vec![123; 1024], 24)
+        .expect("Should split bytecode");
+    let subsection = subsections[0].clone();
+    TransactionBuilder::upload(UploadBody {
+        root: subsection.root,
+        witness_index: 0,
+        subsection_index: subsection.subsection_index,
+        subsections_number: subsection.subsections_number,
+        proof_set: subsection.proof_set,
+    })
+    .add_witness(subsection.subsection.into())
+    .max_fee_limit(arb_max_fee)
+    .add_random_fee_input()
+    .finalize_checked_basic(Default::default())
+}
+
+#[test]
+fn upload__tx_with_wrong_gas_price_causes_error() {
+    let mut interpreter = Interpreter::<_, Upload>::with_memory_storage();
+
+    // Given
+    let tx_gas_price = 1;
+    let interpreter_gas_price = 2;
+    interpreter.set_gas_price(interpreter_gas_price);
+
+    // When
+    let tx = valid_upload_tx()
+        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .unwrap();
+    let err = interpreter.upload(tx).unwrap_err();
 
     // Then
     assert!(matches!(

@@ -29,5 +29,6 @@ mod receipts;
 mod serde_profile;
 mod spec;
 mod upgrade;
+mod upload;
 mod validation;
 mod wideint;

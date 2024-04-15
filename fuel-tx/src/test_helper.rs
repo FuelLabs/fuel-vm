@@ -391,7 +391,7 @@ mod use_std {
 
             let purpose = match variant {
                 0 => UpgradePurpose::StateTransition {
-                    bytecode_hash: self.rng.gen(),
+                    root: self.rng.gen(),
                 },
                 1 => UpgradePurpose::ConsensusParameters {
                     witness_index: 0,

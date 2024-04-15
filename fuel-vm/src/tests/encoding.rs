@@ -469,7 +469,7 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)
@@ -482,7 +482,7 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)
@@ -495,7 +495,7 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)
@@ -508,7 +508,77 @@ fn transaction_canonical_serialization_deserialization() {
         ),
         Transaction::upgrade(
             UpgradePurpose::StateTransition {
-                bytecode_hash: [0xfa; 32].into(),
+                root: [0xfa; 32].into(),
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![],
+        ),
+    ]);
+    assert_transactions_encoding_correct(&[
+        Transaction::upload(
+            UploadBody {
+                root: [6; 32].into(),
+                witness_index: 0,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
+                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![i.clone()],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upload(
+            UploadBody {
+                root: [6; 32].into(),
+                witness_index: 0,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
+                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::upload(
+            UploadBody {
+                root: [6; 32].into(),
+                witness_index: 0,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
+                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
+            },
+            Policies::new()
+                .with_tip(Word::MAX >> 1)
+                .with_maturity((u32::MAX >> 3).into())
+                .with_witness_limit(Word::MAX >> 4)
+                .with_max_fee(Word::MAX >> 5),
+            vec![],
+            vec![],
+            vec![w.clone()],
+        ),
+        Transaction::upload(
+            UploadBody {
+                root: [6; 32].into(),
+                witness_index: 0,
+                subsection_index: 0x1234,
+                subsections_number: 0x4321,
+                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)

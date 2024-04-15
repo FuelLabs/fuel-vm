@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- [#721](https://github.com/FuelLabs/fuel-vm/pull/721): Added additional logic to the BMT proof verification algorithm to check the length of the provided proof set against the index provided in the proof.
+
 #### Breaking
 
 - [#719](https://github.com/FuelLabs/fuel-vm/pull/719): Fix overflow in `LDC` instruction when contract size with padding would overflow.

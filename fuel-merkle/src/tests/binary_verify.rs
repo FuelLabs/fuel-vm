@@ -146,8 +146,10 @@ proptest! {
     }
 
     #[test]
-    fn verify__returns_false_for_invalid_proof_of_last_leaf((values, tree) in random_tree(1, 1_000)){
+    fn verify__returns_false_for_invalid_proof_of_last_leaf((values, tree) in random_tree(1, 1_000), incorrect_num_leaves: u64){
         let num_leaves = values.len();
+        proptest::prop_assume!(num_leaves as u64 != incorrect_num_leaves);
+
         let index = num_leaves - 1;
         let data = values[index];
 
@@ -155,10 +157,26 @@ proptest! {
         let (root, proof_set) = tree.prove(index as u64).expect("Unable to generate proof");
 
         // When
-        let verification = verify(&root, &data, &proof_set, index as u64, num_leaves as u64 + 1);
+        let verification = verify(&root, &data, &proof_set, index as u64, incorrect_num_leaves);
 
         // Then
         prop_assert!(!verification)
     }
 
+    #[test]
+    fn verify__returns_false_for_invalid_proof_idnex((values, tree) in random_tree(1, 1_000), invalid_index: u64){
+        let num_leaves = values.len();
+        let valid_index = num_leaves - 1;
+        proptest::prop_assume!(invalid_index != valid_index as u64);
+        let data = values[valid_index];
+
+        // Given
+        let (root, proof_set) = tree.prove(valid_index as u64).expect("Unable to generate proof");
+
+        // When
+        let verification = verify(&root, &data, &proof_set, invalid_index, num_leaves as u64);
+
+        // Then
+        prop_assert!(!verification)
+    }
 }

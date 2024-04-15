@@ -11,8 +11,12 @@ use crate::{
 
 fn path_length_from_key(key: u64, num_leaves: u64) -> usize {
     let mut path_length = 0;
-    while (1 << path_length) < num_leaves {
-        path_length += 1
+    while (1u64 << path_length) < num_leaves {
+        path_length += 1;
+
+        if path_length >= 64 {
+            break;
+        }
     }
     let num_leaves_left_subtree = 1 << (path_length - 1);
 
@@ -40,8 +44,6 @@ pub fn verify<T: AsRef<[u8]>>(
     proof_index: u64,
     num_leaves: u64,
 ) -> bool {
-    let mut sum = leaf_sum(data.as_ref());
-
     if num_leaves <= 1 {
         if !proof_set.is_empty() {
             return false;
@@ -54,6 +56,7 @@ pub fn verify<T: AsRef<[u8]>>(
         return false
     }
 
+    let mut sum = leaf_sum(data.as_ref());
     if proof_set.is_empty() {
         return if num_leaves == 1 { *root == sum } else { false }
     }

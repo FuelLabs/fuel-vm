@@ -9,6 +9,34 @@ use crate::{
     },
 };
 
+fn path_length_from_key(key: u64, num_leaves: u64) -> usize {
+    let mut path_length = 0;
+    while (1u64 << path_length) < num_leaves {
+        path_length += 1;
+
+        if path_length >= 64 {
+            break;
+        }
+    }
+    let num_leaves_left_subtree = 1 << (path_length - 1);
+
+    // If leaf is in left subtree, path length is full height of left subtree
+    if key < num_leaves_left_subtree {
+        path_length
+    }
+    // Otherwise, if left or right subtree has only one leaf, path has one additional step
+    else if num_leaves_left_subtree == 1 || num_leaves - num_leaves_left_subtree <= 1 {
+        1
+    }
+    // Otherwise, add 1 to height and recurse into right subtree
+    else {
+        1 + path_length_from_key(
+            key - num_leaves_left_subtree,
+            num_leaves - num_leaves_left_subtree,
+        )
+    }
+}
+
 pub fn verify<T: AsRef<[u8]>>(
     root: &Bytes32,
     data: &T,
@@ -16,12 +44,19 @@ pub fn verify<T: AsRef<[u8]>>(
     proof_index: u64,
     num_leaves: u64,
 ) -> bool {
-    let mut sum = leaf_sum(data.as_ref());
+    if num_leaves <= 1 {
+        if !proof_set.is_empty() {
+            return false;
+        }
+    } else if proof_set.len() != path_length_from_key(proof_index, num_leaves) {
+        return false;
+    }
 
     if proof_index >= num_leaves {
         return false
     }
 
+    let mut sum = leaf_sum(data.as_ref());
     if proof_set.is_empty() {
         return if num_leaves == 1 { *root == sum } else { false }
     }

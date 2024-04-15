@@ -532,8 +532,9 @@ fn get_transaction_fields() {
     // hardcoded metadata of script len so it can be checked at runtime
     let script_reserved_words = 300 * WORD_SIZE;
     let script_offset = tx_params.tx_offset() + Script::script_offset_static();
-    let script_data_offset =
-        script_offset + bytes::padded_len_usize(script_reserved_words);
+    let script_data_offset = script_offset.saturating_add(
+        bytes::padded_len_usize(script_reserved_words).unwrap_or(usize::MAX),
+    );
     let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
 
     // Maybe use predicates to check create context?

@@ -455,9 +455,9 @@ impl Input {
             Input::CoinPredicate(_) => InputRepr::Coin.coin_predicate_offset(),
             Input::MessageCoinPredicate(_) => InputRepr::Message.data_offset(),
             Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => {
-                InputRepr::Message
-                    .data_offset()
-                    .map(|o| o + bytes::padded_len(data))
+                InputRepr::Message.data_offset().map(|o| {
+                    o.saturating_add(bytes::padded_len(data).unwrap_or(usize::MAX))
+                })
             }
             Input::CoinSigned(_)
             | Input::Contract(_)
@@ -470,9 +470,11 @@ impl Input {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => self
-                .predicate_offset()
-                .map(|o| o + bytes::padded_len(predicate)),
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
+                self.predicate_offset().map(|o| {
+                    o.saturating_add(bytes::padded_len(predicate).unwrap_or(usize::MAX))
+                })
+            }
             Input::CoinSigned(_)
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)

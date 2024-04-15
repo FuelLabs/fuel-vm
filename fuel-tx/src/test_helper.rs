@@ -18,7 +18,7 @@ where
     R: Rng + CryptoRng,
 {
     let len = rng.gen_range(1..512);
-    let len = bytes::padded_len_usize(len);
+    let len = bytes::padded_len_usize(len).unwrap();
 
     let mut data = alloc::vec![0u8; len];
     rng.fill_bytes(data.as_mut_slice());

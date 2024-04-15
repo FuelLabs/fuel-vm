@@ -873,8 +873,8 @@ fn script_input_coin_data_offset() {
                             .inputs_predicate_offset_at(offset)
                             .expect("Failed to fetch offset");
 
-                        assert_ne!(bytes::padded_len(&predicate), predicate.len());
-                        assert_eq!(bytes::padded_len(&predicate), len);
+                        assert_ne!(bytes::padded_len(&predicate), Some(predicate.len()));
+                        assert_eq!(bytes::padded_len(&predicate), Some(len));
 
                         assert_eq!(
                             predicate.as_slice(),
@@ -966,8 +966,8 @@ fn upgrade_input_coin_data_offset() {
                     .inputs_predicate_offset_at(offset)
                     .expect("Failed to fetch offset");
 
-                assert_ne!(bytes::padded_len(&predicate), predicate.len());
-                assert_eq!(bytes::padded_len(&predicate), len);
+                assert_ne!(bytes::padded_len(&predicate), Some(predicate.len()));
+                assert_eq!(bytes::padded_len(&predicate), Some(len));
 
                 assert_eq!(
                     predicate.as_slice(),
@@ -1062,8 +1062,8 @@ fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
                     .inputs_predicate_offset_at(offset)
                     .expect("Failed to fetch offset");
 
-                assert_ne!(bytes::padded_len(&predicate), predicate.len());
-                assert_eq!(bytes::padded_len(&predicate), len);
+                assert_ne!(bytes::padded_len(&predicate), Some(predicate.len()));
+                assert_eq!(bytes::padded_len(&predicate), Some(len));
 
                 assert_eq!(
                     predicate.as_slice(),

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#719](https://github.com/FuelLabs/fuel-vm/pull/719): Fix overflow in `LDC` instruction when contract size with padding would overflow.
 - [#715](https://github.com/FuelLabs/fuel-vm/pull/715): The `Interpreter` supports the processing of the `Upload` transaction. The change affects `InterpreterStorage`, adding `StorageMutate<UploadedBytes>` constrain.
 - [#714](https://github.com/FuelLabs/fuel-vm/pull/714): The change adds a new `Upload` transaction that allows uploading huge byte code on chain subsection by subsection. This transaction is chargeable and is twice as expensive as the `Create` transaction. Anyone can submit this transaction.
 - [#712](https://github.com/FuelLabs/fuel-vm/pull/712): The `Interpreter` supports the processing of the `Upgrade` transaction. The change affects `InterpreterStorage`, adding 5 new methods that must be implemented.

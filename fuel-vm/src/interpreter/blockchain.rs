@@ -587,7 +587,13 @@ where
             .try_into()
             .map_err(|_| PanicReason::MemoryOverflow)?;
 
-        let length = bytes::padded_len_word(length_unpadded);
+        let length = bytes::padded_len_usize(
+            length_unpadded
+                .try_into()
+                .map_err(|_| PanicReason::MemoryOverflow)?,
+        )
+        .map(|len| len as Word)
+        .unwrap_or(Word::MAX);
 
         if length > self.contract_max_size {
             return Err(PanicReason::ContractMaxSize.into())

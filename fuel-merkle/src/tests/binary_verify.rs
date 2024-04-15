@@ -179,4 +179,21 @@ proptest! {
         // Then
         prop_assert!(!verification)
     }
+
+    #[test]
+    fn verify__returns_false_for_invalid_proof_idnex_and_num_leaves((values, tree) in random_tree(1, 1_000), invalid_index: u64, incorrect_num_leaves: u64){
+        let num_leaves = values.len();
+        let valid_index = num_leaves - 1;
+        proptest::prop_assume!(invalid_index != valid_index as u64);
+        let data = values[valid_index];
+
+        // Given
+        let (root, proof_set) = tree.prove(valid_index as u64).expect("Unable to generate proof");
+
+        // When
+        let verification = verify(&root, &data, &proof_set, invalid_index, incorrect_num_leaves);
+
+        // Then
+        prop_assert!(!verification)
+    }
 }

@@ -39,7 +39,7 @@ pub unsafe fn from_slice_unchecked<const N: usize>(buf: &[u8]) -> [u8; N] {
 #[test]
 #[allow(clippy::erasing_op)]
 #[allow(clippy::identity_op)]
-fn padded_len_to_fit_word_len() {
+fn padded_len_returns_multiple_of_word_len() {
     assert_eq!(Some(WORD_SIZE * 0), padded_len(&[]));
     assert_eq!(Some(WORD_SIZE * 1), padded_len(&[0]));
     assert_eq!(Some(WORD_SIZE * 1), padded_len(&[0; WORD_SIZE]));
@@ -48,13 +48,17 @@ fn padded_len_to_fit_word_len() {
 }
 
 #[test]
-fn padded_len_value() {
+fn padded_len_usize_returns_multiple_of_word_len() {
     assert_eq!(padded_len_usize(0), Some(0));
     assert_eq!(padded_len_usize(1), Some(8));
     assert_eq!(padded_len_usize(2), Some(8));
     assert_eq!(padded_len_usize(7), Some(8));
     assert_eq!(padded_len_usize(8), Some(8));
     assert_eq!(padded_len_usize(9), Some(16));
+}
+
+#[test]
+fn padded_len_usize_handles_overflow() {
     for i in 0..7 {
         assert_eq!(padded_len_usize(usize::MAX - i), None);
     }

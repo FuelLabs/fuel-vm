@@ -213,7 +213,7 @@ macro_rules! key_methods {
                 type Err = &'static str;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
-                    const ERR: &str = "Invalid encoded byte";
+                    const ERR: &str = concat!("Invalid encoded byte in ", stringify!($i));
                     let mut ret = <[u8; SIZE]>::default();
                     let s = s.strip_prefix("0x").unwrap_or(s);
                     hex::decode_to_slice(&s, &mut ret).map_err(|_| ERR)?;

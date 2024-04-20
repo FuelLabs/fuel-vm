@@ -170,7 +170,7 @@ mod field {
 
         #[inline(always)]
         fn input_contract_offset(&self) -> usize {
-            Self::tx_pointer_static() + TxPointer::LEN
+            Self::tx_pointer_static().saturating_add(TxPointer::LEN)
         }
     }
 
@@ -187,7 +187,8 @@ mod field {
 
         #[inline(always)]
         fn output_contract_offset(&self) -> usize {
-            self.input_contract_offset() + self.input_contract.size()
+            self.input_contract_offset()
+                .saturating_add(self.input_contract.size())
         }
     }
 
@@ -204,7 +205,8 @@ mod field {
 
         #[inline(always)]
         fn mint_amount_offset(&self) -> usize {
-            self.output_contract_offset() + self.output_contract.size()
+            self.output_contract_offset()
+                .saturating_add(self.output_contract.size())
         }
     }
 
@@ -221,7 +223,7 @@ mod field {
 
         #[inline(always)]
         fn mint_asset_id_offset(&self) -> usize {
-            self.mint_amount_offset() + WORD_SIZE
+            self.mint_amount_offset().saturating_add(WORD_SIZE)
         }
     }
 
@@ -238,7 +240,7 @@ mod field {
 
         #[inline(always)]
         fn gas_price_offset(&self) -> usize {
-            self.mint_asset_id_offset() + AssetId::LEN
+            self.mint_asset_id_offset().saturating_add(AssetId::LEN)
         }
     }
 }

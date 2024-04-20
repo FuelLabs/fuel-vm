@@ -664,7 +664,7 @@ where
             Instruction::LW(lw) => {
                 self.gas_charge(self.gas_costs().lw())?;
                 let (a, b, imm) = lw.unpack();
-                self.load_word(a.into(), r!(b), imm.into())?;
+                self.load_word(a.into(), r!(b), imm)?;
             }
 
             Instruction::MCL(mcl) => {
@@ -711,7 +711,7 @@ where
             Instruction::SW(sw) => {
                 self.gas_charge(self.gas_costs().sw())?;
                 let (a, b, imm) = sw.unpack();
-                self.store_word(r!(a), r!(b), imm.into())?;
+                self.store_word(r!(a), r!(b), imm)?;
             }
 
             Instruction::BAL(bal) => {
@@ -930,7 +930,7 @@ fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
     #[cfg(not(feature = "std"))]
     let powf = libm::pow;
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let guess = powf(target as f64, (nth_root as f64).recip()) as u64;
 
     debug_assert!(guess != 0, "This should never occur for {{target, n}} > 1");
@@ -946,16 +946,19 @@ fn checked_nth_root(target: u64, nth_root: u64) -> Option<u64> {
     // Note that if guess == 1, then g1 == 1 as well, meaning that we will not return
     // here.
     if is_nth_power_below_target(guess) {
-        return Some(guess - 1)
+        return Some(guess.saturating_sub(1))
     }
 
     // Check if the initial guess was correct
-    if is_nth_power_below_target(guess + 1) {
+    let guess_plus_one = guess.checked_add(1).expect(
+        "Guess cannot be u64::MAX, as we have taken a root > 2 of a value to get it",
+    );
+    if is_nth_power_below_target(guess_plus_one) {
         return Some(guess)
     }
 
-    // Check if the guess was correct
-    Some(guess + 1)
+    // If not, then the value above must be the correct one.
+    Some(guess_plus_one)
 }
 
 #[cfg(test)]

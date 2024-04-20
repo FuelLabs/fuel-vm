@@ -20,6 +20,9 @@ mod default_gas_costs;
 ///
 /// The operations count will be the argument of every variant except
 /// `Accumulated`, that will hold the total acumulated gas.
+///
+/// Note that gas cost calculations return `u64::MAX` if the cost
+/// would overflow otherwise.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GasUnit {
     /// Atomic operation.
@@ -72,19 +75,19 @@ impl GasUnit {
             StorageWriteTree(1) => self.unit_price(),
             StorageWriteWord(1) => self.unit_price(),
 
-            Atom(n) => *n * Atom(1).cost(),
-            Arithmetic(n) => *n * Arithmetic(1).cost(),
-            ArithmeticExpensive(n) => *n * ArithmeticExpensive(1).cost(),
-            RegisterWrite(n) => *n * RegisterWrite(1).cost(),
-            Branching(n) => *n * Branching(1).cost(),
-            Hash(n) => *n * Hash(1).cost(),
-            MemoryOwnership(n) => *n * MemoryOwnership(1).cost(),
-            MemoryRead(n) => *n * MemoryRead(1).cost(),
-            MemoryWrite(n) => *n * MemoryWrite(1).cost(),
-            Recover(n) => *n * Recover(1).cost(),
-            StorageReadTree(n) => *n * StorageReadTree(1).cost(),
-            StorageWriteTree(n) => *n * StorageWriteTree(1).cost(),
-            StorageWriteWord(n) => *n * StorageWriteWord(1).cost(),
+            Atom(n) => n.saturating_mul(Atom(1).cost()),
+            Arithmetic(n) => n.saturating_mul(Arithmetic(1).cost()),
+            ArithmeticExpensive(n) => n.saturating_mul(ArithmeticExpensive(1).cost()),
+            RegisterWrite(n) => n.saturating_mul(RegisterWrite(1).cost()),
+            Branching(n) => n.saturating_mul(Branching(1).cost()),
+            Hash(n) => n.saturating_mul(Hash(1).cost()),
+            MemoryOwnership(n) => n.saturating_mul(MemoryOwnership(1).cost()),
+            MemoryRead(n) => n.saturating_mul(MemoryRead(1).cost()),
+            MemoryWrite(n) => n.saturating_mul(MemoryWrite(1).cost()),
+            Recover(n) => n.saturating_mul(Recover(1).cost()),
+            StorageReadTree(n) => n.saturating_mul(StorageReadTree(1).cost()),
+            StorageWriteTree(n) => n.saturating_mul(StorageWriteTree(1).cost()),
+            StorageWriteWord(n) => n.saturating_mul(StorageWriteWord(1).cost()),
             Accumulated(c) => *c,
         }
     }
@@ -140,7 +143,7 @@ impl GasUnit {
 
     /// Combine two gas computations, accumulating their cost.
     pub const fn join(self, other: Self) -> Self {
-        Self::Accumulated(self.cost() + other.cost())
+        Self::Accumulated(self.cost().saturating_add(other.cost()))
     }
 }
 
@@ -1006,6 +1009,7 @@ pub enum DependentCost {
         /// higher the `units_per_gas`, the less additional cost you will incur
         /// for a given number of units, because you need more units to increase
         /// the total cost.
+        /// This must be nonzero.
         units_per_gas: Word,
     },
 
@@ -1331,7 +1335,7 @@ impl DependentCost {
     pub fn resolve(&self, units: Word) -> Word {
         let base = self.base();
         let dependent_value = self.resolve_without_base(units);
-        base + dependent_value
+        base.saturating_add(dependent_value)
     }
 
     pub fn resolve_without_base(&self, units: Word) -> Word {
@@ -1342,7 +1346,9 @@ impl DependentCost {
                 // where:
                 //   x is the number of units
                 //   1/m is the gas_per_unit
-                units.saturating_div(*units_per_gas)
+                units
+                    .checked_div(*units_per_gas)
+                    .expect("units_per_gas cannot be zero")
             }
             DependentCost::HeavyOperation { gas_per_unit, .. } => {
                 // Apply the linear transformation:

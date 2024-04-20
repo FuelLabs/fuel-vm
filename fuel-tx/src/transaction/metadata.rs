@@ -84,7 +84,7 @@ impl CommonMetadata {
             .iter()
             .map(|input| {
                 let i = offset;
-                offset += input.size();
+                offset = offset.saturating_add(input.size());
                 i
             })
             .collect_vec();
@@ -98,7 +98,7 @@ impl CommonMetadata {
             .iter()
             .map(|output| {
                 let i = offset;
-                offset += output.size();
+                offset = offset.saturating_add(output.size());
                 i
             })
             .collect_vec();
@@ -112,7 +112,7 @@ impl CommonMetadata {
             .iter()
             .map(|witness| {
                 let i = offset;
-                offset += witness.size();
+                offset = offset.saturating_add(witness.size());
                 i
             })
             .collect_vec();

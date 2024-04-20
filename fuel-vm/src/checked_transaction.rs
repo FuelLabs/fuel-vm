@@ -803,9 +803,9 @@ impl From<PredicateVerificationFailed> for CheckError {
 
 #[cfg(feature = "random")]
 #[allow(non_snake_case)]
+#[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::cast_possible_truncation)]
 
     use super::*;
     use alloc::vec;

@@ -1,4 +1,5 @@
-#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use alloc::vec;
 
 use super::*;
@@ -185,15 +186,15 @@ fn test_load_byte(b: Word, c: Word) -> SimpleResult<()> {
     Ok(())
 }
 
-#[test_case(20, 20 => Ok(()); "Can load a word")]
-#[test_case(VM_MAX_RAM, 1 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "b + 8 * c gteq VM_MAX_RAM")]
-fn test_load_word(b: Word, c: Word) -> SimpleResult<()> {
+#[test_case(20, Imm12::from(20) => Ok(()); "Can load a word")]
+#[test_case(VM_MAX_RAM, Imm12::from(1) => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "b + 8 * c gteq VM_MAX_RAM")]
+fn test_load_word(b: Word, c: Imm12) -> SimpleResult<()> {
     // create a mutable memory with size `MEM_SIZE`
     let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
 
     // calculate start location where 8 bytes of value will be stored based on `b` and `c`
     // values.
-    let start = (b as usize + (c as usize * 8)).min(MEM_SIZE - 8);
+    let start = (b as usize + (u64::from(c) * 8) as usize).min(MEM_SIZE - 8);
 
     // write 2u8 to a slice of memory (starting at the 'start' location with a length of
     // 8)
@@ -279,10 +280,9 @@ fn test_store_byte_more(
     Ok(())
 }
 
-#[test_case(true, 20, 30, 40 => Ok(()); "Can store a word")]
-#[test_case(true, 20, 30, VM_MAX_RAM => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "Fails due to memory overflow")]
-#[test_case(false, 20, 30, 40 => Err(PanicOrBug::Panic(PanicReason::MemoryOwnership)); "Fails due to not having ownership of the range")]
-fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Word) -> SimpleResult<()> {
+#[test_case(true, 20, 30, Imm12::from(40) => Ok(()); "Can store a word")]
+#[test_case(false, 20, 30, Imm12::from(40) => Err(PanicOrBug::Panic(PanicReason::MemoryOwnership)); "Fails due to not having ownership of the range")]
+fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Imm12) -> SimpleResult<()> {
     let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let mut owner = OwnershipRegisters {
@@ -296,13 +296,13 @@ fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Word) -> SimpleResu
     };
     if has_ownership {
         owner.ssp = b;
-        owner.sp = b + (8 * c);
+        owner.sp = b + 8 * u64::from(c);
     }
 
     store_word(&mut memory, owner, RegMut::new(&mut pc), a, b, c)?;
 
     assert_eq!(pc, 8);
-    let start = (a + c * 8) as usize;
+    let start = (a + u64::from(c) * 8) as usize;
     assert_eq!(memory[start..start + 8], b.to_be_bytes()[..]);
 
     Ok(())

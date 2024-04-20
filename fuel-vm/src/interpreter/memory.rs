@@ -13,6 +13,7 @@ use crate::{
 
 use derivative::Derivative;
 use fuel_asm::{
+    Imm12,
     Imm24,
     PanicReason,
     RegId,
@@ -63,7 +64,10 @@ fn reverse_resize_at_least(vec: &mut Vec<u8>, new_len: usize) {
     let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);
     let mut new_vec = Vec::new();
     new_vec.reserve_exact(cap);
-    new_vec.extend(core::iter::repeat(0).take(cap - vec.len()));
+    let prefix_zeroes = cap
+        .checked_sub(vec.len())
+        .expect("Attempting to resize impossibly large heap memory");
+    new_vec.extend(core::iter::repeat(0).take(prefix_zeroes));
     new_vec.extend(vec.iter().copied());
     *vec = new_vec;
 }
@@ -140,8 +144,11 @@ impl Memory {
             return Err(PanicReason::MemoryGrowthOverlap)
         }
 
+        #[allow(clippy::arithmetic_side_effects)] // Safety: ensured above with min
+        let new_len = MEM_SIZE - new_hp;
+
         // Expand the heap allocation
-        reverse_resize_at_least(&mut self.heap, MEM_SIZE - new_hp);
+        reverse_resize_at_least(&mut self.heap, new_len);
         self.hp = new_hp;
 
         // If heap enters region where stack has been, truncate the stack
@@ -179,6 +186,7 @@ impl Memory {
     }
 
     /// Returns a reference to memory for reading, if possible.
+    #[allow(clippy::arithmetic_side_effects)] // Safety: subtractions are checked
     pub fn read<A: ToAddr, C: ToAddr>(
         &self,
         addr: A,
@@ -209,6 +217,7 @@ impl Memory {
 
     /// Gets write access to memory, if possible.
     /// Doesn't perform any ownership checks.
+    #[allow(clippy::arithmetic_side_effects)] // Safety: subtractions are checked
     pub fn write_noownerchecks<A: ToAddr, B: ToAddr>(
         &mut self,
         addr: A,
@@ -421,7 +430,7 @@ impl MemoryRange {
 
     /// Splits range at given relative offset. Panics if offset > range length.
     pub fn split_at_offset(self, at: usize) -> (Self, Self) {
-        let mid = self.0.start + at;
+        let mid = self.0.start.saturating_add(at);
         assert!(mid <= self.0.end);
         (Self(self.0.start..mid), Self(mid..self.0.end))
     }
@@ -507,7 +516,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         &mut self,
         ra: RegisterId,
         b: Word,
-        c: Word,
+        c: Imm12,
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
@@ -519,7 +528,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         store_byte(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
 
-    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
+    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Imm12) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
     }
@@ -615,14 +624,18 @@ pub(crate) fn push_selected_registers(
 
     // First update the new stack pointer, as that's the only error condition
     let count: u64 = bitmask.count_ones().into();
-    let write_size = count * (core::mem::size_of::<Word>() as u64);
+    let write_size = count
+        .checked_mul(WORD_SIZE as u64)
+        .expect("Bitmask size times 8 can never oveflow");
     let write_at = *sp;
-    try_update_stack_pointer(sp, ssp, hp, write_at + write_size, memory)?;
+    // If this would overflow, the stack pointer update below will fail
+    let new_sp = write_at.saturating_add(write_size);
+    try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
 
     // Write the registers to the stack
     let mut it = memory
         .write_noownerchecks(write_at, write_size)?
-        .chunks_exact_mut(8);
+        .chunks_exact_mut(WORD_SIZE);
     for (i, reg) in program_regs.segment(segment).iter().enumerate() {
         if (bitmask & (1 << i)) != 0 {
             let item = it
@@ -650,17 +663,19 @@ pub(crate) fn pop_selected_registers(
 
     // First update the stack pointer, as that's the only error condition
     let count: u64 = bitmask.count_ones().into();
-    let size_in_stack = count * 8;
+    let size_in_stack = count
+        .checked_mul(WORD_SIZE as u64)
+        .expect("Bitmask size times 8 can never oveflow");
     let new_sp = sp
         .checked_sub(size_in_stack)
         .ok_or(PanicReason::MemoryOverflow)?;
     try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
 
     // Restore registers from the stack
-    let mut it = memory.read(new_sp, size_in_stack)?.chunks_exact(8);
+    let mut it = memory.read(new_sp, size_in_stack)?.chunks_exact(WORD_SIZE);
     for (i, reg) in program_regs.segment_mut(segment).iter_mut().enumerate() {
         if (bitmask & (1 << i)) != 0 {
-            let mut buf = [0u8; 8];
+            let mut buf = [0u8; WORD_SIZE];
             buf.copy_from_slice(it.next().expect("Count mismatch"));
             *reg = Word::from_be_bytes(buf);
         }
@@ -686,11 +701,12 @@ pub(crate) fn load_word(
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
-    c: Word,
+    c: Imm12,
 ) -> SimpleResult<()> {
-    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
-    // immediate value.
-    let addr = b.checked_add(c * 8).ok_or(PanicReason::MemoryOverflow)?;
+    let offset = u64::from(c)
+        .checked_mul(WORD_SIZE as u64)
+        .expect("u12 * 8 cannot overflow a Word");
+    let addr = b.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
     *result = Word::from_be_bytes(memory.read_bytes(addr)?);
     Ok(inc_pc(pc)?)
 }
@@ -714,11 +730,13 @@ pub(crate) fn store_word(
     pc: RegMut<PC>,
     a: Word,
     b: Word,
-    c: Word,
+    c: Imm12,
 ) -> SimpleResult<()> {
-    // C is expressed in words; mul by 8. This cannot overflow since it's a 12 bit
-    // immediate value.
-    let addr = a.saturating_add(c * 8);
+    #[allow(clippy::arithmetic_side_effects)]
+    let offset = u64::from(c)
+        .checked_mul(WORD_SIZE as u64)
+        .expect("12-bits number multiplied by 8 cannot overflow a Word");
+    let addr = a.saturating_add(offset);
     memory.write_bytes(owner, addr, b.to_be_bytes())?;
     Ok(inc_pc(pc)?)
 }

@@ -176,17 +176,26 @@ pub trait Deserialize: Sized {
     }
 }
 
-/// Returns the sum of two sizes, or panics if the sum overflows.
+/// Adds two sizes together. Panics on overflow.
 pub const fn add_sizes(a: usize, b: usize) -> usize {
-    a.saturating_add(b)
+    match a.checked_add(b) {
+        Some(result) => result,
+        None => panic!("Size overflow"),
+    }
 }
 
 /// The data of each field should be aligned to 64 bits.
 pub const ALIGN: usize = 8;
 
 /// The number of padding bytes required to align the given length correctly.
+#[allow(clippy::arithmetic_side_effects)] // Safety: (a % b) < b
 const fn alignment_bytes(len: usize) -> usize {
-    (ALIGN - (len % ALIGN)) % ALIGN
+    let modulo = len % ALIGN;
+    if modulo == 0 {
+        0
+    } else {
+        ALIGN - modulo
+    }
 }
 
 /// Size after alignment.

@@ -1,3 +1,5 @@
+#![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use alloc::{
     vec,
     vec::Vec,

@@ -307,11 +307,14 @@ mod field {
         }
 
         fn body_offset_end(&self) -> usize {
-            Self::upgrade_purpose_offset_static() + self.body.purpose.size()
-                + WORD_SIZE // Policies size
+            Self::upgrade_purpose_offset_static()
+                .saturating_add(self.body.purpose.size())
+                .saturating_add(
+                    WORD_SIZE // Policies size
                 + WORD_SIZE // Inputs size
                 + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
+                + WORD_SIZE, // Witnesses size
+                )
         }
     }
 }

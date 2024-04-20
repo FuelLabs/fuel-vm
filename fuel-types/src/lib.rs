@@ -4,7 +4,13 @@
 #![warn(unsafe_code)]
 #![warn(missing_docs)]
 #![deny(unused_crate_dependencies)]
-#![deny(clippy::cast_possible_truncation)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::string_slice
+)]
 // `fuel-derive` requires `fuel_types` import
 // TODO: Move canonical serialization to `fuel-canonical` crate
 #![allow(unused_crate_dependencies)]
@@ -49,12 +55,3 @@ pub type Immediate18 = u32;
 
 /// 24-bits immediate value type
 pub type Immediate24 = u32;
-
-pub(crate) const fn hex_val(c: u8) -> Option<u8> {
-    match c {
-        b'A'..=b'F' => Some(c - b'A' + 10),
-        b'a'..=b'f' => Some(c - b'a' + 10),
-        b'0'..=b'9' => Some(c - b'0'),
-        _ => None,
-    }
-}

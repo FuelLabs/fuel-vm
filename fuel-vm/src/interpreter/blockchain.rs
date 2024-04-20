@@ -50,6 +50,7 @@ use alloc::vec::Vec;
 use fuel_asm::PanicReason;
 use fuel_storage::StorageSize;
 use fuel_tx::{
+    consts::BALANCE_ENTRY_SIZE,
     ContractIdExt,
     DependentCost,
     Receipt,
@@ -736,7 +737,7 @@ where
                 self.cgas,
                 self.ggas,
                 profiler,
-                ((AssetId::LEN + WORD_SIZE) as u64) * self.new_storage_gas_per_byte,
+                (BALANCE_ENTRY_SIZE as u64).saturating_mul(self.new_storage_gas_per_byte),
             )?;
         }
 
@@ -1062,7 +1063,9 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
             cgas,
             ggas,
             profiler,
-            (2 * Bytes32::LEN as u64) * new_storage_gas_per_byte,
+            (Bytes32::LEN as u64)
+                .saturating_mul(2)
+                .saturating_mul(new_storage_gas_per_byte),
         )?;
     }
 
@@ -1265,8 +1268,10 @@ fn state_write_qword<'vm, S: InterpreterStorage>(
             cgas,
             ggas,
             profiler,
-            // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
-            (unset_count as u64) * (2 * Bytes32::LEN as u64) * new_storage_gas_per_byte,
+            (unset_count as u64)
+                .saturating_mul(2)
+                .saturating_mul(Bytes32::LEN as u64)
+                .saturating_mul(new_storage_gas_per_byte),
         )?;
     }
 

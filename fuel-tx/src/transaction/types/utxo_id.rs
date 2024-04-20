@@ -98,7 +98,7 @@ impl str::FromStr for UtxoId {
     /// optionally preceeding it is the transaction id.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const ERR: &str = "Invalid encoded byte";
-        let s = s.trim_start_matches("0x");
+        let s = s.strip_prefix("0x").unwrap_or(s);
 
         Ok(if s.is_empty() {
             UtxoId::new(Bytes32::default(), 0)
@@ -108,6 +108,7 @@ impl str::FromStr for UtxoId {
                 u16::from_str_radix(s, 16).map_err(|_| ERR)?,
             )
         } else {
+            #[allow(clippy::arithmetic_side_effects)] // Checked above
             let i = s.len() - 4;
             if !s.is_char_boundary(i) {
                 return Err(ERR)

@@ -25,8 +25,6 @@ use rand::{
 #[cfg(all(feature = "alloc", feature = "typescript"))]
 use alloc::vec::Vec;
 
-use crate::hex_val;
-
 macro_rules! key {
     ($i:ident, $t:ty) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -216,24 +214,9 @@ macro_rules! key_methods {
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
                     const ERR: &str = "Invalid encoded byte";
-
-                    let alternate = s.starts_with("0x");
-
-                    let mut b = s.bytes();
                     let mut ret = <[u8; SIZE]>::default();
-
-                    if alternate {
-                        b.next();
-                        b.next();
-                    }
-
-                    for r in ret.as_mut() {
-                        let h = b.next().and_then(hex_val).ok_or(ERR)?;
-                        let l = b.next().and_then(hex_val).ok_or(ERR)?;
-
-                        *r = h << 4 | l;
-                    }
-
+                    let s = s.strip_prefix("0x").unwrap_or(s);
+                    hex::decode_to_slice(&s, &mut ret).map_err(|_| ERR)?;
                     Ok(ret.into())
                 }
             }

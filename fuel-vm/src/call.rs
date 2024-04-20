@@ -5,7 +5,9 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
+    bytes::padded_len_usize,
     canonical::{
+        add_sizes,
         Deserialize,
         Serialize,
     },
@@ -116,32 +118,32 @@ impl CallFrame {
 
     /// Start of the asset id offset from the beginning of the call frame.
     pub const fn asset_id_offset() -> usize {
-        Self::contract_id_offset() + ContractId::LEN
+        add_sizes(Self::contract_id_offset(), ContractId::LEN)
     }
 
     /// Start of the registers offset from the beginning of the call frame.
     pub const fn registers_offset() -> usize {
-        Self::asset_id_offset() + AssetId::LEN
+        add_sizes(Self::asset_id_offset(), AssetId::LEN)
     }
 
     /// Start of the code size offset from the beginning of the call frame.
     pub const fn code_size_offset() -> usize {
-        Self::registers_offset() + WORD_SIZE * (VM_REGISTER_COUNT)
+        add_sizes(Self::registers_offset(), WORD_SIZE * VM_REGISTER_COUNT)
     }
 
     /// Start of the `a` argument offset from the beginning of the call frame.
     pub const fn a_offset() -> usize {
-        Self::code_size_offset() + WORD_SIZE
+        add_sizes(Self::code_size_offset(), WORD_SIZE)
     }
 
     /// Start of the `b` argument offset from the beginning of the call frame.
     pub const fn b_offset() -> usize {
-        Self::a_offset() + WORD_SIZE
+        add_sizes(Self::a_offset(), WORD_SIZE)
     }
 
     /// Size of the call frame in bytes.
     pub const fn serialized_size() -> usize {
-        Self::b_offset() + WORD_SIZE
+        add_sizes(Self::b_offset(), WORD_SIZE)
     }
 
     /// Registers prior to the called execution.
@@ -161,12 +163,14 @@ impl CallFrame {
 
     /// Padding to the next word boundary.
     pub fn code_size_padding(&self) -> usize {
-        (WORD_SIZE - self.code_size() % WORD_SIZE) % WORD_SIZE
+        self.total_code_size()
+            .checked_sub(self.code_size)
+            .expect("Padding is always less than size + padding")
     }
 
     /// Total code size including padding.
     pub fn total_code_size(&self) -> usize {
-        self.code_size() + self.code_size_padding()
+        padded_len_usize(self.code_size).expect("Code size cannot overflow with padding")
     }
 
     /// `a` argument.

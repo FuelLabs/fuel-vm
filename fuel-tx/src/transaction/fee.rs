@@ -126,10 +126,10 @@ where
 
     let vm_initialization_gas = gas_costs.vm_initialization().resolve(bytes_size as Word);
 
-    let bytes_gas = bytes_size as u64 * fee.gas_per_byte();
     // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
     // validity. In the production, the value always will be lower than
     // `u64::MAX`.
+    let bytes_gas = fee.gas_per_byte().saturating_mul(bytes_size as u64);
     tx.gas_used_by_inputs(gas_costs)
         .saturating_add(tx.gas_used_by_metadata(gas_costs))
         .saturating_add(bytes_gas)

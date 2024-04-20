@@ -292,7 +292,12 @@ impl<T: Serialize> Serialize for Vec<T> {
         if T::UNALIGNED_BYTES {
             aligned_size(self.len())
         } else {
-            aligned_size(self.iter().map(|e| e.size()).sum())
+            aligned_size(
+                self.iter()
+                    .map(|e| e.size())
+                    .reduce(usize::saturating_add)
+                    .unwrap_or_default(),
+            )
         }
     }
 
@@ -367,7 +372,12 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
         if T::UNALIGNED_BYTES {
             aligned_size(N)
         } else {
-            aligned_size(self.iter().map(|e| e.size_static()).sum())
+            aligned_size(
+                self.iter()
+                    .map(|e| e.size_static())
+                    .reduce(usize::saturating_add)
+                    .unwrap_or_default(),
+            )
         }
     }
 
@@ -376,7 +386,12 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
         if T::UNALIGNED_BYTES {
             0
         } else {
-            aligned_size(self.iter().map(|e| e.size_dynamic()).sum())
+            aligned_size(
+                self.iter()
+                    .map(|e| e.size_dynamic())
+                    .reduce(usize::saturating_add)
+                    .unwrap_or_default(),
+            )
         }
     }
 

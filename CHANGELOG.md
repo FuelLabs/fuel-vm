@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- [#725](https://github.com/FuelLabs/fuel-vm/pull/725): Adds more clippy lints to catch possible integer overflow and casting bugs on compile time.
+
+### Added
+
+#### Breaking
+
+- [#725](https://github.com/FuelLabs/fuel-vm/pull/725): `UtxoId::from_str` now rejects inputs with multiple `0x` prefixes.
+
+
 ## [Version 0.49.0]
 
 ### Added

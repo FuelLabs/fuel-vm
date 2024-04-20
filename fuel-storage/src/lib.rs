@@ -1,5 +1,11 @@
 #![no_std]
-#![deny(clippy::cast_possible_truncation)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::string_slice
+)]
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
 

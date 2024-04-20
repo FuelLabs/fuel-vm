@@ -7,7 +7,6 @@ use fuel_asm::{
 use fuel_types::{
     bytes::padded_len_usize,
     canonical::{
-        add_sizes,
         Deserialize,
         Serialize,
     },
@@ -118,32 +117,32 @@ impl CallFrame {
 
     /// Start of the asset id offset from the beginning of the call frame.
     pub const fn asset_id_offset() -> usize {
-        add_sizes(Self::contract_id_offset(), ContractId::LEN)
+        Self::contract_id_offset().saturating_add(ContractId::LEN)
     }
 
     /// Start of the registers offset from the beginning of the call frame.
     pub const fn registers_offset() -> usize {
-        add_sizes(Self::asset_id_offset(), AssetId::LEN)
+        Self::asset_id_offset().saturating_add(AssetId::LEN)
     }
 
     /// Start of the code size offset from the beginning of the call frame.
     pub const fn code_size_offset() -> usize {
-        add_sizes(Self::registers_offset(), WORD_SIZE * VM_REGISTER_COUNT)
+        Self::registers_offset().saturating_add(WORD_SIZE * VM_REGISTER_COUNT)
     }
 
     /// Start of the `a` argument offset from the beginning of the call frame.
     pub const fn a_offset() -> usize {
-        add_sizes(Self::code_size_offset(), WORD_SIZE)
+        Self::code_size_offset().saturating_add(WORD_SIZE)
     }
 
     /// Start of the `b` argument offset from the beginning of the call frame.
     pub const fn b_offset() -> usize {
-        add_sizes(Self::a_offset(), WORD_SIZE)
+        Self::a_offset().saturating_add(WORD_SIZE)
     }
 
     /// Size of the call frame in bytes.
     pub const fn serialized_size() -> usize {
-        add_sizes(Self::b_offset(), WORD_SIZE)
+        Self::b_offset().saturating_add(WORD_SIZE)
     }
 
     /// Registers prior to the called execution.

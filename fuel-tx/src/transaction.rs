@@ -64,7 +64,6 @@ pub use consensus_parameters::{
     FeeParameters,
     GasCosts,
     GasCostsValues,
-    GasUnit,
     PredicateParameters,
     ScriptParameters,
     TxParameters,

@@ -12,7 +12,6 @@ pub use gas::{
     DependentCost,
     GasCosts,
     GasCostsValues,
-    GasUnit,
 };
 
 use crate::consts::BALANCE_ENTRY_SIZE;

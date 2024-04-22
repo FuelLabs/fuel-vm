@@ -96,7 +96,6 @@ pub use transaction::{
     FormatValidityChecks,
     GasCosts,
     GasCostsValues,
-    GasUnit,
     Mint,
     PredicateParameters,
     Script,

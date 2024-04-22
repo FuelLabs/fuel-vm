@@ -521,10 +521,11 @@ impl TxParameters {
             );
         };
 
-        Bytes32::LEN // Tx ID
-            .saturating_add(AssetId::LEN ) // Base asset ID
-            .saturating_add(balances_size) // Asset ID/Balance coin input pairs
-            .saturating_add(WORD_SIZE) // Tx size
+        balances_size.saturating_add(
+            Bytes32::LEN // Tx ID
+            + WORD_SIZE // Tx size
+            + AssetId::LEN, // Base asset ID
+        )
     }
 
     /// Replace the max inputs with the given argument

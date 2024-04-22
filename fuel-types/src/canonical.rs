@@ -72,12 +72,15 @@ pub trait Serialize {
     const UNALIGNED_BYTES: bool = false;
 
     /// Size of the static part of the serialized object, in bytes.
+    /// Saturates to usize::MAX on overflow.
     fn size_static(&self) -> usize;
 
     /// Size of the dynamic part, in bytes.
+    /// Saturates to usize::MAX on overflow.
     fn size_dynamic(&self) -> usize;
 
     /// Total size of the serialized object, in bytes.
+    /// Saturates to usize::MAX on overflow.
     fn size(&self) -> usize {
         self.size_static().saturating_add(self.size_dynamic())
     }
@@ -176,14 +179,6 @@ pub trait Deserialize: Sized {
     }
 }
 
-/// Adds two sizes together. Panics on overflow.
-pub const fn add_sizes(a: usize, b: usize) -> usize {
-    match a.checked_add(b) {
-        Some(result) => result,
-        None => panic!("Size overflow"),
-    }
-}
-
 /// The data of each field should be aligned to 64 bits.
 pub const ALIGN: usize = 8;
 
@@ -198,9 +193,9 @@ const fn alignment_bytes(len: usize) -> usize {
     }
 }
 
-/// Size after alignment.
+/// Size after alignment. Saturates on overflow.
 pub const fn aligned_size(len: usize) -> usize {
-    add_sizes(len, alignment_bytes(len))
+    len.saturating_add(alignment_bytes(len))
 }
 
 macro_rules! impl_for_primitives {

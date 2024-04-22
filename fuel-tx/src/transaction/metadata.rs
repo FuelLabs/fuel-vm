@@ -95,7 +95,6 @@ impl CommonMetadata {
             offset = offset
                 .checked_add(output.size())
                 .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
-
             outputs_offset_at.push(i);
         }
 
@@ -106,7 +105,6 @@ impl CommonMetadata {
             offset = offset
                 .checked_add(witnesses.size())
                 .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
-
             witnesses_offset_at.push(i);
         }
 

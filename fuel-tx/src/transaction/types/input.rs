@@ -775,18 +775,16 @@ impl Input {
 
 impl Serialize for Input {
     fn size_static(&self) -> usize {
-        canonical::add_sizes(
-            8, // Discriminant
-            match self {
-                Input::CoinSigned(coin) => coin.size_static(),
-                Input::CoinPredicate(coin) => coin.size_static(),
-                Input::Contract(contract) => contract.size_static(),
-                Input::MessageCoinSigned(message) => message.size_static(),
-                Input::MessageCoinPredicate(message) => message.size_static(),
-                Input::MessageDataSigned(message) => message.size_static(),
-                Input::MessageDataPredicate(message) => message.size_static(),
-            },
-        )
+        (match self {
+            Input::CoinSigned(coin) => coin.size_static(),
+            Input::CoinPredicate(coin) => coin.size_static(),
+            Input::Contract(contract) => contract.size_static(),
+            Input::MessageCoinSigned(message) => message.size_static(),
+            Input::MessageCoinPredicate(message) => message.size_static(),
+            Input::MessageDataSigned(message) => message.size_static(),
+            Input::MessageDataPredicate(message) => message.size_static(),
+        })
+        .saturating_add(8) // Discriminant
     }
 
     fn size_dynamic(&self) -> usize {

@@ -334,10 +334,8 @@ mod field {
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
             if idx < self.body.storage_slots.len() {
                 Some(
-                    Self::storage_slots_offset_static().saturating_add(
-                        idx.checked_mul(StorageSlot::SLOT_SIZE)
-                            .expect("Slot index checked above"),
-                    ),
+                    Self::storage_slots_offset_static()
+                        .checked_add(idx.checked_mul(StorageSlot::SLOT_SIZE)?)?,
                 )
             } else {
                 None

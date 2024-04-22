@@ -396,13 +396,8 @@ mod field {
         }
 
         fn body_offset_end(&self) -> usize {
-            Self::proof_set_offset_static().saturating_add(
-                self.body
-                    .proof_set
-                    .len()
-                    .checked_mul(Bytes32::LEN)
-                    .expect("Proof set impossibly large"),
-            )
+            Self::proof_set_offset_static()
+                .saturating_add(self.body.proof_set.len().saturating_mul(Bytes32::LEN))
         }
     }
 }

@@ -310,10 +310,10 @@ mod field {
             Self::upgrade_purpose_offset_static()
                 .saturating_add(self.body.purpose.size())
                 .saturating_add(
-                    WORD_SIZE // Policies size
-                + WORD_SIZE // Inputs size
-                + WORD_SIZE // Outputs size
-                + WORD_SIZE, // Witnesses size
+                    WORD_SIZE  // Policies size
+                    + WORD_SIZE // Inputs size
+                    + WORD_SIZE // Outputs size
+                    + WORD_SIZE, // Witnesses size
                 )
         }
     }

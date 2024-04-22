@@ -145,7 +145,7 @@ impl crate::Cacheable for Script {
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id),
+            common: CommonMetadata::compute(self, chain_id)?,
             body: ScriptMetadata {
                 script_data_offset: self.script_data_offset(),
             },

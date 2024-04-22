@@ -258,7 +258,7 @@ impl crate::Cacheable for Create {
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id),
+            common: CommonMetadata::compute(self, chain_id)?,
             body: CreateMetadata::compute(self)?,
         });
         Ok(())

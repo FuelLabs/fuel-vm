@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Breaking
+
+- [#726](https://github.com/FuelLabs/fuel-vm/pull/726): Removed code related to Binary Merkle Sum Trees (BMSTs). The BMST is deprecated and not used in production environments. 
+
 ## [Version 0.49.0]
 
 ### Added

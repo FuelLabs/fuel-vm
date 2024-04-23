@@ -10,7 +10,6 @@ pub mod binary;
 pub mod common;
 pub mod sparse;
 pub mod storage;
-pub mod sum;
 
 #[cfg(test)]
 mod tests;

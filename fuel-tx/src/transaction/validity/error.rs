@@ -14,18 +14,6 @@ pub enum ValidityError {
     TransactionMetadataMismatch,
     /// Transaction doesn't have spendable input message or coin.
     NoSpendableInput,
-    /// Serialized input length is too large.
-    SerializedInputTooLarge {
-        index: usize,
-    },
-    /// Serialized output length is too large.
-    SerializedOutputTooLarge {
-        index: usize,
-    },
-    /// Serialized witness length is too large.
-    SerializedWitnessTooLarge {
-        index: usize,
-    },
     InputWitnessIndexBounds {
         index: usize,
     },
@@ -174,4 +162,16 @@ pub enum ValidityError {
     BalanceOverflow,
     /// The given gas costs is are too large
     GasCostsCoinsOverflow,
+    /// Serialized input length is too large.
+    SerializedInputTooLarge {
+        index: usize,
+    },
+    /// Serialized output length is too large.
+    SerializedOutputTooLarge {
+        index: usize,
+    },
+    /// Serialized witness length is too large.
+    SerializedWitnessTooLarge {
+        index: usize,
+    },
 }

@@ -104,7 +104,7 @@ impl CommonMetadata {
             let i = offset;
             offset = offset
                 .checked_add(witnesses.size())
-                .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
+                .ok_or(ValidityError::SerializedWitnessTooLarge { index })?;
             witnesses_offset_at.push(i);
         }
 

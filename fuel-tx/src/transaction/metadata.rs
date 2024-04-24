@@ -59,7 +59,8 @@ pub struct CommonMetadata {
 
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
-    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
+    /// Returns `None` if the transaction is invalid.
+    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Result<Self, ValidityError>
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,
@@ -78,54 +79,44 @@ impl CommonMetadata {
             .collect_vec();
 
         let mut offset = tx.inputs_offset();
-        let inputs_offset = offset;
-        let inputs_offset_at = tx
-            .inputs()
-            .iter()
-            .map(|input| {
-                let i = offset;
-                offset += input.size();
-                i
-            })
-            .collect_vec();
+        let mut inputs_offset_at = Vec::new();
+        for (index, input) in tx.inputs().iter().enumerate() {
+            let i = offset;
+            offset = offset
+                .checked_add(input.size())
+                .ok_or(ValidityError::SerializedInputTooLarge { index })?;
+            inputs_offset_at.push(i);
+        }
 
-        let outputs_offset = offset;
-        #[cfg(feature = "internals")]
-        assert_eq!(outputs_offset, tx.outputs_offset());
+        let mut offset = tx.outputs_offset();
+        let mut outputs_offset_at = Vec::new();
+        for (index, output) in tx.outputs().iter().enumerate() {
+            let i = offset;
+            offset = offset
+                .checked_add(output.size())
+                .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
+            outputs_offset_at.push(i);
+        }
 
-        let outputs_offset_at = tx
-            .outputs()
-            .iter()
-            .map(|output| {
-                let i = offset;
-                offset += output.size();
-                i
-            })
-            .collect_vec();
+        let mut offset = tx.witnesses_offset();
+        let mut witnesses_offset_at = Vec::new();
+        for (index, witnesses) in tx.witnesses().iter().enumerate() {
+            let i = offset;
+            offset = offset
+                .checked_add(witnesses.size())
+                .ok_or(ValidityError::SerializedWitnessTooLarge { index })?;
+            witnesses_offset_at.push(i);
+        }
 
-        let witnesses_offset = offset;
-        #[cfg(feature = "internals")]
-        assert_eq!(witnesses_offset, tx.witnesses_offset());
-
-        let witnesses_offset_at = tx
-            .witnesses()
-            .iter()
-            .map(|witness| {
-                let i = offset;
-                offset += witness.size();
-                i
-            })
-            .collect_vec();
-
-        Self {
+        Ok(Self {
             id,
-            inputs_offset,
+            inputs_offset: tx.inputs_offset(),
             inputs_offset_at,
             inputs_predicate_offset_at,
-            outputs_offset,
+            outputs_offset: tx.outputs_offset(),
             outputs_offset_at,
-            witnesses_offset,
+            witnesses_offset: tx.witnesses_offset(),
             witnesses_offset_at,
-        }
+        })
     }
 }

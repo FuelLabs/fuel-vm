@@ -14,7 +14,6 @@ use fuel_asm::{
     Flags,
     Instruction,
     PanicReason,
-    RegId,
 };
 use fuel_tx::{
     field::Outputs,
@@ -29,10 +28,7 @@ use fuel_types::{
     Word,
 };
 
-use core::{
-    mem,
-    ops::Range,
-};
+use core::ops::Range;
 
 #[cfg(test)]
 mod message_tests;
@@ -67,7 +63,8 @@ fn absolute_output_offset<Tx: Outputs>(
     tx_offset: usize,
     idx: usize,
 ) -> Option<usize> {
-    tx.outputs_offset_at(idx).map(|offset| tx_offset + offset)
+    tx.outputs_offset_at(idx)
+        .map(|offset| tx_offset.saturating_add(offset))
 }
 
 pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
@@ -100,28 +97,6 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
 }
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
-    pub(crate) fn reserve_stack(&mut self, len: Word) -> Result<Word, PanicReason> {
-        let (new_sp, overflow) = self.registers[RegId::SSP].overflowing_add(len);
-
-        if overflow || !self.is_external_context() && new_sp > self.registers[RegId::SP] {
-            Err(PanicReason::MemoryOverflow)
-        } else {
-            self.memory.grow_stack(new_sp)?;
-            Ok(mem::replace(&mut self.registers[RegId::SSP], new_sp))
-        }
-    }
-
-    pub(crate) fn push_stack(&mut self, data: &[u8]) -> SimpleResult<()> {
-        let old_ssp = usize::try_from(self.reserve_stack(data.len() as Word)?)
-            .expect("SSP couldn't be more than `usize`");
-
-        self.memory
-            .write_noownerchecks(old_ssp, data.len())?
-            .copy_from_slice(data);
-
-        Ok(())
-    }
-
     pub(crate) fn set_flag(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
         set_flag(flag, pc, a)
@@ -129,10 +104,6 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
 
     pub(crate) const fn context(&self) -> &Context {
         &self.context
-    }
-
-    pub(crate) const fn is_external_context(&self) -> bool {
-        self.context().is_external()
     }
 
     pub(crate) const fn is_predicate(&self) -> bool {

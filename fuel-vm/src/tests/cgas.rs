@@ -164,7 +164,7 @@ fn cgas_uses_min_available_gas() {
         // load contract id
         op::addi(reg_contract_id, reg_call_b, 32 as Immediate12),
         // set call depth
-        op::movi(reg_max_call_depth, call_depth as Immediate18),
+        op::movi(reg_max_call_depth, call_depth),
         // set inner call cgas limit
         op::movi(reg_forward_gas, gas_forward_amount),
         op::call(reg_contract_id, reg_call_a, reg_call_b, RegId::CGAS),

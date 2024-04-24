@@ -29,24 +29,24 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
 
     let size_static_code = variant.each(|binding| {
         quote! {
-            size = ::fuel_types::canonical::add_sizes(size, #binding.size_static());
+            size = size.saturating_add(#binding.size_static());
         }
     });
 
     let initial_size = if attrs.prefix.is_some() {
-        quote! { let mut size = 8; }
+        quote! { let mut size = 8usize; }
     } else {
-        quote! { let mut size = 0; }
+        quote! { let mut size = 0usize; }
     };
     let size_static_code = quote! { #initial_size match self { #size_static_code}; size };
 
     let size_dynamic_code = variant.each(|binding| {
         quote! {
-            size = ::fuel_types::canonical::add_sizes(size, #binding.size_dynamic());
+            size = size.saturating_add(#binding.size_dynamic());
         }
     });
     let size_dynamic_code =
-        quote! { let mut size = 0; match self { #size_dynamic_code}; size };
+        quote! { let mut size = 0usize; match self { #size_dynamic_code}; size };
 
     let prefix = if let Some(prefix_type) = attrs.prefix.as_ref() {
         quote! {
@@ -143,14 +143,14 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         .map(|variant| {
             variant.each(|binding| {
                 quote! {
-                    size = ::fuel_types::canonical::add_sizes(size, #binding.size_static());
+                    size = size.saturating_add(#binding.size_static());
                 }
             })
         })
         .collect();
     let match_size_static = quote! {{
         // `repr(128)` is unstable, so because of that we can use 8 bytes.
-        let mut size = 8;
+        let mut size = 8usize;
         match self { #match_size_static } size }
     };
 
@@ -160,13 +160,13 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         .map(|variant| {
             variant.each(|binding| {
                 quote! {
-                    size = ::fuel_types::canonical::add_sizes(size, #binding.size_dynamic());
+                    size = size.saturating_add(#binding.size_dynamic());
                 }
             })
         })
         .collect();
     let match_size_dynamic =
-        quote! {{ let mut size = 0; match self { #match_size_dynamic } size }};
+        quote! {{ let mut size = 0usize; match self { #match_size_dynamic } size }};
 
     let impl_code = s.gen_impl(quote! {
         gen impl ::fuel_types::canonical::Serialize for @Self {

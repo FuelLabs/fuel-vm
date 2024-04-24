@@ -771,7 +771,14 @@ pub mod gas_profiling {
 
         pub fn total_gas(&self) -> Word {
             self.data()
-                .map(|d| d.gas().iter().map(|(_, gas)| gas).sum())
+                .map(|d| {
+                    d.gas()
+                        .iter()
+                        .map(|(_, gas)| gas)
+                        .copied()
+                        .reduce(Word::saturating_add)
+                        .unwrap_or_default()
+                })
                 .unwrap_or_default()
         }
     }

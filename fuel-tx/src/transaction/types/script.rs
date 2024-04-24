@@ -145,7 +145,7 @@ impl crate::Cacheable for Script {
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id),
+            common: CommonMetadata::compute(self, chain_id)?,
             body: ScriptMetadata {
                 script_data_offset: self.script_data_offset(),
             },
@@ -188,7 +188,7 @@ mod field {
 
         #[inline(always)]
         fn receipts_root_offset_static() -> usize {
-            Self::script_gas_limit_offset_static() + WORD_SIZE
+            Self::script_gas_limit_offset_static().saturating_add(WORD_SIZE)
         }
     }
 
@@ -205,14 +205,15 @@ mod field {
 
         #[inline(always)]
         fn script_offset_static() -> usize {
-            Self::receipts_root_offset_static()
-                + Bytes32::LEN // Receipts root
+            Self::receipts_root_offset_static().saturating_add(
+                Bytes32::LEN // Receipts root
                 + WORD_SIZE // Script size
                 + WORD_SIZE // Script data size
                 + WORD_SIZE // Policies size
                 + WORD_SIZE // Inputs size
                 + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
+                + WORD_SIZE, // Witnesses size
+            )
         }
     }
 

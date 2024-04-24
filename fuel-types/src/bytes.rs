@@ -11,11 +11,13 @@ pub const fn padded_len(bytes: &[u8]) -> Option<usize> {
 
 /// Return the word-padded length of an arbitrary length.
 /// Returns None if the length is too large to be represented as usize.
+#[allow(clippy::arithmetic_side_effects)] // Safety: (a % b) < b
 pub const fn padded_len_usize(len: usize) -> Option<usize> {
-    if len % WORD_SIZE == 0 {
+    let modulo = len % WORD_SIZE;
+    if modulo == 0 {
         Some(len)
     } else {
-        let padding = WORD_SIZE - len % WORD_SIZE;
+        let padding = WORD_SIZE - modulo;
         len.checked_add(padding)
     }
 }

@@ -436,7 +436,7 @@ fn invert_vec<T: Clone>(vector: &mut Vec<T>, value: &VecState<Option<T>>) {
             },
             Ordering::Equal | Ordering::Greater,
         ) => {
-            vector.resize(*index + 1, value.clone());
+            vector.resize((*index).saturating_add(1), value.clone());
             vector[*index] = value.clone();
         }
         (

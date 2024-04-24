@@ -19,7 +19,7 @@ describe('fuel-tx [cjs]', () => {
     })
 
     it('should serialize and deserialize UtxoId correctly', () => {
-        let utxo_id = new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b00001a");
+        let utxo_id = new tx.UtxoId("0x0c0000000000000000000000000000000000000000000000000000000000000b001a");
         let bytes = utxo_id.to_bytes();
         let utxo_id2 = tx.UtxoId.from_bytes(bytes);
         expect(utxo_id.toString()).to.equal(utxo_id2.toString())

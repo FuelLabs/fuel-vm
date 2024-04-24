@@ -222,23 +222,27 @@ macro_rules! wideint_ops {
                     let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
                     let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
 
-                    let result: $t = if modulus == 0 {
-                        if is_unsafe_math(flag.into()) {
-                            *err = 1;
-                            $t::default() // Zero
-                        } else {
-                            return Err(PanicReason::ArithmeticError.into());
+                    // Use wider types to avoid overflow
+                    let lhs = [<to_wider_prim_ $t:lower>](lhs);
+                    let rhs = [<to_wider_prim_ $t:lower>](rhs);
+                    let modulus = [<to_wider_prim_ $t:lower>](modulus);
+
+                    let pre_mod = lhs.checked_add(rhs)
+                    .expect("Cannot overflow as we're using wider types");
+                    let result: $t = match pre_mod.checked_rem(modulus) {
+                        Some(result) => {
+                            *err = 0;
+                            // Truncate never loses data as modulus is still in domain of the original type
+                            [<truncate_from_prim_ $t:lower>](result)
+                        },
+                        None => {
+                            if is_unsafe_math(flag.into()) {
+                                *err = 1;
+                                $t::default() // Zero
+                            } else {
+                                return Err(PanicReason::ArithmeticError.into());
+                            }
                         }
-                    } else {
-                        *err = 0;
-
-                        // Use wider types to avoid overflow
-                        let lhs = [<to_wider_prim_ $t:lower>](lhs);
-                        let rhs = [<to_wider_prim_ $t:lower>](rhs);
-                        let modulus = [<to_wider_prim_ $t:lower>](modulus);
-
-                        // Truncate never loses data as modulus is still in domain of the original type
-                        [<truncate_from_prim_ $t:lower>]((lhs + rhs) % modulus)
                     };
 
                     *of = 0;
@@ -262,24 +266,25 @@ macro_rules! wideint_ops {
                     let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
                     let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
 
-                    let result: $t = if modulus == 0 {
-                        if is_unsafe_math(flag.into()) {
-                            *err = 1;
-                            $t::default() // Zero
-                        } else {
-                            return Err(PanicReason::ArithmeticError.into());
+                    let lhs = [<to_prim_ $t:lower>](lhs);
+                    let rhs = [<to_prim_ $t:lower>](rhs);
+                    let modulus = [<to_wider_prim_ $t:lower>](modulus);
+
+                    let result = match lhs.full_mul(rhs).checked_rem(modulus) {
+                        None => {
+                            if is_unsafe_math(flag.into()) {
+                                *err = 1;
+                                $t::default() // Zero
+                            } else {
+                                return Err(PanicReason::ArithmeticError.into());
+                            }
+                        },
+                        Some(result) => {
+                            *err = 0;
+                            // This never loses data, since the modulus type has same width as the result
+                            [<truncate_from_prim_ $t:lower>](result)
                         }
-                    } else {
-                        *err = 0;
 
-                        let lhs = [<to_prim_ $t:lower>](lhs);
-                        let rhs = [<to_prim_ $t:lower>](rhs);
-                        let modulus = [<to_wider_prim_ $t:lower>](modulus);
-
-                        let result = lhs.full_mul(rhs) % modulus;
-
-                        // This never loses data, since the modulus type has same width as the result
-                        [<truncate_from_prim_ $t:lower>](result)
                     };
 
                     *of = 0;
@@ -309,11 +314,9 @@ macro_rules! wideint_ops {
                     let rhs = [<to_prim_ $t:lower>](rhs);
 
                     let product = lhs.full_mul(rhs);
-                    let result = if divider == 0 {
-                        product >> (S * 8)
-                    } else {
-                        product / [<to_wider_prim_ $t:lower>](divider)
-                    };
+                    #[allow(clippy::arithmetic_side_effects)] // Safety: the shift has less bits than the product
+                    let product_div_max = product >> (S * 8);
+                    let result = product.checked_div([<to_wider_prim_ $t:lower>](divider)).unwrap_or(product_div_max);
 
                     let mut buffer = [0u8; 2 * S];
                     result.to_little_endian(&mut buffer);

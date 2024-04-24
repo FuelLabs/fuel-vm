@@ -21,13 +21,13 @@ fn gas_factor_rounds_correctly() {
     let gas_limit = 1_000_000;
 
     // arbitrary non-negligible primes
-    let factor = 5479_f64;
+    let factor = 5479;
     let gas_price = 6197;
 
     let large_max_fee_limit = input;
 
     let gas_costs = GasCosts::default();
-    let fee_params = FeeParameters::default().with_gas_price_factor(factor as Word);
+    let fee_params = FeeParameters::default().with_gas_price_factor(factor);
 
     // Random script to consume some gas
     let script = iter::repeat(op::add(0x10, 0x00, 0x01))

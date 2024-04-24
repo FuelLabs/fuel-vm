@@ -51,21 +51,37 @@ where
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;
 
-        self.push_stack(self.transaction().id(&self.chain_id()).as_ref())?;
+        // Initialize stack
+        macro_rules! push_stack {
+            ($v:expr) => {{
+                let data = $v;
+                let old_ssp = self.registers[RegId::SSP];
+                let new_ssp = old_ssp
+                    .checked_add(data.len() as Word)
+                    .expect("VM initialization data must fit into the stack");
+                self.memory.grow_stack(new_ssp)?;
+                self.registers[RegId::SSP] = new_ssp;
+                self.memory
+                    .write_noownerchecks(old_ssp, data.len())
+                    .expect("VM initialization data must fit into the stack")
+                    .copy_from_slice(data);
+            }};
+        }
+
+        push_stack!(&*self.transaction().id(&self.chain_id()));
 
         let base_asset_id = self.interpreter_params.base_asset_id;
-        self.push_stack(&*base_asset_id)?;
+        push_stack!(&*base_asset_id);
 
         runtime_balances.to_vm(self);
 
         let tx_size = self.transaction().size() as Word;
         self.set_gas(gas_limit);
 
-        self.push_stack(&tx_size.to_be_bytes())?;
+        push_stack!(&tx_size.to_be_bytes());
 
         let tx_bytes = self.tx.to_bytes();
-
-        self.push_stack(tx_bytes.as_slice())?;
+        push_stack!(tx_bytes.as_slice());
 
         self.registers[RegId::SP] = self.registers[RegId::SSP];
 

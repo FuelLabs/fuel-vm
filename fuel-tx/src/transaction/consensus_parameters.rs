@@ -12,8 +12,9 @@ pub use gas::{
     DependentCost,
     GasCosts,
     GasCostsValues,
-    GasUnit,
 };
+
+use crate::consts::BALANCE_ENTRY_SIZE;
 
 #[cfg(feature = "test-helpers")]
 const MAX_GAS: u64 = 100_000_000;
@@ -512,11 +513,19 @@ impl TxParameters {
 
     /// Transaction memory offset in VM runtime
     pub const fn tx_offset(&self) -> usize {
-        Bytes32::LEN // Tx ID
-            + AssetId::LEN // Base asset ID
-            // Asset ID/Balance coin input pairs
-            + self.max_inputs() as usize * (AssetId::LEN + WORD_SIZE)
+        let Some(balances_size) =
+            (self.max_inputs() as usize).checked_mul(BALANCE_ENTRY_SIZE)
+        else {
+            panic!(
+                "Consensus parameters shouldn't allow max_inputs to cause overflow here"
+            );
+        };
+
+        balances_size.saturating_add(
+            Bytes32::LEN // Tx ID
             + WORD_SIZE // Tx size
+            + AssetId::LEN, // Base asset ID
+        )
     }
 
     /// Replace the max inputs with the given argument

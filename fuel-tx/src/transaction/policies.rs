@@ -210,6 +210,7 @@ impl Serialize for Policies {
         self.bits.bits().size_static()
     }
 
+    #[allow(clippy::arithmetic_side_effects)] // Bit count is not large enough to overflow.
     fn size_dynamic(&self) -> usize {
         self.bits.bits().count_ones() as usize * Word::MIN.size()
     }

@@ -276,7 +276,7 @@ impl crate::Cacheable for Upload {
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id),
+            common: CommonMetadata::compute(self, chain_id)?,
             body: UploadMetadata {},
         });
         Ok(())
@@ -324,7 +324,7 @@ mod field {
 
         #[inline(always)]
         fn bytecode_witness_index_offset_static() -> usize {
-            Self::bytecode_root_offset_static() + Bytes32::LEN
+            Self::bytecode_root_offset_static().saturating_add(Bytes32::LEN)
         }
     }
 
@@ -341,7 +341,7 @@ mod field {
 
         #[inline(always)]
         fn subsection_index_offset_static() -> usize {
-            Self::bytecode_witness_index_offset_static() + WORD_SIZE
+            Self::bytecode_witness_index_offset_static().saturating_add(WORD_SIZE)
         }
     }
 
@@ -358,7 +358,7 @@ mod field {
 
         #[inline(always)]
         fn subsections_number_offset_static() -> usize {
-            Self::subsection_index_offset_static() + WORD_SIZE
+            Self::subsection_index_offset_static().saturating_add(WORD_SIZE)
         }
     }
 
@@ -375,12 +375,14 @@ mod field {
 
         #[inline(always)]
         fn proof_set_offset_static() -> usize {
-            Self::subsections_number_offset_static() + WORD_SIZE
+            Self::subsections_number_offset_static().saturating_add(
+                WORD_SIZE
                 + WORD_SIZE // Proof set size
                 + WORD_SIZE // Policies size
                 + WORD_SIZE // Inputs size
                 + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
+                + WORD_SIZE, // Witnesses size
+            )
         }
     }
 
@@ -394,7 +396,8 @@ mod field {
         }
 
         fn body_offset_end(&self) -> usize {
-            Self::proof_set_offset_static() + self.body.proof_set.len() * Bytes32::LEN
+            Self::proof_set_offset_static()
+                .saturating_add(self.body.proof_set.len().saturating_mul(Bytes32::LEN))
         }
     }
 }

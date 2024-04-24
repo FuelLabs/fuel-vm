@@ -12,7 +12,10 @@ use fuel_asm::{
     RegId,
     Word,
 };
-use fuel_tx::ValidityError;
+use fuel_tx::{
+    consts::BALANCE_ENTRY_SIZE,
+    ValidityError,
+};
 use fuel_types::AssetId;
 use itertools::Itertools;
 
@@ -90,7 +93,8 @@ impl RuntimeBalances {
             .sorted_by_key(|k| k.0)
             .enumerate()
             .try_fold(HashMap::new(), |mut state, (i, (asset, balance))| {
-                let offset = VM_MEMORY_BALANCES_OFFSET + i * (AssetId::LEN + WORD_SIZE);
+                let offset = VM_MEMORY_BALANCES_OFFSET
+                    .saturating_add(i.saturating_mul(BALANCE_ENTRY_SIZE));
 
                 state
                     .entry(asset)
@@ -115,7 +119,7 @@ impl RuntimeBalances {
         let value = balance.value();
         let offset = balance.offset();
 
-        let offset = offset + AssetId::LEN;
+        let offset = offset.saturating_add(AssetId::LEN);
         memory.write_bytes_noownerchecks(offset, value.to_be_bytes())?;
 
         Ok(value)
@@ -157,17 +161,21 @@ impl RuntimeBalances {
             .map_or((value == 0).then_some(0), |r| r.ok())
     }
 
-    /// Write all assets into the VM memory.
+    /// Write all assets into the start of VM stack, i.e. at $ssp.
+    /// Panics if the assets cannot fit.
     pub fn to_vm<S, Tx, Ecal>(self, vm: &mut Interpreter<S, Tx, Ecal>)
     where
         Tx: ExecutableTransaction,
     {
-        let len = (vm.max_inputs() as usize * (AssetId::LEN + WORD_SIZE)) as Word;
+        let len = (vm.max_inputs() as usize).saturating_mul(BALANCE_ENTRY_SIZE) as Word;
 
-        vm.registers[RegId::SP] += len;
-        vm.reserve_stack(len).expect(
-            "consensus parameters won't allow stack overflow for VM initialization",
+        let new_ssp = vm.registers[RegId::SSP].checked_add(len).expect(
+            "Consensus parameters must not allow stack overflow during VM initialization",
         );
+        vm.memory.grow_stack(new_ssp).expect(
+            "Consensus parameters must not allow stack overflow during VM initialization",
+        );
+        vm.registers[RegId::SSP] = new_ssp;
 
         self.state.iter().for_each(|(asset, balance)| {
             let value = balance.value();
@@ -175,10 +183,13 @@ impl RuntimeBalances {
 
             vm.memory
                 .write_bytes_noownerchecks(ofs, **asset)
-                .expect("Assets must fit in memory");
+                .expect("Checked above");
             vm.memory
-                .write_bytes_noownerchecks(ofs + AssetId::LEN, value.to_be_bytes())
-                .expect("Assets must fit in memory");
+                .write_bytes_noownerchecks(
+                    ofs.saturating_add(AssetId::LEN),
+                    value.to_be_bytes(),
+                )
+                .expect("Checked above");
         });
 
         vm.balances = self;
@@ -253,10 +264,10 @@ fn writes_to_memory_correctly() {
             assert_eq!(asset.as_ref(), &memory[ofs..ofs + AssetId::LEN]);
             assert_eq!(
                 &value.to_be_bytes(),
-                &memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]
+                &memory[ofs + AssetId::LEN..ofs + BALANCE_ENTRY_SIZE]
             );
 
-            ofs + AssetId::LEN + WORD_SIZE
+            ofs + BALANCE_ENTRY_SIZE
         });
 }
 

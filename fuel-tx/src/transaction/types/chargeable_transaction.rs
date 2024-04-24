@@ -214,7 +214,8 @@ mod field {
                 return *inputs_offset;
             }
 
-            self.policies_offset() + self.policies.size_dynamic()
+            self.policies_offset()
+                .saturating_add(self.policies.size_dynamic())
         }
 
         #[inline(always)]
@@ -232,13 +233,14 @@ mod field {
 
             if idx < self.inputs.len() {
                 Some(
-                    self.inputs_offset()
-                        + self
-                            .inputs()
+                    self.inputs_offset().saturating_add(
+                        self.inputs()
                             .iter()
                             .take(idx)
                             .map(|i| i.size())
-                            .sum::<usize>(),
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
                 )
             } else {
                 None
@@ -263,7 +265,8 @@ mod field {
                 input
                     .predicate_offset()
                     .and_then(|predicate| {
-                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
+                        self.inputs_offset_at(idx)
+                            .map(|inputs| inputs.saturating_add(predicate))
                     })
                     .zip(
                         input
@@ -298,7 +301,13 @@ mod field {
                 return *outputs_offset;
             }
 
-            self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
+            self.inputs_offset().saturating_add(
+                self.inputs()
+                    .iter()
+                    .map(|i| i.size())
+                    .reduce(usize::saturating_add)
+                    .unwrap_or_default(),
+            )
         }
 
         #[inline(always)]
@@ -316,13 +325,14 @@ mod field {
 
             if idx < self.outputs.len() {
                 Some(
-                    self.outputs_offset()
-                        + self
-                            .outputs()
+                    self.outputs_offset().saturating_add(
+                        self.outputs()
                             .iter()
                             .take(idx)
                             .map(|i| i.size())
-                            .sum::<usize>(),
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
                 )
             } else {
                 None
@@ -357,7 +367,13 @@ mod field {
                 return *witnesses_offset;
             }
 
-            self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
+            self.outputs_offset().saturating_add(
+                self.outputs()
+                    .iter()
+                    .map(|i| i.size())
+                    .reduce(usize::saturating_add)
+                    .unwrap_or_default(),
+            )
         }
 
         #[inline(always)]
@@ -376,13 +392,14 @@ mod field {
 
             if idx < self.witnesses.len() {
                 Some(
-                    self.witnesses_offset()
-                        + self
-                            .witnesses()
+                    self.witnesses_offset().saturating_add(
+                        self.witnesses()
                             .iter()
                             .take(idx)
                             .map(|i| i.size())
-                            .sum::<usize>(),
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
                 )
             } else {
                 None

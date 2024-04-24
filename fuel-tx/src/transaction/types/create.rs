@@ -258,7 +258,7 @@ impl crate::Cacheable for Create {
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id),
+            common: CommonMetadata::compute(self, chain_id)?,
             body: CreateMetadata::compute(self)?,
         });
         Ok(())
@@ -302,7 +302,7 @@ mod field {
 
         #[inline(always)]
         fn salt_offset_static() -> usize {
-            Self::bytecode_witness_index_offset_static() + WORD_SIZE
+            Self::bytecode_witness_index_offset_static().saturating_add(WORD_SIZE)
         }
     }
 
@@ -321,17 +321,22 @@ mod field {
 
         #[inline(always)]
         fn storage_slots_offset_static() -> usize {
-            Self::salt_offset_static() + Salt::LEN
+            Self::salt_offset_static().saturating_add(
+                Salt::LEN
                 + WORD_SIZE // Storage slots size
                 + WORD_SIZE // Policies size
                 + WORD_SIZE // Inputs size
                 + WORD_SIZE // Outputs size
-                + WORD_SIZE // Witnesses size
+                + WORD_SIZE, // Witnesses size
+            )
         }
 
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
             if idx < self.body.storage_slots.len() {
-                Some(Self::storage_slots_offset_static() + idx * StorageSlot::SLOT_SIZE)
+                Some(
+                    Self::storage_slots_offset_static()
+                        .checked_add(idx.checked_mul(StorageSlot::SLOT_SIZE)?)?,
+                )
             } else {
                 None
             }
@@ -348,8 +353,12 @@ mod field {
         }
 
         fn body_offset_end(&self) -> usize {
-            Self::storage_slots_offset_static()
-                + self.body.storage_slots.len() * StorageSlot::SLOT_SIZE
+            Self::storage_slots_offset_static().saturating_add(
+                self.body
+                    .storage_slots
+                    .len()
+                    .saturating_mul(StorageSlot::SLOT_SIZE),
+            )
         }
     }
 }

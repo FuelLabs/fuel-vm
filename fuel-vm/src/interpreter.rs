@@ -338,7 +338,10 @@ fn current_location(
     pc: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::PC }>,
     is: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::IS }>,
 ) -> InstructionLocation {
-    InstructionLocation::new(current_contract, *pc - *is)
+    // Safety: pc should always be above is, but fallback to zero here for weird cases,
+    //         as the profiling code should be robust against regards cases like this.
+    let offset = (*pc).saturating_sub(*is);
+    InstructionLocation::new(current_contract, offset)
 }
 
 impl<S, Tx, Ecal> AsRef<S> for Interpreter<S, Tx, Ecal> {

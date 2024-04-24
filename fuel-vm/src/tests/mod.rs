@@ -1,4 +1,5 @@
-#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use futures as _;
 use tokio as _;
 use tokio_rayon as _;

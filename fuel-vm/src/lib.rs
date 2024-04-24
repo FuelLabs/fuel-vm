@@ -5,8 +5,13 @@
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
 #![deny(unused_crate_dependencies)]
-#![deny(clippy::cast_possible_truncation)]
-#![deny(clippy::string_slice)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::string_slice
+)]
 
 #[doc(hidden)] // Needed by some of the exported macros
 pub extern crate alloc;

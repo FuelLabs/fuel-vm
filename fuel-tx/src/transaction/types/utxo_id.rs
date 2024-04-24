@@ -97,8 +97,8 @@ impl str::FromStr for UtxoId {
     /// the last two characters are the output index and the part
     /// optionally preceeding it is the transaction id.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        const ERR: &str = "Invalid encoded byte";
-        let s = s.trim_start_matches("0x");
+        const ERR: &str = "Invalid encoded byte in UtxoId";
+        let s = s.strip_prefix("0x").unwrap_or(s);
 
         Ok(if s.is_empty() {
             UtxoId::new(Bytes32::default(), 0)
@@ -108,11 +108,13 @@ impl str::FromStr for UtxoId {
                 u16::from_str_radix(s, 16).map_err(|_| ERR)?,
             )
         } else {
+            #[allow(clippy::arithmetic_side_effects)] // Checked above
             let i = s.len() - 4;
             if !s.is_char_boundary(i) {
                 return Err(ERR)
             }
             let (tx_id, output_index) = s.split_at(i);
+            let tx_id = tx_id.strip_suffix(':').unwrap_or(tx_id);
 
             UtxoId::new(
                 Bytes32::from_str(tx_id)?,
@@ -213,6 +215,18 @@ mod tests {
     fn from_str_utxo_id() -> Result<(), &'static str> {
         let utxo_id = UtxoId::from_str(
             "0x0c0000000000000000000000000000000000000000000000000000000000000babcd",
+        )?;
+
+        assert_eq!(utxo_id.output_index, 0xabcd);
+        assert_eq!(utxo_id.tx_id[31], 11);
+        assert_eq!(utxo_id.tx_id[0], 12);
+        Ok(())
+    }
+
+    #[test]
+    fn from_str_utxo_id_colon_separator() -> Result<(), &'static str> {
+        let utxo_id = UtxoId::from_str(
+            "0c0000000000000000000000000000000000000000000000000000000000000b:abcd",
         )?;
 
         assert_eq!(utxo_id.output_index, 0xabcd);

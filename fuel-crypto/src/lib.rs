@@ -4,11 +4,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // Wrong clippy convention; check
 // https://rust-lang.github.io/api-guidelines/naming.html
-#![deny(clippy::string_slice)]
 #![warn(missing_docs)]
 #![deny(unsafe_code)]
 #![deny(unused_crate_dependencies)]
-#![deny(clippy::cast_possible_truncation)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::string_slice
+)]
 
 // Satisfy unused_crate_dependencies lint for self-dependency enabling test features
 #[cfg(test)]

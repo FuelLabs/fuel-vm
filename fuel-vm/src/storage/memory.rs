@@ -476,6 +476,7 @@ impl InterpreterStorage for MemoryStorage {
         Ok(self.state_transition_version)
     }
 
+    #[allow(clippy::arithmetic_side_effects)] // Safety: not enough bits to overflow
     fn timestamp(&self, height: BlockHeight) -> Result<Word, Self::DataError> {
         const GENESIS: Tai64 = Tai64::UNIX_EPOCH;
         const INTERVAL: Word = 10;
@@ -573,6 +574,8 @@ impl InterpreterStorage for MemoryStorage {
         .zip(values)
         .try_for_each(|(key, value)| {
             let key: ContractsStateKey = (contract, &Bytes32::from(key)).into();
+            // Safety: we never have over usize::MAX items in one call
+            #[allow(clippy::arithmetic_side_effects)]
             if !storage.contains_key(&key)? {
                 unset_count += 1;
             }

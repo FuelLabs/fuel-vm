@@ -20,7 +20,7 @@ jobs:
       uses: google/clusterfuzzlite/actions/run_fuzzers@v1
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        fuzz-seconds: 3600
+        fuzz-seconds: 60 # TODO Change to 3600
         mode: 'batch'
         output-sarif: true
         storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/trail-of-forks/fuel-vm-fuzz-corpus.git

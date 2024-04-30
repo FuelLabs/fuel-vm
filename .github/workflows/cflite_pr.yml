@@ -1,0 +1,30 @@
+name: ClusterFuzzLite PR fuzzing
+on:
+  pull_request:
+    paths:
+      - '**'
+permissions: read-all
+jobs:
+  PR:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Build Fuzzers
+      id: build
+      uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+      with:
+        language: rust
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/trail-of-forks/fuel-vm-fuzz-corpus.git
+        storage-repo-branch: main
+        storage-repo-branch-coverage: gh-pages
+    - name: Run Fuzzers
+      id: run
+      uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        fuzz-seconds: 600
+        mode: 'code-change'
+        output-sarif: true
+        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/trail-of-forks/fuel-vm-fuzz-corpus.git
+        storage-repo-branch: main
+        storage-repo-branch-coverage: gh-pages

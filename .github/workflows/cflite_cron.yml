@@ -1,5 +1,8 @@
 name: ClusterFuzzLite cron tasks
 on:
+  pull_request:
+    paths:
+      - '**'
   schedule:
     - cron: '0 0 * * *'  # Once a day at midnight.
 permissions: read-all

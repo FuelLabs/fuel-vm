@@ -9,4 +9,4 @@ rustup install nightly
 cargo +nightly fuzz build -O
 
 cp fuzz/target/x86_64-unknown-linux-gnu/release/grammar_aware_advanced $OUT/
-cp fuzz/target/x86_64-unknown-linux-gnu/release/grammar_aware $OUT/
+#cp fuzz/target/x86_64-unknown-linux-gnu/release/grammar_aware $OUT/

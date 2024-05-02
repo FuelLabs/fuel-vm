@@ -1,7 +1,7 @@
 name: ClusterFuzzLite cron tasks
 on:
   schedule:
-    - cron: '0 0 * * *'  # Once a day at midnight.
+    - cron: '0 0/72 * * *'
 permissions: read-all
 jobs:
   Pruning:
@@ -20,7 +20,7 @@ jobs:
         fuzz-seconds: 600 # Time after which minimization is aborted
         mode: 'prune'
         output-sarif: true
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/trail-of-forks/fuel-vm-fuzz-corpus.git
+        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
         storage-repo-branch: main
         storage-repo-branch-coverage: gh-pages
   Coverage:
@@ -40,6 +40,6 @@ jobs:
         fuzz-seconds: 600
         mode: 'coverage'
         sanitizer: 'coverage'
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/trail-of-forks/fuel-vm-fuzz-corpus.git
+        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
         storage-repo-branch: main
         storage-repo-branch-coverage: gh-pages

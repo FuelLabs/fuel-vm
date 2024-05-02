@@ -269,6 +269,11 @@ impl Node for Position {
         Position::height(*self)
     }
 
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
+    }
+
     fn leaf_key(&self) -> Self::Key {
         Position::leaf_index(*self).to_be_bytes()
     }

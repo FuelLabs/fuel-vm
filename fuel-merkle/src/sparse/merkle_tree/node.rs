@@ -52,7 +52,7 @@ pub(super) enum Node {
 
 impl Node {
     pub fn max_height() -> u32 {
-        Node::KEY_SIZE_BITS
+        Node::key_size_bits()
     }
 
     pub fn new(
@@ -272,6 +272,11 @@ impl NodeTrait for Node {
         Node::height(self)
     }
 
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
+    }
+
     fn leaf_key(&self) -> Self::Key {
         *Node::leaf_key(self)
     }
@@ -370,6 +375,11 @@ impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageTyp
 
     fn height(&self) -> u32 {
         self.node.height()
+    }
+
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
     }
 
     fn leaf_key(&self) -> Self::Key {

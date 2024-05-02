@@ -4,10 +4,7 @@ use crate::common::{
 };
 
 use alloc::string::String;
-use core::{
-    fmt,
-    mem,
-};
+use core::fmt;
 
 pub trait KeyFormatting {
     type PrettyType: fmt::Display;
@@ -18,25 +15,7 @@ pub trait KeyFormatting {
 pub trait Node {
     type Key: KeyFormatting;
 
-    const KEY_SIZE_BITS: u32 = match mem::size_of::<Self::Key>().checked_mul(8) {
-        Some(v) => {
-            if v < 64 {
-                panic!("Key too small");
-            }
-
-            #[allow(clippy::cast_possible_truncation)] // We check first
-            if v <= u32::MAX as usize {
-                v as u32
-            } else {
-                panic!("Key doesn't fit into u32");
-            }
-        }
-        _ => {
-            panic!("Key impossibly large");
-        }
-    };
-
-    /// This must never exceed `KEY_SIZE_BITS`
+    fn key_size_bits() -> u32;
     fn height(&self) -> u32;
     fn leaf_key(&self) -> Self::Key;
     fn is_leaf(&self) -> bool;

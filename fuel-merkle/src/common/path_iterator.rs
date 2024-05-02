@@ -139,8 +139,8 @@ where
         // 0      7     00  02  04  06  08  10  12  14   252 254
         //              00  01  02  03  04  05  06  07   126 127
         //
-        #[allow(clippy::arithmetic_side_effects)] // Checked on construction
-        let initial_offset = T::KEY_SIZE_BITS - root.height();
+        #[allow(clippy::arithmetic_side_effects)] // Responsibility of the trait implementor
+        let initial_offset = T::key_size_bits() - root.height();
         Self {
             leaf_key: leaf_key.clone(),
             current: Some(initial),
@@ -265,6 +265,11 @@ mod test {
 
         fn height(&self) -> u32 {
             TestNode::height(self)
+        }
+
+        #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+        fn key_size_bits() -> u32 {
+            core::mem::size_of::<Self::Key>() as u32 * 8
         }
 
         fn leaf_key(&self) -> Self::Key {

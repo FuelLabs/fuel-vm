@@ -117,7 +117,9 @@ impl Node {
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
+            #[allow(clippy::arithmetic_side_effects)] // Neither node cannot be root
             let parent_height = path_node.height().max(side_node.height()) + 1;
+            #[allow(clippy::arithmetic_side_effects)] // parent_height <= max_height
             let parent_depth = Node::max_height() - parent_height;
             match path.get_instruction(parent_depth).unwrap() {
                 Side::Left => Node::create_node(path_node, side_node, parent_height),

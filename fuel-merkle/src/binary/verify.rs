@@ -68,8 +68,12 @@ pub fn verify<T: AsRef<[u8]>>(
 
     loop {
         let height = parent + 1;
-        let subtree_start_index = proof_index / (1 << height) * (1 << height);
-        let subtree_end_index = subtree_start_index + (1 << height) - 1;
+
+        let subtree_size = 1u64 << height;
+        #[allow(clippy::arithmetic_side_effects)] // floor(a / b) * b <= a
+        let subtree_start_index = proof_index / subtree_size * subtree_size;
+        #[allow(clippy::arithmetic_side_effects)]
+        let subtree_end_index = subtree_start_index + subtree_size - 1;
 
         if subtree_end_index >= num_leaves {
             break

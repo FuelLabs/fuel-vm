@@ -30,6 +30,7 @@ pub struct PositionPath {
 
 impl PositionPath {
     pub fn new(root: Position, leaf: Position, leaves_count: u64) -> Self {
+        debug_assert!(leaves_count > 0);
         Self {
             root,
             leaf,

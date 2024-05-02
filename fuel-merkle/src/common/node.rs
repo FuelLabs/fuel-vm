@@ -20,6 +20,7 @@ pub trait Node {
 
     const KEY_SIZE_BITS: u32 = match mem::size_of::<Self::Key>().checked_mul(8) {
         Some(v) => {
+            #[allow(clippy::cast_possible_truncation)] // We check first
             if v <= u32::MAX as usize {
                 v as u32
             } else {

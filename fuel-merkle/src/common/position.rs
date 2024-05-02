@@ -217,6 +217,7 @@ impl Position {
     /// tree is defined by the `leaves_count` parameter and constrains the
     /// path. See [PositionPath](crate::common::PositionPath).
     pub fn path(self, leaf: &Self, leaves_count: u64) -> PositionPath {
+        debug_assert!(leaves_count > 0);
         PositionPath::new(self, *leaf, leaves_count)
     }
 

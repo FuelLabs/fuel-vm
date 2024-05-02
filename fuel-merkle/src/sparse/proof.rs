@@ -65,6 +65,7 @@ impl InclusionProof {
 
         let mut current = calculate_leaf_hash(key, &sum(value));
         for (i, side_hash) in proof_set.iter().enumerate() {
+            #[allow(clippy::arithmetic_side_effects)] // Cannot underflow
             let index =
                 u32::try_from(proof_set.len() - 1 - i).expect("We've checked it above");
             current = match key.get_instruction(index).expect("Infallible") {
@@ -141,6 +142,7 @@ impl ExclusionProof {
 
         let mut current = leaf.hash();
         for (i, side_hash) in proof_set.iter().enumerate() {
+            #[allow(clippy::arithmetic_side_effects)] // Cannot underflow
             let index =
                 u32::try_from(proof_set.len() - 1 - i).expect("We've checked it above");
             current = match key.get_instruction(index).expect("Infallible") {

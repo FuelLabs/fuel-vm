@@ -97,15 +97,12 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 
     fn peak_positions(&self) -> Vec<Position> {
-        // Define a new tree with a leaf count 1 greater than the current leaf
-        // count.
-        let leaves_count = self.leaves_count + 1;
-
-        // The rightmost leaf position of a tree will always have a leaf index
-        // N - 1, where N is the number of leaves.
-        let leaf_position = Position::from_leaf_index(leaves_count - 1);
+        let leaf_position = Position::from_leaf_index(self.leaves_count);
         let root_position = self.root_position();
-        let mut peaks_itr = root_position.path(&leaf_position, leaves_count).iter();
+        // u64 cannot overflow, as memory is finite
+        #[allow(clippy::arithmetic_side_effects)]
+        let next_leaves_count = self.leaves_count + 1;
+        let mut peaks_itr = root_position.path(&leaf_position, next_leaves_count).iter();
         peaks_itr.next(); // Omit the root
 
         let (_, peaks): (Vec<_>, Vec<_>) = peaks_itr.unzip();
@@ -114,13 +111,14 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 
     fn root_position(&self) -> Position {
-        // Define a new tree with a leaf count 1 greater than the current leaf
-        // count.
+        // u64 cannot overflow, as memory is finite
+        #[allow(clippy::arithmetic_side_effects)]
         let leaves_count = self.leaves_count + 1;
 
         // The root position of a tree will always have an in-order index equal
         // to N' - 1, where N is the leaves count and N' is N rounded (or equal)
         // to the next power of 2.
+        #[allow(clippy::arithmetic_side_effects)] // next_power_of_two > 0
         let root_index = leaves_count.next_power_of_two() - 1;
         Position::from_in_order_index(root_index)
     }
@@ -160,7 +158,7 @@ where
         &self,
         proof_index: u64,
     ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
-        if proof_index + 1 > self.leaves_count {
+        if proof_index >= self.leaves_count {
             return Err(MerkleTreeError::InvalidProofIndex(proof_index))
         }
 
@@ -321,7 +319,11 @@ where
         self.head = Some(head);
         self.join_all_subtrees()?;
 
-        self.leaves_count += 1;
+        // u64 cannot overflow, as memory is finite
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            self.leaves_count += 1;
+        }
 
         Ok(())
     }

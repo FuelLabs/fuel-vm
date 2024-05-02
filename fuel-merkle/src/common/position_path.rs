@@ -5,6 +5,8 @@ use crate::common::{
     Position,
 };
 
+use super::path::Side;
+
 /// # PositionPath
 ///
 /// A PositionPath represents the path of positions created by traversing a
@@ -99,7 +101,7 @@ impl Iterator for PositionPathIter {
                 // correct side node will always be a leftward descendent of
                 // this invalid side node.
                 while side.in_order_index() > self.rightmost_position.in_order_index() {
-                    side = side.left_child()
+                    side = side.child(Side::Left)
                 }
 
                 return Some((path, side))

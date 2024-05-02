@@ -92,9 +92,6 @@ use super::path::Side;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Position(u64);
 
-const LEFT_CHILD_DIRECTION: i64 = -1;
-const RIGHT_CHILD_DIRECTION: i64 = 1;
-
 impl Position {
     pub fn in_order_index(self) -> u64 {
         self.0
@@ -145,16 +142,30 @@ impl Position {
         self.parent().sibling()
     }
 
-    /// The left child position.
-    /// See [child](Self::child).
-    pub fn left_child(self) -> Self {
-        self.child(LEFT_CHILD_DIRECTION)
+    /// The child position of the current position given by the direction.
+    /// A child position has a height less 1 than the current position.
+    ///
+    /// A child position is calculated as a function of the current position's
+    /// index and height, and the supplied direction. The left child
+    /// position has the in-order index arriving before the current index;
+    /// the right child position has the in-order index arriving after the
+    /// current index.
+    pub fn child(self, side: Side) -> Self {
+        assert!(self.is_node());
+        let shift = 1 << (self.height() - 1);
+        let this = self.in_order_index();
+        Self::from_in_order_index(match side {
+            Side::Left => this - shift,
+            Side::Right => this + shift,
+        })
     }
 
-    /// The right child position.
-    /// See [child](Self::child).
+    pub fn left_child(self) -> Self {
+        self.child(Side::Left)
+    }
+
     pub fn right_child(self) -> Self {
-        self.child(RIGHT_CHILD_DIRECTION)
+        self.child(Side::Right)
     }
 
     /// The height of the index in a binary tree.
@@ -211,23 +222,6 @@ impl Position {
 
     // PRIVATE
 
-    /// The child position of the current position given by the direction.
-    /// A direction of `-1` denotes the left child. A direction of `+1` denotes
-    /// the right child. A child position has a height less 1 than the
-    /// current position.
-    ///
-    /// A child position is calculated as a function of the current position's
-    /// index and height, and the supplied direction. The left child
-    /// position has the in-order index arriving before the current index;
-    /// the right child position has the in-order index arriving after the
-    /// current index.
-    fn child(self, direction: i64) -> Self {
-        assert!(self.is_node());
-        let shift = 1 << (self.height() - 1);
-        let index = self.in_order_index() as i64 + shift * direction;
-        Self::from_in_order_index(index as u64)
-    }
-
     /// Orientation of the position index relative to its parent.
     ///
     /// The orientation is determined by the reading the `n`th rightmost digit
@@ -278,11 +272,11 @@ impl ParentNode for Position {
     type Error = Infallible;
 
     fn left_child(&self) -> ChildResult<Self> {
-        Ok(Position::left_child(*self))
+        Ok(self.child(Side::Left))
     }
 
     fn right_child(&self) -> ChildResult<Self> {
-        Ok(Position::right_child(*self))
+        Ok(self.child(Side::Right))
     }
 }
 
@@ -375,20 +369,20 @@ mod test {
 
     #[test]
     fn test_left_child() {
-        assert_eq!(Position(7).left_child(), Position(3));
-        assert_eq!(Position(3).left_child(), Position(1));
-        assert_eq!(Position(1).left_child(), Position(0));
-        assert_eq!(Position(11).left_child(), Position(9));
-        assert_eq!(Position(9).left_child(), Position(8));
+        assert_eq!(Position(7).child(Side::Left), Position(3));
+        assert_eq!(Position(3).child(Side::Left), Position(1));
+        assert_eq!(Position(1).child(Side::Left), Position(0));
+        assert_eq!(Position(11).child(Side::Left), Position(9));
+        assert_eq!(Position(9).child(Side::Left), Position(8));
     }
 
     #[test]
     fn test_right_child() {
-        assert_eq!(Position(7).right_child(), Position(11));
-        assert_eq!(Position(3).right_child(), Position(5));
-        assert_eq!(Position(1).right_child(), Position(2));
-        assert_eq!(Position(11).right_child(), Position(13));
-        assert_eq!(Position(9).right_child(), Position(10));
+        assert_eq!(Position(7).child(Side::Right), Position(11));
+        assert_eq!(Position(3).child(Side::Right), Position(5));
+        assert_eq!(Position(1).child(Side::Right), Position(2));
+        assert_eq!(Position(11).child(Side::Right), Position(13));
+        assert_eq!(Position(9).child(Side::Right), Position(10));
     }
 
     #[test]

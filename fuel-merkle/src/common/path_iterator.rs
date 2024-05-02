@@ -4,8 +4,8 @@ use crate::common::{
         ParentNode,
     },
     path::{
-        Instruction,
         Path,
+        Side,
     },
 };
 
@@ -166,10 +166,10 @@ where
                     self.current = instruction.map(|instruction| {
                         self.current_offset += 1;
                         match instruction {
-                            Instruction::Left => {
+                            Side::Left => {
                                 (path_node.left_child(), path_node.right_child())
                             }
-                            Instruction::Right => {
+                            Side::Right => {
                                 (path_node.right_child(), path_node.left_child())
                             }
                         }

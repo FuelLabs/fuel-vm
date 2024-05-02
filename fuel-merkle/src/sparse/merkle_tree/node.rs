@@ -9,8 +9,8 @@ use crate::{
         },
         path::{
             ComparablePath,
-            Instruction,
             Path,
+            Side,
         },
         sum,
         Bytes32,
@@ -109,12 +109,8 @@ impl Node {
             let parent_depth = path_node.common_path_length(side_node);
             let parent_height = Node::max_height() - parent_depth;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         } else {
             // When joining two nodes, or a node and a leaf, the joined node is
@@ -124,12 +120,8 @@ impl Node {
             let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
             let parent_depth = Node::max_height() - parent_height;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         }
     }

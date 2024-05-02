@@ -9,6 +9,8 @@ use crate::common::{
 };
 use core::convert::Infallible;
 
+use super::path::Side;
+
 /// # Position
 ///
 /// A `Position` represents a node's position in a binary tree by encapsulating
@@ -118,16 +120,22 @@ impl Position {
     /// A position shares the same parent and height as its sibling.
     pub fn sibling(self) -> Self {
         let shift = 1 << (self.height() + 1);
-        let index = self.in_order_index() as i64 + shift * self.direction();
-        Self::from_in_order_index(index as u64)
+        let this = self.in_order_index();
+        Self::from_in_order_index(match self.orientation() {
+            Side::Left => this - shift,
+            Side::Right => this + shift,
+        })
     }
 
     /// The parent position.
     /// The parent position has a height less 1 relative to this position.
     pub fn parent(self) -> Self {
         let shift = 1 << self.height();
-        let index = self.in_order_index() as i64 + shift * self.direction();
-        Self::from_in_order_index(index as u64)
+        let this = self.in_order_index();
+        Self::from_in_order_index(match self.orientation() {
+            Side::Left => this - shift,
+            Side::Right => this + shift,
+        })
     }
 
     /// The uncle position.
@@ -221,8 +229,6 @@ impl Position {
     }
 
     /// Orientation of the position index relative to its parent.
-    /// Returns 0 if the index is left of its parent.
-    /// Returns 1 if the index is right of its parent.
     ///
     /// The orientation is determined by the reading the `n`th rightmost digit
     /// of the index's binary value, where `n` = the height of the position
@@ -231,25 +237,20 @@ impl Position {
     ///
     /// | Index (Dec) | Index (Bin) | Height | Orientation |
     /// |-------------|-------------|--------|-------------|
-    /// |           0 |        0000 |      0 |           0 |
-    /// |           2 |        0010 |      0 |           1 |
-    /// |           4 |        0100 |      0 |           0 |
-    /// |           6 |        0110 |      0 |           1 |
-    /// |           1 |        0001 |      1 |           0 |
-    /// |           5 |        0101 |      1 |           1 |
-    /// |           9 |        1001 |      1 |           0 |
-    /// |          13 |        1101 |      1 |           1 |
-    fn orientation(self) -> u8 {
+    /// |           0 |        0000 |      0 |           L |
+    /// |           2 |        0010 |      0 |           R |
+    /// |           4 |        0100 |      0 |           L |
+    /// |           6 |        0110 |      0 |           R |
+    /// |           1 |        0001 |      1 |           L |
+    /// |           5 |        0101 |      1 |           R |
+    /// |           9 |        1001 |      1 |           L |
+    /// |          13 |        1101 |      1 |           R |
+    fn orientation(self) -> Side {
         let shift = 1 << (self.height() + 1);
-        (self.in_order_index() & shift != 0) as u8
-    }
-
-    /// The "direction" to travel to reach the parent node.
-    /// Returns +1 if the index is left of its parent.
-    /// Returns -1 if the index is right of its parent.
-    fn direction(self) -> i64 {
-        let scale = self.orientation() as i64 * 2 - 1; // Scale [0, 1] to [-1, 1];
-        -scale
+        match self.in_order_index() & shift {
+            0 => Side::Right,
+            _ => Side::Left,
+        }
     }
 }
 

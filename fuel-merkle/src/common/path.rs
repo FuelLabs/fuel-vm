@@ -3,22 +3,24 @@ use crate::common::{
     Msb,
 };
 
-pub enum Instruction {
+/// The side of a child node in a binary tree.
+pub enum Side {
     Left,
     Right,
 }
 
-impl From<Bit> for Instruction {
+impl From<Bit> for Side {
     fn from(bit: Bit) -> Self {
         match bit {
-            Bit::_0 => Instruction::Left,
-            Bit::_1 => Instruction::Right,
+            Bit::_0 => Side::Left,
+            Bit::_1 => Side::Right,
         }
     }
 }
 
 pub trait Path {
-    fn get_instruction(&self, index: u32) -> Option<Instruction>;
+    /// Which child node to follow at the given index.
+    fn get_instruction(&self, index: u32) -> Option<Side>;
 }
 
 pub trait ComparablePath {
@@ -29,7 +31,7 @@ impl<T> Path for T
 where
     T: Msb,
 {
-    fn get_instruction(&self, index: u32) -> Option<Instruction> {
+    fn get_instruction(&self, index: u32) -> Option<Side> {
         self.get_bit_at_index_from_msb(index).map(Into::into)
     }
 }

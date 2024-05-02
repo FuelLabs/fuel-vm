@@ -19,24 +19,24 @@ fn path_length_from_key(key: u64, num_leaves: u64) -> Option<usize> {
 
     let path_length =
         usize::try_from(num_leaves.checked_next_power_of_two()?.ilog2()).ok()?;
+
+    #[allow(clippy::arithmetic_side_effects)] // ilog2(..) > 0
     let num_leaves_left_subtree = 1 << (path_length - 1);
 
-    // If leaf is in left subtree, path length is full height of left subtree
-    if key < num_leaves_left_subtree {
-        Some(path_length)
-    }
+    let subtree_leaves = num_leaves.saturating_sub(num_leaves_left_subtree);
+
+    let Some(subtree_key) = key.checked_sub(num_leaves_left_subtree) else {
+        // If leaf is in left subtree, path length is full height of left subtree
+        return Some(path_length);
+    };
+
     // Otherwise, if left or right subtree has only one leaf, path has one additional step
-    else if num_leaves_left_subtree == 1 || num_leaves - num_leaves_left_subtree <= 1 {
-        Some(1)
+    if num_leaves_left_subtree == 1 || subtree_leaves <= 1 {
+        return Some(1);
     }
+
     // Otherwise, add 1 to height and recurse into right subtree
-    else {
-        path_length_from_key(
-            key - num_leaves_left_subtree,
-            num_leaves - num_leaves_left_subtree,
-        )?
-        .checked_add(1)
-    }
+    path_length_from_key(subtree_key, subtree_leaves)?.checked_add(1)
 }
 
 pub fn verify<T: AsRef<[u8]>>(

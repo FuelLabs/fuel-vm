@@ -14,7 +14,7 @@ jobs:
       with:
         language: rust
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/trail-of-forks/fuel-vm-fuzz-corpus.git
+        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
         storage-repo-branch: main
         storage-repo-branch-coverage: gh-pages
     - name: Run Fuzzers
@@ -25,6 +25,6 @@ jobs:
         fuzz-seconds: 600
         mode: 'code-change'
         output-sarif: true
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/trail-of-forks/fuel-vm-fuzz-corpus.git
+        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
         storage-repo-branch: main
         storage-repo-branch-coverage: gh-pages

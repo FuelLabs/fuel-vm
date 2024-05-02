@@ -16,10 +16,7 @@ pub use position::Position;
 pub use storage_map::StorageMap;
 pub use subtree::Subtree;
 
-pub(crate) use msb::{
-    Bit,
-    Msb,
-};
+pub(crate) use msb::Msb;
 pub(crate) use position_path::PositionPath;
 pub(crate) use prefix::{
     Prefix,

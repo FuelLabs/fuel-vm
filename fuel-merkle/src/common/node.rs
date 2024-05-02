@@ -36,6 +36,7 @@ pub trait Node {
         }
     };
 
+    /// This must never exceed `KEY_SIZE_BITS`
     fn height(&self) -> u32;
     fn leaf_key(&self) -> Self::Key;
     fn is_leaf(&self) -> bool;

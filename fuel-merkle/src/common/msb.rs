@@ -1,42 +1,19 @@
-#[derive(Debug, Eq, PartialEq)]
-pub enum Bit {
-    _0 = 0,
-    _1 = 1,
-}
-
-trait GetBit {
-    fn get_bit(&self, bit_index: u32) -> Option<Bit>;
-}
-
-impl GetBit for u8 {
-    fn get_bit(&self, bit_index: u32) -> Option<Bit> {
-        if bit_index < 8 {
-            #[allow(clippy::arithmetic_side_effects)] // checked above
-            let mask = 1 << (7 - bit_index);
-            let bit = self & mask;
-            match bit {
-                0 => Some(Bit::_0),
-                _ => Some(Bit::_1),
-            }
-        } else {
-            None
-        }
-    }
-}
-
 pub trait Msb {
-    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit>;
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<bool>;
     fn common_prefix_count(&self, other: &[u8]) -> u32;
 }
 
 impl<const N: usize> Msb for [u8; N] {
-    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit> {
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<bool> {
         // The byte that contains the bit
         let byte_index = index / 8;
         // The bit within the containing byte
         let byte_bit_index = index % 8;
-        self.get(byte_index as usize)
-            .and_then(|byte| byte.get_bit(byte_bit_index))
+        self.get(byte_index as usize).map(|byte| {
+            #[allow(clippy::arithmetic_side_effects)] // checked above
+            let mask = 1 << (7 - byte_bit_index);
+            byte & mask != 0
+        })
     }
 
     fn common_prefix_count(&self, other: &[u8]) -> u32 {

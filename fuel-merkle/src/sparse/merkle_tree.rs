@@ -16,7 +16,6 @@ use crate::{
         error::DeserializeError,
         node::ChildError,
         AsPathIterator,
-        Bit,
         Bytes32,
         Msb,
     },
@@ -152,7 +151,7 @@ impl Deref for MerkleTreeKey {
 }
 
 impl Msb for MerkleTreeKey {
-    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit> {
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<bool> {
         self.0.get_bit_at_index_from_msb(index)
     }
 

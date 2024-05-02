@@ -1,7 +1,4 @@
-use crate::common::{
-    Bit,
-    Msb,
-};
+use crate::common::Msb;
 
 /// The side of a child node in a binary tree.
 pub enum Side {
@@ -9,11 +6,11 @@ pub enum Side {
     Right,
 }
 
-impl From<Bit> for Side {
-    fn from(bit: Bit) -> Self {
+impl From<bool> for Side {
+    fn from(bit: bool) -> Self {
         match bit {
-            Bit::_0 => Side::Left,
-            Bit::_1 => Side::Right,
+            false => Side::Left,
+            true => Side::Right,
         }
     }
 }

@@ -155,7 +155,7 @@ impl Msb for MerkleTreeKey {
         self.0.get_bit_at_index_from_msb(index)
     }
 
-    fn common_prefix_count(&self, other: &[u8]) -> u32 {
+    fn common_prefix_count(&self, other: &[u8]) -> u64 {
         self.0.common_prefix_count(other.as_ref())
     }
 }
@@ -341,7 +341,8 @@ where
         // possible.
         while let Some(left) = branches.pop() {
             if let Some(current) = nodes.last() {
-                let left_proximity = current.node.common_path_length(&left.node);
+                #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+                let left_proximity = current.node.common_path_length(&left.node) as u32;
                 while {
                     // The current node's proximity to its right neighbor was
                     // stored previously. We now compare the distances between
@@ -524,6 +525,7 @@ where
 
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
+            #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
             let placeholders_count =
                 (ancestor_depth as usize).saturating_sub(side_nodes.len());
             let placeholders =

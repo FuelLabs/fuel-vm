@@ -1,6 +1,6 @@
 pub trait Msb {
     fn get_bit_at_index_from_msb(&self, index: u32) -> Option<bool>;
-    fn common_prefix_count(&self, other: &[u8]) -> u32;
+    fn common_prefix_count(&self, other: &[u8]) -> u64;
 }
 
 impl<const N: usize> Msb for [u8; N] {
@@ -16,14 +16,17 @@ impl<const N: usize> Msb for [u8; N] {
         })
     }
 
-    fn common_prefix_count(&self, other: &[u8]) -> u32 {
+    fn common_prefix_count(&self, other: &[u8]) -> u64 {
         let mut count = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
             // For each pair of bytes, compute the similarity of each byte using
             // exclusive or (XOR). The leading zeros measures the number of
             // similar bits from left to right. For equal bytes, this will be 8.
             let common_bits = (byte1 ^ byte2).leading_zeros();
-            count += common_bits;
+            #[allow(clippy::arithmetic_side_effects)] // u64 is always large enough
+            {
+                count += common_bits as u64;
+            }
             if byte1 != byte2 {
                 break
             }

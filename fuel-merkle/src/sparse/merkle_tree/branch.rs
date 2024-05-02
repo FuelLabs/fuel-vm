@@ -36,20 +36,26 @@ where
     Storage: StorageMutate<Table>,
     Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
+    #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes, never truncates
     let ancestor_height = if left_branch.node.is_leaf() && right_branch.node.is_leaf() {
-        let parent_depth = left_branch.node.common_path_length(&right_branch.node);
+        let parent_depth = left_branch.node.common_path_length(&right_branch.node) as u32;
         #[allow(clippy::arithmetic_side_effects)] // common_path_length <= max_height
         let parent_height = Node::max_height() - parent_depth;
         parent_height
     } else {
-        let ancestor_depth = left_branch.bits.common_path_length(&right_branch.bits);
+        let ancestor_depth =
+            left_branch.bits.common_path_length(&right_branch.bits) as u32;
         #[allow(clippy::arithmetic_side_effects)] // common_path_length <= max_height
         let ancestor_height = Node::max_height() - ancestor_depth;
 
         for branch in [&mut right_branch, &mut left_branch] {
             if branch.node.is_node() {
                 let path = branch.bits;
+                #[allow(clippy::arithmetic_side_effects)]
+                // branch cannot be at max height
                 let parent_height = branch.node.height() + 1;
+                #[allow(clippy::arithmetic_side_effects)]
+                // common_path_length <= max_height
                 let stale_depth = ancestor_height - parent_height;
                 let placeholders =
                     iter::repeat(Node::create_placeholder()).take(stale_depth as usize);

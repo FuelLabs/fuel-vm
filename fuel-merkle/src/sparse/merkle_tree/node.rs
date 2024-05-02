@@ -35,7 +35,6 @@ use crate::{
 };
 
 use core::{
-    cmp,
     fmt,
     marker::PhantomData,
 };
@@ -54,7 +53,7 @@ pub(super) enum Node {
 
 impl Node {
     pub fn max_height() -> u32 {
-        Node::key_size_in_bits()
+        Node::KEY_SIZE_BITS
     }
 
     pub fn new(
@@ -107,6 +106,7 @@ impl Node {
             // leaves.
             // N.B.: A leaf can be a placeholder.
             let parent_depth = path_node.common_path_length(side_node);
+            #[allow(clippy::arithmetic_side_effects)] // parent_depth <= max_height
             let parent_height = Node::max_height() - parent_depth;
             match path.get_instruction(parent_depth).unwrap() {
                 Side::Left => Node::create_node(path_node, side_node, parent_height),
@@ -117,7 +117,7 @@ impl Node {
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
-            let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
+            let parent_height = path_node.height().max(side_node.height()) + 1;
             let parent_depth = Node::max_height() - parent_height;
             match path.get_instruction(parent_depth).unwrap() {
                 Side::Left => Node::create_node(path_node, side_node, parent_height),

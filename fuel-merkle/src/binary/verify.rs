@@ -63,10 +63,11 @@ pub fn verify<T: AsRef<[u8]>>(
         return if num_leaves == 1 { *root == sum } else { false }
     }
 
-    let mut height = 1usize;
+    let mut parent = 0usize;
     let mut stable_end = proof_index;
 
     loop {
+        let height = parent + 1;
         let subtree_start_index = proof_index / (1 << height) * (1 << height);
         let subtree_end_index = subtree_start_index + (1 << height) - 1;
 
@@ -80,29 +81,29 @@ pub fn verify<T: AsRef<[u8]>>(
             return false
         }
 
-        let proof_data = proof_set[height - 1];
-        if proof_index - subtree_start_index < 1 << (height - 1) {
+        let proof_data = proof_set[parent];
+        if proof_index - subtree_start_index < 1 << (parent) {
             sum = node_sum(&sum, &proof_data);
         } else {
             sum = node_sum(&proof_data, &sum);
         }
 
-        height += 1;
+        parent += 1;
     }
 
     if stable_end != num_leaves - 1 {
-        if proof_set.len() < height {
+        if proof_set.len() < parent + 1 {
             return false
         }
-        let proof_data = proof_set[height - 1];
+        let proof_data = proof_set[parent];
         sum = node_sum(&sum, &proof_data);
-        height += 1;
+        parent += 1;
     }
 
-    while height - 1 < proof_set.len() {
-        let proof_data = proof_set[height - 1];
+    while parent < proof_set.len() {
+        let proof_data = proof_set[parent];
         sum = node_sum(&proof_data, &sum);
-        height += 1;
+        parent += 1;
     }
 
     sum == *root

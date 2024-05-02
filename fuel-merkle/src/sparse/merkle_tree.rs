@@ -42,7 +42,6 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    cmp,
     fmt::{
         Debug,
         Formatter,
@@ -404,6 +403,7 @@ where
         let mut node = top.node;
         let path = top.bits;
         let height = node.height();
+        #[allow(clippy::arithmetic_side_effects)] // height <= max_height
         let depth = Node::max_height() - height;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth as usize);
         for placeholder in placeholders {
@@ -525,8 +525,8 @@ where
 
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
-            let stale_depth = cmp::max(side_nodes.len(), ancestor_depth as usize);
-            let placeholders_count = stale_depth - side_nodes.len();
+            let placeholders_count =
+                (ancestor_depth as usize).saturating_sub(side_nodes.len());
             let placeholders =
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {

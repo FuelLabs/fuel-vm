@@ -18,10 +18,18 @@ pub trait KeyFormatting {
 pub trait Node {
     type Key: KeyFormatting;
 
-    fn key_size_in_bits() -> u32 {
-        u32::try_from(mem::size_of::<Self::Key>() * 8)
-            .expect("The key usually is several bytes")
-    }
+    const KEY_SIZE_BITS: u32 = match mem::size_of::<Self::Key>().checked_mul(8) {
+        Some(v) => {
+            if v <= u32::MAX as usize {
+                v as u32
+            } else {
+                panic!("Key doesn't fit into u32");
+            }
+        }
+        _ => {
+            panic!("Key impossibly large");
+        }
+    };
 
     fn height(&self) -> u32;
     fn leaf_key(&self) -> Self::Key;

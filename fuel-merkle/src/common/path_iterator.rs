@@ -208,6 +208,11 @@ where
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::restriction,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss
+)]
 mod test {
     use crate::common::{
         node::{

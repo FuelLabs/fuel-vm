@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![allow(non_snake_case, clippy::arithmetic_side_effects)]
 
 use core::fmt::{
     Debug,

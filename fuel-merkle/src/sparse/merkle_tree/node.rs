@@ -8,7 +8,6 @@ use crate::{
             ParentNode as ParentNodeTrait,
         },
         path::{
-            ComparablePath,
             Path,
             Side,
         },

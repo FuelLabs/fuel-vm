@@ -109,17 +109,22 @@ impl Position {
 
     /// Construct a position from a leaf index. The in-order index corresponding
     /// to the leaf index will always equal the leaf index multiplied by 2.
+    /// Panics if index is too large to fit into u64.
     pub fn from_leaf_index(index: u64) -> Self {
-        Position(index * 2)
+        Position(index.checked_mul(2).expect("Leaf index impossibly large"))
     }
 
     /// The sibling position.
     /// A position shares the same parent and height as its sibling.
     pub fn sibling(self) -> Self {
-        let shift = 1 << (self.height() + 1);
+        #[allow(clippy::arithmetic_side_effects)]
+        let shift = 1 << (self.height() + 1); // height() < u32::MAX
         let this = self.in_order_index();
+        #[allow(clippy::arithmetic_side_effects)]
         Self::from_in_order_index(match self.orientation() {
+            // height in relation to in_order_index cannot underflow
             Side::Left => this - shift,
+            // it's not possible to actually construct a tree so larget his would overflow
             Side::Right => this + shift,
         })
     }
@@ -129,8 +134,11 @@ impl Position {
     pub fn parent(self) -> Self {
         let shift = 1 << self.height();
         let this = self.in_order_index();
+        #[allow(clippy::arithmetic_side_effects)]
         Self::from_in_order_index(match self.orientation() {
+            // height in relation to in_order_index cannot underflow
             Side::Left => this - shift,
+            // it's not possible to actually construct a tree so larget his would overflow
             Side::Right => this + shift,
         })
     }
@@ -152,10 +160,14 @@ impl Position {
     /// current index.
     pub fn child(self, side: Side) -> Self {
         assert!(self.is_node());
+        #[allow(clippy::arithmetic_side_effects)] // Asserted above
         let shift = 1 << (self.height() - 1);
         let this = self.in_order_index();
+        #[allow(clippy::arithmetic_side_effects)]
         Self::from_in_order_index(match side {
+            // height in relation to in_order_index cannot underflow
             Side::Left => this - shift,
+            // it's not possible to actually construct a tree so larget his would overflow
             Side::Right => this + shift,
         })
     }
@@ -241,6 +253,7 @@ impl Position {
     /// |           9 |        1001 |      1 |           L |
     /// |          13 |        1101 |      1 |           R |
     fn orientation(self) -> Side {
+        #[allow(clippy::arithmetic_side_effects)] // height + 1 cannot overflow
         let shift = 1 << (self.height() + 1);
         match self.in_order_index() & shift {
             0 => Side::Right,

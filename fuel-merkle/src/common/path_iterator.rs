@@ -164,7 +164,11 @@ where
                     let path = &self.leaf_key;
                     let instruction = path.get_instruction(self.current_offset);
                     self.current = instruction.map(|instruction| {
-                        self.current_offset += 1;
+                        // get_instruction ensures current_offset is ok
+                        #[allow(clippy::arithmetic_side_effects)]
+                        {
+                            self.current_offset += 1;
+                        }
                         match instruction {
                             Side::Left => {
                                 (path_node.left_child(), path_node.right_child())

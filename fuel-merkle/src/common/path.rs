@@ -21,9 +21,7 @@ impl From<Bit> for Side {
 pub trait Path {
     /// Which child node to follow at the given index.
     fn get_instruction(&self, index: u32) -> Option<Side>;
-}
 
-pub trait ComparablePath {
     fn common_path_length(&self, other: &[u8]) -> u32;
 }
 
@@ -34,12 +32,7 @@ where
     fn get_instruction(&self, index: u32) -> Option<Side> {
         self.get_bit_at_index_from_msb(index).map(Into::into)
     }
-}
 
-impl<T> ComparablePath for T
-where
-    T: Msb,
-{
     fn common_path_length(&self, other: &[u8]) -> u32 {
         self.common_prefix_count(other)
     }

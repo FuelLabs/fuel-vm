@@ -1,7 +1,7 @@
 use super::Node;
 use crate::{
     common::{
-        path::ComparablePath,
+        path::Path,
         Bytes32,
     },
     sparse::Primitive,

@@ -11,6 +11,7 @@ trait GetBit {
 impl GetBit for u8 {
     fn get_bit(&self, bit_index: u32) -> Option<Bit> {
         if bit_index < 8 {
+            #[allow(clippy::arithmetic_side_effects)] // checked above
             let mask = 1 << (7 - bit_index);
             let bit = self & mask;
             match bit {
@@ -44,7 +45,8 @@ impl<const N: usize> Msb for [u8; N] {
             // For each pair of bytes, compute the similarity of each byte using
             // exclusive or (XOR). The leading zeros measures the number of
             // similar bits from left to right. For equal bytes, this will be 8.
-            count += (byte1 ^ byte2).leading_zeros();
+            let common_bits = (byte1 ^ byte2).leading_zeros();
+            count += common_bits;
             if byte1 != byte2 {
                 break
             }

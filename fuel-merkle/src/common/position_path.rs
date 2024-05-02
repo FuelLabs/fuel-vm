@@ -50,9 +50,14 @@ pub struct PositionPathIter {
 }
 
 impl PositionPathIter {
+    /// Panics if leaves_count is zero, as the tree is not valid
     pub fn new(root: Position, leaf: Position, leaves_count: u64) -> Self {
         Self {
-            rightmost_position: Position::from_leaf_index(leaves_count - 1),
+            rightmost_position: Position::from_leaf_index(
+                leaves_count
+                    .checked_sub(1)
+                    .expect("Path to a tree without leaves"),
+            ),
             current_side_node: None,
             path_iter: root.as_path_iter(&leaf.leaf_key()),
         }

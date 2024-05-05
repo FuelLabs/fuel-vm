@@ -1,10 +1,12 @@
+type Bit = bool;
+
 pub trait Msb {
-    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<bool>;
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit>;
     fn common_prefix_count(&self, other: &[u8]) -> u64;
 }
 
 impl<const N: usize> Msb for [u8; N] {
-    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<bool> {
+    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit> {
         // The byte that contains the bit
         let byte_index = index / 8;
         // The bit within the containing byte

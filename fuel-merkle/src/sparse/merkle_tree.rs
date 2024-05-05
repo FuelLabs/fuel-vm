@@ -150,16 +150,6 @@ impl Deref for MerkleTreeKey {
     }
 }
 
-impl Msb for MerkleTreeKey {
-    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<bool> {
-        self.0.get_bit_at_index_from_msb(index)
-    }
-
-    fn common_prefix_count(&self, other: &[u8]) -> u64 {
-        self.0.common_prefix_count(other.as_ref())
-    }
-}
-
 #[cfg(any(test, feature = "test-helpers"))]
 impl From<Bytes32> for MerkleTreeKey {
     fn from(value: Bytes32) -> Self {

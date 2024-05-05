@@ -111,6 +111,8 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     }
 
     fn root_position(&self) -> Position {
+        // Define a new tree with a leaf count 1 greater than the current leaf
+        // count.
         // u64 cannot overflow, as memory is finite
         #[allow(clippy::arithmetic_side_effects)]
         let leaves_count = self.leaves_count + 1;

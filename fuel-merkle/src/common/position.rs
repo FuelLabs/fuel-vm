@@ -388,20 +388,20 @@ mod test {
 
     #[test]
     fn test_left_child() {
-        assert_eq!(Position(7).child(Side::Left), Position(3));
-        assert_eq!(Position(3).child(Side::Left), Position(1));
-        assert_eq!(Position(1).child(Side::Left), Position(0));
-        assert_eq!(Position(11).child(Side::Left), Position(9));
-        assert_eq!(Position(9).child(Side::Left), Position(8));
+        assert_eq!(Position(7).left_child(), Position(3));
+        assert_eq!(Position(3).left_child(), Position(1));
+        assert_eq!(Position(1).left_child(), Position(0));
+        assert_eq!(Position(11).left_child(), Position(9));
+        assert_eq!(Position(9).left_child(), Position(8));
     }
 
     #[test]
     fn test_right_child() {
-        assert_eq!(Position(7).child(Side::Right), Position(11));
-        assert_eq!(Position(3).child(Side::Right), Position(5));
-        assert_eq!(Position(1).child(Side::Right), Position(2));
-        assert_eq!(Position(11).child(Side::Right), Position(13));
-        assert_eq!(Position(9).child(Side::Right), Position(10));
+        assert_eq!(Position(7).right_child(), Position(11));
+        assert_eq!(Position(3).right_child(), Position(5));
+        assert_eq!(Position(1).right_child(), Position(2));
+        assert_eq!(Position(11).right_child(), Position(13));
+        assert_eq!(Position(9).right_child(), Position(10));
     }
 
     #[test]

@@ -17,7 +17,6 @@ use crate::{
         node::ChildError,
         AsPathIterator,
         Bytes32,
-        Msb,
     },
     sparse::{
         empty_sum,

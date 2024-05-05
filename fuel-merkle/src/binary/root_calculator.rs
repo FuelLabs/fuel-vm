@@ -28,13 +28,10 @@ impl MerkleRootCalculator {
         let node = Node::create_leaf(0, data);
         self.stack.push(node);
 
-        loop {
-            let Some(i) = self.stack.len().checked_sub(2) else {
-                break;
-            };
-            let left_node = &self.stack[i];
-            #[allow(clippy::arithmetic_side_effects)] // stack.len()-2+1 is valid
-            let right_node = &self.stack[i + 1];
+        #[allow(clippy::arithmetic_side_effects)] // ensured by loop condition
+        while self.stack.len() > 1 {
+            let right_node = &self.stack[self.stack.len() - 1];
+            let left_node = &self.stack[self.stack.len() - 2];
             if right_node.height() == left_node.height() {
                 let merged_node = Node::create_node(left_node, right_node);
                 self.stack.pop();

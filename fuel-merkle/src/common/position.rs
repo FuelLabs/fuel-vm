@@ -124,7 +124,8 @@ impl Position {
         Self::from_in_order_index(match self.orientation() {
             // height in relation to in_order_index cannot underflow
             Side::Left => this - shift,
-            // it's not possible to actually construct a tree so large that this would overflow
+            // it's not possible to actually construct a tree so large that this would
+            // overflow
             Side::Right => this + shift,
         })
     }

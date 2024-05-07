@@ -11,14 +11,17 @@ use crate::{
 
 /// Returns None if:
 /// - `num_leaves` is 0
-/// - the result wouldn't fit into an usize
+/// - the result doens't fit in an usize
 fn path_length_from_key(key: u64, num_leaves: u64) -> Option<usize> {
     if num_leaves == 0 {
         return None;
     }
 
-    let path_length =
-        usize::try_from(num_leaves.checked_next_power_of_two()?.ilog2()).ok()?;
+    let path_length = if num_leaves.is_power_of_two() {
+        num_leaves.ilog2()
+    } else {
+        num_leaves.ilog2() + 1
+    };
 
     #[allow(clippy::arithmetic_side_effects)] // ilog2(..) > 0
     let num_leaves_left_subtree = 1 << (path_length - 1);
@@ -27,7 +30,7 @@ fn path_length_from_key(key: u64, num_leaves: u64) -> Option<usize> {
 
     let Some(subtree_key) = key.checked_sub(num_leaves_left_subtree) else {
         // If leaf is in left subtree, path length is full height of left subtree
-        return Some(path_length);
+        return Some(path_length.try_into().ok()?);
     };
 
     // Otherwise, if left or right subtree has only one leaf, path has one additional step

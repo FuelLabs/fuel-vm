@@ -320,9 +320,12 @@ where
     TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    pub fn push(&mut self, data: &[u8]) -> Result<(), StorageError> {
-        let node = Node::create_leaf(self.leaves_count, data);
-        self.storage.insert(&node.key(), &node.as_ref().into())?;
+    pub fn push(&mut self, data: &[u8]) -> Result<(), TreeExtendError<StorageError>> {
+        let node = Node::create_leaf(self.leaves_count, data)
+            .ok_or(TreeExtendError::TooLarge)?;
+        self.storage
+            .insert(&node.key(), &node.as_ref().into())
+            .map_err(TreeExtendError::Storage)?;
         let next = self.head.take();
         let head = Subtree::new(node, next);
         self.head = Some(head);
@@ -340,7 +343,7 @@ where
     // PRIVATE
     //
 
-    fn join_all_subtrees(&mut self) -> Result<(), StorageError> {
+    fn join_all_subtrees(&mut self) -> Result<(), TreeExtendError<StorageError>> {
         while {
             // Iterate through all subtrees in the tree to see which subtrees
             // can be merged. Two consecutive subtrees will be merged if, and
@@ -359,9 +362,11 @@ where
             // Merge the two front heads of the list into a single head
             let mut head = self.head.take().expect("Expected head to be present");
             let mut head_next = head.take_next().expect("Expected next to be present");
-            let joined_head = join_subtrees(&mut head_next, &mut head);
+            let joined_head = join_subtrees(&mut head_next, &mut head)
+                .ok_or(TreeExtendError::TooLarge)?;
             self.storage
-                .insert(&joined_head.node().key(), &joined_head.node().into())?;
+                .insert(&joined_head.node().key(), &joined_head.node().into())
+                .map_err(TreeExtendError::Storage)?;
             self.head = Some(joined_head);
         }
 
@@ -369,9 +374,13 @@ where
     }
 }
 
-fn join_subtrees(lhs: &mut Subtree<Node>, rhs: &mut Subtree<Node>) -> Subtree<Node> {
-    let joined_node = Node::create_node(lhs.node(), rhs.node());
-    Subtree::new(joined_node, lhs.take_next())
+/// Returns `None` if the new node cannot be created.
+fn join_subtrees(
+    lhs: &mut Subtree<Node>,
+    rhs: &mut Subtree<Node>,
+) -> Option<Subtree<Node>> {
+    let joined_node = Node::create_node(lhs.node(), rhs.node())?;
+    Some(Subtree::new(joined_node, lhs.take_next()))
 }
 
 fn build_root_node<Table, Storage>(subtree: &Subtree<Node>, storage: &mut Storage) -> Node
@@ -381,10 +390,19 @@ where
 {
     let mut head = subtree.clone();
     while let Some(mut head_next) = head.take_next() {
-        head = join_subtrees(&mut head_next, &mut head);
+        head = join_subtrees(&mut head_next, &mut head).expect("Failed to join subtrees");
         storage.insert(&head.node().key(), &head.node().into());
     }
     head.node().clone()
+}
+
+/// Error when attempting to extend a tree.
+#[derive(Debug, Clone, PartialEq)]
+pub enum TreeExtendError<StorageError> {
+    /// Max tree size exceeded
+    TooLarge,
+    /// Storage write failed
+    Storage(StorageError),
 }
 
 #[cfg(test)]
@@ -397,6 +415,7 @@ mod test {
         binary::{
             empty_sum,
             leaf_sum,
+            merkle_tree::TreeExtendError,
             node_sum,
             Node,
             Primitive,
@@ -940,6 +959,6 @@ mod test {
         let result = tree.push(&[]);
 
         // Then
-        assert_eq!(result, Ok(()));
+        assert_eq!(result, Err(TreeExtendError::TooLarge));
     }
 }

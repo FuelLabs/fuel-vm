@@ -25,7 +25,7 @@ impl MerkleRootCalculator {
     }
 
     pub fn push(&mut self, data: &[u8]) {
-        let node = Node::create_leaf(0, data);
+        let node = Node::create_leaf(0, data).expect("Zero is a valid index for a leaf");
         self.stack.push(node);
 
         #[allow(clippy::arithmetic_side_effects)] // ensured by loop condition
@@ -33,7 +33,8 @@ impl MerkleRootCalculator {
             let right_node = &self.stack[self.stack.len() - 1];
             let left_node = &self.stack[self.stack.len() - 2];
             if right_node.height() == left_node.height() {
-                let merged_node = Node::create_node(left_node, right_node);
+                let merged_node = Node::create_node(left_node, right_node)
+                    .expect("Unable to create a node");
                 self.stack.pop();
                 self.stack.pop();
                 self.stack.push(merged_node);
@@ -48,9 +49,10 @@ impl MerkleRootCalculator {
             return empty_sum().to_owned()
         }
         while self.stack.len() > 1 {
-            let right_child = self.stack.pop().expect("Unable to pop element from stack");
-            let left_child = self.stack.pop().expect("Unable to pop element from stack");
-            let merged_node = Node::create_node(&left_child, &right_child);
+            let right_child = self.stack.pop().expect("Checked in loop bound");
+            let left_child = self.stack.pop().expect("Checked in loop bound");
+            let merged_node = Node::create_node(&left_child, &right_child)
+                .expect("Unable to create a node");
             self.stack.push(merged_node);
         }
         self.stack.pop().unwrap().hash().to_owned()

@@ -17,6 +17,7 @@ fn path_length_from_key(key: u64, num_leaves: u64) -> Option<usize> {
         return None;
     }
 
+    #[allow(clippy::arithmetic_side_effects)] // ilog2(..) < 64
     let path_length = if num_leaves.is_power_of_two() {
         num_leaves.ilog2()
     } else {
@@ -30,7 +31,7 @@ fn path_length_from_key(key: u64, num_leaves: u64) -> Option<usize> {
 
     let Some(subtree_key) = key.checked_sub(num_leaves_left_subtree) else {
         // If leaf is in left subtree, path length is full height of left subtree
-        return Some(path_length.try_into().ok()?);
+        return path_length.try_into().ok();
     };
 
     // Otherwise, if left or right subtree has only one leaf, path has one additional step

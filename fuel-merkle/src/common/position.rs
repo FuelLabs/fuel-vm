@@ -1,6 +1,5 @@
 use crate::common::{
     node::{
-        ChildResult,
         Node,
         ParentNode,
     },
@@ -9,7 +8,13 @@ use crate::common::{
 };
 use core::convert::Infallible;
 
-use super::path::Side;
+use super::{
+    node::{
+        ChildError,
+        ChildResult,
+    },
+    path::Side,
+};
 
 /// # Position
 ///
@@ -121,39 +126,36 @@ impl Position {
 
     /// The sibling position.
     /// A position shares the same parent and height as its sibling.
-    pub fn sibling(self) -> Self {
-        #[allow(clippy::arithmetic_side_effects)]
-        let shift = 1 << (self.height() + 1); // height() < u32::MAX
+    pub fn sibling(self) -> Result<Self, GetNodeError> {
+        #[allow(clippy::arithmetic_side_effects)] // height() <= 64
+        let shift = 1u64
+            .checked_shl(self.height() + 1)
+            .ok_or(GetNodeError::CannotExist)?;
         let this = self.in_order_index();
-        #[allow(clippy::arithmetic_side_effects)]
-        Self::from_in_order_index(match self.orientation() {
-            // height in relation to in_order_index cannot underflow
-            Side::Left => this - shift,
-            // it's not possible to actually construct a tree so large that this would
-            // overflow
-            Side::Right => this + shift,
-        })
+        Ok(Self::from_in_order_index(match self.orientation() {
+            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
+            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
+        }))
     }
 
     /// The parent position.
     /// The parent position has a height less 1 relative to this position.
-    pub fn parent(self) -> Self {
-        let shift = 1 << self.height();
+    pub fn parent(self) -> Result<Self, GetNodeError> {
+        let shift = 1u64
+            .checked_shl(self.height())
+            .ok_or(GetNodeError::CannotExist)?;
         let this = self.in_order_index();
-        #[allow(clippy::arithmetic_side_effects)]
-        Self::from_in_order_index(match self.orientation() {
-            // height in relation to in_order_index cannot underflow
-            Side::Left => this - shift,
-            // it's not possible to actually construct a tree so larget his would overflow
-            Side::Right => this + shift,
-        })
+        Ok(Self::from_in_order_index(match self.orientation() {
+            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
+            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
+        }))
     }
 
     /// The uncle position.
     /// The uncle position is the sibling of the parent and has a height less 1
     /// relative to this position.
-    pub fn uncle(self) -> Self {
-        self.parent().sibling()
+    pub fn uncle(self) -> Result<Self, GetNodeError> {
+        self.parent()?.sibling()
     }
 
     /// The child position of the current position given by the direction.
@@ -164,31 +166,31 @@ impl Position {
     /// position has the in-order index arriving before the current index;
     /// the right child position has the in-order index arriving after the
     /// current index.
-    ///
-    /// Panics if the current position is a leaf node.
-    pub fn child(self, side: Side) -> Self {
-        assert!(self.is_node());
-        #[allow(clippy::arithmetic_side_effects)] // Asserted above
-        let shift = 1 << (self.height() - 1);
+    pub fn child(self, side: Side) -> Result<Self, GetNodeError> {
+        if !self.is_node() {
+            return Err(GetNodeError::IsLeaf);
+        }
+        let shift = 1u64
+            .checked_shl(
+                self.height()
+                    .checked_sub(1)
+                    .ok_or(GetNodeError::CannotExist)?,
+            )
+            .ok_or(GetNodeError::CannotExist)?;
         let this = self.in_order_index();
-        #[allow(clippy::arithmetic_side_effects)]
-        Self::from_in_order_index(match side {
-            // height in relation to in_order_index cannot underflow
-            Side::Left => this - shift,
-            // it's not possible to actually construct a tree so larget his would overflow
-            Side::Right => this + shift,
-        })
+        Ok(Self::from_in_order_index(match side {
+            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
+            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
+        }))
     }
 
     /// Returns the left child of the current position.
-    /// Panics if the current position is a leaf node.
-    pub fn left_child(self) -> Self {
+    pub fn left_child(self) -> Result<Self, GetNodeError> {
         self.child(Side::Left)
     }
 
     /// Returns the right child of the current position.
-    /// Panics if the current position is a leaf node.
-    pub fn right_child(self) -> Self {
+    pub fn right_child(self) -> Result<Self, GetNodeError> {
         self.child(Side::Right)
     }
 
@@ -299,15 +301,32 @@ impl Node for Position {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GetNodeError {
+    /// The operation requires a node that can have children.
+    /// This is a leaf, and cannot have children.
+    IsLeaf,
+    /// The requested node cannot exists as it would be out of bounds.
+    CannotExist,
+}
+
 impl ParentNode for Position {
     type Error = Infallible;
 
     fn left_child(&self) -> ChildResult<Self> {
-        Ok(self.child(Side::Left))
+        match self.child(Side::Left) {
+            Ok(child) => Ok(child),
+            Err(GetNodeError::IsLeaf) => Err(ChildError::NodeIsLeaf),
+            Err(GetNodeError::CannotExist) => Err(ChildError::ChildCannotExist),
+        }
     }
 
     fn right_child(&self) -> ChildResult<Self> {
-        Ok(self.child(Side::Right))
+        match self.child(Side::Right) {
+            Ok(child) => Ok(child),
+            Err(GetNodeError::IsLeaf) => Err(ChildError::NodeIsLeaf),
+            Err(GetNodeError::CannotExist) => Err(ChildError::ChildCannotExist),
+        }
     }
 }
 
@@ -363,57 +382,57 @@ mod test {
 
     #[test]
     fn test_sibling() {
-        assert_eq!(Position(0).sibling(), Position(2));
-        assert_eq!(Position(2).sibling(), Position(0));
+        assert_eq!(Position(0).sibling(), Ok(Position(2)));
+        assert_eq!(Position(2).sibling(), Ok(Position(0)));
 
-        assert_eq!(Position(1).sibling(), Position(5));
-        assert_eq!(Position(5).sibling(), Position(1));
+        assert_eq!(Position(1).sibling(), Ok(Position(5)));
+        assert_eq!(Position(5).sibling(), Ok(Position(1)));
 
-        assert_eq!(Position(3).sibling(), Position(11));
-        assert_eq!(Position(11).sibling(), Position(3));
+        assert_eq!(Position(3).sibling(), Ok(Position(11)));
+        assert_eq!(Position(11).sibling(), Ok(Position(3)));
     }
 
     #[test]
     fn test_parent() {
-        assert_eq!(Position(0).parent(), Position(1));
-        assert_eq!(Position(2).parent(), Position(1));
+        assert_eq!(Position(0).parent(), Ok(Position(1)));
+        assert_eq!(Position(2).parent(), Ok(Position(1)));
 
-        assert_eq!(Position(1).parent(), Position(3));
-        assert_eq!(Position(5).parent(), Position(3));
+        assert_eq!(Position(1).parent(), Ok(Position(3)));
+        assert_eq!(Position(5).parent(), Ok(Position(3)));
 
-        assert_eq!(Position(3).parent(), Position(7));
-        assert_eq!(Position(11).parent(), Position(7));
+        assert_eq!(Position(3).parent(), Ok(Position(7)));
+        assert_eq!(Position(11).parent(), Ok(Position(7)));
     }
 
     #[test]
     fn test_uncle() {
-        assert_eq!(Position(0).uncle(), Position(5));
-        assert_eq!(Position(2).uncle(), Position(5));
-        assert_eq!(Position(4).uncle(), Position(1));
-        assert_eq!(Position(6).uncle(), Position(1));
+        assert_eq!(Position(0).uncle(), Ok(Position(5)));
+        assert_eq!(Position(2).uncle(), Ok(Position(5)));
+        assert_eq!(Position(4).uncle(), Ok(Position(1)));
+        assert_eq!(Position(6).uncle(), Ok(Position(1)));
 
-        assert_eq!(Position(1).uncle(), Position(11));
-        assert_eq!(Position(5).uncle(), Position(11));
-        assert_eq!(Position(9).uncle(), Position(3));
-        assert_eq!(Position(13).uncle(), Position(3));
+        assert_eq!(Position(1).uncle(), Ok(Position(11)));
+        assert_eq!(Position(5).uncle(), Ok(Position(11)));
+        assert_eq!(Position(9).uncle(), Ok(Position(3)));
+        assert_eq!(Position(13).uncle(), Ok(Position(3)));
     }
 
     #[test]
     fn test_left_child() {
-        assert_eq!(Position(7).left_child(), Position(3));
-        assert_eq!(Position(3).left_child(), Position(1));
-        assert_eq!(Position(1).left_child(), Position(0));
-        assert_eq!(Position(11).left_child(), Position(9));
-        assert_eq!(Position(9).left_child(), Position(8));
+        assert_eq!(Position(7).left_child(), Ok(Position(3)));
+        assert_eq!(Position(3).left_child(), Ok(Position(1)));
+        assert_eq!(Position(1).left_child(), Ok(Position(0)));
+        assert_eq!(Position(11).left_child(), Ok(Position(9)));
+        assert_eq!(Position(9).left_child(), Ok(Position(8)));
     }
 
     #[test]
     fn test_right_child() {
-        assert_eq!(Position(7).right_child(), Position(11));
-        assert_eq!(Position(3).right_child(), Position(5));
-        assert_eq!(Position(1).right_child(), Position(2));
-        assert_eq!(Position(11).right_child(), Position(13));
-        assert_eq!(Position(9).right_child(), Position(10));
+        assert_eq!(Position(7).right_child(), Ok(Position(11)));
+        assert_eq!(Position(3).right_child(), Ok(Position(5)));
+        assert_eq!(Position(1).right_child(), Ok(Position(2)));
+        assert_eq!(Position(11).right_child(), Ok(Position(13)));
+        assert_eq!(Position(9).right_child(), Ok(Position(10)));
     }
 
     #[test]

@@ -39,6 +39,8 @@ where
 {
     #[display(fmt = "Child with key {} was not found in storage", _0.pretty())]
     ChildNotFound(Key),
+    #[display(fmt = "Node channot have the requested child")]
+    ChildCannotExist,
     #[display(fmt = "Node is a leaf with no children")]
     NodeIsLeaf,
     #[display(fmt = "{}", _0)]

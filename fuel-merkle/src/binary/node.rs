@@ -22,16 +22,19 @@ impl Node {
         Self { position, hash }
     }
 
-    pub fn create_leaf(index: u64, data: &[u8]) -> Self {
-        let position = Position::from_leaf_index(index).unwrap();
+    /// Returns `None` if the leaf cannot be created due to incorrect position.
+    pub fn create_leaf(index: u64, data: &[u8]) -> Option<Self> {
+        let position = Position::from_leaf_index(index)?;
         let hash = leaf_sum(data);
-        Self { position, hash }
+        Some(Self { position, hash })
     }
 
-    pub fn create_node(left_child: &Self, right_child: &Self) -> Self {
-        let position = left_child.position().parent();
+    /// Creates a new node under the parent of the left_child.
+    /// Returns `None` if the leaf cannot be created due to incorrect position.
+    pub fn create_node(left_child: &Self, right_child: &Self) -> Option<Self> {
+        let position = left_child.position().parent().ok()?;
         let hash = node_sum(left_child.hash(), right_child.hash());
-        Self { position, hash }
+        Some(Self { position, hash })
     }
 
     pub fn position(&self) -> &Position {

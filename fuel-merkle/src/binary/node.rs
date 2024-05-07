@@ -34,8 +34,8 @@ impl Node {
         Self { position, hash }
     }
 
-    pub fn position(&self) -> Position {
-        self.position
+    pub fn position(&self) -> &Position {
+        &self.position
     }
 
     pub fn key(&self) -> u64 {

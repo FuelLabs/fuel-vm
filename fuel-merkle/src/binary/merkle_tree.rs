@@ -936,7 +936,7 @@ mod test {
         // When
         let mut tree = MerkleTree::load(storage_map, LEAVES_COUNT)
             .expect("Expected `load()` to succeed");
-        let result = tree.push(&[]);
+        let _ = tree.push(&[]);
         let result = tree.push(&[]);
 
         // Then

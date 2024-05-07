@@ -159,6 +159,8 @@ impl Position {
     /// position has the in-order index arriving before the current index;
     /// the right child position has the in-order index arriving after the
     /// current index.
+    /// 
+    /// Panics if the current position is a leaf node.
     pub fn child(self, side: Side) -> Self {
         assert!(self.is_node());
         #[allow(clippy::arithmetic_side_effects)] // Asserted above
@@ -173,10 +175,14 @@ impl Position {
         })
     }
 
+    /// Returns the left child of the current position.
+    /// Panics if the current position is a leaf node.
     pub fn left_child(self) -> Self {
         self.child(Side::Left)
     }
 
+    /// Returns the right child of the current position.
+    /// Panics if the current position is a leaf node.
     pub fn right_child(self) -> Self {
         self.child(Side::Right)
     }

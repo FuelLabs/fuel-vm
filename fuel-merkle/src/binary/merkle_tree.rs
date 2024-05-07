@@ -24,7 +24,7 @@ use crate::{
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 
-#[derive(Debug, Clone, derive_more::Display)]
+#[derive(Debug, Clone, derive_more::Display, PartialEq, Eq)]
 pub enum MerkleTreeError<StorageError> {
     #[display(fmt = "proof index {_0} is not valid")]
     InvalidProofIndex(u64),
@@ -34,6 +34,9 @@ pub enum MerkleTreeError<StorageError> {
 
     #[display(fmt = "{}", _0)]
     StorageError(StorageError),
+
+    #[display(fmt = "the tree is too large and contains {_0} leaves")]
+    TooLargeTree(u64),
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
@@ -96,8 +99,11 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
             .map(|head| build_root_node(head, scratch_storage))
     }
 
-    fn peak_positions(&self) -> Vec<Position> {
-        let leaf_position = Position::from_leaf_index(self.leaves_count);
+    fn peak_positions<StorageError>(
+        &self,
+    ) -> Result<Vec<Position>, MerkleTreeError<StorageError>> {
+        let leaf_position = Position::from_leaf_index(self.leaves_count)
+            .ok_or(MerkleTreeError::TooLargeTree(self.leaves_count))?;
         let root_position = self.root_position();
         // u64 cannot overflow, as memory is finite
         #[allow(clippy::arithmetic_side_effects)]
@@ -107,7 +113,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
 
         let (_, peaks): (Vec<_>, Vec<_>) = peaks_itr.unzip();
 
-        peaks
+        Ok(peaks)
     }
 
     fn root_position(&self) -> Position {
@@ -167,7 +173,8 @@ where
         let mut proof_set = ProofSet::new();
 
         let root_position = self.root_position();
-        let leaf_position = Position::from_leaf_index(proof_index);
+        let leaf_position = Position::from_leaf_index(proof_index)
+            .ok_or(MerkleTreeError::TooLargeTree(proof_index))?;
         let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
             .path(&leaf_position, self.leaves_count)
             .iter()
@@ -289,7 +296,7 @@ where
     /// side positions `03`, `09`, and `12`, matching our set of MMR peaks.
     fn build(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
         let mut current_head = None;
-        let peaks = &self.peak_positions();
+        let peaks = &self.peak_positions()?;
         for peak in peaks.iter() {
             let key = peak.in_order_index();
             let node = self
@@ -400,8 +407,10 @@ mod test {
     use fuel_storage::{
         Mappable,
         StorageInspect,
+        StorageMutate,
     };
 
+    use crate::binary::MerkleTreeError::TooLargeTree;
     use alloc::vec::Vec;
 
     #[derive(Debug)]
@@ -894,5 +903,43 @@ mod test {
         let root = tree.root();
         let expected_root = node_3;
         assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn load_overflows() {
+        // Given
+        let storage_map = StorageMap::<TestTable>::new();
+        const LEAVES_COUNT: u64 = u64::MAX;
+
+        // When
+        let result = MerkleTree::load(storage_map, LEAVES_COUNT).map(|_| ());
+
+        // Then
+        assert_eq!(result, Err(TooLargeTree(LEAVES_COUNT)));
+    }
+
+    #[test]
+    fn push_overflows() {
+        // Given
+        let mut storage_map = StorageMap::<TestTable>::new();
+        const LEAVES_COUNT: u64 = u64::MAX / 2;
+        loop {
+            let result = MerkleTree::load(&mut storage_map, LEAVES_COUNT).map(|_| ());
+
+            if let Err(MerkleTreeError::LoadError(index)) = result {
+                storage_map.insert(&index, &Primitive::default()).unwrap();
+            } else {
+                break;
+            }
+        }
+
+        // When
+        let mut tree = MerkleTree::load(storage_map, LEAVES_COUNT)
+            .expect("Expected `load()` to succeed");
+        let result = tree.push(&[]);
+        let result = tree.push(&[]);
+
+        // Then
+        assert_eq!(result, Ok(()));
     }
 }

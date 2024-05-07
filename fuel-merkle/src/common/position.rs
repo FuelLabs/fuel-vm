@@ -57,7 +57,7 @@ use super::path::Side;
 /// This allows us to construct a `Position` (and its in-order index) by
 /// providing either an in-order index directly or, in the case of a leaf, a
 /// leaf index. This functionality is captured by `from_in_order_index()` and
-/// `from_leaf_index()` respectively.
+/// `from_leaf_index_unwrap()` respectively.
 ///
 /// Traversal of a Merkle Tree can be performed by the methods on a given
 /// `Position` to retrieve its sibling, parent, or uncle `Position`.
@@ -110,8 +110,13 @@ impl Position {
     /// Construct a position from a leaf index. The in-order index corresponding
     /// to the leaf index will always equal the leaf index multiplied by 2.
     /// Panics if index is too large to fit into u64.
-    pub fn from_leaf_index(index: u64) -> Self {
-        Position(index.checked_mul(2).expect("Leaf index impossibly large"))
+    pub fn from_leaf_index(index: u64) -> Option<Self> {
+        Some(Position(index.checked_mul(2)?))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_leaf_index_unwrap(index: u64) -> Self {
+        Self::from_leaf_index(index).expect("Index too large")
     }
 
     /// The sibling position.
@@ -318,11 +323,11 @@ mod test {
     }
 
     #[test]
-    fn test_from_leaf_index() {
-        assert_eq!(Position::from_leaf_index(0).in_order_index(), 0);
-        assert_eq!(Position::from_leaf_index(1).in_order_index(), 2);
+    fn test_from_leaf_index_unwrap() {
+        assert_eq!(Position::from_leaf_index_unwrap(0).in_order_index(), 0);
+        assert_eq!(Position::from_leaf_index_unwrap(1).in_order_index(), 2);
         assert_eq!(
-            Position::from_leaf_index((!0u64) >> 1).in_order_index(),
+            Position::from_leaf_index_unwrap((!0u64) >> 1).in_order_index(),
             !0u64 - 1
         );
     }
@@ -331,14 +336,14 @@ mod test {
     fn test_equality_returns_true_for_two_equal_positions() {
         assert_eq!(Position(0), Position(0));
         assert_eq!(Position::from_in_order_index(0), Position(0));
-        assert_eq!(Position::from_leaf_index(1), Position(2));
+        assert_eq!(Position::from_leaf_index_unwrap(1), Position(2));
     }
 
     #[test]
     fn test_equality_returns_false_for_two_unequal_positions() {
         assert_ne!(Position(0), Position(1));
         assert_ne!(Position::from_in_order_index(0), Position(1));
-        assert_ne!(Position::from_leaf_index(0), Position(2));
+        assert_ne!(Position::from_leaf_index_unwrap(0), Position(2));
     }
 
     #[test]

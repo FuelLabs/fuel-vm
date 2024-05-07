@@ -23,7 +23,7 @@ impl Node {
     }
 
     pub fn create_leaf(index: u64, data: &[u8]) -> Self {
-        let position = Position::from_leaf_index(index);
+        let position = Position::from_leaf_index(index).unwrap();
         let hash = leaf_sum(data);
         Self { position, hash }
     }

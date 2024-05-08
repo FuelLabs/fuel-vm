@@ -102,6 +102,13 @@ impl Memory {
         }
     }
 
+    /// Resets memory to initial state, keeping the original allocations.
+    pub fn reset(&mut self) {
+        self.stack.truncate(0);
+        self.heap.truncate(0);
+        self.hp = MEM_SIZE;
+    }
+
     /// Offset of the heap section
     fn heap_offset(&self) -> usize {
         MEM_SIZE.saturating_sub(self.heap.len())

@@ -1,6 +1,9 @@
 #![allow(clippy::cast_possible_truncation)]
 
-use crate::constraints::reg_key::*;
+use crate::{
+    constraints::reg_key::*,
+    consts::MEM_SIZE,
+};
 
 use super::{
     Memory,
@@ -100,4 +103,26 @@ fn reading_from_internally_allocated_heap_below_hp_fails() {
     memory
         .write_noownerchecks(VM_MAX_RAM - 16, 16)
         .expect_err("Cannot read across stack/heap boundary");
+}
+
+#[test]
+fn memory_reset() {
+    let mut memory = Memory::new();
+
+    memory.grow_stack(10).unwrap();
+    memory.read(0, 1).expect("Stack should be nonempty");
+    memory.reset();
+    memory.read(0, 1).expect_err("Stack should be empty");
+
+    memory
+        .grow_heap(Reg::<SP>::new(&0), VM_MAX_RAM - 10)
+        .unwrap();
+    memory
+        .read(VM_MAX_RAM - 1, 1)
+        .expect("Heap should be nonempty");
+    memory.reset();
+    memory
+        .read(VM_MAX_RAM - 1, 1)
+        .expect_err("Heap should be empty");
+    assert_eq!(memory.hp, MEM_SIZE);
 }

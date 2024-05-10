@@ -43,8 +43,12 @@ pub use types::*;
 
 use crate::{
     error::PredicateVerificationFailed,
+    pool::VmPool,
     prelude::*,
 };
+
+#[cfg(feature = "test-helpers")]
+use crate::pool::test_pool;
 
 bitflags::bitflags! {
     /// Possible types of transaction checks.
@@ -228,7 +232,11 @@ where
 {
     fn default() -> Self {
         Tx::default()
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect("default tx should produce a valid fully checked transaction")
     }
 }
@@ -292,6 +300,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        pool: VmPool,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
@@ -299,7 +308,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
             .check_signatures(&consensus_params.chain_id())?
-            .check_predicates(&check_predicate_params)
+            .check_predicates(&check_predicate_params, pool)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -369,12 +378,17 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
 #[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
-    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError>;
+    fn check_predicates(
+        self,
+        params: &CheckPredicateParams,
+        pool: VmPool,
+    ) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
     async fn check_predicates_async<E: ParallelExecutor>(
         self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<Self, CheckError>;
 }
 
@@ -385,12 +399,14 @@ pub trait EstimatePredicates: Sized {
     fn estimate_predicates(
         &mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<(), CheckError>;
 
     /// Estimates predicates of the transaction in parallel.
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<(), CheckError>;
 }
 
@@ -422,9 +438,10 @@ where
     fn check_predicates(
         mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            Interpreter::<PredicateStorage, _>::check_predicates(&self, params)?;
+            Interpreter::<PredicateStorage, _>::check_predicates(&self, params, pool)?;
             self.checks_bitmask.insert(Checks::Predicates);
         }
         Ok(self)
@@ -433,13 +450,14 @@ where
     async fn check_predicates_async<E>(
         mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
-                &self, params,
+                &self, params, pool,
             )
             .await?;
 
@@ -457,20 +475,24 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     fn estimate_predicates(
         &mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<(), CheckError> {
-        Interpreter::<PredicateStorage, _>::estimate_predicates(self, params)?;
+        Interpreter::<PredicateStorage, _>::estimate_predicates(self, params, pool)?;
         Ok(())
     }
 
     async fn estimate_predicates_async<E>(
         &mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
     {
-        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(self, params)
-            .await?;
+        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(
+            self, params, pool,
+        )
+        .await?;
 
         Ok(())
     }
@@ -481,26 +503,28 @@ impl EstimatePredicates for Transaction {
     fn estimate_predicates(
         &mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<(), CheckError> {
         match self {
-            Self::Script(tx) => tx.estimate_predicates(params),
-            Self::Create(tx) => tx.estimate_predicates(params),
+            Self::Script(tx) => tx.estimate_predicates(params, pool),
+            Self::Create(tx) => tx.estimate_predicates(params, pool),
             Self::Mint(_) => Ok(()),
-            Self::Upgrade(tx) => tx.estimate_predicates(params),
-            Self::Upload(tx) => tx.estimate_predicates(params),
+            Self::Upgrade(tx) => tx.estimate_predicates(params, pool),
+            Self::Upload(tx) => tx.estimate_predicates(params, pool),
         }
     }
 
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<(), CheckError> {
         match self {
-            Self::Script(tx) => tx.estimate_predicates_async::<E>(params).await,
-            Self::Create(tx) => tx.estimate_predicates_async::<E>(params).await,
+            Self::Script(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Create(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
             Self::Mint(_) => Ok(()),
-            Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params).await,
-            Self::Upload(tx) => tx.estimate_predicates_async::<E>(params).await,
+            Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Upload(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
         }
     }
 }
@@ -510,6 +534,7 @@ impl CheckPredicates for Checked<Mint> {
     fn check_predicates(
         mut self,
         _params: &CheckPredicateParams,
+        _pool: VmPool,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -518,6 +543,7 @@ impl CheckPredicates for Checked<Mint> {
     async fn check_predicates_async<E: ParallelExecutor>(
         mut self,
         _params: &CheckPredicateParams,
+        _pool: VmPool,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -526,23 +552,27 @@ impl CheckPredicates for Checked<Mint> {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError> {
+    fn check_predicates(
+        self,
+        params: &CheckPredicateParams,
+        pool: VmPool,
+    ) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, pool)?.into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, pool)?.into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, pool)?.into()
             }
             CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, pool)?.into()
             }
             CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, pool)?.into()
             }
         };
         Ok(checked_transaction.into())
@@ -551,6 +581,7 @@ impl CheckPredicates for Checked<Transaction> {
     async fn check_predicates_async<E>(
         mut self,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -559,27 +590,27 @@ impl CheckPredicates for Checked<Transaction> {
 
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
@@ -859,7 +890,11 @@ mod tests {
 
         let checked = tx
             .clone()
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect("Expected valid transaction");
 
         // verify transaction getter works
@@ -881,7 +916,11 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -901,7 +940,11 @@ mod tests {
         let tx = signed_message_coin_tx(rng, gas_limit, input_amount, zero_fee_limit);
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect("Expected valid transaction");
 
         // verify available balance was decreased by max fee
@@ -929,7 +972,11 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect_err("Expected valid transaction");
 
         // then
@@ -971,7 +1018,11 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect_err("Expected valid transaction");
 
         // then
@@ -1524,7 +1575,11 @@ mod tests {
             .finalize();
 
         let err = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
@@ -1549,7 +1604,7 @@ mod tests {
         let transaction = base_asset_tx(rng, arb_input_amount, gas_limit, zero_max_fee);
         transaction
             .clone()
-            .into_checked(Default::default(), &params)
+            .into_checked(Default::default(), &params, test_pool())
             .unwrap();
         let fees = TransactionFee::checked_from_tx(
             &GasCosts::default(),
@@ -1565,7 +1620,7 @@ mod tests {
             base_asset_tx(rng, new_input_amount, gas_limit, real_max_fee);
         new_transaction
             .clone()
-            .into_checked(Default::default(), &params)
+            .into_checked(Default::default(), &params, test_pool())
             .unwrap()
             .into_ready(gas_price, &GasCosts::default(), params.fee_params())
             .expect("`new_transaction` should be fully valid");
@@ -1574,7 +1629,7 @@ mod tests {
         // invalidating the transaction by increasing witness size
         new_transaction.witnesses_mut().push(rng.gen());
         let bigger_checked = new_transaction
-            .into_checked(Default::default(), &params)
+            .into_checked(Default::default(), &params, test_pool())
             .unwrap();
 
         // when
@@ -1613,7 +1668,7 @@ mod tests {
 
         // when
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_checked(Default::default(), &consensus_params, test_pool())
             .expect_err("overflow expected");
 
         // then
@@ -1642,7 +1697,7 @@ mod tests {
 
         let fee_params = consensus_params.fee_params();
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_checked(Default::default(), &consensus_params, test_pool())
             .unwrap()
             .into_ready(max_gas_price, &gas_costs, fee_params)
             .expect_err("overflow expected");
@@ -1669,7 +1724,7 @@ mod tests {
 
         // when
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_checked(Default::default(), &consensus_params, test_pool())
             .unwrap()
             .into_ready(gas_price, &gas_costs, fee_params)
             .expect_err("overflow expected");
@@ -1695,7 +1750,7 @@ mod tests {
             base_asset_tx_with_tip(rng, input_amount, gas_limit, max_fee_limit, None);
         tx_without_tip
             .clone()
-            .into_checked(block_height, &params)
+            .into_checked(block_height, &params, test_pool())
             .unwrap()
             .into_ready(gas_price, &gas_costs, params.fee_params())
             .expect("Should be valid");
@@ -1710,7 +1765,7 @@ mod tests {
             Some(tip),
         );
         tx_without_enough_to_pay_for_tip
-            .into_checked(block_height, &params)
+            .into_checked(block_height, &params, test_pool())
             .unwrap()
             .into_ready(gas_price, &gas_costs, params.fee_params())
             .expect_err("Expected invalid transaction");
@@ -1728,7 +1783,7 @@ mod tests {
 
         // then
         tx.clone()
-            .into_checked(block_height, &params)
+            .into_checked(block_height, &params, test_pool())
             .unwrap()
             .into_ready(gas_price, &GasCosts::default(), params.fee_params())
             .expect("Should be valid");
@@ -1747,7 +1802,7 @@ mod tests {
         let consensus_params = params(1);
 
         let err = transaction
-            .into_checked(Default::default(), &consensus_params)
+            .into_checked(Default::default(), &consensus_params, test_pool())
             .unwrap()
             .into_ready(
                 gas_price,
@@ -1789,7 +1844,11 @@ mod tests {
             .finalize();
 
         let checked = tx
-            .into_checked(Default::default(), &ConsensusParameters::standard())
+            .into_checked(
+                Default::default(),
+                &ConsensusParameters::standard(),
+                test_pool(),
+            )
             .expect_err("Expected valid transaction");
 
         assert_eq!(
@@ -1828,6 +1887,7 @@ mod tests {
             .into_checked(
                 block_height,
                 &ConsensusParameters::standard_with_id(chain_id),
+                test_pool(),
             )
             .unwrap()
             // Sets Checks::Signatures
@@ -1857,10 +1917,11 @@ mod tests {
             .into_checked(
                 block_height,
                 &consensus_params,
+                test_pool(),
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(&check_predicate_params)
+            .check_predicates(&check_predicate_params, test_pool())
             .unwrap();
         assert!(checked
             .checks()

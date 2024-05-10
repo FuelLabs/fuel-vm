@@ -71,6 +71,7 @@ mod tests {
         checked_transaction::CheckPredicateParams,
         error::PredicateVerificationFailed,
         interpreter::InterpreterParams,
+        pool::test_pool,
         prelude::*,
         storage::PredicateStorage,
     };
@@ -282,6 +283,7 @@ mod tests {
                 let result = Interpreter::<PredicateStorage, Script>::check_predicates(
                     &tx,
                     &CheckPredicateParams::default(),
+                    test_pool(),
                 );
 
                 assert_eq!(result.map(|_| ()), expected);

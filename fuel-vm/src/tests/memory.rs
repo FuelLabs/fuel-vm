@@ -11,6 +11,7 @@ use fuel_tx::Receipt;
 use fuel_vm::{
     consts::VM_MAX_RAM,
     interpreter::InterpreterParams,
+    pool::test_pool,
     prelude::*,
 };
 
@@ -38,7 +39,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, test_pool())
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);

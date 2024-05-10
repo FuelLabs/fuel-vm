@@ -31,6 +31,7 @@ pub mod crypto;
 pub mod error;
 pub mod interpreter;
 pub mod memory_client;
+pub mod pool;
 pub mod predicate;
 pub mod state;
 pub mod storage;

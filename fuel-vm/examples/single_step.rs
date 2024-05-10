@@ -15,6 +15,7 @@ use fuel_vm::{
         Interpreter,
         NotSupportedEcal,
     },
+    pool::VmPool,
     prelude::*,
 };
 
@@ -46,7 +47,7 @@ fn main() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, VmPool::default())
         .expect("failed to generate a checked tx")
         .into_ready(
             0,

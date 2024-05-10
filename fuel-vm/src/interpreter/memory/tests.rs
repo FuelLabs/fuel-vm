@@ -6,6 +6,7 @@ use core::ops::Range;
 use super::*;
 use crate::{
     interpreter::InterpreterParams,
+    pool::test_pool,
     prelude::*,
 };
 use fuel_asm::op;
@@ -15,6 +16,8 @@ use test_case::test_case;
 #[cfg(feature = "random")]
 #[test]
 fn memcopy() {
+    use crate::pool::test_pool;
+
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
     let zero_gas_price = 0;
 
@@ -31,7 +34,7 @@ fn memcopy() {
         .finalize();
 
     let tx = tx
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, test_pool())
         .expect("default tx should produce a valid checked transaction")
         .into_ready(
             zero_gas_price,
@@ -98,7 +101,11 @@ fn stack_alloc_ownership() {
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &ConsensusParameters::standard())
+        .into_checked(
+            Default::default(),
+            &ConsensusParameters::standard(),
+            test_pool(),
+        )
         .expect("Empty script should be valid")
         .into_ready(
             gas_price,

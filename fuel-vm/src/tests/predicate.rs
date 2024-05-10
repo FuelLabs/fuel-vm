@@ -17,6 +17,7 @@ use tokio_rayon::AsyncRayonHandle;
 
 use crate::{
     error::PredicateVerificationFailed,
+    pool::test_pool,
     prelude::*,
 };
 
@@ -111,7 +112,7 @@ where
 
     let mut transaction = builder.finalize();
     transaction
-        .estimate_predicates(&check_params)
+        .estimate_predicates(&check_params, test_pool())
         .expect("Should estimate predicate");
 
     let checked = transaction
@@ -122,14 +123,18 @@ where
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
             &checked,
             &check_params,
+            test_pool(),
         )
         .await
         .map(|checked| checked.gas_used())
     };
 
-    let seq_execution =
-        Interpreter::<PredicateStorage, _>::check_predicates(&checked, &check_params)
-            .map(|checked| checked.gas_used());
+    let seq_execution = Interpreter::<PredicateStorage, _>::check_predicates(
+        &checked,
+        &check_params,
+        test_pool(),
+    )
+    .map(|checked| checked.gas_used());
 
     match (parallel_execution, seq_execution) {
         (Ok(p_gas_used), Ok(s_gas_used)) => {
@@ -260,7 +265,7 @@ async fn execute_gas_metered_predicates(
     let parallel_gas_used = {
         let mut async_tx = transaction.clone();
         async_tx
-            .estimate_predicates_async::<TokioWithRayon>(&params)
+            .estimate_predicates_async::<TokioWithRayon>(&params, test_pool())
             .await
             .map_err(|_| ())?;
 
@@ -269,7 +274,9 @@ async fn execute_gas_metered_predicates(
             .expect("Should successfully create checked tranaction with predicate");
 
         Interpreter::<PredicateStorage, _>::check_predicates_async::<TokioWithRayon>(
-            &tx, &params,
+            &tx,
+            &params,
+            test_pool(),
         )
         .await
         .map(|r| r.gas_used())
@@ -277,15 +284,18 @@ async fn execute_gas_metered_predicates(
     };
 
     // sequential version
-    transaction.estimate_predicates(&params).map_err(|_| ())?;
+    transaction
+        .estimate_predicates(&params, test_pool())
+        .map_err(|_| ())?;
 
     let tx = transaction
         .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
-    let seq_gas_used = Interpreter::<PredicateStorage, _>::check_predicates(&tx, &params)
-        .map(|r| r.gas_used())
-        .map_err(|_| ())?;
+    let seq_gas_used =
+        Interpreter::<PredicateStorage, _>::check_predicates(&tx, &params, test_pool())
+            .map(|r| r.gas_used())
+            .map_err(|_| ())?;
 
     assert_eq!(seq_gas_used, parallel_gas_used);
 
@@ -370,14 +380,14 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params)
+            .check_predicates_async::<TokioWithRayon>(&params, test_pool())
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params)
+        .check_predicates(&params, test_pool())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -411,7 +421,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
 
     let mut transaction = builder.finalize();
     transaction
-        .estimate_predicates(&params)
+        .estimate_predicates(&params, test_pool())
         .expect("Predicate estimation failed");
 
     let checked = transaction
@@ -422,7 +432,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let tx_with_predicate = checked
             .clone()
-            .check_predicates_async::<TokioWithRayon>(&params)
+            .check_predicates_async::<TokioWithRayon>(&params, test_pool())
             .await
             .expect("Predicate check failed");
 
@@ -440,7 +450,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     }
 
     let tx_with_predicate = checked
-        .check_predicates(&params)
+        .check_predicates(&params, test_pool())
         .expect("Predicate check failed");
 
     client.transact(tx_with_predicate);
@@ -493,14 +503,14 @@ async fn gas_used_by_predicates_more_than_limit() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params)
+            .check_predicates_async::<TokioWithRayon>(&params, test_pool())
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
 
     let tx_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params)
+        .check_predicates(&params, test_pool())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -543,7 +553,7 @@ async fn gas_used_by_predicates_more_than_limit() {
         let tx_with_predicate = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params)
+            .check_predicates_async::<TokioWithRayon>(&params, test_pool())
             .await;
 
         assert!(matches!(
@@ -554,7 +564,7 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     let tx_with_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params);
+        .check_predicates(&params, test_pool());
 
     assert!(matches!(
         tx_with_predicate.unwrap_err(),

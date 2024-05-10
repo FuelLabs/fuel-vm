@@ -34,6 +34,7 @@ use fuel_tx::{
 use fuel_vm::{
     error::SimpleResult,
     interpreter::EcalHandler,
+    pool::VmPool,
     prelude::{
         Interpreter,
         IntoChecked,
@@ -104,7 +105,7 @@ fn example_file_read() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, VmPool::default())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -163,7 +164,7 @@ fn example_counter() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, VmPool::default())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -226,7 +227,7 @@ fn example_shared_counter() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, VmPool::default())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");

@@ -13,10 +13,9 @@ use fuel_tx::{
     ScriptExecutionResult,
     TransactionBuilder,
 };
-use fuel_vm::prelude::{
-    Interpreter,
-    IntoChecked,
-    MemoryClient,
+use fuel_vm::{
+    pool::test_pool,
+    prelude::*,
 };
 use itertools::Itertools;
 
@@ -55,7 +54,7 @@ fn noop_ecal() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, test_pool())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -131,7 +130,7 @@ fn provide_ecal_fn() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params)
+        .into_checked(Default::default(), &consensus_params, test_pool())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");

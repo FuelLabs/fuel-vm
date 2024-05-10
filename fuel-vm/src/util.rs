@@ -95,6 +95,7 @@ pub mod test_helpers {
             IntoChecked,
         },
         memory_client::MemoryClient,
+        pool::test_pool,
         state::StateTransition,
         storage::{
             ContractsAssetsStorage,
@@ -335,7 +336,8 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder.finalize_checked(self.block_height)
+            self.builder
+                .finalize_checked(self.block_height, test_pool())
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -445,7 +447,7 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params)
+                .into_checked(self.block_height, &self.consensus_params, test_pool())
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -636,7 +638,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height);
+            .finalize_checked(height, test_pool());
 
         client
             .deploy(contract_deployer)
@@ -672,7 +674,7 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height);
+            .finalize_checked(height, test_pool());
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

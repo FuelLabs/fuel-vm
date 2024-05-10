@@ -6,7 +6,10 @@ use fuel_tx::{
     ConsensusParameters,
     TransactionBuilder,
 };
-use fuel_vm::prelude::*;
+use fuel_vm::{
+    pool::test_pool,
+    prelude::*,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -37,7 +40,7 @@ fn cannot_exceed_max_inputs() {
     }
     script
         .finalize()
-        .into_checked(0u32.into(), &params)
+        .into_checked(0u32.into(), &params, test_pool())
         .expect_err("Tx is invalid and shouldn't validate");
 }
 
@@ -55,7 +58,7 @@ fn cannot_exceed_max_outputs() {
     }
     script
         .finalize()
-        .into_checked(0u32.into(), &params)
+        .into_checked(0u32.into(), &params, test_pool())
         .expect_err("Tx is invalid and shouldn't validate");
 }
 
@@ -73,6 +76,6 @@ fn cannot_exceed_max_witnesses() {
     }
     script
         .finalize()
-        .into_checked(0u32.into(), &params)
+        .into_checked(0u32.into(), &params, test_pool())
         .expect_err("Tx is invalid and shouldn't validate");
 }

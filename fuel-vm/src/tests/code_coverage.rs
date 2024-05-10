@@ -11,6 +11,7 @@ use fuel_tx::{
 
 use fuel_vm::{
     consts::*,
+    pool::test_pool,
     prelude::*,
 };
 use rand::{
@@ -55,7 +56,7 @@ fn code_coverage() {
         )
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .finalize_checked(height);
+        .finalize_checked(height, test_pool());
 
     #[derive(Clone, Default)]
     struct ProfilingOutput {

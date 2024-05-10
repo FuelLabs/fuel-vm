@@ -28,6 +28,7 @@ use sha3::{
 };
 
 use crate::{
+    pool::test_pool,
     prelude::*,
     util::test_helpers::check_expected_reason_for_instructions,
 };
@@ -86,7 +87,7 @@ fn secp256k1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, test_pool());
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -144,7 +145,9 @@ fn ecrecover_tx_id() {
     tx.sign_inputs(&secret, &chain_id);
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
-    let tx = tx.into_checked(height, &consensus_params).unwrap();
+    let tx = tx
+        .into_checked(height, &consensus_params, test_pool())
+        .unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -223,20 +226,20 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&check_params)
+            .estimate_predicates_async::<TokioWithRayon>(&check_params, test_pool())
             .await
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &consensus_params)
+            .into_checked(maturity, &consensus_params, test_pool())
             .expect("Should check predicate successfully");
     }
 
     // sequential version
-    tx.estimate_predicates(&check_params)
+    tx.estimate_predicates(&check_params, test_pool())
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &consensus_params)
+    tx.into_checked(maturity, &consensus_params, test_pool())
         .expect("Should check predicate successfully");
 }
 
@@ -371,7 +374,7 @@ fn secp256r1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, test_pool());
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -508,7 +511,7 @@ fn ed25519_verify() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, test_pool());
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -640,7 +643,7 @@ fn sha256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, test_pool());
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -731,7 +734,7 @@ fn keccak256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height);
+        .finalize_checked(height, test_pool());
 
     let receipts = client.transact(tx);
     let success = receipts

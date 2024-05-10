@@ -27,6 +27,7 @@ use crate::{
         Interpreter,
         RuntimeBalances,
     },
+    pool::VmPool,
     predicate::RuntimePredicate,
     prelude::{
         BugVariant,
@@ -157,12 +158,13 @@ where
     pub fn check_predicates(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let tx = checked.transaction();
-        Self::run_predicate(PredicateRunKind::Verifying(tx), params)
+        Self::run_predicate(PredicateRunKind::Verifying(tx), params, pool)
     }
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -173,6 +175,7 @@ where
     pub async fn check_predicates_async<E>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -182,7 +185,7 @@ where
         let tx = checked.transaction();
 
         let predicates_checked =
-            Self::run_predicate_async::<E>(PredicateRunKind::Verifying(tx), params)
+            Self::run_predicate_async::<E>(PredicateRunKind::Verifying(tx), params, pool)
                 .await?;
 
         Ok(predicates_checked)
@@ -197,9 +200,10 @@ where
     pub fn estimate_predicates(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
         let predicates_checked =
-            Self::run_predicate(PredicateRunKind::Estimating(transaction), params)?;
+            Self::run_predicate(PredicateRunKind::Estimating(transaction), params, pool)?;
         Ok(predicates_checked)
     }
 
@@ -212,6 +216,7 @@ where
     pub async fn estimate_predicates_async<E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -220,6 +225,7 @@ where
         let predicates_checked = Self::run_predicate_async::<E>(
             PredicateRunKind::Estimating(transaction),
             params,
+            pool,
         )
         .await?;
 
@@ -229,6 +235,7 @@ where
     async fn run_predicate_async<E>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -244,6 +251,7 @@ where
             {
                 let tx = kind.tx().clone();
                 let my_params = params.clone();
+                let pool = pool.clone();
 
                 let verify_task = E::create_task(move || {
                     Self::check_predicate(
@@ -252,6 +260,7 @@ where
                         predicate_action,
                         predicate,
                         my_params,
+                        pool,
                     )
                 });
 
@@ -267,12 +276,14 @@ where
     fn run_predicate(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
         let predicate_action = PredicateAction::from(&kind);
         let mut checks = vec![];
 
         for index in 0..kind.tx().inputs().len() {
             let tx = kind.tx().clone();
+            let pool = pool.clone();
 
             if let Some(predicate) =
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
@@ -283,6 +294,7 @@ where
                     predicate_action,
                     predicate,
                     params.clone(),
+                    pool,
                 ));
             }
         }
@@ -296,6 +308,7 @@ where
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
         params: CheckPredicateParams,
+        pool: VmPool,
     ) -> Result<(Word, usize), PredicateVerificationFailed> {
         match &tx.inputs()[index] {
             Input::CoinPredicate(CoinPredicate {
@@ -326,6 +339,7 @@ where
         let interpreter_params = InterpreterParams::new(zero_gas_price, params);
 
         let mut vm = Self::with_storage(PredicateStorage {}, interpreter_params);
+        vm.memory = pool.get_new();
 
         let available_gas = match predicate_action {
             PredicateAction::Verifying => {

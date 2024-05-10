@@ -9,6 +9,7 @@ use crate::{
         },
         InterpreterParams,
     },
+    pool::test_pool,
     prelude::*,
 };
 use fuel_asm::op;
@@ -58,7 +59,7 @@ fn external_balance() {
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height)
+        .finalize_checked(height, test_pool())
         .into_ready(gas_price, &gas_costs, &fee_params)
         .unwrap();
 
@@ -127,7 +128,7 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params)
+        .into_checked(height, &consensus_params, test_pool())
         .expect("failed to check tx")
         .into_ready(
             zero_gas_price,

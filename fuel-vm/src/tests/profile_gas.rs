@@ -5,7 +5,10 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::TransactionBuilder;
-use fuel_vm::prelude::*;
+use fuel_vm::{
+    pool::test_pool,
+    prelude::*,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -46,7 +49,7 @@ fn profile_gas() {
                 )
                 .script_gas_limit(gas_limit)
                 .maturity(maturity)
-                .finalize_checked(height);
+                .finalize_checked(height, test_pool());
 
         let output = GasProfiler::default();
 

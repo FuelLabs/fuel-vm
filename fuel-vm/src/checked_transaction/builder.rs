@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     checked_transaction::CheckPredicates,
+    pool::VmPool,
     prelude::*,
 };
 use fuel_tx::{
@@ -20,7 +21,7 @@ where
     Tx: IntoChecked,
 {
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type
-    fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx>;
+    fn finalize_checked(&self, height: BlockHeight, pool: VmPool) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
     /// only
@@ -32,9 +33,9 @@ where
     Self: Finalizable<Tx>,
     Checked<Tx>: CheckPredicates,
 {
-    fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx> {
+    fn finalize_checked(&self, height: BlockHeight, pool: VmPool) -> Checked<Tx> {
         self.finalize()
-            .into_checked(height, self.get_params())
+            .into_checked(height, self.get_params(), pool)
             .expect("failed to check tx")
     }
 

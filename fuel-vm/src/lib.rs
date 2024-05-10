@@ -19,6 +19,8 @@ pub extern crate alloc;
 extern crate core;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
+#[cfg(feature = "std")]
+extern crate spin as _; // Not needed with stdlib
 
 pub mod backtrace;
 pub mod call;

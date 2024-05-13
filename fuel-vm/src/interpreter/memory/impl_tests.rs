@@ -3,7 +3,6 @@
 use crate::{
     constraints::reg_key::*,
     consts::MEM_SIZE,
-    interpreter::VmMemory,
 };
 
 use super::{

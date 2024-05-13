@@ -6,10 +6,7 @@ use alloc::{
 };
 use core::fmt;
 
-use crate::interpreter::{
-    Memory,
-    VmMemory,
-};
+use crate::interpreter::Memory;
 
 /// Pool of VM memory instances for reuse.
 #[derive(Default, Clone)]

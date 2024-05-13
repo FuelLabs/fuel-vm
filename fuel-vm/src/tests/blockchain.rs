@@ -708,10 +708,11 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
-    let mut client = MemoryClient::<NotSupportedEcal>::new(
+    let mut client = MemoryClient::<'_, NotSupportedEcal>::from_txtor(Transactor::new(
+        test_pool().get_new().into(),
         MemoryStorage::default(),
         interpreter_params,
-    );
+    ));
 
     let gas_limit = 1_000_000;
     let maturity = Default::default();

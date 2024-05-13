@@ -73,8 +73,6 @@ use fuel_types::{
     Word,
 };
 
-use super::VmMemory;
-
 #[cfg(test)]
 mod jump_tests;
 #[cfg(test)]
@@ -82,7 +80,7 @@ mod ret_tests;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -93,12 +91,12 @@ where
 
     pub(crate) fn ret(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let input = RetCtx {
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             registers: &mut self.registers,
-            memory: &self.memory,
+            memory: self.memory.as_ref(),
             context: &mut self.context,
             current_contract,
         };
@@ -107,11 +105,11 @@ where
 
     pub(crate) fn ret_data(&mut self, a: Word, b: Word) -> SimpleResult<Bytes32> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let input = RetCtx {
             frames: &mut self.frames,
             registers: &mut self.registers,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             receipts: &mut self.receipts,
             context: &mut self.context,
             current_contract,
@@ -121,7 +119,7 @@ where
 
     pub(crate) fn revert(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
                 .map_or_else(|_| Some(ContractId::zeroed()), |c| c);
         revert(
             &mut self.receipts,
@@ -330,7 +328,7 @@ impl JumpArgs {
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -371,13 +369,13 @@ where
         // We will charge for the frame size in the `prepare_call`.
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let input_contracts = self.tx.input_contracts().copied().collect::<Vec<_>>();
 
         PrepareCallCtx {
             params,
             registers: (&mut self.registers).into(),
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &mut self.context,
             gas_cost,
             runtime_balances: &mut self.balances,

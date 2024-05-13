@@ -47,7 +47,6 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     PanicContext,
-    VmMemory,
 };
 use storage::*;
 
@@ -317,7 +316,7 @@ where
         .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
     /// The diff function generates a diff of VM state, represented by the Diff struct,
     /// between two VMs internal states.
     pub fn diff(&self, other: &Self) -> Diff<Deltas>
@@ -349,8 +348,8 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
         );
         diff.changes.extend(balances);
 
-        let other_memory = other.memory.clone().into_linear_memory();
-        let this_memory = self.memory.clone().into_linear_memory();
+        let other_memory = other.memory().clone().into_linear_memory();
+        let this_memory = self.memory().clone().into_linear_memory();
 
         let mut memory = this_memory.iter().enumerate().zip(other_memory.iter());
 
@@ -409,7 +408,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             }
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
             Change::Memory(Previous(Memory { start, bytes })) => self
-                .memory
+                .memory_mut()
                 .write_noownerchecks(*start, bytes.len())
                 .expect("Memory must exist here")
                 .copy_from_slice(&bytes[..]),
@@ -474,14 +473,14 @@ fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>)
     invert_vec(ctx_mut.receipts_mut(), value);
 }
 
-impl<S, Tx, Ecal> PartialEq for Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> PartialEq for Interpreter<'a, S, Tx, Ecal>
 where
     Tx: PartialEq,
 {
     /// Does not compare storage, debugger or profiler
     fn eq(&self, other: &Self) -> bool {
         self.registers == other.registers
-            && self.memory == other.memory
+            && self.memory.as_ref() == other.memory.as_ref()
             && self.frames == other.frames
             && self.receipts == other.receipts
             && self.tx == other.tx

@@ -94,7 +94,6 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
-        interpreter::VmMemory,
         memory_client::MemoryClient,
         pool::test_pool,
         state::StateTransition,
@@ -526,8 +525,11 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Create>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
-            let mut transactor =
-                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
+            let mut transactor = Transactor::<'_, _, _>::new(
+                test_pool().get_new().into(),
+                self.storage.clone(),
+                interpreter_params,
+            );
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -538,8 +540,11 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Script>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
-            let mut transactor =
-                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
+            let mut transactor = Transactor::<'_, _, _>::new(
+                test_pool().get_new().into(),
+                self.storage.clone(),
+                interpreter_params,
+            );
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -551,8 +556,11 @@ pub mod test_helpers {
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
             let interpreter_params =
                 InterpreterParams::new(gas_price, &self.consensus_params);
-            let mut transactor =
-                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
+            let mut transactor = Transactor::<'_, _, _>::new(
+                test_pool().get_new().into(),
+                self.storage.clone(),
+                interpreter_params,
+            );
 
             let state = self.execute_tx_inner(&mut transactor, checked)?;
             let backtrace = transactor.backtrace();

@@ -3,7 +3,6 @@ use super::{
     Interpreter,
     Memory,
     RuntimeBalances,
-    VmMemory,
 };
 use crate::{
     constraints::reg_key::*,
@@ -36,13 +35,13 @@ mod message_tests;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
     pub(crate) fn update_memory_output(&mut self, idx: usize) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
-        update_memory_output(&mut self.tx, &mut self.memory, tx_offset, idx)
+        update_memory_output(&mut self.tx, self.memory.as_mut(), tx_offset, idx)
     }
 }
 
@@ -97,7 +96,7 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     Ok(())
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
     pub(crate) fn set_flag(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
         set_flag(flag, pc, a)
@@ -115,7 +114,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     }
 
     pub(crate) fn internal_contract(&self) -> Result<ContractId, PanicReason> {
-        internal_contract(&self.context, self.registers.fp(), &self.memory)
+        internal_contract(&self.context, self.registers.fp(), self.memory.as_ref())
     }
 
     pub(crate) fn get_block_height(&self) -> Result<BlockHeight, PanicReason> {

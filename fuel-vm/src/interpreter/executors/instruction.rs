@@ -14,7 +14,6 @@ use crate::{
         EcalHandler,
         ExecutableTransaction,
         Interpreter,
-        VmMemory,
     },
     state::ExecuteState,
     storage::InterpreterStorage,
@@ -32,7 +31,7 @@ use fuel_types::Word;
 
 use core::ops::Div;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -51,7 +50,7 @@ where
     ) -> Result<RawInstruction, InterpreterError<S::DataError>> {
         let pc = self.registers[RegId::PC];
         let instruction = RawInstruction::from_be_bytes(
-            self.memory.read_bytes(pc).map_err(|reason| {
+            self.memory().read_bytes(pc).map_err(|reason| {
                 InterpreterError::PanicInstruction(PanicInstruction::error(
                     reason,
                     0, // The value is meaningless since fetch was out-of-bounds

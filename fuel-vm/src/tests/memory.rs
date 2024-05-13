@@ -22,7 +22,7 @@ use super::test_helpers::{
 };
 use fuel_tx::ConsensusParameters;
 
-fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
+fn setup<'a>(program: Vec<Instruction>) -> Transactor<'a, MemoryStorage, Script> {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -44,7 +44,8 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryStorage, Script> {
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
-    let mut vm = Transactor::new(storage, interpreter_params);
+    let mut vm =
+        Transactor::new(test_pool().get_new().into(), storage, interpreter_params);
     vm.transact(tx);
     vm
 }

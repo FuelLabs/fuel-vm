@@ -11,7 +11,6 @@ use crate::{
     error::SimpleResult,
 };
 
-use derivative::Derivative;
 use fuel_asm::{
     Imm12,
     Imm24,
@@ -19,11 +18,15 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
+    fmt_truncated_hex,
     RegisterId,
     Word,
 };
 
-use core::ops::Range;
+use core::{
+    fmt,
+    ops::Range,
+};
 
 #[cfg(any(test, feature = "test-helpers"))]
 use core::ops::{
@@ -51,13 +54,11 @@ mod allocation_tests;
 mod stack_tests;
 
 /// The memory of the VM, represented as stack and heap.
-#[derive(Debug, Clone, PartialEq, Eq, Derivative)]
+#[derive(Clone, Eq)]
 pub struct Memory {
     /// Stack. Grows upwards.
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     stack: Vec<u8>,
     /// Heap. Grows downwards from MEM_SIZE.
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     heap: Vec<u8>,
     /// Lowest allowed heap address, i.e. hp register value.
     /// This is needed since we can allocate extra heap for performance reasons.
@@ -70,122 +71,27 @@ impl Default for Memory {
     }
 }
 
-/// Memory access trait for the VM.
-pub trait VmMemory {
-    /// Resets memory to initial state, keeping the original allocations.
-    fn reset(&mut self);
-
-    /// Returns a linear memory representation where stack is at the beginning and heap is
-    /// at the end.
-    fn into_linear_memory(self) -> Vec<u8>;
-
-    /// Grows the stack to be at least `new_sp` bytes.
-    fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason>;
-
-    /// Grows the heap to be at least `new_hp` bytes.
-    /// Panics if the heap would be shrunk.
-    fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason>;
-
-    /// Verify that the memory range is accessble and return it as a range.
-    fn verify<A: ToAddr, B: ToAddr>(
-        &self,
-        addr: A,
-        count: B,
-    ) -> Result<MemoryRange, PanicReason>;
-
-    /// Verify a constant-sized memory range.
-    fn verify_const<A: ToAddr, const C: usize>(
-        &self,
-        addr: A,
-    ) -> Result<MemoryRange, PanicReason> {
-        self.verify(addr, C)
+impl fmt::Debug for Memory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Memory {{ stack: ")?;
+        fmt_truncated_hex::<16>(&self.stack, f)?;
+        write!(f, ", heap: ")?;
+        let off = self.hp.saturating_sub(self.heap_offset());
+        fmt_truncated_hex::<16>(&self.heap[off..], f)?;
+        write!(f, ", hp: {} }}", self.hp)
     }
+}
 
-    /// Returns a reference to memory for reading, if possible.
-    fn read<A: ToAddr, C: ToAddr>(&self, addr: A, count: C)
-        -> Result<&[u8], PanicReason>;
-
-    /// Reads a constant-sized byte array from memory, if possible.
-    fn read_bytes<A: ToAddr, const C: usize>(
-        &self,
-        at: A,
-    ) -> Result<[u8; C], PanicReason> {
-        let mut result = [0; C];
-        result.copy_from_slice(self.read(at, C)?);
-        Ok(result)
+impl PartialEq for Memory {
+    /// Equality comparison of the accessible memory.
+    #[allow(clippy::arithmetic_side_effects)] // Safety: hp is kept valid everywhere
+    fn eq(&self, other: &Self) -> bool {
+        self.stack == other.stack && {
+            let self_hs = self.hp - self.heap_offset();
+            let other_hs = other.hp - other.heap_offset();
+            self.heap[self_hs..] == other.heap[other_hs..]
+        }
     }
-
-    /// Gets write access to memory, if possible.
-    /// Doesn't perform any ownership checks.
-    fn write_noownerchecks<A: ToAddr, B: ToAddr>(
-        &mut self,
-        addr: A,
-        len: B,
-    ) -> Result<&mut [u8], PanicReason>;
-
-    /// Writes a constant-sized byte array to memory, if possible.
-    /// Doesn't perform any ownership checks.
-    fn write_bytes_noownerchecks<A: ToAddr, const C: usize>(
-        &mut self,
-        addr: A,
-        data: [u8; C],
-    ) -> Result<(), PanicReason> {
-        self.write_noownerchecks(addr, C)?.copy_from_slice(&data);
-        Ok(())
-    }
-
-    /// Checks that memory is writable and returns a mutable slice to it.
-    fn write<A: ToAddr, C: ToAddr>(
-        &mut self,
-        owner: OwnershipRegisters,
-        addr: A,
-        len: C,
-    ) -> Result<&mut [u8], PanicReason> {
-        let range = self.verify(addr, len)?;
-        owner.verify_ownership(&range.words())?;
-        self.write_noownerchecks(range.start(), range.len())
-    }
-
-    /// Writes a constant-sized byte array to memory, checking for ownership.
-    fn write_bytes<A: ToAddr, const C: usize>(
-        &mut self,
-        owner: OwnershipRegisters,
-        addr: A,
-        data: [u8; C],
-    ) -> Result<(), PanicReason> {
-        self.write(owner, addr, data.len())?.copy_from_slice(&data);
-        Ok(())
-    }
-
-    /// Copies the memory from `src` to `dst`.
-    #[inline]
-    #[track_caller]
-    fn memcopy_noownerchecks<A: ToAddr, B: ToAddr, C: ToAddr>(
-        &mut self,
-        dst: A,
-        src: B,
-        len: C,
-    ) -> Result<(), PanicReason> {
-        // TODO: Optimize
-
-        let src = src.to_addr()?;
-        let dst = dst.to_addr()?;
-        let len = len.to_addr()?;
-
-        let tmp = self.read(src, len)?.to_vec();
-        self.write_noownerchecks(dst, len)?.copy_from_slice(&tmp);
-        Ok(())
-    }
-
-    /// Memory access to the raw stack buffer.
-    /// Note that for efficiency reasons this might not match sp value.
-    #[cfg(any(test, feature = "test-helpers"))]
-    fn stack_raw(&self) -> &[u8];
-
-    /// Memory access to the raw heap buffer.
-    /// Note that for efficiency reasons this might not match hp value.
-    #[cfg(any(test, feature = "test-helpers"))]
-    fn heap_raw(&self) -> &[u8];
 }
 
 impl Memory {
@@ -198,22 +104,20 @@ impl Memory {
         }
     }
 
-    /// Offset of the heap section
-    fn heap_offset(&self) -> usize {
-        MEM_SIZE.saturating_sub(self.heap.len())
-    }
-}
-
-impl VmMemory for Memory {
     /// Resets memory to initial state, keeping the original allocations.
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.stack.truncate(0);
         self.hp = MEM_SIZE;
     }
 
+    /// Offset of the heap section
+    fn heap_offset(&self) -> usize {
+        MEM_SIZE.saturating_sub(self.heap.len())
+    }
+
     /// Returns a linear memory representation where stack is at the beginning and heap is
     /// at the end.
-    fn into_linear_memory(self) -> Vec<u8> {
+    pub fn into_linear_memory(self) -> Vec<u8> {
         let uninit_memory_size = MEM_SIZE
             .saturating_sub(self.stack.len())
             .saturating_sub(self.heap.len());
@@ -225,7 +129,7 @@ impl VmMemory for Memory {
     }
 
     /// Grows the stack to be at least `new_sp` bytes.
-    fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
+    pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
         let new_sp = new_sp.min(MEM_SIZE as Word) as usize;
         if new_sp > self.stack.len() {
@@ -240,7 +144,7 @@ impl VmMemory for Memory {
 
     /// Grows the heap to be at least `new_hp` bytes.
     /// Panics if the heap would be shrunk.
-    fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
+    pub fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
         let new_hp_word = new_hp.min(MEM_SIZE as Word);
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
         let new_hp = new_hp_word as usize;
@@ -281,7 +185,7 @@ impl VmMemory for Memory {
     }
 
     /// Verify that the memory range is accessble and return it as a range.
-    fn verify<A: ToAddr, B: ToAddr>(
+    pub fn verify<A: ToAddr, B: ToAddr>(
         &self,
         addr: A,
         count: B,
@@ -300,9 +204,17 @@ impl VmMemory for Memory {
         }
     }
 
+    /// Verify a constant-sized memory range.
+    pub fn verify_const<A: ToAddr, const C: usize>(
+        &self,
+        addr: A,
+    ) -> Result<MemoryRange, PanicReason> {
+        self.verify(addr, C)
+    }
+
     /// Returns a reference to memory for reading, if possible.
     #[allow(clippy::arithmetic_side_effects)] // Safety: subtractions are checked
-    fn read<A: ToAddr, C: ToAddr>(
+    pub fn read<A: ToAddr, C: ToAddr>(
         &self,
         addr: A,
         count: C,
@@ -320,10 +232,20 @@ impl VmMemory for Memory {
         }
     }
 
+    /// Reads a constant-sized byte array from memory, if possible.
+    pub fn read_bytes<A: ToAddr, const C: usize>(
+        &self,
+        at: A,
+    ) -> Result<[u8; C], PanicReason> {
+        let mut result = [0; C];
+        result.copy_from_slice(self.read(at, C)?);
+        Ok(result)
+    }
+
     /// Gets write access to memory, if possible.
     /// Doesn't perform any ownership checks.
     #[allow(clippy::arithmetic_side_effects)] // Safety: subtractions are checked
-    fn write_noownerchecks<A: ToAddr, B: ToAddr>(
+    pub fn write_noownerchecks<A: ToAddr, B: ToAddr>(
         &mut self,
         addr: A,
         len: B,
@@ -340,17 +262,71 @@ impl VmMemory for Memory {
         }
     }
 
+    /// Writes a constant-sized byte array to memory, if possible.
+    /// Doesn't perform any ownership checks.
+    pub fn write_bytes_noownerchecks<A: ToAddr, const C: usize>(
+        &mut self,
+        addr: A,
+        data: [u8; C],
+    ) -> Result<(), PanicReason> {
+        self.write_noownerchecks(addr, C)?.copy_from_slice(&data);
+        Ok(())
+    }
+
+    /// Checks that memory is writable and returns a mutable slice to it.
+    pub fn write<A: ToAddr, C: ToAddr>(
+        &mut self,
+        owner: OwnershipRegisters,
+        addr: A,
+        len: C,
+    ) -> Result<&mut [u8], PanicReason> {
+        let range = self.verify(addr, len)?;
+        owner.verify_ownership(&range.words())?;
+        self.write_noownerchecks(range.start(), range.len())
+    }
+
+    /// Writes a constant-sized byte array to memory, checking for ownership.
+    pub fn write_bytes<A: ToAddr, const C: usize>(
+        &mut self,
+        owner: OwnershipRegisters,
+        addr: A,
+        data: [u8; C],
+    ) -> Result<(), PanicReason> {
+        self.write(owner, addr, data.len())?.copy_from_slice(&data);
+        Ok(())
+    }
+
+    /// Copies the memory from `src` to `dst`.
+    #[inline]
+    #[track_caller]
+    pub fn memcopy_noownerchecks<A: ToAddr, B: ToAddr, C: ToAddr>(
+        &mut self,
+        dst: A,
+        src: B,
+        len: C,
+    ) -> Result<(), PanicReason> {
+        // TODO: Optimize
+
+        let src = src.to_addr()?;
+        let dst = dst.to_addr()?;
+        let len = len.to_addr()?;
+
+        let tmp = self.read(src, len)?.to_vec();
+        self.write_noownerchecks(dst, len)?.copy_from_slice(&tmp);
+        Ok(())
+    }
+
     /// Memory access to the raw stack buffer.
     /// Note that for efficiency reasons this might not match sp value.
     #[cfg(any(test, feature = "test-helpers"))]
-    fn stack_raw(&self) -> &[u8] {
+    pub fn stack_raw(&self) -> &[u8] {
         &self.stack
     }
 
     /// Memory access to the raw heap buffer.
     /// Note that for efficiency reasons this might not match hp value.
     #[cfg(any(test, feature = "test-helpers"))]
-    fn heap_raw(&self) -> &[u8] {
+    pub fn heap_raw(&self) -> &[u8] {
         &self.heap
     }
 }
@@ -487,7 +463,7 @@ impl MemoryRange {
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
         OwnershipRegisters::new(self)
@@ -503,7 +479,15 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             },
             _,
         ) = split_registers(&mut self.registers);
-        stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v, &mut self.memory)
+        stack_pointer_overflow(
+            sp,
+            ssp.as_ref(),
+            hp.as_ref(),
+            pc,
+            f,
+            v,
+            self.memory.as_mut(),
+        )
     }
 
     pub(crate) fn push_selected_registers(
@@ -518,7 +502,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             program_regs,
         ) = split_registers(&mut self.registers);
         push_selected_registers(
-            &mut self.memory,
+            self.memory.as_mut(),
             sp,
             ssp.as_ref(),
             hp.as_ref(),
@@ -541,7 +525,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             mut program_regs,
         ) = split_registers(&mut self.registers);
         pop_selected_registers(
-            &mut self.memory,
+            self.memory.as_mut(),
             sp,
             ssp.as_ref(),
             hp.as_ref(),
@@ -560,7 +544,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_byte(&self.memory, pc, result, b, c)
+        load_byte(self.memory.as_ref(), pc, result, b, c)
     }
 
     pub(crate) fn load_word(
@@ -571,39 +555,60 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_word(&self.memory, pc, result, b, c)
+        load_word(self.memory.as_ref(), pc, result, b, c)
     }
 
     pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        store_byte(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        store_byte(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
     pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Imm12) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        store_word(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
     /// Expand heap by `a` bytes.
     pub fn allocate(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
-        try_allocate(hp, sp.as_ref(), a, &mut self.memory)
+        try_allocate(hp, sp.as_ref(), a, self.memory.as_mut())
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, pc, .. }, _) =
             split_registers(&mut self.registers);
-        malloc(hp, sp.as_ref(), pc, a, &mut self.memory)
+        malloc(hp, sp.as_ref(), pc, a, self.memory.as_mut())
     }
 
     pub(crate) fn memclear(&mut self, a: Word, b: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        memclear(&mut self.memory, owner, self.registers.pc_mut(), a, b)
+        memclear(self.memory.as_mut(), owner, self.registers.pc_mut(), a, b)
     }
 
     pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        memcopy(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        memcopy(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
     pub(crate) fn memeq(
@@ -615,7 +620,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        memeq(&mut self.memory, result, pc, b, c, d)
+        memeq(self.memory.as_mut(), result, pc, b, c, d)
     }
 }
 

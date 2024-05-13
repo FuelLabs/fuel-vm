@@ -8,7 +8,6 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
-    VmMemory,
 };
 use crate::{
     constraints::reg_key::*,
@@ -30,7 +29,7 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -42,7 +41,7 @@ where
     ) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        secp256k1_recover(&mut self.memory, owner, err, pc, a, b, c)
+        secp256k1_recover(self.memory.as_mut(), owner, err, pc, a, b, c)
     }
 
     pub(crate) fn secp256r1_recover(
@@ -53,7 +52,7 @@ where
     ) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        secp256r1_recover(&mut self.memory, owner, err, pc, a, b, c)
+        secp256r1_recover(self.memory.as_mut(), owner, err, pc, a, b, c)
     }
 
     pub(crate) fn ed25519_verify(
@@ -63,17 +62,31 @@ where
         c: Word,
     ) -> SimpleResult<()> {
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        ed25519_verify(&mut self.memory, err, pc, a, b, c)
+        ed25519_verify(self.memory.as_mut(), err, pc, a, b, c)
     }
 
     pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        keccak256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        keccak256(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
     pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        sha256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        sha256(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 }
 

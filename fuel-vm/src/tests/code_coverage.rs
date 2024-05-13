@@ -76,12 +76,9 @@ fn code_coverage() {
 
     let output = ProfilingOutput::default();
 
-    let mut client = MemoryClient::from_txtor(
-        Interpreter::<_, _>::with_memory_storage()
-            .with_profiler(output.clone())
-            .build()
-            .into(),
-    );
+    let mut vm = Interpreter::<'_, _, _>::with_memory_storage();
+    vm.with_profiler(output.clone());
+    let mut client = MemoryClient::from_txtor(vm.into());
 
     let receipts = client.transact(tx_script);
 

@@ -45,6 +45,7 @@ fn noop_ecal() {
     .collect();
 
     let mut client = MemoryClient::<NoopEcal>::new(
+        test_pool().get_new().into(),
         fuel_vm::prelude::MemoryStorage::default(),
         Default::default(),
     );

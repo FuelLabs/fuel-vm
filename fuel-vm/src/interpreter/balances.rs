@@ -23,10 +23,7 @@ use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
-use super::{
-    Memory,
-    VmMemory,
-};
+use super::Memory;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
@@ -175,7 +172,7 @@ impl RuntimeBalances {
         let new_ssp = vm.registers[RegId::SSP].checked_add(len).expect(
             "Consensus parameters must not allow stack overflow during VM initialization",
         );
-        vm.memory.grow_stack(new_ssp).expect(
+        vm.memory_mut().grow_stack(new_ssp).expect(
             "Consensus parameters must not allow stack overflow during VM initialization",
         );
         vm.registers[RegId::SSP] = new_ssp;
@@ -184,10 +181,10 @@ impl RuntimeBalances {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory
+            vm.memory_mut()
                 .write_bytes_noownerchecks(ofs, **asset)
                 .expect("Checked above");
-            vm.memory
+            vm.memory_mut()
                 .write_bytes_noownerchecks(
                     ofs.saturating_add(AssetId::LEN),
                     value.to_be_bytes(),

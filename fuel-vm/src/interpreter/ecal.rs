@@ -68,7 +68,7 @@ impl EcalHandler for PredicateErrorEcal {
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Ecal: EcalHandler,
 {

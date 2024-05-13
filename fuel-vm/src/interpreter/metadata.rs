@@ -2,7 +2,6 @@ use super::{
     internal::inc_pc,
     ExecutableTransaction,
     Interpreter,
-    VmMemory,
 };
 use crate::{
     call::CallFrame,
@@ -46,7 +45,7 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -80,7 +79,7 @@ where
         // Tx size is stored just below the tx bytes
         let tx_size_ptr = tx_offset.checked_sub(8).expect("Tx offset is not valid");
         let tx_size = Word::from_be_bytes(
-            self.memory
+            self.memory()
                 .read_bytes(tx_size_ptr)
                 .expect("Tx length not in memory"),
         );

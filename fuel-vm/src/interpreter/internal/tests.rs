@@ -8,7 +8,6 @@ use crate::{
             set_variable_output,
         },
         InterpreterParams,
-        VmMemory,
     },
     pool::test_pool,
     prelude::*,
@@ -32,7 +31,7 @@ use super::inc_pc;
 fn external_balance() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let mut vm = Interpreter::<'_, _, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let maturity = Default::default();
@@ -69,30 +68,35 @@ fn external_balance() {
     for (asset_id, amount) in balances {
         assert!(external_asset_id_balance_sub(
             &mut vm.balances,
-            &mut vm.memory,
+            vm.memory.as_mut(),
             &asset_id,
             amount + 1,
         )
         .is_err());
         external_asset_id_balance_sub(
             &mut vm.balances,
-            &mut vm.memory,
+            vm.memory.as_mut(),
             &asset_id,
             amount - 10,
         )
         .unwrap();
         assert!(external_asset_id_balance_sub(
             &mut vm.balances,
-            &mut vm.memory,
+            vm.memory.as_mut(),
             &asset_id,
             11,
         )
         .is_err());
-        external_asset_id_balance_sub(&mut vm.balances, &mut vm.memory, &asset_id, 10)
-            .unwrap();
+        external_asset_id_balance_sub(
+            &mut vm.balances,
+            vm.memory.as_mut(),
+            &asset_id,
+            10,
+        )
+        .unwrap();
         assert!(external_asset_id_balance_sub(
             &mut vm.balances,
-            &mut vm.memory,
+            vm.memory.as_mut(),
             &asset_id,
             1,
         )
@@ -107,7 +111,8 @@ fn variable_output_updates_in_memory() {
     let zero_gas_price = 0;
 
     let consensus_params = ConsensusParameters::standard();
-    let mut vm = Interpreter::<_, _>::with_storage(
+    let mut vm = Interpreter::<'_, _, _>::with_storage(
+        test_pool().get_new().into(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -144,7 +149,7 @@ fn variable_output_updates_in_memory() {
     let variable = Output::variable(owner, amount_to_set, asset_id_to_update);
     let tx_offset = vm.tx_offset();
 
-    set_variable_output(&mut vm.tx, &mut vm.memory, tx_offset, 0, variable).unwrap();
+    set_variable_output(&mut vm.tx, vm.memory.as_mut(), tx_offset, 0, variable).unwrap();
 
     // verify the referenced tx output is updated properly
     assert!(matches!(

@@ -37,7 +37,6 @@ use crate::{
         Interpreter,
         Memory,
         RuntimeBalances,
-        VmMemory,
     },
     prelude::Profiler,
     storage::{
@@ -78,7 +77,7 @@ mod smo_tests;
 #[cfg(test)]
 mod test;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -104,7 +103,7 @@ where
         self.gas_charge(gas_cost.base())?;
         let contract_max_size = self.contract_max_size();
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let (
             SystemRegisters {
                 cgas,
@@ -119,7 +118,7 @@ where
             _,
         ) = split_registers(&mut self.registers);
         let input = LoadContractCodeCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             profiler: &mut self.profiler,
             storage: &mut self.storage,
             contract_max_size,
@@ -146,7 +145,7 @@ where
         BurnCtx {
             storage: &mut self.storage,
             context: &self.context,
-            memory: &self.memory,
+            memory: self.memory.as_ref(),
             receipts: &mut self.receipts,
             fp: fp.as_ref(),
             pc,
@@ -171,7 +170,7 @@ where
         MintCtx {
             storage: &mut self.storage,
             context: &self.context,
-            memory: &self.memory,
+            memory: self.memory.as_ref(),
             receipts: &mut self.receipts,
             profiler: &mut self.profiler,
             new_storage_gas_per_byte,
@@ -197,7 +196,7 @@ where
         self.gas_charge(gas_cost.base())?;
 
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let owner = self.ownership_registers();
         let (
             SystemRegisters {
@@ -206,7 +205,7 @@ where
             _,
         ) = split_registers(&mut self.registers);
         let input = CodeCopyCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
                 &mut self.panic_context,
@@ -228,7 +227,7 @@ where
         let owner = self.ownership_registers();
         block_hash(
             &self.storage,
-            &mut self.memory,
+            self.memory.as_mut(),
             owner,
             self.registers.pc_mut(),
             a,
@@ -246,7 +245,7 @@ where
         let owner = self.ownership_registers();
         coinbase(
             &self.storage,
-            &mut self.memory,
+            self.memory.as_mut(),
             owner,
             self.registers.pc_mut(),
             a,
@@ -257,7 +256,7 @@ where
         let gas_cost = self.gas_costs().croo();
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let owner = self.ownership_registers();
         let (
             SystemRegisters {
@@ -266,7 +265,7 @@ where
             _,
         ) = split_registers(&mut self.registers);
         CodeRootCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
             profiler: &mut self.profiler,
@@ -294,7 +293,7 @@ where
         // We will charge for the contracts size in the `code_size`.
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let (
             SystemRegisters {
                 cgas, ggas, pc, is, ..
@@ -303,7 +302,7 @@ where
         ) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = CodeSizeCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
             profiler: &mut self.profiler,
@@ -337,7 +336,7 @@ where
             ..
         } = self;
 
-        state_clear_qword(&contract_id?, storage, memory, pc, result, input)
+        state_clear_qword(&contract_id?, storage, memory.as_ref(), pc, result, input)
     }
 
     pub(crate) fn state_read_word(
@@ -362,7 +361,7 @@ where
         state_read_word(
             StateReadWordCtx {
                 storage,
-                memory,
+                memory: memory.as_ref(),
                 context,
                 fp: fp.as_ref(),
                 pc,
@@ -394,7 +393,7 @@ where
         state_read_qword(
             &contract_id?,
             storage,
-            memory,
+            memory.as_mut(),
             pc,
             owner,
             result,
@@ -434,7 +433,7 @@ where
         state_write_word(
             StateWriteWordCtx {
                 storage,
-                memory,
+                memory: memory.as_ref(),
                 context,
                 profiler: &mut self.profiler,
                 new_storage_gas_per_byte,
@@ -483,7 +482,7 @@ where
         state_write_qword(
             &contract_id?,
             storage,
-            memory,
+            memory.as_ref(),
             &mut self.profiler,
             new_storage_per_byte,
             self.frames.last().map(|frame| frame.to()).copied(),
@@ -520,7 +519,7 @@ where
         let input = MessageOutputCtx {
             base_asset_id,
             max_message_data_length,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             receipts: &mut self.receipts,
             balances: &mut self.balances,
             storage: &mut self.storage,

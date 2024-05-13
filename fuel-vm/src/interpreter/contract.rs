@@ -15,7 +15,6 @@ use super::{
     Interpreter,
     Memory,
     RuntimeBalances,
-    VmMemory,
 };
 use crate::{
     constraints::reg_key::*,
@@ -61,7 +60,7 @@ use alloc::borrow::Cow;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -76,7 +75,7 @@ where
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = ContractBalanceCtx {
             storage: &self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             pc,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
@@ -108,7 +107,7 @@ where
         ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
@@ -147,7 +146,7 @@ where
         ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,

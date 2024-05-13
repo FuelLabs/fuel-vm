@@ -33,10 +33,7 @@ use fuel_tx::{
 };
 use fuel_vm::{
     error::SimpleResult,
-    interpreter::{
-        EcalHandler,
-        VmMemory,
-    },
+    interpreter::EcalHandler,
     pool::VmPool,
     prelude::{
         Interpreter,

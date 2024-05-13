@@ -2,6 +2,7 @@
 
 use crate::{
     interpreter::InterpreterParams,
+    pool::test_pool,
     prelude::*,
 };
 use core::iter;
@@ -56,7 +57,11 @@ fn gas_factor_rounds_correctly() {
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
     let storage = MemoryStorage::default();
 
-    let mut interpreter = Interpreter::<_, _>::with_storage(storage, interpreter_params);
+    let mut interpreter = Interpreter::<'_, _, _>::with_storage(
+        test_pool().get_new().into(),
+        storage,
+        interpreter_params,
+    );
     let gas_costs = interpreter.gas_costs().clone();
     let res = interpreter
         .with_profiler(profiler.clone())

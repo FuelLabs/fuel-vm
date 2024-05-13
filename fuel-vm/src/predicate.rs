@@ -146,7 +146,8 @@ mod tests {
 
             assert_eq!(idx, runtime.idx());
 
-            let mut interpreter = Interpreter::<_, _>::with_storage(
+            let mut interpreter = Interpreter::<'_, _, _>::with_storage(
+                test_pool().get_new().into(),
                 PredicateStorage,
                 InterpreterParams::default(),
             );

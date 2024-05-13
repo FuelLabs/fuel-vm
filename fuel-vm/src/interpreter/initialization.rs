@@ -19,12 +19,9 @@ use fuel_asm::RegId;
 use fuel_tx::field::ScriptGasLimit;
 use fuel_types::Word;
 
-use crate::interpreter::{
-    CheckedMetadata,
-    VmMemory,
-};
+use crate::interpreter::CheckedMetadata;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -62,9 +59,9 @@ where
                 let new_ssp = old_ssp
                     .checked_add(data.len() as Word)
                     .expect("VM initialization data must fit into the stack");
-                self.memory.grow_stack(new_ssp)?;
+                self.memory_mut().grow_stack(new_ssp)?;
                 self.registers[RegId::SSP] = new_ssp;
-                self.memory
+                self.memory_mut()
                     .write_noownerchecks(old_ssp, data.len())
                     .expect("VM initialization data must fit into the stack")
                     .copy_from_slice(data);
@@ -92,7 +89,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -111,7 +108,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,

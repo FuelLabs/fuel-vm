@@ -36,7 +36,6 @@ use crate::{
     state::{
         ExecuteState,
         ProgramState,
-        StateTransition,
         StateTransitionRef,
     },
     storage::{
@@ -146,7 +145,7 @@ impl<Tx> From<&PredicateRunKind<'_, Tx>> for PredicateAction {
     }
 }
 
-impl<Tx> Interpreter<PredicateStorage, Tx>
+impl<'a, Tx> Interpreter<'a, PredicateStorage, Tx>
 where
     Tx: ExecutableTransaction,
 {
@@ -338,8 +337,11 @@ where
         let zero_gas_price = 0;
         let interpreter_params = InterpreterParams::new(zero_gas_price, params);
 
-        let mut vm = Self::with_storage(PredicateStorage {}, interpreter_params);
-        vm.memory = pool.get_new();
+        let mut vm = Self::with_storage(
+            pool.get_new().into(),
+            PredicateStorage {},
+            interpreter_params,
+        );
 
         let available_gas = match predicate_action {
             PredicateAction::Verifying => {
@@ -435,7 +437,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -502,7 +504,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -605,7 +607,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -714,7 +716,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -911,32 +913,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
-where
-    S: InterpreterStorage,
-    Tx: ExecutableTransaction,
-    <Tx as IntoChecked>::Metadata: CheckedMetadata,
-    Ecal: EcalHandler + Default,
-{
-    /// Allocate internally a new instance of [`Interpreter`] with the provided
-    /// storage, initialize it with the provided transaction and return the
-    /// result of th execution in form of [`StateTransition`]
-    pub fn transact_owned(
-        storage: S,
-        tx: Ready<Tx>,
-        params: InterpreterParams,
-    ) -> Result<StateTransition<Tx>, InterpreterError<S::DataError>> {
-        let mut interpreter = Self::with_storage(storage, params);
-        interpreter
-            .transact(tx)
-            .map(ProgramState::from)
-            .map(|state| {
-                StateTransition::new(state, interpreter.tx, interpreter.receipts.into())
-            })
-    }
-}
-
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -974,7 +951,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -1006,7 +983,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -1038,7 +1015,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
 where
     S: InterpreterStorage,
 {
@@ -1070,7 +1047,7 @@ where
     }
 }
 
-impl<S: InterpreterStorage, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<'a, S: InterpreterStorage, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
     fn verify_ready_tx<Tx2: IntoChecked>(
         &self,
         tx: &Ready<Tx2>,

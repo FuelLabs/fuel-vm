@@ -17,6 +17,7 @@ use test_case::test_case;
 
 use crate::{
     consts::*,
+    pool::test_pool,
     storage::MemoryStorage,
 };
 
@@ -52,10 +53,12 @@ fn record_and_invert_storage() {
         InterpreterParams::new(arb_gas_price, &ConsensusParameters::standard());
 
     let a = Interpreter::<_, Script>::with_storage(
+        test_pool().get_new().into(),
         Record::new(MemoryStorage::default()),
         interpreter_params.clone(),
     );
     let mut b = Interpreter::<_, Script>::with_storage(
+        test_pool().get_new().into(),
         Record::new(MemoryStorage::default()),
         interpreter_params,
     );
@@ -215,9 +218,9 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
 #[test]
 fn reset_vm_memory() {
     let mut a = Interpreter::<_, Script>::with_memory_storage();
-    a.memory.grow_stack(132).unwrap();
+    a.memory_mut().grow_stack(132).unwrap();
     let mut b = a.clone();
-    b.memory[100..132].copy_from_slice(&[1u8; 32]);
+    b.memory_mut()[100..132].copy_from_slice(&[1u8; 32]);
     let diff: Diff<InitialVmState> = a.diff(&b).into();
     assert_ne!(a, b);
     b.reset_vm_state(&diff);

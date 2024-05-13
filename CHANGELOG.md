@@ -13,13 +13,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- [#732](https://github.com/FuelLabs/fuel-vm/pull/732): Adds `reset` method to VM memory.
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732):  Adds `reset` method to VM memory.
 
 #### Breaking
 
 - [#725](https://github.com/FuelLabs/fuel-vm/pull/725): `UtxoId::from_str` now rejects inputs with multiple `0x` prefixes. Many `::from_str` implementations also reject extra data in the end of the input, instead of silently ignoring it. `UtxoId::from_str` allows a single `:` between the fields. Unused `GasUnit` struct removed.
 - [#726](https://github.com/FuelLabs/fuel-vm/pull/726): Removed code related to Binary Merkle Sum Trees (BMSTs). The BMST is deprecated and not used in production environments. 
-- [#732](https://github.com/FuelLabs/fuel-vm/pull/732): Adds `VmPool` to allow reusing relatively expensive-to-allocate VM memories… Functions and traits which require VM initalization such as `estimate_predicates` now take the `VmPool` as an argument. The old behavior cah be restored by just passing `Default::default()` as the argument.
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732):  The `Interpterter::eq` mehtod now only compares accessible memory regions. Adds `VmPool` to allow reusing relatively expensive-to-allocate VM memories… Functions and traits which require VM initalization such as `estimate_predicates` now take the `VmPool` as an argument. The old behavior can be restored by just passing `Default::default()` as the argument. Removes `Clone` from the VM to prevent accidental allocations.
 
 ## [Version 0.49.0]
 

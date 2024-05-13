@@ -18,7 +18,7 @@ use fuel_asm::{
     Word,
 };
 
-impl<Tx, Ecal> Interpreter<PredicateStorage, Tx, Ecal>
+impl<'a, Tx, Ecal> Interpreter<'a, PredicateStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,

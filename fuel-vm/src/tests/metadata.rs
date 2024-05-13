@@ -97,11 +97,13 @@ fn metadata() {
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     // Deploy the contract into the blockchain
-    assert!(
-        Transactor::<_, _>::new(&mut storage, interpreter_params.clone())
-            .transact(tx)
-            .is_success()
-    );
+    assert!(Transactor::<'_, _, _>::new(
+        test_pool().get_new().into(),
+        &mut storage,
+        interpreter_params.clone()
+    )
+    .transact(tx)
+    .is_success());
 
     let mut routine_call_metadata_contract = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
@@ -144,11 +146,13 @@ fn metadata() {
         .into_checked(height, &consensus_params, test_pool())
         .expect("failed to check tx");
 
-    assert!(
-        Transactor::<_, _>::new(&mut storage, interpreter_params.clone())
-            .transact(tx)
-            .is_success()
-    );
+    assert!(Transactor::<'_, _, _>::new(
+        test_pool().get_new().into(),
+        &mut storage,
+        interpreter_params.clone()
+    )
+    .transact(tx)
+    .is_success());
 
     let mut inputs = vec![];
     let mut outputs = vec![];
@@ -205,11 +209,15 @@ fn metadata() {
         .into_checked(height, &consensus_params, test_pool())
         .expect("failed to check tx");
 
-    let receipts = Transactor::<_, _>::new(&mut storage, interpreter_params)
-        .transact(tx)
-        .receipts()
-        .expect("Failed to transact")
-        .to_owned();
+    let receipts = Transactor::<'_, _, _>::new(
+        test_pool().get_new().into(),
+        &mut storage,
+        interpreter_params,
+    )
+    .transact(tx)
+    .receipts()
+    .expect("Failed to transact")
+    .to_owned();
 
     let ra = receipts[1]
         .ra()
@@ -241,8 +249,11 @@ fn get_metadata_chain_id() {
         ..Default::default()
     };
 
-    let mut client =
-        MemoryClient::<NotSupportedEcal>::new(Default::default(), interpreter_params);
+    let mut client = MemoryClient::<'_, NotSupportedEcal>::new(
+        test_pool().get_new().into(),
+        Default::default(),
+        interpreter_params,
+    );
 
     #[rustfmt::skip]
     let get_chain_id = vec![
@@ -295,7 +306,8 @@ fn get_metadata_base_asset_id() {
     .into_checked(height, &params, test_pool())
     .unwrap();
 
-    let receipts = Transactor::<_, _>::new(
+    let receipts = Transactor::<'_, _, _>::new(
+        test_pool().get_new().into(),
         &mut storage,
         InterpreterParams {
             base_asset_id: *params.base_asset_id(),
@@ -332,11 +344,15 @@ fn get_metadata_tx_start() {
     .into_checked(height, &ConsensusParameters::default(), test_pool())
     .unwrap();
 
-    let receipts = Transactor::<_, _>::new(&mut storage, InterpreterParams::default())
-        .transact(script)
-        .receipts()
-        .expect("Failed to transact")
-        .to_owned();
+    let receipts = Transactor::<'_, _, _>::new(
+        test_pool().get_new().into(),
+        &mut storage,
+        InterpreterParams::default(),
+    )
+    .transact(script)
+    .receipts()
+    .expect("Failed to transact")
+    .to_owned();
 
     if let Receipt::Return { val, .. } = receipts[0].clone() {
         assert_eq!(val, TxParameters::DEFAULT.tx_offset() as Word);

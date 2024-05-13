@@ -24,7 +24,8 @@ fn memcopy() {
     let mut consensus_params = ConsensusParameters::default();
     consensus_params.set_tx_params(tx_params);
 
-    let mut vm = Interpreter::<_, _>::with_storage(
+    let mut vm = Interpreter::<'_, _, _>::with_storage(
+        test_pool().get_new().into(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -93,7 +94,7 @@ fn memcopy() {
 
 #[test]
 fn stack_alloc_ownership() {
-    let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let mut vm = Interpreter::<'_, _, _>::with_memory_storage();
     let gas_price = 0;
     let consensus_params = ConsensusParameters::standard();
 

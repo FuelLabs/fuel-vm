@@ -139,8 +139,8 @@ where
         // 0      7     00  02  04  06  08  10  12  14   252 254
         //              00  01  02  03  04  05  06  07   126 127
         //
-        #[allow(clippy::arithmetic_side_effects)] // Responsibility of the trait implementor
-        let initial_offset = T::key_size_bits() - root.height();
+        let initial_offset = T::key_size_bits().checked_sub(root.height())
+        .expect("Root height more than key size allows, ParentNode impl is incorrect");
         Self {
             leaf_key: leaf_key.clone(),
             current: Some(initial),

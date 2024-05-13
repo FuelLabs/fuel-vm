@@ -83,6 +83,7 @@ impl VmPool {
         MemoryFromPool {
             pool: self.clone(),
             memory: Some(self.take_raw()),
+            #[cfg(any(test, feature = "test-helpers"))]
             original: true,
         }
     }

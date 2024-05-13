@@ -50,28 +50,6 @@ mod allocation_tests;
 #[cfg(test)]
 mod stack_tests;
 
-/// Resize the heap to at least `new_len` bytes, filling the new space with zeros.
-/// If `new_len` is less than the current length, the function does nothing.
-/// The function may grow the size more than `new_len` to avoid frequent
-/// reallocations.
-fn reverse_resize_at_least(vec: &mut Vec<u8>, new_len: usize) {
-    if vec.len() >= new_len {
-        return
-    }
-
-    // To reduce small allocations, allocate at least 256 bytes at once.
-    // After that, double the allocation every time.
-    let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);
-    let mut new_vec = Vec::new();
-    new_vec.reserve_exact(cap);
-    let prefix_zeroes = cap
-        .checked_sub(vec.len())
-        .expect("Attempting to resize impossibly large heap memory");
-    new_vec.extend(core::iter::repeat(0).take(prefix_zeroes));
-    new_vec.extend(vec.iter().copied());
-    *vec = new_vec;
-}
-
 /// The memory of the VM, represented as stack and heap.
 #[derive(Debug, Clone, PartialEq, Eq, Derivative)]
 pub struct Memory {
@@ -105,7 +83,6 @@ impl Memory {
     /// Resets memory to initial state, keeping the original allocations.
     pub fn reset(&mut self) {
         self.stack.truncate(0);
-        self.heap.truncate(0);
         self.hp = MEM_SIZE;
     }
 
@@ -142,6 +119,7 @@ impl Memory {
     }
 
     /// Grows the heap to be at least `new_hp` bytes.
+    /// Panics if the heap would be shrunk.
     pub fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
         let new_hp_word = new_hp.min(MEM_SIZE as Word);
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
@@ -154,8 +132,26 @@ impl Memory {
         #[allow(clippy::arithmetic_side_effects)] // Safety: ensured above with min
         let new_len = MEM_SIZE - new_hp;
 
-        // Expand the heap allocation
-        reverse_resize_at_least(&mut self.heap, new_len);
+        assert!(self.hp >= new_hp);
+        #[allow(clippy::arithmetic_side_effects)] // Safety: asserted above
+        if self.heap.len() >= new_len {
+            // No need to reallocate, but we need to zero the new space
+            // in case it was used before a memory reset.
+            let start = new_hp - self.heap_offset();
+            let end = self.hp - self.heap_offset();
+            self.heap[start..end].fill(0);
+        } else {
+            // Reallocation is needed.
+            // To reduce frequent reallocations, allocate at least 256 bytes at once.
+            // After that, double the allocation every time.
+            let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);
+            let old_len = self.heap.len();
+            let prefix_zeroes = cap - old_len;
+            self.heap.resize(cap, 0);
+            self.heap.copy_within(..old_len, prefix_zeroes);
+            self.heap[..prefix_zeroes].fill(0);
+        }
+
         self.hp = new_hp;
 
         // If heap enters region where stack has been, truncate the stack

@@ -132,7 +132,7 @@ impl Position {
             .checked_shl(self.height() + 1)
             .ok_or(GetNodeError::CannotExist)?;
         let this = self.in_order_index();
-        Ok(Self::from_in_order_index(match self.orientation() {
+        Ok(Self::from_in_order_index(match self.orientation()? {
             Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
             Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
         }))
@@ -145,7 +145,7 @@ impl Position {
             .checked_shl(self.height())
             .ok_or(GetNodeError::CannotExist)?;
         let this = self.in_order_index();
-        Ok(Self::from_in_order_index(match self.orientation() {
+        Ok(Self::from_in_order_index(match self.orientation()? {
             Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
             Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
         }))
@@ -266,13 +266,15 @@ impl Position {
     /// |           5 |        0101 |      1 |           R |
     /// |           9 |        1001 |      1 |           L |
     /// |          13 |        1101 |      1 |           R |
-    fn orientation(self) -> Side {
-        #[allow(clippy::arithmetic_side_effects)] // height + 1 cannot overflow
-        let shift = 1 << (self.height() + 1);
-        match self.in_order_index() & shift {
+    fn orientation(self) -> Result<Side, GetNodeError> {
+        #[allow(clippy::arithmetic_side_effects)] // height() <= 64
+        let shift = 1u64
+            .checked_shl(self.height() + 1)
+            .ok_or(GetNodeError::CannotExist)?;
+        Ok(match self.in_order_index() & shift {
             0 => Side::Right,
             _ => Side::Left,
-        }
+        })
     }
 }
 

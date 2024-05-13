@@ -19,6 +19,7 @@ use super::super::{
 use crate::{
     constraints::reg_key::*,
     error::SimpleResult,
+    interpreter::Memory,
 };
 
 // This macro is used to duplicate the implementation for both 128-bit and 256-bit
@@ -62,8 +63,9 @@ macro_rules! wideint_ops {
                 $t::from_le_bytes(truncated)
             }
 
-            impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+            impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
             where
+                M: AsRef<Memory> + AsMut<Memory>,
                 Tx: ExecutableTransaction,
             {
                 pub(crate) fn [<alu_wideint_cmp_ $t:lower>](

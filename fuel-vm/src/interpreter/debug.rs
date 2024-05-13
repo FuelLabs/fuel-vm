@@ -11,7 +11,7 @@ use fuel_asm::RegId;
 #[cfg(test)]
 use crate::pool::test_pool;
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -71,7 +71,7 @@ fn breakpoint_script() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 
-    let mut vm = Interpreter::<'_, _, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let gas_price = 0;
@@ -94,7 +94,7 @@ fn breakpoint_script() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, test_pool())
+        .into_checked(height, &consensus_params, test_pool().get_new())
         .expect("failed to generate checked tx")
         .into_ready(
             gas_price,
@@ -151,7 +151,7 @@ fn single_stepping() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 
-    let mut vm = Interpreter::<'_, _, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let height = Default::default();
@@ -173,7 +173,7 @@ fn single_stepping() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, test_pool())
+        .into_checked(height, &consensus_params, test_pool().get_new())
         .expect("failed to generate checked tx")
         .into_ready(
             gas_price,

@@ -20,8 +20,9 @@ use fuel_types::Word;
 #[cfg(test)]
 mod tests;
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: AsMut<Memory>,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
@@ -60,7 +61,7 @@ where
 }
 
 struct LogInput<'vm> {
-    memory: &'vm mut Memory,
+    memory: &'vm Memory,
     context: &'vm Context,
     receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,

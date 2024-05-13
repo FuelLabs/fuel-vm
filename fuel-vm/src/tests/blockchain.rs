@@ -4,6 +4,7 @@ use crate::{
     consts::*,
     interpreter::{
         InterpreterParams,
+        Memory,
         NotSupportedEcal,
     },
     pool::test_pool,
@@ -60,12 +61,14 @@ use rand::{
     SeedableRng,
 };
 
-fn deploy_contract(
-    client: &mut MemoryClient,
+fn deploy_contract<M>(
+    client: &mut MemoryClient<M>,
     contract: Witness,
     salt: Salt,
     storage_slots: Vec<StorageSlot>,
-) {
+) where
+    M: AsRef<Memory> + AsMut<Memory>,
+{
     let code_root = Contract::root_from_code(contract.as_ref());
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
@@ -77,7 +80,7 @@ fn deploy_contract(
         .with_tx_params(tx_params)
         .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
-        .finalize_checked(height, test_pool());
+        .finalize_checked(height, test_pool().get_new());
 
     client
         .deploy(contract_deployer)
@@ -485,6 +488,7 @@ fn ldc__offset_affects_read_code() {
     for i in 1..10 {
         let offset = i * 4;
         let expected_gas_used = starting_gas_amount - (i * noop_cost);
+        println!("== ROUND {i} ==");
         let actual_gas_used = ldc__gas_cost_for_len(
             &mut client,
             rng,
@@ -533,15 +537,18 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
     }
 }
 
-fn ldc__gas_cost_for_len(
-    client: &mut MemoryClient,
+fn ldc__gas_cost_for_len<M>(
+    client: &mut MemoryClient<M>,
     rng: &mut StdRng,
     salt: Salt,
     // in number of opcodes
     number_of_opcodes: usize,
     offset: u16,
     len: u16,
-) -> Word {
+) -> Word
+where
+    M: AsRef<Memory> + AsMut<Memory>,
+{
     let mut target_contract = vec![];
     for _ in 0..number_of_opcodes {
         target_contract.push(op::noop());
@@ -570,15 +577,18 @@ fn ldc__gas_cost_for_len(
     *actual_gas_used
 }
 
-fn ldc__load_len_of_target_contract<'a>(
-    client: &'a mut MemoryClient,
+fn ldc__load_len_of_target_contract<'a, M>(
+    client: &'a mut MemoryClient<M>,
     rng: &mut StdRng,
     salt: Salt,
     offset: u16,
     len: u16,
     target_contract_witness: Witness,
     include_log_d: bool,
-) -> &'a [Receipt] {
+) -> &'a [Receipt]
+where
+    M: AsRef<Memory> + AsMut<Memory>,
+{
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -600,7 +610,7 @@ fn ldc__load_len_of_target_contract<'a>(
             .add_random_fee_input()
             .add_output(output0)
             .finalize()
-            .into_checked(height, &consensus_params, test_pool())
+            .into_checked(height, &consensus_params, test_pool().get_new())
             .expect("failed to check tx");
 
     client.deploy(tx_create_target).unwrap();
@@ -662,7 +672,7 @@ fn ldc__load_len_of_target_contract<'a>(
     .add_random_fee_input()
     .add_output(output1)
     .finalize()
-    .into_checked(height, &consensus_params, test_pool())
+    .into_checked(height, &consensus_params, test_pool().get_new())
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
@@ -679,7 +689,7 @@ fn ldc__load_len_of_target_contract<'a>(
             .add_random_fee_input()
             .add_output(output1)
             .finalize()
-            .into_checked(height, &consensus_params, test_pool())
+            .into_checked(height, &consensus_params, test_pool().get_new())
             .expect("failed to check tx");
 
     client.transact(tx_deploy_loader)
@@ -708,8 +718,8 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
-    let mut client = MemoryClient::<'_, NotSupportedEcal>::from_txtor(Transactor::new(
-        test_pool().get_new().into(),
+    let mut client = MemoryClient::<_, NotSupportedEcal>::from_txtor(Transactor::new(
+        test_pool().get_new(),
         MemoryStorage::default(),
         interpreter_params,
     ));
@@ -739,7 +749,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         .add_random_fee_input()
         .add_output(output0)
         .finalize()
-        .into_checked(height, &consensus_params, test_pool())
+        .into_checked(height, &consensus_params, test_pool().get_new())
         .expect("failed to check tx");
 
     client.deploy(tx_create_target).unwrap();
@@ -754,7 +764,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     .maturity(maturity)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &consensus_params, test_pool())
+    .into_checked(height, &consensus_params, test_pool().get_new())
     .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);
@@ -1757,7 +1767,7 @@ fn smo_instruction_works() {
                 amount: 0,
                 asset_id: Default::default(),
             })
-            .finalize_checked(block_height, test_pool());
+            .finalize_checked(block_height, test_pool().get_new());
 
         let non_retryable_free_balance =
             tx.metadata().non_retryable_balances[&AssetId::BASE];
@@ -1899,7 +1909,7 @@ fn timestamp_works() {
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_random_fee_input()
-            .finalize_checked(block_height, test_pool());
+            .finalize_checked(block_height, test_pool().get_new());
 
         let receipts = client.transact(tx);
         let result = receipts.iter().any(|r| {
@@ -1953,7 +1963,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(current_height, test_pool());
+        .finalize_checked(current_height, test_pool().get_new());
 
     let receipts = client.transact(tx);
     let Some(Receipt::Log { ra, .. }) = receipts.first() else {
@@ -2002,7 +2012,7 @@ fn block_hash_works(
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(current_height, test_pool());
+        .finalize_checked(current_height, test_pool().get_new());
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {
@@ -2040,7 +2050,7 @@ fn coinbase_works() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(10.into(), test_pool());
+        .finalize_checked(10.into(), test_pool().get_new());
 
     let receipts = client.transact(tx);
     let Some(Receipt::LogData { data, .. }) = receipts.first() else {

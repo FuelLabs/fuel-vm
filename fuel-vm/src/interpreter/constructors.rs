@@ -5,8 +5,6 @@
 use super::ExecutableTransaction;
 use super::{
     Interpreter,
-    Memory,
-    OwnedOrMut,
     RuntimeBalances,
 };
 use crate::{
@@ -16,9 +14,12 @@ use crate::{
         InterpreterParams,
         PanicContext,
     },
-    pool::test_pool,
+    pool::MemoryFromPool,
     state::Debugger,
 };
+
+#[cfg(any(test, feature = "test-helpers"))]
+use crate::pool::test_pool;
 
 use alloc::vec;
 
@@ -33,7 +34,7 @@ use crate::{
     storage::MemoryStorage,
 };
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: Default,
     Ecal: Default,
@@ -44,7 +45,7 @@ where
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
     pub fn with_storage(
-        memory: OwnedOrMut<'a, Memory>,
+        memory: M,
         storage: S,
         interpreter_params: InterpreterParams,
     ) -> Self {
@@ -52,7 +53,7 @@ where
     }
 }
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: Default,
 {
@@ -62,7 +63,7 @@ where
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
     pub fn with_storage_and_ecal(
-        memory: OwnedOrMut<'a, Memory>,
+        memory: M,
         storage: S,
         interpreter_params: InterpreterParams,
         ecal_state: Ecal,
@@ -86,7 +87,7 @@ where
     }
 }
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
@@ -98,24 +99,24 @@ impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
     }
 }
 
-#[cfg(feature = "test-helpers")]
-impl<'a, S, Tx, Ecal> Default for Interpreter<'a, S, Tx, Ecal>
+#[cfg(any(test, feature = "test-helpers"))]
+impl<S, Tx, Ecal> Default for Interpreter<MemoryFromPool, S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
-        Interpreter::<'a, S, Tx, Ecal>::with_storage(
-            test_pool().get_new().into(),
+        Interpreter::<_, S, Tx, Ecal>::with_storage(
+            test_pool().get_new(),
             Default::default(),
             InterpreterParams::default(),
         )
     }
 }
 
-#[cfg(test)]
-impl<'a, Tx, Ecal> Interpreter<'a, (), Tx, Ecal>
+#[cfg(any(test, feature = "test-helpers"))]
+impl<Tx, Ecal> Interpreter<MemoryFromPool, (), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -129,7 +130,7 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<'a, Tx, Ecal> Interpreter<'a, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<MemoryFromPool, MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -143,7 +144,7 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<'a, Tx, Ecal> Interpreter<'a, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<MemoryFromPool, MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
@@ -152,8 +153,8 @@ where
     ///
     /// It will have full capabilities.
     pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
-        Interpreter::<MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
-            test_pool().get_new().into(),
+        Interpreter::<_, MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
+            test_pool().get_new(),
             Default::default(),
             InterpreterParams::default(),
             ecal,

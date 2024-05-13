@@ -11,7 +11,10 @@ use fuel_tx::Receipt;
 use fuel_vm::{
     consts::VM_MAX_RAM,
     interpreter::InterpreterParams,
-    pool::test_pool,
+    pool::{
+        test_pool,
+        MemoryFromPool,
+    },
     prelude::*,
 };
 
@@ -22,7 +25,7 @@ use super::test_helpers::{
 };
 use fuel_tx::ConsensusParameters;
 
-fn setup<'a>(program: Vec<Instruction>) -> Transactor<'a, MemoryStorage, Script> {
+fn setup(program: Vec<Instruction>) -> Transactor<MemoryFromPool, MemoryStorage, Script> {
     let storage = MemoryStorage::default();
 
     let gas_price = 0;
@@ -39,13 +42,12 @@ fn setup<'a>(program: Vec<Instruction>) -> Transactor<'a, MemoryStorage, Script>
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, test_pool())
+        .into_checked(height, &consensus_params, test_pool().get_new())
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
-    let mut vm =
-        Transactor::new(test_pool().get_new().into(), storage, interpreter_params);
+    let mut vm = Transactor::new(test_pool().get_new(), storage, interpreter_params);
     vm.transact(tx);
     vm
 }
@@ -61,7 +63,7 @@ fn test_lw() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize];
     assert_eq!(1, result);
 }
@@ -77,7 +79,7 @@ fn test_lw_unaglined() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize];
     assert_eq!(1, result);
 }
@@ -93,7 +95,7 @@ fn test_lb() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize] as u8;
     assert_eq!(1, result);
 }
@@ -110,7 +112,7 @@ fn test_aloc_sb_lb_last_byte_of_memory() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
     let r1 = vm.registers()[0x20_usize];
     let r2 = vm.registers()[0x21_usize];
     assert_eq!(r1 - 1, r2);
@@ -257,7 +259,7 @@ fn test_mcl_and_mcli(
     ops.push(op::ret(RegId::ONE));
 
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
         let data = data.as_ref().unwrap();
@@ -311,7 +313,7 @@ fn test_mcp_and_mcpi(
     ops.push(op::ret(RegId::ONE));
 
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
 
     if let Some(Receipt::LogData { data, .. }) = vm.receipts().first() {
         let data = data.as_ref().unwrap();
@@ -341,7 +343,7 @@ fn test_meq() {
         op::ret(RegId::ONE),
     ];
     let vm = setup(ops);
-    let vm: &Interpreter<MemoryStorage, Script> = vm.as_ref();
+    let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
     if let Some(Receipt::Log { ra, rb, rc, rd, .. }) = vm.receipts().first() {
         assert_eq!(*ra, 1);
         assert_eq!(*rb, 1);

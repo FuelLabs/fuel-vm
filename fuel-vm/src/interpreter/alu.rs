@@ -22,7 +22,7 @@ mod wideint;
 #[cfg(test)]
 mod tests;
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {

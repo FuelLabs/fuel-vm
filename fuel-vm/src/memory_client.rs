@@ -9,9 +9,8 @@ use crate::{
         InterpreterParams,
         Memory,
         NotSupportedEcal,
-        OwnedOrMut,
     },
-    pool::test_pool,
+    pool::MemoryFromPool,
     state::StateTransitionRef,
     storage::MemoryStorage,
     transactor::Transactor,
@@ -27,40 +26,42 @@ use fuel_tx::{
     Upload,
 };
 
+#[cfg(any(test, feature = "test-helpers"))]
+use crate::pool::test_pool;
+
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<'a, Ecal = NotSupportedEcal> {
-    transactor: Transactor<'a, MemoryStorage, Script, Ecal>,
+pub struct MemoryClient<M, Ecal = NotSupportedEcal> {
+    transactor: Transactor<M, MemoryStorage, Script, Ecal>,
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<'a> Default for MemoryClient<'a> {
+impl Default for MemoryClient<MemoryFromPool> {
     fn default() -> Self {
         Self::from_txtor(Transactor::new(
-            test_pool().get_new().into(),
+            test_pool().get_new(),
             MemoryStorage::default(),
             InterpreterParams::default(),
         ))
     }
 }
 
-impl<'a, Ecal: EcalHandler> AsRef<MemoryStorage> for MemoryClient<'a, Ecal> {
+impl<M, Ecal: EcalHandler> AsRef<MemoryStorage> for MemoryClient<M, Ecal> {
     fn as_ref(&self) -> &MemoryStorage {
         self.transactor.as_ref()
     }
 }
 
-impl<'a, Ecal: EcalHandler> AsMut<MemoryStorage> for MemoryClient<'a, Ecal> {
+impl<M, Ecal: EcalHandler> AsMut<MemoryStorage> for MemoryClient<M, Ecal> {
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()
     }
 }
 
-impl<'a, Ecal: EcalHandler + Default> MemoryClient<'a, Ecal> {
+impl<M, Ecal: EcalHandler + Default> MemoryClient<M, Ecal> {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(
-        memory: OwnedOrMut<'a, Memory>,
-
+        memory: M,
         storage: MemoryStorage,
         interpreter_params: InterpreterParams,
     ) -> Self {
@@ -70,12 +71,17 @@ impl<'a, Ecal: EcalHandler + Default> MemoryClient<'a, Ecal> {
     }
 }
 
-impl<'a, Ecal: EcalHandler> MemoryClient<'a, Ecal> {
+impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal> {
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<'a, MemoryStorage, Script, Ecal>) -> Self {
+    pub fn from_txtor(transactor: Transactor<M, MemoryStorage, Script, Ecal>) -> Self {
         Self { transactor }
     }
+}
 
+impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal>
+where
+    M: AsRef<Memory> + AsMut<Memory>,
+{
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.
     pub fn backtrace(&self) -> Option<Backtrace> {
@@ -166,20 +172,19 @@ impl<'a, Ecal: EcalHandler> MemoryClient<'a, Ecal> {
     }
 }
 
-impl<'a, Ecal: EcalHandler + Default> From<MemoryStorage> for MemoryClient<'a, Ecal> {
-    fn from(s: MemoryStorage) -> Self {
-        Self::from_txtor(Transactor::new(
-            test_pool().get_new().into(),
-            s,
-            InterpreterParams::default(),
-        ))
-    }
-}
+// impl<M, Ecal: EcalHandler + Default> From<MemoryStorage> for MemoryClient<M, Ecal> {
+//     fn from(s: MemoryStorage) -> Self {
+//         Self::from_txtor(Transactor::new(
+//             s,
+//             InterpreterParams::default(),
+//         ))
+//     }
+// }
 
-impl<'a, Ecal: EcalHandler> From<MemoryClient<'a, Ecal>>
-    for Transactor<'a, MemoryStorage, Script, Ecal>
+impl<M, Ecal: EcalHandler> From<MemoryClient<M, Ecal>>
+    for Transactor<M, MemoryStorage, Script, Ecal>
 {
-    fn from(client: MemoryClient<'a, Ecal>) -> Self {
+    fn from(client: MemoryClient<M, Ecal>) -> Self {
         client.transactor
     }
 }

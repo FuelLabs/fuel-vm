@@ -25,8 +25,8 @@ use super::*;
 
 #[test]
 fn identity() {
-    let a = Interpreter::<_, Script>::without_storage();
-    let b = Interpreter::<_, Script>::without_storage();
+    let a = Interpreter::<_, _, Script>::without_storage();
+    let b = Interpreter::<_, _, Script>::without_storage();
     let diff = a.diff(&b);
     assert!(diff.changes.is_empty());
     assert_eq!(a, b);
@@ -34,8 +34,8 @@ fn identity() {
 
 #[test]
 fn reset_vm_state() {
-    let a = Interpreter::<_, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    let a = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
     b.set_gas(1_000_000);
     b.instruction(op::addi(0x10, 0x11, 1)).unwrap();
     let diff: Diff<InitialVmState> = a.diff(&b).into();
@@ -52,13 +52,13 @@ fn record_and_invert_storage() {
     let interpreter_params =
         InterpreterParams::new(arb_gas_price, &ConsensusParameters::standard());
 
-    let a = Interpreter::<_, Script>::with_storage(
-        test_pool().get_new().into(),
+    let a = Interpreter::<_, _, Script>::with_storage(
+        test_pool().get_new(),
         Record::new(MemoryStorage::default()),
         interpreter_params.clone(),
     );
-    let mut b = Interpreter::<_, Script>::with_storage(
-        test_pool().get_new().into(),
+    let mut b = Interpreter::<_, _, Script>::with_storage(
+        test_pool().get_new(),
         Record::new(MemoryStorage::default()),
         interpreter_params,
     );
@@ -80,8 +80,8 @@ fn record_and_invert_storage() {
     b.reset_vm_state(&diff);
     assert_eq!(a, b);
 
-    let c = Interpreter::<_, Script>::with_memory_storage();
-    let mut d = Interpreter::<_, Script>::with_memory_storage();
+    let c = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut d = Interpreter::<_, _, Script>::with_memory_storage();
 
     <MemoryStorage as StorageMutate<ContractsAssets>>::insert(
         &mut d.storage,
@@ -99,8 +99,8 @@ fn record_and_invert_storage() {
 
 #[test]
 fn reset_vm_state_frame() {
-    let a = Interpreter::<_, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    let a = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
     let frame = CallFrame::new(
         Default::default(),
         Default::default(),
@@ -118,8 +118,8 @@ fn reset_vm_state_frame() {
 
 #[test]
 fn reset_vm_state_receipts() {
-    let a = Interpreter::<_, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    let a = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
     let receipt = Receipt::call(
         Default::default(),
         Default::default(),
@@ -217,7 +217,7 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
 
 #[test]
 fn reset_vm_memory() {
-    let mut a = Interpreter::<_, Script>::with_memory_storage();
+    let mut a = Interpreter::<_, _, Script>::with_memory_storage();
     a.memory_mut().grow_stack(132).unwrap();
     let mut b = a.clone();
     b.memory_mut()[100..132].copy_from_slice(&[1u8; 32]);
@@ -230,8 +230,8 @@ fn reset_vm_memory() {
 #[test]
 fn reset_vm_txns() {
     use fuel_tx::field::Outputs;
-    let a = Interpreter::<_, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, Script>::with_memory_storage();
+    let a = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
     b.tx.outputs_mut().push(fuel_tx::Output::ContractCreated {
         contract_id: Default::default(),
         state_root: Default::default(),

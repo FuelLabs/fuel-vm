@@ -40,10 +40,13 @@ impl Backtrace {
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<S, Tx, Ecal>(
-        vm: &Interpreter<S, Tx, Ecal>,
+    pub fn from_vm_error<M, S, Tx, Ecal>(
+        vm: &Interpreter<M, S, Tx, Ecal>,
         result: ScriptExecutionResult,
-    ) -> Self {
+    ) -> Self
+    where
+        M: AsRef<Memory>,
+    {
         let call_stack = vm.call_stack().to_owned();
         let contract = vm.internal_contract().unwrap_or_default();
         let memory = vm.memory().clone();

@@ -50,7 +50,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
             Default::default(),
         )
         .finalize()
-        .into_checked(Default::default(), &consensus_params, test_pool())
+        .into_checked(Default::default(), &consensus_params, test_pool().get_new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()

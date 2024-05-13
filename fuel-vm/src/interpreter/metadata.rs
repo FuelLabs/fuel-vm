@@ -2,6 +2,7 @@ use super::{
     internal::inc_pc,
     ExecutableTransaction,
     Interpreter,
+    Memory,
 };
 use crate::{
     call::CallFrame,
@@ -45,8 +46,9 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: AsRef<Memory> + AsMut<Memory>,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn metadata(

@@ -58,7 +58,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params.into(), test_pool())
+        .check_predicates(&params.into(), test_pool().get_new())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -95,19 +95,20 @@ fn estimate_gas_gives_proper_gas_used() {
     // unestimated transaction should fail as it's predicates are not estimated
     assert!(transaction
         .clone()
-        .into_checked(Default::default(), params, test_pool())
+        .into_checked(Default::default(), params, test_pool().get_new())
         .is_err());
 
-    Interpreter::<PredicateStorage, _>::estimate_predicates(
+    Interpreter::<_, PredicateStorage, _>::estimate_predicates(
         &mut transaction,
         &params.into(),
-        test_pool(),
+        test_pool().get_new(),
     )
     .expect("Should successfully estimate predicates");
 
     // transaction should pass checking after estimation
 
-    let check_res = transaction.into_checked(Default::default(), params, test_pool());
+    let check_res =
+        transaction.into_checked(Default::default(), params, test_pool().get_new());
     assert!(check_res.is_ok());
 }
 
@@ -123,7 +124,7 @@ fn valid_script_tx() -> Checked<Script> {
 
 #[test]
 fn transact__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Script>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Script>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;
@@ -157,7 +158,7 @@ fn valid_create_tx() -> Checked<Create> {
 
 #[test]
 fn deploy__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Create>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Create>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;
@@ -198,7 +199,7 @@ fn valid_upgrade_tx() -> Checked<Upgrade> {
 
 #[test]
 fn upgrade__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Upgrade>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Upgrade>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;
@@ -239,7 +240,7 @@ fn valid_upload_tx() -> Checked<Upload> {
 
 #[test]
 fn upload__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Upload>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Upload>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;

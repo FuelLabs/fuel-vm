@@ -61,7 +61,6 @@ mod internal;
 mod log;
 mod memory;
 mod metadata;
-mod owned_or_mut;
 mod post_execution;
 mod receipts;
 
@@ -82,7 +81,6 @@ pub use memory::{
     Memory,
     MemoryRange,
 };
-pub use owned_or_mut::OwnedOrMut;
 
 use crate::checked_transaction::{
     CreateCheckedMetadata,
@@ -115,9 +113,9 @@ pub struct NotSupportedEcal;
 /// or a client implementation.
 #[derive(Debug)]
 #[cfg_attr(any(test, featutre = "test-helpers"), derive(Clone))]
-pub struct Interpreter<'a, S, Tx = (), Ecal = NotSupportedEcal> {
+pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: OwnedOrMut<'a, Memory>,
+    memory: M,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
     tx: Tx,
@@ -205,17 +203,21 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
+impl<M: AsRef<Memory>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the VM memory
     pub fn memory(&self) -> &Memory {
         self.memory.as_ref()
     }
+}
 
+impl<M: AsMut<Memory>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns mutable access to the vm memory
     pub fn memory_mut(&mut self) -> &mut Memory {
         self.memory.as_mut()
     }
+}
 
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
@@ -347,13 +349,13 @@ fn current_location(
     InstructionLocation::new(current_contract, offset)
 }
 
-impl<'a, S, Tx, Ecal> AsRef<S> for Interpreter<'a, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<'a, S, Tx, Ecal> AsMut<S> for Interpreter<'a, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }

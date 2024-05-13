@@ -4,13 +4,15 @@ use crate::{
         EcalHandler,
         ExecutableTransaction,
         Interpreter,
+        Memory,
     },
     state::ProgramState,
     storage::InterpreterStorage,
 };
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: AsRef<Memory> + AsMut<Memory>,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,

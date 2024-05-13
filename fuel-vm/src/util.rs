@@ -94,6 +94,7 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
+        interpreter::Memory,
         memory_client::MemoryClient,
         pool::test_pool,
         state::StateTransition,
@@ -336,8 +337,10 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder
-                .finalize_checked(self.block_height, test_pool())
+            self.builder.finalize_checked(
+                self.block_height,
+                &mut Memory::new(), // TOOD: recycle
+            )
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -447,7 +450,11 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params, test_pool())
+                .into_checked(
+                    self.block_height,
+                    &self.consensus_params,
+                    test_pool().get_new(),
+                )
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -469,12 +476,13 @@ pub mod test_helpers {
             }
         }
 
-        fn execute_tx_inner<Tx, Ecal>(
+        fn execute_tx_inner<M, Tx, Ecal>(
             &mut self,
-            transactor: &mut Transactor<MemoryStorage, Tx, Ecal>,
+            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal>,
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
+            M: AsRef<Memory> + AsMut<Memory>,
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
@@ -525,8 +533,8 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Create>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
-            let mut transactor = Transactor::<'_, _, _>::new(
-                test_pool().get_new().into(),
+            let mut transactor = Transactor::<_, _, _>::new(
+                test_pool().get_new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -540,8 +548,8 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Script>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
-            let mut transactor = Transactor::<'_, _, _>::new(
-                test_pool().get_new().into(),
+            let mut transactor = Transactor::<_, _, _>::new(
+                test_pool().get_new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -556,8 +564,8 @@ pub mod test_helpers {
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
             let interpreter_params =
                 InterpreterParams::new(gas_price, &self.consensus_params);
-            let mut transactor = Transactor::<'_, _, _>::new(
-                test_pool().get_new().into(),
+            let mut transactor = Transactor::<_, _, _>::new(
+                test_pool().get_new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -620,11 +628,13 @@ pub mod test_helpers {
         );
     }
 
-    pub fn check_expected_reason_for_instructions_with_client(
-        mut client: MemoryClient,
+    pub fn check_expected_reason_for_instructions_with_client<M>(
+        mut client: MemoryClient<M>,
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
-    ) {
+    ) where
+        M: AsRef<Memory> + AsMut<Memory>,
+    {
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
@@ -647,7 +657,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height, test_pool());
+            .finalize_checked(height, test_pool().get_new());
 
         client
             .deploy(contract_deployer)
@@ -683,16 +693,18 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, test_pool());
+            .finalize_checked(height, test_pool().get_new());
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }
 
-    pub fn check_reason_for_transaction(
-        mut client: MemoryClient,
+    pub fn check_reason_for_transaction<M>(
+        mut client: MemoryClient<M>,
         checked_tx: Checked<Script>,
         expected_reason: PanicReason,
-    ) {
+    ) where
+        M: AsRef<Memory> + AsMut<Memory>,
+    {
         let receipts = client.transact(checked_tx);
 
         let panic_found = receipts.iter().any(|receipt| {

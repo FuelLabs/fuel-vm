@@ -80,8 +80,9 @@ mod ret_tests;
 #[cfg(test)]
 mod tests;
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: AsRef<Memory> + AsMut<Memory>,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn jump(&mut self, args: JumpArgs) -> SimpleResult<()> {
@@ -328,8 +329,9 @@ impl JumpArgs {
     }
 }
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: AsRef<Memory> + AsMut<Memory>,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {

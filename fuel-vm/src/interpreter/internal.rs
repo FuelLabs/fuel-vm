@@ -35,8 +35,9 @@ mod message_tests;
 #[cfg(test)]
 mod tests;
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: AsMut<Memory>,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn update_memory_output(&mut self, idx: usize) -> SimpleResult<()> {
@@ -96,7 +97,10 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     Ok(())
 }
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
+    M: AsRef<Memory>,
+{
     pub(crate) fn set_flag(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { flag, pc, .. }, _) = split_registers(&mut self.registers);
         set_flag(flag, pc, a)

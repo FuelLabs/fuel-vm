@@ -94,6 +94,17 @@ impl PartialEq for Memory {
     }
 }
 
+impl AsRef<Memory> for Memory {
+    fn as_ref(&self) -> &Memory {
+        self
+    }
+}
+impl AsMut<Memory> for Memory {
+    fn as_mut(&mut self) -> &mut Memory {
+        self
+    }
+}
+
 impl Memory {
     /// Create a new VM memory.
     pub fn new() -> Self {
@@ -108,6 +119,7 @@ impl Memory {
     pub fn reset(&mut self) {
         self.stack.truncate(0);
         self.hp = MEM_SIZE;
+        println!("RESET! hp={}", self.hp);
     }
 
     /// Offset of the heap section
@@ -149,7 +161,10 @@ impl Memory {
         mut hp_reg: RegMut<HP>,
         amount: Word,
     ) -> Result<(), PanicReason> {
-        debug_assert_eq!(self.hp as Word, *hp_reg);
+        debug_assert_eq!(
+            self.hp as Word, *hp_reg,
+            "HP register changed without memory update"
+        );
 
         let amount = usize::try_from(amount).map_err(|_| PanicReason::MemoryOverflow)?;
         let new_hp = self
@@ -183,6 +198,7 @@ impl Memory {
             self.heap[..prefix_zeroes].fill(0);
         }
 
+        println!("set $hp to {new_hp}");
         self.hp = new_hp;
         *hp_reg = new_hp as Word;
 
@@ -471,7 +487,10 @@ impl MemoryRange {
     }
 }
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
+    M: AsRef<Memory> + AsMut<Memory>,
+{
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
         OwnershipRegisters::new(self)
@@ -876,7 +895,7 @@ pub struct OwnershipRegisters {
 }
 
 impl OwnershipRegisters {
-    pub(crate) fn new<S, Tx, Ecal>(vm: &Interpreter<S, Tx, Ecal>) -> Self {
+    pub(crate) fn new<M, S, Tx, Ecal>(vm: &Interpreter<M, S, Tx, Ecal>) -> Self {
         OwnershipRegisters {
             sp: vm.registers[RegId::SP],
             ssp: vm.registers[RegId::SSP],

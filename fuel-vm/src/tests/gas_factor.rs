@@ -57,8 +57,8 @@ fn gas_factor_rounds_correctly() {
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
     let storage = MemoryStorage::default();
 
-    let mut interpreter = Interpreter::<'_, _, _>::with_storage(
-        test_pool().get_new().into(),
+    let mut interpreter = Interpreter::<_, _, _>::with_storage(
+        test_pool().get_new(),
         storage,
         interpreter_params,
     );

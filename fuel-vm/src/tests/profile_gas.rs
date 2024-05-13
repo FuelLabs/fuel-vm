@@ -49,11 +49,11 @@ fn profile_gas() {
                 )
                 .script_gas_limit(gas_limit)
                 .maturity(maturity)
-                .finalize_checked(height, test_pool());
+                .finalize_checked(height, test_pool().get_new());
 
         let output = GasProfiler::default();
 
-        let mut vm = Interpreter::<'_, _, _>::with_memory_storage();
+        let mut vm = Interpreter::<_, _, _>::with_memory_storage();
         vm.with_profiler(output.clone());
         let mut client = MemoryClient::from_txtor(vm.into());
 

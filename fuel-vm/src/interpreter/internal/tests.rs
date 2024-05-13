@@ -31,7 +31,7 @@ use super::inc_pc;
 fn external_balance() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
-    let mut vm = Interpreter::<'_, _, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let maturity = Default::default();
@@ -59,7 +59,7 @@ fn external_balance() {
         .script_gas_limit(gas_limit)
         .script_gas_limit(100)
         .maturity(maturity)
-        .finalize_checked(height, test_pool())
+        .finalize_checked(height, test_pool().get_new())
         .into_ready(gas_price, &gas_costs, &fee_params)
         .unwrap();
 
@@ -111,8 +111,8 @@ fn variable_output_updates_in_memory() {
     let zero_gas_price = 0;
 
     let consensus_params = ConsensusParameters::standard();
-    let mut vm = Interpreter::<'_, _, _>::with_storage(
-        test_pool().get_new().into(),
+    let mut vm = Interpreter::<_, _, _>::with_storage(
+        test_pool().get_new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -134,7 +134,7 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params, test_pool())
+        .into_checked(height, &consensus_params, test_pool().get_new())
         .expect("failed to check tx")
         .into_ready(
             zero_gas_price,

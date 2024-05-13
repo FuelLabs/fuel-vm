@@ -24,8 +24,8 @@ use itertools::Itertools;
 pub struct NoopEcal;
 
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
-    fn ecal<S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -44,8 +44,8 @@ fn noop_ecal() {
     .into_iter()
     .collect();
 
-    let mut client = MemoryClient::<NoopEcal>::new(
-        test_pool().get_new().into(),
+    let mut client = MemoryClient::<_, NoopEcal>::new(
+        test_pool().get_new(),
         fuel_vm::prelude::MemoryStorage::default(),
         Default::default(),
     );
@@ -55,7 +55,7 @@ fn noop_ecal() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, test_pool())
+        .into_checked(Default::default(), &consensus_params, test_pool().get_new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -72,8 +72,8 @@ pub struct SumProdEcal;
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
-    fn ecal<S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -100,7 +100,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 
 #[test]
 fn provide_ecal_fn() {
-    let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
+    let vm: Interpreter<_, _, Script, SumProdEcal> = Interpreter::with_memory_storage();
 
     let script_data = [
         2u64.to_be_bytes(),
@@ -131,7 +131,7 @@ fn provide_ecal_fn() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, test_pool())
+        .into_checked(Default::default(), &consensus_params, test_pool().get_new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");

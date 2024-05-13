@@ -1,6 +1,9 @@
 use crate::{
     error::PredicateVerificationFailed,
-    interpreter::EcalHandler,
+    interpreter::{
+        EcalHandler,
+        Memory,
+    },
     prelude::{
         ExecutableTransaction,
         Interpreter,
@@ -18,8 +21,9 @@ use fuel_asm::{
     Word,
 };
 
-impl<'a, Tx, Ecal> Interpreter<'a, PredicateStorage, Tx, Ecal>
+impl<M, Tx, Ecal> Interpreter<M, PredicateStorage, Tx, Ecal>
 where
+    M: AsRef<Memory> + AsMut<Memory>,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {

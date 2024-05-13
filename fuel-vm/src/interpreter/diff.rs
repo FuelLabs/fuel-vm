@@ -316,7 +316,10 @@ where
         .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 
-impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
+    M: AsRef<crate::interpreter::Memory>,
+{
     /// The diff function generates a diff of VM state, represented by the Diff struct,
     /// between two VMs internal states.
     pub fn diff(&self, other: &Self) -> Diff<Deltas>
@@ -393,7 +396,12 @@ impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
 
         diff
     }
+}
 
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
+    M: AsRef<crate::interpreter::Memory> + AsMut<crate::interpreter::Memory>,
+{
     fn inverse_inner(&mut self, change: &Change<InitialVmState>)
     where
         Tx: Clone + 'static,
@@ -473,8 +481,9 @@ fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>)
     invert_vec(ctx_mut.receipts_mut(), value);
 }
 
-impl<'a, S, Tx, Ecal> PartialEq for Interpreter<'a, S, Tx, Ecal>
+impl<M, S, Tx, Ecal> PartialEq for Interpreter<M, S, Tx, Ecal>
 where
+    M: AsRef<crate::interpreter::Memory>,
     Tx: PartialEq,
 {
     /// Does not compare storage, debugger or profiler

@@ -13,22 +13,25 @@ use fuel_tx::{
 use fuel_vm::{
     interpreter::{
         Interpreter,
+        Memory,
         NotSupportedEcal,
     },
-    pool::VmPool,
     prelude::*,
 };
 
-fn get_next_instruction<S, Tx>(
-    vm: &Interpreter<S, Tx, NotSupportedEcal>,
-) -> Option<Instruction> {
+fn get_next_instruction<M, S, Tx>(
+    vm: &Interpreter<M, S, Tx, NotSupportedEcal>,
+) -> Option<Instruction>
+where
+    M: AsRef<Memory>,
+{
     let pc = vm.registers()[RegId::PC];
     let instruction = RawInstruction::from_be_bytes(vm.memory().read_bytes(pc).ok()?);
     Instruction::try_from(instruction).ok()
 }
 
 fn main() {
-    let mut vm = Interpreter::<_, _, NotSupportedEcal>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _, NotSupportedEcal>::with_memory_storage();
     vm.set_single_stepping(true);
 
     let script_data: Vec<u8> = file!().bytes().collect();
@@ -47,7 +50,7 @@ fn main() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, VmPool::default())
+        .into_checked(Default::default(), &consensus_params, Memory::new())
         .expect("failed to generate a checked tx")
         .into_ready(
             0,

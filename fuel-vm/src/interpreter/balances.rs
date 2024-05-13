@@ -163,8 +163,9 @@ impl RuntimeBalances {
 
     /// Write all assets into the start of VM stack, i.e. at $ssp.
     /// Panics if the assets cannot fit.
-    pub fn to_vm<S, Tx, Ecal>(self, vm: &mut Interpreter<S, Tx, Ecal>)
+    pub fn to_vm<M, S, Tx, Ecal>(self, vm: &mut Interpreter<M, S, Tx, Ecal>)
     where
+        M: AsRef<Memory> + AsMut<Memory>,
         Tx: ExecutableTransaction,
     {
         let len = (vm.max_inputs() as usize).saturating_mul(BALANCE_ENTRY_SIZE) as Word;
@@ -233,7 +234,7 @@ fn writes_to_memory_correctly() {
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let mut interpreter = Interpreter::<_, Script>::without_storage();
+    let mut interpreter = Interpreter::<_, _, Script>::without_storage();
 
     let base = AssetId::zeroed();
     let base_balance = 950;

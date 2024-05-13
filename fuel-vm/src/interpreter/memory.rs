@@ -119,7 +119,6 @@ impl Memory {
     pub fn reset(&mut self) {
         self.stack.truncate(0);
         self.hp = MEM_SIZE;
-        println!("RESET! hp={}", self.hp);
     }
 
     /// Offset of the heap section
@@ -198,7 +197,6 @@ impl Memory {
             self.heap[..prefix_zeroes].fill(0);
         }
 
-        println!("set $hp to {new_hp}");
         self.hp = new_hp;
         *hp_reg = new_hp as Word;
 

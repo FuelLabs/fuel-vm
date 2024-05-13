@@ -488,7 +488,6 @@ fn ldc__offset_affects_read_code() {
     for i in 1..10 {
         let offset = i * 4;
         let expected_gas_used = starting_gas_amount - (i * noop_cost);
-        println!("== ROUND {i} ==");
         let actual_gas_used = ldc__gas_cost_for_len(
             &mut client,
             rng,

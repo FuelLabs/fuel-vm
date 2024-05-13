@@ -18,6 +18,7 @@ use crate::error::PanicOrBug;
 #[test_case(20, 10, 5 => Ok(15); "Allocation size smaller than available memory")]
 fn test_malloc(mut hp: Word, sp: Word, a: Word) -> SimpleResult<Word> {
     let mut memory = Memory::new();
+    memory.hp = hp as usize;
     let mut pc = 4;
     malloc(
         RegMut::new(&mut hp),

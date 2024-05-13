@@ -32,7 +32,6 @@ mod convert;
 pub mod crypto;
 pub mod error;
 pub mod interpreter;
-#[cfg(any(test, feature = "test-helpers"))]
 pub mod memory_client;
 pub mod pool;
 pub mod predicate;

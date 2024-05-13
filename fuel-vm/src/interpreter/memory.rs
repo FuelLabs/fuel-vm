@@ -142,22 +142,29 @@ impl Memory {
         Ok(())
     }
 
-    /// Grows the heap to be at least `new_hp` bytes.
-    /// Panics if the heap would be shrunk.
-    pub fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
-        let new_hp_word = new_hp.min(MEM_SIZE as Word);
-        #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
-        let new_hp = new_hp_word as usize;
+    /// Grows the heap by `amount` bytes. Updates hp register.
+    pub fn grow_heap_by(
+        &mut self,
+        sp_reg: Reg<SP>,
+        mut hp_reg: RegMut<HP>,
+        amount: Word,
+    ) -> Result<(), PanicReason> {
+        debug_assert_eq!(self.hp as Word, *hp_reg);
 
-        if new_hp_word < *sp {
+        let amount = usize::try_from(amount).map_err(|_| PanicReason::MemoryOverflow)?;
+        let new_hp = self
+            .hp
+            .checked_sub(amount)
+            .ok_or(PanicReason::MemoryOverflow)?;
+
+        if (new_hp as Word) < *sp_reg {
             return Err(PanicReason::MemoryGrowthOverlap)
         }
 
-        #[allow(clippy::arithmetic_side_effects)] // Safety: ensured above with min
+        #[allow(clippy::arithmetic_side_effects)] // Safety: self.hp is in heap
         let new_len = MEM_SIZE - new_hp;
 
-        assert!(self.hp >= new_hp);
-        #[allow(clippy::arithmetic_side_effects)] // Safety: asserted above
+        #[allow(clippy::arithmetic_side_effects)] // Safety: self.hp is in heap
         if self.heap.len() >= new_len {
             // No need to reallocate, but we need to zero the new space
             // in case it was used before a memory reset.
@@ -177,6 +184,7 @@ impl Memory {
         }
 
         self.hp = new_hp;
+        *hp_reg = new_hp as Word;
 
         // If heap enters region where stack has been, truncate the stack
         self.stack.truncate(new_hp);
@@ -582,10 +590,11 @@ impl<'a, S, Tx, Ecal> Interpreter<'a, S, Tx, Ecal> {
         )
     }
 
-    /// Expand heap by `a` bytes.
-    pub fn allocate(&mut self, a: Word) -> SimpleResult<()> {
+    /// Expand heap by `amount` bytes.
+    pub fn allocate(&mut self, amount: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
-        try_allocate(hp, sp.as_ref(), a, self.memory.as_mut())
+        self.memory.as_mut().grow_heap_by(sp.as_ref(), hp, amount)?;
+        Ok(())
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
@@ -797,31 +806,14 @@ pub(crate) fn store_word(
     Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn try_allocate(
-    mut hp: RegMut<HP>,
-    sp: Reg<SP>,
-    a: Word,
-    memory: &mut Memory,
-) -> SimpleResult<()> {
-    let (result, overflow) = hp.overflowing_sub(a);
-
-    if overflow {
-        return Err(PanicReason::MemoryOverflow.into());
-    }
-
-    memory.grow_heap(sp, result)?;
-    *hp = result;
-    Ok(())
-}
-
 pub(crate) fn malloc(
     hp: RegMut<HP>,
     sp: Reg<SP>,
     pc: RegMut<PC>,
-    a: Word,
+    amount: Word,
     memory: &mut Memory,
 ) -> SimpleResult<()> {
-    try_allocate(hp, sp, a, memory)?;
+    memory.grow_heap_by(sp, hp, amount)?;
     Ok(inc_pc(pc)?)
 }
 

@@ -33,6 +33,7 @@ pub struct MemoryClient<'a, Ecal = NotSupportedEcal> {
     transactor: Transactor<'a, MemoryStorage, Script, Ecal>,
 }
 
+#[cfg(any(test, feature = "test-helpers"))]
 impl<'a> Default for MemoryClient<'a> {
     fn default() -> Self {
         Self::from_txtor(Transactor::new(

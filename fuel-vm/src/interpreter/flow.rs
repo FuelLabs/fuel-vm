@@ -73,6 +73,8 @@ use fuel_types::{
     Word,
 };
 
+use super::VmMemory;
+
 #[cfg(test)]
 mod jump_tests;
 #[cfg(test)]

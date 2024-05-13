@@ -47,6 +47,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     PanicContext,
+    VmMemory,
 };
 use storage::*;
 

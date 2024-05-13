@@ -2,6 +2,7 @@ use super::{
     internal::inc_pc,
     ExecutableTransaction,
     Interpreter,
+    VmMemory,
 };
 use crate::{
     call::CallFrame,

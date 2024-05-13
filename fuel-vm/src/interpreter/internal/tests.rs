@@ -8,6 +8,7 @@ use crate::{
             set_variable_output,
         },
         InterpreterParams,
+        VmMemory,
     },
     pool::test_pool,
     prelude::*,

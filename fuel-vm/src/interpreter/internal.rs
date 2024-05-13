@@ -3,6 +3,7 @@ use super::{
     Interpreter,
     Memory,
     RuntimeBalances,
+    VmMemory,
 };
 use crate::{
     constraints::reg_key::*,

@@ -7,6 +7,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
+    VmMemory,
 };
 use crate::{
     constraints::reg_key::*,

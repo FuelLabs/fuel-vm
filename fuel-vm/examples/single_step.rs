@@ -14,6 +14,7 @@ use fuel_vm::{
     interpreter::{
         Interpreter,
         NotSupportedEcal,
+        VmMemory,
     },
     pool::VmPool,
     prelude::*,

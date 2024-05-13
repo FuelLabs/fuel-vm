@@ -94,6 +94,7 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
+        interpreter::VmMemory,
         memory_client::MemoryClient,
         pool::test_pool,
         state::StateTransition,

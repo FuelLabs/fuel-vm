@@ -19,7 +19,10 @@ use fuel_asm::RegId;
 use fuel_tx::field::ScriptGasLimit;
 use fuel_types::Word;
 
-use crate::interpreter::CheckedMetadata;
+use crate::interpreter::{
+    CheckedMetadata,
+    VmMemory,
+};
 
 impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where

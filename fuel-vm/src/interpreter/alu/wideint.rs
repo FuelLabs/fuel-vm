@@ -19,6 +19,7 @@ use super::super::{
 use crate::{
     constraints::reg_key::*,
     error::SimpleResult,
+    interpreter::VmMemory,
 };
 
 // This macro is used to duplicate the implementation for both 128-bit and 256-bit

@@ -70,6 +70,124 @@ impl Default for Memory {
     }
 }
 
+/// Memory access trait for the VM.
+pub trait VmMemory {
+    /// Resets memory to initial state, keeping the original allocations.
+    fn reset(&mut self);
+
+    /// Returns a linear memory representation where stack is at the beginning and heap is
+    /// at the end.
+    fn into_linear_memory(self) -> Vec<u8>;
+
+    /// Grows the stack to be at least `new_sp` bytes.
+    fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason>;
+
+    /// Grows the heap to be at least `new_hp` bytes.
+    /// Panics if the heap would be shrunk.
+    fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason>;
+
+    /// Verify that the memory range is accessble and return it as a range.
+    fn verify<A: ToAddr, B: ToAddr>(
+        &self,
+        addr: A,
+        count: B,
+    ) -> Result<MemoryRange, PanicReason>;
+
+    /// Verify a constant-sized memory range.
+    fn verify_const<A: ToAddr, const C: usize>(
+        &self,
+        addr: A,
+    ) -> Result<MemoryRange, PanicReason> {
+        self.verify(addr, C)
+    }
+
+    /// Returns a reference to memory for reading, if possible.
+    fn read<A: ToAddr, C: ToAddr>(&self, addr: A, count: C)
+        -> Result<&[u8], PanicReason>;
+
+    /// Reads a constant-sized byte array from memory, if possible.
+    fn read_bytes<A: ToAddr, const C: usize>(
+        &self,
+        at: A,
+    ) -> Result<[u8; C], PanicReason> {
+        let mut result = [0; C];
+        result.copy_from_slice(self.read(at, C)?);
+        Ok(result)
+    }
+
+    /// Gets write access to memory, if possible.
+    /// Doesn't perform any ownership checks.
+    fn write_noownerchecks<A: ToAddr, B: ToAddr>(
+        &mut self,
+        addr: A,
+        len: B,
+    ) -> Result<&mut [u8], PanicReason>;
+
+    /// Writes a constant-sized byte array to memory, if possible.
+    /// Doesn't perform any ownership checks.
+    fn write_bytes_noownerchecks<A: ToAddr, const C: usize>(
+        &mut self,
+        addr: A,
+        data: [u8; C],
+    ) -> Result<(), PanicReason> {
+        self.write_noownerchecks(addr, C)?.copy_from_slice(&data);
+        Ok(())
+    }
+
+    /// Checks that memory is writable and returns a mutable slice to it.
+    fn write<A: ToAddr, C: ToAddr>(
+        &mut self,
+        owner: OwnershipRegisters,
+        addr: A,
+        len: C,
+    ) -> Result<&mut [u8], PanicReason> {
+        let range = self.verify(addr, len)?;
+        owner.verify_ownership(&range.words())?;
+        self.write_noownerchecks(range.start(), range.len())
+    }
+
+    /// Writes a constant-sized byte array to memory, checking for ownership.
+    fn write_bytes<A: ToAddr, const C: usize>(
+        &mut self,
+        owner: OwnershipRegisters,
+        addr: A,
+        data: [u8; C],
+    ) -> Result<(), PanicReason> {
+        self.write(owner, addr, data.len())?.copy_from_slice(&data);
+        Ok(())
+    }
+
+    /// Copies the memory from `src` to `dst`.
+    #[inline]
+    #[track_caller]
+    fn memcopy_noownerchecks<A: ToAddr, B: ToAddr, C: ToAddr>(
+        &mut self,
+        dst: A,
+        src: B,
+        len: C,
+    ) -> Result<(), PanicReason> {
+        // TODO: Optimize
+
+        let src = src.to_addr()?;
+        let dst = dst.to_addr()?;
+        let len = len.to_addr()?;
+
+        let tmp = self.read(src, len)?.to_vec();
+        self.write_noownerchecks(dst, len)?.copy_from_slice(&tmp);
+        Ok(())
+    }
+
+    /// Memory access to the raw stack buffer.
+    /// Note that for efficiency reasons this might not match sp value.
+    #[cfg(any(test, feature = "test-helpers"))]
+    fn stack_raw(&self) -> &[u8];
+
+    /// Memory access to the raw heap buffer.
+    /// Note that for efficiency reasons this might not match hp value.
+    #[cfg(any(test, feature = "test-helpers"))]
+    fn heap_raw(&self) -> &[u8];
+}
+
 impl Memory {
     /// Create a new VM memory.
     pub fn new() -> Self {
@@ -80,20 +198,22 @@ impl Memory {
         }
     }
 
-    /// Resets memory to initial state, keeping the original allocations.
-    pub fn reset(&mut self) {
-        self.stack.truncate(0);
-        self.hp = MEM_SIZE;
-    }
-
     /// Offset of the heap section
     fn heap_offset(&self) -> usize {
         MEM_SIZE.saturating_sub(self.heap.len())
     }
+}
+
+impl VmMemory for Memory {
+    /// Resets memory to initial state, keeping the original allocations.
+    fn reset(&mut self) {
+        self.stack.truncate(0);
+        self.hp = MEM_SIZE;
+    }
 
     /// Returns a linear memory representation where stack is at the beginning and heap is
     /// at the end.
-    pub fn into_linear_memory(self) -> Vec<u8> {
+    fn into_linear_memory(self) -> Vec<u8> {
         let uninit_memory_size = MEM_SIZE
             .saturating_sub(self.stack.len())
             .saturating_sub(self.heap.len());
@@ -105,7 +225,7 @@ impl Memory {
     }
 
     /// Grows the stack to be at least `new_sp` bytes.
-    pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
+    fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
         let new_sp = new_sp.min(MEM_SIZE as Word) as usize;
         if new_sp > self.stack.len() {
@@ -120,7 +240,7 @@ impl Memory {
 
     /// Grows the heap to be at least `new_hp` bytes.
     /// Panics if the heap would be shrunk.
-    pub fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
+    fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
         let new_hp_word = new_hp.min(MEM_SIZE as Word);
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
         let new_hp = new_hp_word as usize;
@@ -161,7 +281,7 @@ impl Memory {
     }
 
     /// Verify that the memory range is accessble and return it as a range.
-    pub fn verify<A: ToAddr, B: ToAddr>(
+    fn verify<A: ToAddr, B: ToAddr>(
         &self,
         addr: A,
         count: B,
@@ -180,17 +300,9 @@ impl Memory {
         }
     }
 
-    /// Verify a constant-sized memory range.
-    pub fn verify_const<A: ToAddr, const C: usize>(
-        &self,
-        addr: A,
-    ) -> Result<MemoryRange, PanicReason> {
-        self.verify(addr, C)
-    }
-
     /// Returns a reference to memory for reading, if possible.
     #[allow(clippy::arithmetic_side_effects)] // Safety: subtractions are checked
-    pub fn read<A: ToAddr, C: ToAddr>(
+    fn read<A: ToAddr, C: ToAddr>(
         &self,
         addr: A,
         count: C,
@@ -208,20 +320,10 @@ impl Memory {
         }
     }
 
-    /// Reads a constant-sized byte array from memory, if possible.
-    pub fn read_bytes<A: ToAddr, const C: usize>(
-        &self,
-        at: A,
-    ) -> Result<[u8; C], PanicReason> {
-        let mut result = [0; C];
-        result.copy_from_slice(self.read(at, C)?);
-        Ok(result)
-    }
-
     /// Gets write access to memory, if possible.
     /// Doesn't perform any ownership checks.
     #[allow(clippy::arithmetic_side_effects)] // Safety: subtractions are checked
-    pub fn write_noownerchecks<A: ToAddr, B: ToAddr>(
+    fn write_noownerchecks<A: ToAddr, B: ToAddr>(
         &mut self,
         addr: A,
         len: B,
@@ -238,71 +340,17 @@ impl Memory {
         }
     }
 
-    /// Writes a constant-sized byte array to memory, if possible.
-    /// Doesn't perform any ownership checks.
-    pub fn write_bytes_noownerchecks<A: ToAddr, const C: usize>(
-        &mut self,
-        addr: A,
-        data: [u8; C],
-    ) -> Result<(), PanicReason> {
-        self.write_noownerchecks(addr, C)?.copy_from_slice(&data);
-        Ok(())
-    }
-
-    /// Checks that memory is writable and returns a mutable slice to it.
-    pub fn write<A: ToAddr, C: ToAddr>(
-        &mut self,
-        owner: OwnershipRegisters,
-        addr: A,
-        len: C,
-    ) -> Result<&mut [u8], PanicReason> {
-        let range = self.verify(addr, len)?;
-        owner.verify_ownership(&range.words())?;
-        self.write_noownerchecks(range.start(), range.len())
-    }
-
-    /// Writes a constant-sized byte array to memory, checking for ownership.
-    pub fn write_bytes<A: ToAddr, const C: usize>(
-        &mut self,
-        owner: OwnershipRegisters,
-        addr: A,
-        data: [u8; C],
-    ) -> Result<(), PanicReason> {
-        self.write(owner, addr, data.len())?.copy_from_slice(&data);
-        Ok(())
-    }
-
-    /// Copies the memory from `src` to `dst`.
-    #[inline]
-    #[track_caller]
-    pub fn memcopy_noownerchecks<A: ToAddr, B: ToAddr, C: ToAddr>(
-        &mut self,
-        dst: A,
-        src: B,
-        len: C,
-    ) -> Result<(), PanicReason> {
-        // TODO: Optimize
-
-        let src = src.to_addr()?;
-        let dst = dst.to_addr()?;
-        let len = len.to_addr()?;
-
-        let tmp = self.read(src, len)?.to_vec();
-        self.write_noownerchecks(dst, len)?.copy_from_slice(&tmp);
-        Ok(())
-    }
-
     /// Memory access to the raw stack buffer.
     /// Note that for efficiency reasons this might not match sp value.
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn stack_raw(&self) -> &[u8] {
+    fn stack_raw(&self) -> &[u8] {
         &self.stack
     }
 
     /// Memory access to the raw heap buffer.
     /// Note that for efficiency reasons this might not match hp value.
     #[cfg(any(test, feature = "test-helpers"))]
-    pub fn heap_raw(&self) -> &[u8] {
+    fn heap_raw(&self) -> &[u8] {
         &self.heap
     }
 }

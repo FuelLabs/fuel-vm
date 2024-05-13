@@ -14,6 +14,7 @@ use crate::{
         EcalHandler,
         ExecutableTransaction,
         Interpreter,
+        VmMemory,
     },
     state::ExecuteState,
     storage::InterpreterStorage,

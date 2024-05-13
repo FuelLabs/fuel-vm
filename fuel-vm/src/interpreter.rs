@@ -80,6 +80,7 @@ pub use ecal::{
 pub use memory::{
     Memory,
     MemoryRange,
+    VmMemory,
 };
 
 use crate::checked_transaction::{

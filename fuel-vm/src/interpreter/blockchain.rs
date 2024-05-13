@@ -37,6 +37,7 @@ use crate::{
         Interpreter,
         Memory,
         RuntimeBalances,
+        VmMemory,
     },
     prelude::Profiler,
     storage::{

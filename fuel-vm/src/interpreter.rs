@@ -112,7 +112,7 @@ pub struct NotSupportedEcal;
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug)]
-#[cfg_attr(any(test, featutre = "test-helpers"), derive(Clone))]
+#[cfg_attr(any(test, feature = "test-helpers"), derive(Clone))]
 pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: M,

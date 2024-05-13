@@ -62,7 +62,7 @@ use super::{
 /// This allows us to construct a `Position` (and its in-order index) by
 /// providing either an in-order index directly or, in the case of a leaf, a
 /// leaf index. This functionality is captured by `from_in_order_index()` and
-/// `from_leaf_index_unwrap()` respectively.
+/// `from_leaf_index()` respectively.
 ///
 /// Traversal of a Merkle Tree can be performed by the methods on a given
 /// `Position` to retrieve its sibling, parent, or uncle `Position`.

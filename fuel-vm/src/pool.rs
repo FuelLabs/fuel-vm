@@ -4,23 +4,31 @@ use crate::interpreter::Memory;
 
 /// Trait for a VM memory pool.
 pub trait VmMemoryPool {
+    /// The memory instance returned by this pool.
+    type Memory: AsRef<Memory> + AsMut<Memory>;
+
     /// Gets a new VM memory instance from the pool.
-    fn get_new(&self) -> impl AsRef<Memory> + AsMut<Memory>;
+    /// The returned instance is allowed to call `recycle` when dropped,
+    /// in which case the pool must handle gracefully the case of recycling
+    /// it by calling `recycle` manually.
+    fn get_new(&self) -> Self::Memory;
 
     /// Recycles a VM memory instance back into the pool.
-    fn recycle(&self, mem: Memory);
+    fn recycle(&self, mem: Self::Memory);
 }
 
-/// Dummy pool for testing.
+/// Dummy pool that just returns new instance every time.
 #[cfg(any(test, feature = "test-helpers"))]
 #[derive(Default, Clone)]
 pub struct DummyPool;
 
 #[cfg(any(test, feature = "test-helpers"))]
 impl VmMemoryPool for DummyPool {
-    fn get_new(&self) -> impl AsRef<Memory> + AsMut<Memory> {
+    type Memory = Memory;
+
+    fn get_new(&self) -> Self::Memory {
         Memory::new()
     }
 
-    fn recycle(&self, _mem: Memory) {}
+    fn recycle(&self, _mem: Self::Memory) {}
 }

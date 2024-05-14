@@ -320,12 +320,12 @@ where
     TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
-    pub fn push(&mut self, data: &[u8]) -> Result<(), TreeExtendError<StorageError>> {
+    pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         let node = Node::create_leaf(self.leaves_count, data)
-            .ok_or(TreeExtendError::TooLarge)?;
+            .ok_or(MerkleTreeError::TooLargeTree(self.leaves_count))?;
         self.storage
             .insert(&node.key(), &node.as_ref().into())
-            .map_err(TreeExtendError::Storage)?;
+            .map_err(MerkleTreeError::StorageError)?;
         let next = self.head.take();
         let head = Subtree::new(node, next);
         self.head = Some(head);
@@ -343,7 +343,7 @@ where
     // PRIVATE
     //
 
-    fn join_all_subtrees(&mut self) -> Result<(), TreeExtendError<StorageError>> {
+    fn join_all_subtrees(&mut self) -> Result<(), MerkleTreeError<StorageError>> {
         while {
             // Iterate through all subtrees in the tree to see which subtrees
             // can be merged. Two consecutive subtrees will be merged if, and
@@ -363,10 +363,10 @@ where
             let mut head = self.head.take().expect("Expected head to be present");
             let mut head_next = head.take_next().expect("Expected next to be present");
             let joined_head = join_subtrees(&mut head_next, &mut head)
-                .ok_or(TreeExtendError::TooLarge)?;
+                .ok_or(MerkleTreeError::TooLargeTree(self.leaves_count))?;
             self.storage
                 .insert(&joined_head.node().key(), &joined_head.node().into())
-                .map_err(TreeExtendError::Storage)?;
+                .map_err(MerkleTreeError::StorageError)?;
             self.head = Some(joined_head);
         }
 
@@ -396,15 +396,6 @@ where
     head.node().clone()
 }
 
-/// Error when attempting to extend a tree.
-#[derive(Debug, Clone, PartialEq)]
-pub enum TreeExtendError<StorageError> {
-    /// Max tree size exceeded
-    TooLarge,
-    /// Storage write failed
-    Storage(StorageError),
-}
-
 #[cfg(test)]
 mod test {
     use super::{
@@ -415,7 +406,6 @@ mod test {
         binary::{
             empty_sum,
             leaf_sum,
-            merkle_tree::TreeExtendError,
             node_sum,
             Node,
             Primitive,
@@ -959,6 +949,6 @@ mod test {
         let result = tree.push(&[]);
 
         // Then
-        assert_eq!(result, Err(TreeExtendError::TooLarge));
+        assert!(matches!(result, Err(MerkleTreeError::TooLargeTree(_))));
     }
 }

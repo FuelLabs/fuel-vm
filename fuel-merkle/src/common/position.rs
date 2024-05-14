@@ -124,20 +124,6 @@ impl Position {
         Self::from_leaf_index(index).expect("Index too large")
     }
 
-    /// The sibling position.
-    /// A position shares the same parent and height as its sibling.
-    pub fn sibling(self) -> Result<Self, GetNodeError> {
-        #[allow(clippy::arithmetic_side_effects)] // height() <= 64
-        let shift = 1u64
-            .checked_shl(self.height() + 1)
-            .ok_or(GetNodeError::CannotExist)?;
-        let this = self.in_order_index();
-        Ok(Self::from_in_order_index(match self.orientation()? {
-            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
-            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
-        }))
-    }
-
     /// The parent position.
     /// The parent position has a height less 1 relative to this position.
     pub fn parent(self) -> Result<Self, GetNodeError> {
@@ -151,9 +137,25 @@ impl Position {
         }))
     }
 
+    /// The sibling position.
+    /// A position shares the same parent and height as its sibling.
+    #[cfg(test)]
+    pub fn sibling(self) -> Result<Self, GetNodeError> {
+        #[allow(clippy::arithmetic_side_effects)] // height() <= 64
+        let shift = 1u64
+            .checked_shl(self.height() + 1)
+            .ok_or(GetNodeError::CannotExist)?;
+        let this = self.in_order_index();
+        Ok(Self::from_in_order_index(match self.orientation()? {
+            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
+            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
+        }))
+    }
+
     /// The uncle position.
     /// The uncle position is the sibling of the parent and has a height less 1
     /// relative to this position.
+    #[cfg(test)]
     pub fn uncle(self) -> Result<Self, GetNodeError> {
         self.parent()?.sibling()
     }

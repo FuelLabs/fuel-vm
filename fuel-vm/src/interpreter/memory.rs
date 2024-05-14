@@ -86,7 +86,7 @@ impl PartialEq for Memory {
     /// Equality comparison of the accessible memory.
     #[allow(clippy::arithmetic_side_effects)] // Safety: hp is kept valid everywhere
     fn eq(&self, other: &Self) -> bool {
-        self.stack == other.stack && {
+        self.stack == other.stack && self.hp == other.hp && {
             let self_hs = self.hp - self.heap_offset();
             let other_hs = other.hp - other.heap_offset();
             self.heap[self_hs..] == other.heap[other_hs..]

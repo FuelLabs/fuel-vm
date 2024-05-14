@@ -13,10 +13,7 @@ use fuel_tx::{
     ScriptExecutionResult,
     TransactionBuilder,
 };
-use fuel_vm::{
-    pool::test_pool,
-    prelude::*,
-};
+use fuel_vm::prelude::*;
 use itertools::Itertools;
 
 /// An ECAL opcode handler function, which charges for `noop` and does nothing.
@@ -45,7 +42,7 @@ fn noop_ecal() {
     .collect();
 
     let mut client = MemoryClient::<_, NoopEcal>::new(
-        test_pool().get_new(),
+        Memory::new(),
         fuel_vm::prelude::MemoryStorage::default(),
         Default::default(),
     );
@@ -55,7 +52,7 @@ fn noop_ecal() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, test_pool().get_new())
+        .into_checked(Default::default(), &consensus_params, Memory::new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -131,7 +128,7 @@ fn provide_ecal_fn() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, test_pool().get_new())
+        .into_checked(Default::default(), &consensus_params, Memory::new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");

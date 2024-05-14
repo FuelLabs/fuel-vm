@@ -17,7 +17,6 @@ use crate::{
         Memory,
         NotSupportedEcal,
     },
-    pool::MemoryFromPool,
     state::{
         ProgramState,
         StateTransition,
@@ -34,9 +33,6 @@ use fuel_tx::{
     Upgrade,
     Upload,
 };
-
-#[cfg(any(test, feature = "test-helpers"))]
-use crate::pool::test_pool;
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on
@@ -379,17 +375,13 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<S, Tx, Ecal> Default for Transactor<MemoryFromPool, S, Tx, Ecal>
+impl<S, Tx, Ecal> Default for Transactor<Memory, S, Tx, Ecal>
 where
     S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
-        Self::new(
-            test_pool().get_new(),
-            S::default(),
-            InterpreterParams::default(),
-        )
+        Self::new(Memory::new(), S::default(), InterpreterParams::default())
     }
 }

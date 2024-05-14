@@ -21,9 +21,7 @@ where
     Tx: IntoChecked,
 {
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type
-    fn finalize_checked<M>(&self, height: BlockHeight, memory: M) -> Checked<Tx>
-    where
-        M: AsRef<Memory> + AsMut<Memory>;
+    fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
     /// only
@@ -35,12 +33,9 @@ where
     Self: Finalizable<Tx>,
     Checked<Tx>: CheckPredicates,
 {
-    fn finalize_checked<M>(&self, height: BlockHeight, memory: M) -> Checked<Tx>
-    where
-        M: AsRef<Memory> + AsMut<Memory>,
-    {
+    fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx> {
         self.finalize()
-            .into_checked(height, self.get_params(), memory)
+            .into_checked(height, self.get_params(), Memory::new())
             .expect("failed to check tx")
     }
 

@@ -5,7 +5,7 @@ use crate::{
         CheckPredicates,
         Checked,
     },
-    pool::test_pool,
+    interpreter::Memory,
     prelude::*,
 };
 use alloc::{
@@ -58,7 +58,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params.into(), test_pool().get_new())
+        .check_predicates(&params.into(), Memory::new())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -95,20 +95,19 @@ fn estimate_gas_gives_proper_gas_used() {
     // unestimated transaction should fail as it's predicates are not estimated
     assert!(transaction
         .clone()
-        .into_checked(Default::default(), params, test_pool().get_new())
+        .into_checked(Default::default(), params, Memory::new())
         .is_err());
 
     Interpreter::<_, PredicateStorage, _>::estimate_predicates(
         &mut transaction,
         &params.into(),
-        test_pool().get_new(),
+        Memory::new(),
     )
     .expect("Should successfully estimate predicates");
 
     // transaction should pass checking after estimation
 
-    let check_res =
-        transaction.into_checked(Default::default(), params, test_pool().get_new());
+    let check_res = transaction.into_checked(Default::default(), params, Memory::new());
     assert!(check_res.is_ok());
 }
 

@@ -28,7 +28,7 @@ use sha3::{
 };
 
 use crate::{
-    pool::test_pool,
+    interpreter::Memory,
     prelude::*,
     util::test_helpers::check_expected_reason_for_instructions,
 };
@@ -87,7 +87,7 @@ fn secp256k1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, test_pool().get_new());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -146,7 +146,7 @@ fn ecrecover_tx_id() {
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
     let tx = tx
-        .into_checked(height, &consensus_params, test_pool().get_new())
+        .into_checked(height, &consensus_params, Memory::new())
         .unwrap();
 
     let receipts = client.transact(tx);
@@ -160,7 +160,10 @@ fn ecrecover_tx_id() {
 #[cfg(feature = "std")]
 #[tokio::test]
 async fn recover_tx_id_predicate() {
-    use crate::checked_transaction::EstimatePredicates;
+    use crate::{
+        checked_transaction::EstimatePredicates,
+        pool::DummyPool,
+    };
     use rand::Rng;
     let rng = &mut StdRng::seed_from_u64(1234u64);
 
@@ -226,20 +229,20 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&check_params, test_pool())
+            .estimate_predicates_async::<TokioWithRayon>(&check_params, DummyPool)
             .await
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &consensus_params, test_pool().get_new())
+            .into_checked(maturity, &consensus_params, Memory::new())
             .expect("Should check predicate successfully");
     }
 
     // sequential version
-    tx.estimate_predicates(&check_params, test_pool().get_new())
+    tx.estimate_predicates(&check_params, Memory::new())
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &consensus_params, test_pool().get_new())
+    tx.into_checked(maturity, &consensus_params, Memory::new())
         .expect("Should check predicate successfully");
 }
 
@@ -374,7 +377,7 @@ fn secp256r1_recover() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, test_pool().get_new());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -511,7 +514,7 @@ fn ed25519_verify() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, test_pool().get_new());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -643,7 +646,7 @@ fn sha256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, test_pool().get_new());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -734,7 +737,7 @@ fn keccak256() {
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
-        .finalize_checked(height, test_pool().get_new());
+        .finalize_checked(height);
 
     let receipts = client.transact(tx);
     let success = receipts

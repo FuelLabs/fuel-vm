@@ -96,7 +96,6 @@ pub mod test_helpers {
         },
         interpreter::Memory,
         memory_client::MemoryClient,
-        pool::test_pool,
         state::StateTransition,
         storage::{
             ContractsAssetsStorage,
@@ -337,10 +336,7 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder.finalize_checked(
-                self.block_height,
-                &mut Memory::new(), // TOOD: recycle
-            )
+            self.builder.finalize_checked(self.block_height)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -450,11 +446,7 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(
-                    self.block_height,
-                    &self.consensus_params,
-                    test_pool().get_new(),
-                )
+                .into_checked(self.block_height, &self.consensus_params, Memory::new())
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -534,7 +526,7 @@ pub mod test_helpers {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
-                test_pool().get_new(),
+                Memory::new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -549,7 +541,7 @@ pub mod test_helpers {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
-                test_pool().get_new(),
+                Memory::new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -565,7 +557,7 @@ pub mod test_helpers {
             let interpreter_params =
                 InterpreterParams::new(gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
-                test_pool().get_new(),
+                Memory::new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -657,7 +649,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
-            .finalize_checked(height, test_pool().get_new());
+            .finalize_checked(height);
 
         client
             .deploy(contract_deployer)
@@ -693,7 +685,7 @@ pub mod test_helpers {
             ))
             .add_random_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, test_pool().get_new());
+            .finalize_checked(height);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

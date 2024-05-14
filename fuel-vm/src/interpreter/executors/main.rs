@@ -28,7 +28,7 @@ use crate::{
         Memory,
         RuntimeBalances,
     },
-    pool::VmPool,
+    pool::VmMemoryPool,
     predicate::RuntimePredicate,
     prelude::{
         BugVariant,
@@ -176,7 +176,7 @@ where
     pub async fn check_predicates_async<E>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
-        pool: VmPool,
+        pool: impl VmMemoryPool + Clone + Send + 'static,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -220,7 +220,7 @@ where
     pub async fn estimate_predicates_async<E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
-        pool: VmPool,
+        pool: impl VmMemoryPool + Clone + Send + 'static,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -239,7 +239,7 @@ where
     async fn run_predicate_async<E>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
-        pool: VmPool,
+        pool: impl VmMemoryPool + Clone + Send + 'static,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,

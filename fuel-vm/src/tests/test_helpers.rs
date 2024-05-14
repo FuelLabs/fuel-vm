@@ -11,8 +11,6 @@ use fuel_crypto::SecretKey;
 use fuel_tx::ConsensusParameters;
 use fuel_vm::prelude::*;
 
-use fuel_vm::pool::test_pool;
-
 /// Set a register `r` to a Word-sized number value using left-shifts
 pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
     let r = u8::try_from(r).unwrap();
@@ -50,7 +48,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
             Default::default(),
         )
         .finalize()
-        .into_checked(Default::default(), &consensus_params, test_pool().get_new())
+        .into_checked(Default::default(), &consensus_params, Memory::new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     client.receipts().expect("Expected receipts").to_vec()

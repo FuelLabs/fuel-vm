@@ -5,6 +5,7 @@
 use super::ExecutableTransaction;
 use super::{
     Interpreter,
+    Memory,
     RuntimeBalances,
 };
 use crate::{
@@ -14,12 +15,8 @@ use crate::{
         InterpreterParams,
         PanicContext,
     },
-    pool::MemoryFromPool,
     state::Debugger,
 };
-
-#[cfg(any(test, feature = "test-helpers"))]
-use crate::pool::test_pool;
 
 use alloc::vec;
 
@@ -100,7 +97,7 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<S, Tx, Ecal> Default for Interpreter<MemoryFromPool, S, Tx, Ecal>
+impl<S, Tx, Ecal> Default for Interpreter<Memory, S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
@@ -108,7 +105,7 @@ where
 {
     fn default() -> Self {
         Interpreter::<_, S, Tx, Ecal>::with_storage(
-            test_pool().get_new(),
+            Memory::new(),
             Default::default(),
             InterpreterParams::default(),
         )
@@ -116,7 +113,7 @@ where
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<Tx, Ecal> Interpreter<MemoryFromPool, (), Tx, Ecal>
+impl<Tx, Ecal> Interpreter<Memory, (), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -130,7 +127,7 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryFromPool, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<Memory, MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -144,7 +141,7 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryFromPool, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<Memory, MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
@@ -154,7 +151,7 @@ where
     /// It will have full capabilities.
     pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
         Interpreter::<_, MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
-            test_pool().get_new(),
+            Memory::new(),
             Default::default(),
             InterpreterParams::default(),
             ecal,

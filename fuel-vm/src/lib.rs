@@ -141,9 +141,11 @@ pub mod prelude {
         interpreter::{
             ExecutableTransaction,
             Interpreter,
+            Memory,
             MemoryRange,
         },
         memory_client::MemoryClient,
+        pool::VmMemoryPool,
         predicate::RuntimePredicate,
         state::{
             Debugger,

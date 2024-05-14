@@ -9,7 +9,7 @@ use crate::prelude::*;
 use fuel_asm::RegId;
 
 #[cfg(test)]
-use crate::pool::test_pool;
+use crate::interpreter::Memory;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
@@ -94,7 +94,7 @@ fn breakpoint_script() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, test_pool().get_new())
+        .into_checked(height, &consensus_params, Memory::new())
         .expect("failed to generate checked tx")
         .into_ready(
             gas_price,
@@ -173,7 +173,7 @@ fn single_stepping() {
         .script_gas_limit(gas_limit)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, test_pool().get_new())
+        .into_checked(height, &consensus_params, Memory::new())
         .expect("failed to generate checked tx")
         .into_ready(
             gas_price,

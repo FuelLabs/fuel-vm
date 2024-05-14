@@ -6,7 +6,6 @@ use core::ops::Range;
 use super::*;
 use crate::{
     interpreter::InterpreterParams,
-    pool::test_pool,
     prelude::*,
 };
 use fuel_asm::op;
@@ -16,8 +15,6 @@ use test_case::test_case;
 #[cfg(feature = "random")]
 #[test]
 fn memcopy() {
-    use crate::pool::test_pool;
-
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
     let zero_gas_price = 0;
 
@@ -25,7 +22,7 @@ fn memcopy() {
     consensus_params.set_tx_params(tx_params);
 
     let mut vm = Interpreter::<_, _, _>::with_storage(
-        test_pool().get_new(),
+        Memory::new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -35,7 +32,7 @@ fn memcopy() {
         .finalize();
 
     let tx = tx
-        .into_checked(Default::default(), &consensus_params, test_pool().get_new())
+        .into_checked(Default::default(), &consensus_params, Memory::new())
         .expect("default tx should produce a valid checked transaction")
         .into_ready(
             zero_gas_price,
@@ -105,7 +102,7 @@ fn stack_alloc_ownership() {
         .into_checked(
             Default::default(),
             &ConsensusParameters::standard(),
-            test_pool().get_new(),
+            Memory::new(),
         )
         .expect("Empty script should be valid")
         .into_ready(

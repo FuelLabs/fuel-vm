@@ -10,7 +10,6 @@ use crate::{
         InterpreterParams,
         NotSupportedEcal,
     },
-    pool::test_pool,
 };
 use fuel_asm::{
     op,
@@ -91,14 +90,14 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, test_pool().get_new())
+        .into_checked(height, &consensus_params, Memory::new())
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     // Deploy the contract into the blockchain
     assert!(Transactor::<_, _, _>::new(
-        test_pool().get_new(),
+        Memory::new(),
         &mut storage,
         interpreter_params.clone()
     )
@@ -143,11 +142,11 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, test_pool().get_new())
+        .into_checked(height, &consensus_params, Memory::new())
         .expect("failed to check tx");
 
     assert!(Transactor::<_, _, _>::new(
-        test_pool().get_new(),
+        Memory::new(),
         &mut storage,
         interpreter_params.clone()
     )
@@ -206,18 +205,15 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, test_pool().get_new())
+        .into_checked(height, &consensus_params, Memory::new())
         .expect("failed to check tx");
 
-    let receipts = Transactor::<_, _, _>::new(
-        test_pool().get_new(),
-        &mut storage,
-        interpreter_params,
-    )
-    .transact(tx)
-    .receipts()
-    .expect("Failed to transact")
-    .to_owned();
+    let receipts =
+        Transactor::<_, _, _>::new(Memory::new(), &mut storage, interpreter_params)
+            .transact(tx)
+            .receipts()
+            .expect("Failed to transact")
+            .to_owned();
 
     let ra = receipts[1]
         .ra()
@@ -250,7 +246,7 @@ fn get_metadata_chain_id() {
     };
 
     let mut client = MemoryClient::<_, NotSupportedEcal>::new(
-        test_pool().get_new(),
+        Memory::new(),
         Default::default(),
         interpreter_params,
     );
@@ -268,7 +264,7 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, test_pool().get_new())
+        .into_checked(height, &consensus_params, Memory::new())
         .unwrap();
 
     let receipts = client.transact(script);
@@ -303,11 +299,11 @@ fn get_metadata_base_asset_id() {
     .script_gas_limit(gas_limit)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &params, test_pool().get_new())
+    .into_checked(height, &params, Memory::new())
     .unwrap();
 
     let receipts = Transactor::<_, _, _>::new(
-        test_pool().get_new(),
+        Memory::new(),
         &mut storage,
         InterpreterParams {
             base_asset_id: *params.base_asset_id(),
@@ -341,15 +337,11 @@ fn get_metadata_tx_start() {
     .script_gas_limit(gas_limit)
     .add_random_fee_input()
     .finalize()
-    .into_checked(
-        height,
-        &ConsensusParameters::default(),
-        test_pool().get_new(),
-    )
+    .into_checked(height, &ConsensusParameters::default(), Memory::new())
     .unwrap();
 
     let receipts = Transactor::<_, _, _>::new(
-        test_pool().get_new(),
+        Memory::new(),
         &mut storage,
         InterpreterParams::default(),
     )
@@ -399,7 +391,7 @@ fn get_transaction_fields() {
             AssetId::zeroed(),
             rng.gen(),
         )
-        .finalize_checked(height, test_pool().get_new());
+        .finalize_checked(height);
 
     client.deploy(tx).unwrap();
 
@@ -491,7 +483,7 @@ fn get_transaction_fields() {
         )
         .add_output(Output::coin(rng.gen(), asset_amt, asset))
         .add_output(Output::change(rng.gen(), rng.gen_range(10..1000), asset))
-        .finalize_checked(height, test_pool().get_new());
+        .finalize_checked(height);
 
     let inputs = tx.as_ref().inputs();
     let outputs = tx.as_ref().outputs();

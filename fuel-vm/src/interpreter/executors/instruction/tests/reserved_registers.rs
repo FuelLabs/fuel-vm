@@ -7,7 +7,6 @@ use super::*;
 use crate::{
     checked_transaction::IntoChecked,
     interpreter::InterpreterParams,
-    pool::test_pool,
     prelude::{
         FeeParameters,
         MemoryStorage,
@@ -55,7 +54,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     consensus_params.set_fee_params(fee_params);
 
     let mut vm = Interpreter::<_, _, _>::with_storage(
-        test_pool().get_new(),
+        Memory::new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -67,7 +66,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .finalize();
 
     let tx = tx
-        .into_checked(block_height, &consensus_params, test_pool().get_new())
+        .into_checked(block_height, &consensus_params, Memory::new())
         .expect("failed to check tx")
         .into_ready(zero_gas_price, vm.gas_costs(), &fee_params)
         .expect("failed dynamic checks");

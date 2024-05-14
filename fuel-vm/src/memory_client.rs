@@ -10,7 +10,6 @@ use crate::{
         Memory,
         NotSupportedEcal,
     },
-    pool::MemoryFromPool,
     state::StateTransitionRef,
     storage::MemoryStorage,
     transactor::Transactor,
@@ -26,9 +25,6 @@ use fuel_tx::{
     Upload,
 };
 
-#[cfg(any(test, feature = "test-helpers"))]
-use crate::pool::test_pool;
-
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
 pub struct MemoryClient<M, Ecal = NotSupportedEcal> {
@@ -36,10 +32,10 @@ pub struct MemoryClient<M, Ecal = NotSupportedEcal> {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Default for MemoryClient<MemoryFromPool> {
+impl Default for MemoryClient<Memory> {
     fn default() -> Self {
         Self::from_txtor(Transactor::new(
-            test_pool().get_new(),
+            Memory::new(),
             MemoryStorage::default(),
             InterpreterParams::default(),
         ))

@@ -42,8 +42,8 @@ pub enum MerkleTreeError<StorageError> {
     #[display(fmt = "{}", _0)]
     StorageError(StorageError),
 
-    #[display(fmt = "the tree is too large and contains {_0} leaves")]
-    TooLargeTree(u64),
+    #[display(fmt = "the tree is too large")]
+    TooLarge,
 }
 
 impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
@@ -111,7 +111,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
             let parent = node
                 .position()
                 .parent()
-                .map_err(|_| MerkleTreeError::TooLargeTree(self.leaves_count))?;
+                .map_err(|_| MerkleTreeError::TooLarge)?;
             head = Node::create_node(parent, node, &head);
             StorageMutateInfallible::insert(
                 scratch_storage,
@@ -222,8 +222,7 @@ where
         leaves_count: u64,
     ) -> Result<Self, MerkleTreeError<StorageError>> {
         let mut nodes = Vec::new();
-        let peaks = peak_positions(leaves_count)
-            .ok_or(MerkleTreeError::TooLargeTree(leaves_count))?;
+        let peaks = peak_positions(leaves_count).ok_or(MerkleTreeError::TooLarge)?;
         for peak in peaks.iter() {
             let key = peak.in_order_index();
             let node = storage
@@ -303,7 +302,7 @@ where
     /// TODO: fix this issue
     pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
         let new_node = Node::create_leaf(self.leaves_count, data)
-            .ok_or(MerkleTreeError::TooLargeTree(self.leaves_count))?;
+            .ok_or(MerkleTreeError::TooLarge)?;
 
         // u64 cannot overflow, as memory is finite
         #[allow(clippy::arithmetic_side_effects)]
@@ -320,9 +319,7 @@ where
             })
             .map_err(|err| match err {
                 NodeStackPushError::Callback(err) => err,
-                NodeStackPushError::TooLarge => {
-                    MerkleTreeError::TooLargeTree(self.leaves_count)
-                }
+                NodeStackPushError::TooLarge => MerkleTreeError::TooLarge,
             })
     }
 }
@@ -380,7 +377,6 @@ mod test {
         StorageMutate,
     };
 
-    use crate::binary::MerkleTreeError::TooLargeTree;
     use alloc::vec::Vec;
 
     #[derive(Debug)]
@@ -885,7 +881,7 @@ mod test {
         let result = MerkleTree::load(storage_map, LEAVES_COUNT).map(|_| ());
 
         // Then
-        assert_eq!(result, Err(TooLargeTree(LEAVES_COUNT)));
+        assert_eq!(result, Err(MerkleTreeError::TooLarge));
     }
 
     #[test]
@@ -910,6 +906,6 @@ mod test {
         let result = tree.push(&[]);
 
         // Then
-        assert!(matches!(result, Err(MerkleTreeError::TooLargeTree(_))));
+        assert_eq!(result, Err(MerkleTreeError::TooLarge));
     }
 }

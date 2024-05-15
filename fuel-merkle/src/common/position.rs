@@ -249,8 +249,6 @@ impl Position {
         PositionPath::new(self, *leaf, leaves_count)
     }
 
-    // PRIVATE
-
     /// Orientation of the position index relative to its parent.
     ///
     /// The orientation is determined by the reading the `n`th rightmost digit

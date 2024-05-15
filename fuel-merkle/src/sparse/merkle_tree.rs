@@ -180,8 +180,6 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         &self.storage
     }
 
-    // PRIVATE
-
     fn root_node(&self) -> &Node {
         &self.root_node
     }
@@ -227,8 +225,6 @@ where
             Ok(tree)
         }
     }
-
-    // PRIVATE
 
     fn path_set(
         &self,
@@ -464,8 +460,6 @@ where
 
         Ok(())
     }
-
-    // PRIVATE
 
     fn update_with_path_set(
         &mut self,

@@ -72,6 +72,9 @@ impl MerkleRootCalculator {
         Ok(())
     }
 
+    /// Push a new leaf node.
+    /// Panics if the tree would be too large to compute the root for.
+    /// In practice this never occurs, as you'd run out of memory first.
     pub fn push(&mut self, data: &[u8]) {
         let node = Node::create_leaf(0, data).expect("Zero is a valid index for a leaf");
         self.push_with_callback::<_, Infallible>(node, |_| Ok(()))

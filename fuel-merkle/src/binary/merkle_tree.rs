@@ -357,11 +357,15 @@ where
         self.nodes.push_front(new_node);
 
         // Propagate changes through the tree.
-
         while self.nodes.len() > 1 {
-            // same height checks
-            let lhs = self.nodes.pop_front().expect("Checked in loop bound");
             let rhs = self.nodes.pop_front().expect("Checked in loop bound");
+            let lhs = self.nodes.pop_front().expect("Checked in loop bound");
+
+            if lhs.height() != rhs.height() {
+                self.nodes.push_front(lhs);
+                self.nodes.push_front(rhs);
+                break
+            }
 
             let parent_pos = lhs
                 .position()
@@ -378,15 +382,6 @@ where
         Ok(())
     }
 }
-
-// /// Returns `None` if the new node cannot be created.
-// fn join_subtrees(
-//     lhs: &mut Subtree<Node>,
-//     rhs: &mut Subtree<Node>,
-// ) -> Option<Subtree<Node>> {
-//     let joined_node = Node::create_node(lhs.node(), rhs.node())?;
-//     Some(Subtree::new(joined_node, lhs.take_next()))
-// }
 
 #[cfg(test)]
 mod test {

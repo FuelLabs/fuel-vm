@@ -29,12 +29,14 @@ impl Node {
         Some(Self { position, hash })
     }
 
-    /// Creates a new node under the parent of the left_child.
-    /// Returns `None` if the leaf cannot be created due to incorrect position.
-    pub fn create_node(left_child: &Self, right_child: &Self) -> Option<Self> {
-        let position = left_child.position().parent().ok()?;
+    /// Creates a new node with the given children.
+    pub fn create_node(
+        position: Position,
+        left_child: &Self,
+        right_child: &Self,
+    ) -> Self {
         let hash = node_sum(left_child.hash(), right_child.hash());
-        Some(Self { position, hash })
+        Self { position, hash }
     }
 
     pub fn position(&self) -> &Position {

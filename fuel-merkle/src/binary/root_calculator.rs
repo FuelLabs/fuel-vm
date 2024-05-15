@@ -33,8 +33,11 @@ impl MerkleRootCalculator {
             let right_node = &self.stack[self.stack.len() - 1];
             let left_node = &self.stack[self.stack.len() - 2];
             if right_node.height() == left_node.height() {
-                let merged_node = Node::create_node(left_node, right_node)
-                    .expect("Unable to create a node");
+                let parent_pos = left_node
+                    .position()
+                    .parent()
+                    .expect("Left node has no parent");
+                let merged_node = Node::create_node(parent_pos, left_node, right_node);
                 self.stack.pop();
                 self.stack.pop();
                 self.stack.push(merged_node);
@@ -51,8 +54,11 @@ impl MerkleRootCalculator {
         while self.stack.len() > 1 {
             let right_child = self.stack.pop().expect("Checked in loop bound");
             let left_child = self.stack.pop().expect("Checked in loop bound");
-            let merged_node = Node::create_node(&left_child, &right_child)
-                .expect("Unable to create a node");
+            let merged_pos = left_child
+                .position()
+                .parent()
+                .expect("Left child has no parent");
+            let merged_node = Node::create_node(merged_pos, &left_child, &right_child);
             self.stack.push(merged_node);
         }
         self.stack.pop().unwrap().hash().to_owned()

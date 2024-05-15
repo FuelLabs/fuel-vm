@@ -20,10 +20,7 @@ use crate::{
     },
 };
 
-use alloc::{
-    collections::VecDeque,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use core::{
     convert::Infallible,
     marker::PhantomData,
@@ -53,7 +50,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 #[derive(Debug, Clone)]
 pub struct MerkleTree<TableType, StorageType> {
     storage: StorageType,
-    nodes: VecDeque<Node>,
+    nodes: Vec<Node>,
     leaves_count: u64,
     phantom_table: PhantomData<TableType>,
 }
@@ -103,7 +100,7 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         &self,
         scratch_storage: &mut StorageMap<NodesTable>,
     ) -> Result<Option<Node>, MerkleTreeError<E>> {
-        let mut nodes = self.nodes.iter();
+        let mut nodes = self.nodes.iter().rev();
         let Some(mut head) = nodes.next().cloned() else {
             return Ok(None); // Empty tree
         };
@@ -173,7 +170,7 @@ where
     pub fn new(storage: StorageType) -> Self {
         Self {
             storage,
-            nodes: VecDeque::new(),
+            nodes: Vec::new(),
             leaves_count: 0,
             phantom_table: Default::default(),
         }
@@ -262,7 +259,7 @@ where
         storage: StorageType,
         leaves_count: u64,
     ) -> Result<Self, MerkleTreeError<StorageError>> {
-        let mut nodes = VecDeque::new();
+        let mut nodes = Vec::new();
         let peaks = Self::peak_positions(leaves_count)?;
         for peak in peaks.iter() {
             let key = peak.in_order_index();
@@ -271,7 +268,7 @@ where
                 .ok_or(MerkleTreeError::LoadError(key))?
                 .into_owned()
                 .into();
-            nodes.push_front(node);
+            nodes.push(node);
         }
 
         Ok(Self {
@@ -354,16 +351,16 @@ where
             self.leaves_count += 1;
         }
 
-        self.nodes.push_front(new_node);
+        self.nodes.push(new_node);
 
         // Propagate changes through the tree.
         while self.nodes.len() > 1 {
-            let rhs = self.nodes.pop_front().expect("Checked in loop bound");
-            let lhs = self.nodes.pop_front().expect("Checked in loop bound");
+            let rhs = self.nodes.pop().expect("Checked in loop bound");
+            let lhs = self.nodes.pop().expect("Checked in loop bound");
 
             if lhs.height() != rhs.height() {
-                self.nodes.push_front(lhs);
-                self.nodes.push_front(rhs);
+                self.nodes.push(lhs);
+                self.nodes.push(rhs);
                 break
             }
 
@@ -376,7 +373,7 @@ where
                 .insert(&new.key(), &(&new).into())
                 .map_err(MerkleTreeError::StorageError)?;
 
-            self.nodes.push_front(new);
+            self.nodes.push(new);
         }
 
         Ok(())

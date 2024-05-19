@@ -42,13 +42,12 @@ fn data(value: &[u8]) -> ContractsStateData {
 }
 
 impl OwnershipRegisters {
-    pub fn test(stack: Range<u64>, heap: Range<u64>, context: Context) -> Self {
+    pub fn test(stack: Range<u64>, heap: Range<u64>) -> Self {
         Self {
             sp: stack.end,
             ssp: stack.start,
             hp: heap.start,
             prev_hp: heap.end,
-            context,
         }
     }
 }

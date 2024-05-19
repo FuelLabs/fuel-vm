@@ -22,6 +22,7 @@ fn test_load_contract() -> IoResult<(), Infallible> {
     let mut ggas = 1000;
     let mut ssp = 1000;
     let mut sp = 1000;
+    let hp = VM_MAX_RAM;
     let fp = 0;
     let is = 0;
 
@@ -56,6 +57,7 @@ fn test_load_contract() -> IoResult<(), Infallible> {
         ggas: RegMut::new(&mut ggas),
         ssp: RegMut::new(&mut ssp),
         sp: RegMut::new(&mut sp),
+        hp: Reg::new(&hp),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),
@@ -108,9 +110,6 @@ fn test_code_copy() -> IoResult<(), Infallible> {
             ssp: 1000,
             hp: 2000,
             prev_hp: VM_MAX_RAM - 1,
-            context: Context::Call {
-                block_height: Default::default(),
-            },
         },
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),

@@ -7,7 +7,6 @@ use super::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
-    context::Context,
     error::SimpleResult,
 };
 
@@ -19,6 +18,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
+    fmt_truncated_hex,
     RegisterId,
     Word,
 };
@@ -73,7 +73,8 @@ fn reverse_resize_at_least(vec: &mut Vec<u8>, new_len: usize) {
 }
 
 /// The memory of the VM, represented as stack and heap.
-#[derive(Debug, Clone, PartialEq, Eq, Derivative)]
+#[derive(Clone, PartialEq, Eq, Derivative)]
+#[derivative(Debug)]
 pub struct Memory {
     /// Stack. Grows upwards.
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
@@ -254,7 +255,7 @@ impl Memory {
         len: C,
     ) -> Result<&mut [u8], PanicReason> {
         let range = self.verify(addr, len)?;
-        owner.verify_ownership(&range.words())?;
+        owner.verify_ownership(&range)?;
         self.write_noownerchecks(range.start(), range.len())
     }
 
@@ -791,8 +792,6 @@ pub(crate) fn memcopy(
     let dst_range = memory.verify(a, c)?;
     let src_range = memory.verify(b, c)?;
 
-    owner.verify_ownership(&dst_range.words())?;
-
     if dst_range.start() <= src_range.start() && src_range.start() < dst_range.end()
         || src_range.start() <= dst_range.start() && dst_range.start() < src_range.end()
         || dst_range.start() < src_range.end() && src_range.end() <= dst_range.end()
@@ -801,6 +800,7 @@ pub(crate) fn memcopy(
         return Err(PanicReason::MemoryWriteOverlap.into())
     }
 
+    owner.verify_ownership(&dst_range)?;
     memory.memcopy_noownerchecks(a, b, c)?;
 
     Ok(inc_pc(pc)?)
@@ -818,50 +818,73 @@ pub(crate) fn memeq(
     Ok(inc_pc(pc)?)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct OwnershipRegisters {
     pub(crate) sp: u64,
     pub(crate) ssp: u64,
     pub(crate) hp: u64,
+    /// Previous heap pointer, used for external contexts.
+    /// Otherwise, it's just memory size.
     pub(crate) prev_hp: u64,
-    pub(crate) context: Context,
 }
 
 impl OwnershipRegisters {
     pub(crate) fn new<S, Tx, Ecal>(vm: &Interpreter<S, Tx, Ecal>) -> Self {
+        let prev_hp = if vm.context.is_external() {
+            VM_MAX_RAM
+        } else {
+            vm.frames
+                .last()
+                .map(|frame| frame.registers()[RegId::HP])
+                .unwrap_or(VM_MAX_RAM)
+        };
+
         OwnershipRegisters {
             sp: vm.registers[RegId::SP],
             ssp: vm.registers[RegId::SSP],
             hp: vm.registers[RegId::HP],
-            prev_hp: vm
-                .frames
-                .last()
-                .map(|frame| frame.registers()[RegId::HP])
-                .unwrap_or(0),
-            context: vm.context.clone(),
+            prev_hp,
+        }
+    }
+
+    /// Create an instance that only allows stack writes.
+    pub(crate) fn only_allow_stack_write(sp: u64, ssp: u64, hp: u64) -> Self {
+        debug_assert!(sp <= VM_MAX_RAM);
+        debug_assert!(ssp <= VM_MAX_RAM);
+        debug_assert!(hp <= VM_MAX_RAM);
+        debug_assert!(ssp <= sp);
+        debug_assert!(sp <= hp);
+        OwnershipRegisters {
+            sp,
+            ssp,
+            hp,
+            prev_hp: hp,
+        }
+    }
+
+    /// Allows all writes, whole memory is stack.allocated
+    #[cfg(test)]
+    pub(crate) fn test_full_stack() -> Self {
+        OwnershipRegisters {
+            sp: VM_MAX_RAM,
+            ssp: 0,
+            hp: VM_MAX_RAM,
+            prev_hp: VM_MAX_RAM,
         }
     }
 
     pub(crate) fn verify_ownership(
         &self,
-        range: &Range<Word>,
+        range: &MemoryRange,
     ) -> Result<(), PanicReason> {
-        if self.has_ownership_range(range) {
+        if self.has_ownership_range(&range.words()) {
             Ok(())
         } else {
             Err(PanicReason::MemoryOwnership)
         }
     }
 
-    pub(crate) fn verify_internal_context(&self) -> Result<(), PanicReason> {
-        if self.context.is_internal() {
-            Ok(())
-        } else {
-            Err(PanicReason::ExpectedInternalContext)
-        }
-    }
-
-    pub(crate) fn has_ownership_range(&self, range: &Range<Word>) -> bool {
+    pub fn has_ownership_range(&self, range: &Range<Word>) -> bool {
         self.has_ownership_stack(range) || self.has_ownership_heap(range)
     }
 
@@ -893,39 +916,27 @@ impl OwnershipRegisters {
             return false
         }
 
-        let heap_end = if self.context.is_external() {
-            VM_MAX_RAM
-        } else {
-            self.prev_hp
-        };
-
-        self.hp != heap_end && range.end <= heap_end
+        self.hp != self.prev_hp && range.end <= self.prev_hp
     }
 }
 
 /// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
 /// Performs overflow and memory range checks, but no ownership checks.
-pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
+pub(crate) fn copy_from_slice_zero_fill<A: ToAddr, B: ToAddr>(
     memory: &mut Memory,
+    owner: OwnershipRegisters,
     src: &[u8],
     dst_addr: A,
     src_offset: usize,
     len: B,
 ) -> SimpleResult<()> {
-    let range = memory.verify(dst_addr, len)?;
+    let range = memory.write(owner, dst_addr, len)?;
 
     let src_end = src_offset.saturating_add(range.len()).min(src.len());
     let data = src.get(src_offset..src_end).unwrap_or_default();
-    let (r_data, r_zero) = range.split_at_offset(data.len());
 
-    memory
-        .write_noownerchecks(r_data.start(), r_data.len())
-        .expect("Range verified above")
-        .copy_from_slice(data);
-    memory
-        .write_noownerchecks(r_zero.start(), r_zero.len())
-        .expect("Range verified above")
-        .fill(0);
+    range[..data.len()].copy_from_slice(data);
+    range[data.len()..].fill(0);
 
     Ok(())
 }

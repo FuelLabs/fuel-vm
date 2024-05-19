@@ -1,31 +1,8 @@
-#[derive(Debug, Eq, PartialEq)]
-pub enum Bit {
-    _0 = 0,
-    _1 = 1,
-}
-
-trait GetBit {
-    fn get_bit(&self, bit_index: u32) -> Option<Bit>;
-}
-
-impl GetBit for u8 {
-    fn get_bit(&self, bit_index: u32) -> Option<Bit> {
-        if bit_index < 8 {
-            let mask = 1 << (7 - bit_index);
-            let bit = self & mask;
-            match bit {
-                0 => Some(Bit::_0),
-                _ => Some(Bit::_1),
-            }
-        } else {
-            None
-        }
-    }
-}
+type Bit = bool;
 
 pub trait Msb {
     fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit>;
-    fn common_prefix_count(&self, other: &[u8]) -> u32;
+    fn common_prefix_count(&self, other: &[u8]) -> u64;
 }
 
 impl<const N: usize> Msb for [u8; N] {
@@ -34,17 +11,24 @@ impl<const N: usize> Msb for [u8; N] {
         let byte_index = index / 8;
         // The bit within the containing byte
         let byte_bit_index = index % 8;
-        self.get(byte_index as usize)
-            .and_then(|byte| byte.get_bit(byte_bit_index))
+        self.get(byte_index as usize).map(|byte| {
+            #[allow(clippy::arithmetic_side_effects)] // checked above
+            let mask = 1 << (7 - byte_bit_index);
+            byte & mask != 0
+        })
     }
 
-    fn common_prefix_count(&self, other: &[u8]) -> u32 {
+    fn common_prefix_count(&self, other: &[u8]) -> u64 {
         let mut count = 0;
         for (byte1, byte2) in self.iter().zip(other.iter()) {
             // For each pair of bytes, compute the similarity of each byte using
             // exclusive or (XOR). The leading zeros measures the number of
             // similar bits from left to right. For equal bytes, this will be 8.
-            count += (byte1 ^ byte2).leading_zeros();
+            let common_bits = (byte1 ^ byte2).leading_zeros();
+            #[allow(clippy::arithmetic_side_effects)] // u64 is always large enough
+            {
+                count += common_bits as u64;
+            }
             if byte1 != byte2 {
                 break
             }

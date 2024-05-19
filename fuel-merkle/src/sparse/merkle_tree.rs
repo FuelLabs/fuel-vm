@@ -16,9 +16,7 @@ use crate::{
         error::DeserializeError,
         node::ChildError,
         AsPathIterator,
-        Bit,
         Bytes32,
-        Msb,
     },
     sparse::{
         empty_sum,
@@ -42,7 +40,6 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    cmp,
     fmt::{
         Debug,
         Formatter,
@@ -152,16 +149,6 @@ impl Deref for MerkleTreeKey {
     }
 }
 
-impl Msb for MerkleTreeKey {
-    fn get_bit_at_index_from_msb(&self, index: u32) -> Option<Bit> {
-        self.0.get_bit_at_index_from_msb(index)
-    }
-
-    fn common_prefix_count(&self, other: &[u8]) -> u32 {
-        self.0.common_prefix_count(other.as_ref())
-    }
-}
-
 #[cfg(any(test, feature = "test-helpers"))]
 impl From<Bytes32> for MerkleTreeKey {
     fn from(value: Bytes32) -> Self {
@@ -192,8 +179,6 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     pub fn storage(&self) -> &StorageType {
         &self.storage
     }
-
-    // PRIVATE
 
     fn root_node(&self) -> &Node {
         &self.root_node
@@ -240,8 +225,6 @@ where
             Ok(tree)
         }
     }
-
-    // PRIVATE
 
     fn path_set(
         &self,
@@ -343,7 +326,8 @@ where
         // possible.
         while let Some(left) = branches.pop() {
             if let Some(current) = nodes.last() {
-                let left_proximity = current.node.common_path_length(&left.node);
+                #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+                let left_proximity = current.node.common_path_length(&left.node) as u32;
                 while {
                     // The current node's proximity to its right neighbor was
                     // stored previously. We now compare the distances between
@@ -404,6 +388,7 @@ where
         let mut node = top.node;
         let path = top.bits;
         let height = node.height();
+        #[allow(clippy::arithmetic_side_effects)] // height <= max_height
         let depth = Node::max_height() - height;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth as usize);
         for placeholder in placeholders {
@@ -476,8 +461,6 @@ where
         Ok(())
     }
 
-    // PRIVATE
-
     fn update_with_path_set(
         &mut self,
         requested_leaf_node: &Node,
@@ -525,8 +508,9 @@ where
 
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
-            let stale_depth = cmp::max(side_nodes.len(), ancestor_depth as usize);
-            let placeholders_count = stale_depth - side_nodes.len();
+            #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+            let placeholders_count =
+                (ancestor_depth as usize).saturating_sub(side_nodes.len());
             let placeholders =
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {

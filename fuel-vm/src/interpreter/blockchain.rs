@@ -585,7 +585,7 @@ where
             .try_into()
             .map_err(|_| PanicReason::MemoryOverflow)?;
 
-        let current_contract = current_contract(&self.context, self.fp, self.memory)?;
+        let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
         let length = bytes::padded_len_usize(
             length_unpadded

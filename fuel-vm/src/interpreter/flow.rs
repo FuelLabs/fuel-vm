@@ -121,7 +121,7 @@ where
     pub(crate) fn revert(&mut self, a: Word) -> SimpleResult<()> {
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())
-                .map_or_else(|_| Some(ContractId::zeroed()), |c| c);
+                .unwrap_or(Some(ContractId::zeroed()));
         revert(
             &mut self.receipts,
             current_contract,

@@ -713,6 +713,60 @@ macro_rules! op_unpack {
     () => {};
 }
 
+// Generate a method for checking that the reserved part of the
+// instruction is zero. This is private, as invalid instructions
+// cannot be constructed outside this crate.
+macro_rules! op_reserved_part {
+    (RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            let (_, imm) = unpack::ra_imm18_from_bytes(self.0);
+            imm.0 == 0
+        }
+    };
+    (RegId RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            let (_, _, imm) = unpack::ra_rb_imm12_from_bytes(self.0);
+            imm.0 == 0
+        }
+    };
+    (RegId RegId RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            let (_, _, _, imm) = unpack::ra_rb_rc_imm06_from_bytes(self.0);
+            imm.0 == 0
+        }
+    };
+    (RegId RegId RegId RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (RegId RegId RegId Imm06) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (RegId RegId Imm12) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (RegId Imm18) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (Imm24) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    () => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            self.0 == [0; 3]
+        }
+    };
+}
+
 // Generate a private fn for use within the `Instruction::reg_ids` implementation.
 macro_rules! op_reg_ids {
     (RegId) => {
@@ -1058,6 +1112,7 @@ macro_rules! impl_instructions {
 
         impl $Op {
             op_unpack!($($field)*);
+            op_reserved_part!($($field)*);
             op_reg_ids!($($field)*);
         }
 
@@ -1173,7 +1228,13 @@ macro_rules! impl_instructions {
             fn try_from([op, a, b, c]: [u8; 4]) -> Result<Self, Self::Error> {
                 match Opcode::try_from(op)? {
                     $(
-                        Opcode::$Op => Ok(Self::$Op(op::$Op([a, b, c]))),
+                        Opcode::$Op => Ok(Self::$Op({
+                            let op = op::$Op([a, b, c]);
+                            if !op.reserved_part_is_zero() {
+                                return Err(InvalidOpcode);
+                            }
+                            op
+                        })),
                     )*
                 }
             }

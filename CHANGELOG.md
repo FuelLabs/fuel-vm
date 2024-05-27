@@ -19,7 +19,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#725](https://github.com/FuelLabs/fuel-vm/pull/725): `UtxoId::from_str` now rejects inputs with multiple `0x` prefixes. Many `::from_str` implementations also reject extra data in the end of the input, instead of silently ignoring it. `UtxoId::from_str` allows a single `:` between the fields. Unused `GasUnit` struct removed.
 - [#726](https://github.com/FuelLabs/fuel-vm/pull/726): Removed code related to Binary Merkle Sum Trees (BMSTs). The BMST is deprecated and not used in production environments. 
 - [#729](https://github.com/FuelLabs/fuel-vm/pull/729): Removed default implementation of `Node::key_size_bits`, implementors must now define it themselves. Also some helper traits have been merged together, or their types changed.
-- [#736](https://github.com/FuelLabs/fuel-vm/pull/736): Bugfix: LDC instruction now works in internal contexts as well.
+### Fixed
+
+#### Breaking
+
+- [#736](https://github.com/FuelLabs/fuel-vm/pull/736): LDC instruction now works in internal contexts as well.
 
 ## [Version 0.49.0]
 

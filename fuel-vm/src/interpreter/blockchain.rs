@@ -57,6 +57,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     bytes,
+    bytes::padded_len_word,
     Address,
     AssetId,
     BlockHeight,
@@ -641,6 +642,8 @@ where
                 (*self.fp).saturating_add(CallFrame::code_size_offset() as Word);
             let old_code_size =
                 Word::from_be_bytes(self.memory.read_bytes(code_size_ptr)?);
+            let old_code_size = padded_len_word(old_code_size)
+                .expect("Code size cannot overflow with padding");
             let new_code_size = old_code_size
                 .checked_add(length as Word)
                 .ok_or(PanicReason::MemoryOverflow)?;

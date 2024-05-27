@@ -2121,6 +2121,7 @@ fn various_ldc_issues_poc() {
     ]);
 
     let orig_contract_len = loader_contract.len();
+    #[allow(clippy::identity_op)]
     let after_ldc_len = orig_contract_len * 4 + 24 /* opcode to be extended */
         + 4 /* original padding len */ + 8 /* ldc code len */ + 0 /* ldc padding */;
 

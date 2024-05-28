@@ -553,9 +553,9 @@ where
         *frame.context_gas_mut() = *self.registers.system_registers.cgas;
         *frame.global_gas_mut() = *self.registers.system_registers.ggas;
 
-        let frame_bytes = frame.to_bytes();
-        let len = frame_bytes
-            .len()
+        debug_assert!(frame.size() % 8 == 0);
+        let len = frame
+            .size()
             .checked_add(frame.total_code_size())
             .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
         let lenw = len as Word;
@@ -581,7 +581,6 @@ where
 
         let frame_end = write_call_to_memory(
             &frame,
-            frame_bytes,
             self.registers.system_registers.fp.as_ref(),
             len,
             self.memory,
@@ -614,7 +613,6 @@ where
 
 fn write_call_to_memory<S>(
     frame: &CallFrame,
-    frame_bytes: Vec<u8>,
     fp: Reg<FP>,
     len: usize,
     memory: &mut Memory,
@@ -628,7 +626,7 @@ where
     let content_size = len.saturating_sub(frame_len_with_padding);
     memory
         .write_noownerchecks(*fp, content_size)?
-        .copy_from_slice(&frame_bytes);
+        .copy_from_slice(&frame.to_bytes());
 
     let code_start = fp.saturating_add(CallFrame::serialized_size() as Word);
     let code_len = frame.code_size();

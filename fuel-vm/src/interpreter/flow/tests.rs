@@ -442,15 +442,13 @@ fn test_write_call_to_memory(
     fp: Reg<FP>,
     len: usize,
 ) -> IoResult<Word, Infallible> {
-    let frame_bytes = call_frame.to_bytes();
     let mut storage = MemoryStorage::default();
     let code = vec![6u8; call_frame.code_size()];
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
         .insert(call_frame.to(), &code)
         .unwrap();
     let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
-    let end =
-        write_call_to_memory(&call_frame, frame_bytes, fp, len, &mut memory, &storage)?;
+    let end = write_call_to_memory(&call_frame, fp, len, &mut memory, &storage)?;
     check_memory(memory, call_frame, code);
     Ok(end)
 }

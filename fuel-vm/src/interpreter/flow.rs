@@ -476,7 +476,7 @@ where
         let asset_id =
             AssetId::new(self.memory.read_bytes(self.params.asset_id_pointer)?);
 
-        let code_size = contract_size(&self.storage, &call.to())?;
+        let code_size = contract_size(&self.storage, call.to())?;
         let code_size_padded =
             padded_len_usize(code_size).expect("code_size cannot overflow with padding");
 
@@ -593,7 +593,7 @@ where
         let (mem_frame, mem_code) = dst.split_at_mut(CallFrame::serialized_size());
         mem_frame.copy_from_slice(&frame.to_bytes());
         let (mem_code, mem_code_padding) = mem_code.split_at_mut(code_size);
-        read_contract(&call.to(), self.storage, mem_code)?;
+        read_contract(call.to(), self.storage, mem_code)?;
         mem_code_padding.fill(0);
 
         #[allow(clippy::arithmetic_side_effects)] // Checked above

@@ -597,11 +597,11 @@ where
         mem_code_padding.fill(0);
 
         #[allow(clippy::arithmetic_side_effects)] // Checked above
-        let frame_end =
+        let code_start =
             (*self.registers.system_registers.fp) + CallFrame::serialized_size() as Word;
 
+        *self.registers.system_registers.pc = code_start;
         *self.registers.system_registers.bal = self.params.amount_of_coins_to_forward;
-        *self.registers.system_registers.pc = frame_end;
         *self.registers.system_registers.is = *self.registers.system_registers.pc;
         *self.registers.system_registers.cgas = forward_gas_amount;
 

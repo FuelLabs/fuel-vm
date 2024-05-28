@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
-- [#736](https://github.com/FuelLabs/fuel-vm/pull/736): LDC instruction now works in internal contexts as well.
+- [#736](https://github.com/FuelLabs/fuel-vm/pull/736): LDC instruction now works in internal contexts as well. Call frames use code size padded to word alignment.
 
 ## [Version 0.49.0]
 

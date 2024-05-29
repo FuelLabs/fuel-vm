@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.50.0]
+
 ### Changed
 
 - [#725](https://github.com/FuelLabs/fuel-vm/pull/725): Adds more clippy lints to catch possible integer overflow and casting bugs on compile time.

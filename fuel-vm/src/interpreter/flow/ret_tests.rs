@@ -3,10 +3,7 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::{
-    error::PanicOrBug,
-    interpreter::memory::Memory,
-};
+use crate::error::PanicOrBug;
 
 use super::*;
 
@@ -42,7 +39,7 @@ fn test_return() {
     };
 
     let mut receipts = Default::default();
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0u8; MEM_SIZE].try_into().unwrap();
     input(
         &mut frames,
         &mut registers,
@@ -150,18 +147,14 @@ fn input<'a>(
     frames: &'a mut Vec<CallFrame>,
     registers: &'a mut [Word; VM_REGISTER_COUNT],
     receipts: &'a mut ReceiptsCtx,
-    memory: &'a mut [u8; MEM_SIZE],
+    memory: &'a mut MemoryInstance,
     context: &'a mut Context,
 ) -> RetCtx<'a> {
     RetCtx {
         frames,
         registers,
-        append: AppendReceipt {
-            receipts,
-            script: None,
-            tx_offset: 0,
-            memory,
-        },
+        receipts,
+        memory,
         context,
         current_contract: Default::default(),
     }
@@ -170,16 +163,9 @@ fn input<'a>(
 #[test]
 fn test_revert() {
     let mut receipts = Default::default();
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
-    let append = AppendReceipt {
-        receipts: &mut receipts,
-        script: None,
-        tx_offset: 0,
-        memory: &mut memory,
-    };
     let pc = 10;
     let is = 20;
-    revert(append, None, Reg::new(&pc), Reg::new(&is), 99).expect("should be ok");
+    revert(&mut receipts, None, Reg::new(&pc), Reg::new(&is), 99).expect("should be ok");
     assert_eq!(
         *receipts.as_ref().last().unwrap(),
         Receipt::revert(ContractId::default(), 99, pc, is)

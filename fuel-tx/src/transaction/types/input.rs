@@ -29,7 +29,6 @@ use fuel_types::{
     fmt_truncated_hex,
     Address,
     AssetId,
-    BlockHeight,
     Bytes32,
     ContractId,
     MessageId,
@@ -134,6 +133,23 @@ impl AsFieldFmt for u8 {
     }
 }
 
+impl AsField<u16> for u16 {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&u16> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut u16> {
+        Some(self)
+    }
+}
+
+impl AsFieldFmt for u16 {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        f.write_str(self.to_string().as_str())
+    }
+}
+
 impl AsField<u64> for u64 {
     #[inline(always)]
     fn as_field(&self) -> Option<&u64> {
@@ -181,7 +197,6 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[non_exhaustive]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
@@ -221,7 +236,6 @@ impl Input {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        maturity: BlockHeight,
         predicate_gas_used: Word,
         predicate: Vec<u8>,
         predicate_data: Vec<u8>,
@@ -233,7 +247,6 @@ impl Input {
             asset_id,
             tx_pointer,
             witness_index: Empty::new(),
-            maturity,
             predicate_gas_used,
             predicate,
             predicate_data,
@@ -246,8 +259,7 @@ impl Input {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        witness_index: u8,
-        maturity: BlockHeight,
+        witness_index: u16,
     ) -> Self {
         Self::CoinSigned(CoinSigned {
             utxo_id,
@@ -256,7 +268,6 @@ impl Input {
             asset_id,
             tx_pointer,
             witness_index,
-            maturity,
             predicate_gas_used: Empty::new(),
             predicate: Empty::new(),
             predicate_data: Empty::new(),
@@ -284,7 +295,7 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
-        witness_index: u8,
+        witness_index: u16,
     ) -> Self {
         Self::MessageCoinSigned(MessageCoinSigned {
             sender,
@@ -326,7 +337,7 @@ impl Input {
         recipient: Address,
         amount: Word,
         nonce: Nonce,
-        witness_index: u8,
+        witness_index: u16,
         data: Vec<u8>,
     ) -> Self {
         Self::MessageDataSigned(MessageDataSigned {
@@ -425,7 +436,7 @@ impl Input {
         }
     }
 
-    pub const fn witness_index(&self) -> Option<u8> {
+    pub const fn witness_index(&self) -> Option<u16> {
         match self {
             Input::CoinSigned(CoinSigned { witness_index, .. })
             | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
@@ -439,26 +450,14 @@ impl Input {
         }
     }
 
-    pub const fn maturity(&self) -> Option<BlockHeight> {
-        match self {
-            Input::CoinSigned(CoinSigned { maturity, .. })
-            | Input::CoinPredicate(CoinPredicate { maturity, .. }) => Some(*maturity),
-            Input::Contract(_)
-            | Input::MessageCoinSigned(_)
-            | Input::MessageCoinPredicate(_)
-            | Input::MessageDataSigned(_)
-            | Input::MessageDataPredicate(_) => None,
-        }
-    }
-
     pub fn predicate_offset(&self) -> Option<usize> {
         match self {
             Input::CoinPredicate(_) => InputRepr::Coin.coin_predicate_offset(),
             Input::MessageCoinPredicate(_) => InputRepr::Message.data_offset(),
             Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => {
-                InputRepr::Message
-                    .data_offset()
-                    .map(|o| o + bytes::padded_len(data))
+                InputRepr::Message.data_offset().map(|o| {
+                    o.saturating_add(bytes::padded_len(data).unwrap_or(usize::MAX))
+                })
             }
             Input::CoinSigned(_)
             | Input::Contract(_)
@@ -471,9 +470,11 @@ impl Input {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => self
-                .predicate_offset()
-                .map(|o| o + bytes::padded_len(predicate)),
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
+                self.predicate_offset().map(|o| {
+                    o.saturating_add(bytes::padded_len(predicate).unwrap_or(usize::MAX))
+                })
+            }
             Input::CoinSigned(_)
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
@@ -726,7 +727,7 @@ impl Input {
     }
 
     /// Empties fields that should be zero during the signing.
-    pub(crate) fn prepare_sign(&mut self) {
+    pub fn prepare_sign(&mut self) {
         match self {
             Input::CoinSigned(coin) => coin.prepare_sign(),
             Input::CoinPredicate(coin) => coin.prepare_sign(),
@@ -770,27 +771,20 @@ impl Input {
     {
         owner == &Self::predicate_owner(predicate)
     }
-
-    /// Prepare the output for VM predicate execution
-    pub fn prepare_init_predicate(&mut self) {
-        self.prepare_sign()
-    }
 }
 
 impl Serialize for Input {
     fn size_static(&self) -> usize {
-        canonical::add_sizes(
-            8, // Discriminant
-            match self {
-                Input::CoinSigned(coin) => coin.size_static(),
-                Input::CoinPredicate(coin) => coin.size_static(),
-                Input::Contract(contract) => contract.size_static(),
-                Input::MessageCoinSigned(message) => message.size_static(),
-                Input::MessageCoinPredicate(message) => message.size_static(),
-                Input::MessageDataSigned(message) => message.size_static(),
-                Input::MessageDataPredicate(message) => message.size_static(),
-            },
-        )
+        (match self {
+            Input::CoinSigned(coin) => coin.size_static(),
+            Input::CoinPredicate(coin) => coin.size_static(),
+            Input::Contract(contract) => contract.size_static(),
+            Input::MessageCoinSigned(message) => message.size_static(),
+            Input::MessageCoinPredicate(message) => message.size_static(),
+            Input::MessageDataSigned(message) => message.size_static(),
+            Input::MessageDataPredicate(message) => message.size_static(),
+        })
+        .saturating_add(8) // Discriminant
     }
 
     fn size_dynamic(&self) -> usize {
@@ -910,7 +904,6 @@ pub mod typescript {
     use fuel_types::{
         Address,
         AssetId,
-        BlockHeight,
         Bytes32,
         Word,
     };
@@ -961,7 +954,6 @@ pub mod typescript {
             amount: Word,
             asset_id: AssetId,
             tx_pointer: TxPointer,
-            maturity: BlockHeight,
             predicate_gas_used: Word,
             predicate: Vec<u8>,
             predicate_data: Vec<u8>,
@@ -973,7 +965,6 @@ pub mod typescript {
                 asset_id,
                 tx_pointer,
                 witness_index: Empty::new(),
-                maturity,
                 predicate_gas_used,
                 predicate,
                 predicate_data,
@@ -987,8 +978,7 @@ pub mod typescript {
             amount: Word,
             asset_id: AssetId,
             tx_pointer: TxPointer,
-            witness_index: u8,
-            maturity: BlockHeight,
+            witness_index: u16,
         ) -> Input {
             Input(Box::new(crate::Input::CoinSigned(CoinSigned {
                 utxo_id,
@@ -997,7 +987,6 @@ pub mod typescript {
                 asset_id,
                 tx_pointer,
                 witness_index,
-                maturity,
                 predicate_gas_used: Empty::new(),
                 predicate: Empty::new(),
                 predicate_data: Empty::new(),
@@ -1027,7 +1016,7 @@ pub mod typescript {
             recipient: Address,
             amount: Word,
             nonce: Nonce,
-            witness_index: u8,
+            witness_index: u16,
         ) -> Input {
             Input(Box::new(crate::Input::MessageCoinSigned(
                 MessageCoinSigned {
@@ -1075,7 +1064,7 @@ pub mod typescript {
             recipient: Address,
             amount: Word,
             nonce: Nonce,
-            witness_index: u8,
+            witness_index: u16,
             data: Vec<u8>,
         ) -> Input {
             Input(Box::new(crate::Input::MessageDataSigned(

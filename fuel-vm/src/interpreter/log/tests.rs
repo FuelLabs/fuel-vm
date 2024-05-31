@@ -1,27 +1,23 @@
 use alloc::vec;
 
-use crate::interpreter::memory::Memory;
-
 use super::*;
+use fuel_vm::consts::*;
 
 #[test]
 fn test_log() -> SimpleResult<()> {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let context = Context::Script {
         block_height: Default::default(),
     };
     let mut receipts = Default::default();
-    let mut script = Some(Script::default());
 
     let fp = 0;
     let is = 0;
     let mut pc = 4;
     let input = LogInput {
         memory: &mut memory,
-        tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
-        script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
         pc: RegMut::new(&mut pc),
@@ -36,10 +32,8 @@ fn test_log() -> SimpleResult<()> {
 
     let input = LogInput {
         memory: &mut memory,
-        tx_offset: 0,
         context: &context,
         receipts: &mut receipts,
-        script: script.as_mut(),
         fp: Reg::new(&fp),
         is: Reg::new(&is),
         pc: RegMut::new(&mut pc),

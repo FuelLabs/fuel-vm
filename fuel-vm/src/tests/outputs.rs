@@ -32,7 +32,6 @@ use rand::{
 };
 
 /// Testing of post-execution output handling
-
 #[test]
 fn full_change_with_no_fees() {
     let mut rng = StdRng::seed_from_u64(2322u64);
@@ -57,6 +56,7 @@ fn used_gas_is_deducted_from_base_asset_change() {
     let gas_price = 1;
 
     let change = TestBuilder::new(2322u64)
+        .max_fee_limit(1000)
         .gas_price(gas_price)
         .base_asset_id(base_asset_id)
         .coin_input(base_asset_id, input_amount)
@@ -85,6 +85,7 @@ fn used_gas_is_deducted_from_base_asset_change_on_revert() {
             .collect(),
             vec![],
         )
+        .max_fee_limit(1000)
         .gas_price(gas_price)
         .base_asset_id(base_asset_id)
         .coin_input(base_asset_id, input_amount)
@@ -116,7 +117,6 @@ fn correct_change_is_provided_for_coin_outputs_script() {
 fn correct_change_is_provided_for_coin_outputs_create() {
     let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
-    let gas_price = 0;
     let spend_amount = 600;
     let base_asset_id: AssetId = rng.gen();
 
@@ -136,9 +136,10 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let mut context = TestBuilder::new(2322u64);
     let context = context.base_asset_id(base_asset_id);
     let bytecode_witness = 0;
+
     let mut create = Transaction::create(
         bytecode_witness,
-        Policies::new().with_gas_price(gas_price),
+        Policies::new().with_max_fee(0),
         salt,
         vec![],
         vec![],
@@ -156,7 +157,6 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         base_asset_id,
         rng.gen(),
         Default::default(),
-        1,
     );
 
     let consensus_params = ConsensusParameters::new(
@@ -168,6 +168,8 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         context.get_chain_id(),
         context.get_gas_costs().to_owned(),
         *context.get_base_asset_id(),
+        context.get_block_gas_limit(),
+        *context.get_privileged_address(),
     );
     let create = create
         .into_checked_basic(context.get_block_height(), &consensus_params)

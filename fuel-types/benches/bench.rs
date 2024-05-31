@@ -1,11 +1,15 @@
 use criterion::{
+    black_box,
     criterion_group,
     criterion_main,
     Criterion,
 };
+use fuel_types::{
+    canonical,
+    canonical::Serialize,
+    Bytes64,
+};
 
-#[cfg(feature = "unsafe")]
-use criterion::black_box;
 #[cfg(feature = "unsafe")]
 use fuel_types::bytes::from_slice_unchecked;
 
@@ -106,5 +110,59 @@ pub fn criterion_benchmark(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, criterion_benchmark);
+pub fn criterion_benchmark2(c: &mut Criterion) {
+    use fuel_types::Bytes32;
+
+    c.bench_function("serde_bincode_key_roundtrip_32", |b| {
+        let original = black_box(Bytes32::from([1u8; 32]));
+        b.iter(|| {
+            let serialized = black_box(bincode::serialize(&original)).unwrap();
+            let _: Bytes32 = black_box(bincode::deserialize(&serialized)).unwrap();
+        });
+    });
+
+    c.bench_function("serde_bincode_key_roundtrip_64", |b| {
+        let original = black_box(Bytes64::from([1u8; 64]));
+        b.iter(|| {
+            let serialized = black_box(bincode::serialize(&original)).unwrap();
+            let _: Bytes64 = black_box(bincode::deserialize(&serialized)).unwrap();
+        });
+    });
+
+    c.bench_function("serde_postcard_key_roundtrip_32", |b| {
+        let original = black_box(Bytes32::from([1u8; 32]));
+        b.iter(|| {
+            let serialized = black_box(postcard::to_stdvec(&original)).unwrap();
+            let _: Bytes32 = black_box(postcard::from_bytes(&serialized)).unwrap();
+        });
+    });
+
+    c.bench_function("serde_postcard_key_roundtrip_64", |b| {
+        let original = black_box(Bytes64::from([1u8; 64]));
+        b.iter(|| {
+            let serialized = black_box(postcard::to_stdvec(&original)).unwrap();
+            let _: Bytes64 = black_box(postcard::from_bytes(&serialized)).unwrap();
+        });
+    });
+
+    c.bench_function("canonical_key_roundtrip_32", |b| {
+        let original = black_box(Bytes32::from([1u8; 32]));
+        b.iter(|| {
+            let serialized = black_box(original.to_bytes());
+            let _: Bytes32 =
+                black_box(canonical::Deserialize::from_bytes(&serialized)).unwrap();
+        });
+    });
+
+    c.bench_function("canonical_key_roundtrip_64", |b| {
+        let original = black_box(Bytes64::from([1u8; 64]));
+        b.iter(|| {
+            let serialized = black_box(original.to_bytes());
+            let _: Bytes64 =
+                black_box(canonical::Deserialize::from_bytes(&serialized)).unwrap();
+        });
+    });
+}
+
+criterion_group!(benches, criterion_benchmark, criterion_benchmark2);
 criterion_main!(benches);

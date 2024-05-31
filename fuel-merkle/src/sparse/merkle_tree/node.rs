@@ -8,10 +8,10 @@ use crate::{
             ParentNode as ParentNodeTrait,
         },
         path::{
-            ComparablePath,
-            Instruction,
             Path,
+            Side,
         },
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
         Prefix,
     },
     sparse::generic::{
@@ -20,6 +20,23 @@ use crate::{
             zero_sum,
         },
         primitive::Primitive,
+========
+        sum,
+        Bytes32,
+        Prefix,
+    },
+    sparse::{
+        hash::{
+            calculate_hash,
+            calculate_leaf_hash,
+            calculate_node_hash,
+        },
+        primitive::{
+            Primitive,
+            PrimitiveView,
+        },
+        zero_sum,
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     },
     storage::{
         Mappable,
@@ -29,14 +46,17 @@ use crate::{
 
 use crate::common::Bytes;
 use core::{
-    cmp,
     fmt,
     marker::PhantomData,
 };
 use digest::Digest;
 
 #[derive(Clone, PartialEq, Eq)]
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
 pub(crate) enum Node<const N: usize> {
+========
+pub(super) enum Node {
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     Node {
         hash: Bytes<N>,
         height: u32,
@@ -47,6 +67,7 @@ pub(crate) enum Node<const N: usize> {
     Placeholder,
 }
 
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
 impl<const N: usize> Node<N> {
     fn calculate_hash(
         prefix: &Prefix,
@@ -65,6 +86,11 @@ impl<const N: usize> Node<N> {
 
     pub fn max_height() -> u32 {
         Node::<N>::key_size_in_bits()
+========
+impl Node {
+    pub fn max_height() -> u32 {
+        Node::key_size_bits()
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     }
 
     pub fn new(
@@ -74,7 +100,7 @@ impl<const N: usize> Node<N> {
         bytes_hi: Bytes<N>,
     ) -> Self {
         Self::Node {
-            hash: Self::calculate_hash(&prefix, &bytes_lo, &bytes_hi),
+            hash: calculate_hash(&prefix, &bytes_lo, &bytes_hi),
             height,
             prefix,
             bytes_lo,
@@ -85,7 +111,7 @@ impl<const N: usize> Node<N> {
     pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes<N>, data: D) -> Self {
         let bytes_hi = sum(data);
         Self::Node {
-            hash: Self::calculate_hash(&Prefix::Leaf, key, &bytes_hi),
+            hash: calculate_leaf_hash(key, &bytes_hi),
             height: 0u32,
             prefix: Prefix::Leaf,
             bytes_lo: *key,
@@ -97,7 +123,7 @@ impl<const N: usize> Node<N> {
         let bytes_lo = *left_child.hash();
         let bytes_hi = *right_child.hash();
         Self::Node {
-            hash: Self::calculate_hash(&Prefix::Node, &bytes_lo, &bytes_hi),
+            hash: calculate_node_hash(&bytes_lo, &bytes_hi),
             height,
             prefix: Prefix::Node,
             bytes_lo,
@@ -116,30 +142,36 @@ impl<const N: usize> Node<N> {
             // of the leaves or an ancestor multiple generations above the
             // leaves.
             // N.B.: A leaf can be a placeholder.
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
             let parent_depth = path_node.common_path_length(side_node);
             let parent_height = Node::<N>::max_height() - parent_depth;
+========
+            #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+            let parent_depth = path_node.common_path_length(side_node) as u32;
+            #[allow(clippy::arithmetic_side_effects)] // parent_depth <= max_height
+            let parent_height = Node::max_height() - parent_depth;
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         } else {
             // When joining two nodes, or a node and a leaf, the joined node is
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
             let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
             let parent_depth = Node::<N>::max_height() - parent_height;
+========
+            #[allow(clippy::arithmetic_side_effects)] // Neither node cannot be root
+            let parent_height = path_node.height().max(side_node.height()) + 1;
+            #[allow(clippy::arithmetic_side_effects)] // parent_height <= max_height
+            let parent_depth = Node::max_height() - parent_height;
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         }
     }
@@ -148,7 +180,11 @@ impl<const N: usize> Node<N> {
         Self::Placeholder
     }
 
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
     pub fn common_path_length(&self, other: &Node<N>) -> u32 {
+========
+    pub fn common_path_length(&self, other: &Node) -> u64 {
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
         debug_assert!(self.is_leaf());
         debug_assert!(other.is_leaf());
 
@@ -170,6 +206,7 @@ impl<const N: usize> Node<N> {
         }
     }
 
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
     pub fn prefix(&self) -> Prefix {
         match self {
             Node::Node { prefix, .. } => *prefix,
@@ -191,6 +228,8 @@ impl<const N: usize> Node<N> {
         }
     }
 
+========
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     pub fn is_leaf(&self) -> bool {
         self.prefix() == Prefix::Leaf || self.is_placeholder()
     }
@@ -199,6 +238,7 @@ impl<const N: usize> Node<N> {
         self.prefix() == Prefix::Node
     }
 
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
     pub fn leaf_key(&self) -> &Bytes<N> {
         assert!(self.is_leaf());
         self.bytes_lo()
@@ -219,6 +259,8 @@ impl<const N: usize> Node<N> {
         self.bytes_hi()
     }
 
+========
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     pub fn is_placeholder(&self) -> bool {
         &Self::Placeholder == self
     }
@@ -228,6 +270,91 @@ impl<const N: usize> Node<N> {
             Node::Node { hash, .. } => hash,
             Node::Placeholder => zero_sum(),
         }
+    }
+
+    fn prefix(&self) -> Prefix {
+        match self {
+            Node::Node { prefix, .. } => *prefix,
+            Node::Placeholder => Prefix::Leaf,
+        }
+    }
+
+    fn bytes_lo(&self) -> &Bytes32 {
+        match self {
+            Node::Node { bytes_lo, .. } => bytes_lo,
+            Node::Placeholder => zero_sum(),
+        }
+    }
+
+    fn bytes_hi(&self) -> &Bytes32 {
+        match self {
+            Node::Node { bytes_hi, .. } => bytes_hi,
+            Node::Placeholder => zero_sum(),
+        }
+    }
+
+    /// Get the leaf key of a leaf node.
+    ///
+    /// The leaf key is the lower 32 bytes stored in a leaf node.
+    /// This method expects the node to be a leaf node, and this precondition
+    /// must be guaranteed at the call site for correctness. This method should
+    /// only be used within contexts where this precondition can be guaranteed,
+    /// such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not a leaf node to
+    /// indicate to the developer that there is a potential problem in the
+    /// tree's implementation.  
+    pub(super) fn leaf_key(&self) -> &Bytes32 {
+        debug_assert!(self.is_leaf());
+        self.bytes_lo()
+    }
+
+    /// Get the leaf data of a leaf node.
+    ///
+    /// The leaf key is the upper 32 bytes stored in a leaf node.
+    /// This method expects the node to be a leaf node, and this precondition
+    /// must be guaranteed at the call site for correctness. This method should
+    /// only be used within contexts where this precondition can be guaranteed,
+    /// such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not a leaf node to
+    /// indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn leaf_data(&self) -> &Bytes32 {
+        debug_assert!(self.is_leaf());
+        self.bytes_hi()
+    }
+
+    /// Get the left child key of an internal node.
+    ///
+    /// The left child key is the lower 32 bytes stored in an internal node.
+    /// This method expects the node to be an internal node, and this
+    /// precondition must be guaranteed at the call site for correctness. This
+    /// method should only be used within contexts where this precondition can
+    /// be guaranteed, such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not an internal node
+    /// to indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn left_child_key(&self) -> &Bytes32 {
+        debug_assert!(self.is_node());
+        self.bytes_lo()
+    }
+
+    /// Get the right child key of an internal node.
+    ///
+    /// The right child key is the upper 32 bytes stored in an internal node.
+    /// This method expects the node to be an internal node, and this
+    /// precondition must be guaranteed at the call site for correctness. This
+    /// method should only be used within contexts where this precondition can
+    /// be guaranteed, such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not an internal node
+    /// to indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn right_child_key(&self) -> &Bytes32 {
+        debug_assert!(self.is_node());
+        self.bytes_hi()
     }
 }
 
@@ -244,6 +371,11 @@ impl<const KEY_SIZE: usize> NodeTrait for Node<KEY_SIZE> {
         Node::height(self)
     }
 
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
+    }
+
     fn leaf_key(&self) -> Self::Key {
         *Node::leaf_key(self)
     }
@@ -257,7 +389,35 @@ impl<const KEY_SIZE: usize> NodeTrait for Node<KEY_SIZE> {
     }
 }
 
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
 impl<const KEY_SIZE: usize> fmt::Debug for Node<KEY_SIZE> {
+========
+impl From<&Node> for Primitive {
+    fn from(node: &Node) -> Self {
+        (
+            node.height(),
+            node.prefix() as u8,
+            *node.bytes_lo(),
+            *node.bytes_hi(),
+        )
+    }
+}
+
+impl TryFrom<Primitive> for Node {
+    type Error = DeserializeError;
+
+    fn try_from(primitive: Primitive) -> Result<Self, Self::Error> {
+        let height = primitive.height();
+        let prefix = primitive.prefix()?;
+        let bytes_lo = *primitive.bytes_lo();
+        let bytes_hi = *primitive.bytes_hi();
+        let node = Self::new(height, prefix, bytes_lo, bytes_hi);
+        Ok(node)
+    }
+}
+
+impl fmt::Debug for Node {
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_node() {
             f.debug_struct("Node (Internal)")
@@ -277,7 +437,11 @@ impl<const KEY_SIZE: usize> fmt::Debug for Node<KEY_SIZE> {
     }
 }
 
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
 pub(crate) struct StorageNode<'storage, const KEY_SIZE: usize, TableType, StorageType> {
+========
+pub(super) struct StorageNode<'storage, TableType, StorageType> {
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     storage: &'storage StorageType,
     node: Node<KEY_SIZE>,
     phantom_table: PhantomData<TableType>,
@@ -326,6 +490,11 @@ impl<const KEY_SIZE: usize, TableType, StorageType> NodeTrait
 
     fn height(&self) -> u32 {
         self.node.height()
+    }
+
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
     }
 
     fn leaf_key(&self) -> Self::Key {
@@ -433,14 +602,17 @@ where
 
 #[cfg(test)]
 mod test_node {
+    use super::Node;
     use crate::{
         common::{
             error::DeserializeError,
+            sum,
             Bytes32,
             Prefix,
             PrefixError,
         },
         sparse::{
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
             generic::{
                 hash::{
                     sum,
@@ -448,6 +620,9 @@ mod test_node {
                 },
                 Node,
             },
+========
+            zero_sum,
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
             Primitive,
         },
     };
@@ -612,7 +787,10 @@ mod test_storage_node {
         StorageNode,
         StorageNodeError,
     };
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
 
+========
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
     use crate::{
         common::{
             error::DeserializeError,
@@ -620,14 +798,19 @@ mod test_storage_node {
                 ChildError,
                 ParentNode,
             },
+            sum,
             Bytes32,
             PrefixError,
             StorageMap,
         },
+<<<<<<<< HEAD:fuel-merkle/src/sparse/generic/node.rs
         sparse::{
             generic::hash::sum,
             Primitive,
         },
+========
+        sparse::Primitive,
+>>>>>>>> master:fuel-merkle/src/sparse/merkle_tree/node.rs
         storage::{
             Mappable,
             StorageMutate,

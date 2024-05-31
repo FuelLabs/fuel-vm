@@ -26,7 +26,7 @@ bitflags::bitflags! {
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
-        const GasPrice = 1 << 0;
+        const Tip = 1 << 0;
         /// If set, the witness limit is present in the policies.
         const WitnessLimit = 1 << 1;
         /// If set, the maturity is present in the policies.
@@ -50,7 +50,7 @@ bitflags::bitflags! {
 )]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PolicyType {
-    GasPrice,
+    Tip,
     WitnessLimit,
     Maturity,
     MaxFee,
@@ -59,7 +59,7 @@ pub enum PolicyType {
 impl PolicyType {
     pub const fn index(&self) -> usize {
         match self {
-            PolicyType::GasPrice => 0,
+            PolicyType::Tip => 0,
             PolicyType::WitnessLimit => 1,
             PolicyType::Maturity => 2,
             PolicyType::MaxFee => 3,
@@ -68,7 +68,7 @@ impl PolicyType {
 
     pub const fn bit(&self) -> PoliciesBits {
         match self {
-            PolicyType::GasPrice => PoliciesBits::GasPrice,
+            PolicyType::Tip => PoliciesBits::Tip,
             PolicyType::WitnessLimit => PoliciesBits::WitnessLimit,
             PolicyType::Maturity => PoliciesBits::Maturity,
             PolicyType::MaxFee => PoliciesBits::MaxFee,
@@ -115,8 +115,8 @@ impl Policies {
     }
 
     /// Sets the `gas_price` policy.
-    pub fn with_gas_price(mut self, gas_price: Word) -> Self {
-        self.set(PolicyType::GasPrice, Some(gas_price));
+    pub fn with_tip(mut self, tip: Word) -> Self {
+        self.set(PolicyType::Tip, Some(tip));
         self
     }
 
@@ -147,6 +147,11 @@ impl Policies {
         }
     }
 
+    /// Returns `true` if the policy is set.
+    pub fn is_set(&self, policy_type: PolicyType) -> bool {
+        self.bits.contains(policy_type.bit())
+    }
+
     /// Returns a policy's type by the `index`.
     pub fn get_type_by_index(&self, index: usize) -> Option<u32> {
         self.bits.iter().nth(index).map(|bit| bit.bits())
@@ -168,16 +173,16 @@ impl Policies {
         let expected_values = Self::values_for_bitmask(self.bits, self.values);
 
         if self.bits.bits() > PoliciesBits::all().bits() {
-            return false
+            return false;
         }
 
         if self.values != expected_values {
-            return false
+            return false;
         }
 
         if let Some(maturity) = self.get(PolicyType::Maturity) {
             if maturity > u32::MAX as u64 {
-                return false
+                return false;
             }
         }
 
@@ -205,6 +210,7 @@ impl Serialize for Policies {
         self.bits.bits().size_static()
     }
 
+    #[allow(clippy::arithmetic_side_effects)] // Bit count is not large enough to overflow.
     fn size_dynamic(&self) -> usize {
         self.bits.bits().count_ones() as usize * Word::MIN.size()
     }
@@ -243,7 +249,7 @@ impl Deserialize for Policies {
 
         if let Some(maturity) = self.get(PolicyType::Maturity) {
             if maturity > u32::MAX as u64 {
-                return Err(Error::Unknown("The maturity in more than `u32::MAX`"))
+                return Err(Error::Unknown("The maturity in more than `u32::MAX`"));
             }
         }
 

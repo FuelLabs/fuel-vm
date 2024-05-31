@@ -33,12 +33,14 @@ use fuel_tx::{
 };
 use fuel_vm::{
     error::SimpleResult,
-    interpreter::EcalHandler,
+    interpreter::{
+        EcalHandler,
+        Memory,
+    },
     prelude::{
         Interpreter,
         IntoChecked,
         MemoryClient,
-        MemoryRange,
     },
     storage::MemoryStorage,
 };
@@ -47,13 +49,16 @@ use fuel_vm::{
 pub struct FileReadEcal;
 
 impl EcalHandler for FileReadEcal {
-    fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut Interpreter<M, S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
         d: RegId,
-    ) -> SimpleResult<()> {
+    ) -> SimpleResult<()>
+    where
+        M: Memory,
+    {
         let a = vm.registers()[a]; // Seek offset
         let b = vm.registers()[b]; // Read length
         let c = vm.registers()[c]; // File path pointer in vm memory
@@ -62,8 +67,7 @@ impl EcalHandler for FileReadEcal {
         vm.gas_charge(b.saturating_add(1))?;
 
         // Extract file path from vm memory
-        let r = MemoryRange::new(c, d)?;
-        let path = String::from_utf8_lossy(&vm.memory()[r.usizes()]);
+        let path = String::from_utf8_lossy(vm.memory().read(c, d)?);
         let path = PathBuf::from(path.as_ref());
 
         // Seek file to correct position
@@ -74,8 +78,8 @@ impl EcalHandler for FileReadEcal {
 
         // Allocate the buffer in the vm memory and read directly from the file into it
         vm.allocate(b)?;
-        let r = MemoryRange::new(vm.registers()[RegId::HP], b)?;
-        file.read(&mut vm.memory_mut()[r.usizes()])
+        let hp = vm.registers()[RegId::HP];
+        file.read(vm.memory_mut().write_noownerchecks(hp, b)?)
             .map_err(|_| PanicReason::EcalError)?;
 
         Ok(())
@@ -83,7 +87,7 @@ impl EcalHandler for FileReadEcal {
 }
 
 fn example_file_read() {
-    let vm: Interpreter<MemoryStorage, Script, FileReadEcal> =
+    let vm: Interpreter<_, MemoryStorage, Script, FileReadEcal> =
         Interpreter::with_memory_storage();
 
     let script_data: Vec<u8> = file!().bytes().collect();
@@ -102,7 +106,6 @@ fn example_file_read() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -127,13 +130,16 @@ pub struct CounterEcal {
 }
 
 impl EcalHandler for CounterEcal {
-    fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut Interpreter<M, S, Tx, Self>,
         a: RegId,
         _b: RegId,
         _c: RegId,
         _d: RegId,
-    ) -> SimpleResult<()> {
+    ) -> SimpleResult<()>
+    where
+        M: Memory,
+    {
         vm.registers_mut()[a] = vm.ecal_state().counter;
         vm.ecal_state_mut().counter += 1;
         vm.gas_charge(1)?;
@@ -142,7 +148,7 @@ impl EcalHandler for CounterEcal {
 }
 
 fn example_counter() {
-    let mut vm: Interpreter<MemoryStorage, Script, CounterEcal> =
+    let mut vm: Interpreter<_, MemoryStorage, Script, CounterEcal> =
         Interpreter::with_memory_storage();
 
     vm.ecal_state_mut().counter = 5;
@@ -162,7 +168,6 @@ fn example_counter() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -188,8 +193,8 @@ pub struct SharedCounterEcal {
 }
 
 impl EcalHandler for SharedCounterEcal {
-    fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut Interpreter<M, S, Tx, Self>,
         a: RegId,
         _b: RegId,
         _c: RegId,
@@ -206,7 +211,7 @@ impl EcalHandler for SharedCounterEcal {
 }
 
 fn example_shared_counter() {
-    let vm: Interpreter<MemoryStorage, Script, SharedCounterEcal> =
+    let vm: Interpreter<_, MemoryStorage, Script, SharedCounterEcal> =
         Interpreter::with_memory_storage_and_ecal(SharedCounterEcal {
             counter: Arc::new(Mutex::new(5)),
         });
@@ -226,7 +231,6 @@ fn example_shared_counter() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()

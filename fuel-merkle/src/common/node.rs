@@ -1,10 +1,7 @@
 use crate::common::Bytes;
 
 use alloc::string::String;
-use core::{
-    fmt,
-    mem,
-};
+use core::fmt;
 
 pub trait KeyFormatting {
     type PrettyType: fmt::Display;
@@ -15,11 +12,7 @@ pub trait KeyFormatting {
 pub trait Node {
     type Key: KeyFormatting;
 
-    fn key_size_in_bits() -> u32 {
-        u32::try_from(mem::size_of::<Self::Key>() * 8)
-            .expect("The key usually is several bytes")
-    }
-
+    fn key_size_bits() -> u32;
     fn height(&self) -> u32;
     fn leaf_key(&self) -> Self::Key;
     fn is_leaf(&self) -> bool;
@@ -43,6 +36,8 @@ where
 {
     #[display(fmt = "Child with key {} was not found in storage", _0.pretty())]
     ChildNotFound(Key),
+    #[display(fmt = "Node channot have the requested child")]
+    ChildCannotExist,
     #[display(fmt = "Node is a leaf with no children")]
     NodeIsLeaf,
     #[display(fmt = "{}", _0)]

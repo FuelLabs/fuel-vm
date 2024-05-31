@@ -56,7 +56,7 @@ impl Input {
         outputs: &[Output],
         witnesses: &[Witness],
         predicate_params: &PredicateParameters,
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         self.check_without_signature(index, outputs, witnesses, predicate_params)?;
         self.check_signature(index, txhash, witnesses, recovery_cache)?;
@@ -69,7 +69,7 @@ impl Input {
         index: usize,
         txhash: &Bytes32,
         witnesses: &[Witness],
-        recovery_cache: &mut Option<HashMap<u8, Address>>,
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
     ) -> Result<(), ValidityError> {
         match self {
             Self::CoinSigned(CoinSigned {
@@ -113,7 +113,7 @@ impl Input {
                 };
 
                 if owner != &recovered_address {
-                    return Err(ValidityError::InputInvalidSignature { index })
+                    return Err(ValidityError::InputInvalidSignature { index });
                 }
 
                 Ok(())
@@ -158,7 +158,7 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() as u64 > predicate_params.max_predicate_length =>
+                if predicate.len() as u64 > predicate_params.max_predicate_length() =>
             {
                 Err(ValidityError::InputPredicateLength { index })
             }
@@ -170,7 +170,7 @@ impl Input {
             | Self::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
             }) if predicate_data.len() as u64
-                > predicate_params.max_predicate_data_length =>
+                > predicate_params.max_predicate_data_length() =>
             {
                 Err(ValidityError::InputPredicateDataLength { index })
             }
@@ -203,7 +203,7 @@ impl Input {
             Self::MessageDataSigned(MessageDataSigned { data, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { data, .. })
                 if data.is_empty()
-                    || data.len() as u64 > predicate_params.max_message_data_length =>
+                    || data.len() as u64 > predicate_params.max_message_data_length() =>
             {
                 Err(ValidityError::InputMessageDataLength { index })
             }
@@ -269,9 +269,11 @@ pub trait FormatValidityChecks {
 impl FormatValidityChecks for Transaction {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         match self {
-            Transaction::Script(script) => script.check_signatures(chain_id),
-            Transaction::Create(create) => create.check_signatures(chain_id),
-            Transaction::Mint(mint) => mint.check_signatures(chain_id),
+            Self::Script(tx) => tx.check_signatures(chain_id),
+            Self::Create(tx) => tx.check_signatures(chain_id),
+            Self::Mint(tx) => tx.check_signatures(chain_id),
+            Self::Upgrade(tx) => tx.check_signatures(chain_id),
+            Self::Upload(tx) => tx.check_signatures(chain_id),
         }
     }
 
@@ -281,14 +283,18 @@ impl FormatValidityChecks for Transaction {
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
         match self {
-            Transaction::Script(script) => {
-                script.check_without_signatures(block_height, consensus_params)
+            Self::Script(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
             }
-            Transaction::Create(create) => {
-                create.check_without_signatures(block_height, consensus_params)
+            Self::Create(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
             }
-            Transaction::Mint(mint) => {
-                mint.check_without_signatures(block_height, consensus_params)
+            Self::Mint(tx) => tx.check_without_signatures(block_height, consensus_params),
+            Self::Upgrade(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
+            }
+            Self::Upload(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
             }
         }
     }
@@ -302,7 +308,7 @@ pub(crate) fn check_size<T>(tx: &T, tx_params: &TxParameters) -> Result<(), Vali
 where
     T: canonical::Serialize,
 {
-    if tx.size() as u64 > tx_params.max_size {
+    if tx.size() as u64 > tx_params.max_size() {
         Err(ValidityError::TransactionSizeLimitExceeded)?;
     }
 
@@ -317,23 +323,16 @@ pub(crate) fn check_common_part<T>(
 where
     T: canonical::Serialize + Chargeable + field::Outputs,
 {
-    let ConsensusParameters {
-        tx_params,
-        predicate_params,
-        base_asset_id,
-        gas_costs,
-        fee_params,
-        ..
-    } = consensus_params;
+    let tx_params = consensus_params.tx_params();
+    let predicate_params = consensus_params.predicate_params();
+    let base_asset_id = consensus_params.base_asset_id();
+    let gas_costs = consensus_params.gas_costs();
+    let fee_params = consensus_params.fee_params();
 
     check_size(tx, tx_params)?;
 
     if !tx.policies().is_valid() {
         Err(ValidityError::TransactionPoliciesAreInvalid)?
-    }
-
-    if tx.policies().get(PolicyType::GasPrice).is_none() {
-        Err(ValidityError::TransactionNoGasPricePolicy)?
     }
 
     if let Some(witness_limit) = tx.policies().get(PolicyType::WitnessLimit) {
@@ -344,29 +343,27 @@ where
     }
 
     let max_gas = tx.max_gas(gas_costs, fee_params);
-    if max_gas > tx_params.max_gas_per_tx {
+    if max_gas > tx_params.max_gas_per_tx() {
         Err(ValidityError::TransactionMaxGasExceeded)?
     }
 
-    if let Some(max_fee_limit) = tx.policies().get(PolicyType::MaxFee) {
-        if tx.max_fee(gas_costs, fee_params) > max_fee_limit as u128 {
-            Err(ValidityError::TransactionMaxFeeLimitExceeded)?
-        }
-    }
+    if !tx.policies().is_set(PolicyType::MaxFee) {
+        Err(ValidityError::TransactionMaxFeeNotSet)?
+    };
 
     if tx.maturity() > block_height {
         Err(ValidityError::TransactionMaturity)?;
     }
 
-    if tx.inputs().len() > tx_params.max_inputs as usize {
+    if tx.inputs().len() > tx_params.max_inputs() as usize {
         Err(ValidityError::TransactionInputsMax)?
     }
 
-    if tx.outputs().len() > tx_params.max_outputs as usize {
+    if tx.outputs().len() > tx_params.max_outputs() as usize {
         Err(ValidityError::TransactionOutputsMax)?
     }
 
-    if tx.witnesses().len() > tx_params.max_witnesses as usize {
+    if tx.witnesses().len() > tx_params.max_witnesses() as usize {
         Err(ValidityError::TransactionWitnessesMax)?
     }
 
@@ -406,7 +403,7 @@ where
             {
                 return Err(ValidityError::TransactionOutputChangeAssetIdDuplicated(
                     *input_asset_id,
-                ))
+                ));
             }
 
             Ok(())
@@ -419,20 +416,20 @@ where
         .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
 
     if let Some(utxo_id) = next_duplicate(duplicated_utxo_id).copied() {
-        return Err(ValidityError::DuplicateInputUtxoId { utxo_id })
+        return Err(ValidityError::DuplicateInputUtxoId { utxo_id });
     }
 
     // Check for duplicated input contract id
     let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
 
     if let Some(contract_id) = next_duplicate(duplicated_contract_id).copied() {
-        return Err(ValidityError::DuplicateInputContractId { contract_id })
+        return Err(ValidityError::DuplicateInputContractId { contract_id });
     }
 
     // Check for duplicated input message id
     let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
     if let Some(message_id) = next_duplicate(duplicated_message_id) {
-        return Err(ValidityError::DuplicateMessageInputId { message_id })
+        return Err(ValidityError::DuplicateMessageInputId { message_id });
     }
 
     // Validate the inputs without checking signature
@@ -461,7 +458,7 @@ where
                 {
                     return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
                         *asset_id,
-                    ))
+                    ));
                 }
             }
 
@@ -472,7 +469,7 @@ where
                 {
                     return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
                         *asset_id,
-                    ))
+                    ));
                 }
             }
 
@@ -505,7 +502,7 @@ where
 #[cfg(feature = "typescript")]
 mod typescript {
     use crate::{
-        PredicateParameters,
+        transaction::consensus_parameters::typescript::PredicateParameters,
         Witness,
     };
     use fuel_types::Bytes32;
@@ -549,7 +546,7 @@ mod typescript {
                 txhash,
                 &outputs,
                 &witnesses,
-                predicate_params,
+                predicate_params.as_ref(),
                 &mut None,
             )
             .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))

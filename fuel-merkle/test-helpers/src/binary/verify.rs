@@ -7,7 +7,7 @@ use crate::binary::{
 pub fn verify<T: AsRef<[u8]>>(
     root: &Data,
     data: &T,
-    proof_set: &Vec<Data>,
+    proof_set: &[Data],
     proof_index: u64,
     num_leaves: u64,
 ) -> bool {

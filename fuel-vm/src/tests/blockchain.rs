@@ -608,7 +608,7 @@ where
             .add_random_fee_input()
             .add_output(output0)
             .finalize()
-            .into_checked(height, &consensus_params, MemoryInstance::new())
+            .into_checked(height, &consensus_params)
             .expect("failed to check tx");
 
     client.deploy(tx_create_target).unwrap();
@@ -670,7 +670,7 @@ where
     .add_random_fee_input()
     .add_output(output1)
     .finalize()
-    .into_checked(height, &consensus_params, MemoryInstance::new())
+    .into_checked(height, &consensus_params)
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
@@ -687,7 +687,7 @@ where
             .add_random_fee_input()
             .add_output(output1)
             .finalize()
-            .into_checked(height, &consensus_params, MemoryInstance::new())
+            .into_checked(height, &consensus_params)
             .expect("failed to check tx");
 
     client.transact(tx_deploy_loader)
@@ -747,7 +747,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         .add_random_fee_input()
         .add_output(output0)
         .finalize()
-        .into_checked(height, &consensus_params, MemoryInstance::new())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     client.deploy(tx_create_target).unwrap();
@@ -762,7 +762,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     .maturity(maturity)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &consensus_params, MemoryInstance::new())
+    .into_checked(height, &consensus_params)
     .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);

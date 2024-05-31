@@ -144,9 +144,7 @@ fn ecrecover_tx_id() {
     tx.sign_inputs(&secret, &chain_id);
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
-    let tx = tx
-        .into_checked(height, &consensus_params, MemoryInstance::new())
-        .unwrap();
+    let tx = tx.into_checked(height, &consensus_params).unwrap();
 
     let receipts = client.transact(tx);
     let success = receipts
@@ -233,7 +231,7 @@ async fn recover_tx_id_predicate() {
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &consensus_params, MemoryInstance::new())
+            .into_checked(maturity, &consensus_params)
             .expect("Should check predicate successfully");
     }
 
@@ -241,7 +239,7 @@ async fn recover_tx_id_predicate() {
     tx.estimate_predicates(&check_params, MemoryInstance::new())
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &consensus_params, MemoryInstance::new())
+    tx.into_checked(maturity, &consensus_params)
         .expect("Should check predicate successfully");
 }
 

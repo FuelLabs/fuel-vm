@@ -32,7 +32,7 @@ fn memcopy() {
         .finalize();
 
     let tx = tx
-        .into_checked(Default::default(), &consensus_params, MemoryInstance::new())
+        .into_checked(Default::default(), &consensus_params)
         .expect("default tx should produce a valid checked transaction")
         .into_ready(
             zero_gas_price,
@@ -99,11 +99,7 @@ fn stack_alloc_ownership() {
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
-        .into_checked(
-            Default::default(),
-            &ConsensusParameters::standard(),
-            MemoryInstance::new(),
-        )
+        .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
         .into_ready(
             gas_price,

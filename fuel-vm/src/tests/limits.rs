@@ -37,7 +37,7 @@ fn cannot_exceed_max_inputs() {
     }
     script
         .finalize()
-        .into_checked(0u32.into(), &params, MemoryInstance::new())
+        .into_checked(0u32.into(), &params)
         .expect_err("Tx is invalid and shouldn't validate");
 }
 
@@ -55,7 +55,7 @@ fn cannot_exceed_max_outputs() {
     }
     script
         .finalize()
-        .into_checked(0u32.into(), &params, MemoryInstance::new())
+        .into_checked(0u32.into(), &params)
         .expect_err("Tx is invalid and shouldn't validate");
 }
 
@@ -73,6 +73,6 @@ fn cannot_exceed_max_witnesses() {
     }
     script
         .finalize()
-        .into_checked(0u32.into(), &params, MemoryInstance::new())
+        .into_checked(0u32.into(), &params)
         .expect_err("Tx is invalid and shouldn't validate");
 }

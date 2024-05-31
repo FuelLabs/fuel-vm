@@ -38,7 +38,7 @@ fn setup(program: Vec<Instruction>) -> Transactor<MemoryInstance, MemoryStorage,
         .maturity(maturity)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, MemoryInstance::new())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);

@@ -95,10 +95,10 @@ fn estimate_gas_gives_proper_gas_used() {
     // unestimated transaction should fail as it's predicates are not estimated
     assert!(transaction
         .clone()
-        .into_checked(Default::default(), params, MemoryInstance::new())
+        .into_checked(Default::default(), params)
         .is_err());
 
-    Interpreter::<_, PredicateStorage, _>::estimate_predicates(
+    Interpreter::estimate_predicates(
         &mut transaction,
         &params.into(),
         MemoryInstance::new(),
@@ -107,8 +107,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     // transaction should pass checking after estimation
 
-    let check_res =
-        transaction.into_checked(Default::default(), params, MemoryInstance::new());
+    let check_res = transaction.into_checked(Default::default(), params);
     assert!(check_res.is_ok());
 }
 

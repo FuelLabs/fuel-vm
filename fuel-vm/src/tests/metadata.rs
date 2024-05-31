@@ -90,7 +90,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, MemoryInstance::new())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
@@ -142,7 +142,7 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, MemoryInstance::new())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     assert!(Transactor::<_, _, _>::new(
@@ -205,7 +205,7 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, MemoryInstance::new())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
     let receipts = Transactor::<_, _, _>::new(
@@ -267,7 +267,7 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, MemoryInstance::new())
+        .into_checked(height, &consensus_params)
         .unwrap();
 
     let receipts = client.transact(script);
@@ -302,7 +302,7 @@ fn get_metadata_base_asset_id() {
     .script_gas_limit(gas_limit)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &params, MemoryInstance::new())
+    .into_checked(height, &params)
     .unwrap();
 
     let receipts = Transactor::<_, _, _>::new(
@@ -340,11 +340,7 @@ fn get_metadata_tx_start() {
     .script_gas_limit(gas_limit)
     .add_random_fee_input()
     .finalize()
-    .into_checked(
-        height,
-        &ConsensusParameters::default(),
-        MemoryInstance::new(),
-    )
+    .into_checked(height, &ConsensusParameters::default())
     .unwrap();
 
     let receipts = Transactor::<_, _, _>::new(

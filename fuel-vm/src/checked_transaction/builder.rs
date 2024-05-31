@@ -6,7 +6,6 @@ use super::{
 };
 use crate::{
     checked_transaction::CheckPredicates,
-    interpreter::MemoryInstance,
     prelude::*,
 };
 use fuel_tx::{
@@ -35,7 +34,7 @@ where
 {
     fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx> {
         self.finalize()
-            .into_checked(height, self.get_params(), MemoryInstance::new())
+            .into_checked(height, self.get_params())
             .expect("failed to check tx")
     }
 

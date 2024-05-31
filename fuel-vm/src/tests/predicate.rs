@@ -120,19 +120,18 @@ where
         .expect("Should successfully convert into Checked");
 
     let parallel_execution = {
-        Interpreter::<MemoryInstance, PredicateStorage, _>::check_predicates_async::<
-            TokioWithRayon,
-        >(&checked, &check_params, &DummyPool)
+        Interpreter::check_predicates_async::<TokioWithRayon>(
+            &checked,
+            &check_params,
+            &DummyPool,
+        )
         .await
         .map(|checked| checked.gas_used())
     };
 
-    let seq_execution = Interpreter::<_, PredicateStorage, _>::check_predicates(
-        &checked,
-        &check_params,
-        MemoryInstance::new(),
-    )
-    .map(|checked| checked.gas_used());
+    let seq_execution =
+        Interpreter::check_predicates(&checked, &check_params, MemoryInstance::new())
+            .map(|checked| checked.gas_used());
 
     match (parallel_execution, seq_execution) {
         (Ok(p_gas_used), Ok(s_gas_used)) => {
@@ -271,12 +270,10 @@ async fn execute_gas_metered_predicates(
             .into_checked_basic(Default::default(), &ConsensusParameters::standard())
             .expect("Should successfully create checked tranaction with predicate");
 
-        Interpreter::<MemoryInstance, PredicateStorage, _>::check_predicates_async::<
-            TokioWithRayon,
-        >(&tx, &params, &DummyPool)
-        .await
-        .map(|r| r.gas_used())
-        .map_err(|_| ())?
+        Interpreter::check_predicates_async::<TokioWithRayon>(&tx, &params, &DummyPool)
+            .await
+            .map(|r| r.gas_used())
+            .map_err(|_| ())?
     };
 
     // sequential version
@@ -288,13 +285,9 @@ async fn execute_gas_metered_predicates(
         .into_checked_basic(Default::default(), &ConsensusParameters::standard())
         .expect("Should successfully create checked tranaction with predicate");
 
-    let seq_gas_used = Interpreter::<_, PredicateStorage, _>::check_predicates(
-        &tx,
-        &params,
-        MemoryInstance::new(),
-    )
-    .map(|r| r.gas_used())
-    .map_err(|_| ())?;
+    let seq_gas_used = Interpreter::check_predicates(&tx, &params, MemoryInstance::new())
+        .map(|r| r.gas_used())
+        .map_err(|_| ())?;
 
     assert_eq!(seq_gas_used, parallel_gas_used);
 

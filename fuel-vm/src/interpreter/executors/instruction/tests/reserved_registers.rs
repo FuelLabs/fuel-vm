@@ -73,7 +73,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .finalize();
 
     let tx = tx
-        .into_checked(block_height, &consensus_params, MemoryInstance::new())
+        .into_checked(block_height, &consensus_params)
         .expect("failed to check tx")
         .into_ready(zero_gas_price, vm.gas_costs(), &fee_params)
         .expect("failed dynamic checks");

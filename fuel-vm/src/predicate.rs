@@ -280,7 +280,7 @@ mod tests {
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
 
-                let result = Interpreter::<_, PredicateStorage, Script>::check_predicates(
+                let result = Interpreter::check_predicates(
                     &tx,
                     &CheckPredicateParams::default(),
                     MemoryInstance::new(),

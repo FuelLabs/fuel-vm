@@ -14,7 +14,6 @@ use fuel_vm::{
     interpreter::{
         Interpreter,
         Memory,
-        MemoryInstance,
         NotSupportedEcal,
     },
     prelude::*,
@@ -51,7 +50,7 @@ fn main() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, MemoryInstance::new())
+        .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx")
         .into_ready(
             0,

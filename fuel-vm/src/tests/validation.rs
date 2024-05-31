@@ -129,10 +129,8 @@ fn malleable_fields_do_not_affect_validity() {
 
         let vm = Interpreter::<_, _, Script>::with_memory_storage();
         let mut client = MemoryClient::from_txtor(vm.into());
-        let receipts = client.transact(
-            tx.into_checked(0u32.into(), &params, MemoryInstance::new())
-                .expect("valid tx"),
-        );
+        let receipts =
+            client.transact(tx.into_checked(0u32.into(), &params).expect("valid tx"));
 
         let start_id = receipts[0].data().unwrap();
         let computed_id = receipts[1].data().unwrap();

@@ -134,7 +134,7 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params, MemoryInstance::new())
+        .into_checked(height, &consensus_params)
         .expect("failed to check tx")
         .into_ready(
             zero_gas_price,

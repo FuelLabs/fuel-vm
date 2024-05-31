@@ -122,7 +122,7 @@ where
     let parallel_execution = {
         Interpreter::<MemoryInstance, PredicateStorage, _>::check_predicates_async::<
             TokioWithRayon,
-        >(&checked, &check_params, DummyPool)
+        >(&checked, &check_params, &DummyPool)
         .await
         .map(|checked| checked.gas_used())
     };
@@ -263,7 +263,7 @@ async fn execute_gas_metered_predicates(
     let parallel_gas_used = {
         let mut async_tx = transaction.clone();
         async_tx
-            .estimate_predicates_async::<TokioWithRayon>(&params, DummyPool)
+            .estimate_predicates_async::<TokioWithRayon>(&params, &DummyPool)
             .await
             .map_err(|_| ())?;
 
@@ -273,7 +273,7 @@ async fn execute_gas_metered_predicates(
 
         Interpreter::<MemoryInstance, PredicateStorage, _>::check_predicates_async::<
             TokioWithRayon,
-        >(&tx, &params, DummyPool)
+        >(&tx, &params, &DummyPool)
         .await
         .map(|r| r.gas_used())
         .map_err(|_| ())?
@@ -379,7 +379,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, DummyPool)
+            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
@@ -431,7 +431,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
     {
         let tx_with_predicate = checked
             .clone()
-            .check_predicates_async::<TokioWithRayon>(&params, DummyPool)
+            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool)
             .await
             .expect("Predicate check failed");
 
@@ -502,7 +502,7 @@ async fn gas_used_by_predicates_more_than_limit() {
         let _ = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, DummyPool)
+            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool)
             .await
             .expect("Predicate check failed even if we don't have any predicates");
     }
@@ -552,7 +552,7 @@ async fn gas_used_by_predicates_more_than_limit() {
         let tx_with_predicate = builder
             .clone()
             .finalize_checked_basic(Default::default())
-            .check_predicates_async::<TokioWithRayon>(&params, DummyPool)
+            .check_predicates_async::<TokioWithRayon>(&params, &DummyPool)
             .await;
 
         assert!(matches!(

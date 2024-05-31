@@ -392,7 +392,7 @@ pub trait CheckPredicates: Sized {
     async fn check_predicates_async<E: ParallelExecutor>(
         self,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError>;
 }
 
@@ -412,7 +412,7 @@ pub trait EstimatePredicates: Sized {
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<(), CheckError>;
 }
 
@@ -461,7 +461,7 @@ where
     async fn check_predicates_async<E>(
         mut self,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -498,7 +498,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     async fn estimate_predicates_async<E>(
         &mut self,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
@@ -534,7 +534,7 @@ impl EstimatePredicates for Transaction {
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<(), CheckError> {
         match self {
             Self::Script(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
@@ -560,7 +560,7 @@ impl CheckPredicates for Checked<Mint> {
     async fn check_predicates_async<E: ParallelExecutor>(
         mut self,
         _params: &CheckPredicateParams,
-        _pool: impl VmMemoryPool + Clone + Send + 'static,
+        _pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -601,7 +601,7 @@ impl CheckPredicates for Checked<Transaction> {
     async fn check_predicates_async<E>(
         mut self,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,

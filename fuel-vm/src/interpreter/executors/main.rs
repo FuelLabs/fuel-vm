@@ -179,7 +179,7 @@ where
     pub async fn check_predicates_async<E>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -223,7 +223,7 @@ where
     pub async fn estimate_predicates_async<E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -242,7 +242,7 @@ where
     async fn run_predicate_async<E>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
-        pool: impl VmMemoryPool + Clone + Send + 'static,
+        pool: &impl VmMemoryPool,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
@@ -258,7 +258,7 @@ where
             {
                 let tx = kind.tx().clone();
                 let my_params = params.clone();
-                let pool = pool.clone();
+                let memory = pool.get_new();
 
                 let verify_task = E::create_task(move || {
                     Interpreter::<_, PredicateStorage, Tx>::check_predicate(
@@ -267,7 +267,7 @@ where
                         predicate_action,
                         predicate,
                         my_params,
-                        pool.get_new(),
+                        memory,
                     )
                 });
 
@@ -304,7 +304,6 @@ where
                         memory.as_mut(),
                     ),
                 );
-                memory.as_mut().reset();
             }
         }
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732):  Adds `reset` method to VM memory.
+
+#### Breaking
+
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732): Makes the VM generic over the memory type, allowing reuse of relatively expensive-to-allocate VM memories through `VmMemoryPool`. Functions and traits which require VM initalization such as `estimate_predicates` now take either the memory or `VmMemoryPool` as an argument. The `Interpterter::eq` method now only compares accessible memory regions. `Memory` was renamed into `MemoryInstance` and `Memory` is a trait now.
+
+
 ## [Version 0.50.0]
 
 ### Changed

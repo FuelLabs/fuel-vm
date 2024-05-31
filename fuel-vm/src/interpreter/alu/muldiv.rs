@@ -15,7 +15,7 @@ use fuel_types::{
     Word,
 };
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {

@@ -14,6 +14,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
+    MemoryInstance,
     RuntimeBalances,
 };
 use crate::{
@@ -60,8 +61,9 @@ use alloc::borrow::Cow;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
@@ -75,7 +77,7 @@ where
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = ContractBalanceCtx {
             storage: &self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             pc,
             input_contracts: InputContracts::new(
                 self.tx.input_contracts(),
@@ -107,7 +109,7 @@ where
         ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
@@ -146,7 +148,7 @@ where
         ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
@@ -188,7 +190,7 @@ where
 
 struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
     input_contracts: InputContracts<'vm, I>,
 }
@@ -218,7 +220,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
 }
 struct TransferCtx<'vm, S, Tx> {
     storage: &'vm mut S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,

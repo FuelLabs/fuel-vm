@@ -18,7 +18,7 @@ use test_case::test_case;
 struct SCWQInput {
     input: StateClearQWord,
     storage_slots: Vec<([u8; 32], ContractsStateData)>,
-    memory: Memory,
+    memory: MemoryInstance,
 }
 
 #[test_case(

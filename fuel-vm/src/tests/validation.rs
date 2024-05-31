@@ -127,7 +127,7 @@ fn malleable_fields_do_not_affect_validity() {
     let run_tx = |tx: Script| {
         let original_id = tx.id(&params.chain_id());
 
-        let vm = Interpreter::<_, Script>::with_memory_storage();
+        let vm = Interpreter::<_, _, Script>::with_memory_storage();
         let mut client = MemoryClient::from_txtor(vm.into());
         let receipts =
             client.transact(tx.into_checked(0u32.into(), &params).expect("valid tx"));

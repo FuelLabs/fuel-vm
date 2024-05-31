@@ -94,6 +94,7 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
+        interpreter::Memory,
         memory_client::MemoryClient,
         state::StateTransition,
         storage::{
@@ -109,6 +110,7 @@ pub mod test_helpers {
             CheckedMetadata,
             ExecutableTransaction,
             InterpreterParams,
+            MemoryInstance,
         },
         prelude::{
             Backtrace,
@@ -467,12 +469,13 @@ pub mod test_helpers {
             }
         }
 
-        fn execute_tx_inner<Tx, Ecal>(
+        fn execute_tx_inner<M, Tx, Ecal>(
             &mut self,
-            transactor: &mut Transactor<MemoryStorage, Tx, Ecal>,
+            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal>,
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
+            M: Memory,
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
@@ -523,8 +526,11 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Create>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
-            let mut transactor =
-                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
+            let mut transactor = Transactor::<_, _, _>::new(
+                MemoryInstance::new(),
+                self.storage.clone(),
+                interpreter_params,
+            );
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -535,8 +541,11 @@ pub mod test_helpers {
         ) -> anyhow::Result<StateTransition<Script>> {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
-            let mut transactor =
-                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
+            let mut transactor = Transactor::<_, _, _>::new(
+                MemoryInstance::new(),
+                self.storage.clone(),
+                interpreter_params,
+            );
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -548,8 +557,11 @@ pub mod test_helpers {
         ) -> anyhow::Result<(StateTransition<Script>, Option<Backtrace>)> {
             let interpreter_params =
                 InterpreterParams::new(gas_price, &self.consensus_params);
-            let mut transactor =
-                Transactor::<_, _>::new(self.storage.clone(), interpreter_params);
+            let mut transactor = Transactor::<_, _, _>::new(
+                MemoryInstance::new(),
+                self.storage.clone(),
+                interpreter_params,
+            );
 
             let state = self.execute_tx_inner(&mut transactor, checked)?;
             let backtrace = transactor.backtrace();
@@ -609,11 +621,13 @@ pub mod test_helpers {
         );
     }
 
-    pub fn check_expected_reason_for_instructions_with_client(
-        mut client: MemoryClient,
+    pub fn check_expected_reason_for_instructions_with_client<M>(
+        mut client: MemoryClient<M>,
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
-    ) {
+    ) where
+        M: Memory,
+    {
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
         // `MAX_GAS_PER_TX`.
@@ -677,11 +691,13 @@ pub mod test_helpers {
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }
 
-    pub fn check_reason_for_transaction(
-        mut client: MemoryClient,
+    pub fn check_reason_for_transaction<M>(
+        mut client: MemoryClient<M>,
         checked_tx: Checked<Script>,
         expected_reason: PanicReason,
-    ) {
+    ) where
+        M: Memory,
+    {
         let receipts = client.transact(checked_tx);
 
         let panic_found = receipts.iter().any(|receipt| {

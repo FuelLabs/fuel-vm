@@ -7,10 +7,7 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::{
-    interpreter::memory::Memory,
-    storage::MemoryStorage,
-};
+use crate::storage::MemoryStorage;
 
 use super::*;
 use crate::crypto;
@@ -32,7 +29,7 @@ struct Input {
     balance: Vec<(AssetId, Word)>,
     input_contracts: Vec<ContractId>,
     storage_balance: Vec<(AssetId, Word)>,
-    memory: Memory,
+    memory: MemoryInstance,
     gas_cost: DependentCost,
     storage_contract: Vec<(ContractId, Vec<u8>)>,
     script: Option<Script>,
@@ -77,7 +74,7 @@ struct RegInput {
 #[derive(PartialEq, Eq)]
 enum CheckMem {
     Check(Vec<(usize, Vec<u8>)>),
-    Mem(Memory),
+    Mem(MemoryInstance),
 }
 
 #[derive(PartialEq, Eq)]
@@ -143,8 +140,8 @@ impl Default for Output {
     }
 }
 
-fn mem(set: &[(usize, Vec<u8>)]) -> Memory {
-    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
+fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
+    let mut memory: MemoryInstance = vec![0u8; MEM_SIZE].try_into().unwrap();
     for (addr, data) in set {
         memory[*addr..*addr + data.len()].copy_from_slice(data);
     }

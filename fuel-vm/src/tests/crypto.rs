@@ -157,7 +157,10 @@ fn ecrecover_tx_id() {
 #[cfg(feature = "std")]
 #[tokio::test]
 async fn recover_tx_id_predicate() {
-    use crate::checked_transaction::EstimatePredicates;
+    use crate::{
+        checked_transaction::EstimatePredicates,
+        pool::DummyPool,
+    };
     use rand::Rng;
     let rng = &mut StdRng::seed_from_u64(1234u64);
 
@@ -223,7 +226,7 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&check_params)
+            .estimate_predicates_async::<TokioWithRayon>(&check_params, &DummyPool)
             .await
             .expect("Should estimate predicate successfully");
 
@@ -233,7 +236,7 @@ async fn recover_tx_id_predicate() {
     }
 
     // sequential version
-    tx.estimate_predicates(&check_params)
+    tx.estimate_predicates(&check_params, MemoryInstance::new())
         .expect("Should estimate predicate successfully");
 
     tx.into_checked(maturity, &consensus_params)

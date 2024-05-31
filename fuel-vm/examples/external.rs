@@ -33,7 +33,10 @@ use fuel_tx::{
 };
 use fuel_vm::{
     error::SimpleResult,
-    interpreter::EcalHandler,
+    interpreter::{
+        EcalHandler,
+        Memory,
+    },
     prelude::{
         Interpreter,
         IntoChecked,
@@ -46,13 +49,16 @@ use fuel_vm::{
 pub struct FileReadEcal;
 
 impl EcalHandler for FileReadEcal {
-    fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut Interpreter<M, S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
         d: RegId,
-    ) -> SimpleResult<()> {
+    ) -> SimpleResult<()>
+    where
+        M: Memory,
+    {
         let a = vm.registers()[a]; // Seek offset
         let b = vm.registers()[b]; // Read length
         let c = vm.registers()[c]; // File path pointer in vm memory
@@ -81,7 +87,7 @@ impl EcalHandler for FileReadEcal {
 }
 
 fn example_file_read() {
-    let vm: Interpreter<MemoryStorage, Script, FileReadEcal> =
+    let vm: Interpreter<_, MemoryStorage, Script, FileReadEcal> =
         Interpreter::with_memory_storage();
 
     let script_data: Vec<u8> = file!().bytes().collect();
@@ -124,13 +130,16 @@ pub struct CounterEcal {
 }
 
 impl EcalHandler for CounterEcal {
-    fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut Interpreter<M, S, Tx, Self>,
         a: RegId,
         _b: RegId,
         _c: RegId,
         _d: RegId,
-    ) -> SimpleResult<()> {
+    ) -> SimpleResult<()>
+    where
+        M: Memory,
+    {
         vm.registers_mut()[a] = vm.ecal_state().counter;
         vm.ecal_state_mut().counter += 1;
         vm.gas_charge(1)?;
@@ -139,7 +148,7 @@ impl EcalHandler for CounterEcal {
 }
 
 fn example_counter() {
-    let mut vm: Interpreter<MemoryStorage, Script, CounterEcal> =
+    let mut vm: Interpreter<_, MemoryStorage, Script, CounterEcal> =
         Interpreter::with_memory_storage();
 
     vm.ecal_state_mut().counter = 5;
@@ -184,8 +193,8 @@ pub struct SharedCounterEcal {
 }
 
 impl EcalHandler for SharedCounterEcal {
-    fn ecal<S, Tx>(
-        vm: &mut Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut Interpreter<M, S, Tx, Self>,
         a: RegId,
         _b: RegId,
         _c: RegId,
@@ -202,7 +211,7 @@ impl EcalHandler for SharedCounterEcal {
 }
 
 fn example_shared_counter() {
-    let vm: Interpreter<MemoryStorage, Script, SharedCounterEcal> =
+    let vm: Interpreter<_, MemoryStorage, Script, SharedCounterEcal> =
         Interpreter::with_memory_storage_and_ecal(SharedCounterEcal {
             counter: Arc::new(Mutex::new(5)),
         });

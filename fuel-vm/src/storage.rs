@@ -3,23 +3,60 @@
 use fuel_storage::Mappable;
 use fuel_tx::Contract;
 use fuel_types::{
-    AssetId,
     Bytes32,
     ContractId,
-    Salt,
-    Word,
 };
 
+mod contracts_assets;
+mod contracts_state;
 mod interpreter;
 mod memory;
 pub(crate) mod predicate;
 
+pub use contracts_assets::{
+    ContractsAssetKey,
+    ContractsAssets,
+};
+pub use contracts_state::{
+    ContractsState,
+    ContractsStateData,
+    ContractsStateKey,
+};
 pub use interpreter::{
     ContractsAssetsStorage,
     InterpreterStorage,
 };
 pub use memory::MemoryStorage;
 pub use predicate::PredicateStorage;
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+/// The uploaded bytecode can be in two states: fully uploaded or partially uploaded.
+pub enum UploadedBytecode {
+    /// The bytecode is partially uploaded.
+    Uncompleted {
+        /// The cumulative bytecode of `uploaded_subsections_number` parts.
+        bytecode: Vec<u8>,
+        /// The number of already included subsections of the bytecode.
+        uploaded_subsections_number: u16,
+    },
+    /// The bytecode is fully uploaded and ready to be used.
+    Completed(Vec<u8>),
+}
+
+/// The storage table for uploaded bytecode.
+pub struct UploadedBytecodes;
+
+impl Mappable for UploadedBytecodes {
+    /// The key is a Merkle root of the bytecode.
+    type Key = Self::OwnedKey;
+    type OwnedKey = Bytes32;
+    type OwnedValue = UploadedBytecode;
+    type Value = Self::OwnedValue;
+}
 
 /// The storage table for contract's raw byte code.
 pub struct ContractsRawCode;
@@ -31,53 +68,14 @@ impl Mappable for ContractsRawCode {
     type Value = [u8];
 }
 
-/// The storage table for contract's additional information as salt, root hash, etc.
-pub struct ContractsInfo;
-
-impl Mappable for ContractsInfo {
-    type Key = Self::OwnedKey;
-    type OwnedKey = ContractId;
-    type OwnedValue = Self::Value;
-    /// `Salt` - is the salt used during creation of the contract for uniques.
-    /// `Bytes32` - is the root hash of the contract's code.
-    type Value = (Salt, Bytes32);
-}
-
-/// The storage table for contract's assets balances.
-///
-/// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsAssets;
-
-impl Mappable for ContractsAssets {
-    type Key = Self::OwnedKey;
-    type OwnedKey = ContractsAssetKey;
-    type OwnedValue = Self::Value;
-    type Value = Word;
-}
-
-/// The storage table for contract's hashed key-value state.
-///
-/// Lifetime is for optimization to avoid `clone`.
-pub struct ContractsState;
-
-impl Mappable for ContractsState {
-    type Key = Self::OwnedKey;
-    /// The table key is combination of the `ContractId` and `Bytes32` hash of the value's
-    /// key.
-    type OwnedKey = ContractsStateKey;
-    type OwnedValue = Self::Value;
-    /// The table value is hash of the value.
-    type Value = Bytes32;
-}
-
-/// The macro defines a new type of double storage key. It is a merge of the two types
-/// into one general type that represents the storage key of some entity.
+/// The macro defines a new type of double storage key. It is a merge of the two
+/// types into one general type that represents the storage key of some entity.
 ///
 /// Both types are represented by one big array. It is done from the performance
-/// perspective to minimize the number of copies. The current code doesn't use consumed
-/// values and uses it in most cases as on big key(except tests, which require access to
-/// sub-keys). But in the future, we may change the layout of the fields based on
-/// the performance measurements/new business logic.
+/// perspective to minimize the number of copies. The current code doesn't use
+/// consumed values and uses it in most cases as on big key(except tests, which
+/// require access to sub-keys). But in the future, we may change the layout of the
+/// fields based on the performance measurements/new business logic.
 #[macro_export]
 macro_rules! double_key {
     (
@@ -172,20 +170,37 @@ macro_rules! double_key {
                 key.0
             }
         }
+
+        impl TryFrom<&[u8]> for $i {
+            type Error = core::array::TryFromSliceError;
+
+            fn try_from(slice: &[u8]) -> Result<Self, Self::Error> {
+                $i::from_slice(slice)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl serde::Serialize for $i {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                use serde_with::SerializeAs;
+                serde_with::Bytes::serialize_as(&self.0, serializer)
+            }
+        }
+
+        #[cfg(feature = "serde")]
+        impl<'a> serde::Deserialize<'a> for $i {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'a>,
+            {
+                use serde_with::DeserializeAs;
+                let bytes: [u8; $i::LEN] =
+                    serde_with::Bytes::deserialize_as(deserializer)?;
+                Ok(Self(bytes))
+            }
+        }
     };
 }
-
-double_key!(
-    ContractsAssetKey,
-    ContractId,
-    contract_id,
-    AssetId,
-    asset_id
-);
-double_key!(
-    ContractsStateKey,
-    ContractId,
-    contract_id,
-    Bytes32,
-    state_key
-);

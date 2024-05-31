@@ -1,7 +1,8 @@
 use crate::{
     field,
     field::{
-        GasPrice,
+        MaxFeeLimit,
+        Tip,
         WitnessLimit,
     },
     input::{
@@ -16,6 +17,7 @@ use crate::{
             MessageDataSigned,
         },
     },
+    policies::PolicyType,
     FeeParameters,
     GasCosts,
     Input,
@@ -90,17 +92,18 @@ impl TransactionFee {
         gas_costs: &GasCosts,
         params: &FeeParameters,
         tx: &T,
+        gas_price: Word,
     ) -> Option<Self>
     where
         T: Chargeable,
     {
         let min_gas = tx.min_gas(gas_costs, params);
         let max_gas = tx.max_gas(gas_costs, params);
-        let min_fee = tx.min_fee(gas_costs, params).try_into().ok()?;
-        let max_fee = tx.max_fee(gas_costs, params).try_into().ok()?;
+        let min_fee = tx.min_fee(gas_costs, params, gas_price).try_into().ok()?;
+        let max_fee = tx.max_fee(gas_costs, params, gas_price).try_into().ok()?;
 
         if min_fee > max_fee {
-            return None
+            return None;
         }
 
         Some(Self::new(min_fee, max_fee, min_gas, max_gas))
@@ -114,28 +117,30 @@ fn gas_to_fee(gas: Word, gas_price: Word, factor: Word) -> u128 {
     total_price.div_ceil(factor as u128)
 }
 
+/// Returns the minimum gas required to start execution of any transaction.
+pub fn min_gas<Tx>(tx: &Tx, gas_costs: &GasCosts, fee: &FeeParameters) -> Word
+where
+    Tx: Chargeable + ?Sized,
+{
+    let bytes_size = tx.metered_bytes_size();
+
+    let vm_initialization_gas = gas_costs.vm_initialization().resolve(bytes_size as Word);
+
+    // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
+    // validity. In the production, the value always will be lower than
+    // `u64::MAX`.
+    let bytes_gas = fee.gas_per_byte().saturating_mul(bytes_size as u64);
+    tx.gas_used_by_inputs(gas_costs)
+        .saturating_add(tx.gas_used_by_metadata(gas_costs))
+        .saturating_add(bytes_gas)
+        .saturating_add(vm_initialization_gas)
+}
+
 /// Means that the blockchain charges fee for the transaction.
 pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
-    /// Returns the gas price.
-    fn price(&self) -> Word {
-        self.gas_price()
-    }
-
     /// Returns the minimum gas required to start transaction execution.
     fn min_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> Word {
-        let bytes_size = self.metered_bytes_size();
-
-        let vm_initialization_gas =
-            gas_costs.vm_initialization.resolve(bytes_size as Word);
-
-        let bytes_gas = bytes_size as u64 * fee.gas_per_byte;
-        // It's okay to saturate because we have the `max_gas_per_tx` rule for transaction
-        // validity. In the production, the value always will be lower than
-        // `u64::MAX`.
-        self.gas_used_by_inputs(gas_costs)
-            .saturating_add(self.gas_used_by_metadata(gas_costs))
-            .saturating_add(bytes_gas)
-            .saturating_add(vm_initialization_gas)
+        min_gas(self, gas_costs, fee)
     }
 
     /// Returns the maximum possible gas after the end of transaction execution.
@@ -145,30 +150,44 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         let remaining_allowed_witness_gas = self
             .witness_limit()
             .saturating_sub(self.witnesses().size_dynamic() as u64)
-            .saturating_mul(fee.gas_per_byte);
+            .saturating_mul(fee.gas_per_byte());
 
         self.min_gas(gas_costs, fee)
             .saturating_add(remaining_allowed_witness_gas)
     }
 
     /// Returns the minimum fee required to start transaction execution.
-    fn min_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
-        gas_to_fee(
+    fn min_fee(
+        &self,
+        gas_costs: &GasCosts,
+        fee: &FeeParameters,
+        gas_price: Word,
+    ) -> u128 {
+        let tip = self.tip();
+        let gas_fee = gas_to_fee(
             self.min_gas(gas_costs, fee),
-            self.price(),
-            fee.gas_price_factor,
-        )
+            gas_price,
+            fee.gas_price_factor(),
+        );
+        gas_fee.saturating_add(tip as u128)
     }
 
     /// Returns the maximum possible fee after the end of transaction execution.
     ///
     /// The function guarantees that the value is not less than [Self::min_fee].
-    fn max_fee(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> u128 {
-        gas_to_fee(
+    fn max_fee(
+        &self,
+        gas_costs: &GasCosts,
+        fee: &FeeParameters,
+        gas_price: Word,
+    ) -> u128 {
+        let tip = self.tip();
+        let gas_fee = gas_to_fee(
             self.max_gas(gas_costs, fee),
-            self.price(),
-            fee.gas_price_factor,
-        )
+            gas_price,
+            fee.gas_price_factor(),
+        );
+        gas_fee.saturating_add(tip as u128)
     }
 
     /// Returns the fee amount that can be refunded back based on the `used_gas` and
@@ -180,19 +199,22 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
         gas_costs: &GasCosts,
         fee: &FeeParameters,
         used_gas: Word,
+        gas_price: Word,
     ) -> Option<Word> {
         // We've already charged the user for witnesses as part of the minimal gas and all
         // execution required to validate transaction validity rules.
         let min_gas = self.min_gas(gas_costs, fee);
 
         let total_used_gas = min_gas.saturating_add(used_gas);
-        let used_fee = gas_to_fee(total_used_gas, self.price(), fee.gas_price_factor);
+        let tip = self.policies().get(PolicyType::Tip).unwrap_or(0);
+        let used_fee = gas_to_fee(total_used_gas, gas_price, fee.gas_price_factor())
+            .saturating_add(tip as u128);
 
-        let refund = self.max_fee(gas_costs, fee).saturating_sub(used_fee);
         // It is okay to saturate everywhere above because it only can decrease the value
         // of `refund`. But here, because we need to return the amount we
         // want to refund, we need to handle the overflow caused by the price.
-        refund.try_into().ok()
+        let used_fee: u64 = used_fee.try_into().ok()?;
+        self.max_fee_limit().checked_sub(used_fee)
     }
 
     /// Used for accounting purposes when charging byte based fees.
@@ -200,7 +222,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
 
     /// Returns the gas used by the inputs.
     fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> Word {
-        let mut witness_cache: HashSet<u8> = HashSet::new();
+        let mut witness_cache: HashSet<u16> = HashSet::new();
         self.inputs()
             .iter()
             .filter(|input| match input {
@@ -224,7 +246,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 // Charge EC recovery cost for signed inputs
                 Input::CoinSigned(_)
                 | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.ecr1,
+                | Input::MessageDataSigned(_) => gas_costs.ecr1(),
                 // Charge the cost of the contract root for predicate inputs
                 Input::CoinPredicate(CoinPredicate {
                     predicate,
@@ -243,9 +265,9 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 }) => {
                     let bytes_size = self.metered_bytes_size();
                     let vm_initialization_gas =
-                        gas_costs.vm_initialization.resolve(bytes_size as Word);
+                        gas_costs.vm_initialization().resolve(bytes_size as Word);
                     gas_costs
-                        .contract_root
+                        .contract_root()
                         .resolve(predicate.len() as u64)
                         .saturating_add(*predicate_gas_used)
                         .saturating_add(vm_initialization_gas)

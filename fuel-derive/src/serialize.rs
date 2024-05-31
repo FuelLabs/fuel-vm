@@ -8,58 +8,45 @@ use crate::attribute::{
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     let attrs = StructAttrs::parse(s);
+    let mut s = s.clone();
 
     assert_eq!(s.variants().len(), 1, "structs must have one variant");
 
-    let variant: &synstructure::VariantInfo = &s.variants()[0];
+    let variant: &mut synstructure::VariantInfo = &mut s.variants_mut()[0];
+    variant.filter(|binding| !should_skip_field_binding(binding));
+
     let encode_static = variant.each(|binding| {
-        if should_skip_field_binding(binding) {
-            quote! {}
-        } else {
-            quote! {
-                ::fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
-            }
+        quote! {
+            ::fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
         }
     });
 
     let encode_dynamic = variant.each(|binding| {
-        if should_skip_field_binding(binding) {
-            quote! {}
-        } else {
-            quote! {
-                ::fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
-            }
+        quote! {
+            ::fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
         }
     });
 
     let size_static_code = variant.each(|binding| {
-        if should_skip_field_binding(binding) {
-            quote! {}
-        } else {
-            quote! {
-                size = ::fuel_types::canonical::add_sizes(size, #binding.size_static());
-            }
+        quote! {
+            size = size.saturating_add(#binding.size_static());
         }
     });
 
     let initial_size = if attrs.prefix.is_some() {
-        quote! { let mut size = 8; }
+        quote! { let mut size = 8usize; }
     } else {
-        quote! { let mut size = 0; }
+        quote! { let mut size = 0usize; }
     };
     let size_static_code = quote! { #initial_size match self { #size_static_code}; size };
 
     let size_dynamic_code = variant.each(|binding| {
-        if should_skip_field_binding(binding) {
-            quote! {}
-        } else {
-            quote! {
-                size = ::fuel_types::canonical::add_sizes(size, #binding.size_dynamic());
-            }
+        quote! {
+            size = size.saturating_add(#binding.size_dynamic());
         }
     });
     let size_dynamic_code =
-        quote! { let mut size = 0; match self { #size_dynamic_code}; size };
+        quote! { let mut size = 0usize; match self { #size_dynamic_code}; size };
 
     let prefix = if let Some(prefix_type) = attrs.prefix.as_ref() {
         quote! {
@@ -104,16 +91,19 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
 
 fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     assert!(!s.variants().is_empty(), "got invalid empty enum");
+    let mut s = s.clone();
     let mut next_discriminant = quote! { { 0u64 } };
+
+    s.variants_mut().iter_mut().for_each(|v| {
+        v.filter(|binding| !should_skip_field_binding(binding));
+    });
+
     let encode_static = s.variants().iter().map(|v| {
         let pat = v.pat();
+
         let encode_static_iter = v.bindings().iter().map(|binding| {
-            if should_skip_field_binding(binding) {
-                quote! {}
-            } else {
-                quote! {
-                    ::fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
-                }
+            quote! {
+                ::fuel_types::canonical::Serialize::encode_static(#binding, buffer)?;
             }
         });
 
@@ -138,12 +128,8 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     });
     let encode_dynamic = s.variants().iter().map(|v| {
         let encode_dynamic_iter = v.each(|binding| {
-            if should_skip_field_binding(binding) {
-                quote! {}
-            } else {
-                quote! {
-                    ::fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
-                }
+            quote! {
+                ::fuel_types::canonical::Serialize::encode_dynamic(#binding, buffer)?;
             }
         });
         quote! {
@@ -156,19 +142,15 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         .iter()
         .map(|variant| {
             variant.each(|binding| {
-                if should_skip_field_binding(binding) {
-                    quote! {}
-                } else {
-                    quote! {
-                        size = ::fuel_types::canonical::add_sizes(size, #binding.size_static());
-                    }
+                quote! {
+                    size = size.saturating_add(#binding.size_static());
                 }
             })
         })
         .collect();
     let match_size_static = quote! {{
         // `repr(128)` is unstable, so because of that we can use 8 bytes.
-        let mut size = 8;
+        let mut size = 8usize;
         match self { #match_size_static } size }
     };
 
@@ -177,18 +159,14 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         .iter()
         .map(|variant| {
             variant.each(|binding| {
-                if should_skip_field_binding(binding) {
-                    quote! {}
-                } else {
-                    quote! {
-                        size = ::fuel_types::canonical::add_sizes(size, #binding.size_dynamic());
-                    }
+                quote! {
+                    size = size.saturating_add(#binding.size_dynamic());
                 }
             })
         })
         .collect();
     let match_size_dynamic =
-        quote! {{ let mut size = 0; match self { #match_size_dynamic } size }};
+        quote! {{ let mut size = 0usize; match self { #match_size_dynamic } size }};
 
     let impl_code = s.gen_impl(quote! {
         gen impl ::fuel_types::canonical::Serialize for @Self {

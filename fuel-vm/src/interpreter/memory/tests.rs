@@ -1,4 +1,5 @@
 #![allow(clippy::cast_possible_truncation)]
+
 use alloc::vec;
 use core::ops::Range;
 
@@ -15,15 +16,15 @@ use test_case::test_case;
 #[test]
 fn memcopy() {
     let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
+    let zero_gas_price = 0;
 
-    let consensus_params = ConsensusParameters {
-        tx_params,
-        ..Default::default()
-    };
+    let mut consensus_params = ConsensusParameters::default();
+    consensus_params.set_tx_params(tx_params);
 
-    let mut vm = Interpreter::<_, _>::with_storage(
+    let mut vm = Interpreter::<_, _, _>::with_storage(
+        MemoryInstance::new(),
         MemoryStorage::default(),
-        InterpreterParams::from(&consensus_params),
+        InterpreterParams::new(zero_gas_price, &consensus_params),
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
         .script_gas_limit(100_000)
@@ -32,7 +33,13 @@ fn memcopy() {
 
     let tx = tx
         .into_checked(Default::default(), &consensus_params)
-        .expect("default tx should produce a valid checked transaction");
+        .expect("default tx should produce a valid checked transaction")
+        .into_ready(
+            zero_gas_price,
+            consensus_params.gas_costs(),
+            consensus_params.fee_params(),
+        )
+        .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM");
 
@@ -83,43 +90,23 @@ fn memcopy() {
 }
 
 #[test]
-fn memrange() {
-    let tx = TransactionBuilder::script(vec![], vec![])
-        .script_gas_limit(1000000)
-        .add_random_fee_input()
-        .finalize()
-        .into_checked(Default::default(), &ConsensusParameters::standard())
-        .expect("Empty script should be valid");
-    let mut vm = Interpreter::<_, _>::with_memory_storage();
-    vm.init_script(tx).expect("Failed to init VM");
-
-    let bytes = 1024;
-    vm.instruction(op::addi(0x10, RegId::ZERO, bytes as Immediate12))
-        .unwrap();
-    vm.instruction(op::aloc(0x10)).unwrap();
-
-    let m = MemoryRange::new(vm.registers()[RegId::HP] - 1, bytes).unwrap();
-    assert!(!vm.ownership_registers().has_ownership_range(&m));
-
-    let m = MemoryRange::new(vm.registers()[RegId::HP], bytes).unwrap();
-    assert!(vm.ownership_registers().has_ownership_range(&m));
-
-    MemoryRange::new(vm.registers()[RegId::HP], bytes + 1).expect_err("Overflows");
-
-    let m = MemoryRange::new(0, bytes).unwrap().to_heap(&vm);
-    assert!(vm.ownership_registers().has_ownership_range(&m));
-}
-
-#[test]
 fn stack_alloc_ownership() {
-    let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
+    let gas_price = 0;
+    let consensus_params = ConsensusParameters::standard();
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
         .add_random_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
-        .expect("Empty script should be valid");
+        .expect("Empty script should be valid")
+        .into_ready(
+            gas_price,
+            consensus_params.gas_costs(),
+            consensus_params.fee_params(),
+        )
+        .unwrap();
     vm.init_script(tx).expect("Failed to init VM");
 
     vm.instruction(op::move_(0x10, RegId::SP)).unwrap();
@@ -131,23 +118,23 @@ fn stack_alloc_ownership() {
 
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..0
-    => true ; "empty mem range"
+    => true; "empty mem range"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 0..0
-    => true ; "empty mem range (external)"
+    => true; "empty mem range (external)"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Call{ block_height: Default::default()}), 0..1
-    => false ; "empty stack and heap"
+    => false; "empty stack and heap"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM, Context::Script{ block_height: Default::default() }), 0..1
-    => false ; "empty stack and heap (external)"
+    => false; "empty stack and heap (external)"
 )]
 #[test_case(
     OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..1
-    => true ; "in range for stack"
+    => true; "in range for stack"
 )]
 #[test_case(
     OwnershipRegisters::test(0..1, 0..0, Context::Call{ block_height: Default::default()}), 0..2
@@ -155,15 +142,15 @@ fn stack_alloc_ownership() {
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..2, Context::Call{ block_height: Default::default()}), 1..2
-    => true ; "in range for heap"
+    => true; "in range for heap"
 )]
 #[test_case(
     OwnershipRegisters::test(0..2, 1..2, Context::Call{ block_height: Default::default()}), 0..2
-    => true ; "crosses stack and heap"
+    => true; "crosses stack and heap"
 )]
 #[test_case(
     OwnershipRegisters::test(0..0, 0..0, Context::Script{ block_height: Default::default()}), 1..2
-    => true ; "in heap range (external)"
+    => true; "in heap range (external)"
 )]
 #[test_case(
     OwnershipRegisters::test(0..19, 31..100, Context::Script{ block_height: Default::default()}), 20..30
@@ -194,8 +181,6 @@ fn stack_alloc_ownership() {
     20..41 => false; "start exclusive and end inclusive"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<u64>) -> bool {
-    let range =
-        MemoryRange::new(range.start, range.end - range.start).expect("Invalid range");
     reg.verify_ownership(&range).is_ok()
 }
 
@@ -205,115 +190,64 @@ fn set_index(index: usize, val: u8, mut array: [u8; 100]) -> [u8; 100] {
 }
 
 #[test_case(
-    1, &[],
+    1, & [],
     OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: Default::default()})
     => (false, [0u8; 100]); "External errors when write is empty"
 )]
 #[test_case(
-    1, &[],
+    1, & [],
     OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal errors when write is empty"
 )]
 #[test_case(
-    1, &[2],
+    1, & [2],
     OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: Default::default()})
     => (true, set_index(1, 2, [0u8; 100])); "External writes to stack"
 )]
 #[test_case(
-    98, &[2],
+    98, & [2],
     OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: Default::default()})
     => (true, set_index(98, 2, [0u8; 100])); "External writes to heap"
 )]
 #[test_case(
-    1, &[2],
+    1, & [2],
     OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: Default::default()})
     => (true, set_index(1, 2, [0u8; 100])); "Internal writes to stack"
 )]
 #[test_case(
-    98, &[2],
+    98, & [2],
     OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: Default::default()})
     => (true, set_index(98, 2, [0u8; 100])); "Internal writes to heap"
 )]
 #[test_case(
-    1, &[2; 50],
+    1, & [2; 50],
     OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: Default::default()})
     => (false, [0u8; 100]); "External too large for stack"
 )]
 #[test_case(
-    1, &[2; 50],
+    1, & [2; 50],
     OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal too large for stack"
 )]
 #[test_case(
-    61, &[2; 50],
+    61, & [2; 50],
     OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
     => (false, [0u8; 100]); "Internal too large for heap"
 )]
 fn test_mem_write(
     addr: usize,
     data: &[u8],
-    registers: OwnershipRegisters,
+    owner: OwnershipRegisters,
 ) -> (bool, [u8; 100]) {
-    let mut memory: Memory<MEM_SIZE> = vec![0u8; MEM_SIZE].try_into().unwrap();
-    let r = try_mem_write(addr, data, registers, &mut memory).is_ok();
-    let memory: [u8; 100] = memory[..100].try_into().unwrap();
-    (r, memory)
-}
-
-#[test_case(
-    1, 0,
-    OwnershipRegisters::test(0..1, 100..100, Context::Script{ block_height: Default::default()})
-    => (false, [1u8; 100]); "External errors when write is empty"
-)]
-#[test_case(
-    1, 0,
-    OwnershipRegisters::test(0..1, 100..100, Context::Call{ block_height: Default::default()})
-    => (false, [1u8; 100]); "Internal errors when write is empty"
-)]
-#[test_case(
-    1, 1,
-    OwnershipRegisters::test(0..2, 100..100, Context::Script{ block_height: Default::default()})
-    => (true, set_index(1, 0, [1u8; 100])); "External writes to stack"
-)]
-#[test_case(
-    98, 1,
-    OwnershipRegisters::test(0..2, 97..100, Context::Script{ block_height: Default::default()})
-    => (true, set_index(98, 0, [1u8; 100])); "External writes to heap"
-)]
-#[test_case(
-    1, 1,
-    OwnershipRegisters::test(0..2, 100..100, Context::Call { block_height: Default::default()})
-    => (true, set_index(1, 0, [1u8; 100])); "Internal writes to stack"
-)]
-#[test_case(
-    98, 1,
-    OwnershipRegisters::test(0..2, 97..100, Context::Call { block_height: Default::default()})
-    => (true, set_index(98, 0, [1u8; 100])); "Internal writes to heap"
-)]
-#[test_case(
-    1, 50,
-    OwnershipRegisters::test(0..40, 100..100, Context::Script{ block_height: Default::default()})
-    => (false, [1u8; 100]); "External too large for stack"
-)]
-#[test_case(
-    1, 50,
-    OwnershipRegisters::test(0..40, 100..100, Context::Call{ block_height: Default::default()})
-    => (false, [1u8; 100]); "Internal too large for stack"
-)]
-#[test_case(
-    61, 50,
-    OwnershipRegisters::test(0..0, 60..100, Context::Call{ block_height: Default::default()})
-    => (false, [1u8; 100]); "Internal too large for heap"
-)]
-fn test_try_zeroize(
-    addr: usize,
-    len: usize,
-    registers: OwnershipRegisters,
-) -> (bool, [u8; 100]) {
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    let r = try_zeroize(addr, len, registers, &mut memory).is_ok();
-    let memory: [u8; 100] = memory[..100].try_into().unwrap();
-    (r, memory)
+    let mut memory: MemoryInstance = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let r = match memory.write(owner, addr, data.len()) {
+        Ok(target) => {
+            target.copy_from_slice(data);
+            true
+        }
+        Err(_) => false,
+    };
+    (r, memory.read_bytes(0).unwrap())
 }
 
 // Zero-sized write
@@ -347,7 +281,7 @@ fn test_copy_from_slice_zero_fill_noownerchecks(
     src_offset: usize,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
-    let mut memory: Memory<MEM_SIZE> = vec![0xffu8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();
     let r = copy_from_slice_zero_fill_noownerchecks(
         &mut memory,
         src_data,

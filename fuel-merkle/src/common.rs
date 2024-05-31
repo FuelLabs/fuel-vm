@@ -1,10 +1,10 @@
+mod hash;
 mod msb;
 mod path_iterator;
 mod position;
 mod position_path;
 mod prefix;
 mod storage_map;
-mod subtree;
 
 pub(crate) mod error;
 pub(crate) mod node;
@@ -13,12 +13,8 @@ pub(crate) mod path;
 pub use path_iterator::AsPathIterator;
 pub use position::Position;
 pub use storage_map::StorageMap;
-pub use subtree::Subtree;
 
-pub(crate) use msb::{
-    Bit,
-    Msb,
-};
+pub(crate) use msb::Msb;
 pub(crate) use position_path::PositionPath;
 pub(crate) use prefix::{
     Prefix,
@@ -35,6 +31,11 @@ pub type Bytes<const N: usize> = [u8; N];
 
 use alloc::vec::Vec;
 pub type ProofSet = Vec<Bytes32>;
+
+pub use hash::{
+    sum,
+    sum_iter,
+};
 
 // Merkle Tree hash of an empty list
 // MTH({}) = Hash()

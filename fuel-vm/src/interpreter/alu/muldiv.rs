@@ -15,7 +15,7 @@ use fuel_types::{
     Word,
 };
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -59,13 +59,22 @@ where
 /// Divider 0 is treated as `1<<64`.
 #[allow(clippy::cast_possible_truncation)]
 pub(crate) fn muldiv(lhs: u64, rhs: u64, divider: u64) -> (u64, u64) {
-    let intermediate = lhs as u128 * rhs as u128; // Never overflows
-    if divider == 0 {
-        ((intermediate >> 64) as u64, 0)
-    } else {
-        let result = intermediate / (divider as u128);
+    // Widen all inputs so we never overflow
+    let lhs = lhs as u128;
+    let rhs = rhs as u128;
+    let divider = divider as u128;
+
+    // Compute intermediate result
+    let intermediate = lhs
+        .checked_mul(rhs)
+        .expect("Cannot overflow as we have enough bits");
+
+    // Divide
+    if let Some(result) = intermediate.checked_div(divider) {
         // We want to truncate the `result` here and return a non-empty `overflow`.
         (result as u64, (result >> 64) as u64)
+    } else {
+        ((intermediate >> 64) as u64, 0)
     }
 }
 

@@ -7,6 +7,7 @@ use alloc::{
 
 use crate::storage::{
     ContractsState,
+    ContractsStateData,
     MemoryStorage,
 };
 
@@ -16,24 +17,48 @@ use test_case::test_case;
 
 struct SCWQInput {
     input: StateClearQWord,
-    storage_slots: Vec<([u8; 32], [u8; 32])>,
-    memory: Memory<MEM_SIZE>,
+    storage_slots: Vec<([u8; 32], ContractsStateData)>,
+    memory: MemoryInstance,
 }
 
 #[test_case(
     SCWQInput{
-        input: StateClearQWord::new(0, 1).unwrap(),
-        storage_slots: vec![(key(27), [8; 32])],
+        input: StateClearQWord::new(u64::MAX, 1).unwrap(),
+        storage_slots: vec![(key(27), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![], true)
+    } => matches Err(_)
+    ; "Fail when $rA + 32 overflows"
+)]
+#[test_case(
+    SCWQInput{
+        input: StateClearQWord::new(u64::MAX - 1, 1).unwrap(),
+        storage_slots: vec![(key(27), data(&[8; 32]))],
+        memory: mem(&[&key(27)]),
+    } => matches Err(_)
+    ; "Fail when $rA + 32 > VM_MAX_RAM"
+)]
+#[test_case(
+    SCWQInput{
+        input: StateClearQWord::new(VM_MAX_RAM - 32, 1).unwrap(),
+        storage_slots: vec![(key(27), data(&[8; 32]))],
+        memory: mem(&[&key(27)]),
+    } => matches Ok(_)
+    ; "Pass when $rA + 32 == VM_MAX_RAM"
+)]
+#[test_case(
+    SCWQInput{
+        input: StateClearQWord::new(0, 1).unwrap(),
+        storage_slots: vec![(key(27), data(&[8; 32]))],
+        memory: mem(&[&key(27)]),
+    } => Ok((vec![], true))
     ; "Clear single storage slot"
 )]
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), [8; 32]), (key(28), [9; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(28), data(&[9; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![], true)
+    } => Ok((vec![], true))
     ; "Clear multiple existing storage slots"
 )]
 #[test_case(
@@ -41,7 +66,7 @@ struct SCWQInput {
         input: StateClearQWord::new(0, 1).unwrap(),
         storage_slots: vec![],
         memory: mem(&[&key(27)]),
-    } => (vec![], false)
+    } => Ok((vec![], false))
     ; "Clear single storage slot that was never set"
 )]
 #[test_case(
@@ -49,39 +74,41 @@ struct SCWQInput {
         input: StateClearQWord::new(0, 2000).unwrap(),
         storage_slots: vec![],
         memory: mem(&[&key(27)]),
-    } => (vec![], false)
+    } => Ok((vec![], false))
     ; "Clear u64::MAX storage slot that was never set"
 )]
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), [8; 32]), (key(29), [8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(29), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![(key(29), [8; 32])], false)
+    } => Ok((vec![(key(29), vec![8; 32].into())], false))
     ; "Clear storage slots with some previously set"
 )]
 #[test_case(
     SCWQInput{
         input: StateClearQWord::new(0, 2).unwrap(),
-        storage_slots: vec![(key(27), [8; 32]), (key(26), [8; 32])],
+        storage_slots: vec![(key(27), data(&[8; 32])), (key(26), data(&[8; 32]))],
         memory: mem(&[&key(27)]),
-    } => (vec![(key(26), [8; 32])], false)
+    } => Ok((vec![(key(26), vec![8; 32].into())], false))
     ; "Clear storage slots with some previously set before the key"
 )]
-fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool) {
+fn test_state_clear_qword(
+    input: SCWQInput,
+) -> Result<(Vec<([u8; 32], ContractsStateData)>, bool), RuntimeError<Infallible>> {
     let SCWQInput {
         input,
         storage_slots,
         memory,
     } = input;
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
 
     for (k, v) in storage_slots {
         storage
             .storage::<ContractsState>()
             .insert(
                 &(&ContractId::default(), &Bytes32::new(k)).into(),
-                &Bytes32::new(v),
+                v.as_ref(),
             )
             .unwrap();
     }
@@ -95,39 +122,11 @@ fn test_state_clear_qword(input: SCWQInput) -> (Vec<([u8; 32], [u8; 32])>, bool)
         RegMut::new(&mut pc),
         &mut result_register,
         input,
-    )
-    .unwrap();
+    )?;
 
     let results = storage
         .all_contract_state()
-        .map(|(key, v)| (**key.state_key(), **v))
+        .map(|(key, v)| (**key.state_key(), v.clone()))
         .collect();
-    (results, result_register != 0)
-}
-
-#[test_case(
-    0, 1
-    => matches Ok(_)
-    ; "Pass when values are in a valid range"
-)]
-#[test_case(
-    u64::MAX, 1
-    => matches Err(_)
-    ; "Fail when $rA + 32 overflows"
-)]
-#[test_case(
-    VM_MAX_RAM-1, 1
-    => matches Err(_)
-    ; "Fail when $rA + 32 > VM_MAX_RAM"
-)]
-#[test_case(
-    VM_MAX_RAM-32, 1
-    => matches Ok(_)
-    ; "Pass when $rA + 32 == VM_MAX_RAM"
-)]
-fn test_state_clear_qword_input(
-    start_key_memory_address: Word,
-    num_slots: Word,
-) -> SimpleResult<()> {
-    StateClearQWord::new(start_key_memory_address, num_slots).map(|_| ())
+    Ok((results, result_register != 0))
 }

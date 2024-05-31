@@ -15,6 +15,6 @@ pub mod proof;
 
 use crate::common::Bytes32;
 
-pub const fn empty_sum() -> &'static Bytes32 {
+pub fn empty_sum() -> &'static Bytes32 {
     zero_sum()
 }

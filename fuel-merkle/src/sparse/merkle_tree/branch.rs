@@ -1,9 +1,6 @@
 use super::Node;
 use crate::{
-    common::{
-        path::Path,
-        Bytes32,
-    },
+    common::path::Path,
     sparse::Primitive,
 };
 use fuel_storage::{
@@ -11,15 +8,16 @@ use fuel_storage::{
     StorageMutate,
 };
 
+use crate::common::Bytes;
 use core::iter;
 
-pub(super) struct Branch {
-    pub bits: Bytes32,
-    pub node: Node,
+pub(super) struct Branch<const KEY_SIZE: usize> {
+    pub bits: Bytes<KEY_SIZE>,
+    pub node: Node<KEY_SIZE>,
 }
 
-impl From<Node> for Branch {
-    fn from(leaf: Node) -> Self {
+impl<const KEY_SIZE: usize> From<Node<KEY_SIZE>> for Branch<KEY_SIZE> {
+    fn from(leaf: Node<KEY_SIZE>) -> Self {
         Self {
             bits: *leaf.leaf_key(),
             node: leaf,
@@ -27,26 +25,30 @@ impl From<Node> for Branch {
     }
 }
 
-pub(super) fn merge_branches<Storage, Table>(
+pub(super) fn merge_branches<const KEY_SIZE: usize, Storage, Table>(
     storage: &mut Storage,
-    mut left_branch: Branch,
-    mut right_branch: Branch,
-) -> Result<Branch, Storage::Error>
+    mut left_branch: Branch<KEY_SIZE>,
+    mut right_branch: Branch<KEY_SIZE>,
+) -> Result<Branch<KEY_SIZE>, Storage::Error>
 where
     Storage: StorageMutate<Table>,
-    Table: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    Table: Mappable<
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
+    >,
 {
     #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes, never truncates
     let ancestor_height = if left_branch.node.is_leaf() && right_branch.node.is_leaf() {
         let parent_depth = left_branch.node.common_path_length(&right_branch.node) as u32;
         #[allow(clippy::arithmetic_side_effects)] // common_path_length <= max_height
-        let parent_height = Node::max_height() - parent_depth;
+        let parent_height = Node::<KEY_SIZE>::max_height() - parent_depth;
         parent_height
     } else {
         let ancestor_depth =
             left_branch.bits.common_path_length(&right_branch.bits) as u32;
         #[allow(clippy::arithmetic_side_effects)] // common_path_length <= max_height
-        let ancestor_height = Node::max_height() - ancestor_depth;
+        let ancestor_height = Node::<KEY_SIZE>::max_height() - ancestor_depth;
 
         for branch in [&mut right_branch, &mut left_branch] {
             if branch.node.is_node() {

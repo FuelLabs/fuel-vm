@@ -158,7 +158,7 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<crate::interpreter::Memory> + AsMut<crate::interpreter::Memory>,
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {

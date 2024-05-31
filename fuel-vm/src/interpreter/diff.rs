@@ -46,6 +46,7 @@ use super::{
     receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
+    Memory,
     PanicContext,
 };
 use storage::*;
@@ -73,7 +74,7 @@ enum Change<T: VmStateCapture + Clone> {
     /// Holds a snapshot of register state.
     Register(T::State<VecState<Word>>),
     /// Holds a snapshot of memory state.
-    Memory(T::State<Memory>),
+    Memory(T::State<MemoryRegion>),
     /// Holds a snapshot of storage state.
     Storage(T::State<StorageState>),
     /// Holds a snapshot of the call stack.
@@ -168,14 +169,14 @@ where
 
 #[derive(Clone)]
 /// The state of a memory region.
-struct Memory {
+struct MemoryRegion {
     /// The start of the memory region.
     start: usize,
     /// The region of bytes.
     bytes: Vec<u8>,
 }
 
-impl Debug for Memory {
+impl Debug for MemoryRegion {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
             f.debug_struct("Memory")
@@ -318,7 +319,7 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<crate::interpreter::Memory>,
+    M: Memory,
 {
     /// The diff function generates a diff of VM state, represented by the Diff struct,
     /// between two VMs internal states.
@@ -369,8 +370,8 @@ where
             from.splice(..0, core::iter::once(s_from)).next();
             to.splice(..0, core::iter::once(s_to)).next();
             diff.changes.push(Change::Memory(Delta {
-                from: Memory { start, bytes: from },
-                to: Memory { start, bytes: to },
+                from: MemoryRegion { start, bytes: from },
+                to: MemoryRegion { start, bytes: to },
             }));
         }
 
@@ -400,7 +401,7 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<crate::interpreter::Memory> + AsMut<crate::interpreter::Memory>,
+    M: Memory,
 {
     fn inverse_inner(&mut self, change: &Change<InitialVmState>)
     where
@@ -415,7 +416,7 @@ where
                 invert_receipts_ctx(&mut self.receipts, value)
             }
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
-            Change::Memory(Previous(Memory { start, bytes })) => self
+            Change::Memory(Previous(MemoryRegion { start, bytes })) => self
                 .memory_mut()
                 .write_noownerchecks(*start, bytes.len())
                 .expect("Memory must exist here")
@@ -483,7 +484,7 @@ fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>)
 
 impl<M, S, Tx, Ecal> PartialEq for Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<crate::interpreter::Memory>,
+    M: Memory,
     Tx: PartialEq,
 {
     /// Does not compare storage, debugger or profiler

@@ -36,6 +36,7 @@ use crate::{
         InputContracts,
         Interpreter,
         Memory,
+        MemoryInstance,
         RuntimeBalances,
     },
     prelude::Profiler,
@@ -79,7 +80,7 @@ mod test;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
@@ -538,7 +539,7 @@ where
 
 struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     profiler: &'vm mut Profiler,
     input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
@@ -661,7 +662,7 @@ where
 struct BurnCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
-    memory: &'vm Memory,
+    memory: &'vm MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
@@ -698,7 +699,7 @@ where
 struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
-    memory: &'vm Memory,
+    memory: &'vm MemoryInstance,
     profiler: &'vm mut Profiler,
     receipts: &'vm mut ReceiptsCtx,
     new_storage_gas_per_byte: Word,
@@ -751,7 +752,7 @@ where
 }
 
 struct CodeCopyCtx<'vm, S, I> {
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
     profiler: &'vm mut Profiler,
@@ -823,7 +824,7 @@ where
 
 pub(crate) fn block_hash<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -857,7 +858,7 @@ pub(crate) fn block_height(
 
 pub(crate) fn coinbase<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -870,7 +871,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 
 struct CodeRootCtx<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
     input_contracts: InputContracts<'vm, I>,
@@ -923,7 +924,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
 
 struct CodeSizeCtx<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
     input_contracts: InputContracts<'vm, I>,
@@ -969,7 +970,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
 
 pub(crate) struct StateReadWordCtx<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm Memory,
+    pub memory: &'vm MemoryInstance,
     pub context: &'vm Context,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
@@ -1010,7 +1011,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
 
 pub(crate) struct StateWriteWordCtx<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm Memory,
+    pub memory: &'vm MemoryInstance,
     pub context: &'vm Context,
     pub profiler: &'vm mut Profiler,
     pub new_storage_gas_per_byte: Word,
@@ -1097,7 +1098,7 @@ where
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
     balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
@@ -1173,7 +1174,7 @@ struct StateReadQWordParams {
 fn state_read_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &S,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     pc: RegMut<PC>,
     ownership_registers: OwnershipRegisters,
     result_register: &mut Word,
@@ -1231,7 +1232,7 @@ struct StateWriteQWord {
 fn state_write_qword<'vm, S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
-    memory: &Memory,
+    memory: &MemoryInstance,
     profiler: &'vm mut Profiler,
     new_storage_gas_per_byte: Word,
     current_contract: Option<ContractId>,
@@ -1301,7 +1302,7 @@ impl StateClearQWord {
 fn state_clear_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
-    memory: &Memory,
+    memory: &MemoryInstance,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateClearQWord,

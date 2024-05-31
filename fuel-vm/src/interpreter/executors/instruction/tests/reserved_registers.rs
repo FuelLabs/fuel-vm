@@ -3,13 +3,20 @@ use alloc::{
     vec,
 };
 
-use super::*;
 use crate::{
     checked_transaction::IntoChecked,
+    fuel_asm::{
+        op,
+        Instruction,
+        Opcode,
+        PanicReason::ReservedRegisterNotWritable,
+        RegId,
+    },
     interpreter::InterpreterParams,
     prelude::{
         FeeParameters,
         MemoryStorage,
+        *,
     },
 };
 use fuel_asm::PanicReason;
@@ -54,7 +61,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     consensus_params.set_fee_params(fee_params);
 
     let mut vm = Interpreter::<_, _, _>::with_storage(
-        Memory::new(),
+        MemoryInstance::new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -66,7 +73,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .finalize();
 
     let tx = tx
-        .into_checked(block_height, &consensus_params, Memory::new())
+        .into_checked(block_height, &consensus_params, MemoryInstance::new())
         .expect("failed to check tx")
         .into_ready(zero_gas_price, vm.gas_costs(), &fee_params)
         .expect("failed dynamic checks");

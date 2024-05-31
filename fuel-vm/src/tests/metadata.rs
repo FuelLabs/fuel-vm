@@ -90,14 +90,14 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, Memory::new())
+        .into_checked(height, &consensus_params, MemoryInstance::new())
         .expect("failed to check tx");
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     // Deploy the contract into the blockchain
     assert!(Transactor::<_, _, _>::new(
-        Memory::new(),
+        MemoryInstance::new(),
         &mut storage,
         interpreter_params.clone()
     )
@@ -142,11 +142,11 @@ fn metadata() {
         .add_random_fee_input()
         .add_output(output)
         .finalize()
-        .into_checked(height, &consensus_params, Memory::new())
+        .into_checked(height, &consensus_params, MemoryInstance::new())
         .expect("failed to check tx");
 
     assert!(Transactor::<_, _, _>::new(
-        Memory::new(),
+        MemoryInstance::new(),
         &mut storage,
         interpreter_params.clone()
     )
@@ -205,15 +205,18 @@ fn metadata() {
         .add_output(outputs[1])
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, Memory::new())
+        .into_checked(height, &consensus_params, MemoryInstance::new())
         .expect("failed to check tx");
 
-    let receipts =
-        Transactor::<_, _, _>::new(Memory::new(), &mut storage, interpreter_params)
-            .transact(tx)
-            .receipts()
-            .expect("Failed to transact")
-            .to_owned();
+    let receipts = Transactor::<_, _, _>::new(
+        MemoryInstance::new(),
+        &mut storage,
+        interpreter_params,
+    )
+    .transact(tx)
+    .receipts()
+    .expect("Failed to transact")
+    .to_owned();
 
     let ra = receipts[1]
         .ra()
@@ -246,7 +249,7 @@ fn get_metadata_chain_id() {
     };
 
     let mut client = MemoryClient::<_, NotSupportedEcal>::new(
-        Memory::new(),
+        MemoryInstance::new(),
         Default::default(),
         interpreter_params,
     );
@@ -264,7 +267,7 @@ fn get_metadata_chain_id() {
         .with_chain_id(chain_id)
         .add_random_fee_input()
         .finalize()
-        .into_checked(height, &consensus_params, Memory::new())
+        .into_checked(height, &consensus_params, MemoryInstance::new())
         .unwrap();
 
     let receipts = client.transact(script);
@@ -299,11 +302,11 @@ fn get_metadata_base_asset_id() {
     .script_gas_limit(gas_limit)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &params, Memory::new())
+    .into_checked(height, &params, MemoryInstance::new())
     .unwrap();
 
     let receipts = Transactor::<_, _, _>::new(
-        Memory::new(),
+        MemoryInstance::new(),
         &mut storage,
         InterpreterParams {
             base_asset_id: *params.base_asset_id(),
@@ -337,11 +340,15 @@ fn get_metadata_tx_start() {
     .script_gas_limit(gas_limit)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &ConsensusParameters::default(), Memory::new())
+    .into_checked(
+        height,
+        &ConsensusParameters::default(),
+        MemoryInstance::new(),
+    )
     .unwrap();
 
     let receipts = Transactor::<_, _, _>::new(
-        Memory::new(),
+        MemoryInstance::new(),
         &mut storage,
         InterpreterParams::default(),
     )

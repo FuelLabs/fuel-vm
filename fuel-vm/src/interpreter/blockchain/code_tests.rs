@@ -5,10 +5,7 @@ use alloc::vec;
 
 use super::*;
 use crate::{
-    interpreter::{
-        memory::Memory,
-        PanicContext,
-    },
+    interpreter::PanicContext,
     storage::MemoryStorage,
 };
 use fuel_tx::Contract;
@@ -16,7 +13,7 @@ use fuel_tx::Contract;
 #[test]
 fn test_load_contract() -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
     let mut cgas = 1000;
     let mut ggas = 1000;
@@ -71,7 +68,7 @@ fn test_load_contract() -> IoResult<(), Infallible> {
 #[test]
 fn test_code_copy() -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut cgas = 1000;
     let mut ggas = 1000;
     let mut pc = 4;

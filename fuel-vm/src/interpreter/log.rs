@@ -7,6 +7,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
+    MemoryInstance,
 };
 use crate::{
     constraints::reg_key::*,
@@ -22,7 +23,7 @@ mod tests;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
@@ -61,7 +62,7 @@ where
 }
 
 struct LogInput<'vm> {
-    memory: &'vm Memory,
+    memory: &'vm MemoryInstance,
     context: &'vm Context,
     receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,

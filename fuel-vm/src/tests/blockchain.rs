@@ -66,7 +66,7 @@ fn deploy_contract<M>(
     salt: Salt,
     storage_slots: Vec<StorageSlot>,
 ) where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
 {
     let code_root = Contract::root_from_code(contract.as_ref());
     let state_root = Contract::initial_state_root(storage_slots.iter());
@@ -545,7 +545,7 @@ fn ldc__gas_cost_for_len<M>(
     len: u16,
 ) -> Word
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
 {
     let mut target_contract = vec![];
     for _ in 0..number_of_opcodes {
@@ -585,7 +585,7 @@ fn ldc__load_len_of_target_contract<'a, M>(
     include_log_d: bool,
 ) -> &'a [Receipt]
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
 {
     let gas_limit = 1_000_000;
     let maturity = Default::default();
@@ -608,7 +608,7 @@ where
             .add_random_fee_input()
             .add_output(output0)
             .finalize()
-            .into_checked(height, &consensus_params, Memory::new())
+            .into_checked(height, &consensus_params, MemoryInstance::new())
             .expect("failed to check tx");
 
     client.deploy(tx_create_target).unwrap();
@@ -670,7 +670,7 @@ where
     .add_random_fee_input()
     .add_output(output1)
     .finalize()
-    .into_checked(height, &consensus_params, Memory::new())
+    .into_checked(height, &consensus_params, MemoryInstance::new())
     .expect("failed to check tx");
 
     // Patch the code with correct jump address
@@ -687,7 +687,7 @@ where
             .add_random_fee_input()
             .add_output(output1)
             .finalize()
-            .into_checked(height, &consensus_params, Memory::new())
+            .into_checked(height, &consensus_params, MemoryInstance::new())
             .expect("failed to check tx");
 
     client.transact(tx_deploy_loader)
@@ -717,7 +717,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     let mut client = MemoryClient::<_, NotSupportedEcal>::from_txtor(Transactor::new(
-        Memory::new(),
+        MemoryInstance::new(),
         MemoryStorage::default(),
         interpreter_params,
     ));
@@ -747,7 +747,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         .add_random_fee_input()
         .add_output(output0)
         .finalize()
-        .into_checked(height, &consensus_params, Memory::new())
+        .into_checked(height, &consensus_params, MemoryInstance::new())
         .expect("failed to check tx");
 
     client.deploy(tx_create_target).unwrap();
@@ -762,7 +762,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     .maturity(maturity)
     .add_random_fee_input()
     .finalize()
-    .into_checked(height, &consensus_params, Memory::new())
+    .into_checked(height, &consensus_params, MemoryInstance::new())
     .expect("failed to check tx");
 
     let receipts = client.transact(tx_deploy_loader);

@@ -85,6 +85,7 @@ pub mod prelude {
         Instruction,
         Opcode,
         PanicReason,
+        RegId,
     };
     #[doc(no_inline)]
     pub use fuel_crypto::{
@@ -140,6 +141,7 @@ pub mod prelude {
             ExecutableTransaction,
             Interpreter,
             Memory,
+            MemoryInstance,
             MemoryRange,
         },
         memory_client::MemoryClient,

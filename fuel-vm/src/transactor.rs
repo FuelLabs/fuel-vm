@@ -15,6 +15,7 @@ use crate::{
         Interpreter,
         InterpreterParams,
         Memory,
+        MemoryInstance,
         NotSupportedEcal,
     },
     state::{
@@ -173,7 +174,7 @@ where
 
 impl<M, S, Ecal> Transactor<M, S, Script, Ecal>
 where
-    M: AsRef<Memory>,
+    M: Memory,
     S: InterpreterStorage,
 {
     /// Receipts after the execution of a transaction.
@@ -275,7 +276,7 @@ where
 
 impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
@@ -375,13 +376,17 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<S, Tx, Ecal> Default for Transactor<Memory, S, Tx, Ecal>
+impl<S, Tx, Ecal> Default for Transactor<MemoryInstance, S, Tx, Ecal>
 where
     S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
-        Self::new(Memory::new(), S::default(), InterpreterParams::default())
+        Self::new(
+            MemoryInstance::new(),
+            S::default(),
+            InterpreterParams::default(),
+        )
     }
 }

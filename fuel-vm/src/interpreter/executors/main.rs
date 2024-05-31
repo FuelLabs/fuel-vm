@@ -51,7 +51,10 @@ use crate::{
         CheckPredicateParams,
         Ready,
     },
-    interpreter::InterpreterParams,
+    interpreter::{
+        InterpreterParams,
+        MemoryInstance,
+    },
     storage::{
         UploadedBytecode,
         UploadedBytecodes,
@@ -148,7 +151,7 @@ impl<Tx> From<&PredicateRunKind<'_, Tx>> for PredicateAction {
 
 impl<M, Tx> Interpreter<M, PredicateStorage, Tx>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
 {
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -292,7 +295,7 @@ where
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
             {
                 checks.push(
-                    Interpreter::<&mut Memory, PredicateStorage, Tx>::check_predicate(
+                    Interpreter::<&mut MemoryInstance, PredicateStorage, Tx>::check_predicate(
                         tx,
                         index,
                         predicate_action,
@@ -721,7 +724,7 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
 
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -920,7 +923,7 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,

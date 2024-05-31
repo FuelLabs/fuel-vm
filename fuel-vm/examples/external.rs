@@ -36,6 +36,7 @@ use fuel_vm::{
     interpreter::{
         EcalHandler,
         Memory,
+        MemoryInstance,
     },
     prelude::{
         Interpreter,
@@ -57,7 +58,7 @@ impl EcalHandler for FileReadEcal {
         d: RegId,
     ) -> SimpleResult<()>
     where
-        M: AsRef<Memory> + AsMut<Memory>,
+        M: Memory,
     {
         let a = vm.registers()[a]; // Seek offset
         let b = vm.registers()[b]; // Read length
@@ -110,7 +111,7 @@ fn example_file_read() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, Memory::new())
+        .into_checked(Default::default(), &consensus_params, MemoryInstance::new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -138,7 +139,7 @@ impl EcalHandler for CounterEcal {
         _d: RegId,
     ) -> SimpleResult<()>
     where
-        M: AsRef<Memory> + AsMut<Memory>,
+        M: Memory,
     {
         vm.registers_mut()[a] = vm.ecal_state().counter;
         vm.ecal_state_mut().counter += 1;
@@ -172,7 +173,7 @@ fn example_counter() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, Memory::new())
+        .into_checked(Default::default(), &consensus_params, MemoryInstance::new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");
@@ -235,7 +236,7 @@ fn example_shared_counter() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, Memory::new())
+        .into_checked(Default::default(), &consensus_params, MemoryInstance::new())
         .expect("failed to generate a checked tx");
     client.transact(tx);
     let receipts = client.receipts().expect("Expected receipts");

@@ -1,11 +1,14 @@
 //! Pool of VM memory instances for reuse.
 
-use crate::interpreter::Memory;
+use crate::interpreter::{
+    Memory,
+    MemoryInstance,
+};
 
 /// Trait for a VM memory pool.
 pub trait VmMemoryPool {
     /// The memory instance returned by this pool.
-    type Memory: AsRef<Memory> + AsMut<Memory>;
+    type Memory: Memory;
 
     /// Gets a new VM memory instance from the pool.
     /// The returned instance is allowed to call `recycle` when dropped,
@@ -24,10 +27,10 @@ pub struct DummyPool;
 
 #[cfg(any(test, feature = "test-helpers"))]
 impl VmMemoryPool for DummyPool {
-    type Memory = Memory;
+    type Memory = MemoryInstance;
 
     fn get_new(&self) -> Self::Memory {
-        Memory::new()
+        MemoryInstance::new()
     }
 
     fn recycle(&self, _mem: Self::Memory) {}

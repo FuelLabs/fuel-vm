@@ -34,6 +34,7 @@ use crate::{
         InputContracts,
         Interpreter,
         Memory,
+        MemoryInstance,
         PanicContext,
         RuntimeBalances,
     },
@@ -82,7 +83,7 @@ mod tests;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn jump(&mut self, args: JumpArgs) -> SimpleResult<()> {
@@ -155,7 +156,7 @@ where
 struct RetCtx<'vm> {
     frames: &'vm mut Vec<CallFrame>,
     registers: &'vm mut [Word; VM_REGISTER_COUNT],
-    memory: &'vm Memory,
+    memory: &'vm MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
     context: &'vm mut Context,
     current_contract: Option<ContractId>,
@@ -331,7 +332,7 @@ impl JumpArgs {
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
@@ -445,7 +446,7 @@ impl<'a> PrepareCallRegisters<'a> {
 struct PrepareCallCtx<'vm, S, I> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     context: &'vm mut Context,
     gas_cost: DependentCost,
     runtime_balances: &'vm mut RuntimeBalances,
@@ -619,7 +620,7 @@ fn write_call_to_memory<S>(
     frame_bytes: Vec<u8>,
     fp: Reg<FP>,
     len: usize,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     storage: &S,
 ) -> IoResult<Word, S::Error>
 where

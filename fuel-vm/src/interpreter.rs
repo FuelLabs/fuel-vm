@@ -79,6 +79,7 @@ pub use ecal::{
 };
 pub use memory::{
     Memory,
+    MemoryInstance,
     MemoryRange,
 };
 
@@ -202,16 +203,16 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<M: AsRef<Memory>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: Memory, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the VM memory
-    pub fn memory(&self) -> &Memory {
+    pub fn memory(&self) -> &MemoryInstance {
         self.memory.as_ref()
     }
 }
 
-impl<M: AsMut<Memory>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns mutable access to the vm memory
-    pub fn memory_mut(&mut self) -> &mut Memory {
+    pub fn memory_mut(&mut self) -> &mut MemoryInstance {
         self.memory.as_mut()
     }
 }

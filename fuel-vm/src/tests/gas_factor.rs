@@ -1,10 +1,7 @@
 #![cfg(feature = "std")]
 
 use crate::{
-    interpreter::{
-        InterpreterParams,
-        Memory,
-    },
+    interpreter::InterpreterParams,
     prelude::*,
 };
 use core::iter;
@@ -59,8 +56,11 @@ fn gas_factor_rounds_correctly() {
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
     let storage = MemoryStorage::default();
 
-    let mut interpreter =
-        Interpreter::<_, _, _>::with_storage(Memory::new(), storage, interpreter_params);
+    let mut interpreter = Interpreter::<_, _, _>::with_storage(
+        MemoryInstance::new(),
+        storage,
+        interpreter_params,
+    );
     let gas_costs = interpreter.gas_costs().clone();
     let res = interpreter
         .with_profiler(profiler.clone())

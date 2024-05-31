@@ -88,7 +88,7 @@ mod state_transition {
     fn transact_updates_state_transition_version() {
         let state_transition_hash = [1; 32].into();
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(state_transition_hash, vec![]),
             InterpreterParams::default(),
         );
@@ -115,7 +115,7 @@ mod state_transition {
     fn transact_with_zero_gas_price_doesnt_affect_change_output() {
         let state_transition_hash = [1; 32].into();
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(state_transition_hash, vec![]),
             InterpreterParams::default(),
         );
@@ -145,7 +145,7 @@ mod state_transition {
     fn transact_with_non_zero_gas_price_affects_change_output() {
         let state_transition_hash = [1; 32].into();
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(state_transition_hash, vec![]),
             InterpreterParams::default(),
         );
@@ -175,7 +175,7 @@ mod state_transition {
     fn transact_fails_for_unknown_root() {
         let known_state_transition_hash = [1; 32].into();
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(known_state_transition_hash, vec![]),
             InterpreterParams::default(),
         );
@@ -211,7 +211,7 @@ mod state_transition {
             },
         );
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             storage,
             InterpreterParams::default(),
         );
@@ -232,7 +232,7 @@ mod state_transition {
     fn transact_fails_when_try_to_override_state_bytecode() {
         let state_transition_hash = [1; 32].into();
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(state_transition_hash, vec![]),
             InterpreterParams::default(),
         );
@@ -306,7 +306,7 @@ mod consensus_parameters {
     #[test]
     fn transact_updates_consensus_parameters_version() {
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(),
             InterpreterParams::default(),
         );
@@ -332,7 +332,7 @@ mod consensus_parameters {
     #[test]
     fn transact_with_zero_gas_price_doesnt_affect_change_output() {
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(),
             InterpreterParams::default(),
         );
@@ -361,7 +361,7 @@ mod consensus_parameters {
     #[test]
     fn transact_with_non_zero_gas_price_affects_change_output() {
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(),
             InterpreterParams::default(),
         );
@@ -390,7 +390,7 @@ mod consensus_parameters {
     #[test]
     fn transact_fails_when_try_to_override_consensus_parameters() {
         let mut client = Interpreter::<_, _, Upgrade>::with_storage(
-            Memory::new(),
+            MemoryInstance::new(),
             valid_storage(),
             InterpreterParams::default(),
         );

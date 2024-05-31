@@ -38,7 +38,7 @@ where
         d: RegId,
     ) -> SimpleResult<()>
     where
-        M: AsRef<Memory> + AsMut<Memory>;
+        M: Memory;
 }
 
 /// Default ECAL opcode handler function, which charges for `noop` and does nothing.
@@ -73,7 +73,7 @@ impl EcalHandler for PredicateErrorEcal {
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Ecal: EcalHandler,
 {
     /// Executes ECAL opcode handler function and increments PC

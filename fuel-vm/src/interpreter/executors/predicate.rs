@@ -23,7 +23,7 @@ use fuel_asm::{
 
 impl<M, Tx, Ecal> Interpreter<M, PredicateStorage, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {

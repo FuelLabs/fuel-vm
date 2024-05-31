@@ -130,7 +130,7 @@ fn malleable_fields_do_not_affect_validity() {
         let vm = Interpreter::<_, _, Script>::with_memory_storage();
         let mut client = MemoryClient::from_txtor(vm.into());
         let receipts = client.transact(
-            tx.into_checked(0u32.into(), &params, Memory::new())
+            tx.into_checked(0u32.into(), &params, MemoryInstance::new())
                 .expect("valid tx"),
         );
 

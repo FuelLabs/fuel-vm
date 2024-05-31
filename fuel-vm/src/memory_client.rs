@@ -8,6 +8,7 @@ use crate::{
         EcalHandler,
         InterpreterParams,
         Memory,
+        MemoryInstance,
         NotSupportedEcal,
     },
     state::StateTransitionRef,
@@ -32,10 +33,10 @@ pub struct MemoryClient<M, Ecal = NotSupportedEcal> {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Default for MemoryClient<Memory> {
+impl Default for MemoryClient<MemoryInstance> {
     fn default() -> Self {
         Self::from_txtor(Transactor::new(
-            Memory::new(),
+            MemoryInstance::new(),
             MemoryStorage::default(),
             InterpreterParams::default(),
         ))
@@ -76,7 +77,7 @@ impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal> {
 
 impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
 {
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.

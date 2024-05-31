@@ -52,12 +52,12 @@ fn record_and_invert_storage() {
         InterpreterParams::new(arb_gas_price, &ConsensusParameters::standard());
 
     let a = Interpreter::<_, _, Script>::with_storage(
-        crate::interpreter::Memory::new(),
+        crate::interpreter::MemoryInstance::new(),
         Record::new(MemoryStorage::default()),
         interpreter_params.clone(),
     );
     let mut b = Interpreter::<_, _, Script>::with_storage(
-        crate::interpreter::Memory::new(),
+        crate::interpreter::MemoryInstance::new(),
         Record::new(MemoryStorage::default()),
         interpreter_params,
     );

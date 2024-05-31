@@ -14,6 +14,7 @@ use fuel_vm::{
     interpreter::{
         Interpreter,
         Memory,
+        MemoryInstance,
         NotSupportedEcal,
     },
     prelude::*,
@@ -23,7 +24,7 @@ fn get_next_instruction<M, S, Tx>(
     vm: &Interpreter<M, S, Tx, NotSupportedEcal>,
 ) -> Option<Instruction>
 where
-    M: AsRef<Memory>,
+    M: Memory,
 {
     let pc = vm.registers()[RegId::PC];
     let instruction = RawInstruction::from_be_bytes(vm.memory().read_bytes(pc).ok()?);
@@ -50,7 +51,7 @@ fn main() {
         .maturity(Default::default())
         .add_random_fee_input()
         .finalize()
-        .into_checked(Default::default(), &consensus_params, Memory::new())
+        .into_checked(Default::default(), &consensus_params, MemoryInstance::new())
         .expect("failed to generate a checked tx")
         .into_ready(
             0,

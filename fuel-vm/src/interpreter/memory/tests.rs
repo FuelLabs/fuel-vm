@@ -22,7 +22,7 @@ fn memcopy() {
     consensus_params.set_tx_params(tx_params);
 
     let mut vm = Interpreter::<_, _, _>::with_storage(
-        Memory::new(),
+        MemoryInstance::new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -32,7 +32,7 @@ fn memcopy() {
         .finalize();
 
     let tx = tx
-        .into_checked(Default::default(), &consensus_params, Memory::new())
+        .into_checked(Default::default(), &consensus_params, MemoryInstance::new())
         .expect("default tx should produce a valid checked transaction")
         .into_ready(
             zero_gas_price,
@@ -102,7 +102,7 @@ fn stack_alloc_ownership() {
         .into_checked(
             Default::default(),
             &ConsensusParameters::standard(),
-            Memory::new(),
+            MemoryInstance::new(),
         )
         .expect("Empty script should be valid")
         .into_ready(
@@ -243,7 +243,7 @@ fn test_mem_write(
     data: &[u8],
     owner: OwnershipRegisters,
 ) -> (bool, [u8; 100]) {
-    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0u8; MEM_SIZE].try_into().unwrap();
     let r = match memory.write(owner, addr, data.len()) {
         Ok(target) => {
             target.copy_from_slice(data);
@@ -285,7 +285,7 @@ fn test_copy_from_slice_zero_fill_noownerchecks(
     src_offset: usize,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
-    let mut memory: Memory = vec![0xffu8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();
     let r = copy_from_slice_zero_fill_noownerchecks(
         &mut memory,
         src_data,

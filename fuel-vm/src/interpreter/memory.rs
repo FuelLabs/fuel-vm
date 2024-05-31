@@ -53,9 +53,14 @@ mod allocation_tests;
 #[cfg(test)]
 mod stack_tests;
 
+/// The trait for the memory.
+pub trait Memory: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
+
+impl<M> Memory for M where M: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
+
 /// The memory of the VM, represented as stack and heap.
 #[derive(Clone, Eq)]
-pub struct Memory {
+pub struct MemoryInstance {
     /// Stack. Grows upwards.
     stack: Vec<u8>,
     /// Heap. Grows downwards from MEM_SIZE.
@@ -65,13 +70,13 @@ pub struct Memory {
     hp: usize,
 }
 
-impl Default for Memory {
+impl Default for MemoryInstance {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl fmt::Debug for Memory {
+impl fmt::Debug for MemoryInstance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Memory {{ stack: ")?;
         fmt_truncated_hex::<16>(&self.stack, f)?;
@@ -82,7 +87,7 @@ impl fmt::Debug for Memory {
     }
 }
 
-impl PartialEq for Memory {
+impl PartialEq for MemoryInstance {
     /// Equality comparison of the accessible memory.
     #[allow(clippy::arithmetic_side_effects)] // Safety: hp is kept valid everywhere
     fn eq(&self, other: &Self) -> bool {
@@ -94,18 +99,18 @@ impl PartialEq for Memory {
     }
 }
 
-impl AsRef<Memory> for Memory {
-    fn as_ref(&self) -> &Memory {
+impl AsRef<MemoryInstance> for MemoryInstance {
+    fn as_ref(&self) -> &MemoryInstance {
         self
     }
 }
-impl AsMut<Memory> for Memory {
-    fn as_mut(&mut self) -> &mut Memory {
+impl AsMut<MemoryInstance> for MemoryInstance {
+    fn as_mut(&mut self) -> &mut MemoryInstance {
         self
     }
 }
 
-impl Memory {
+impl MemoryInstance {
     /// Create a new VM memory.
     pub fn new() -> Self {
         Self {
@@ -354,7 +359,7 @@ impl Memory {
 }
 
 #[cfg(feature = "test-helpers")]
-impl From<Vec<u8>> for Memory {
+impl From<Vec<u8>> for MemoryInstance {
     fn from(stack: Vec<u8>) -> Self {
         Self {
             stack,
@@ -364,7 +369,7 @@ impl From<Vec<u8>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Index<Range<usize>> for Memory {
+impl Index<Range<usize>> for MemoryInstance {
     type Output = [u8];
 
     fn index(&self, index: Range<usize>) -> &Self::Output {
@@ -374,7 +379,7 @@ impl Index<Range<usize>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Index<RangeFrom<usize>> for Memory {
+impl Index<RangeFrom<usize>> for MemoryInstance {
     type Output = [u8];
 
     fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
@@ -383,7 +388,7 @@ impl Index<RangeFrom<usize>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Index<RangeTo<usize>> for Memory {
+impl Index<RangeTo<usize>> for MemoryInstance {
     type Output = [u8];
 
     fn index(&self, index: RangeTo<usize>) -> &Self::Output {
@@ -392,7 +397,7 @@ impl Index<RangeTo<usize>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl IndexMut<Range<usize>> for Memory {
+impl IndexMut<Range<usize>> for MemoryInstance {
     fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
         self.write_noownerchecks(index.start, index.len())
             .expect("Memory range out of bounds")
@@ -487,7 +492,7 @@ impl MemoryRange {
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
 {
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
@@ -656,7 +661,7 @@ pub(crate) fn try_update_stack_pointer(
     ssp: Reg<SSP>,
     hp: Reg<HP>,
     new_sp: Word,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
 ) -> SimpleResult<()> {
     if new_sp < *ssp {
         Err(PanicReason::MemoryOverflow.into())
@@ -676,7 +681,7 @@ pub(crate) fn stack_pointer_overflow<F>(
     pc: RegMut<PC>,
     f: F,
     v: Word,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
 ) -> SimpleResult<()>
 where
     F: FnOnce(Word, Word) -> (Word, bool),
@@ -693,7 +698,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn push_selected_registers(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
@@ -732,7 +737,7 @@ pub(crate) fn push_selected_registers(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pop_selected_registers(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
@@ -767,7 +772,7 @@ pub(crate) fn pop_selected_registers(
 }
 
 pub(crate) fn load_byte(
-    memory: &Memory,
+    memory: &MemoryInstance,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -779,7 +784,7 @@ pub(crate) fn load_byte(
 }
 
 pub(crate) fn load_word(
-    memory: &Memory,
+    memory: &MemoryInstance,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -795,7 +800,7 @@ pub(crate) fn load_word(
 
 #[allow(clippy::cast_possible_truncation)]
 pub(crate) fn store_byte(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -807,7 +812,7 @@ pub(crate) fn store_byte(
 }
 
 pub(crate) fn store_word(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -828,14 +833,14 @@ pub(crate) fn malloc(
     sp: Reg<SP>,
     pc: RegMut<PC>,
     amount: Word,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
 ) -> SimpleResult<()> {
     memory.grow_heap_by(sp, hp, amount)?;
     Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn memclear(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -846,7 +851,7 @@ pub(crate) fn memclear(
 }
 
 pub(crate) fn memcopy(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -872,7 +877,7 @@ pub(crate) fn memcopy(
 }
 
 pub(crate) fn memeq(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     result: &mut Word,
     pc: RegMut<PC>,
     b: Word,
@@ -971,7 +976,7 @@ impl OwnershipRegisters {
 /// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
 /// Performs overflow and memory range checks, but no ownership checks.
 pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     src: &[u8],
     dst_addr: A,
     src_offset: usize,

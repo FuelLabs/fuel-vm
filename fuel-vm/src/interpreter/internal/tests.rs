@@ -8,7 +8,7 @@ use crate::{
             set_variable_output,
         },
         InterpreterParams,
-        Memory,
+        MemoryInstance,
     },
     prelude::*,
 };
@@ -112,7 +112,7 @@ fn variable_output_updates_in_memory() {
 
     let consensus_params = ConsensusParameters::standard();
     let mut vm = Interpreter::<_, _, _>::with_storage(
-        Memory::new(),
+        MemoryInstance::new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -134,7 +134,7 @@ fn variable_output_updates_in_memory() {
         .add_random_fee_input()
         .add_output(variable_output)
         .finalize()
-        .into_checked(height, &consensus_params, Memory::new())
+        .into_checked(height, &consensus_params, MemoryInstance::new())
         .expect("failed to check tx")
         .into_ready(
             zero_gas_price,

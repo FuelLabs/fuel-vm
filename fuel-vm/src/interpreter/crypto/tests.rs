@@ -8,16 +8,13 @@ use rand::{
 };
 
 use super::*;
-use crate::{
-    context::Context,
-    interpreter::memory::Memory,
-};
+use crate::context::Context;
 use fuel_vm::consts::*;
 
 #[cfg(feature = "random")]
 #[test]
 fn test_recover_secp256k1() -> SimpleResult<()> {
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -67,7 +64,7 @@ fn test_recover_secp256r1() -> SimpleResult<()> {
 
     let mut rng = &mut StdRng::seed_from_u64(8586);
 
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -116,7 +113,7 @@ fn test_recover_secp256r1() -> SimpleResult<()> {
 fn test_verify_ed25519() -> SimpleResult<()> {
     use ed25519_dalek::Signer;
 
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut err = 0;
     let mut pc = 4;
 
@@ -151,7 +148,7 @@ fn test_verify_ed25519() -> SimpleResult<()> {
 
 #[test]
 fn test_keccak256() -> SimpleResult<()> {
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,
@@ -180,7 +177,7 @@ fn test_keccak256() -> SimpleResult<()> {
 
 #[test]
 fn test_sha256() -> SimpleResult<()> {
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1000,

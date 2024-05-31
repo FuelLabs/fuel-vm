@@ -6,7 +6,7 @@ use crate::{
 };
 
 use super::{
-    Memory,
+    MemoryInstance,
     Reg,
     VM_MAX_RAM,
 };
@@ -15,7 +15,7 @@ use alloc::vec;
 
 #[test]
 fn grow_heap_over_old_stack() {
-    let mut memory = Memory::new();
+    let mut memory = MemoryInstance::new();
 
     let sp = VM_MAX_RAM - 100;
     let mut hp = VM_MAX_RAM;
@@ -58,7 +58,7 @@ fn grow_heap_over_old_stack() {
 
 #[test]
 fn reads_cannot_cross_from_stack_to_heap() {
-    let mut memory = Memory::new();
+    let mut memory = MemoryInstance::new();
 
     // Allocate the whole stack
     let sp = VM_MAX_RAM - 100;
@@ -80,7 +80,7 @@ fn reads_cannot_cross_from_stack_to_heap() {
 
 #[test]
 fn reading_from_internally_allocated_heap_below_hp_fails() {
-    let mut memory = Memory::new();
+    let mut memory = MemoryInstance::new();
 
     // Allocate small heap
     let mut hp = VM_MAX_RAM;
@@ -96,7 +96,7 @@ fn reading_from_internally_allocated_heap_below_hp_fails() {
 
 #[test]
 fn memory_reset() {
-    let mut memory = Memory::new();
+    let mut memory = MemoryInstance::new();
 
     memory.grow_stack(10).unwrap();
     memory.read(0, 1).expect("Stack should be nonempty");

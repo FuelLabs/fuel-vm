@@ -70,10 +70,7 @@ mod tests {
     use crate::{
         checked_transaction::CheckPredicateParams,
         error::PredicateVerificationFailed,
-        interpreter::{
-            InterpreterParams,
-            Memory,
-        },
+        interpreter::InterpreterParams,
         prelude::*,
         storage::PredicateStorage,
     };
@@ -149,7 +146,7 @@ mod tests {
             assert_eq!(idx, runtime.idx());
 
             let mut interpreter = Interpreter::<_, _, _>::with_storage(
-                Memory::new(),
+                MemoryInstance::new(),
                 PredicateStorage,
                 InterpreterParams::default(),
             );
@@ -286,7 +283,7 @@ mod tests {
                 let result = Interpreter::<_, PredicateStorage, Script>::check_predicates(
                     &tx,
                     &CheckPredicateParams::default(),
-                    Memory::new(),
+                    MemoryInstance::new(),
                 );
 
                 assert_eq!(result.map(|_| ()), expected);

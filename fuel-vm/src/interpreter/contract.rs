@@ -14,6 +14,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
+    MemoryInstance,
     RuntimeBalances,
 };
 use crate::{
@@ -62,7 +63,7 @@ mod tests;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
@@ -189,7 +190,7 @@ where
 
 struct ContractBalanceCtx<'vm, S, I> {
     storage: &'vm S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
     input_contracts: InputContracts<'vm, I>,
 }
@@ -219,7 +220,7 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
 }
 struct TransferCtx<'vm, S, Tx> {
     storage: &'vm mut S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,

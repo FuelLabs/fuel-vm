@@ -23,7 +23,10 @@ use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
-use super::Memory;
+use super::{
+    Memory,
+    MemoryInstance,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
@@ -114,7 +117,7 @@ impl RuntimeBalances {
 
     fn set_memory_balance_inner(
         balance: &Balance,
-        memory: &mut Memory,
+        memory: &mut MemoryInstance,
     ) -> SimpleResult<Word> {
         let value = balance.value();
         let offset = balance.offset();
@@ -135,7 +138,7 @@ impl RuntimeBalances {
     /// ordered, as in the protocol.
     pub fn checked_balance_add(
         &mut self,
-        memory: &mut Memory,
+        memory: &mut MemoryInstance,
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -150,7 +153,7 @@ impl RuntimeBalances {
     /// appropriate offset
     pub fn checked_balance_sub(
         &mut self,
-        memory: &mut Memory,
+        memory: &mut MemoryInstance,
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -165,7 +168,7 @@ impl RuntimeBalances {
     /// Panics if the assets cannot fit.
     pub fn to_vm<M, S, Tx, Ecal>(self, vm: &mut Interpreter<M, S, Tx, Ecal>)
     where
-        M: AsRef<Memory> + AsMut<Memory>,
+        M: Memory,
         Tx: ExecutableTransaction,
     {
         let len = (vm.max_inputs() as usize).saturating_mul(BALANCE_ENTRY_SIZE) as Word;

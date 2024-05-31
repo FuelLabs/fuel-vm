@@ -24,7 +24,7 @@ use crate::interpreter::CheckedMetadata;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
@@ -94,7 +94,7 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
@@ -114,7 +114,7 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,
     Tx: ExecutableTransaction,

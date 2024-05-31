@@ -110,6 +110,7 @@ pub mod test_helpers {
             CheckedMetadata,
             ExecutableTransaction,
             InterpreterParams,
+            MemoryInstance,
         },
         prelude::{
             Backtrace,
@@ -446,7 +447,11 @@ pub mod test_helpers {
                 .add_random_fee_input()
                 .add_output(Output::contract_created(contract_id, storage_root))
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params, Memory::new())
+                .into_checked(
+                    self.block_height,
+                    &self.consensus_params,
+                    MemoryInstance::new(),
+                )
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -474,7 +479,7 @@ pub mod test_helpers {
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
-            M: AsRef<Memory> + AsMut<Memory>,
+            M: Memory,
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
@@ -526,7 +531,7 @@ pub mod test_helpers {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
-                Memory::new(),
+                MemoryInstance::new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -541,7 +546,7 @@ pub mod test_helpers {
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
-                Memory::new(),
+                MemoryInstance::new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -557,7 +562,7 @@ pub mod test_helpers {
             let interpreter_params =
                 InterpreterParams::new(gas_price, &self.consensus_params);
             let mut transactor = Transactor::<_, _, _>::new(
-                Memory::new(),
+                MemoryInstance::new(),
                 self.storage.clone(),
                 interpreter_params,
             );
@@ -625,7 +630,7 @@ pub mod test_helpers {
         instructions: Vec<Instruction>,
         expected_reason: PanicReason,
     ) where
-        M: AsRef<Memory> + AsMut<Memory>,
+        M: Memory,
     {
         let tx_params = TxParameters::default().with_max_gas_per_tx(Word::MAX / 2);
         // The gas should be huge enough to cover the execution but still much less than
@@ -695,7 +700,7 @@ pub mod test_helpers {
         checked_tx: Checked<Script>,
         expected_reason: PanicReason,
     ) where
-        M: AsRef<Memory> + AsMut<Memory>,
+        M: Memory,
     {
         let receipts = client.transact(checked_tx);
 

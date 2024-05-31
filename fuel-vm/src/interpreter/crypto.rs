@@ -8,6 +8,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
+    MemoryInstance,
 };
 use crate::{
     constraints::reg_key::*,
@@ -31,7 +32,7 @@ mod tests;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
-    M: AsRef<Memory> + AsMut<Memory>,
+    M: Memory,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn secp256k1_recover(
@@ -92,7 +93,7 @@ where
 }
 
 pub(crate) fn secp256k1_recover(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -121,7 +122,7 @@ pub(crate) fn secp256k1_recover(
 }
 
 pub(crate) fn secp256r1_recover(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -148,7 +149,7 @@ pub(crate) fn secp256r1_recover(
 }
 
 pub(crate) fn ed25519_verify(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
     a: Word,
@@ -170,7 +171,7 @@ pub(crate) fn ed25519_verify(
 }
 
 pub(crate) fn keccak256(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -190,7 +191,7 @@ pub(crate) fn keccak256(
 }
 
 pub(crate) fn sha256(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,

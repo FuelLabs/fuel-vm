@@ -28,7 +28,6 @@ use sha3::{
 };
 
 use crate::{
-    interpreter::Memory,
     prelude::*,
     util::test_helpers::check_expected_reason_for_instructions,
 };
@@ -146,7 +145,7 @@ fn ecrecover_tx_id() {
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
     let tx = tx
-        .into_checked(height, &consensus_params, Memory::new())
+        .into_checked(height, &consensus_params, MemoryInstance::new())
         .unwrap();
 
     let receipts = client.transact(tx);
@@ -234,15 +233,15 @@ async fn recover_tx_id_predicate() {
             .expect("Should estimate predicate successfully");
 
         tx_for_async
-            .into_checked(maturity, &consensus_params, Memory::new())
+            .into_checked(maturity, &consensus_params, MemoryInstance::new())
             .expect("Should check predicate successfully");
     }
 
     // sequential version
-    tx.estimate_predicates(&check_params, Memory::new())
+    tx.estimate_predicates(&check_params, MemoryInstance::new())
         .expect("Should estimate predicate successfully");
 
-    tx.into_checked(maturity, &consensus_params, Memory::new())
+    tx.into_checked(maturity, &consensus_params, MemoryInstance::new())
         .expect("Should check predicate successfully");
 }
 

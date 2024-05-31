@@ -169,15 +169,6 @@ where
     }
 }
 
-// impl<M, Ecal: EcalHandler + Default> From<MemoryStorage> for MemoryClient<M, Ecal> {
-//     fn from(s: MemoryStorage) -> Self {
-//         Self::from_txtor(Transactor::new(
-//             s,
-//             InterpreterParams::default(),
-//         ))
-//     }
-// }
-
 impl<M, Ecal: EcalHandler> From<MemoryClient<M, Ecal>>
     for Transactor<M, MemoryStorage, Script, Ecal>
 {

@@ -119,7 +119,7 @@ where
             _,
         ) = split_registers(&mut self.registers);
         let input = LoadContractCodeCtx {
-            memory: &mut self.memory.as_mut(),
+            memory: self.memory.as_mut(),
             context: &self.context,
             profiler: &mut self.profiler,
             storage: &mut self.storage,

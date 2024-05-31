@@ -7,8 +7,8 @@ use crate::{
     sparse::{
         self,
         merkle_tree::MerkleTreeKey,
+        primitive::Primitive,
         proof::Proof,
-        Primitive,
     },
     storage::{
         Mappable,
@@ -38,7 +38,7 @@ impl Mappable for NodesTable {
 }
 
 type Storage = StorageMap<NodesTable>;
-type SparseMerkleTree = sparse::MerkleTree<DEFAULT_KEY_SIZE, NodesTable, Storage>;
+type SparseMerkleTree = sparse::MerkleTree<NodesTable, Storage>;
 
 #[derive(Debug)]
 pub struct MerkleTree {
@@ -118,11 +118,8 @@ impl MerkleTree {
             }
         }
 
-        let tree = sparse::MerkleTree::<DEFAULT_KEY_SIZE, NodesTable, _>::from_set(
-            EmptyStorage,
-            set,
-        )
-        .expect("`Storage` can't return error");
+        let tree = sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage, set)
+            .expect("`Storage` can't return error");
         tree.root()
     }
 
@@ -183,11 +180,9 @@ impl MerkleTree {
             }
         }
 
-        let tree = sparse::MerkleTree::<DEFAULT_KEY_SIZE, NodesTable, _>::from_set(
-            VectorStorage::default(),
-            set,
-        )
-        .expect("`Storage` can't return error");
+        let tree =
+            sparse::MerkleTree::<NodesTable, _>::from_set(VectorStorage::default(), set)
+                .expect("`Storage` can't return error");
         let root = tree.root();
         let nodes = tree.into_storage().storage;
 

@@ -277,14 +277,11 @@ where
         Self::finalize_check_predicate(kind, checks, params)
     }
 
-    fn run_predicate<M>(
+    fn run_predicate(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
-        mut memory: M,
-    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
-    where
-        M: Memory,
-    {
+        mut memory: impl Memory,
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
         let predicate_action = PredicateAction::from(&kind);
         let mut checks = vec![];
 

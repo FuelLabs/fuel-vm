@@ -191,7 +191,7 @@ pub(crate) fn current_contract(
     memory: &MemoryInstance,
 ) -> Result<Option<ContractId>, PanicReason> {
     if context.is_internal() {
-        Ok(Some(internal_contract(context, fp, memory)?))
+        Ok(Some(ContractId::new(memory.read_bytes(*fp)?)))
     } else {
         Ok(None)
     }
@@ -202,11 +202,7 @@ pub(crate) fn internal_contract(
     fp: Reg<FP>,
     memory: &MemoryInstance,
 ) -> Result<ContractId, PanicReason> {
-    if context.is_internal() {
-        Ok(ContractId::new(memory.read_bytes(*fp)?))
-    } else {
-        Err(PanicReason::ExpectedInternalContext)
-    }
+    current_contract(context, fp, memory)?.ok_or(PanicReason::ExpectedInternalContext)
 }
 
 pub(crate) fn set_frame_pointer(

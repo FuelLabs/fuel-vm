@@ -67,6 +67,7 @@ use fuel_tx::{
     Receipt,
 };
 use fuel_types::{
+    bytes::padded_len_usize,
     canonical::Serialize,
     AssetId,
     Bytes32,
@@ -478,12 +479,13 @@ where
         let asset_id =
             AssetId::new(self.memory.read_bytes(self.params.asset_id_pointer)?);
 
-        let mut frame = call_frame(
-            self.registers.copy_registers(),
-            &self.storage,
-            call,
-            asset_id,
-        )?;
+        let code_size = contract_size(&self.storage, call.to())?;
+        let code_size_padded =
+            padded_len_usize(code_size).expect("code_size cannot overflow with padding");
+
+        let total_size_in_stack = CallFrame::serialized_size()
+            .checked_add(code_size_padded)
+            .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
         let profiler = ProfileGas {
             pc: self.registers.system_registers.pc.as_ref(),
@@ -496,14 +498,14 @@ where
             self.registers.system_registers.ggas.as_mut(),
             profiler,
             self.gas_cost,
-            frame.total_code_size() as Word,
+            code_size_padded as Word,
         )?;
 
         if let Some(source_contract) = self.current_contract {
             balance_decrease(
                 self.storage,
                 &source_contract,
-                frame.asset_id(),
+                &asset_id,
                 self.params.amount_of_coins_to_forward,
             )?;
         } else {
@@ -511,7 +513,7 @@ where
             external_asset_id_balance_sub(
                 self.runtime_balances,
                 self.memory,
-                frame.asset_id(),
+                &asset_id,
                 amount,
             )?;
         }
@@ -553,18 +555,21 @@ where
             .checked_sub(forward_gas_amount)
             .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
 
+        // Construct frame
+        let mut frame = CallFrame::new(
+            *call.to(),
+            asset_id,
+            self.registers.copy_registers(),
+            code_size_padded,
+            call.a(),
+            call.b(),
+        );
         *frame.context_gas_mut() = *self.registers.system_registers.cgas;
         *frame.global_gas_mut() = *self.registers.system_registers.ggas;
 
-        let frame_bytes = frame.to_bytes();
-        let len = frame_bytes
-            .len()
-            .checked_add(frame.total_code_size())
-            .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
-        let lenw = len as Word;
-
+        // Allocate stack memory
         let old_sp = *self.registers.system_registers.sp;
-        let new_sp = old_sp.saturating_add(lenw);
+        let new_sp = old_sp.saturating_add(total_size_in_stack as Word);
         self.memory.grow_stack(new_sp)?;
         *self.registers.system_registers.sp = new_sp;
         *self.registers.system_registers.ssp = new_sp;
@@ -582,27 +587,35 @@ where
             old_sp,
         );
 
-        let frame_end = write_call_to_memory(
-            &frame,
-            frame_bytes,
-            self.registers.system_registers.fp.as_ref(),
-            len,
-            self.memory,
-            self.storage,
+        // Write the frame to memory
+        // Ownership checks are disabled because we just allocated the memory above.
+        let dst = self.memory.write_noownerchecks(
+            *self.registers.system_registers.fp,
+            total_size_in_stack,
         )?;
+        let (mem_frame, mem_code) = dst.split_at_mut(CallFrame::serialized_size());
+        mem_frame.copy_from_slice(&frame.to_bytes());
+        let (mem_code, mem_code_padding) = mem_code.split_at_mut(code_size);
+        read_contract(call.to(), self.storage, mem_code)?;
+        mem_code_padding.fill(0);
+
+        #[allow(clippy::arithmetic_side_effects)] // Checked above
+        let code_start =
+            (*self.registers.system_registers.fp) + CallFrame::serialized_size() as Word;
+
+        *self.registers.system_registers.pc = code_start;
         *self.registers.system_registers.bal = self.params.amount_of_coins_to_forward;
-        *self.registers.system_registers.pc = frame_end;
         *self.registers.system_registers.is = *self.registers.system_registers.pc;
         *self.registers.system_registers.cgas = forward_gas_amount;
 
         let receipt = Receipt::call(
             id,
-            *frame.to(),
+            *call.to(),
             self.params.amount_of_coins_to_forward,
-            *frame.asset_id(),
+            asset_id,
             forward_gas_amount,
-            frame.a(),
-            frame.b(),
+            call.a(),
+            call.b(),
             *self.registers.system_registers.pc,
             *self.registers.system_registers.is,
         );
@@ -615,68 +628,23 @@ where
     }
 }
 
-fn write_call_to_memory<S>(
-    frame: &CallFrame,
-    frame_bytes: Vec<u8>,
-    fp: Reg<FP>,
-    len: usize,
-    memory: &mut MemoryInstance,
+fn read_contract<S>(
+    contract: &ContractId,
     storage: &S,
-) -> IoResult<Word, S::Error>
+    dst: &mut [u8],
+) -> IoResult<(), S::Error>
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
 {
-    // Addition is safe because code size + padding is always less than len
-    let frame_len_with_padding = frame.total_code_size();
-    let content_size = len.saturating_sub(frame_len_with_padding);
-    memory
-        .write_noownerchecks(*fp, content_size)?
-        .copy_from_slice(&frame_bytes);
-
-    let code_start = fp.saturating_add(CallFrame::serialized_size() as Word);
-    let code_len = frame.code_size();
     let bytes_read = storage
         .storage::<ContractsRawCode>()
-        .read(
-            frame.to(),
-            memory
-                .write_noownerchecks(code_start, code_len)
-                .expect("Write access checked above"),
-        )
+        .read(contract, dst)
         .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
-    if bytes_read != frame.code_size() {
+    if bytes_read != dst.len() {
         return Err(PanicReason::ContractMismatch.into())
     }
-
-    let padding_start = code_start.saturating_add(code_len as Word);
-    let padding_size = frame.code_size_padding();
-    if padding_size > 0 {
-        memory
-            .write_noownerchecks(padding_start, padding_size)?
-            .fill(0);
-    }
-    Ok((*fp)
-        .checked_add(content_size as Word)
-        .expect("Checked above"))
-}
-
-fn call_frame<S>(
-    registers: [Word; VM_REGISTER_COUNT],
-    storage: &S,
-    call: Call,
-    asset_id: AssetId,
-) -> IoResult<CallFrame, S::Error>
-where
-    S: StorageSize<ContractsRawCode> + ?Sized,
-{
-    let (to, a, b) = call.into_inner();
-
-    let code_size = contract_size(storage, &to)?;
-
-    let frame = CallFrame::new(to, asset_id, registers, code_size, a, b);
-
-    Ok(frame)
+    Ok(())
 }
 
 impl<'a> From<&'a PrepareCallRegisters<'_>> for SystemRegistersRef<'a> {

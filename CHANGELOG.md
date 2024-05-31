@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.50.0]
+
 ### Changed
 
 - [#725](https://github.com/FuelLabs/fuel-vm/pull/725): Adds more clippy lints to catch possible integer overflow and casting bugs on compile time.
@@ -22,6 +24,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#726](https://github.com/FuelLabs/fuel-vm/pull/726): Removed code related to Binary Merkle Sum Trees (BMSTs). The BMST is deprecated and not used in production environments. 
 - [#732](https://github.com/FuelLabs/fuel-vm/pull/732): Makes the VM generic over the memory type, allowing reuse of relatively expensive-to-allocate VM memories through `VmMemoryPool`. Functions and traits which require VM initalization such as `estimate_predicates` now take either the memory or `VmMemoryPool` as an argument. The `Interpterter::eq` method now only compares accessible memory regions.
 - [#729](https://github.com/FuelLabs/fuel-vm/pull/729): Removed default implementation of `Node::key_size_bits`, implementors must now define it themselves. Also some helper traits have been merged together, or their types changed.
+### Fixed
+
+#### Breaking
+
+- [#736](https://github.com/FuelLabs/fuel-vm/pull/736): LDC instruction now works in internal contexts as well. Call frames use code size padded to word alignment.
 
 ## [Version 0.49.0]
 

@@ -167,12 +167,7 @@ where
         let tx = checked.transaction();
         Self::run_predicate(PredicateRunKind::Verifying(tx), params, memory.as_mut())
     }
-}
 
-impl<Tx> Interpreter<&mut MemoryInstance, PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-{
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs in parallel.
     ///
@@ -196,12 +191,7 @@ where
 
         Ok(predicates_checked)
     }
-}
 
-impl<Tx> Interpreter<&mut MemoryInstance, PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-{
     /// Initialize the VM with the provided transaction, check all predicates defined in
     /// the inputs and set the predicate_gas_used to be the actual gas consumed during
     /// execution for each predicate.
@@ -220,12 +210,7 @@ where
         )?;
         Ok(predicates_checked)
     }
-}
 
-impl<Tx> Interpreter<&mut MemoryInstance, PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-{
     /// Initialize the VM with the provided transaction, check all predicates defined in
     /// the inputs and set the predicate_gas_used to be the actual gas consumed during
     /// execution for each predicate in parallel.
@@ -291,12 +276,7 @@ where
 
         Self::finalize_check_predicate(kind, checks, params)
     }
-}
 
-impl<Tx> Interpreter<&mut MemoryInstance, PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-{
     fn run_predicate<M>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,

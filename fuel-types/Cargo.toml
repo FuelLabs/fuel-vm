@@ -12,7 +12,7 @@ description = "Atomic types of the FuelVM."
 
 [dependencies]
 fuel-derive = { workspace = true }
-hex = { version = "0.4", default-features = false }
+hex = { version = "0.4", default-features = false, optional = true }
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }
 wasm-bindgen = { version = "0.2.88", optional = true }
@@ -31,7 +31,7 @@ typescript = ["wasm-bindgen"]
 alloc = ["hex/alloc"]
 random = ["rand"]
 serde = ["dep:serde", "alloc"]
-std = ["alloc", "serde?/std", "hex/std"]
+std = ["alloc", "serde?/std", "hex?/std"]
 unsafe = []
 
 [[bench]]

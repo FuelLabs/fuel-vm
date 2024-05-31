@@ -1,36 +1,44 @@
-use crate::common::Msb;
+use crate::common::{
+    Bit,
+    Msb,
+};
 
-/// The side of a child node in a binary tree.
-pub enum Side {
+pub enum Instruction {
     Left,
     Right,
 }
 
-impl From<bool> for Side {
-    fn from(bit: bool) -> Self {
+impl From<Bit> for Instruction {
+    fn from(bit: Bit) -> Self {
         match bit {
-            false => Side::Left,
-            true => Side::Right,
+            Bit::_0 => Instruction::Left,
+            Bit::_1 => Instruction::Right,
         }
     }
 }
 
 pub trait Path {
-    /// Which child node to follow at the given index.
-    fn get_instruction(&self, index: u32) -> Option<Side>;
+    fn get_instruction(&self, index: u32) -> Option<Instruction>;
+}
 
-    fn common_path_length(&self, other: &[u8]) -> u64;
+pub trait ComparablePath {
+    fn common_path_length(&self, other: &Self) -> u32;
 }
 
 impl<T> Path for T
 where
     T: Msb,
 {
-    fn get_instruction(&self, index: u32) -> Option<Side> {
+    fn get_instruction(&self, index: u32) -> Option<Instruction> {
         self.get_bit_at_index_from_msb(index).map(Into::into)
     }
+}
 
-    fn common_path_length(&self, other: &[u8]) -> u64 {
+impl<T> ComparablePath for T
+where
+    T: Msb,
+{
+    fn common_path_length(&self, other: &Self) -> u32 {
         self.common_prefix_count(other)
     }
 }

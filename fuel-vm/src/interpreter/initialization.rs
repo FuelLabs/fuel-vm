@@ -2,13 +2,12 @@ use super::{
     ExecutableTransaction,
     InitialBalances,
     Interpreter,
-    Memory,
     RuntimeBalances,
 };
 use crate::{
     checked_transaction::{
+        Checked,
         IntoChecked,
-        Ready,
     },
     consts::*,
     context::Context,
@@ -16,34 +15,32 @@ use crate::{
     prelude::RuntimeError,
     storage::InterpreterStorage,
 };
+
 use fuel_asm::RegId;
 use fuel_tx::field::ScriptGasLimit;
 use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
-    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
     /// Initialize the VM with a given transaction
     fn init_inner(
         &mut self,
-        mut tx: Tx,
+        tx: Tx,
         initial_balances: InitialBalances,
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        tx.prepare_init_execute();
         self.tx = tx;
 
         self.initial_balances = initial_balances.clone();
 
         self.frames.clear();
         self.receipts.clear();
-        self.memory_mut().reset();
 
         // Optimized for memset
         self.registers.iter_mut().for_each(|r| *r = 0);
@@ -54,37 +51,18 @@ where
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;
 
-        // Initialize stack
-        macro_rules! push_stack {
-            ($v:expr) => {{
-                let data = $v;
-                let old_ssp = self.registers[RegId::SSP];
-                let new_ssp = old_ssp
-                    .checked_add(data.len() as Word)
-                    .expect("VM initialization data must fit into the stack");
-                self.memory_mut().grow_stack(new_ssp)?;
-                self.registers[RegId::SSP] = new_ssp;
-                self.memory_mut()
-                    .write_noownerchecks(old_ssp, data.len())
-                    .expect("VM initialization data must fit into the stack")
-                    .copy_from_slice(data);
-            }};
-        }
-
-        push_stack!(&*self.transaction().id(&self.chain_id()));
-
-        let base_asset_id = self.interpreter_params.base_asset_id;
-        push_stack!(&*base_asset_id);
+        self.push_stack(self.transaction().id(&self.chain_id()).as_ref())?;
 
         runtime_balances.to_vm(self);
 
         let tx_size = self.transaction().size() as Word;
         self.set_gas(gas_limit);
 
-        push_stack!(&tx_size.to_be_bytes());
+        self.push_stack(&tx_size.to_be_bytes())?;
 
         let tx_bytes = self.tx.to_bytes();
-        push_stack!(tx_bytes.as_slice());
+
+        self.push_stack(tx_bytes.as_slice())?;
 
         self.registers[RegId::SP] = self.registers[RegId::SSP];
 
@@ -92,9 +70,8 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
-    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
@@ -102,19 +79,20 @@ where
     pub fn init_predicate(
         &mut self,
         context: Context,
-        tx: Tx,
+        mut tx: Tx,
         gas_limit: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
         self.context = context;
+        tx.prepare_init_predicate();
+
         let initial_balances: InitialBalances = Default::default();
         let runtime_balances = initial_balances.clone().try_into()?;
         Ok(self.init_inner(tx, initial_balances, runtime_balances, gas_limit)?)
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
-    M: Memory,
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,
     Tx: ExecutableTransaction,
@@ -126,15 +104,14 @@ where
     /// For predicate estimation and verification, check [`Self::init_predicate`]
     pub fn init_script(
         &mut self,
-        ready_tx: Ready<Tx>,
+        checked: Checked<Tx>,
     ) -> Result<(), InterpreterError<S::DataError>> {
         let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 
         self.context = Context::Script { block_height };
 
-        let (_, checked) = ready_tx.decompose();
-        let (tx, metadata): (Tx, Tx::Metadata) = checked.into();
-
+        let (mut tx, metadata): (Tx, Tx::Metadata) = checked.into();
+        tx.prepare_init_script();
         let gas_limit = tx
             .as_script()
             .map(|script| *script.script_gas_limit())

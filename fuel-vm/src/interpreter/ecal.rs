@@ -17,7 +17,6 @@ use crate::{
 use super::{
     internal::inc_pc,
     Interpreter,
-    Memory,
 };
 
 /// ECAL opcode handler
@@ -30,21 +29,19 @@ where
     const INC_PC: bool = true;
 
     /// ECAL opcode handler
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<S, Tx>(
+        vm: &mut Interpreter<S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
         d: RegId,
-    ) -> SimpleResult<()>
-    where
-        M: Memory;
+    ) -> SimpleResult<()>;
 }
 
 /// Default ECAL opcode handler function, which charges for `noop` and does nothing.
 impl EcalHandler for NotSupportedEcal {
-    fn ecal<M, S, Tx>(
-        _: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<S, Tx>(
+        _: &mut Interpreter<S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -60,8 +57,8 @@ pub struct PredicateErrorEcal;
 
 /// ECAL is not allowed in predicates
 impl EcalHandler for PredicateErrorEcal {
-    fn ecal<M, S, Tx>(
-        _vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<S, Tx>(
+        _vm: &mut Interpreter<S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -71,9 +68,8 @@ impl EcalHandler for PredicateErrorEcal {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
-    M: Memory,
     Ecal: EcalHandler,
 {
     /// Executes ECAL opcode handler function and increments PC
@@ -92,12 +88,7 @@ where
             Ok(())
         }
     }
-}
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
-where
-    Ecal: EcalHandler,
-{
     /// Read access to the ECAL state
     pub fn ecal_state(&self) -> &Ecal {
         &self.ecal_state

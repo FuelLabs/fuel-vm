@@ -11,13 +11,11 @@ use super::*;
 #[test]
 fn test_create_serialization() {
     let create = Create {
-        body: CreateBody {
-            storage_slots: vec![
-                StorageSlot::new(Bytes32::from([1u8; 32]), Bytes32::from([2u8; 32])),
-                StorageSlot::new(Bytes32::from([3u8; 32]), Bytes32::from([4u8; 32])),
-            ],
-            ..Default::default()
-        },
+        storage_slots: vec![
+            StorageSlot::new(Bytes32::from([1u8; 32]), Bytes32::from([2u8; 32])),
+            StorageSlot::new(Bytes32::from([3u8; 32]), Bytes32::from([4u8; 32])),
+        ],
+
         ..Default::default()
     };
     let bytes = create.to_bytes();

@@ -6,6 +6,7 @@ use fuel_types::{
     Bytes32,
     Bytes64,
 };
+
 #[cfg(feature = "random")]
 use rand::{
     distributions::{

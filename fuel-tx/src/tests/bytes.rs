@@ -5,16 +5,16 @@ use crate::{
         ScriptData,
     },
     policies::Policies,
-    test_helper::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
-    },
     *,
 };
 use fuel_asm::{
     op,
     PanicInstruction,
     PanicReason,
+};
+use fuel_tx_test_helpers::{
+    generate_bytes,
+    generate_nonempty_padded_bytes,
 };
 use fuel_types::{
     bytes,
@@ -98,11 +98,13 @@ fn input() {
             rng.gen(),
             rng.gen(),
             rng.gen(),
+            rng.gen(),
         ),
         Input::coin_predicate(
             rng.gen(),
             rng.gen(),
             rng.next_u64(),
+            rng.gen(),
             rng.gen(),
             rng.gen(),
             rng.gen(),
@@ -258,7 +260,7 @@ fn receipt() {
 }
 
 #[test]
-fn transaction_serde_serialization_deserialization() {
+fn transaction() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let i = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen());
@@ -355,7 +357,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.gen(),
             rng.gen(),
             vec![],
-            vec![i.clone()],
+            vec![i],
             vec![o],
             vec![w.clone()],
         ),
@@ -375,270 +377,19 @@ fn transaction_serde_serialization_deserialization() {
             vec![],
             vec![],
             vec![],
-            vec![w.clone()],
+            vec![w],
         ),
         Transaction::create(
             rng.gen(),
             rng.gen(),
             rng.gen(),
             vec![],
-            vec![],
-            vec![],
-            vec![],
-        ),
-    ]);
-    assert_encoding_correct(&[
-        Transaction::upgrade(
-            UpgradePurpose::ConsensusParameters {
-                witness_index: 0,
-                checksum: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![i.clone()],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upgrade(
-            UpgradePurpose::ConsensusParameters {
-                witness_index: 0,
-                checksum: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upgrade(
-            UpgradePurpose::ConsensusParameters {
-                witness_index: 0,
-                checksum: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![],
-            vec![w.clone()],
-        ),
-        Transaction::upgrade(
-            UpgradePurpose::ConsensusParameters {
-                witness_index: 0,
-                checksum: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![],
-            vec![],
-        ),
-        Transaction::upgrade(
-            UpgradePurpose::StateTransition {
-                root: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![i.clone()],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upgrade(
-            UpgradePurpose::StateTransition {
-                root: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upgrade(
-            UpgradePurpose::StateTransition {
-                root: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![],
-            vec![w.clone()],
-        ),
-        Transaction::upgrade(
-            UpgradePurpose::StateTransition {
-                root: [0xfa; 32].into(),
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![],
-            vec![],
-        ),
-    ]);
-    assert_encoding_correct(&[
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![i.clone()],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![],
-            vec![w.clone()],
-        ),
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![],
-            vec![],
-        ),
-    ]);
-    assert_encoding_correct(&[
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![i.clone()],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
-            vec![],
-            vec![],
-            vec![w.clone()],
-        ),
-        Transaction::upload(
-            UploadBody {
-                root: [6; 32].into(),
-                witness_index: 0,
-                subsection_index: 0x1234,
-                subsections_number: 0x4321,
-                proof_set: vec![[1; 32].into(), [2; 32].into(), [3; 32].into()],
-            },
-            Policies::new()
-                .with_tip(Word::MAX >> 1)
-                .with_maturity((u32::MAX >> 3).into())
-                .with_witness_limit(Word::MAX >> 4)
-                .with_max_fee(Word::MAX >> 5),
             vec![],
             vec![],
             vec![],
         ),
     ]);
     assert_encoding_correct(&[Transaction::mint(
-        rng.gen(),
         rng.gen(),
         rng.gen(),
         rng.gen(),
@@ -651,6 +402,7 @@ fn transaction_serde_serialization_deserialization() {
 fn create_input_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
+    let gas_price = 100;
     let maturity = 10.into();
     let bytecode_witness_index = 0x00;
     let salt = rng.gen();
@@ -691,6 +443,7 @@ fn create_input_data_offset() {
         rng.next_u64(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data.clone(),
@@ -722,7 +475,9 @@ fn create_input_data_offset() {
 
                     let tx = Transaction::create(
                         bytecode_witness_index,
-                        Policies::new().with_maturity(maturity),
+                        Policies::new()
+                            .with_maturity(maturity)
+                            .with_gas_price(gas_price),
                         salt,
                         storage_slot.clone(),
                         inputs,
@@ -773,6 +528,7 @@ fn create_input_data_offset() {
 fn script_input_coin_data_offset() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
+    let gas_price = 100;
     let gas_limit = 1000;
     let maturity = 10.into();
 
@@ -822,6 +578,7 @@ fn script_input_coin_data_offset() {
         rng.next_u64(),
         rng.gen(),
         rng.gen(),
+        rng.gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data,
@@ -840,7 +597,9 @@ fn script_input_coin_data_offset() {
                             gas_limit,
                             script.clone(),
                             script_data.clone(),
-                            Policies::new().with_maturity(maturity),
+                            Policies::new()
+                                .with_maturity(maturity)
+                                .with_gas_price(gas_price),
                             inputs,
                             outputs.clone(),
                             witnesses.clone(),
@@ -873,8 +632,8 @@ fn script_input_coin_data_offset() {
                             .inputs_predicate_offset_at(offset)
                             .expect("Failed to fetch offset");
 
-                        assert_ne!(bytes::padded_len(&predicate), Some(predicate.len()));
-                        assert_eq!(bytes::padded_len(&predicate), Some(len));
+                        assert_ne!(bytes::padded_len(&predicate), predicate.len());
+                        assert_eq!(bytes::padded_len(&predicate), len);
 
                         assert_eq!(
                             predicate.as_slice(),
@@ -882,193 +641,6 @@ fn script_input_coin_data_offset() {
                         );
                     }
                 }
-            }
-        }
-    }
-}
-
-#[test]
-fn upgrade_input_coin_data_offset() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    let maturity = 10.into();
-
-    let inputs: Vec<Vec<Input>> = vec![
-        vec![],
-        vec![Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-        )],
-        vec![
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-        ],
-    ];
-    let outputs: Vec<Vec<Output>> = vec![
-        vec![],
-        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
-    ];
-    let witnesses: Vec<Vec<Witness>> = vec![
-        vec![],
-        vec![generate_bytes(rng).into()],
-        vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
-    ];
-
-    let mut predicate = generate_nonempty_padded_bytes(rng);
-
-    // force word-unaligned predicate
-    if predicate.len() % 2 == 0 {
-        predicate.push(0xff);
-    }
-
-    let predicate_data = generate_bytes(rng);
-    let predicate_gas_used = rng.gen();
-
-    let owner = (*Contract::root_from_code(&predicate)).into();
-
-    let input_coin = Input::coin_predicate(
-        rng.gen(),
-        owner,
-        rng.next_u64(),
-        rng.gen(),
-        rng.gen(),
-        predicate_gas_used,
-        predicate.clone(),
-        predicate_data,
-    );
-
-    for inputs in inputs.iter() {
-        for outputs in outputs.iter() {
-            for witnesses in witnesses.iter() {
-                let mut inputs = inputs.clone();
-                let offset = inputs.len();
-                inputs.push(input_coin.clone());
-
-                let tx = Transaction::upgrade_consensus_parameters(
-                    &ConsensusParameters::default(),
-                    Policies::new().with_maturity(maturity),
-                    inputs,
-                    outputs.clone(),
-                    witnesses.clone(),
-                )
-                .unwrap();
-
-                let mut tx_p = tx.clone();
-                tx_p.precompute(&Default::default())
-                    .expect("Should be able to calculate cache");
-
-                let bytes = tx.to_bytes();
-                let (offset, len) = tx
-                    .inputs_predicate_offset_at(offset)
-                    .expect("Failed to fetch offset");
-
-                assert_ne!(bytes::padded_len(&predicate), Some(predicate.len()));
-                assert_eq!(bytes::padded_len(&predicate), Some(len));
-
-                assert_eq!(
-                    predicate.as_slice(),
-                    &bytes[offset..offset + predicate.len()]
-                );
-            }
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-#[test]
-fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    let maturity = 10.into();
-
-    let inputs: Vec<Vec<Input>> = vec![
-        vec![],
-        vec![Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-        )],
-        vec![
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-        ],
-    ];
-    let outputs: Vec<Vec<Output>> = vec![
-        vec![],
-        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
-    ];
-    let witnesses: Vec<Vec<Witness>> = vec![
-        vec![],
-        vec![generate_bytes(rng).into()],
-        vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
-    ];
-
-    let mut predicate = generate_nonempty_padded_bytes(rng);
-
-    // force word-unaligned predicate
-    if predicate.len() % 2 == 0 {
-        predicate.push(0xff);
-    }
-
-    let predicate_data = generate_bytes(rng);
-    let predicate_gas_used = rng.gen();
-
-    let owner = (*Contract::root_from_code(&predicate)).into();
-
-    let input_coin = Input::coin_predicate(
-        rng.gen(),
-        owner,
-        rng.next_u64(),
-        rng.gen(),
-        rng.gen(),
-        predicate_gas_used,
-        predicate.clone(),
-        predicate_data,
-    );
-
-    for inputs in inputs.iter() {
-        for outputs in outputs.iter() {
-            for witnesses in witnesses.iter() {
-                // Given
-                let mut inputs = inputs.clone();
-                let offset = inputs.len();
-                inputs.push(input_coin.clone());
-
-                let subsections = UploadSubsection::split_bytecode(&[123; 2048], 1023)
-                    .expect("Failed to split bytecode");
-                let tx = Transaction::upload_from_subsection(
-                    subsections[0].clone(),
-                    Policies::new().with_maturity(maturity),
-                    inputs,
-                    outputs.clone(),
-                    witnesses.clone(),
-                );
-
-                // WHen
-                let mut tx_p = tx.clone();
-                tx_p.precompute(&Default::default())
-                    .expect("Should be able to calculate cache");
-
-                // Then
-                let bytes = tx.to_bytes();
-                let (offset, len) = tx
-                    .inputs_predicate_offset_at(offset)
-                    .expect("Failed to fetch offset");
-
-                assert_ne!(bytes::padded_len(&predicate), Some(predicate.len()));
-                assert_eq!(bytes::padded_len(&predicate), Some(len));
-
-                assert_eq!(
-                    predicate.as_slice(),
-                    &bytes[offset..offset + predicate.len()]
-                );
             }
         }
     }

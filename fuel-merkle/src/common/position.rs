@@ -1,5 +1,6 @@
 use crate::common::{
     node::{
+        ChildResult,
         Node,
         ParentNode,
     },
@@ -7,14 +8,6 @@ use crate::common::{
     PositionPath,
 };
 use core::convert::Infallible;
-
-use super::{
-    node::{
-        ChildError,
-        ChildResult,
-    },
-    path::Side,
-};
 
 /// # Position
 ///
@@ -97,6 +90,9 @@ use super::{
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Position(u64);
 
+const LEFT_CHILD_DIRECTION: i64 = -1;
+const RIGHT_CHILD_DIRECTION: i64 = 1;
+
 impl Position {
     pub fn in_order_index(self) -> u64 {
         self.0
@@ -114,86 +110,43 @@ impl Position {
 
     /// Construct a position from a leaf index. The in-order index corresponding
     /// to the leaf index will always equal the leaf index multiplied by 2.
-    /// Panics if index is too large to fit into u64.
-    pub fn from_leaf_index(index: u64) -> Option<Self> {
-        Some(Position(index.checked_mul(2)?))
-    }
-
-    #[cfg(test)]
-    pub(crate) fn from_leaf_index_unwrap(index: u64) -> Self {
-        Self::from_leaf_index(index).expect("Index too large")
-    }
-
-    /// The parent position.
-    /// The parent position has a height less 1 relative to this position.
-    pub fn parent(self) -> Result<Self, GetNodeError> {
-        let shift = 1u64
-            .checked_shl(self.height())
-            .ok_or(GetNodeError::CannotExist)?;
-        let this = self.in_order_index();
-        Ok(Self::from_in_order_index(match self.orientation()? {
-            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
-            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
-        }))
+    pub fn from_leaf_index(index: u64) -> Self {
+        Position(index * 2)
     }
 
     /// The sibling position.
     /// A position shares the same parent and height as its sibling.
-    #[cfg(test)]
-    pub fn sibling(self) -> Result<Self, GetNodeError> {
-        #[allow(clippy::arithmetic_side_effects)] // height() <= 64
-        let shift = 1u64
-            .checked_shl(self.height() + 1)
-            .ok_or(GetNodeError::CannotExist)?;
-        let this = self.in_order_index();
-        Ok(Self::from_in_order_index(match self.orientation()? {
-            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
-            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
-        }))
+    pub fn sibling(self) -> Self {
+        let shift = 1 << (self.height() + 1);
+        let index = self.in_order_index() as i64 + shift * self.direction();
+        Self::from_in_order_index(index as u64)
+    }
+
+    /// The parent position.
+    /// The parent position has a height less 1 relative to this position.
+    pub fn parent(self) -> Self {
+        let shift = 1 << self.height();
+        let index = self.in_order_index() as i64 + shift * self.direction();
+        Self::from_in_order_index(index as u64)
     }
 
     /// The uncle position.
     /// The uncle position is the sibling of the parent and has a height less 1
     /// relative to this position.
-    #[cfg(test)]
-    pub fn uncle(self) -> Result<Self, GetNodeError> {
-        self.parent()?.sibling()
+    pub fn uncle(self) -> Self {
+        self.parent().sibling()
     }
 
-    /// The child position of the current position given by the direction.
-    /// A child position has a height less 1 than the current position.
-    ///
-    /// A child position is calculated as a function of the current position's
-    /// index and height, and the supplied direction. The left child
-    /// position has the in-order index arriving before the current index;
-    /// the right child position has the in-order index arriving after the
-    /// current index.
-    pub fn child(self, side: Side) -> Result<Self, GetNodeError> {
-        if !self.is_node() {
-            return Err(GetNodeError::IsLeaf);
-        }
-        let shift = 1u64
-            .checked_shl(
-                self.height()
-                    .checked_sub(1)
-                    .ok_or(GetNodeError::CannotExist)?,
-            )
-            .ok_or(GetNodeError::CannotExist)?;
-        let this = self.in_order_index();
-        Ok(Self::from_in_order_index(match side {
-            Side::Left => this.checked_sub(shift).ok_or(GetNodeError::CannotExist)?,
-            Side::Right => this.checked_add(shift).ok_or(GetNodeError::CannotExist)?,
-        }))
+    /// The left child position.
+    /// See [child](Self::child).
+    pub fn left_child(self) -> Self {
+        self.child(LEFT_CHILD_DIRECTION)
     }
 
-    /// Returns the left child of the current position.
-    pub fn left_child(self) -> Result<Self, GetNodeError> {
-        self.child(Side::Left)
-    }
-
-    /// Returns the right child of the current position.
-    pub fn right_child(self) -> Result<Self, GetNodeError> {
-        self.child(Side::Right)
+    /// The right child position.
+    /// See [child](Self::child).
+    pub fn right_child(self) -> Self {
+        self.child(RIGHT_CHILD_DIRECTION)
     }
 
     /// The height of the index in a binary tree.
@@ -245,11 +198,31 @@ impl Position {
     /// tree is defined by the `leaves_count` parameter and constrains the
     /// path. See [PositionPath](crate::common::PositionPath).
     pub fn path(self, leaf: &Self, leaves_count: u64) -> PositionPath {
-        debug_assert!(leaves_count > 0);
         PositionPath::new(self, *leaf, leaves_count)
     }
 
+    // PRIVATE
+
+    /// The child position of the current position given by the direction.
+    /// A direction of `-1` denotes the left child. A direction of `+1` denotes
+    /// the right child. A child position has a height less 1 than the
+    /// current position.
+    ///
+    /// A child position is calculated as a function of the current position's
+    /// index and height, and the supplied direction. The left child
+    /// position has the in-order index arriving before the current index;
+    /// the right child position has the in-order index arriving after the
+    /// current index.
+    fn child(self, direction: i64) -> Self {
+        assert!(self.is_node());
+        let shift = 1 << (self.height() - 1);
+        let index = self.in_order_index() as i64 + shift * direction;
+        Self::from_in_order_index(index as u64)
+    }
+
     /// Orientation of the position index relative to its parent.
+    /// Returns 0 if the index is left of its parent.
+    /// Returns 1 if the index is right of its parent.
     ///
     /// The orientation is determined by the reading the `n`th rightmost digit
     /// of the index's binary value, where `n` = the height of the position
@@ -258,23 +231,25 @@ impl Position {
     ///
     /// | Index (Dec) | Index (Bin) | Height | Orientation |
     /// |-------------|-------------|--------|-------------|
-    /// |           0 |        0000 |      0 |           L |
-    /// |           2 |        0010 |      0 |           R |
-    /// |           4 |        0100 |      0 |           L |
-    /// |           6 |        0110 |      0 |           R |
-    /// |           1 |        0001 |      1 |           L |
-    /// |           5 |        0101 |      1 |           R |
-    /// |           9 |        1001 |      1 |           L |
-    /// |          13 |        1101 |      1 |           R |
-    fn orientation(self) -> Result<Side, GetNodeError> {
-        #[allow(clippy::arithmetic_side_effects)] // height() <= 64
-        let shift = 1u64
-            .checked_shl(self.height() + 1)
-            .ok_or(GetNodeError::CannotExist)?;
-        Ok(match self.in_order_index() & shift {
-            0 => Side::Right,
-            _ => Side::Left,
-        })
+    /// |           0 |        0000 |      0 |           0 |
+    /// |           2 |        0010 |      0 |           1 |
+    /// |           4 |        0100 |      0 |           0 |
+    /// |           6 |        0110 |      0 |           1 |
+    /// |           1 |        0001 |      1 |           0 |
+    /// |           5 |        0101 |      1 |           1 |
+    /// |           9 |        1001 |      1 |           0 |
+    /// |          13 |        1101 |      1 |           1 |
+    fn orientation(self) -> u8 {
+        let shift = 1 << (self.height() + 1);
+        (self.in_order_index() & shift != 0) as u8
+    }
+
+    /// The "direction" to travel to reach the parent node.
+    /// Returns +1 if the index is left of its parent.
+    /// Returns -1 if the index is right of its parent.
+    fn direction(self) -> i64 {
+        let scale = self.orientation() as i64 * 2 - 1; // Scale [0, 1] to [-1, 1];
+        -scale
     }
 }
 
@@ -283,11 +258,6 @@ impl Node for Position {
 
     fn height(&self) -> u32 {
         Position::height(*self)
-    }
-
-    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
-    fn key_size_bits() -> u32 {
-        core::mem::size_of::<Self::Key>() as u32 * 8
     }
 
     fn leaf_key(&self) -> Self::Key {
@@ -303,32 +273,15 @@ impl Node for Position {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GetNodeError {
-    /// The operation requires a node that can have children.
-    /// This is a leaf, and cannot have children.
-    IsLeaf,
-    /// The requested node cannot exists as it would be out of bounds.
-    CannotExist,
-}
-
 impl ParentNode for Position {
     type Error = Infallible;
 
     fn left_child(&self) -> ChildResult<Self> {
-        match self.child(Side::Left) {
-            Ok(child) => Ok(child),
-            Err(GetNodeError::IsLeaf) => Err(ChildError::NodeIsLeaf),
-            Err(GetNodeError::CannotExist) => Err(ChildError::ChildCannotExist),
-        }
+        Ok(Position::left_child(*self))
     }
 
     fn right_child(&self) -> ChildResult<Self> {
-        match self.child(Side::Right) {
-            Ok(child) => Ok(child),
-            Err(GetNodeError::IsLeaf) => Err(ChildError::NodeIsLeaf),
-            Err(GetNodeError::CannotExist) => Err(ChildError::ChildCannotExist),
-        }
+        Ok(Position::right_child(*self))
     }
 }
 
@@ -344,11 +297,11 @@ mod test {
     }
 
     #[test]
-    fn test_from_leaf_index_unwrap() {
-        assert_eq!(Position::from_leaf_index_unwrap(0).in_order_index(), 0);
-        assert_eq!(Position::from_leaf_index_unwrap(1).in_order_index(), 2);
+    fn test_from_leaf_index() {
+        assert_eq!(Position::from_leaf_index(0).in_order_index(), 0);
+        assert_eq!(Position::from_leaf_index(1).in_order_index(), 2);
         assert_eq!(
-            Position::from_leaf_index_unwrap((!0u64) >> 1).in_order_index(),
+            Position::from_leaf_index((!0u64) >> 1).in_order_index(),
             !0u64 - 1
         );
     }
@@ -357,14 +310,14 @@ mod test {
     fn test_equality_returns_true_for_two_equal_positions() {
         assert_eq!(Position(0), Position(0));
         assert_eq!(Position::from_in_order_index(0), Position(0));
-        assert_eq!(Position::from_leaf_index_unwrap(1), Position(2));
+        assert_eq!(Position::from_leaf_index(1), Position(2));
     }
 
     #[test]
     fn test_equality_returns_false_for_two_unequal_positions() {
         assert_ne!(Position(0), Position(1));
         assert_ne!(Position::from_in_order_index(0), Position(1));
-        assert_ne!(Position::from_leaf_index_unwrap(0), Position(2));
+        assert_ne!(Position::from_leaf_index(0), Position(2));
     }
 
     #[test]
@@ -384,57 +337,57 @@ mod test {
 
     #[test]
     fn test_sibling() {
-        assert_eq!(Position(0).sibling(), Ok(Position(2)));
-        assert_eq!(Position(2).sibling(), Ok(Position(0)));
+        assert_eq!(Position(0).sibling(), Position(2));
+        assert_eq!(Position(2).sibling(), Position(0));
 
-        assert_eq!(Position(1).sibling(), Ok(Position(5)));
-        assert_eq!(Position(5).sibling(), Ok(Position(1)));
+        assert_eq!(Position(1).sibling(), Position(5));
+        assert_eq!(Position(5).sibling(), Position(1));
 
-        assert_eq!(Position(3).sibling(), Ok(Position(11)));
-        assert_eq!(Position(11).sibling(), Ok(Position(3)));
+        assert_eq!(Position(3).sibling(), Position(11));
+        assert_eq!(Position(11).sibling(), Position(3));
     }
 
     #[test]
     fn test_parent() {
-        assert_eq!(Position(0).parent(), Ok(Position(1)));
-        assert_eq!(Position(2).parent(), Ok(Position(1)));
+        assert_eq!(Position(0).parent(), Position(1));
+        assert_eq!(Position(2).parent(), Position(1));
 
-        assert_eq!(Position(1).parent(), Ok(Position(3)));
-        assert_eq!(Position(5).parent(), Ok(Position(3)));
+        assert_eq!(Position(1).parent(), Position(3));
+        assert_eq!(Position(5).parent(), Position(3));
 
-        assert_eq!(Position(3).parent(), Ok(Position(7)));
-        assert_eq!(Position(11).parent(), Ok(Position(7)));
+        assert_eq!(Position(3).parent(), Position(7));
+        assert_eq!(Position(11).parent(), Position(7));
     }
 
     #[test]
     fn test_uncle() {
-        assert_eq!(Position(0).uncle(), Ok(Position(5)));
-        assert_eq!(Position(2).uncle(), Ok(Position(5)));
-        assert_eq!(Position(4).uncle(), Ok(Position(1)));
-        assert_eq!(Position(6).uncle(), Ok(Position(1)));
+        assert_eq!(Position(0).uncle(), Position(5));
+        assert_eq!(Position(2).uncle(), Position(5));
+        assert_eq!(Position(4).uncle(), Position(1));
+        assert_eq!(Position(6).uncle(), Position(1));
 
-        assert_eq!(Position(1).uncle(), Ok(Position(11)));
-        assert_eq!(Position(5).uncle(), Ok(Position(11)));
-        assert_eq!(Position(9).uncle(), Ok(Position(3)));
-        assert_eq!(Position(13).uncle(), Ok(Position(3)));
+        assert_eq!(Position(1).uncle(), Position(11));
+        assert_eq!(Position(5).uncle(), Position(11));
+        assert_eq!(Position(9).uncle(), Position(3));
+        assert_eq!(Position(13).uncle(), Position(3));
     }
 
     #[test]
     fn test_left_child() {
-        assert_eq!(Position(7).left_child(), Ok(Position(3)));
-        assert_eq!(Position(3).left_child(), Ok(Position(1)));
-        assert_eq!(Position(1).left_child(), Ok(Position(0)));
-        assert_eq!(Position(11).left_child(), Ok(Position(9)));
-        assert_eq!(Position(9).left_child(), Ok(Position(8)));
+        assert_eq!(Position(7).left_child(), Position(3));
+        assert_eq!(Position(3).left_child(), Position(1));
+        assert_eq!(Position(1).left_child(), Position(0));
+        assert_eq!(Position(11).left_child(), Position(9));
+        assert_eq!(Position(9).left_child(), Position(8));
     }
 
     #[test]
     fn test_right_child() {
-        assert_eq!(Position(7).right_child(), Ok(Position(11)));
-        assert_eq!(Position(3).right_child(), Ok(Position(5)));
-        assert_eq!(Position(1).right_child(), Ok(Position(2)));
-        assert_eq!(Position(11).right_child(), Ok(Position(13)));
-        assert_eq!(Position(9).right_child(), Ok(Position(10)));
+        assert_eq!(Position(7).right_child(), Position(11));
+        assert_eq!(Position(3).right_child(), Position(5));
+        assert_eq!(Position(1).right_child(), Position(2));
+        assert_eq!(Position(11).right_child(), Position(13));
+        assert_eq!(Position(9).right_child(), Position(10));
     }
 
     #[test]

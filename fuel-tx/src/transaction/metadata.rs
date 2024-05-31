@@ -25,28 +25,24 @@ pub trait Cacheable {
 impl Cacheable for super::Transaction {
     fn is_computed(&self) -> bool {
         match self {
-            Self::Script(tx) => tx.is_computed(),
-            Self::Create(tx) => tx.is_computed(),
-            Self::Mint(tx) => tx.is_computed(),
-            Self::Upgrade(tx) => tx.is_computed(),
-            Self::Upload(tx) => tx.is_computed(),
+            Self::Script(script) => script.is_computed(),
+            Self::Create(create) => create.is_computed(),
+            Self::Mint(mint) => mint.is_computed(),
         }
     }
 
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         match self {
-            Self::Script(tx) => tx.precompute(chain_id),
-            Self::Create(tx) => tx.precompute(chain_id),
-            Self::Mint(tx) => tx.precompute(chain_id),
-            Self::Upgrade(tx) => tx.precompute(chain_id),
-            Self::Upload(tx) => tx.precompute(chain_id),
+            Self::Script(script) => script.precompute(chain_id),
+            Self::Create(create) => create.precompute(chain_id),
+            Self::Mint(mint) => mint.precompute(chain_id),
         }
     }
 }
 
 /// Common metadata for `Script` and `Create` transactions.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct CommonMetadata {
+pub(crate) struct CommonMetadata {
     pub id: Bytes32,
     pub inputs_offset: usize,
     pub inputs_offset_at: Vec<usize>,
@@ -59,8 +55,7 @@ pub struct CommonMetadata {
 
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
-    /// Returns `None` if the transaction is invalid.
-    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Result<Self, ValidityError>
+    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,
@@ -79,44 +74,54 @@ impl CommonMetadata {
             .collect_vec();
 
         let mut offset = tx.inputs_offset();
-        let mut inputs_offset_at = Vec::new();
-        for (index, input) in tx.inputs().iter().enumerate() {
-            let i = offset;
-            offset = offset
-                .checked_add(input.size())
-                .ok_or(ValidityError::SerializedInputTooLarge { index })?;
-            inputs_offset_at.push(i);
-        }
+        let inputs_offset = offset;
+        let inputs_offset_at = tx
+            .inputs()
+            .iter()
+            .map(|input| {
+                let i = offset;
+                offset += input.size();
+                i
+            })
+            .collect_vec();
 
-        let mut offset = tx.outputs_offset();
-        let mut outputs_offset_at = Vec::new();
-        for (index, output) in tx.outputs().iter().enumerate() {
-            let i = offset;
-            offset = offset
-                .checked_add(output.size())
-                .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
-            outputs_offset_at.push(i);
-        }
+        let outputs_offset = offset;
+        #[cfg(feature = "internals")]
+        assert_eq!(outputs_offset, tx.outputs_offset());
 
-        let mut offset = tx.witnesses_offset();
-        let mut witnesses_offset_at = Vec::new();
-        for (index, witnesses) in tx.witnesses().iter().enumerate() {
-            let i = offset;
-            offset = offset
-                .checked_add(witnesses.size())
-                .ok_or(ValidityError::SerializedWitnessTooLarge { index })?;
-            witnesses_offset_at.push(i);
-        }
+        let outputs_offset_at = tx
+            .outputs()
+            .iter()
+            .map(|output| {
+                let i = offset;
+                offset += output.size();
+                i
+            })
+            .collect_vec();
 
-        Ok(Self {
+        let witnesses_offset = offset;
+        #[cfg(feature = "internals")]
+        assert_eq!(witnesses_offset, tx.witnesses_offset());
+
+        let witnesses_offset_at = tx
+            .witnesses()
+            .iter()
+            .map(|witness| {
+                let i = offset;
+                offset += witness.size();
+                i
+            })
+            .collect_vec();
+
+        Self {
             id,
-            inputs_offset: tx.inputs_offset(),
+            inputs_offset,
             inputs_offset_at,
             inputs_predicate_offset_at,
-            outputs_offset: tx.outputs_offset(),
+            outputs_offset,
             outputs_offset_at,
-            witnesses_offset: tx.witnesses_offset(),
+            witnesses_offset,
             witnesses_offset_at,
-        })
+        }
     }
 }

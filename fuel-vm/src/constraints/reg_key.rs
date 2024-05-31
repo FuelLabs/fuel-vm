@@ -49,7 +49,6 @@ impl WriteRegKey {
     /// to a program register index.
     ///
     /// This subtracts the number of system registers from the key.
-    #[allow(clippy::arithmetic_side_effects)] // Safety: checked in constructor
     fn translate(self) -> usize {
         self.0 - VM_REGISTER_SYSTEM_COUNT
     }
@@ -279,34 +278,40 @@ impl<'r> ProgramRegisters<'r> {
         a: WriteRegKey,
         b: WriteRegKey,
     ) -> Option<(&mut Word, &mut Word)> {
-        if a == b {
+        match a.cmp(&b) {
+            core::cmp::Ordering::Less => {
+                // Translate the `a` absolute register index to a program register index.
+                let a = a.translate();
+                // Split the array at the first register which is a.
+                let [i, rest @ ..] = &mut self.0[a..] else {
+                    return None
+                };
+                // Translate the `b` absolute register index to a program register index.
+                // Subtract 1 because the first register is `a`.
+                // Subtract `a` registers because we split the array at `a`.
+                let b = b.translate() - 1 - a;
+                // Get the `b` register.
+                let j = &mut rest[b];
+                Some((i, j))
+            }
             // Cannot mutably borrow the same register twice.
-            return None
+            core::cmp::Ordering::Equal => None,
+            core::cmp::Ordering::Greater => {
+                // Translate the `b` absolute register index to a program register index.
+                let b = b.translate();
+                // Split the array at the first register which is b.
+                let [i, rest @ ..] = &mut self.0[b..] else {
+                    return None
+                };
+                // Translate the `a` absolute register index to a program register index.
+                // Subtract 1 because the first register is `b`.
+                // Subtract `b` registers because we split the array at `b`.
+                let a = a.translate() - 1 - b;
+                // Get the `a` register.
+                let j = &mut rest[a];
+                Some((j, i))
+            }
         }
-
-        // Order registers
-        let swap = a > b;
-        let (a, b) = if swap { (b, a) } else { (a, b) };
-
-        // Translate the absolute register indices to a program register indeces.
-        let a = a.translate();
-
-        // Subtract a + 1 because because we split the array at `a`.
-        let b = b
-            .translate()
-            .checked_sub(a.saturating_add(1))
-            .expect("Cannot underflow as the values are ordered");
-
-        // Split the array at the first register which is a.
-        let [i, rest @ ..] = &mut self.0[a..] else {
-            return None
-        };
-
-        // Translate the higher absolute register index to a program register index.
-        // Get the `b` register.
-        let j = &mut rest[b];
-
-        Some(if swap { (j, i) } else { (i, j) })
     }
 }
 

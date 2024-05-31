@@ -27,6 +27,8 @@ use rand::{
 #[cfg(all(feature = "alloc", feature = "typescript"))]
 use alloc::format;
 
+use crate::hex_val;
+
 macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -148,8 +150,7 @@ macro_rules! key_methods {
             ///
             /// This function will panic if the length of `buf` is smaller than
             /// `Self::LEN`.
-            #[wasm_bindgen(js_name = from_bytes)]
-            pub fn from_bytes_typescript(bytes: &[u8]) -> Self {
+            pub fn from_bytes(bytes: &[u8]) -> Self {
                 Self(bytes.try_into().expect(
                     format!("The size of the arrays it not {} size", $s).as_str(),
                 ))
@@ -244,15 +245,14 @@ macro_rules! key_methods {
                     write!(f, "0x")?
                 }
 
-                if let Some(w) = f
-                    .width()
-                    .and_then(|w| Self::LEN.saturating_mul(2).checked_div(w))
-                {
-                    self.0.chunks(w).try_for_each(|c| {
-                        write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))
-                    })
-                } else {
-                    self.0.iter().try_for_each(|b| write!(f, "{:02x}", &b))
+                match f.width() {
+                    Some(w) if w > 0 => {
+                        self.0.chunks(2 * Self::LEN / w).try_for_each(|c| {
+                            write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                        })
+                    }
+
+                    _ => self.0.iter().try_for_each(|b| write!(f, "{:02x}", &b)),
                 }
             }
         }
@@ -263,15 +263,14 @@ macro_rules! key_methods {
                     write!(f, "0x")?
                 }
 
-                if let Some(w) = f
-                    .width()
-                    .and_then(|w| Self::LEN.saturating_mul(2).checked_div(w))
-                {
-                    self.0.chunks(w).try_for_each(|c| {
-                        write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))
-                    })
-                } else {
-                    self.0.iter().try_for_each(|b| write!(f, "{:02X}", &b))
+                match f.width() {
+                    Some(w) if w > 0 => {
+                        self.0.chunks(2 * Self::LEN / w).try_for_each(|c| {
+                            write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                        })
+                    }
+
+                    _ => self.0.iter().try_for_each(|b| write!(f, "{:02X}", &b)),
                 }
             }
         }
@@ -292,17 +291,31 @@ macro_rules! key_methods {
             type Err = &'static str;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                const ERR: &str = concat!("Invalid encoded byte in ", stringify!($i));
+                const ERR: &str = "Invalid encoded byte";
+
+                let alternate = s.starts_with("0x");
+
+                let mut b = s.bytes();
                 let mut ret = $i::zeroed();
-                let s = s.strip_prefix("0x").unwrap_or(s);
-                hex::decode_to_slice(&s, &mut ret.0).map_err(|_| ERR)?;
+
+                if alternate {
+                    b.next();
+                    b.next();
+                }
+
+                for r in ret.as_mut() {
+                    let h = b.next().and_then(hex_val).ok_or(ERR)?;
+                    let l = b.next().and_then(hex_val).ok_or(ERR)?;
+
+                    *r = h << 4 | l;
+                }
+
                 Ok(ret)
             }
         }
 
         #[cfg(feature = "serde")]
         impl serde::Serialize for $i {
-            #[inline(always)]
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
                 S: serde::Serializer,
@@ -313,7 +326,7 @@ macro_rules! key_methods {
                     serializer.serialize_str(&format!("{:x}", &self))
                 } else {
                     // Fixed-size arrays are tuples in serde data model
-                    let mut arr = serializer.serialize_tuple($s)?;
+                    let mut arr = serializer.serialize_tuple(self.0.len())?;
                     for elem in &self.0 {
                         arr.serialize_element(elem)?;
                     }
@@ -324,18 +337,51 @@ macro_rules! key_methods {
 
         #[cfg(feature = "serde")]
         impl<'de> serde::Deserialize<'de> for $i {
-            #[inline(always)]
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
                 D: serde::Deserializer<'de>,
             {
-                use serde::de::Error;
+                use serde::de::{
+                    self,
+                    Error,
+                    Visitor,
+                };
                 if deserializer.is_human_readable() {
                     let s: alloc::string::String =
                         serde::Deserialize::deserialize(deserializer)?;
                     s.parse().map_err(D::Error::custom)
                 } else {
-                    deserializer.deserialize_tuple($s, ArrayVisitor).map(Self)
+                    /// This is what serde needs to deserialize a fixed-size array
+                    pub struct ArrayVisitor;
+                    impl<'de> Visitor<'de> for ArrayVisitor {
+                        type Value = [u8; $s];
+
+                        fn expecting(
+                            &self,
+                            formatter: &mut fmt::Formatter,
+                        ) -> fmt::Result {
+                            formatter.write_str("a byte array")
+                        }
+
+                        fn visit_seq<A>(
+                            self,
+                            mut value: A,
+                        ) -> Result<Self::Value, A::Error>
+                        where
+                            A: de::SeqAccess<'de>,
+                        {
+                            let mut arr = [0u8; $s];
+                            for (i, elem) in arr.iter_mut().enumerate() {
+                                *elem = value
+                                    .next_element()?
+                                    .ok_or_else(|| de::Error::invalid_length(i, &self))?;
+                            }
+                            Ok(arr)
+                        }
+                    }
+                    let arr = deserializer.deserialize_tuple($s, ArrayVisitor)?;
+
+                    Ok(Self(arr))
                 }
             }
         }
@@ -376,44 +422,20 @@ impl From<u64> for Nonce {
 
 /// A visitor for deserializing a fixed-size byte array.
 #[cfg(feature = "serde")]
-struct ArrayVisitor<const S: usize>;
+struct BytesVisitor<const S: usize>;
 
 #[cfg(feature = "serde")]
-impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
+impl<'de, const S: usize> serde::de::Visitor<'de> for BytesVisitor<S> {
     type Value = [u8; S];
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "an array of {S} bytes")
     }
 
-    #[inline(always)]
     fn visit_borrowed_bytes<E>(self, items: &'de [u8]) -> Result<Self::Value, E> {
         let mut result = [0u8; S];
         result.copy_from_slice(items);
         Ok(result)
-    }
-
-    #[cfg(feature = "alloc")]
-    #[inline(always)]
-    fn visit_byte_buf<E>(self, v: alloc::vec::Vec<u8>) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.visit_borrowed_bytes(v.as_slice())
-    }
-
-    #[inline(always)]
-    fn visit_seq<A>(self, mut value: A) -> Result<Self::Value, A::Error>
-    where
-        A: serde::de::SeqAccess<'de>,
-    {
-        let mut arr = [0u8; S];
-        for (i, elem) in arr.iter_mut().enumerate() {
-            *elem = value
-                .next_element()?
-                .ok_or_else(|| serde::de::Error::invalid_length(i, &self))?;
-        }
-        Ok(arr)
     }
 }
 

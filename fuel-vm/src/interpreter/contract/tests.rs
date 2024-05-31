@@ -1,10 +1,12 @@
-#![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
-
+#![allow(clippy::cast_possible_truncation)]
 use core::convert::Infallible;
 
 use alloc::vec;
 
-use crate::storage::MemoryStorage;
+use crate::{
+    interpreter::memory::Memory,
+    storage::MemoryStorage,
+};
 
 use super::*;
 use crate::interpreter::internal::absolute_output_mem_range;
@@ -21,15 +23,19 @@ use test_case::test_case;
 
 #[test_case(0, 32 => Ok(()); "Can read contract balance")]
 fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
-    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..(b as usize + AssetId::LEN)]
         .copy_from_slice(&[2u8; AssetId::LEN][..]);
     memory[c as usize..(c as usize + ContractId::LEN)]
         .copy_from_slice(&[3u8; ContractId::LEN][..]);
     let contract_id = ContractId::from([3u8; 32]);
-    let mut storage = MemoryStorage::default();
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let old_balance = storage
-        .contract_asset_id_balance_insert(&contract_id, &AssetId::from([2u8; 32]), 33)
+        .merkle_contract_asset_id_balance_insert(
+            &contract_id,
+            &AssetId::from([2u8; 32]),
+            33,
+        )
         .unwrap();
     assert!(old_balance.is_none());
     let mut pc = 4;
@@ -86,7 +92,7 @@ fn test_transfer(
     let mut cgas = 10_000;
     let mut ggas = 10_000;
 
-    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[real_contract_id_offset as usize
         ..(real_contract_id_offset as usize + ContractId::LEN)]
         .copy_from_slice(RECIPIENT_CONTRACT_ID.as_ref());
@@ -95,12 +101,12 @@ fn test_transfer(
     memory[fp as usize..(fp as usize + ContractId::LEN)]
         .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
 
-    let mut storage = MemoryStorage::default();
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
 
     let initial_recipient_contract_balance = 0;
     let initial_source_contract_balance = 60;
     let old_balance = storage
-        .contract_asset_id_balance_insert(
+        .merkle_contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_source_contract_balance,
@@ -161,12 +167,12 @@ fn test_transfer(
     // Then
 
     let final_recipient_contract_balance = storage
-        .contract_asset_id_balance(&RECIPIENT_CONTRACT_ID, &ASSET_ID)
+        .merkle_contract_asset_id_balance(&RECIPIENT_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
     let final_source_contract_balance = storage
-        .contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
+        .merkle_contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
@@ -228,7 +234,7 @@ fn test_transfer_output(
     let mut cgas = 10_000;
     let mut ggas = 10_000;
 
-    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
 
     memory
         [real_recipient_offset as usize..(real_recipient_offset as usize + Address::LEN)]
@@ -238,12 +244,12 @@ fn test_transfer_output(
     memory[fp as usize..(fp as usize + ContractId::LEN)]
         .copy_from_slice(SOURCE_CONTRACT_ID.as_ref());
 
-    let mut storage = MemoryStorage::default();
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
 
     let initial_contract_balance = 60;
 
     let old_balance = storage
-        .contract_asset_id_balance_insert(
+        .merkle_contract_asset_id_balance_insert(
             &SOURCE_CONTRACT_ID,
             &ASSET_ID,
             initial_contract_balance,
@@ -284,7 +290,7 @@ fn test_transfer_output(
     let tx_offset = 512;
 
     let output_range =
-        absolute_output_mem_range(&tx, tx_offset, output_index as usize).unwrap();
+        absolute_output_mem_range(&tx, tx_offset, output_index as usize)?.unwrap();
 
     let transfer_ctx = TransferCtx {
         storage: &mut storage,
@@ -315,7 +321,7 @@ fn test_transfer_output(
     // Then
 
     let final_contract_balance = storage
-        .contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
+        .merkle_contract_asset_id_balance(&SOURCE_CONTRACT_ID, &ASSET_ID)
         .unwrap()
         .unwrap();
 
@@ -357,11 +363,11 @@ fn test_balance_increase(
 ) -> IoResult<(), Infallible> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::default();
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
+            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -374,7 +380,7 @@ fn test_balance_increase(
     assert_eq!(result, initial + amount);
 
     let result = storage
-        .contract_asset_id_balance(&contract_id, &asset_id)
+        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
 
@@ -395,11 +401,11 @@ fn test_balance_decrease(
 ) -> IoResult<(), Infallible> {
     let contract_id = ContractId::from([3u8; 32]);
     let asset_id = AssetId::from([2u8; 32]);
-    let mut storage = MemoryStorage::default();
+    let mut storage = MemoryStorage::new(Default::default(), Default::default());
     let initial = initial.into();
     if let Some(initial) = initial {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
+            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initial)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -410,7 +416,7 @@ fn test_balance_decrease(
     assert_eq!(result, initial - amount);
 
     let result = storage
-        .contract_asset_id_balance(&contract_id, &asset_id)
+        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
 

@@ -22,6 +22,7 @@ use hashbrown::{
 use fuel_asm::Word;
 use fuel_storage::{
     Mappable,
+    MerkleRootStorage,
     StorageInspect,
     StorageMutate,
 };
@@ -36,6 +37,7 @@ use crate::{
     context::Context,
     storage::{
         ContractsAssets,
+        ContractsInfo,
         ContractsRawCode,
         ContractsState,
     },
@@ -46,7 +48,6 @@ use super::{
     receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
-    Memory,
     PanicContext,
 };
 use storage::*;
@@ -74,7 +75,7 @@ enum Change<T: VmStateCapture + Clone> {
     /// Holds a snapshot of register state.
     Register(T::State<VecState<Word>>),
     /// Holds a snapshot of memory state.
-    Memory(T::State<MemoryRegion>),
+    Memory(T::State<Memory>),
     /// Holds a snapshot of storage state.
     Storage(T::State<StorageState>),
     /// Holds a snapshot of the call stack.
@@ -169,14 +170,14 @@ where
 
 #[derive(Clone)]
 /// The state of a memory region.
-struct MemoryRegion {
+struct Memory {
     /// The start of the memory region.
     start: usize,
     /// The region of bytes.
     bytes: Vec<u8>,
 }
 
-impl Debug for MemoryRegion {
+impl Debug for Memory {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
             f.debug_struct("Memory")
@@ -317,10 +318,7 @@ where
         .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
-where
-    M: Memory,
-{
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// The diff function generates a diff of VM state, represented by the Diff struct,
     /// between two VMs internal states.
     pub fn diff(&self, other: &Self) -> Diff<Deltas>
@@ -352,10 +350,7 @@ where
         );
         diff.changes.extend(balances);
 
-        let other_memory = other.memory().clone().into_linear_memory();
-        let this_memory = self.memory().clone().into_linear_memory();
-
-        let mut memory = this_memory.iter().enumerate().zip(other_memory.iter());
+        let mut memory = self.memory.iter().enumerate().zip(other.memory.iter());
 
         while let Some(((start, s_from), s_to)) = memory
             .by_ref()
@@ -370,8 +365,8 @@ where
             from.splice(..0, core::iter::once(s_from)).next();
             to.splice(..0, core::iter::once(s_to)).next();
             diff.changes.push(Change::Memory(Delta {
-                from: MemoryRegion { start, bytes: from },
-                to: MemoryRegion { start, bytes: to },
+                from: Memory { start, bytes: from },
+                to: Memory { start, bytes: to },
             }));
         }
 
@@ -397,12 +392,7 @@ where
 
         diff
     }
-}
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
-where
-    M: Memory,
-{
     fn inverse_inner(&mut self, change: &Change<InitialVmState>)
     where
         Tx: Clone + 'static,
@@ -416,11 +406,9 @@ where
                 invert_receipts_ctx(&mut self.receipts, value)
             }
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
-            Change::Memory(Previous(MemoryRegion { start, bytes })) => self
-                .memory_mut()
-                .write_noownerchecks(*start, bytes.len())
-                .expect("Memory must exist here")
-                .copy_from_slice(&bytes[..]),
+            Change::Memory(Previous(Memory { start, bytes })) => {
+                self.memory[*start..(*start + bytes.len())].copy_from_slice(&bytes[..])
+            }
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
             Change::Txn(Previous(tx)) => {
@@ -445,7 +433,7 @@ fn invert_vec<T: Clone>(vector: &mut Vec<T>, value: &VecState<Option<T>>) {
             },
             Ordering::Equal | Ordering::Greater,
         ) => {
-            vector.resize((*index).saturating_add(1), value.clone());
+            vector.resize(*index + 1, value.clone());
             vector[*index] = value.clone();
         }
         (
@@ -482,15 +470,14 @@ fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>)
     invert_vec(ctx_mut.receipts_mut(), value);
 }
 
-impl<M, S, Tx, Ecal> PartialEq for Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> PartialEq for Interpreter<S, Tx, Ecal>
 where
-    M: Memory,
     Tx: PartialEq,
 {
     /// Does not compare storage, debugger or profiler
     fn eq(&self, other: &Self) -> bool {
         self.registers == other.registers
-            && self.memory.as_ref() == other.memory.as_ref()
+            && self.memory == other.memory
             && self.frames == other.frames
             && self.receipts == other.receipts
             && self.tx == other.tx

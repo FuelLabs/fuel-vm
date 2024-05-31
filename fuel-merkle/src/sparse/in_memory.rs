@@ -5,8 +5,7 @@ use crate::{
     },
     sparse::{
         self,
-        merkle_tree::MerkleTreeKey,
-        proof::Proof,
+        MerkleTreeKey,
         Primitive,
     },
     storage::{
@@ -178,10 +177,6 @@ impl MerkleTree {
     pub fn root(&self) -> Bytes32 {
         self.tree.root()
     }
-
-    pub fn generate_proof(&self, key: &MerkleTreeKey) -> Option<Proof> {
-        self.tree.generate_proof(key).ok()
-    }
 }
 
 impl Default for MerkleTree {
@@ -193,7 +188,7 @@ impl Default for MerkleTree {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::common::sum;
+    use sparse::generic::hash::sum;
 
     fn key(data: &[u8]) -> MerkleTreeKey {
         MerkleTreeKey::new_without_hash(sum(data))

@@ -99,6 +99,9 @@ impl MerkleTree {
         (root, proof_set.into())
     }
 
+    // PRIVATE
+    //
+
     fn head(&self) -> &Option<Box<DataNode>> {
         &self.head
     }

@@ -29,6 +29,7 @@ fn prevent_contract_id_redeployment() {
     let mut client = MemoryClient::default();
 
     let input_amount = 1000;
+    let gas_price = 0;
     let spend_amount = 600;
     let asset_id = AssetId::BASE;
 
@@ -47,11 +48,9 @@ fn prevent_contract_id_redeployment() {
 
     let output = Output::contract_created(contract_undefined, state_root);
 
-    let policies = Policies::new().with_max_fee(0);
-
     let mut create = Transaction::create(
         Default::default(),
-        policies,
+        Policies::new().with_gas_price(gas_price),
         salt,
         vec![],
         vec![],
@@ -69,6 +68,7 @@ fn prevent_contract_id_redeployment() {
         asset_id,
         rng.gen(),
         Default::default(),
+        1,
     );
 
     let consensus_params = ConsensusParameters::standard();
@@ -81,7 +81,7 @@ fn prevent_contract_id_redeployment() {
     client
         .deploy(create.clone())
         .expect("First create should be executed");
-    let mut txtor: Transactor<_, _, _> = client.into();
+    let mut txtor: Transactor<_, _> = client.into();
     // second deployment should fail
     let result = txtor.deploy(create).unwrap_err();
     assert_eq!(

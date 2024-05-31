@@ -1,9 +1,6 @@
 use crate::{
     error::PredicateVerificationFailed,
-    interpreter::{
-        EcalHandler,
-        Memory,
-    },
+    interpreter::EcalHandler,
     prelude::{
         ExecutableTransaction,
         Interpreter,
@@ -18,16 +15,13 @@ use crate::{
 use fuel_asm::{
     PanicReason,
     RegId,
-    Word,
 };
 
-impl<M, Tx, Ecal> Interpreter<M, PredicateStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<PredicateStorage, Tx, Ecal>
 where
-    M: Memory,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {
-    /// Verify a predicate that has been initialized already
     pub(crate) fn verify_predicate(
         &mut self,
     ) -> Result<ProgramState, PredicateVerificationFailed> {
@@ -38,8 +32,8 @@ where
             .program()
             .words();
 
-        self.registers[RegId::PC] = range.start as Word;
-        self.registers[RegId::IS] = range.start as Word;
+        self.registers[RegId::PC] = range.start;
+        self.registers[RegId::IS] = range.start;
 
         loop {
             if range.end <= self.registers[RegId::PC] {

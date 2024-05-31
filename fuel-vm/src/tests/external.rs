@@ -13,22 +13,25 @@ use fuel_tx::{
     ScriptExecutionResult,
     TransactionBuilder,
 };
-use fuel_vm::prelude::*;
+use fuel_vm::prelude::{
+    Interpreter,
+    IntoChecked,
+    MemoryClient,
+};
 use itertools::Itertools;
 
 /// An ECAL opcode handler function, which charges for `noop` and does nothing.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopEcal;
-
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
         _: RegId,
     ) -> ::fuel_vm::error::SimpleResult<()> {
-        vm.gas_charge(vm.gas_costs().noop())
+        vm.gas_charge(vm.gas_costs().noop)
     }
 }
 
@@ -41,13 +44,13 @@ fn noop_ecal() {
     .into_iter()
     .collect();
 
-    let mut client = MemoryClient::<_, NoopEcal>::new(
-        MemoryInstance::new(),
+    let mut client = MemoryClient::<NoopEcal>::new(
         fuel_vm::prelude::MemoryStorage::default(),
         Default::default(),
     );
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, vec![])
+        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -65,12 +68,11 @@ fn noop_ecal() {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SumProdEcal;
-
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -97,7 +99,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 
 #[test]
 fn provide_ecal_fn() {
-    let vm: Interpreter<_, _, Script, SumProdEcal> = Interpreter::with_memory_storage();
+    let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
 
     let script_data = [
         2u64.to_be_bytes(),
@@ -124,6 +126,7 @@ fn provide_ecal_fn() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()

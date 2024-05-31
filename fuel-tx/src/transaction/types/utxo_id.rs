@@ -25,13 +25,13 @@ pub struct UtxoId {
     /// transaction id
     tx_id: TxId,
     /// output index
-    output_index: u16,
+    output_index: u8,
 }
 
 impl UtxoId {
     pub const LEN: usize = TxId::LEN + 8;
 
-    pub const fn new(tx_id: TxId, output_index: u16) -> Self {
+    pub const fn new(tx_id: TxId, output_index: u8) -> Self {
         Self {
             tx_id,
             output_index,
@@ -42,7 +42,7 @@ impl UtxoId {
         &self.tx_id
     }
 
-    pub const fn output_index(&self) -> u16 {
+    pub const fn output_index(&self) -> u8 {
         self.output_index
     }
 
@@ -63,9 +63,9 @@ impl Distribution<UtxoId> for Standard {
 impl fmt::LowerHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#x}{:04x}", self.tx_id, self.output_index)
+            write!(f, "{:#x}{:02x}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:x}{:04x}", self.tx_id, self.output_index)
+            write!(f, "{:x}{:02x}", self.tx_id, self.output_index)
         }
     }
 }
@@ -73,9 +73,9 @@ impl fmt::LowerHex for UtxoId {
 impl fmt::UpperHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#X}{:04X}", self.tx_id, self.output_index)
+            write!(f, "{:#X}{:02X}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:X}{:04X}", self.tx_id, self.output_index)
+            write!(f, "{:X}{:02X}", self.tx_id, self.output_index)
         }
     }
 }
@@ -83,9 +83,9 @@ impl fmt::UpperHex for UtxoId {
 impl core::fmt::Display for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#x}{:04x}", self.tx_id, self.output_index)
+            write!(f, "{:#x}{:02x}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:x}{:04x}", self.tx_id, self.output_index)
+            write!(f, "{:x}{:02x}", self.tx_id, self.output_index)
         }
     }
 }
@@ -97,28 +97,23 @@ impl str::FromStr for UtxoId {
     /// the last two characters are the output index and the part
     /// optionally preceeding it is the transaction id.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        const ERR: &str = "Invalid encoded byte in UtxoId";
-        let s = s.strip_prefix("0x").unwrap_or(s);
+        const ERR: &str = "Invalid encoded byte";
+        let s = s.trim_start_matches("0x");
 
         Ok(if s.is_empty() {
             UtxoId::new(Bytes32::default(), 0)
-        } else if s.len() <= 4 {
-            UtxoId::new(
-                TxId::default(),
-                u16::from_str_radix(s, 16).map_err(|_| ERR)?,
-            )
+        } else if s.len() <= 2 {
+            UtxoId::new(TxId::default(), u8::from_str_radix(s, 16).map_err(|_| ERR)?)
         } else {
-            #[allow(clippy::arithmetic_side_effects)] // Checked above
-            let i = s.len() - 4;
+            let i = s.len() - 2;
             if !s.is_char_boundary(i) {
                 return Err(ERR)
             }
             let (tx_id, output_index) = s.split_at(i);
-            let tx_id = tx_id.strip_suffix(':').unwrap_or(tx_id);
 
             UtxoId::new(
                 Bytes32::from_str(tx_id)?,
-                u16::from_str_radix(output_index, 16).map_err(|_| ERR)?,
+                u8::from_str_radix(output_index, 16).map_err(|_| ERR)?,
             )
         })
     }
@@ -172,64 +167,32 @@ mod tests {
     use fuel_types::Bytes32;
 
     #[test]
-    fn fmt_utxo_id_with_one_bytes_output_index() {
+    fn fmt_utxo_id() {
         let mut tx_id = Bytes32::zeroed();
         *tx_id.get_mut(0).unwrap() = 12;
         *tx_id.get_mut(31).unwrap() = 11;
 
         let utxo_id = UtxoId {
             tx_id,
-            output_index: 0xab,
+            output_index: 26,
         };
         assert_eq!(
             format!("{utxo_id:#x}"),
-            "0x0c0000000000000000000000000000000000000000000000000000000000000b00ab"
+            "0x0c0000000000000000000000000000000000000000000000000000000000000b1a"
         );
         assert_eq!(
             format!("{utxo_id:x}"),
-            "0c0000000000000000000000000000000000000000000000000000000000000b00ab"
-        );
-    }
-
-    #[test]
-    fn fmt_utxo_id_with_two_bytes_output_index() {
-        let mut tx_id = Bytes32::zeroed();
-        *tx_id.get_mut(0).unwrap() = 12;
-        *tx_id.get_mut(31).unwrap() = 11;
-
-        let utxo_id = UtxoId {
-            tx_id,
-            output_index: 0xabcd,
-        };
-        assert_eq!(
-            format!("{utxo_id:#x}"),
-            "0x0c0000000000000000000000000000000000000000000000000000000000000babcd"
-        );
-        assert_eq!(
-            format!("{utxo_id:x}"),
-            "0c0000000000000000000000000000000000000000000000000000000000000babcd"
+            "0c0000000000000000000000000000000000000000000000000000000000000b1a"
         );
     }
 
     #[test]
     fn from_str_utxo_id() -> Result<(), &'static str> {
         let utxo_id = UtxoId::from_str(
-            "0x0c0000000000000000000000000000000000000000000000000000000000000babcd",
+            "0x0c0000000000000000000000000000000000000000000000000000000000000b1a",
         )?;
 
-        assert_eq!(utxo_id.output_index, 0xabcd);
-        assert_eq!(utxo_id.tx_id[31], 11);
-        assert_eq!(utxo_id.tx_id[0], 12);
-        Ok(())
-    }
-
-    #[test]
-    fn from_str_utxo_id_colon_separator() -> Result<(), &'static str> {
-        let utxo_id = UtxoId::from_str(
-            "0c0000000000000000000000000000000000000000000000000000000000000b:abcd",
-        )?;
-
-        assert_eq!(utxo_id.output_index, 0xabcd);
+        assert_eq!(utxo_id.output_index, 26);
         assert_eq!(utxo_id.tx_id[31], 11);
         assert_eq!(utxo_id.tx_id[0], 12);
         Ok(())

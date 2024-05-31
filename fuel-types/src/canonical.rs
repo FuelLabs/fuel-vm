@@ -72,15 +72,12 @@ pub trait Serialize {
     const UNALIGNED_BYTES: bool = false;
 
     /// Size of the static part of the serialized object, in bytes.
-    /// Saturates to usize::MAX on overflow.
     fn size_static(&self) -> usize;
 
     /// Size of the dynamic part, in bytes.
-    /// Saturates to usize::MAX on overflow.
     fn size_dynamic(&self) -> usize;
 
     /// Total size of the serialized object, in bytes.
-    /// Saturates to usize::MAX on overflow.
     fn size(&self) -> usize {
         self.size_static().saturating_add(self.size_dynamic())
     }
@@ -179,23 +176,22 @@ pub trait Deserialize: Sized {
     }
 }
 
+/// Returns the sum of two sizes, or panics if the sum overflows.
+pub const fn add_sizes(a: usize, b: usize) -> usize {
+    a.saturating_add(b)
+}
+
 /// The data of each field should be aligned to 64 bits.
 pub const ALIGN: usize = 8;
 
 /// The number of padding bytes required to align the given length correctly.
-#[allow(clippy::arithmetic_side_effects)] // Safety: (a % b) < b
 const fn alignment_bytes(len: usize) -> usize {
-    let modulo = len % ALIGN;
-    if modulo == 0 {
-        0
-    } else {
-        ALIGN - modulo
-    }
+    (ALIGN - (len % ALIGN)) % ALIGN
 }
 
-/// Size after alignment. Saturates on overflow.
+/// Size after alignment.
 pub const fn aligned_size(len: usize) -> usize {
-    len.saturating_add(alignment_bytes(len))
+    add_sizes(len, alignment_bytes(len))
 }
 
 macro_rules! impl_for_primitives {
@@ -287,12 +283,7 @@ impl<T: Serialize> Serialize for Vec<T> {
         if T::UNALIGNED_BYTES {
             aligned_size(self.len())
         } else {
-            aligned_size(
-                self.iter()
-                    .map(|e| e.size())
-                    .reduce(usize::saturating_add)
-                    .unwrap_or_default(),
-            )
+            aligned_size(self.iter().map(|e| e.size()).sum())
         }
     }
 
@@ -367,12 +358,7 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
         if T::UNALIGNED_BYTES {
             aligned_size(N)
         } else {
-            aligned_size(
-                self.iter()
-                    .map(|e| e.size_static())
-                    .reduce(usize::saturating_add)
-                    .unwrap_or_default(),
-            )
+            aligned_size(self.iter().map(|e| e.size_static()).sum())
         }
     }
 
@@ -381,12 +367,7 @@ impl<const N: usize, T: Serialize> Serialize for [T; N] {
         if T::UNALIGNED_BYTES {
             0
         } else {
-            aligned_size(
-                self.iter()
-                    .map(|e| e.size_dynamic())
-                    .reduce(usize::saturating_add)
-                    .unwrap_or_default(),
-            )
+            aligned_size(self.iter().map(|e| e.size_dynamic()).sum())
         }
     }
 

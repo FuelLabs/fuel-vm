@@ -9,7 +9,10 @@ use crate::{
     error::SimpleResult,
     state::Debugger,
 };
-use alloc::vec::Vec;
+use alloc::{
+    borrow::ToOwned,
+    vec::Vec,
+};
 use core::{
     mem,
     ops::Index,
@@ -23,24 +26,24 @@ use fuel_tx::{
     field,
     output,
     Chargeable,
+    ConsensusParameters,
+    ContractParameters,
     Create,
     Executable,
     FeeParameters,
     GasCosts,
     Output,
-    PrepareSign,
+    PredicateParameters,
     Receipt,
     Script,
     Transaction,
     TransactionRepr,
+    TxParameters,
     UniqueIdentifier,
-    Upgrade,
-    Upload,
     ValidityError,
 };
 use fuel_types::{
     AssetId,
-    Bytes32,
     ChainId,
     ContractId,
     Word,
@@ -77,11 +80,7 @@ pub use ecal::{
     EcalHandler,
     PredicateErrorEcal,
 };
-pub use memory::{
-    Memory,
-    MemoryInstance,
-    MemoryRange,
-};
+pub use memory::MemoryRange;
 
 use crate::checked_transaction::{
     CreateCheckedMetadata,
@@ -90,9 +89,9 @@ use crate::checked_transaction::{
     NonRetryableFreeBalances,
     RetryableAmount,
     ScriptCheckedMetadata,
-    UpgradeCheckedMetadata,
-    UploadCheckedMetadata,
 };
+
+use self::memory::Memory;
 
 #[cfg(feature = "test-helpers")]
 pub use self::receipts::ReceiptsCtx;
@@ -113,9 +112,9 @@ pub struct NotSupportedEcal;
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
+pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: M,
+    memory: Memory<MEM_SIZE>,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
     tx: Tx,
@@ -135,12 +134,10 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
 /// Interpreter parameters
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterpreterParams {
-    /// Gas Price
-    pub gas_price: Word,
     /// Gas costs
     pub gas_costs: GasCosts,
     /// Maximum number of inputs
-    pub max_inputs: u16,
+    pub max_inputs: u8,
     /// Maximum size of the contract in bytes
     pub contract_max_size: u64,
     /// Offset of the transaction data in the memory
@@ -155,17 +152,14 @@ pub struct InterpreterParams {
     pub base_asset_id: AssetId,
 }
 
-#[cfg(feature = "test-helpers")]
 impl Default for InterpreterParams {
     fn default() -> Self {
         Self {
-            gas_price: 0,
             gas_costs: Default::default(),
-            max_inputs: fuel_tx::TxParameters::DEFAULT.max_inputs(),
-            contract_max_size: fuel_tx::ContractParameters::DEFAULT.contract_max_size(),
-            tx_offset: fuel_tx::TxParameters::DEFAULT.tx_offset(),
-            max_message_data_length: fuel_tx::PredicateParameters::DEFAULT
-                .max_message_data_length(),
+            max_inputs: TxParameters::DEFAULT.max_inputs,
+            contract_max_size: ContractParameters::DEFAULT.contract_max_size,
+            tx_offset: TxParameters::DEFAULT.tx_offset(),
+            max_message_data_length: PredicateParameters::DEFAULT.max_message_data_length,
             chain_id: ChainId::default(),
             fee_params: FeeParameters::default(),
             base_asset_id: Default::default(),
@@ -173,12 +167,30 @@ impl Default for InterpreterParams {
     }
 }
 
-impl InterpreterParams {
-    /// Constructor for `InterpreterParams`
-    pub fn new<T: Into<CheckPredicateParams>>(gas_price: Word, params: T) -> Self {
-        let params: CheckPredicateParams = params.into();
-        Self {
-            gas_price,
+impl From<ConsensusParameters> for InterpreterParams {
+    fn from(value: ConsensusParameters) -> Self {
+        InterpreterParams::from(&value)
+    }
+}
+
+impl From<&ConsensusParameters> for InterpreterParams {
+    fn from(value: &ConsensusParameters) -> Self {
+        InterpreterParams {
+            gas_costs: value.gas_costs.to_owned(),
+            max_inputs: value.tx_params.max_inputs,
+            contract_max_size: value.contract_params.contract_max_size,
+            tx_offset: value.tx_params.tx_offset(),
+            max_message_data_length: value.predicate_params.max_message_data_length,
+            chain_id: value.chain_id,
+            fee_params: value.fee_params,
+            base_asset_id: value.base_asset_id,
+        }
+    }
+}
+
+impl From<CheckPredicateParams> for InterpreterParams {
+    fn from(params: CheckPredicateParams) -> Self {
+        InterpreterParams {
             gas_costs: params.gas_costs,
             max_inputs: params.max_inputs,
             contract_max_size: params.contract_max_size,
@@ -203,21 +215,17 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<M: Memory, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Returns the current state of the VM memory
-    pub fn memory(&self) -> &MemoryInstance {
-        self.memory.as_ref()
+    pub fn memory(&self) -> &[u8] {
+        self.memory.as_slice()
     }
-}
 
-impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns mutable access to the vm memory
-    pub fn memory_mut(&mut self) -> &mut MemoryInstance {
+    pub fn memory_mut(&mut self) -> &mut [u8] {
         self.memory.as_mut()
     }
-}
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
@@ -248,19 +256,8 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     }
 
     /// Get max_inputs value
-    pub fn max_inputs(&self) -> u16 {
+    pub fn max_inputs(&self) -> u8 {
         self.interpreter_params.max_inputs
-    }
-
-    /// Gas price for current block
-    pub fn gas_price(&self) -> Word {
-        self.interpreter_params.gas_price
-    }
-
-    #[cfg(feature = "test-helpers")]
-    /// Sets the gas price of the `Interpreter`
-    pub fn set_gas_price(&mut self, gas_price: u64) {
-        self.interpreter_params.gas_price = gas_price;
     }
 
     /// Gas costs for opcodes
@@ -303,11 +300,6 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         self.receipts.as_ref().as_slice()
     }
 
-    /// Compute current receipts root
-    pub fn compute_receipts_root(&self) -> Bytes32 {
-        self.receipts.root()
-    }
-
     /// Mutable access to receipts for testing purposes.
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn receipts_mut(&mut self) -> &mut ReceiptsCtx {
@@ -343,19 +335,16 @@ fn current_location(
     pc: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::PC }>,
     is: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::IS }>,
 ) -> InstructionLocation {
-    // Safety: pc should always be above is, but fallback to zero here for weird cases,
-    //         as the profiling code should be robust against regards cases like this.
-    let offset = (*pc).saturating_sub(*is);
-    InstructionLocation::new(current_contract, offset)
+    InstructionLocation::new(current_contract, *pc - *is)
 }
 
-impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {
+impl<S, Tx, Ecal> AsRef<S> for Interpreter<S, Tx, Ecal> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
+impl<S, Tx, Ecal> AsMut<S> for Interpreter<S, Tx, Ecal> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }
@@ -373,48 +362,19 @@ pub trait ExecutableTransaction:
     + field::Outputs
     + field::Witnesses
     + Into<Transaction>
-    + PrepareSign
     + fuel_types::canonical::Serialize
 {
     /// Casts the `Self` transaction into `&Script` if any.
-    fn as_script(&self) -> Option<&Script> {
-        None
-    }
+    fn as_script(&self) -> Option<&Script>;
 
     /// Casts the `Self` transaction into `&mut Script` if any.
-    fn as_script_mut(&mut self) -> Option<&mut Script> {
-        None
-    }
+    fn as_script_mut(&mut self) -> Option<&mut Script>;
 
     /// Casts the `Self` transaction into `&Create` if any.
-    fn as_create(&self) -> Option<&Create> {
-        None
-    }
+    fn as_create(&self) -> Option<&Create>;
 
     /// Casts the `Self` transaction into `&mut Create` if any.
-    fn as_create_mut(&mut self) -> Option<&mut Create> {
-        None
-    }
-
-    /// Casts the `Self` transaction into `&Upgrade` if any.
-    fn as_upgrade(&self) -> Option<&Upgrade> {
-        None
-    }
-
-    /// Casts the `Self` transaction into `&mut Upgrade` if any.
-    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
-        None
-    }
-
-    /// Casts the `Self` transaction into `&Upload` if any.
-    fn as_upload(&self) -> Option<&Upload> {
-        None
-    }
-
-    /// Casts the `Self` transaction into `&mut Upload` if any.
-    fn as_upload_mut(&mut self) -> Option<&mut Upload> {
-        None
-    }
+    fn as_create_mut(&mut self) -> Option<&mut Create>;
 
     /// Returns the type of the transaction like `Transaction::Create` or
     /// `Transaction::Script`.
@@ -428,7 +388,7 @@ pub trait ExecutableTransaction:
         output: Output,
     ) -> SimpleResult<()> {
         if !output.is_variable() {
-            return Err(PanicReason::ExpectedOutputVariable.into());
+            return Err(PanicReason::ExpectedOutputVariable.into())
         }
 
         // TODO increase the error granularity for this case - create a new variant of
@@ -464,13 +424,12 @@ pub trait ExecutableTransaction:
         gas_costs: &GasCosts,
         fee_params: &FeeParameters,
         base_asset_id: &AssetId,
-        gas_price: Word,
     ) -> Result<(), ValidityError>
     where
         I: for<'a> Index<&'a AssetId, Output = Word>,
     {
         let gas_refund = self
-            .refund_fee(gas_costs, fee_params, used_gas, gas_price)
+            .refund_fee(gas_costs, fee_params, used_gas)
             .ok_or(ValidityError::GasCostsCoinsOverflow)?;
 
         self.outputs_mut().iter_mut().try_for_each(|o| match o {
@@ -528,14 +487,17 @@ pub trait ExecutableTransaction:
             }) if *input_index as usize == input)
         })
     }
-
-    /// Prepares the transaction for execution.
-    fn prepare_init_execute(&mut self) {
-        self.prepare_sign()
-    }
 }
 
 impl ExecutableTransaction for Create {
+    fn as_script(&self) -> Option<&Script> {
+        None
+    }
+
+    fn as_script_mut(&mut self) -> Option<&mut Script> {
+        None
+    }
+
     fn as_create(&self) -> Option<&Create> {
         Some(self)
     }
@@ -547,8 +509,6 @@ impl ExecutableTransaction for Create {
     fn transaction_type() -> Word {
         TransactionRepr::Create as Word
     }
-
-    fn prepare_init_execute(&mut self) {}
 }
 
 impl ExecutableTransaction for Script {
@@ -560,36 +520,16 @@ impl ExecutableTransaction for Script {
         Some(self)
     }
 
+    fn as_create(&self) -> Option<&Create> {
+        None
+    }
+
+    fn as_create_mut(&mut self) -> Option<&mut Create> {
+        None
+    }
+
     fn transaction_type() -> Word {
         TransactionRepr::Script as Word
-    }
-}
-
-impl ExecutableTransaction for Upgrade {
-    fn as_upgrade(&self) -> Option<&Upgrade> {
-        Some(self)
-    }
-
-    fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
-        Some(self)
-    }
-
-    fn transaction_type() -> Word {
-        TransactionRepr::Upgrade as Word
-    }
-}
-
-impl ExecutableTransaction for Upload {
-    fn as_upload(&self) -> Option<&Upload> {
-        Some(self)
-    }
-
-    fn as_upload_mut(&mut self) -> Option<&mut Upload> {
-        Some(self)
-    }
-
-    fn transaction_type() -> Word {
-        TransactionRepr::Upload as Word
     }
 }
 
@@ -618,24 +558,6 @@ impl CheckedMetadata for ScriptCheckedMetadata {
 }
 
 impl CheckedMetadata for CreateCheckedMetadata {
-    fn balances(&self) -> InitialBalances {
-        InitialBalances {
-            non_retryable: self.free_balances.clone(),
-            retryable: None,
-        }
-    }
-}
-
-impl CheckedMetadata for UpgradeCheckedMetadata {
-    fn balances(&self) -> InitialBalances {
-        InitialBalances {
-            non_retryable: self.free_balances.clone(),
-            retryable: None,
-        }
-    }
-}
-
-impl CheckedMetadata for UploadCheckedMetadata {
     fn balances(&self) -> InitialBalances {
         InitialBalances {
             non_retryable: self.free_balances.clone(),

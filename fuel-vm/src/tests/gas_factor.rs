@@ -7,10 +7,7 @@ use crate::{
 use core::iter;
 use fuel_asm::op;
 use fuel_tx::{
-    field::{
-        MaxFeeLimit,
-        Outputs,
-    },
+    field::Outputs,
     ConsensusParameters,
     FeeParameters,
 };
@@ -21,13 +18,11 @@ fn gas_factor_rounds_correctly() {
     let gas_limit = 1_000_000;
 
     // arbitrary non-negligible primes
-    let factor = 5479;
+    let factor = 5479_f64;
     let gas_price = 6197;
 
-    let large_max_fee_limit = input;
-
     let gas_costs = GasCosts::default();
-    let fee_params = FeeParameters::default().with_gas_price_factor(factor);
+    let fee_params = FeeParameters::default().with_gas_price_factor(factor as Word);
 
     // Random script to consume some gas
     let script = iter::repeat(op::add(0x10, 0x00, 0x01))
@@ -36,31 +31,32 @@ fn gas_factor_rounds_correctly() {
         .collect();
 
     let transaction = TestBuilder::new(2322u64)
-        .max_fee_limit(large_max_fee_limit)
-        .gas_price(gas_price)
         .with_fee_params(fee_params)
         .start_script(script, vec![])
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .coin_input(AssetId::default(), input)
         .change_output(AssetId::default())
-        .build()
-        .into_ready(gas_price, &gas_costs, &fee_params)
-        .unwrap();
+        .build();
+
+    let fee = TransactionFee::checked_from_tx(
+        &gas_costs,
+        &fee_params,
+        transaction.transaction(),
+    )
+    .expect("failed to calculate fee");
 
     let profiler = GasProfiler::default();
 
-    let mut consensus_params = ConsensusParameters::standard();
-    consensus_params.set_gas_costs(gas_costs);
-    consensus_params.set_fee_params(fee_params);
+    let consensus_params = ConsensusParameters {
+        fee_params,
+        ..ConsensusParameters::standard()
+    };
 
-    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
+    let interpreter_params = InterpreterParams::from(&consensus_params);
     let storage = MemoryStorage::default();
 
-    let mut interpreter = Interpreter::<_, _, _>::with_storage(
-        MemoryInstance::new(),
-        storage,
-        interpreter_params,
-    );
+    let mut interpreter = Interpreter::<_, _>::with_storage(storage, interpreter_params);
     let gas_costs = interpreter.gas_costs().clone();
     let res = interpreter
         .with_profiler(profiler.clone())
@@ -76,13 +72,13 @@ fn gas_factor_rounds_correctly() {
         })
         .expect("failed to fetch change");
 
-    let initial_balance = input - res.tx().max_fee_limit();
+    let initial_balance = input - fee.max_fee();
 
     let gas_used = profiler.total_gas();
 
     let refund = res
         .tx()
-        .refund_fee(&gas_costs, &fee_params, gas_used, gas_price)
+        .refund_fee(&gas_costs, &fee_params, gas_used)
         .expect("failed to calculate refund");
 
     assert_eq!(*change, initial_balance + refund);

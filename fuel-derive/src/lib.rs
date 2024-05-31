@@ -1,13 +1,6 @@
 //! Derive macros for canonical type serialization and deserialization.
 
 #![deny(unused_must_use, missing_docs)]
-#![deny(
-    clippy::arithmetic_side_effects,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::string_slice
-)]
 
 extern crate proc_macro;
 mod attribute;

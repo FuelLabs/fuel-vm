@@ -60,16 +60,17 @@ fn panic_reason_description() {
 
     for r in PanicReason::iter() {
         let b = r as u8;
-        let r_p = PanicReason::from(b);
+        let r_p = PanicReason::try_from(b).expect("Should get panic reason");
         let w = Word::from(r as u8);
-        let r_q = PanicReason::from(u8::try_from(w).unwrap());
+        let r_q = PanicReason::try_from(u8::try_from(w).unwrap())
+            .expect("Should get panic reason");
         assert_eq!(r, r_p);
         assert_eq!(r, r_q);
 
         let op = op::ji(imm24);
         let pd = PanicInstruction::error(r, op.into());
         let w = Word::from(pd);
-        let pd_p = PanicInstruction::from(w);
+        let pd_p = PanicInstruction::try_from(w).expect("Should get panic reason");
         assert_eq!(pd, pd_p);
 
         #[cfg(feature = "serde")]

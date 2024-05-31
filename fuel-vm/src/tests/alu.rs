@@ -156,7 +156,7 @@ fn alu_wrapping(
 
     assert_eq!(log_receipt.ra().expect("$ra expected"), expected);
 
-    let expected_of: u64 = expected_of.into();
+    let expected_of: u64 = expected_of.try_into().unwrap();
     assert_eq!(
         log_receipt.rb().expect("$rb (value of RegId::OF) expected"),
         expected_of

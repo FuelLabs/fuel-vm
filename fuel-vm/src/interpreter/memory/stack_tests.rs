@@ -1,5 +1,3 @@
-#![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
-
 use alloc::vec;
 
 use fuel_asm::{
@@ -14,7 +12,7 @@ use crate::{
     interpreter::memory::{
         pop_selected_registers,
         push_selected_registers,
-        MemoryInstance,
+        Memory,
     },
 };
 
@@ -34,7 +32,7 @@ fn test_push_pop(
     )]
     bitmask: u32,
 ) {
-    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 0;
 
@@ -66,7 +64,7 @@ fn test_push_pop(
 
     // Restore registers
     pop_selected_registers(
-        &mut memory,
+        &memory,
         RegMut::new(&mut sp),
         Reg::new(&0),
         Reg::new(&VM_MAX_RAM),
@@ -93,7 +91,7 @@ fn test_push_pop(
 
 #[test]
 fn test_push_stack_overflow() {
-    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 10;
     let hp = 14;
@@ -112,15 +110,12 @@ fn test_push_stack_overflow() {
         Imm24::new(1),
     );
 
-    assert_eq!(
-        result,
-        Err(PanicOrBug::Panic(PanicReason::MemoryGrowthOverlap))
-    );
+    assert_eq!(result, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
 }
 
 #[test]
 fn test_pop_from_empty_stack() {
-    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 32;
     let ssp = 16;
@@ -129,7 +124,7 @@ fn test_pop_from_empty_stack() {
     let mut regs = ProgramRegisters(&mut reg_values);
 
     let result = pop_selected_registers(
-        &mut memory,
+        &memory,
         RegMut::new(&mut sp),
         Reg::new(&ssp),
         Reg::new(&VM_MAX_RAM),
@@ -144,7 +139,7 @@ fn test_pop_from_empty_stack() {
 
 #[test]
 fn test_pop_sp_overflow() {
-    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 0;
     let mut sp = 16;
     let ssp = 0;
@@ -153,7 +148,7 @@ fn test_pop_sp_overflow() {
     let mut regs = ProgramRegisters(&mut reg_values);
 
     let result = pop_selected_registers(
-        &mut memory,
+        &memory,
         RegMut::new(&mut sp),
         Reg::new(&ssp),
         Reg::new(&VM_MAX_RAM),

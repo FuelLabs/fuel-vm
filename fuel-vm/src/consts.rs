@@ -1,7 +1,6 @@
 //! VM parameters
 
 use fuel_types::{
-    AssetId,
     Bytes32,
     Word,
 };
@@ -16,6 +15,11 @@ pub const VM_REGISTER_SYSTEM_COUNT: usize = 16;
 
 /// The number of writable registers.
 pub const VM_REGISTER_PROGRAM_COUNT: usize = VM_REGISTER_COUNT - VM_REGISTER_SYSTEM_COUNT;
+
+/// Max amount of nested call contexts.
+/// Used to protect against stack overflows, since the CALL
+/// instruction is currently implemented using recursion.
+pub const VM_MAX_NESTED_CALLS: usize = 64;
 
 // MEMORY TYPES
 
@@ -37,11 +41,7 @@ static_assertions::const_assert!(VM_MAX_RAM < usize::MAX as u64);
 // no limits to heap for now.
 
 /// Offset for the assets balances in VM memory
-pub const VM_MEMORY_BASE_ASSET_ID_OFFSET: usize = Bytes32::LEN;
-
-/// Offset for the assets balances in VM memory
-pub const VM_MEMORY_BALANCES_OFFSET: usize =
-    VM_MEMORY_BASE_ASSET_ID_OFFSET + AssetId::LEN;
+pub const VM_MEMORY_BALANCES_OFFSET: usize = Bytes32::LEN;
 
 /// Encoded len of a register id in an instruction (unused)
 pub const VM_REGISTER_WIDTH: u8 = 6;

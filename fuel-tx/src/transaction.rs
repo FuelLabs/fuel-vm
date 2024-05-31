@@ -13,10 +13,7 @@ use crate::{
     policies::Policies,
     TxPointer,
 };
-use fuel_crypto::{
-    Hasher,
-    PublicKey,
-};
+use fuel_crypto::PublicKey;
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -25,6 +22,7 @@ use fuel_types::{
     },
     Address,
     AssetId,
+    BlockHeight,
     Bytes32,
     Nonce,
     Salt,
@@ -64,6 +62,7 @@ pub use consensus_parameters::{
     FeeParameters,
     GasCosts,
     GasCostsValues,
+    GasUnit,
     PredicateParameters,
     ScriptParameters,
     TxParameters,
@@ -83,10 +82,7 @@ pub use validity::{
 #[cfg(feature = "alloc")]
 pub use id::Signable;
 
-pub use id::{
-    PrepareSign,
-    UniqueIdentifier,
-};
+pub use id::UniqueIdentifier;
 
 /// Identification of transaction (also called transaction hash)
 pub type TxId = Bytes32;
@@ -95,15 +91,13 @@ pub type TxId = Bytes32;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(clippy::large_enum_variant)]
+#[non_exhaustive]
 pub enum Transaction {
     Script(Script),
     Create(Create),
     Mint(Mint),
-    Upgrade(Upgrade),
-    Upload(Upload),
 }
 
-#[cfg(feature = "test-helpers")]
 impl Default for Transaction {
     fn default() -> Self {
         Script::default().into()
@@ -112,12 +106,11 @@ impl Default for Transaction {
 
 impl Transaction {
     /// Return default valid transaction useful for tests.
-    #[cfg(all(feature = "rand", feature = "std", feature = "test-helpers"))]
+    #[cfg(all(feature = "rand", feature = "std", feature = "builder"))]
     pub fn default_test_tx() -> Self {
         use crate::Finalizable;
 
         crate::TransactionBuilder::script(vec![], vec![])
-            .max_fee_limit(0)
             .add_random_fee_input()
             .finalize()
             .into()
@@ -135,12 +128,10 @@ impl Transaction {
         let receipts_root = Bytes32::zeroed();
 
         Script {
-            body: ScriptBody {
-                script_gas_limit: gas_limit,
-                receipts_root,
-                script,
-                script_data,
-            },
+            script_gas_limit: gas_limit,
+            receipts_root,
+            script,
+            script_data,
             policies,
             inputs,
             outputs,
@@ -150,7 +141,7 @@ impl Transaction {
     }
 
     pub fn create(
-        bytecode_witness_index: u16,
+        bytecode_witness_index: u8,
         policies: Policies,
         salt: Salt,
         mut storage_slots: Vec<StorageSlot>,
@@ -158,16 +149,23 @@ impl Transaction {
         outputs: Vec<Output>,
         witnesses: Vec<Witness>,
     ) -> Create {
+        // TODO consider split this function in two; one that will trust a provided
+        // bytecod len, and other that will return a resulting, failing if the
+        // witness index isn't present
+        let bytecode_length = witnesses
+            .get(bytecode_witness_index as usize)
+            .map(|witness| witness.as_ref().len() as Word / 4)
+            .unwrap_or(0);
+
         // sort incoming storage slots
         storage_slots.sort();
 
         Create {
-            body: CreateBody {
-                bytecode_witness_index,
-                salt,
-                storage_slots,
-            },
+            bytecode_length,
+            bytecode_witness_index,
             policies,
+            salt,
+            storage_slots,
             inputs,
             outputs,
             witnesses,
@@ -181,7 +179,6 @@ impl Transaction {
         output_contract: output::contract::Contract,
         mint_amount: Word,
         mint_asset_id: AssetId,
-        gas_price: Word,
     ) -> Mint {
         Mint {
             tx_pointer,
@@ -189,101 +186,6 @@ impl Transaction {
             output_contract,
             mint_amount,
             mint_asset_id,
-            gas_price,
-            metadata: None,
-        }
-    }
-
-    pub fn upgrade(
-        upgrade_purpose: UpgradePurpose,
-        policies: Policies,
-        inputs: Vec<Input>,
-        outputs: Vec<Output>,
-        witnesses: Vec<Witness>,
-    ) -> Upgrade {
-        Upgrade {
-            body: UpgradeBody {
-                purpose: upgrade_purpose,
-            },
-            policies,
-            inputs,
-            outputs,
-            witnesses,
-            metadata: None,
-        }
-    }
-
-    /// Creates an `Upgrade` transaction with the purpose of upgrading the consensus
-    /// parameters.
-    pub fn upgrade_consensus_parameters(
-        consensus_parameters: &ConsensusParameters,
-        policies: Policies,
-        inputs: Vec<Input>,
-        outputs: Vec<Output>,
-        mut witnesses: Vec<Witness>,
-    ) -> Result<Upgrade, ValidityError> {
-        let serialized_consensus_parameters = postcard::to_allocvec(consensus_parameters)
-            .map_err(|_| {
-                ValidityError::TransactionUpgradeConsensusParametersSerialization
-            })?;
-        let checksum = Hasher::hash(&serialized_consensus_parameters);
-        let witness_index = u16::try_from(witnesses.len())
-            .map_err(|_| ValidityError::TransactionWitnessesMax)?;
-        witnesses.push(serialized_consensus_parameters.into());
-
-        Ok(Upgrade {
-            body: UpgradeBody {
-                purpose: UpgradePurpose::ConsensusParameters {
-                    witness_index,
-                    checksum,
-                },
-            },
-            policies,
-            inputs,
-            outputs,
-            witnesses,
-            metadata: None,
-        })
-    }
-
-    pub fn upload(
-        upload_body: UploadBody,
-        policies: Policies,
-        inputs: Vec<Input>,
-        outputs: Vec<Output>,
-        witnesses: Vec<Witness>,
-    ) -> Upload {
-        Upload {
-            body: upload_body,
-            policies,
-            inputs,
-            outputs,
-            witnesses,
-            metadata: None,
-        }
-    }
-
-    pub fn upload_from_subsection(
-        subsection: UploadSubsection,
-        policies: Policies,
-        inputs: Vec<Input>,
-        outputs: Vec<Output>,
-        mut witnesses: Vec<Witness>,
-    ) -> Upload {
-        let body = UploadBody {
-            root: subsection.root,
-            witness_index: u16::try_from(witnesses.len()).unwrap_or(u16::MAX),
-            subsection_index: subsection.subsection_index,
-            subsections_number: subsection.subsections_number,
-            proof_set: subsection.proof_set,
-        };
-        witnesses.push(subsection.subsection.into());
-        Upload {
-            body,
-            policies,
-            inputs,
-            outputs,
-            witnesses,
             metadata: None,
         }
     }
@@ -327,14 +229,6 @@ impl Transaction {
         matches!(self, Self::Mint { .. })
     }
 
-    pub const fn is_upgrade(&self) -> bool {
-        matches!(self, Self::Upgrade { .. })
-    }
-
-    pub const fn is_upload(&self) -> bool {
-        matches!(self, Self::Upload { .. })
-    }
-
     pub const fn as_script(&self) -> Option<&Script> {
         match self {
             Self::Script(script) => Some(script),
@@ -373,34 +267,6 @@ impl Transaction {
     pub fn as_mint_mut(&mut self) -> Option<&mut Mint> {
         match self {
             Self::Mint(mint) => Some(mint),
-            _ => None,
-        }
-    }
-
-    pub const fn as_upgrade(&self) -> Option<&Upgrade> {
-        match self {
-            Self::Upgrade(tx) => Some(tx),
-            _ => None,
-        }
-    }
-
-    pub fn as_upgrade_mut(&mut self) -> Option<&mut Upgrade> {
-        match self {
-            Self::Upgrade(tx) => Some(tx),
-            _ => None,
-        }
-    }
-
-    pub const fn as_upload(&self) -> Option<&Upload> {
-        match self {
-            Self::Upload(tx) => Some(tx),
-            _ => None,
-        }
-    }
-
-    pub fn as_upload_mut(&mut self) -> Option<&mut Upload> {
-        match self {
-            Self::Upload(tx) => Some(tx),
             _ => None,
         }
     }
@@ -499,7 +365,8 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         asset_id: AssetId,
         tx_pointer: TxPointer,
-        witness_index: u16,
+        maturity: BlockHeight,
+        witness_index: u8,
     ) {
         let owner = Input::owner(owner);
 
@@ -510,6 +377,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             asset_id,
             tx_pointer,
             witness_index,
+            maturity,
         );
         self.inputs_mut().push(input);
     }
@@ -529,7 +397,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         nonce: Nonce,
         amount: Word,
         data: Vec<u8>,
-        witness_index: u16,
+        witness_index: u8,
     ) {
         let input = if data.is_empty() {
             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
@@ -546,58 +414,67 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
 
         self.inputs_mut().push(input);
     }
+
+    /// Prepare the transaction for VM initialization for script execution
+    ///
+    /// note: Fields dependent on storage/state such as balance and state roots, or tx
+    /// pointers, should already set by the client beforehand.
+    fn prepare_init_script(&mut self) -> &mut Self {
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(|o| o.prepare_init_script());
+
+        self
+    }
+
+    /// Prepare the transaction for VM initialization for predicate verification
+    fn prepare_init_predicate(&mut self) -> &mut Self {
+        self.inputs_mut()
+            .iter_mut()
+            .for_each(|i| i.prepare_init_predicate());
+
+        self.outputs_mut()
+            .iter_mut()
+            .for_each(|o| o.prepare_init_predicate());
+
+        self
+    }
 }
 
 impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}
 
 impl From<Script> for Transaction {
-    fn from(tx: Script) -> Self {
-        Self::Script(tx)
+    fn from(script: Script) -> Self {
+        Transaction::Script(script)
     }
 }
 
 impl From<Create> for Transaction {
-    fn from(tx: Create) -> Self {
-        Self::Create(tx)
+    fn from(create: Create) -> Self {
+        Transaction::Create(create)
     }
 }
 
 impl From<Mint> for Transaction {
-    fn from(tx: Mint) -> Self {
-        Self::Mint(tx)
-    }
-}
-
-impl From<Upgrade> for Transaction {
-    fn from(tx: Upgrade) -> Self {
-        Self::Upgrade(tx)
-    }
-}
-
-impl From<Upload> for Transaction {
-    fn from(tx: Upload) -> Self {
-        Self::Upload(tx)
+    fn from(mint: Mint) -> Self {
+        Transaction::Mint(mint)
     }
 }
 
 impl Serialize for Transaction {
     fn size_static(&self) -> usize {
         match self {
-            Self::Script(tx) => tx.size_static(),
-            Self::Create(tx) => tx.size_static(),
-            Self::Mint(tx) => tx.size_static(),
-            Self::Upgrade(tx) => tx.size_static(),
-            Self::Upload(tx) => tx.size_static(),
+            Transaction::Script(script) => script.size_static(),
+            Transaction::Create(create) => create.size_static(),
+            Transaction::Mint(mint) => mint.size_static(),
         }
     }
 
     fn size_dynamic(&self) -> usize {
         match self {
-            Self::Script(tx) => tx.size_dynamic(),
-            Self::Create(tx) => tx.size_dynamic(),
-            Self::Mint(tx) => tx.size_dynamic(),
-            Self::Upgrade(tx) => tx.size_dynamic(),
-            Self::Upload(tx) => tx.size_dynamic(),
+            Transaction::Script(script) => script.size_dynamic(),
+            Transaction::Create(create) => create.size_dynamic(),
+            Transaction::Mint(mint) => mint.size_dynamic(),
         }
     }
 
@@ -606,11 +483,9 @@ impl Serialize for Transaction {
         buffer: &mut O,
     ) -> Result<(), Error> {
         match self {
-            Self::Script(tx) => tx.encode_static(buffer),
-            Self::Create(tx) => tx.encode_static(buffer),
-            Self::Mint(tx) => tx.encode_static(buffer),
-            Self::Upgrade(tx) => tx.encode_static(buffer),
-            Self::Upload(tx) => tx.encode_static(buffer),
+            Transaction::Script(script) => script.encode_static(buffer),
+            Transaction::Create(create) => create.encode_static(buffer),
+            Transaction::Mint(mint) => mint.encode_static(buffer),
         }
     }
 
@@ -619,11 +494,9 @@ impl Serialize for Transaction {
         buffer: &mut O,
     ) -> Result<(), Error> {
         match self {
-            Self::Script(tx) => tx.encode_dynamic(buffer),
-            Self::Create(tx) => tx.encode_dynamic(buffer),
-            Self::Mint(tx) => tx.encode_dynamic(buffer),
-            Self::Upgrade(tx) => tx.encode_dynamic(buffer),
-            Self::Upload(tx) => tx.encode_dynamic(buffer),
+            Transaction::Script(script) => script.encode_dynamic(buffer),
+            Transaction::Create(create) => create.encode_dynamic(buffer),
+            Transaction::Mint(mint) => mint.encode_dynamic(buffer),
         }
     }
 }
@@ -648,12 +521,6 @@ impl Deserialize for Transaction {
             TransactionRepr::Mint => {
                 Ok(<Mint as Deserialize>::decode_static(buffer)?.into())
             }
-            TransactionRepr::Upgrade => {
-                Ok(<Upgrade as Deserialize>::decode_static(buffer)?.into())
-            }
-            TransactionRepr::Upload => {
-                Ok(<Upload as Deserialize>::decode_static(buffer)?.into())
-            }
         }
     }
 
@@ -662,11 +529,9 @@ impl Deserialize for Transaction {
         buffer: &mut I,
     ) -> Result<(), Error> {
         match self {
-            Self::Script(tx) => tx.decode_dynamic(buffer),
-            Self::Create(tx) => tx.decode_dynamic(buffer),
-            Self::Mint(tx) => tx.decode_dynamic(buffer),
-            Self::Upgrade(tx) => tx.decode_dynamic(buffer),
-            Self::Upload(tx) => tx.decode_dynamic(buffer),
+            Transaction::Script(script) => script.decode_dynamic(buffer),
+            Transaction::Create(create) => create.decode_dynamic(buffer),
+            Transaction::Mint(mint) => mint.decode_dynamic(buffer),
         }
     }
 }
@@ -681,7 +546,6 @@ pub mod field {
         Input,
         Output,
         StorageSlot,
-        UpgradePurpose as UpgradePurposeType,
         Witness,
     };
     use fuel_types::{
@@ -698,20 +562,22 @@ pub mod field {
         DerefMut,
     };
 
-    pub trait Tip {
-        fn tip(&self) -> Word;
-        fn set_tip(&mut self, value: Word);
+    pub trait GasPrice {
+        fn gas_price(&self) -> Word;
+        fn set_gas_price(&mut self, value: Word);
     }
 
-    impl<T: Policies + ?Sized> Tip for T {
+    impl<T: Policies + ?Sized> GasPrice for T {
         #[inline(always)]
-        fn tip(&self) -> Word {
-            self.policies().get(PolicyType::Tip).unwrap_or_default()
+        fn gas_price(&self) -> Word {
+            self.policies()
+                .get(PolicyType::GasPrice)
+                .unwrap_or_default()
         }
 
         #[inline(always)]
-        fn set_tip(&mut self, price: Word) {
-            self.policies_mut().set(PolicyType::Tip, Some(price))
+        fn set_gas_price(&mut self, price: Word) {
+            self.policies_mut().set(PolicyType::GasPrice, Some(price))
         }
     }
 
@@ -815,12 +681,6 @@ pub mod field {
         fn mint_asset_id_offset(&self) -> usize;
     }
 
-    pub trait MintGasPrice {
-        fn gas_price(&self) -> &Word;
-        fn gas_price_mut(&mut self) -> &mut Word;
-        fn gas_price_offset(&self) -> usize;
-    }
-
     pub trait ReceiptsRoot {
         fn receipts_root(&self) -> &Bytes32;
         fn receipts_root_mut(&mut self) -> &mut Bytes32;
@@ -847,21 +707,25 @@ pub mod field {
         fn script_data_offset(&self) -> usize;
     }
 
-    pub trait ChargeableBody<Body> {
-        fn body(&self) -> &Body;
-        fn body_mut(&mut self) -> &mut Body;
-        fn body_offset_end(&self) -> usize;
-    }
-
     pub trait Policies {
         fn policies(&self) -> &policies::Policies;
         fn policies_mut(&mut self) -> &mut policies::Policies;
         fn policies_offset(&self) -> usize;
     }
 
+    pub trait BytecodeLength {
+        fn bytecode_length(&self) -> &Word;
+        fn bytecode_length_mut(&mut self) -> &mut Word;
+        fn bytecode_length_offset(&self) -> usize {
+            Self::bytecode_length_offset_static()
+        }
+
+        fn bytecode_length_offset_static() -> usize;
+    }
+
     pub trait BytecodeWitnessIndex {
-        fn bytecode_witness_index(&self) -> &u16;
-        fn bytecode_witness_index_mut(&mut self) -> &mut u16;
+        fn bytecode_witness_index(&self) -> &u8;
+        fn bytecode_witness_index_mut(&mut self) -> &mut u8;
         fn bytecode_witness_index_offset(&self) -> usize {
             Self::bytecode_witness_index_offset_static()
         }
@@ -882,7 +746,7 @@ pub mod field {
     pub trait StorageSlots {
         fn storage_slots(&self) -> &Vec<StorageSlot>;
         fn storage_slots_mut(&mut self) -> StorageSlotRef;
-        fn storage_slots_offset_static() -> usize;
+        fn storage_slots_offset(&self) -> usize;
 
         /// Returns the offset to the `StorageSlot` at `idx` index, if any.
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize>;
@@ -950,56 +814,6 @@ pub mod field {
         /// Returns the offset to the `Witness` at `idx` index, if any.
         fn witnesses_offset_at(&self, idx: usize) -> Option<usize>;
     }
-
-    pub trait UpgradePurpose {
-        fn upgrade_purpose(&self) -> &UpgradePurposeType;
-        fn upgrade_purpose_mut(&mut self) -> &mut UpgradePurposeType;
-        fn upgrade_purpose_offset(&self) -> usize {
-            Self::upgrade_purpose_offset_static()
-        }
-
-        fn upgrade_purpose_offset_static() -> usize;
-    }
-
-    pub trait BytecodeRoot {
-        fn bytecode_root(&self) -> &Bytes32;
-        fn bytecode_root_mut(&mut self) -> &mut Bytes32;
-        fn bytecode_root_offset(&self) -> usize {
-            Self::bytecode_root_offset_static()
-        }
-
-        fn bytecode_root_offset_static() -> usize;
-    }
-
-    pub trait SubsectionIndex {
-        fn subsection_index(&self) -> &u16;
-        fn subsection_index_mut(&mut self) -> &mut u16;
-        fn subsection_index_offset(&self) -> usize {
-            Self::subsection_index_offset_static()
-        }
-
-        fn subsection_index_offset_static() -> usize;
-    }
-
-    pub trait SubsectionsNumber {
-        fn subsections_number(&self) -> &u16;
-        fn subsections_number_mut(&mut self) -> &mut u16;
-        fn subsections_number_offset(&self) -> usize {
-            Self::subsections_number_offset_static()
-        }
-
-        fn subsections_number_offset_static() -> usize;
-    }
-
-    pub trait ProofSet {
-        fn proof_set(&self) -> &Vec<Bytes32>;
-        fn proof_set_mut(&mut self) -> &mut Vec<Bytes32>;
-        fn proof_set_offset(&self) -> usize {
-            Self::proof_set_offset_static()
-        }
-
-        fn proof_set_offset_static() -> usize;
-    }
 }
 
 #[cfg(feature = "typescript")]
@@ -1013,6 +827,9 @@ pub mod typescript {
             Policies,
         },
         AssetId,
+        Create,
+        Mint,
+        Script,
         Witness,
         Word,
     };
@@ -1022,42 +839,11 @@ pub mod typescript {
         string::String,
         vec::Vec,
     };
-    use fuel_types::Bytes32;
 
-    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
+    #[derive(Clone, Eq, Hash, PartialEq)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[wasm_bindgen]
     pub struct Transaction(#[wasm_bindgen(skip)] pub Box<crate::Transaction>);
-
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[wasm_bindgen]
-    pub struct Create(#[wasm_bindgen(skip)] pub Box<crate::Create>);
-
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[wasm_bindgen]
-    pub struct Script(#[wasm_bindgen(skip)] pub Box<crate::Script>);
-
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[wasm_bindgen]
-    pub struct Mint(#[wasm_bindgen(skip)] pub Box<crate::Mint>);
-
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[wasm_bindgen]
-    pub struct Upgrade(#[wasm_bindgen(skip)] pub Box<crate::Upgrade>);
-
-    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[wasm_bindgen]
-    pub struct UpgradePurpose(#[wasm_bindgen(skip)] pub Box<crate::UpgradePurpose>);
-
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[wasm_bindgen]
-    pub struct Upload(#[wasm_bindgen(skip)] pub Box<crate::Upload>);
 
     #[wasm_bindgen]
     impl Transaction {
@@ -1096,23 +882,20 @@ pub mod typescript {
             outputs: Vec<Output>,
             witnesses: Vec<Witness>,
         ) -> Script {
-            Script(
-                crate::Transaction::script(
-                    gas_limit,
-                    script,
-                    script_data,
-                    policies,
-                    inputs.into_iter().map(|v| *v.0).collect(),
-                    outputs.into_iter().map(|v| *v.0).collect(),
-                    witnesses,
-                )
-                .into(),
+            crate::Transaction::script(
+                gas_limit,
+                script,
+                script_data,
+                policies,
+                inputs.into_iter().map(|v| *v.0).collect(),
+                outputs.into_iter().map(|v| *v.0).collect(),
+                witnesses,
             )
         }
 
         #[wasm_bindgen]
         pub fn create(
-            bytecode_witness_index: u16,
+            bytecode_witness_index: u8,
             policies: Policies,
             salt: crate::Salt,
             storage_slots: Vec<crate::StorageSlot>,
@@ -1120,91 +903,32 @@ pub mod typescript {
             outputs: Vec<Output>,
             witnesses: Vec<Witness>,
         ) -> Create {
-            Create(
-                crate::Transaction::create(
-                    bytecode_witness_index,
-                    policies,
-                    salt,
-                    storage_slots,
-                    inputs.into_iter().map(|v| *v.0).collect(),
-                    outputs.into_iter().map(|v| *v.0).collect(),
-                    witnesses,
-                )
-                .into(),
+            crate::Transaction::create(
+                bytecode_witness_index,
+                policies,
+                salt,
+                storage_slots,
+                inputs.into_iter().map(|v| *v.0).collect(),
+                outputs.into_iter().map(|v| *v.0).collect(),
+                witnesses,
             )
         }
 
-        #[wasm_bindgen]
         pub fn mint(
             tx_pointer: crate::TxPointer,
             input_contract: crate::input::contract::Contract,
             output_contract: crate::output::contract::Contract,
             mint_amount: Word,
             mint_asset_id: AssetId,
-            gas_price: Word,
         ) -> Mint {
-            Mint(
-                crate::Mint {
-                    tx_pointer,
-                    input_contract,
-                    output_contract,
-                    mint_amount,
-                    mint_asset_id,
-                    gas_price,
-                    metadata: None,
-                }
-                .into(),
-            )
-        }
-
-        #[wasm_bindgen]
-        pub fn upgrade(
-            purpose: UpgradePurpose,
-            policies: Policies,
-            inputs: Vec<Input>,
-            outputs: Vec<Output>,
-            witnesses: Vec<Witness>,
-        ) -> Upgrade {
-            Upgrade(
-                crate::Transaction::upgrade(
-                    *purpose.0.as_ref(),
-                    policies,
-                    inputs.into_iter().map(|v| *v.0).collect(),
-                    outputs.into_iter().map(|v| *v.0).collect(),
-                    witnesses,
-                )
-                .into(),
-            )
-        }
-
-        #[wasm_bindgen]
-        pub fn upload(
-            root: Bytes32,
-            witness_index: u16,
-            subsection_index: u16,
-            subsections_number: u16,
-            proof_set: Vec<Bytes32>,
-            policies: Policies,
-            inputs: Vec<Input>,
-            outputs: Vec<Output>,
-            witnesses: Vec<Witness>,
-        ) -> Upload {
-            Upload(
-                crate::Transaction::upload(
-                    crate::UploadBody {
-                        root,
-                        witness_index,
-                        subsection_index,
-                        subsections_number,
-                        proof_set,
-                    },
-                    policies,
-                    inputs.into_iter().map(|v| *v.0).collect(),
-                    outputs.into_iter().map(|v| *v.0).collect(),
-                    witnesses,
-                )
-                .into(),
-            )
+            Mint {
+                tx_pointer,
+                input_contract,
+                output_contract,
+                mint_amount,
+                mint_asset_id,
+                metadata: None,
+            }
         }
     }
 
@@ -1214,7 +938,7 @@ pub mod typescript {
             impl $t {
                 #[wasm_bindgen(js_name = as_tx)]
                 pub fn typescript_wrap_tx(self) -> Transaction {
-                    Transaction(Box::new($tx(self.0.as_ref().clone())))
+                    Transaction(Box::new($tx(self)))
                 }
 
                 #[wasm_bindgen(constructor)]
@@ -1236,15 +960,14 @@ pub mod typescript {
                 #[wasm_bindgen(js_name = to_bytes)]
                 pub fn typescript_to_bytes(&self) -> Vec<u8> {
                     use fuel_types::canonical::Serialize;
-                    <_ as Serialize>::to_bytes(self.0.as_ref())
+                    <Self as Serialize>::to_bytes(self)
                 }
 
                 #[wasm_bindgen(js_name = from_bytes)]
                 pub fn typescript_from_bytes(value: &[u8]) -> Result<$t, js_sys::Error> {
                     use fuel_types::canonical::Deserialize;
-                    let res = <_ as Deserialize>::from_bytes(value)
-                        .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
-                    Ok(Self(Box::new(res)))
+                    <Self as Deserialize>::from_bytes(value)
+                        .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))
                 }
             }
         };
@@ -1253,18 +976,15 @@ pub mod typescript {
     ts_methods!(Script, crate::Transaction::Script);
     ts_methods!(Create, crate::Transaction::Create);
     ts_methods!(Mint, crate::Transaction::Mint);
-    ts_methods!(Upgrade, crate::Transaction::Upgrade);
-    ts_methods!(Upload, crate::Transaction::Upload);
 }
 
-#[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn script__metered_bytes_size___includes_witnesses() {
-        let witness = [0u8; 64].to_vec();
+    fn metered_data_includes_witnesses() {
+        // test script
         let script_with_no_witnesses = Transaction::script(
             Default::default(),
             vec![],
@@ -1281,18 +1001,15 @@ mod tests {
             Default::default(),
             vec![],
             vec![],
-            vec![witness.clone().into()],
+            vec![[0u8; 64].to_vec().into()],
         );
 
         assert_eq!(
             script_with_witnesses.metered_bytes_size(),
-            script_with_no_witnesses.metered_bytes_size() + witness.size()
+            script_with_no_witnesses.metered_bytes_size()
+                + script_with_witnesses.witnesses.size_dynamic()
         );
-    }
-
-    #[test]
-    fn create__metered_bytes_size___includes_witnesses() {
-        let witness = [0u8; 64].to_vec();
+        // test create
         let create_with_no_witnesses = Transaction::create(
             0,
             Default::default(),
@@ -1309,61 +1026,12 @@ mod tests {
             vec![],
             vec![],
             vec![],
-            vec![witness.clone().into()],
+            vec![[0u8; 64].to_vec().into()],
         );
         assert_eq!(
             create_with_witnesses.metered_bytes_size(),
-            create_with_no_witnesses.metered_bytes_size() + witness.size()
-        );
-    }
-
-    #[test]
-    fn upgrade__metered_bytes_size___includes_witnesses() {
-        let witness = [0u8; 64].to_vec();
-        let tx_with_no_witnesses = Transaction::upgrade(
-            UpgradePurpose::StateTransition {
-                root: Default::default(),
-            },
-            Default::default(),
-            vec![],
-            vec![],
-            vec![],
-        );
-        let tx_with_witnesses = Transaction::upgrade(
-            UpgradePurpose::StateTransition {
-                root: Default::default(),
-            },
-            Default::default(),
-            vec![],
-            vec![],
-            vec![witness.clone().into()],
-        );
-        assert_eq!(
-            tx_with_witnesses.metered_bytes_size(),
-            tx_with_no_witnesses.metered_bytes_size() + witness.size()
-        );
-    }
-
-    #[test]
-    fn upload__metered_bytes_size__includes_witness() {
-        let witness = [0u8; 64].to_vec();
-        let tx_with_no_witnesses = Transaction::upload(
-            Default::default(),
-            Default::default(),
-            vec![],
-            vec![],
-            vec![],
-        );
-        let tx_with_witnesses = Transaction::upload(
-            Default::default(),
-            Default::default(),
-            vec![],
-            vec![],
-            vec![witness.clone().into()],
-        );
-        assert_eq!(
-            tx_with_witnesses.metered_bytes_size(),
-            tx_with_no_witnesses.metered_bytes_size() + witness.size()
+            create_with_no_witnesses.metered_bytes_size()
+                + create_with_witnesses.witnesses.size_dynamic()
         );
     }
 }

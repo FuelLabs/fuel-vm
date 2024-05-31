@@ -1,20 +1,15 @@
 use alloc::vec;
 
-use fuel_tx::{
-    Script,
-    TxParameters,
-};
+use fuel_tx::Script;
 use fuel_types::BlockHeight;
 use test_case::test_case;
-
-use crate::prelude::RuntimePredicate;
 
 use super::*;
 
 #[test]
 fn test_metadata() {
     let context = Context::PredicateVerification {
-        program: RuntimePredicate::empty(),
+        program: Default::default(),
     };
     let frames = vec![];
     let mut pc = 4;
@@ -27,7 +22,6 @@ fn test_metadata() {
         &mut result,
         imm,
         ChainId::default(),
-        TxParameters::default().tx_offset() as Word,
     )
     .unwrap();
     assert_eq!(pc, 8);
@@ -41,7 +35,6 @@ fn test_get_transaction_field() {
     let input = GTFInput {
         tx: &tx,
         tx_offset: 0,
-        tx_size: fuel_tx::TxParameters::DEFAULT.tx_offset() as Word,
         pc: RegMut::new(&mut pc),
     };
     let mut result = 1;
@@ -53,8 +46,8 @@ fn test_get_transaction_field() {
     assert_eq!(result, *tx.script_gas_limit());
 }
 
-#[test_case(Context::PredicateEstimation { program: RuntimePredicate::empty() }, 2 => (); "can fetch inside predicate estimation")]
-#[test_case(Context::PredicateVerification { program: RuntimePredicate::empty() }, 2 => (); "can fetch inside predicate verification")]
+#[test_case(Context::PredicateEstimation { program: Default::default() }, 2 => (); "can fetch inside predicate estimation")]
+#[test_case(Context::PredicateVerification { program: Default::default() }, 2 => (); "can fetch inside predicate verification")]
 #[test_case(Context::Script { block_height: BlockHeight::default() }, 3 => (); "can fetch inside script")]
 #[test_case(Context::Call { block_height: BlockHeight::default() }, 4 => (); "can fetch inside call")]
 fn get_chain_id(context: Context, chain_id: u64) {
@@ -73,7 +66,6 @@ fn get_chain_id(context: Context, chain_id: u64) {
         &mut result,
         imm,
         chain_id.into(),
-        TxParameters::default().tx_offset() as Word,
     )
     .unwrap();
 

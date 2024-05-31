@@ -3,8 +3,6 @@
 pub use self::{
     create::CheckedMetadata as CreateCheckedMetadata,
     script::CheckedMetadata as ScriptCheckedMetadata,
-    upgrade::CheckedMetadata as UpgradeCheckedMetadata,
-    upload::CheckedMetadata as UploadCheckedMetadata,
 };
 use alloc::collections::BTreeMap;
 use fuel_types::{
@@ -71,24 +69,22 @@ pub mod create {
     };
     use fuel_tx::{
         Cacheable,
-        Chargeable,
         ConsensusParameters,
         Create,
         FormatValidityChecks,
+        TransactionFee,
     };
     use fuel_types::BlockHeight;
 
-    /// Metadata produced by checking [`fuel_tx::Create`].
+    /// Metdata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
         /// See [`NonRetryableFreeBalances`].
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
         pub block_height: BlockHeight,
-        /// The minimum gas required for this transaction.
-        pub min_gas: u64,
-        /// The maximum gas required for this transaction.
-        pub max_gas: u64,
+        /// The fees and gas usage
+        pub fee: TransactionFee,
     }
 
     impl IntoChecked for Create {
@@ -107,19 +103,22 @@ pub mod create {
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
-            debug_assert_eq!(
+                fee,
+            } = initial_free_balances(
+                &self,
+                consensus_params.gas_costs(),
+                consensus_params.fee_params(),
+                consensus_params.base_asset_id(),
+            )?;
+            assert_eq!(
                 retryable_balance, 0,
-                "The `check_without_signatures` should return `TransactionInputContainsMessageData` above"
+                "The `check_without_signatures` should return `TransactionCreateMessageData` above"
             );
 
             let metadata = CheckedMetadata {
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
-                min_gas: self
-                    .min_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
-                max_gas: self
-                    .max_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
+                fee,
             };
 
             Ok(Checked::basic(self, metadata))
@@ -176,14 +175,14 @@ pub mod script {
     };
     use fuel_tx::{
         Cacheable,
-        Chargeable,
         ConsensusParameters,
         FormatValidityChecks,
         Script,
+        TransactionFee,
     };
     use fuel_types::BlockHeight;
 
-    /// Metadata produced by checking [`fuel_tx::Script`].
+    /// Metdata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
         /// See [`NonRetryableFreeBalances`].
@@ -192,10 +191,8 @@ pub mod script {
         pub retryable_balance: RetryableAmount,
         /// The block height this tx was verified with
         pub block_height: BlockHeight,
-        /// The minimum gas required for this transaction.
-        pub min_gas: u64,
-        /// The maximum gas required for this transaction.
-        pub max_gas: u64,
+        /// The fees and gas usage
+        pub fee: TransactionFee,
     }
 
     impl IntoChecked for Script {
@@ -214,163 +211,22 @@ pub mod script {
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
+                fee,
+            } = initial_free_balances(
+                &self,
+                consensus_params.gas_costs(),
+                consensus_params.fee_params(),
+                consensus_params.base_asset_id(),
+            )?;
 
             let metadata = CheckedMetadata {
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
                 retryable_balance: RetryableAmount {
                     amount: retryable_balance,
-                    base_asset_id: *consensus_params.base_asset_id(),
+                    base_asset_id: consensus_params.base_asset_id,
                 },
                 block_height,
-                min_gas: self
-                    .min_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
-                max_gas: self
-                    .max_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
-            };
-
-            Ok(Checked::basic(self, metadata))
-        }
-    }
-}
-
-/// For [`fuel_tx::Upgrade`]
-pub mod upgrade {
-    use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
-        Checked,
-        IntoChecked,
-    };
-    use crate::checked_transaction::{
-        CheckError,
-        NonRetryableFreeBalances,
-    };
-    use fuel_tx::{
-        Cacheable,
-        Chargeable,
-        ConsensusParameters,
-        FormatValidityChecks,
-        Upgrade,
-    };
-    use fuel_types::BlockHeight;
-
-    /// Metadata produced by checking [`fuel_tx::Upgrade`].
-    #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-    pub struct CheckedMetadata {
-        /// See [`NonRetryableFreeBalances`].
-        pub free_balances: NonRetryableFreeBalances,
-        /// The block height this tx was verified with
-        pub block_height: BlockHeight,
-        /// The minimum gas required for this transaction.
-        pub min_gas: u64,
-        /// The maximum gas required for this transaction.
-        pub max_gas: u64,
-    }
-
-    impl IntoChecked for Upgrade {
-        type Metadata = CheckedMetadata;
-
-        fn into_checked_basic(
-            mut self,
-            block_height: BlockHeight,
-            consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
-            let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
-
-            // validate fees and compute free balances
-            let AvailableBalances {
-                non_retryable_balances,
-                retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
-            debug_assert_eq!(
-                retryable_balance, 0,
-                "The `check_without_signatures` should return `TransactionInputContainsMessageData` above"
-            );
-
-            let metadata = CheckedMetadata {
-                free_balances: NonRetryableFreeBalances(non_retryable_balances),
-                block_height,
-                min_gas: self
-                    .min_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
-                max_gas: self
-                    .max_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
-            };
-
-            Ok(Checked::basic(self, metadata))
-        }
-    }
-}
-
-/// For [`fuel_tx::Upload`]
-pub mod upload {
-    use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
-        Checked,
-        IntoChecked,
-    };
-    use crate::checked_transaction::{
-        CheckError,
-        NonRetryableFreeBalances,
-    };
-    use fuel_tx::{
-        Cacheable,
-        Chargeable,
-        ConsensusParameters,
-        FormatValidityChecks,
-        Upload,
-    };
-    use fuel_types::BlockHeight;
-
-    /// Metadata produced by checking [`fuel_tx::Upload`].
-    #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-    pub struct CheckedMetadata {
-        /// See [`NonRetryableFreeBalances`].
-        pub free_balances: NonRetryableFreeBalances,
-        /// The block height this tx was verified with
-        pub block_height: BlockHeight,
-        /// The minimum gas required for this transaction.
-        pub min_gas: u64,
-        /// The maximum gas required for this transaction.
-        pub max_gas: u64,
-    }
-
-    impl IntoChecked for Upload {
-        type Metadata = CheckedMetadata;
-
-        fn into_checked_basic(
-            mut self,
-            block_height: BlockHeight,
-            consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
-            let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
-
-            // validate fees and compute free balances
-            let AvailableBalances {
-                non_retryable_balances,
-                retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
-            debug_assert_eq!(
-                retryable_balance, 0,
-                "The `check_without_signatures` should return `TransactionInputContainsMessageData` above"
-            );
-
-            let metadata = CheckedMetadata {
-                free_balances: NonRetryableFreeBalances(non_retryable_balances),
-                block_height,
-                min_gas: self
-                    .min_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
-                max_gas: self
-                    .max_gas(consensus_params.gas_costs(), consensus_params.fee_params()),
+                fee,
             };
 
             Ok(Checked::basic(self, metadata))

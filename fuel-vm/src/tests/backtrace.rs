@@ -13,7 +13,6 @@ use fuel_asm::{
 fn backtrace() {
     let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
-    let zero_gas_price = 0;
 
     #[rustfmt::skip]
     let invalid_instruction_bytecode = vec![op::noop()];
@@ -74,7 +73,7 @@ fn backtrace() {
         .build();
 
     let (_, backtrace) = test_context
-        .execute_tx_with_backtrace(tx, zero_gas_price)
+        .execute_tx_with_backtrace(tx)
         .expect("Should execute tx");
 
     let backtrace = backtrace.expect("Expected erroneous state for undefined opcode");

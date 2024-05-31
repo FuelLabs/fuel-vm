@@ -322,10 +322,7 @@ impl<'a> GasProfilingData {
 
     /// Increase gas used at location
     pub fn add(&mut self, location: InstructionLocation, amount: u64) {
-        let gas_use = self.gas_use.entry(location).or_insert(0);
-        // Saturating is ok for profiling.
-        // This should never matter, as gas is deducted on each iteration.
-        *gas_use = gas_use.saturating_add(amount);
+        *self.gas_use.entry(location).or_insert(0) += amount;
     }
 
     /// Iterate through locations and gas values

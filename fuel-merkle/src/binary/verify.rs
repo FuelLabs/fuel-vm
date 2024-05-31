@@ -9,40 +9,6 @@ use crate::{
     },
 };
 
-/// Returns None if:
-/// - `num_leaves` is 0
-/// - the result doens't fit in an usize
-fn path_length_from_key(key: u64, num_leaves: u64) -> Option<usize> {
-    if num_leaves == 0 {
-        return None;
-    }
-
-    #[allow(clippy::arithmetic_side_effects)] // ilog2(..) < 64
-    let path_length = if num_leaves.is_power_of_two() {
-        num_leaves.ilog2()
-    } else {
-        num_leaves.ilog2() + 1
-    };
-
-    #[allow(clippy::arithmetic_side_effects)] // ilog2(..) > 0
-    let num_leaves_left_subtree = 1 << (path_length - 1);
-
-    let subtree_leaves = num_leaves.saturating_sub(num_leaves_left_subtree);
-
-    let Some(subtree_key) = key.checked_sub(num_leaves_left_subtree) else {
-        // If leaf is in left subtree, path length is full height of left subtree
-        return path_length.try_into().ok();
-    };
-
-    // Otherwise, if left or right subtree has only one leaf, path has one additional step
-    if num_leaves_left_subtree == 1 || subtree_leaves <= 1 {
-        return Some(1);
-    }
-
-    // Otherwise, add 1 to height and recurse into right subtree
-    path_length_from_key(subtree_key, subtree_leaves)?.checked_add(1)
-}
-
 pub fn verify<T: AsRef<[u8]>>(
     root: &Bytes32,
     data: &T,
@@ -50,37 +16,22 @@ pub fn verify<T: AsRef<[u8]>>(
     proof_index: u64,
     num_leaves: u64,
 ) -> bool {
-    if num_leaves <= 1 {
-        if !proof_set.is_empty() {
-            return false;
-        }
-    } else if Some(proof_set.len()) != path_length_from_key(proof_index, num_leaves) {
-        return false;
-    }
+    let mut sum = leaf_sum(data.as_ref());
 
     if proof_index >= num_leaves {
-        return false;
+        return false
     }
 
-    let mut sum = leaf_sum(data.as_ref());
     if proof_set.is_empty() {
         return if num_leaves == 1 { *root == sum } else { false }
     }
-    #[allow(clippy::arithmetic_side_effects)] // checked above
-    let last_leaf = num_leaves - 1;
 
-    let mut parent = 0usize;
+    let mut height = 1usize;
     let mut stable_end = proof_index;
 
     loop {
-        #[allow(clippy::arithmetic_side_effects)] // path_length_from_key checks
-        let height = parent + 1;
-
-        let subtree_size = 1u64 << height;
-        #[allow(clippy::arithmetic_side_effects)] // floor(a / b) * b <= a
-        let subtree_start_index = proof_index / subtree_size * subtree_size;
-        #[allow(clippy::arithmetic_side_effects)]
-        let subtree_end_index = subtree_start_index + subtree_size - 1;
+        let subtree_start_index = proof_index / (1 << height) * (1 << height);
+        let subtree_end_index = subtree_start_index + (1 << height) - 1;
 
         if subtree_end_index >= num_leaves {
             break
@@ -92,39 +43,29 @@ pub fn verify<T: AsRef<[u8]>>(
             return false
         }
 
-        let proof_data = proof_set[parent];
-        #[allow(clippy::arithmetic_side_effects)] // proof_index > subtree_start_index
-        if proof_index - subtree_start_index < (1 << parent) {
+        let proof_data = proof_set[height - 1];
+        if proof_index - subtree_start_index < 1 << (height - 1) {
             sum = node_sum(&sum, &proof_data);
         } else {
             sum = node_sum(&proof_data, &sum);
         }
 
-        #[allow(clippy::arithmetic_side_effects)] // path_length_from_key checks
-        {
-            parent += 1;
-        }
+        height += 1;
     }
 
-    if stable_end != last_leaf {
-        if proof_set.len() <= parent {
+    if stable_end != num_leaves - 1 {
+        if proof_set.len() < height {
             return false
         }
-        let proof_data = proof_set[parent];
+        let proof_data = proof_set[height - 1];
         sum = node_sum(&sum, &proof_data);
-        #[allow(clippy::arithmetic_side_effects)] // path_length_from_key checks
-        {
-            parent += 1;
-        }
+        height += 1;
     }
 
-    while parent < proof_set.len() {
-        let proof_data = proof_set[parent];
+    while height - 1 < proof_set.len() {
+        let proof_data = proof_set[height - 1];
         sum = node_sum(&proof_data, &sum);
-        #[allow(clippy::arithmetic_side_effects)] // path_length_from_key checks
-        {
-            parent += 1;
-        }
+        height += 1;
     }
 
     sum == *root

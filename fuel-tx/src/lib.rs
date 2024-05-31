@@ -4,13 +4,8 @@
 // Wrong clippy convention; check
 // https://rust-lang.github.io/api-guidelines/naming.html
 #![allow(clippy::wrong_self_convention)]
-#![deny(
-    clippy::arithmetic_side_effects,
-    clippy::cast_sign_loss,
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::string_slice
-)]
+#![deny(clippy::cast_possible_truncation)]
+#![deny(clippy::string_slice)]
 #![deny(unused_crate_dependencies)]
 #![deny(unsafe_code)]
 
@@ -41,7 +36,7 @@ pub use fuel_types::{
 };
 pub use tx_pointer::TxPointer;
 
-#[cfg(feature = "test-helpers")]
+#[cfg(feature = "builder")]
 mod builder;
 
 #[cfg(feature = "alloc")]
@@ -56,10 +51,7 @@ mod transaction;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "test-helpers")]
-pub mod test_helper;
-
-#[cfg(feature = "test-helpers")]
+#[cfg(feature = "builder")]
 pub use builder::{
     Buildable,
     Finalizable,
@@ -74,7 +66,6 @@ pub use receipt::{
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    consensus_parameters,
     field,
     input,
     input::Input,
@@ -85,8 +76,6 @@ pub use transaction::{
     policies,
     Cacheable,
     Chargeable,
-    ChargeableMetadata,
-    ChargeableTransaction,
     ConsensusParameters,
     ContractParameters,
     Create,
@@ -96,6 +85,7 @@ pub use transaction::{
     FormatValidityChecks,
     GasCosts,
     GasCostsValues,
+    GasUnit,
     Mint,
     PredicateParameters,
     Script,
@@ -106,24 +96,19 @@ pub use transaction::{
     TransactionRepr,
     TxId,
     TxParameters,
-    Upgrade,
-    UpgradeBody,
-    UpgradeMetadata,
-    UpgradePurpose,
-    Upload,
-    UploadBody,
-    UploadMetadata,
-    UploadSubsection,
     UtxoId,
     ValidityError,
     Witness,
 };
 
 pub use transaction::{
-    PrepareSign,
     Signable,
     UniqueIdentifier,
 };
+
+#[cfg(feature = "alloc")]
+#[allow(deprecated)]
+pub use transaction::consensus_parameters::default_parameters;
 
 #[cfg(feature = "alloc")]
 pub use contract::Contract;

@@ -12,10 +12,7 @@ use fuel_asm::{
     RegId,
     Word,
 };
-use fuel_tx::{
-    consts::BALANCE_ENTRY_SIZE,
-    ValidityError,
-};
+use fuel_tx::ValidityError;
 use fuel_types::AssetId;
 use itertools::Itertools;
 
@@ -23,10 +20,7 @@ use alloc::collections::BTreeMap;
 use core::ops::Index;
 use hashbrown::HashMap;
 
-use super::{
-    Memory,
-    MemoryInstance,
-};
+use super::MemoryRange;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct Balance {
@@ -96,8 +90,7 @@ impl RuntimeBalances {
             .sorted_by_key(|k| k.0)
             .enumerate()
             .try_fold(HashMap::new(), |mut state, (i, (asset, balance))| {
-                let offset = VM_MEMORY_BALANCES_OFFSET
-                    .saturating_add(i.saturating_mul(BALANCE_ENTRY_SIZE));
+                let offset = VM_MEMORY_BALANCES_OFFSET + i * (AssetId::LEN + WORD_SIZE);
 
                 state
                     .entry(asset)
@@ -117,13 +110,15 @@ impl RuntimeBalances {
 
     fn set_memory_balance_inner(
         balance: &Balance,
-        memory: &mut MemoryInstance,
+        memory: &mut [u8; MEM_SIZE],
     ) -> SimpleResult<Word> {
         let value = balance.value();
         let offset = balance.offset();
 
-        let offset = offset.saturating_add(AssetId::LEN);
-        memory.write_bytes_noownerchecks(offset, value.to_be_bytes())?;
+        let offset = offset + AssetId::LEN;
+        let range = MemoryRange::new_const::<_, WORD_SIZE>(offset)?;
+
+        range.write(memory).copy_from_slice(&value.to_be_bytes());
 
         Ok(value)
     }
@@ -138,7 +133,7 @@ impl RuntimeBalances {
     /// ordered, as in the protocol.
     pub fn checked_balance_add(
         &mut self,
-        memory: &mut MemoryInstance,
+        memory: &mut [u8; MEM_SIZE],
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -153,7 +148,7 @@ impl RuntimeBalances {
     /// appropriate offset
     pub fn checked_balance_sub(
         &mut self,
-        memory: &mut MemoryInstance,
+        memory: &mut [u8; MEM_SIZE],
         asset: &AssetId,
         value: Word,
     ) -> Option<Word> {
@@ -164,36 +159,25 @@ impl RuntimeBalances {
             .map_or((value == 0).then_some(0), |r| r.ok())
     }
 
-    /// Write all assets into the start of VM stack, i.e. at $ssp.
-    /// Panics if the assets cannot fit.
-    pub fn to_vm<M, S, Tx, Ecal>(self, vm: &mut Interpreter<M, S, Tx, Ecal>)
+    /// Write all assets into the VM memory.
+    pub fn to_vm<S, Tx, Ecal>(self, vm: &mut Interpreter<S, Tx, Ecal>)
     where
-        M: Memory,
         Tx: ExecutableTransaction,
     {
-        let len = (vm.max_inputs() as usize).saturating_mul(BALANCE_ENTRY_SIZE) as Word;
+        let len = (vm.max_inputs() as usize * (AssetId::LEN + WORD_SIZE)) as Word;
 
-        let new_ssp = vm.registers[RegId::SSP].checked_add(len).expect(
-            "Consensus parameters must not allow stack overflow during VM initialization",
+        vm.registers[RegId::SP] += len;
+        vm.reserve_stack(len).expect(
+            "consensus parameters won't allow stack overflow for VM initialization",
         );
-        vm.memory_mut().grow_stack(new_ssp).expect(
-            "Consensus parameters must not allow stack overflow during VM initialization",
-        );
-        vm.registers[RegId::SSP] = new_ssp;
 
         self.state.iter().for_each(|(asset, balance)| {
             let value = balance.value();
             let ofs = balance.offset();
 
-            vm.memory_mut()
-                .write_bytes_noownerchecks(ofs, **asset)
-                .expect("Checked above");
-            vm.memory_mut()
-                .write_bytes_noownerchecks(
-                    ofs.saturating_add(AssetId::LEN),
-                    value.to_be_bytes(),
-                )
-                .expect("Checked above");
+            vm.memory[ofs..ofs + AssetId::LEN].copy_from_slice(asset.as_ref());
+            vm.memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]
+                .copy_from_slice(&value.to_be_bytes());
         });
 
         vm.balances = self;
@@ -237,7 +221,7 @@ fn writes_to_memory_correctly() {
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let mut interpreter = Interpreter::<_, _, Script>::without_storage();
+    let mut interpreter = Interpreter::<_, Script>::without_storage();
 
     let base = AssetId::zeroed();
     let base_balance = 950;
@@ -256,7 +240,6 @@ fn writes_to_memory_correctly() {
 
     let balances = assets.into_iter();
 
-    interpreter.registers_mut()[RegId::HP] = VM_MAX_RAM;
     RuntimeBalances::try_from_iter(balances)
         .expect("failed to generate balances")
         .to_vm(&mut interpreter);
@@ -268,10 +251,10 @@ fn writes_to_memory_correctly() {
             assert_eq!(asset.as_ref(), &memory[ofs..ofs + AssetId::LEN]);
             assert_eq!(
                 &value.to_be_bytes(),
-                &memory[ofs + AssetId::LEN..ofs + BALANCE_ENTRY_SIZE]
+                &memory[ofs + AssetId::LEN..ofs + AssetId::LEN + WORD_SIZE]
             );
 
-            ofs + BALANCE_ENTRY_SIZE
+            ofs + AssetId::LEN + WORD_SIZE
         });
 }
 
@@ -338,7 +321,7 @@ fn checked_add_and_sub_works() {
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut memory = vec![0u8; MEM_SIZE].into();
+    let mut memory = Interpreter::<_, Script>::without_storage().memory;
 
     let asset: AssetId = rng.gen();
 

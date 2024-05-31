@@ -14,6 +14,7 @@ use derivative::Derivative;
 use fuel_types::{
     Address,
     AssetId,
+    BlockHeight,
     Word,
 };
 
@@ -31,7 +32,7 @@ mod private {
 
 /// Specifies the coin based on the usage context. See [`Coin`].
 pub trait CoinSpecification: private::Seal {
-    type Witness: AsField<u16>;
+    type Witness: AsField<u8>;
     type Predicate: AsField<Vec<u8>>;
     type PredicateData: AsField<Vec<u8>>;
     type PredicateGasUsed: AsField<Word>;
@@ -45,7 +46,7 @@ impl CoinSpecification for Signed {
     type Predicate = Empty<Vec<u8>>;
     type PredicateData = Empty<Vec<u8>>;
     type PredicateGasUsed = Empty<Word>;
-    type Witness = u16;
+    type Witness = u8;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -56,7 +57,7 @@ impl CoinSpecification for Predicate {
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
     type PredicateGasUsed = Word;
-    type Witness = Empty<u16>;
+    type Witness = Empty<u8>;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -67,7 +68,7 @@ impl CoinSpecification for Full {
     type Predicate = Vec<u8>;
     type PredicateData = Vec<u8>;
     type PredicateGasUsed = Word;
-    type Witness = u16;
+    type Witness = u8;
 }
 
 /// It is a full representation of the coin from the specification:
@@ -107,6 +108,7 @@ where
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
+    pub maturity: BlockHeight,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[derivative(Debug(format_with = "fmt_as_field"))]
@@ -138,6 +140,7 @@ impl Coin<Full> {
             asset_id,
             tx_pointer,
             witness_index,
+            maturity,
             ..
         } = self;
 
@@ -148,6 +151,7 @@ impl Coin<Full> {
             asset_id,
             tx_pointer,
             witness_index,
+            maturity,
             ..Default::default()
         }
     }
@@ -159,6 +163,7 @@ impl Coin<Full> {
             amount,
             asset_id,
             tx_pointer,
+            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
@@ -171,6 +176,7 @@ impl Coin<Full> {
             amount,
             asset_id,
             tx_pointer,
+            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
@@ -188,6 +194,7 @@ impl Coin<Signed> {
             asset_id,
             tx_pointer,
             witness_index,
+            maturity,
             ..
         } = self;
 
@@ -198,6 +205,7 @@ impl Coin<Signed> {
             asset_id,
             tx_pointer,
             witness_index,
+            maturity,
             ..Default::default()
         }
     }
@@ -211,6 +219,7 @@ impl Coin<Predicate> {
             amount,
             asset_id,
             tx_pointer,
+            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,
@@ -223,6 +232,7 @@ impl Coin<Predicate> {
             amount,
             asset_id,
             tx_pointer,
+            maturity,
             predicate,
             predicate_data,
             predicate_gas_used,

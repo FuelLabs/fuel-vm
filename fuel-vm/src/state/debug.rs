@@ -4,8 +4,6 @@ use fuel_types::{
     Word,
 };
 
-use crate::consts::VM_MAX_RAM;
-
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Breakpoint description that binds a tuple `(contract, $pc)` to a debugger
@@ -29,11 +27,9 @@ impl Breakpoint {
     /// The `$pc` is provided in op count and internally is multiplied by the op
     /// size. Also, the op count is always relative to `$is` so it should
     /// consider only the bytecode of the contract.
-    ///
-    /// Panics if the `pc` cannot ever fit into the VM memory.
     pub const fn new(contract: ContractId, pc: Word) -> Self {
-        let pc = pc.saturating_mul(Instruction::SIZE as Word);
-        assert!(pc <= VM_MAX_RAM, "Breakpoint cannot fit into vm memory");
+        let pc = pc * (Instruction::SIZE as Word);
+
         Self::raw(contract, pc)
     }
 

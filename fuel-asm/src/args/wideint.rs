@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn decode_encode_compare() {
         for imm in 0..Imm06::MAX.0 {
-            let bits = Imm06::from(imm);
+            let bits = Imm06::try_from(imm).unwrap();
             if let Some(decoded) = CompareArgs::from_imm(bits) {
                 assert_eq!(decoded.to_imm().0, imm);
             }
@@ -204,7 +204,7 @@ mod tests {
     #[test]
     fn decode_encode_mathop() {
         for imm in 0..Imm06::MAX.0 {
-            let bits = Imm06::from(imm);
+            let bits = Imm06::try_from(imm).unwrap();
             if let Some(decoded) = MathArgs::from_imm(bits) {
                 assert_eq!(decoded.to_imm().0, imm);
             }
@@ -227,7 +227,7 @@ mod tests {
     #[test]
     fn decode_encode_mul() {
         for imm in 0..Imm06::MAX.0 {
-            let bits = Imm06::from(imm);
+            let bits = Imm06::try_from(imm).unwrap();
             if let Some(decoded) = MulArgs::from_imm(bits) {
                 assert_eq!(decoded.to_imm().0, imm);
             }
@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn decode_encode_div() {
         for imm in 0..Imm06::MAX.0 {
-            let bits = Imm06::from(imm);
+            let bits = Imm06::try_from(imm).unwrap();
             if let Some(decoded) = DivArgs::from_imm(bits) {
                 assert_eq!(decoded.to_imm().0, imm);
             }

@@ -124,26 +124,6 @@ impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
     }
 }
 
-impl<'a, T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type>
-    for &'a mut T
-{
-    fn write(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
-        <T as StorageWrite<Type>>::write(self, key, buf)
-    }
-
-    fn replace(
-        &mut self,
-        key: &Type::Key,
-        buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
-        <T as StorageWrite<Type>>::replace(self, key, buf)
-    }
-
-    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error> {
-        <T as StorageWrite<Type>>::take(self, key)
-    }
-}
-
 impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable>
     MerkleRootStorage<Key, Type> for &'a mut T
 {
@@ -241,7 +221,7 @@ impl<'a, T, Type: Mappable> StorageMut<'a, T, Type> {
 
 impl<'a, T: StorageWrite<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     #[inline(always)]
-    pub fn write(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, T::Error> {
+    pub fn write(&mut self, key: &Type::Key, buf: Vec<u8>) -> Result<usize, T::Error> {
         self.0.write(key, buf)
     }
 
@@ -249,7 +229,7 @@ impl<'a, T: StorageWrite<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     pub fn replace(
         &mut self,
         key: &Type::Key,
-        buf: &[u8],
+        buf: Vec<u8>,
     ) -> Result<(usize, Option<Vec<u8>>), T::Error>
     where
         T: StorageSize<Type>,

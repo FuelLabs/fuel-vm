@@ -14,18 +14,19 @@ fn tx_with_signed_coin_snapshot() {
             asset_id: [5u8; 32].into(),
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: 4,
+            maturity: 2.into(),
             predicate_gas_used: Empty::new(),
             predicate: Empty::new(),
             predicate_data: Empty::new(),
         }))
-        .tip(1)
+        .gas_price(1)
         .maturity(123.into())
         .max_fee_limit(1000000)
         .witness_limit(1000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(bytes);
+    let hex = hex::encode(&bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -39,17 +40,18 @@ fn tx_with_predicate_coin_snapshot() {
             asset_id: [5u8; 32].into(),
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: Empty::new(),
+            maturity: 2.into(),
             predicate_gas_used: 100_000,
             predicate: vec![3u8; 10],
             predicate_data: vec![4u8; 12],
         }))
-        .tip(1)
+        .gas_price(1)
         .maturity(123.into())
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(bytes);
+    let hex = hex::encode(&bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -63,13 +65,13 @@ fn tx_with_contract_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             contract_id: [5u8; 32].into(),
         }))
-        .tip(1)
+        .gas_price(1)
         .maturity(123.into())
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(bytes);
+    let hex = hex::encode(&bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -87,14 +89,14 @@ fn tx_with_signed_message_coin() {
             predicate: Empty::new(),
             predicate_data: Empty::new(),
         }))
-        .tip(1)
+        .gas_price(1)
         .maturity(123.into())
         .max_fee_limit(1000000)
         .witness_limit(1000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(bytes);
+    let hex = hex::encode(&bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -112,13 +114,13 @@ fn tx_with_predicate_message_coin() {
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
         }))
-        .tip(1)
+        .gas_price(1)
         .maturity(123.into())
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(bytes);
+    let hex = hex::encode(&bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -136,14 +138,14 @@ fn tx_with_signed_message_data() {
             predicate: Empty::new(),
             predicate_data: Empty::new(),
         }))
-        .tip(1)
+        .gas_price(1)
         .maturity(123.into())
         .max_fee_limit(1000000)
         .witness_limit(1000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(bytes);
+    let hex = hex::encode(&bytes);
     insta::assert_snapshot!(hex);
 }
 
@@ -161,12 +163,12 @@ fn tx_with_predicate_message_data() {
             predicate: vec![7u8; 11],
             predicate_data: vec![8u8; 12],
         }))
-        .tip(1)
+        .gas_price(1)
         .maturity(123.into())
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
     let bytes = tx.to_bytes();
-    let hex = hex::encode(bytes);
+    let hex = hex::encode(&bytes);
     insta::assert_snapshot!(hex);
 }

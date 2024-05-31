@@ -48,6 +48,7 @@ fn secp256k1_recover() {
 
     let mut client = MemoryClient::default();
 
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -83,6 +84,7 @@ fn secp256k1_recover() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -102,6 +104,7 @@ fn ecrecover_tx_id() {
 
     let mut client = MemoryClient::default();
 
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -136,6 +139,7 @@ fn ecrecover_tx_id() {
     let script_data = public.as_ref().to_vec();
 
     let mut tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -157,13 +161,11 @@ fn ecrecover_tx_id() {
 #[cfg(feature = "std")]
 #[tokio::test]
 async fn recover_tx_id_predicate() {
-    use crate::{
-        checked_transaction::EstimatePredicates,
-        pool::DummyPool,
-    };
+    use crate::checked_transaction::EstimatePredicates;
     use rand::Rng;
     let rng = &mut StdRng::seed_from_u64(1234u64);
 
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
 
@@ -204,12 +206,14 @@ async fn recover_tx_id_predicate() {
         1000,
         rng.gen(),
         Default::default(),
+        rng.gen(),
         0,
         predicate,
         vec![],
     );
 
     let mut tx = TransactionBuilder::script(vec![], script_data)
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_input(input)
@@ -219,6 +223,7 @@ async fn recover_tx_id_predicate() {
             rng.gen(),
             rng.gen(),
             Default::default(),
+            Default::default(),
         )
         .finalize();
 
@@ -226,7 +231,7 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&check_params, &DummyPool)
+            .estimate_predicates_async::<TokioWithRayon>(&check_params)
             .await
             .expect("Should estimate predicate successfully");
 
@@ -236,7 +241,7 @@ async fn recover_tx_id_predicate() {
     }
 
     // sequential version
-    tx.estimate_predicates(&check_params, MemoryInstance::new())
+    tx.estimate_predicates(&check_params)
         .expect("Should estimate predicate successfully");
 
     tx.into_checked(maturity, &consensus_params)
@@ -336,6 +341,7 @@ fn secp256r1_recover() {
 
     let mut client = MemoryClient::default();
 
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -371,6 +377,7 @@ fn secp256r1_recover() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -383,7 +390,6 @@ fn secp256r1_recover() {
 
     assert!(success);
 }
-
 #[test]
 fn secp256r1_recover_error() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -475,6 +481,7 @@ fn ed25519_verify() {
 
     let mut client = MemoryClient::default();
 
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -508,6 +515,7 @@ fn ed25519_verify() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -612,6 +620,7 @@ fn ed25519_verify_c_gt_vmaxram_sub_32() {
 fn sha256() {
     let mut client = MemoryClient::default();
 
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -640,6 +649,7 @@ fn sha256() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -659,7 +669,7 @@ fn s256_a_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-    let script = vec![
+        let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_a, reg_b, reg_b),
@@ -673,7 +683,7 @@ fn s256_c_gt_mem_max() {
     let reg_a = 0x20;
 
     #[rustfmt::skip]
-    let script = vec![
+        let script = vec![
         op::not(reg_a, RegId::ZERO),
         op::s256(RegId::ZERO, RegId::ZERO, reg_a),
     ];
@@ -687,7 +697,7 @@ fn s256_b_gt_vmaxram_sub_c() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-    let script = vec![
+        let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_b, reg_a, reg_b),
@@ -700,6 +710,7 @@ fn s256_b_gt_vmaxram_sub_c() {
 fn keccak256() {
     let mut client = MemoryClient::default();
 
+    let gas_price = 0;
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -731,6 +742,7 @@ fn keccak256() {
         .collect();
 
     let tx = TransactionBuilder::script(script, script_data)
+        .gas_price(gas_price)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
         .add_random_fee_input()
@@ -750,7 +762,7 @@ fn k256_a_gt_vmaxram_sub_32() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-    let script = vec![
+        let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_a, reg_b, reg_b),
@@ -780,7 +792,7 @@ fn k256_b_gt_vmaxram_sub_c() {
     let reg_b = 0x21;
 
     #[rustfmt::skip]
-    let script = vec![
+        let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_b, reg_a, reg_b),

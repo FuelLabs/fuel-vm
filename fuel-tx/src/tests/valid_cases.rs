@@ -38,8 +38,6 @@ pub fn test_params() -> ConsensusParameters {
         CHAIN_ID,
         Default::default(),
         Default::default(),
-        Default::default(),
-        Default::default(),
     )
 }
 

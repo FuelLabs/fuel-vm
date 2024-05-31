@@ -1,12 +1,9 @@
 //! Exposed constructors API for the [`Interpreter`]
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
-#[cfg(any(test, feature = "test-helpers"))]
 use super::{
+    EcalHandler,
     ExecutableTransaction,
-    MemoryInstance,
-};
-use super::{
     Interpreter,
     RuntimeBalances,
 };
@@ -18,6 +15,7 @@ use crate::{
         PanicContext,
     },
     state::Debugger,
+    storage::MemoryStorage,
 };
 
 use alloc::vec;
@@ -27,13 +25,7 @@ use crate::profiler::ProfileReceiver;
 
 use crate::profiler::Profiler;
 
-#[cfg(feature = "test-helpers")]
-use crate::{
-    interpreter::EcalHandler,
-    storage::MemoryStorage,
-};
-
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: Default,
     Ecal: Default,
@@ -43,16 +35,12 @@ where
     /// If the provided storage implements
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
-    pub fn with_storage(
-        memory: M,
-        storage: S,
-        interpreter_params: InterpreterParams,
-    ) -> Self {
-        Self::with_storage_and_ecal(memory, storage, interpreter_params, Ecal::default())
+    pub fn with_storage(storage: S, interpreter_params: InterpreterParams) -> Self {
+        Self::with_storage_and_ecal(storage, interpreter_params, Ecal::default())
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: Default,
 {
@@ -62,14 +50,15 @@ where
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
     pub fn with_storage_and_ecal(
-        memory: M,
         storage: S,
         interpreter_params: InterpreterParams,
         ecal_state: Ecal,
     ) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
-            memory,
+            memory: vec![0; MEM_SIZE]
+                .try_into()
+                .expect("Failed to allocate memory"),
             frames: vec![],
             receipts: Default::default(),
             tx: Default::default(),
@@ -86,7 +75,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
@@ -98,24 +87,34 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     }
 }
 
-#[cfg(any(test, feature = "test-helpers"))]
-impl<S, Tx, Ecal> Default for Interpreter<MemoryInstance, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+where
+    S: Clone,
+    Tx: ExecutableTransaction,
+    Ecal: Clone,
+{
+    /// Build the interpreter
+    pub fn build(&mut self) -> Self {
+        self.clone()
+    }
+}
+
+impl<S, Tx, Ecal> Default for Interpreter<S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
-        Interpreter::<_, S, Tx, Ecal>::with_storage(
-            MemoryInstance::new(),
+        Interpreter::<S, Tx, Ecal>::with_storage(
             Default::default(),
             InterpreterParams::default(),
         )
     }
 }
 
-#[cfg(any(test, feature = "test-helpers"))]
-impl<Tx, Ecal> Interpreter<MemoryInstance, (), Tx, Ecal>
+#[cfg(test)]
+impl<Tx, Ecal> Interpreter<(), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -128,8 +127,7 @@ where
     }
 }
 
-#[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -142,8 +140,7 @@ where
     }
 }
 
-#[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
@@ -152,8 +149,7 @@ where
     ///
     /// It will have full capabilities.
     pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
-        Interpreter::<_, MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
-            MemoryInstance::new(),
+        Interpreter::<MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
             Default::default(),
             InterpreterParams::default(),
             ecal,

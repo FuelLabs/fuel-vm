@@ -1,5 +1,3 @@
-#![allow(clippy::arithmetic_side_effects)]
-
 use fuel_types::*;
 use rand::{
     rngs::StdRng,

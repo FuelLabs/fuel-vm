@@ -27,7 +27,7 @@ fn generate_test(
     name: String,
     function_name: String,
     description: String,
-    sample_data: &[Bytes32],
+    sample_data: &Vec<Bytes32>,
     proof_index: u64,
 ) -> ProofTest {
     let (root, proof_set) = {

@@ -7,7 +7,6 @@ use fuel_asm::{
     op,
     Instruction,
 };
-use fuel_crypto::SecretKey;
 use fuel_tx::ConsensusParameters;
 use fuel_vm::prelude::*;
 
@@ -25,28 +24,16 @@ pub fn set_full_word(r: RegisterId, v: Word) -> Vec<Instruction> {
 
 /// Run a instructions-only script with reasonable defaults, and return receipts
 pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
-    use rand::{
-        Rng,
-        SeedableRng,
-    };
     let script = script.into_iter().collect();
     let mut client = MemoryClient::default();
-    let arb_max_fee = 1000;
 
     let consensus_params = ConsensusParameters::standard();
 
-    let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
     let tx = TransactionBuilder::script(script, vec![])
-        .max_fee_limit(arb_max_fee)
+        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_unsigned_coin_input(
-            SecretKey::random(&mut rng),
-            rng.gen(),
-            arb_max_fee,
-            *consensus_params.base_asset_id(),
-            Default::default(),
-        )
+        .add_random_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");

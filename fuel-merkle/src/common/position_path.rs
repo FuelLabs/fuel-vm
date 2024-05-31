@@ -5,8 +5,6 @@ use crate::common::{
     Position,
 };
 
-use super::path::Side;
-
 /// # PositionPath
 ///
 /// A PositionPath represents the path of positions created by traversing a
@@ -30,7 +28,6 @@ pub struct PositionPath {
 
 impl PositionPath {
     pub fn new(root: Position, leaf: Position, leaves_count: u64) -> Self {
-        debug_assert!(leaves_count > 0);
         Self {
             root,
             leaf,
@@ -50,17 +47,11 @@ pub struct PositionPathIter {
 }
 
 impl PositionPathIter {
-    /// Panics if leaves_count is zero, as the tree is not valid
     pub fn new(root: Position, leaf: Position, leaves_count: u64) -> Self {
         Self {
-            rightmost_position: Position::from_leaf_index(
-                leaves_count
-                    .checked_sub(1)
-                    .expect("Path to a tree without leaves"),
-            )
-            .unwrap(),
+            rightmost_position: Position::from_leaf_index(leaves_count - 1),
             current_side_node: None,
-            path_iter: root.as_path_iter(&leaf.leaf_key()),
+            path_iter: root.as_path_iter(leaf.leaf_key()),
         }
     }
 }
@@ -108,7 +99,7 @@ impl Iterator for PositionPathIter {
                 // correct side node will always be a leftward descendent of
                 // this invalid side node.
                 while side.in_order_index() > self.rightmost_position.in_order_index() {
-                    side = side.child(Side::Left).expect("Verified above");
+                    side = side.left_child()
                 }
 
                 return Some((path, side))
@@ -133,7 +124,7 @@ mod test {
     #[test]
     fn test_path_set_returns_path_and_side_nodes_for_1_leaf() {
         let root = Position::from_in_order_index(0);
-        let leaf = Position::from_leaf_index_unwrap(0);
+        let leaf = Position::from_leaf_index(0);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 1).iter().unzip();
         let expected_path = [Position::from_in_order_index(0)];
@@ -154,7 +145,7 @@ mod test {
 
         let root = Position::from_in_order_index(3);
 
-        let leaf = Position::from_leaf_index_unwrap(0);
+        let leaf = Position::from_leaf_index(0);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 4).iter().unzip();
         let expected_path = [
@@ -170,7 +161,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(1);
+        let leaf = Position::from_leaf_index(1);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 4).iter().unzip();
         let expected_path = [
@@ -186,7 +177,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(2);
+        let leaf = Position::from_leaf_index(2);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 4).iter().unzip();
         let expected_path = [
@@ -202,7 +193,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(3);
+        let leaf = Position::from_leaf_index(3);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 4).iter().unzip();
         let expected_path = [
@@ -233,7 +224,7 @@ mod test {
 
         let root = Position::from_in_order_index(7);
 
-        let leaf = Position::from_leaf_index_unwrap(0);
+        let leaf = Position::from_leaf_index(0);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 5).iter().unzip();
         let expected_path = [
@@ -251,7 +242,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(1);
+        let leaf = Position::from_leaf_index(1);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 5).iter().unzip();
         let expected_path = [
@@ -269,7 +260,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(2);
+        let leaf = Position::from_leaf_index(2);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 5).iter().unzip();
         let expected_path = [
@@ -287,7 +278,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(3);
+        let leaf = Position::from_leaf_index(3);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 5).iter().unzip();
         let expected_path = [
@@ -305,7 +296,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(4);
+        let leaf = Position::from_leaf_index(4);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 5).iter().unzip();
         let expected_path = [
@@ -336,7 +327,7 @@ mod test {
 
         let root = Position::from_in_order_index(7);
 
-        let leaf = Position::from_leaf_index_unwrap(0);
+        let leaf = Position::from_leaf_index(0);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 6).iter().unzip();
         let expected_path = [
@@ -354,7 +345,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(1);
+        let leaf = Position::from_leaf_index(1);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 6).iter().unzip();
         let expected_path = [
@@ -372,7 +363,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(2);
+        let leaf = Position::from_leaf_index(2);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 6).iter().unzip();
         let expected_path = [
@@ -390,7 +381,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(3);
+        let leaf = Position::from_leaf_index(3);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 6).iter().unzip();
         let expected_path = [
@@ -408,7 +399,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(4);
+        let leaf = Position::from_leaf_index(4);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 6).iter().unzip();
         let expected_path = [
@@ -424,7 +415,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(5);
+        let leaf = Position::from_leaf_index(5);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 6).iter().unzip();
         let expected_path = [
@@ -460,7 +451,7 @@ mod test {
 
         let root = Position::from_in_order_index(7);
 
-        let leaf = Position::from_leaf_index_unwrap(0);
+        let leaf = Position::from_leaf_index(0);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 7).iter().unzip();
         let expected_path = [
@@ -478,7 +469,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(1);
+        let leaf = Position::from_leaf_index(1);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 7).iter().unzip();
         let expected_path = [
@@ -496,7 +487,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(2);
+        let leaf = Position::from_leaf_index(2);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 7).iter().unzip();
         let expected_path = [
@@ -514,7 +505,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(3);
+        let leaf = Position::from_leaf_index(3);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 7).iter().unzip();
         let expected_path = [
@@ -532,7 +523,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(4);
+        let leaf = Position::from_leaf_index(4);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 7).iter().unzip();
         let expected_path = [
@@ -550,7 +541,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(5);
+        let leaf = Position::from_leaf_index(5);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 7).iter().unzip();
         let expected_path = [
@@ -568,7 +559,7 @@ mod test {
         assert_eq!(path_positions, expected_path);
         assert_eq!(side_positions, expected_side);
 
-        let leaf = Position::from_leaf_index_unwrap(6);
+        let leaf = Position::from_leaf_index(6);
         let (path_positions, side_positions): (Vec<Position>, Vec<Position>) =
             root.path(&leaf, 7).iter().unzip();
         let expected_path = [

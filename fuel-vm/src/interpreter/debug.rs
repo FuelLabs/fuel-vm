@@ -8,7 +8,7 @@ use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -68,10 +68,9 @@ fn breakpoint_script() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 
-    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
-    let gas_price = 0;
     let height = Default::default();
 
     let script = [
@@ -92,13 +91,7 @@ fn breakpoint_script() {
         .add_random_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
-        .expect("failed to generate checked tx")
-        .into_ready(
-            gas_price,
-            consensus_params.gas_costs(),
-            consensus_params.fee_params(),
-        )
-        .unwrap();
+        .expect("failed to generate checked tx");
 
     let suite = vec![
         (
@@ -148,11 +141,10 @@ fn single_stepping() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 
-    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let gas_price = 0;
 
     // Repeats the middle two instructions five times
     let script = [
@@ -171,13 +163,7 @@ fn single_stepping() {
         .add_random_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
-        .expect("failed to generate checked tx")
-        .into_ready(
-            gas_price,
-            consensus_params.gas_costs(),
-            consensus_params.fee_params(),
-        )
-        .unwrap();
+        .expect("failed to generate checked tx");
 
     vm.set_single_stepping(true);
 

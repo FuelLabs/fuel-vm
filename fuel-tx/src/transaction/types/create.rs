@@ -1,15 +1,19 @@
 use crate::{
+    policies::Policies,
     transaction::{
         field::{
+            BytecodeLength,
             BytecodeWitnessIndex,
+            Inputs,
+            Outputs,
+            Policies as PoliciesField,
             Salt as SaltField,
             StorageSlots,
+            Witnesses,
         },
-        metadata::CommonMetadata,
-        types::chargeable_transaction::{
-            ChargeableMetadata,
-            ChargeableTransaction,
-            UniqueFormatValidityChecks,
+        validity::{
+            check_common_part,
+            FormatValidityChecks,
         },
     },
     Chargeable,
@@ -18,15 +22,17 @@ use crate::{
     GasCosts,
     Input,
     Output,
-    PrepareSign,
     StorageSlot,
     TransactionRepr,
     ValidityError,
+    Witness,
 };
 use derivative::Derivative;
 use fuel_types::{
+    bytes,
     bytes::WORD_SIZE,
     canonical,
+    BlockHeight,
     Bytes32,
     Bytes4,
     ChainId,
@@ -38,10 +44,10 @@ use fuel_types::{
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+use hashbrown::HashMap;
+
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
-
-pub type Create = ChargeableTransaction<CreateBody, CreateMetadata>;
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[derivative(Eq, PartialEq, Hash)]
@@ -49,11 +55,32 @@ pub struct CreateMetadata {
     pub contract_id: ContractId,
     pub contract_root: Bytes32,
     pub state_root: Bytes32,
+    pub id: Bytes32,
+    pub inputs_offset: usize,
+    pub inputs_offset_at: Vec<usize>,
+    pub inputs_predicate_offset_at: Vec<Option<(usize, usize)>>,
+    pub outputs_offset: usize,
+    pub outputs_offset_at: Vec<usize>,
+    pub witnesses_offset: usize,
+    pub witnesses_offset_at: Vec<usize>,
 }
 
 impl CreateMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
-    pub fn compute(tx: &Create) -> Result<Self, ValidityError> {
+    pub fn compute(tx: &Create, chain_id: &ChainId) -> Result<Self, ValidityError> {
+        use crate::transaction::metadata::CommonMetadata;
+
+        let CommonMetadata {
+            id,
+            inputs_offset,
+            inputs_offset_at,
+            inputs_predicate_offset_at,
+            outputs_offset,
+            outputs_offset_at,
+            witnesses_offset,
+            witnesses_offset_at,
+        } = CommonMetadata::compute(tx, chain_id);
+
         let salt = tx.salt();
         let storage_slots = tx.storage_slots();
         let contract = Contract::try_from(tx)?;
@@ -65,6 +92,14 @@ impl CreateMetadata {
             contract_id,
             contract_root,
             state_root,
+            id,
+            inputs_offset,
+            inputs_offset_at,
+            inputs_predicate_offset_at,
+            outputs_offset,
+            outputs_offset_at,
+            witnesses_offset,
+            witnesses_offset_at,
         })
     }
 }
@@ -73,15 +108,51 @@ impl CreateMetadata {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Create)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derivative(Eq, PartialEq, Hash)]
-pub struct CreateBody {
-    pub(crate) bytecode_witness_index: u16,
-    pub(crate) salt: Salt,
+pub struct Create {
+    pub(crate) bytecode_length: Word,
+    pub(crate) bytecode_witness_index: u8,
+    pub(crate) policies: Policies,
     pub(crate) storage_slots: Vec<StorageSlot>,
+    pub(crate) inputs: Vec<Input>,
+    pub(crate) outputs: Vec<Output>,
+    pub(crate) witnesses: Vec<Witness>,
+    pub(crate) salt: Salt,
+    #[cfg_attr(feature = "serde", serde(skip))]
+    #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[canonical(skip)]
+    pub(crate) metadata: Option<CreateMetadata>,
 }
 
-impl PrepareSign for CreateBody {
-    fn prepare_sign(&mut self) {}
+impl Create {
+    pub fn metadata(&self) -> &Option<CreateMetadata> {
+        &self.metadata
+    }
+}
+
+impl crate::UniqueIdentifier for Create {
+    fn id(&self, chain_id: &ChainId) -> crate::TxId {
+        if let Some(id) = self.cached_id() {
+            return id
+        }
+
+        let mut clone = self.clone();
+
+        // Empties fields that should be zero during the signing.
+        clone.inputs_mut().iter_mut().for_each(Input::prepare_sign);
+        clone
+            .outputs_mut()
+            .iter_mut()
+            .for_each(Output::prepare_sign);
+        clone.witnesses_mut().clear();
+
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
+    }
+
+    fn cached_id(&self) -> Option<crate::TxId> {
+        self.metadata.as_ref().map(|m| m.id)
+    }
 }
 
 impl Chargeable for Create {
@@ -92,13 +163,9 @@ impl Chargeable for Create {
 
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word {
         let Create {
-            body:
-                CreateBody {
-                    bytecode_witness_index,
-                    storage_slots,
-                    ..
-                },
+            bytecode_witness_index,
             witnesses,
+            storage_slots,
             ..
         } = self;
 
@@ -107,17 +174,19 @@ impl Chargeable for Create {
             .map(|c| c.as_ref().len())
             .unwrap_or(0);
 
-        let contract_root_gas = gas_costs.contract_root().resolve(contract_len as Word);
+        let contract_root_gas = gas_costs.contract_root.resolve(contract_len as Word);
         let state_root_length = storage_slots.len() as Word;
-        let state_root_gas = gas_costs.state_root().resolve(state_root_length);
+        let state_root_gas = gas_costs.state_root.resolve(state_root_length);
 
         // See https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md
-        let contract_id_input_length =
-            Bytes4::LEN + Salt::LEN + Bytes32::LEN + Bytes32::LEN;
-        let contract_id_gas = gas_costs.s256().resolve(contract_id_input_length as Word);
+        let contract_id_input_length = core::mem::size_of::<Bytes4>()
+            + core::mem::size_of::<Salt>()
+            + core::mem::size_of::<Bytes32>()
+            + core::mem::size_of::<Bytes32>();
+        let contract_id_gas = gas_costs.s256.resolve(contract_id_input_length as Word);
         let bytes = canonical::Serialize::size(self);
         // Gas required to calculate the `tx_id`.
-        let tx_id_gas = gas_costs.s256().resolve(bytes as u64);
+        let tx_id_gas = gas_costs.s256.resolve(bytes as u64);
 
         contract_root_gas
             .saturating_add(state_root_gas)
@@ -126,64 +195,82 @@ impl Chargeable for Create {
     }
 }
 
-impl UniqueFormatValidityChecks for Create {
-    fn check_unique_rules(
+impl FormatValidityChecks for Create {
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
+        use crate::UniqueIdentifier;
+
+        let id = self.id(chain_id);
+
+        // There will be at most len(witnesses) - 1 signatures to cache, as one of the
+        // witnesses will be bytecode
+        let mut recovery_cache = Some(HashMap::with_capacity(core::cmp::max(
+            self.witnesses().len() - 1,
+            1,
+        )));
+
+        self.inputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| {
+                input.check_signature(index, &id, &self.witnesses, &mut recovery_cache)
+            })?;
+
+        Ok(())
+    }
+
+    fn check_without_signatures(
         &self,
+        block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
-        let contract_params = consensus_params.contract_params();
-        let base_asset_id = consensus_params.base_asset_id();
+        let ConsensusParameters {
+            contract_params,
+            chain_id,
+            base_asset_id,
+            ..
+        } = consensus_params;
+
+        check_common_part(self, block_height, consensus_params)?;
 
         let bytecode_witness_len = self
             .witnesses
-            .get(self.body.bytecode_witness_index as usize)
+            .get(self.bytecode_witness_index as usize)
             .map(|w| w.as_ref().len() as Word)
             .ok_or(ValidityError::TransactionCreateBytecodeWitnessIndex)?;
 
-        if bytecode_witness_len > contract_params.contract_max_size() {
-            return Err(ValidityError::TransactionCreateBytecodeLen);
+        if bytecode_witness_len > contract_params.contract_max_size
+            || bytecode_witness_len / 4 != self.bytecode_length
+        {
+            return Err(ValidityError::TransactionCreateBytecodeLen)
         }
 
         // Restrict to subset of u16::MAX, allowing this to be increased in the future
         // in a non-breaking way.
-        if self.body.storage_slots.len() as u64 > contract_params.max_storage_slots() {
-            return Err(ValidityError::TransactionCreateStorageSlotMax);
+        if self.storage_slots.len() as u64 > contract_params.max_storage_slots {
+            return Err(ValidityError::TransactionCreateStorageSlotMax)
         }
 
         // Verify storage slots are sorted
         if !self
-            .body
             .storage_slots
             .as_slice()
             .windows(2)
             .all(|s| s[0] < s[1])
         {
-            return Err(ValidityError::TransactionCreateStorageSlotOrder);
+            return Err(ValidityError::TransactionCreateStorageSlotOrder)
         }
 
         self.inputs
             .iter()
             .enumerate()
-            .try_for_each(|(index, input)| {
-                if let Some(asset_id) = input.asset_id(consensus_params.base_asset_id()) {
-                    if asset_id != consensus_params.base_asset_id() {
-                        return Err(
-                            ValidityError::TransactionInputContainsNonBaseAssetId {
-                                index,
-                            },
-                        );
-                    }
+            .try_for_each(|(index, input)| match input {
+                Input::Contract(_) => {
+                    Err(ValidityError::TransactionCreateInputContract { index })
                 }
-
-                match input {
-                    Input::Contract(_) => {
-                        Err(ValidityError::TransactionInputContainsContract { index })
-                    }
-                    Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
-                        Err(ValidityError::TransactionInputContainsMessageData { index })
-                    }
-                    _ => Ok(()),
+                Input::MessageDataSigned(_) | Input::MessageDataPredicate(_) => {
+                    Err(ValidityError::TransactionCreateMessageData { index })
                 }
+                _ => Ok(()),
             })?;
 
         debug_assert!(
@@ -192,9 +279,9 @@ impl UniqueFormatValidityChecks for Create {
         );
         let (state_root_calculated, contract_id_calculated) =
             if let Some(metadata) = &self.metadata {
-                (metadata.body.state_root, metadata.body.contract_id)
+                (metadata.state_root, metadata.contract_id)
             } else {
-                let metadata = CreateMetadata::compute(self)?;
+                let metadata = CreateMetadata::compute(self, chain_id)?;
                 (metadata.state_root, metadata.contract_id)
             };
 
@@ -204,15 +291,15 @@ impl UniqueFormatValidityChecks for Create {
             .enumerate()
             .try_for_each(|(index, output)| match output {
                 Output::Contract(_) => {
-                    Err(ValidityError::TransactionOutputContainsContract { index })
+                    Err(ValidityError::TransactionCreateOutputContract { index })
                 }
 
                 Output::Variable { .. } => {
-                    Err(ValidityError::TransactionOutputContainsVariable { index })
+                    Err(ValidityError::TransactionCreateOutputVariable { index })
                 }
 
                 Output::Change { asset_id, .. } if asset_id != base_asset_id => {
-                    Err(ValidityError::TransactionChangeChangeUsesNotBaseAsset { index })
+                    Err(ValidityError::TransactionCreateOutputChangeNotBaseAsset { index })
                 }
 
                 Output::ContractCreated {
@@ -220,13 +307,13 @@ impl UniqueFormatValidityChecks for Create {
                     state_root,
                 } if contract_id != &contract_id_calculated
                     || state_root != &state_root_calculated =>
-                    {
-                        Err(
-                            ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
-                                index,
-                            },
-                        )
-                    }
+                {
+                    Err(
+                        ValidityError::TransactionCreateOutputContractCreatedDoesntMatch {
+                            index,
+                        },
+                    )
+                }
 
                 // TODO: Output::ContractCreated { contract_id, state_root } if
                 // contract_id == &id && state_root == &storage_root
@@ -257,85 +344,215 @@ impl crate::Cacheable for Create {
 
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
-        self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id)?,
-            body: CreateMetadata::compute(self)?,
-        });
+        self.metadata = Some(CreateMetadata::compute(self, chain_id)?);
         Ok(())
     }
 }
 
 mod field {
     use super::*;
-    use crate::field::{
-        ChargeableBody,
-        StorageSlotRef,
-    };
+    use crate::field::StorageSlotRef;
+    use fuel_types::canonical::Serialize;
 
-    impl BytecodeWitnessIndex for Create {
+    impl BytecodeLength for Create {
         #[inline(always)]
-        fn bytecode_witness_index(&self) -> &u16 {
-            &self.body.bytecode_witness_index
+        fn bytecode_length(&self) -> &Word {
+            &self.bytecode_length
         }
 
         #[inline(always)]
-        fn bytecode_witness_index_mut(&mut self) -> &mut u16 {
-            &mut self.body.bytecode_witness_index
+        fn bytecode_length_mut(&mut self) -> &mut Word {
+            &mut self.bytecode_length
+        }
+
+        #[inline(always)]
+        fn bytecode_length_offset_static() -> usize {
+            WORD_SIZE // `Transaction` enum discriminant
+        }
+    }
+
+    impl BytecodeWitnessIndex for Create {
+        #[inline(always)]
+        fn bytecode_witness_index(&self) -> &u8 {
+            &self.bytecode_witness_index
+        }
+
+        #[inline(always)]
+        fn bytecode_witness_index_mut(&mut self) -> &mut u8 {
+            &mut self.bytecode_witness_index
         }
 
         #[inline(always)]
         fn bytecode_witness_index_offset_static() -> usize {
-            WORD_SIZE // `Transaction` enum discriminant
+            Self::bytecode_length_offset_static() + WORD_SIZE
+        }
+    }
+
+    impl PoliciesField for Create {
+        fn policies(&self) -> &Policies {
+            &self.policies
+        }
+
+        fn policies_mut(&mut self) -> &mut Policies {
+            &mut self.policies
+        }
+
+        fn policies_offset(&self) -> usize {
+            Self::salt_offset_static() + Salt::LEN
         }
     }
 
     impl SaltField for Create {
         #[inline(always)]
         fn salt(&self) -> &Salt {
-            &self.body.salt
+            &self.salt
         }
 
         #[inline(always)]
         fn salt_mut(&mut self) -> &mut Salt {
-            &mut self.body.salt
+            &mut self.salt
         }
 
         #[inline(always)]
         fn salt_offset_static() -> usize {
-            Self::bytecode_witness_index_offset_static().saturating_add(WORD_SIZE)
+            Self::bytecode_witness_index_offset_static() + WORD_SIZE
+                + WORD_SIZE // Policies size
+                + WORD_SIZE // Storage slots size
+                + WORD_SIZE // Inputs size
+                + WORD_SIZE // Outputs size
+                + WORD_SIZE // Witnesses size
         }
     }
 
     impl StorageSlots for Create {
         #[inline(always)]
         fn storage_slots(&self) -> &Vec<StorageSlot> {
-            &self.body.storage_slots
+            &self.storage_slots
         }
 
         #[inline(always)]
         fn storage_slots_mut(&mut self) -> StorageSlotRef {
             StorageSlotRef {
-                storage_slots: &mut self.body.storage_slots,
+                storage_slots: &mut self.storage_slots,
             }
         }
 
         #[inline(always)]
-        fn storage_slots_offset_static() -> usize {
-            Self::salt_offset_static().saturating_add(
-                Salt::LEN
-                + WORD_SIZE // Storage slots size
-                + WORD_SIZE // Policies size
-                + WORD_SIZE // Inputs size
-                + WORD_SIZE // Outputs size
-                + WORD_SIZE, // Witnesses size
-            )
+        fn storage_slots_offset(&self) -> usize {
+            self.policies_offset() + self.policies.size_dynamic()
         }
 
         fn storage_slots_offset_at(&self, idx: usize) -> Option<usize> {
-            if idx < self.body.storage_slots.len() {
+            if idx < self.storage_slots.len() {
+                Some(self.storage_slots_offset() + idx * StorageSlot::SLOT_SIZE)
+            } else {
+                None
+            }
+        }
+    }
+
+    impl Inputs for Create {
+        #[inline(always)]
+        fn inputs(&self) -> &Vec<Input> {
+            &self.inputs
+        }
+
+        #[inline(always)]
+        fn inputs_mut(&mut self) -> &mut Vec<Input> {
+            &mut self.inputs
+        }
+
+        #[inline(always)]
+        fn inputs_offset(&self) -> usize {
+            self.storage_slots_offset()
+                + self.storage_slots.len() * StorageSlot::SLOT_SIZE
+        }
+
+        #[inline(always)]
+        fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(CreateMetadata {
+                inputs_offset_at: inputs_offset,
+                ..
+            }) = &self.metadata
+            {
+                return inputs_offset.get(idx).cloned()
+            }
+
+            if idx < self.inputs.len() {
                 Some(
-                    Self::storage_slots_offset_static()
-                        .checked_add(idx.checked_mul(StorageSlot::SLOT_SIZE)?)?,
+                    self.inputs_offset()
+                        + self
+                            .inputs()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .sum::<usize>(),
+                )
+            } else {
+                None
+            }
+        }
+
+        #[inline(always)]
+        fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)> {
+            if let Some(CreateMetadata {
+                inputs_predicate_offset_at: inputs_predicate_offset,
+                ..
+            }) = &self.metadata
+            {
+                return inputs_predicate_offset.get(idx).cloned().unwrap_or(None)
+            }
+
+            self.inputs().get(idx).and_then(|input| {
+                input
+                    .predicate_offset()
+                    .and_then(|predicate| {
+                        self.inputs_offset_at(idx).map(|inputs| inputs + predicate)
+                    })
+                    .zip(input.predicate_len().map(bytes::padded_len_usize))
+            })
+        }
+    }
+
+    impl Outputs for Create {
+        #[inline(always)]
+        fn outputs(&self) -> &Vec<Output> {
+            &self.outputs
+        }
+
+        #[inline(always)]
+        fn outputs_mut(&mut self) -> &mut Vec<Output> {
+            &mut self.outputs
+        }
+
+        #[inline(always)]
+        fn outputs_offset(&self) -> usize {
+            if let Some(CreateMetadata { outputs_offset, .. }) = &self.metadata {
+                return *outputs_offset
+            }
+
+            self.inputs_offset() + self.inputs().iter().map(|i| i.size()).sum::<usize>()
+        }
+
+        #[inline(always)]
+        fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(CreateMetadata {
+                outputs_offset_at: outputs_offset,
+                ..
+            }) = &self.metadata
+            {
+                return outputs_offset.get(idx).cloned()
+            }
+
+            if idx < self.outputs.len() {
+                Some(
+                    self.outputs_offset()
+                        + self
+                            .outputs()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .sum::<usize>(),
                 )
             } else {
                 None
@@ -343,22 +560,52 @@ mod field {
         }
     }
 
-    impl ChargeableBody<CreateBody> for Create {
-        fn body(&self) -> &CreateBody {
-            &self.body
+    impl Witnesses for Create {
+        #[inline(always)]
+        fn witnesses(&self) -> &Vec<Witness> {
+            &self.witnesses
         }
 
-        fn body_mut(&mut self) -> &mut CreateBody {
-            &mut self.body
+        #[inline(always)]
+        fn witnesses_mut(&mut self) -> &mut Vec<Witness> {
+            &mut self.witnesses
         }
 
-        fn body_offset_end(&self) -> usize {
-            Self::storage_slots_offset_static().saturating_add(
-                self.body
-                    .storage_slots
-                    .len()
-                    .saturating_mul(StorageSlot::SLOT_SIZE),
-            )
+        #[inline(always)]
+        fn witnesses_offset(&self) -> usize {
+            if let Some(CreateMetadata {
+                witnesses_offset, ..
+            }) = &self.metadata
+            {
+                return *witnesses_offset
+            }
+
+            self.outputs_offset() + self.outputs().iter().map(|i| i.size()).sum::<usize>()
+        }
+
+        #[inline(always)]
+        fn witnesses_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(CreateMetadata {
+                witnesses_offset_at: witnesses_offset,
+                ..
+            }) = &self.metadata
+            {
+                return witnesses_offset.get(idx).cloned()
+            }
+
+            if idx < self.witnesses.len() {
+                Some(
+                    self.witnesses_offset()
+                        + self
+                            .witnesses()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .sum::<usize>(),
+                )
+            } else {
+                None
+            }
         }
     }
 }
@@ -368,11 +615,7 @@ impl TryFrom<&Create> for Contract {
 
     fn try_from(tx: &Create) -> Result<Self, Self::Error> {
         let Create {
-            body:
-                CreateBody {
-                    bytecode_witness_index,
-                    ..
-                },
+            bytecode_witness_index,
             witnesses,
             ..
         } = tx;
@@ -387,10 +630,7 @@ impl TryFrom<&Create> for Contract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        builder::Finalizable,
-        transaction::validity::FormatValidityChecks,
-    };
+    use crate::builder::Finalizable;
     use fuel_types::Bytes32;
 
     #[test]
@@ -412,7 +652,7 @@ mod tests {
         )
         .add_random_fee_input()
         .finalize();
-        tx.body.storage_slots.reverse();
+        tx.storage_slots.reverse();
 
         let err = tx
             .check(0.into(), &ConsensusParameters::standard())

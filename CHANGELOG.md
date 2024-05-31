@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- [#742](https://github.com/FuelLabs/fuel-vm/pull/742): Modified Sparse Merkle Tree to support generic key sizes. By default, the key size is 32 bytes. 
 - [#732](https://github.com/FuelLabs/fuel-vm/pull/732):  Adds `reset` method to VM memory.
+
 
 #### Breaking
 

@@ -2,6 +2,7 @@ use super::{
     ExecutableTransaction,
     InitialBalances,
     Interpreter,
+    Memory,
     RuntimeBalances,
 };
 use crate::{
@@ -21,8 +22,9 @@ use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
@@ -41,6 +43,7 @@ where
 
         self.frames.clear();
         self.receipts.clear();
+        self.memory_mut().reset();
 
         // Optimized for memset
         self.registers.iter_mut().for_each(|r| *r = 0);
@@ -59,9 +62,9 @@ where
                 let new_ssp = old_ssp
                     .checked_add(data.len() as Word)
                     .expect("VM initialization data must fit into the stack");
-                self.memory.grow_stack(new_ssp)?;
+                self.memory_mut().grow_stack(new_ssp)?;
                 self.registers[RegId::SSP] = new_ssp;
-                self.memory
+                self.memory_mut()
                     .write_noownerchecks(old_ssp, data.len())
                     .expect("VM initialization data must fit into the stack")
                     .copy_from_slice(data);
@@ -89,8 +92,9 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
@@ -108,8 +112,9 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,
     Tx: ExecutableTransaction,

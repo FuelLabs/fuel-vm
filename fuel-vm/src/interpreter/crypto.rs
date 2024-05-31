@@ -8,6 +8,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
+    MemoryInstance,
 };
 use crate::{
     constraints::reg_key::*,
@@ -29,8 +30,9 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn secp256k1_recover(
@@ -41,7 +43,7 @@ where
     ) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        secp256k1_recover(&mut self.memory, owner, err, pc, a, b, c)
+        secp256k1_recover(self.memory.as_mut(), owner, err, pc, a, b, c)
     }
 
     pub(crate) fn secp256r1_recover(
@@ -52,7 +54,7 @@ where
     ) -> SimpleResult<()> {
         let owner = self.ownership_registers();
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        secp256r1_recover(&mut self.memory, owner, err, pc, a, b, c)
+        secp256r1_recover(self.memory.as_mut(), owner, err, pc, a, b, c)
     }
 
     pub(crate) fn ed25519_verify(
@@ -62,22 +64,36 @@ where
         c: Word,
     ) -> SimpleResult<()> {
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        ed25519_verify(&mut self.memory, err, pc, a, b, c)
+        ed25519_verify(self.memory.as_mut(), err, pc, a, b, c)
     }
 
     pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        keccak256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        keccak256(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
     pub(crate) fn sha256(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        sha256(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        sha256(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 }
 
 pub(crate) fn secp256k1_recover(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -106,7 +122,7 @@ pub(crate) fn secp256k1_recover(
 }
 
 pub(crate) fn secp256r1_recover(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
@@ -133,7 +149,7 @@ pub(crate) fn secp256r1_recover(
 }
 
 pub(crate) fn ed25519_verify(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     err: RegMut<ERR>,
     pc: RegMut<PC>,
     a: Word,
@@ -155,7 +171,7 @@ pub(crate) fn ed25519_verify(
 }
 
 pub(crate) fn keccak256(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -175,7 +191,7 @@ pub(crate) fn keccak256(
 }
 
 pub(crate) fn sha256(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,

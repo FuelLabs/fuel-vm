@@ -145,7 +145,8 @@ mod tests {
 
             assert_eq!(idx, runtime.idx());
 
-            let mut interpreter = Interpreter::<_, _>::with_storage(
+            let mut interpreter = Interpreter::<_, _, _>::with_storage(
+                MemoryInstance::new(),
                 PredicateStorage,
                 InterpreterParams::default(),
             );
@@ -279,9 +280,10 @@ mod tests {
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
 
-                let result = Interpreter::<PredicateStorage, Script>::check_predicates(
+                let result = Interpreter::check_predicates(
                     &tx,
                     &CheckPredicateParams::default(),
+                    MemoryInstance::new(),
                 );
 
                 assert_eq!(result.map(|_| ()), expected);

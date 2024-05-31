@@ -13,11 +13,7 @@ use fuel_tx::{
     ScriptExecutionResult,
     TransactionBuilder,
 };
-use fuel_vm::prelude::{
-    Interpreter,
-    IntoChecked,
-    MemoryClient,
-};
+use fuel_vm::prelude::*;
 use itertools::Itertools;
 
 /// An ECAL opcode handler function, which charges for `noop` and does nothing.
@@ -25,8 +21,8 @@ use itertools::Itertools;
 pub struct NoopEcal;
 
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
-    fn ecal<S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -45,7 +41,8 @@ fn noop_ecal() {
     .into_iter()
     .collect();
 
-    let mut client = MemoryClient::<NoopEcal>::new(
+    let mut client = MemoryClient::<_, NoopEcal>::new(
+        MemoryInstance::new(),
         fuel_vm::prelude::MemoryStorage::default(),
         Default::default(),
     );
@@ -72,8 +69,8 @@ pub struct SumProdEcal;
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
-    fn ecal<S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -100,7 +97,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 
 #[test]
 fn provide_ecal_fn() {
-    let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
+    let vm: Interpreter<_, _, Script, SumProdEcal> = Interpreter::with_memory_storage();
 
     let script_data = [
         2u64.to_be_bytes(),

@@ -79,6 +79,7 @@ pub use ecal::{
 };
 pub use memory::{
     Memory,
+    MemoryInstance,
     MemoryRange,
 };
 
@@ -112,9 +113,9 @@ pub struct NotSupportedEcal;
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
+pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Memory,
+    memory: M,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
     tx: Tx,
@@ -202,17 +203,21 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<M: Memory, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the VM memory
-    pub fn memory(&self) -> &Memory {
-        &self.memory
+    pub fn memory(&self) -> &MemoryInstance {
+        self.memory.as_ref()
     }
+}
 
+impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns mutable access to the vm memory
-    pub fn memory_mut(&mut self) -> &mut Memory {
-        &mut self.memory
+    pub fn memory_mut(&mut self) -> &mut MemoryInstance {
+        self.memory.as_mut()
     }
+}
 
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
@@ -344,13 +349,13 @@ fn current_location(
     InstructionLocation::new(current_contract, offset)
 }
 
-impl<S, Tx, Ecal> AsRef<S> for Interpreter<S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<S, Tx, Ecal> AsMut<S> for Interpreter<S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }

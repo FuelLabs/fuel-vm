@@ -4,6 +4,7 @@ use crate::{
     consts::*,
     interpreter::{
         InterpreterParams,
+        Memory,
         NotSupportedEcal,
     },
     prelude::*,
@@ -59,12 +60,14 @@ use rand::{
     SeedableRng,
 };
 
-fn deploy_contract(
-    client: &mut MemoryClient,
+fn deploy_contract<M>(
+    client: &mut MemoryClient<M>,
     contract: Witness,
     salt: Salt,
     storage_slots: Vec<StorageSlot>,
-) {
+) where
+    M: Memory,
+{
     let code_root = Contract::root_from_code(contract.as_ref());
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id =
@@ -532,15 +535,18 @@ fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
     }
 }
 
-fn ldc__gas_cost_for_len(
-    client: &mut MemoryClient,
+fn ldc__gas_cost_for_len<M>(
+    client: &mut MemoryClient<M>,
     rng: &mut StdRng,
     salt: Salt,
     // in number of opcodes
     number_of_opcodes: usize,
     offset: u16,
     len: u16,
-) -> Word {
+) -> Word
+where
+    M: Memory,
+{
     let mut target_contract = vec![];
     for _ in 0..number_of_opcodes {
         target_contract.push(op::noop());
@@ -569,15 +575,18 @@ fn ldc__gas_cost_for_len(
     *actual_gas_used
 }
 
-fn ldc__load_len_of_target_contract<'a>(
-    client: &'a mut MemoryClient,
+fn ldc__load_len_of_target_contract<'a, M>(
+    client: &'a mut MemoryClient<M>,
     rng: &mut StdRng,
     salt: Salt,
     offset: u16,
     len: u16,
     target_contract_witness: Witness,
     include_log_d: bool,
-) -> &'a [Receipt] {
+) -> &'a [Receipt]
+where
+    M: Memory,
+{
     let gas_limit = 1_000_000;
     let maturity = Default::default();
     let height = Default::default();
@@ -707,10 +716,11 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
-    let mut client = MemoryClient::<NotSupportedEcal>::new(
+    let mut client = MemoryClient::<_, NotSupportedEcal>::from_txtor(Transactor::new(
+        MemoryInstance::new(),
         MemoryStorage::default(),
         interpreter_params,
-    );
+    ));
 
     let gas_limit = 1_000_000;
     let maturity = Default::default();

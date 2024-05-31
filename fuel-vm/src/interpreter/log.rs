@@ -7,6 +7,7 @@ use super::{
     ExecutableTransaction,
     Interpreter,
     Memory,
+    MemoryInstance,
 };
 use crate::{
     constraints::reg_key::*,
@@ -20,15 +21,16 @@ use fuel_types::Word;
 #[cfg(test)]
 mod tests;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     Tx: ExecutableTransaction,
 {
     pub(crate) fn log(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             receipts: &mut self.receipts,
             fp: fp.as_ref(),
@@ -48,7 +50,7 @@ where
         let (SystemRegisters { fp, is, pc, .. }, _) =
             split_registers(&mut self.registers);
         let input = LogInput {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             receipts: &mut self.receipts,
             fp: fp.as_ref(),
@@ -60,7 +62,7 @@ where
 }
 
 struct LogInput<'vm> {
-    memory: &'vm mut Memory,
+    memory: &'vm MemoryInstance,
     context: &'vm Context,
     receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,

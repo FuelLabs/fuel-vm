@@ -8,7 +8,7 @@ use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
 {
@@ -68,7 +68,7 @@ fn breakpoint_script() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 
-    let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let gas_price = 0;
@@ -148,7 +148,7 @@ fn single_stepping() {
     use fuel_asm::op;
     use fuel_tx::ConsensusParameters;
 
-    let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
 
     let gas_limit = 1_000_000;
     let height = Default::default();

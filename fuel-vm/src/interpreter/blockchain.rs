@@ -57,6 +57,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     bytes,
+    bytes::padded_len_word,
     Address,
     AssetId,
     BlockHeight,
@@ -102,8 +103,6 @@ where
         // We will charge for the contracts size in the `load_contract_code`.
         self.gas_charge(gas_cost.base())?;
         let contract_max_size = self.contract_max_size();
-        let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let (
             SystemRegisters {
                 cgas,
@@ -119,6 +118,7 @@ where
         ) = split_registers(&mut self.registers);
         let input = LoadContractCodeCtx {
             memory: &mut self.memory,
+            context: &self.context,
             profiler: &mut self.profiler,
             storage: &mut self.storage,
             contract_max_size,
@@ -127,7 +127,6 @@ where
                 &mut self.panic_context,
             ),
             gas_cost,
-            current_contract,
             cgas,
             ggas,
             ssp,
@@ -538,10 +537,10 @@ where
 struct LoadContractCodeCtx<'vm, S, I> {
     contract_max_size: u64,
     memory: &'vm mut Memory,
+    context: &'vm Context,
     profiler: &'vm mut Profiler,
     input_contracts: InputContracts<'vm, I>,
     storage: &'vm S,
-    current_contract: Option<ContractId>,
     gas_cost: DependentCost,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -576,7 +575,6 @@ where
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
-        let fp = *self.fp;
         let region_start = ssp;
 
         if ssp != sp {
@@ -587,6 +585,8 @@ where
         let contract_offset: usize = contract_offset
             .try_into()
             .map_err(|_| PanicReason::MemoryOverflow)?;
+
+        let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
         let length = bytes::padded_len_usize(
             length_unpadded
@@ -612,7 +612,7 @@ where
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
-            current_contract: self.current_contract,
+            current_contract,
             profiler: self.profiler,
         };
         dependent_gas_charge_without_base(
@@ -636,19 +636,20 @@ where
             length,
         )?;
 
-        // Update frame pointer, if we have a stack frame (e.g. fp > 0)
-        if fp > 0 {
-            let size = CallFrame::code_size_offset().saturating_add(WORD_SIZE);
-
-            let old_code_size = Word::from_be_bytes(self.memory.read_bytes(fp)?);
-
+        // Update frame code size, if we have a stack frame (i.e. fp > 0)
+        if self.context.is_internal() {
+            let code_size_ptr =
+                (*self.fp).saturating_add(CallFrame::code_size_offset() as Word);
+            let old_code_size =
+                Word::from_be_bytes(self.memory.read_bytes(code_size_ptr)?);
+            let old_code_size = padded_len_word(old_code_size)
+                .expect("Code size cannot overflow with padding");
             let new_code_size = old_code_size
                 .checked_add(length as Word)
                 .ok_or(PanicReason::MemoryOverflow)?;
 
             self.memory
-                .write_noownerchecks(fp, size)?
-                .copy_from_slice(&new_code_size.to_be_bytes());
+                .write_bytes_noownerchecks(code_size_ptr, new_code_size.to_be_bytes())?;
         }
 
         inc_pc(self.pc)?;

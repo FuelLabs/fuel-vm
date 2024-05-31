@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732):  Adds `reset` method to VM memory.
+
+#### Breaking
+
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732): Makes the VM generic over the memory type, allowing reuse of relatively expensive-to-allocate VM memories through `VmMemoryPool`. Functions and traits which require VM initalization such as `estimate_predicates` now take either the memory or `VmMemoryPool` as an argument. The `Interpterter::eq` method now only compares accessible memory regions. `Memory` was renamed into `MemoryInstance` and `Memory` is a trait now.
+
+
 ## [Version 0.50.0]
 
 ### Changed
@@ -16,13 +25,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- [#732](https://github.com/FuelLabs/fuel-vm/pull/732):  Adds `reset` method to VM memory.
-
 #### Breaking
 
 - [#725](https://github.com/FuelLabs/fuel-vm/pull/725): `UtxoId::from_str` now rejects inputs with multiple `0x` prefixes. Many `::from_str` implementations also reject extra data in the end of the input, instead of silently ignoring it. `UtxoId::from_str` allows a single `:` between the fields. Unused `GasUnit` struct removed.
 - [#726](https://github.com/FuelLabs/fuel-vm/pull/726): Removed code related to Binary Merkle Sum Trees (BMSTs). The BMST is deprecated and not used in production environments. 
-- [#732](https://github.com/FuelLabs/fuel-vm/pull/732): Makes the VM generic over the memory type, allowing reuse of relatively expensive-to-allocate VM memories through `VmMemoryPool`. Functions and traits which require VM initalization such as `estimate_predicates` now take either the memory or `VmMemoryPool` as an argument. The `Interpterter::eq` method now only compares accessible memory regions.
 - [#729](https://github.com/FuelLabs/fuel-vm/pull/729): Removed default implementation of `Node::key_size_bits`, implementors must now define it themselves. Also some helper traits have been merged together, or their types changed.
 ### Fixed
 

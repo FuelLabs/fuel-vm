@@ -2,10 +2,12 @@
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
 #[cfg(any(test, feature = "test-helpers"))]
-use super::ExecutableTransaction;
+use super::{
+    ExecutableTransaction,
+    MemoryInstance,
+};
 use super::{
     Interpreter,
-    MemoryInstance,
     RuntimeBalances,
 };
 use crate::{

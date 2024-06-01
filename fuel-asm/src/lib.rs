@@ -49,26 +49,31 @@ pub use panic_reason::PanicReason;
 
 /// Represents a 6-bit register ID, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct RegId(u8);
 
 /// Represents a 6-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm06(u8);
 
 /// Represents a 12-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm12(u16);
 
 /// Represents a 18-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm18(u32);
 
 /// Represents a 24-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Imm24(u32);
 
@@ -344,7 +349,7 @@ impl_instructions! {
 
 impl Instruction {
     /// Size of an instruction in bytes
-    pub const SIZE: usize = core::mem::size_of::<Instruction>();
+    pub const SIZE: usize = 4;
 
     /// Convenience method for converting to bytes
     pub fn to_bytes(self) -> [u8; 4] {
@@ -965,12 +970,7 @@ fn test_instruction_size() {
     // arrived at this assertion, ensure that you also revisit all sites where
     // `Instruction::SIZE` is used and make sure we're using the right value
     // (in most cases, the right value is `core::mem::size_of::<RawInstruction>()`).
-    assert_eq!(
-        core::mem::size_of::<Instruction>(),
-        core::mem::size_of::<RawInstruction>()
-    );
-
-    assert_eq!(core::mem::size_of::<Instruction>(), Instruction::SIZE);
+    assert_eq!(Instruction::SIZE, core::mem::size_of::<RawInstruction>());
 }
 
 // The size of the opcode is exactly one byte.

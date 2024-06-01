@@ -108,7 +108,7 @@ where
         match instruction {
             Instruction::ADD(add) => {
                 self.gas_charge(self.gas_costs().add())?;
-                let (a, b, c) = add.unpack();
+                let (a, b, c) = add.into_parts();
                 self.alu_capture_overflow(
                     a.into(),
                     u128::overflowing_add,
@@ -119,7 +119,7 @@ where
 
             Instruction::ADDI(addi) => {
                 self.gas_charge(self.gas_costs().addi())?;
-                let (a, b, imm) = addi.unpack();
+                let (a, b, imm) = addi.into_parts();
                 self.alu_capture_overflow(
                     a.into(),
                     u128::overflowing_add,
@@ -130,64 +130,64 @@ where
 
             Instruction::AND(and) => {
                 self.gas_charge(self.gas_costs().and())?;
-                let (a, b, c) = and.unpack();
+                let (a, b, c) = and.into_parts();
                 self.alu_set(a.into(), r!(b) & r!(c))?;
             }
 
             Instruction::ANDI(andi) => {
                 self.gas_charge(self.gas_costs().andi())?;
-                let (a, b, imm) = andi.unpack();
+                let (a, b, imm) = andi.into_parts();
                 self.alu_set(a.into(), r!(b) & Word::from(imm))?;
             }
 
             Instruction::DIV(div) => {
                 self.gas_charge(self.gas_costs().div())?;
-                let (a, b, c) = div.unpack();
+                let (a, b, c) = div.into_parts();
                 let c = r!(c);
                 self.alu_error(a.into(), Word::div, r!(b), c, c == 0)?;
             }
 
             Instruction::DIVI(divi) => {
                 self.gas_charge(self.gas_costs().divi())?;
-                let (a, b, imm) = divi.unpack();
+                let (a, b, imm) = divi.into_parts();
                 let imm = Word::from(imm);
                 self.alu_error(a.into(), Word::div, r!(b), imm, imm == 0)?;
             }
 
             Instruction::EQ(eq) => {
                 self.gas_charge(self.gas_costs().eq_())?;
-                let (a, b, c) = eq.unpack();
+                let (a, b, c) = eq.into_parts();
                 self.alu_set(a.into(), (r!(b) == r!(c)) as Word)?;
             }
 
             Instruction::EXP(exp) => {
                 self.gas_charge(self.gas_costs().exp())?;
-                let (a, b, c) = exp.unpack();
+                let (a, b, c) = exp.into_parts();
                 self.alu_boolean_overflow(a.into(), alu::exp, r!(b), r!(c))?;
             }
 
             Instruction::EXPI(expi) => {
                 self.gas_charge(self.gas_costs().expi())?;
-                let (a, b, imm) = expi.unpack();
+                let (a, b, imm) = expi.into_parts();
                 let expo = u32::from(imm);
                 self.alu_boolean_overflow(a.into(), Word::overflowing_pow, r!(b), expo)?;
             }
 
             Instruction::GT(gt) => {
                 self.gas_charge(self.gas_costs().gt())?;
-                let (a, b, c) = gt.unpack();
+                let (a, b, c) = gt.into_parts();
                 self.alu_set(a.into(), (r!(b) > r!(c)) as Word)?;
             }
 
             Instruction::LT(lt) => {
                 self.gas_charge(self.gas_costs().lt())?;
-                let (a, b, c) = lt.unpack();
+                let (a, b, c) = lt.into_parts();
                 self.alu_set(a.into(), (r!(b) < r!(c)) as Word)?;
             }
 
             Instruction::WDCM(wdcm) => {
                 self.gas_charge(self.gas_costs().wdcm())?;
-                let (a, b, c, imm) = wdcm.unpack();
+                let (a, b, c, imm) = wdcm.into_parts();
                 let args = wideint::CompareArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u128(a.into(), r!(b), r!(c), args)?;
@@ -195,7 +195,7 @@ where
 
             Instruction::WQCM(wdcm) => {
                 self.gas_charge(self.gas_costs().wqcm())?;
-                let (a, b, c, imm) = wdcm.unpack();
+                let (a, b, c, imm) = wdcm.into_parts();
                 let args = wideint::CompareArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u256(a.into(), r!(b), r!(c), args)?;
@@ -203,7 +203,7 @@ where
 
             Instruction::WDOP(wdop) => {
                 self.gas_charge(self.gas_costs().wdcm())?;
-                let (a, b, c, imm) = wdop.unpack();
+                let (a, b, c, imm) = wdop.into_parts();
                 let args = wideint::MathArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_op_u128(r!(a), r!(b), r!(c), args)?;
@@ -211,7 +211,7 @@ where
 
             Instruction::WQOP(wqop) => {
                 self.gas_charge(self.gas_costs().wqcm())?;
-                let (a, b, c, imm) = wqop.unpack();
+                let (a, b, c, imm) = wqop.into_parts();
                 let args = wideint::MathArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_op_u256(r!(a), r!(b), r!(c), args)?;
@@ -219,7 +219,7 @@ where
 
             Instruction::WDML(wdml) => {
                 self.gas_charge(self.gas_costs().wdml())?;
-                let (a, b, c, imm) = wdml.unpack();
+                let (a, b, c, imm) = wdml.into_parts();
                 let args = wideint::MulArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_mul_u128(r!(a), r!(b), r!(c), args)?;
@@ -227,7 +227,7 @@ where
 
             Instruction::WQML(wqml) => {
                 self.gas_charge(self.gas_costs().wqml())?;
-                let (a, b, c, imm) = wqml.unpack();
+                let (a, b, c, imm) = wqml.into_parts();
                 let args = wideint::MulArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_mul_u256(r!(a), r!(b), r!(c), args)?;
@@ -235,7 +235,7 @@ where
 
             Instruction::WDDV(wddv) => {
                 self.gas_charge(self.gas_costs().wddv())?;
-                let (a, b, c, imm) = wddv.unpack();
+                let (a, b, c, imm) = wddv.into_parts();
                 let args = wideint::DivArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_div_u128(r!(a), r!(b), r!(c), args)?;
@@ -243,7 +243,7 @@ where
 
             Instruction::WQDV(wqdv) => {
                 self.gas_charge(self.gas_costs().wqdv())?;
-                let (a, b, c, imm) = wqdv.unpack();
+                let (a, b, c, imm) = wqdv.into_parts();
                 let args = wideint::DivArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_div_u256(r!(a), r!(b), r!(c), args)?;
@@ -251,40 +251,40 @@ where
 
             Instruction::WDMD(wdmd) => {
                 self.gas_charge(self.gas_costs().wdmd())?;
-                let (a, b, c, d) = wdmd.unpack();
+                let (a, b, c, d) = wdmd.into_parts();
                 self.alu_wideint_muldiv_u128(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::WQMD(wqmd) => {
                 self.gas_charge(self.gas_costs().wqmd())?;
-                let (a, b, c, d) = wqmd.unpack();
+                let (a, b, c, d) = wqmd.into_parts();
                 self.alu_wideint_muldiv_u256(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::WDAM(wdam) => {
                 self.gas_charge(self.gas_costs().wdam())?;
-                let (a, b, c, d) = wdam.unpack();
+                let (a, b, c, d) = wdam.into_parts();
                 self.alu_wideint_addmod_u128(r!(a), r!(b), r!(c), r!(d))?;
             }
             Instruction::WQAM(wqam) => {
                 self.gas_charge(self.gas_costs().wqam())?;
-                let (a, b, c, d) = wqam.unpack();
+                let (a, b, c, d) = wqam.into_parts();
                 self.alu_wideint_addmod_u256(r!(a), r!(b), r!(c), r!(d))?;
             }
             Instruction::WDMM(wdmm) => {
                 self.gas_charge(self.gas_costs().wdmm())?;
-                let (a, b, c, d) = wdmm.unpack();
+                let (a, b, c, d) = wdmm.into_parts();
                 self.alu_wideint_mulmod_u128(r!(a), r!(b), r!(c), r!(d))?;
             }
             Instruction::WQMM(wqmm) => {
                 self.gas_charge(self.gas_costs().wqmm())?;
-                let (a, b, c, d) = wqmm.unpack();
+                let (a, b, c, d) = wqmm.into_parts();
                 self.alu_wideint_mulmod_u256(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::MLOG(mlog) => {
                 self.gas_charge(self.gas_costs().mlog())?;
-                let (a, b, c) = mlog.unpack();
+                let (a, b, c) = mlog.into_parts();
                 let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
                     a.into(),
@@ -301,33 +301,33 @@ where
 
             Instruction::MOD(mod_) => {
                 self.gas_charge(self.gas_costs().mod_op())?;
-                let (a, b, c) = mod_.unpack();
+                let (a, b, c) = mod_.into_parts();
                 let rhs = r!(c);
                 self.alu_error(a.into(), Word::wrapping_rem, r!(b), rhs, rhs == 0)?;
             }
 
             Instruction::MODI(modi) => {
                 self.gas_charge(self.gas_costs().modi())?;
-                let (a, b, imm) = modi.unpack();
+                let (a, b, imm) = modi.into_parts();
                 let rhs = Word::from(imm);
                 self.alu_error(a.into(), Word::wrapping_rem, r!(b), rhs, rhs == 0)?;
             }
 
             Instruction::MOVE(move_) => {
                 self.gas_charge(self.gas_costs().move_op())?;
-                let (a, b) = move_.unpack();
+                let (a, b) = move_.into_parts();
                 self.alu_set(a.into(), r!(b))?;
             }
 
             Instruction::MOVI(movi) => {
                 self.gas_charge(self.gas_costs().movi())?;
-                let (a, imm) = movi.unpack();
+                let (a, imm) = movi.into_parts();
                 self.alu_set(a.into(), Word::from(imm))?;
             }
 
             Instruction::MROO(mroo) => {
                 self.gas_charge(self.gas_costs().mroo())?;
-                let (a, b, c) = mroo.unpack();
+                let (a, b, c) = mroo.into_parts();
                 let (lhs, rhs) = (r!(b), r!(c));
                 self.alu_error(
                     a.into(),
@@ -344,7 +344,7 @@ where
 
             Instruction::MUL(mul) => {
                 self.gas_charge(self.gas_costs().mul())?;
-                let (a, b, c) = mul.unpack();
+                let (a, b, c) = mul.into_parts();
                 self.alu_capture_overflow(
                     a.into(),
                     u128::overflowing_mul,
@@ -355,7 +355,7 @@ where
 
             Instruction::MULI(muli) => {
                 self.gas_charge(self.gas_costs().muli())?;
-                let (a, b, imm) = muli.unpack();
+                let (a, b, imm) = muli.into_parts();
                 self.alu_capture_overflow(
                     a.into(),
                     u128::overflowing_mul,
@@ -366,7 +366,7 @@ where
 
             Instruction::MLDV(mldv) => {
                 self.gas_charge(self.gas_costs().mldv())?;
-                let (a, b, c, d) = mldv.unpack();
+                let (a, b, c, d) = mldv.into_parts();
                 self.alu_muldiv(a.into(), r!(b), r!(c), r!(d))?;
             }
 
@@ -377,25 +377,25 @@ where
 
             Instruction::NOT(not) => {
                 self.gas_charge(self.gas_costs().not())?;
-                let (a, b) = not.unpack();
+                let (a, b) = not.into_parts();
                 self.alu_set(a.into(), !r!(b))?;
             }
 
             Instruction::OR(or) => {
                 self.gas_charge(self.gas_costs().or())?;
-                let (a, b, c) = or.unpack();
+                let (a, b, c) = or.into_parts();
                 self.alu_set(a.into(), r!(b) | r!(c))?;
             }
 
             Instruction::ORI(ori) => {
                 self.gas_charge(self.gas_costs().ori())?;
-                let (a, b, imm) = ori.unpack();
+                let (a, b, imm) = ori.into_parts();
                 self.alu_set(a.into(), r!(b) | Word::from(imm))?;
             }
 
             Instruction::SLL(sll) => {
                 self.gas_charge(self.gas_costs().sll())?;
-                let (a, b, c) = sll.unpack();
+                let (a, b, c) = sll.into_parts();
 
                 self.alu_set(
                     a.into(),
@@ -409,14 +409,14 @@ where
 
             Instruction::SLLI(slli) => {
                 self.gas_charge(self.gas_costs().slli())?;
-                let (a, b, imm) = slli.unpack();
+                let (a, b, imm) = slli.into_parts();
                 let rhs = u32::from(imm);
                 self.alu_set(a.into(), r!(b).checked_shl(rhs).unwrap_or_default())?;
             }
 
             Instruction::SRL(srl) => {
                 self.gas_charge(self.gas_costs().srl())?;
-                let (a, b, c) = srl.unpack();
+                let (a, b, c) = srl.into_parts();
                 self.alu_set(
                     a.into(),
                     if let Ok(c) = r!(c).try_into() {
@@ -429,14 +429,14 @@ where
 
             Instruction::SRLI(srli) => {
                 self.gas_charge(self.gas_costs().srli())?;
-                let (a, b, imm) = srli.unpack();
+                let (a, b, imm) = srli.into_parts();
                 let rhs = u32::from(imm);
                 self.alu_set(a.into(), r!(b).checked_shr(rhs).unwrap_or_default())?;
             }
 
             Instruction::SUB(sub) => {
                 self.gas_charge(self.gas_costs().sub())?;
-                let (a, b, c) = sub.unpack();
+                let (a, b, c) = sub.into_parts();
                 self.alu_capture_overflow(
                     a.into(),
                     u128::overflowing_sub,
@@ -447,7 +447,7 @@ where
 
             Instruction::SUBI(subi) => {
                 self.gas_charge(self.gas_costs().subi())?;
-                let (a, b, imm) = subi.unpack();
+                let (a, b, imm) = subi.into_parts();
                 self.alu_capture_overflow(
                     a.into(),
                     u128::overflowing_sub,
@@ -458,25 +458,25 @@ where
 
             Instruction::XOR(xor) => {
                 self.gas_charge(self.gas_costs().xor())?;
-                let (a, b, c) = xor.unpack();
+                let (a, b, c) = xor.into_parts();
                 self.alu_set(a.into(), r!(b) ^ r!(c))?;
             }
 
             Instruction::XORI(xori) => {
                 self.gas_charge(self.gas_costs().xori())?;
-                let (a, b, imm) = xori.unpack();
+                let (a, b, imm) = xori.into_parts();
                 self.alu_set(a.into(), r!(b) ^ Word::from(imm))?;
             }
 
             Instruction::JI(ji) => {
                 self.gas_charge(self.gas_costs().ji())?;
-                let imm = ji.unpack();
+                let imm = ji.into_parts();
                 self.jump(JumpArgs::new(JumpMode::Absolute).to_address(imm.into()))?;
             }
 
             Instruction::JNEI(jnei) => {
                 self.gas_charge(self.gas_costs().jnei())?;
-                let (a, b, imm) = jnei.unpack();
+                let (a, b, imm) = jnei.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::Absolute)
                         .with_condition(r!(a) != r!(b))
@@ -486,7 +486,7 @@ where
 
             Instruction::JNZI(jnzi) => {
                 self.gas_charge(self.gas_costs().jnzi())?;
-                let (a, imm) = jnzi.unpack();
+                let (a, imm) = jnzi.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::Absolute)
                         .with_condition(r!(a) != 0)
@@ -496,13 +496,13 @@ where
 
             Instruction::JMP(jmp) => {
                 self.gas_charge(self.gas_costs().jmp())?;
-                let a = jmp.unpack();
+                let a = jmp.into_parts();
                 self.jump(JumpArgs::new(JumpMode::Absolute).to_address(r!(a)))?;
             }
 
             Instruction::JNE(jne) => {
                 self.gas_charge(self.gas_costs().jne())?;
-                let (a, b, c) = jne.unpack();
+                let (a, b, c) = jne.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::Absolute)
                         .with_condition(r!(a) != r!(b))
@@ -512,7 +512,7 @@ where
 
             Instruction::JMPF(jmpf) => {
                 self.gas_charge(self.gas_costs().jmpf())?;
-                let (a, offset) = jmpf.unpack();
+                let (a, offset) = jmpf.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::RelativeForwards)
                         .to_address(r!(a))
@@ -522,7 +522,7 @@ where
 
             Instruction::JMPB(jmpb) => {
                 self.gas_charge(self.gas_costs().jmpb())?;
-                let (a, offset) = jmpb.unpack();
+                let (a, offset) = jmpb.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::RelativeBackwards)
                         .to_address(r!(a))
@@ -532,7 +532,7 @@ where
 
             Instruction::JNZF(jnzf) => {
                 self.gas_charge(self.gas_costs().jnzf())?;
-                let (a, b, offset) = jnzf.unpack();
+                let (a, b, offset) = jnzf.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::RelativeForwards)
                         .with_condition(r!(a) != 0)
@@ -543,7 +543,7 @@ where
 
             Instruction::JNZB(jnzb) => {
                 self.gas_charge(self.gas_costs().jnzb())?;
-                let (a, b, offset) = jnzb.unpack();
+                let (a, b, offset) = jnzb.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::RelativeBackwards)
                         .with_condition(r!(a) != 0)
@@ -554,7 +554,7 @@ where
 
             Instruction::JNEF(jnef) => {
                 self.gas_charge(self.gas_costs().jnef())?;
-                let (a, b, c, offset) = jnef.unpack();
+                let (a, b, c, offset) = jnef.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::RelativeForwards)
                         .with_condition(r!(a) != r!(b))
@@ -565,7 +565,7 @@ where
 
             Instruction::JNEB(jneb) => {
                 self.gas_charge(self.gas_costs().jneb())?;
-                let (a, b, c, offset) = jneb.unpack();
+                let (a, b, c, offset) = jneb.into_parts();
                 self.jump(
                     JumpArgs::new(JumpMode::RelativeBackwards)
                         .with_condition(r!(a) != r!(b))
@@ -576,14 +576,14 @@ where
 
             Instruction::RET(ret) => {
                 self.gas_charge(self.gas_costs().ret())?;
-                let a = ret.unpack();
+                let a = ret.into_parts();
                 let ra = r!(a);
                 self.ret(ra)?;
                 return Ok(ExecuteState::Return(ra))
             }
 
             Instruction::RETD(retd) => {
-                let (a, b) = retd.unpack();
+                let (a, b) = retd.into_parts();
                 let len = r!(b);
                 self.dependent_gas_charge(self.gas_costs().retd(), len)?;
                 return Ok(self.ret_data(r!(a), len).map(ExecuteState::ReturnData)?)
@@ -591,114 +591,114 @@ where
 
             Instruction::RVRT(rvrt) => {
                 self.gas_charge(self.gas_costs().rvrt())?;
-                let a = rvrt.unpack();
+                let a = rvrt.into_parts();
                 let ra = r!(a);
                 self.revert(ra)?;
                 return Ok(ExecuteState::Revert(ra))
             }
 
             Instruction::SMO(smo) => {
-                let (a, b, c, d) = smo.unpack();
+                let (a, b, c, d) = smo.into_parts();
                 self.dependent_gas_charge(self.gas_costs().smo(), r!(c))?;
                 self.message_output(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::ALOC(aloc) => {
                 self.gas_charge(self.gas_costs().aloc())?;
-                let a = aloc.unpack();
+                let a = aloc.into_parts();
                 self.malloc(r!(a))?;
             }
 
             Instruction::CFEI(cfei) => {
                 self.gas_charge(self.gas_costs().cfei())?;
-                let imm = cfei.unpack();
+                let imm = cfei.into_parts();
                 self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
             }
 
             Instruction::CFE(cfe) => {
                 self.gas_charge(self.gas_costs().cfei())?;
-                let a = cfe.unpack();
+                let a = cfe.into_parts();
                 self.stack_pointer_overflow(Word::overflowing_add, r!(a))?;
             }
 
             Instruction::CFSI(cfsi) => {
                 self.gas_charge(self.gas_costs().cfsi())?;
-                let imm = cfsi.unpack();
+                let imm = cfsi.into_parts();
                 self.stack_pointer_overflow(Word::overflowing_sub, imm.into())?;
             }
 
             Instruction::CFS(cfs) => {
                 self.gas_charge(self.gas_costs().cfsi())?;
-                let a = cfs.unpack();
+                let a = cfs.into_parts();
                 self.stack_pointer_overflow(Word::overflowing_sub, r!(a))?;
             }
 
             Instruction::PSHL(pshl) => {
                 self.gas_charge(self.gas_costs().pshl())?;
-                let bitmask = pshl.unpack();
+                let bitmask = pshl.into_parts();
                 self.push_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
             }
 
             Instruction::PSHH(pshh) => {
                 self.gas_charge(self.gas_costs().pshh())?;
-                let bitmask = pshh.unpack();
+                let bitmask = pshh.into_parts();
                 self.push_selected_registers(ProgramRegistersSegment::High, bitmask)?;
             }
 
             Instruction::POPL(popl) => {
                 self.gas_charge(self.gas_costs().popl())?;
-                let bitmask = popl.unpack();
+                let bitmask = popl.into_parts();
                 self.pop_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
             }
 
             Instruction::POPH(poph) => {
                 self.gas_charge(self.gas_costs().poph())?;
-                let bitmask = poph.unpack();
+                let bitmask = poph.into_parts();
                 self.pop_selected_registers(ProgramRegistersSegment::High, bitmask)?;
             }
 
             Instruction::LB(lb) => {
                 self.gas_charge(self.gas_costs().lb())?;
-                let (a, b, imm) = lb.unpack();
+                let (a, b, imm) = lb.into_parts();
                 self.load_byte(a.into(), r!(b), imm.into())?;
             }
 
             Instruction::LW(lw) => {
                 self.gas_charge(self.gas_costs().lw())?;
-                let (a, b, imm) = lw.unpack();
+                let (a, b, imm) = lw.into_parts();
                 self.load_word(a.into(), r!(b), imm)?;
             }
 
             Instruction::MCL(mcl) => {
-                let (a, b) = mcl.unpack();
+                let (a, b) = mcl.into_parts();
                 let len = r!(b);
                 self.dependent_gas_charge(self.gas_costs().mcl(), len)?;
                 self.memclear(r!(a), len)?;
             }
 
             Instruction::MCLI(mcli) => {
-                let (a, imm) = mcli.unpack();
+                let (a, imm) = mcli.into_parts();
                 let len = Word::from(imm);
                 self.dependent_gas_charge(self.gas_costs().mcli(), len)?;
                 self.memclear(r!(a), len)?;
             }
 
             Instruction::MCP(mcp) => {
-                let (a, b, c) = mcp.unpack();
+                let (a, b, c) = mcp.into_parts();
                 let len = r!(c);
                 self.dependent_gas_charge(self.gas_costs().mcp(), len)?;
                 self.memcopy(r!(a), r!(b), len)?;
             }
 
             Instruction::MCPI(mcpi) => {
-                let (a, b, imm) = mcpi.unpack();
+                let (a, b, imm) = mcpi.into_parts();
                 let len = imm.into();
                 self.dependent_gas_charge(self.gas_costs().mcpi(), len)?;
                 self.memcopy(r!(a), r!(b), len)?;
             }
 
             Instruction::MEQ(meq) => {
-                let (a, b, c, d) = meq.unpack();
+                let (a, b, c, d) = meq.into_parts();
                 let len = r!(d);
                 self.dependent_gas_charge(self.gas_costs().meq(), len)?;
                 self.memeq(a.into(), r!(b), r!(c), len)?;
@@ -706,43 +706,43 @@ where
 
             Instruction::SB(sb) => {
                 self.gas_charge(self.gas_costs().sb())?;
-                let (a, b, imm) = sb.unpack();
+                let (a, b, imm) = sb.into_parts();
                 self.store_byte(r!(a), r!(b), imm.into())?;
             }
 
             Instruction::SW(sw) => {
                 self.gas_charge(self.gas_costs().sw())?;
-                let (a, b, imm) = sw.unpack();
+                let (a, b, imm) = sw.into_parts();
                 self.store_word(r!(a), r!(b), imm)?;
             }
 
             Instruction::BAL(bal) => {
                 self.gas_charge(self.gas_costs().bal())?;
-                let (a, b, c) = bal.unpack();
+                let (a, b, c) = bal.into_parts();
                 self.contract_balance(a.into(), r!(b), r!(c))?;
             }
 
             Instruction::BHEI(bhei) => {
                 self.gas_charge(self.gas_costs().bhei())?;
-                let a = bhei.unpack();
+                let a = bhei.into_parts();
                 self.block_height(a.into())?;
             }
 
             Instruction::BHSH(bhsh) => {
                 self.gas_charge(self.gas_costs().bhsh())?;
-                let (a, b) = bhsh.unpack();
+                let (a, b) = bhsh.into_parts();
                 self.block_hash(r!(a), r!(b))?;
             }
 
             Instruction::BURN(burn) => {
                 self.gas_charge(self.gas_costs().burn())?;
-                let (a, b) = burn.unpack();
+                let (a, b) = burn.into_parts();
                 self.burn(r!(a), r!(b))?;
             }
 
             Instruction::CALL(call) => {
                 // We charge for the gas inside of the `prepare_call` function.
-                let (a, b, c, d) = call.unpack();
+                let (a, b, c, d) = call.into_parts();
 
                 // Enter call context
                 self.prepare_call(a, b, c, d)?;
@@ -750,113 +750,113 @@ where
 
             Instruction::CB(cb) => {
                 self.gas_charge(self.gas_costs().cb())?;
-                let a = cb.unpack();
+                let a = cb.into_parts();
                 self.block_proposer(r!(a))?;
             }
 
             Instruction::CCP(ccp) => {
-                let (a, b, c, d) = ccp.unpack();
+                let (a, b, c, d) = ccp.into_parts();
                 self.code_copy(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::CROO(croo) => {
-                let (a, b) = croo.unpack();
+                let (a, b) = croo.into_parts();
                 self.code_root(r!(a), r!(b))?;
             }
 
             Instruction::CSIZ(csiz) => {
                 // We charge for the gas inside of the `code_size` function.
-                let (a, b) = csiz.unpack();
+                let (a, b) = csiz.into_parts();
                 self.code_size(a.into(), r!(b))?;
             }
 
             Instruction::LDC(ldc) => {
                 // We charge for the gas inside of the `load_contract_code` function.
-                let (a, b, c) = ldc.unpack();
+                let (a, b, c) = ldc.into_parts();
                 self.load_contract_code(r!(a), r!(b), r!(c))?;
             }
 
             Instruction::LOG(log) => {
                 self.gas_charge(self.gas_costs().log())?;
-                let (a, b, c, d) = log.unpack();
+                let (a, b, c, d) = log.into_parts();
                 self.log(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::LOGD(logd) => {
-                let (a, b, c, d) = logd.unpack();
+                let (a, b, c, d) = logd.into_parts();
                 self.dependent_gas_charge(self.gas_costs().logd(), r!(d))?;
                 self.log_data(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::MINT(mint) => {
                 self.gas_charge(self.gas_costs().mint())?;
-                let (a, b) = mint.unpack();
+                let (a, b) = mint.into_parts();
                 self.mint(r!(a), r!(b))?;
             }
 
             Instruction::SCWQ(scwq) => {
-                let (a, b, c) = scwq.unpack();
+                let (a, b, c) = scwq.into_parts();
                 self.dependent_gas_charge(self.gas_costs().scwq(), r!(c))?;
                 self.state_clear_qword(r!(a), b.into(), r!(c))?;
             }
 
             Instruction::SRW(srw) => {
                 self.gas_charge(self.gas_costs().srw())?;
-                let (a, b, c) = srw.unpack();
+                let (a, b, c) = srw.into_parts();
                 self.state_read_word(a.into(), b.into(), r!(c))?;
             }
 
             Instruction::SRWQ(srwq) => {
-                let (a, b, c, d) = srwq.unpack();
+                let (a, b, c, d) = srwq.into_parts();
                 self.dependent_gas_charge(self.gas_costs().srwq(), r!(d))?;
                 self.state_read_qword(r!(a), b.into(), r!(c), r!(d))?;
             }
 
             Instruction::SWW(sww) => {
                 self.gas_charge(self.gas_costs().sww())?;
-                let (a, b, c) = sww.unpack();
+                let (a, b, c) = sww.into_parts();
                 self.state_write_word(r!(a), b.into(), r!(c))?;
             }
 
             Instruction::SWWQ(swwq) => {
-                let (a, b, c, d) = swwq.unpack();
+                let (a, b, c, d) = swwq.into_parts();
                 self.dependent_gas_charge(self.gas_costs().swwq(), r!(d))?;
                 self.state_write_qword(r!(a), b.into(), r!(c), r!(d))?;
             }
 
             Instruction::TIME(time) => {
                 self.gas_charge(self.gas_costs().time())?;
-                let (a, b) = time.unpack();
+                let (a, b) = time.into_parts();
                 self.timestamp(a.into(), r!(b))?;
             }
 
             Instruction::ECK1(eck1) => {
                 self.gas_charge(self.gas_costs().eck1())?;
-                let (a, b, c) = eck1.unpack();
+                let (a, b, c) = eck1.into_parts();
                 self.secp256k1_recover(r!(a), r!(b), r!(c))?;
             }
 
             Instruction::ECR1(ecr1) => {
                 self.gas_charge(self.gas_costs().ecr1())?;
-                let (a, b, c) = ecr1.unpack();
+                let (a, b, c) = ecr1.into_parts();
                 self.secp256r1_recover(r!(a), r!(b), r!(c))?;
             }
 
             Instruction::ED19(ed19) => {
                 self.gas_charge(self.gas_costs().ed19())?;
-                let (a, b, c) = ed19.unpack();
+                let (a, b, c) = ed19.into_parts();
                 self.ed25519_verify(r!(a), r!(b), r!(c))?;
             }
 
             Instruction::K256(k256) => {
-                let (a, b, c) = k256.unpack();
+                let (a, b, c) = k256.into_parts();
                 let len = r!(c);
                 self.dependent_gas_charge(self.gas_costs().k256(), len)?;
                 self.keccak256(r!(a), r!(b), len)?;
             }
 
             Instruction::S256(s256) => {
-                let (a, b, c) = s256.unpack();
+                let (a, b, c) = s256.into_parts();
                 let len = r!(c);
                 self.dependent_gas_charge(self.gas_costs().s256(), len)?;
                 self.sha256(r!(a), r!(b), len)?;
@@ -864,36 +864,36 @@ where
 
             Instruction::FLAG(flag) => {
                 self.gas_charge(self.gas_costs().flag())?;
-                let a = flag.unpack();
+                let a = flag.into_parts();
                 self.set_flag(r!(a))?;
             }
 
             Instruction::GM(gm) => {
                 self.gas_charge(self.gas_costs().gm())?;
-                let (a, imm) = gm.unpack();
+                let (a, imm) = gm.into_parts();
                 self.metadata(a.into(), imm.into())?;
             }
 
             Instruction::GTF(gtf) => {
                 self.gas_charge(self.gas_costs().gtf())?;
-                let (a, b, imm) = gtf.unpack();
+                let (a, b, imm) = gtf.into_parts();
                 self.get_transaction_field(a.into(), r!(b), imm.into())?;
             }
 
             Instruction::TR(tr) => {
                 self.gas_charge(self.gas_costs().tr())?;
-                let (a, b, c) = tr.unpack();
+                let (a, b, c) = tr.into_parts();
                 self.transfer(r!(a), r!(b), r!(c))?;
             }
 
             Instruction::TRO(tro) => {
                 self.gas_charge(self.gas_costs().tro())?;
-                let (a, b, c, d) = tro.unpack();
+                let (a, b, c, d) = tro.into_parts();
                 self.transfer_output(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::ECAL(ecal) => {
-                let (a, b, c, d) = ecal.unpack();
+                let (a, b, c, d) = ecal.into_parts();
                 self.external_call(a, b, c, d)?;
             }
         }

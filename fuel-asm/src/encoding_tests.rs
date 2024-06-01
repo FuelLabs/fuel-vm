@@ -54,29 +54,6 @@ fn opcode() {
 }
 
 #[test]
-fn invalid_reserved_part() {
-    // Args: 0
-    Instruction::try_from([Opcode::NOOP as u8, 0, 0, 0]).unwrap();
-    Instruction::try_from([Opcode::NOOP as u8, 0, 0, 1])
-        .expect_err("Reserved part is nonzero");
-
-    // Args: 1
-    Instruction::try_from([Opcode::RET as u8, 0, 0, 0]).unwrap();
-    Instruction::try_from([Opcode::RET as u8, 0, 0, 1])
-        .expect_err("Reserved part is nonzero");
-
-    // Args: 2
-    Instruction::try_from([Opcode::NOT as u8, 0, 0, 0]).unwrap();
-    Instruction::try_from([Opcode::NOT as u8, 0, 0, 1])
-        .expect_err("Reserved part is nonzero");
-
-    // Args: 3
-    Instruction::try_from([Opcode::XOR as u8, 0, 0, 0]).unwrap();
-    Instruction::try_from([Opcode::XOR as u8, 0, 0, 1])
-        .expect_err("Reserved part is nonzero");
-}
-
-#[test]
 fn panic_reason_description() {
     let imm24 = 0xbfffff;
 

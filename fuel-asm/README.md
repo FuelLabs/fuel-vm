@@ -54,7 +54,7 @@ let slli = match instruction {
     Instruction::SLLI(slli) => slli,
     _ => panic!("unexpected instruction"),
 };
-let (ra, rb, imm) = slli.unpack();
+let (ra, rb, imm) = slli.into_parts();
 assert_eq!(u8::from(ra), 0x20);
 assert_eq!(u8::from(rb), 0x10);
 assert_eq!(u32::from(imm), 5);

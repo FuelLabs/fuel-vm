@@ -19,7 +19,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
-- [#737](https://github.com/FuelLabs/fuel-vm/pull/737): Replaced `unpack` method with `into_parts` method. The `Instruction` stores unpacked parts internally after this change instead of packed.
 - [#737](https://github.com/FuelLabs/fuel-vm/pull/737): Panic on instructions with non-zero reserved part.
 
 ## [Version 0.50.0]

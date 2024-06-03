@@ -420,6 +420,7 @@ struct PrepareCallSystemRegisters<'a> {
     bal: RegMut<'a, BAL>,
     cgas: RegMut<'a, CGAS>,
     ggas: RegMut<'a, GGAS>,
+    flag: RegMut<'a, FLAG>,
 }
 
 struct PrepareCallRegisters<'a> {
@@ -435,7 +436,6 @@ struct PrepareCallUnusedRegisters<'a> {
     err: Reg<'a, ERR>,
     ret: Reg<'a, RET>,
     retl: Reg<'a, RETL>,
-    flag: Reg<'a, FLAG>,
 }
 
 impl<'a> PrepareCallRegisters<'a> {
@@ -607,6 +607,7 @@ where
         *self.registers.system_registers.bal = self.params.amount_of_coins_to_forward;
         *self.registers.system_registers.is = *self.registers.system_registers.pc;
         *self.registers.system_registers.cgas = forward_gas_amount;
+        *self.registers.system_registers.flag = 0;
 
         let receipt = Receipt::call(
             id,
@@ -659,13 +660,13 @@ impl<'a> From<&'a PrepareCallRegisters<'_>> for SystemRegistersRef<'a> {
             bal: registers.system_registers.bal.as_ref(),
             cgas: registers.system_registers.cgas.as_ref(),
             ggas: registers.system_registers.ggas.as_ref(),
+            flag: registers.system_registers.flag.as_ref(),
             zero: registers.unused_registers.zero,
             one: registers.unused_registers.one,
             of: registers.unused_registers.of,
             err: registers.unused_registers.err,
             ret: registers.unused_registers.ret,
             retl: registers.unused_registers.retl,
-            flag: registers.unused_registers.flag,
         }
     }
 }
@@ -699,6 +700,7 @@ impl<'reg> From<SystemRegisters<'reg>>
             bal: registers.bal,
             cgas: registers.cgas,
             ggas: registers.ggas,
+            flag: registers.flag,
         };
 
         (
@@ -710,7 +712,6 @@ impl<'reg> From<SystemRegisters<'reg>>
                 err: registers.err.into(),
                 ret: registers.ret.into(),
                 retl: registers.retl.into(),
-                flag: registers.flag.into(),
             },
         )
     }

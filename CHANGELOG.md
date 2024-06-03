@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
+- [#743](https://github.com/FuelLabs/fuel-vm/pull/743): Zeroes `$flag` on `CALL`, so that contracts can assume clean `$flag` state.
 - [#737](https://github.com/FuelLabs/fuel-vm/pull/737): Panic on instructions with non-zero reserved part.
 
 ## [Version 0.50.0]

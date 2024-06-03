@@ -76,8 +76,7 @@ fn execution(c: &mut Criterion) {
             for _ in 0..1000 {
                 unsafe {
                     let dummy = interpreter.execute().unwrap();
-                    let ret = std::ptr::read_volatile(&dummy);
-                    ret
+                    std::ptr::read_volatile(&dummy)
                 };
             }
         })
@@ -122,8 +121,7 @@ fn execution(c: &mut Criterion) {
             for _ in 0..1000 {
                 unsafe {
                     let dummy = interpreter.execute().unwrap();
-                    let ret = std::ptr::read_volatile(&dummy);
-                    ret
+                    std::ptr::read_volatile(&dummy)
                 };
             }
         })
@@ -168,8 +166,7 @@ fn execution(c: &mut Criterion) {
             for _ in 0..1000 {
                 unsafe {
                     let dummy = interpreter.execute().unwrap();
-                    let ret = std::ptr::read_volatile(&dummy);
-                    ret
+                    std::ptr::read_volatile(&dummy)
                 };
             }
         })

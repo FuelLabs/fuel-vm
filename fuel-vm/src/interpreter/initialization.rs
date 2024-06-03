@@ -17,7 +17,10 @@ use crate::{
     storage::InterpreterStorage,
 };
 use fuel_asm::RegId;
-use fuel_tx::field::ScriptGasLimit;
+use fuel_tx::field::{
+    Script,
+    ScriptGasLimit,
+};
 use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
@@ -108,7 +111,19 @@ where
         self.context = context;
         let initial_balances: InitialBalances = Default::default();
         let runtime_balances = initial_balances.clone().try_into()?;
-        Ok(self.init_inner(tx, initial_balances, runtime_balances, gas_limit)?)
+
+        let range = self
+            .context
+            .predicate()
+            .expect("The context is not predicate")
+            .program()
+            .words();
+
+        self.init_inner(tx, initial_balances, runtime_balances, gas_limit)?;
+        self.registers[RegId::PC] = range.start as fuel_asm::Word;
+        self.registers[RegId::IS] = range.start as fuel_asm::Word;
+
+        Ok(())
     }
 }
 
@@ -142,6 +157,17 @@ where
 
         let initial_balances = metadata.balances();
         let runtime_balances = initial_balances.try_into()?;
-        Ok(self.init_inner(tx, metadata.balances(), runtime_balances, gas_limit)?)
+        self.init_inner(tx, metadata.balances(), runtime_balances, gas_limit)?;
+
+        if let Some(script) = self.transaction().as_script() {
+            let offset = self.tx_offset().saturating_add(script.script_offset()) as Word;
+
+            debug_assert!(offset < VM_MAX_RAM);
+
+            self.registers[RegId::PC] = offset;
+            self.registers[RegId::IS] = offset;
+        }
+
+        Ok(())
     }
 }

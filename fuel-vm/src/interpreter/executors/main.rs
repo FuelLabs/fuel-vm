@@ -12,7 +12,6 @@ use crate::{
         IntoChecked,
         ParallelExecutor,
     },
-    consts::VM_MAX_RAM,
     context::Context,
     error::{
         Bug,
@@ -58,10 +57,7 @@ use crate::{
         UploadedBytecodes,
     },
 };
-use fuel_asm::{
-    PanicReason,
-    RegId,
-};
+use fuel_asm::PanicReason;
 use fuel_storage::{
     StorageAsMut,
     StorageAsRef,
@@ -792,15 +788,8 @@ where
             let gas_limit;
             let is_empty_script;
             if let Some(script) = self.transaction().as_script() {
-                let offset =
-                    self.tx_offset().saturating_add(script.script_offset()) as Word;
                 gas_limit = *script.script_gas_limit();
                 is_empty_script = script.script().is_empty();
-
-                debug_assert!(offset < VM_MAX_RAM);
-
-                self.registers[RegId::PC] = offset;
-                self.registers[RegId::IS] = offset;
             } else {
                 unreachable!("Only `Create` and `Script` transactions can be executed inside of the VM")
             }

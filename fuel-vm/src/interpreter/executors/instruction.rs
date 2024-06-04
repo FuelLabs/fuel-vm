@@ -604,9 +604,10 @@ where
             }
 
             Instruction::ALOC(aloc) => {
-                self.gas_charge(self.gas_costs().aloc())?;
                 let a = aloc.unpack();
-                self.malloc(r!(a))?;
+                let number_of_bytes = r!(a);
+                self.dependent_gas_charge(self.gas_costs().aloc(), number_of_bytes)?;
+                self.malloc(number_of_bytes)?;
             }
 
             Instruction::CFEI(cfei) => {

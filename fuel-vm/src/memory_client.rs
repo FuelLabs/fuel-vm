@@ -8,7 +8,6 @@ use crate::{
         EcalHandler,
         InterpreterParams,
         Memory,
-        MemoryInstance,
         NotSupportedEcal,
     },
     state::StateTransitionRef,
@@ -25,6 +24,9 @@ use fuel_tx::{
     Upgrade,
     Upload,
 };
+
+#[cfg(any(test, feature = "test-helpers"))]
+use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.

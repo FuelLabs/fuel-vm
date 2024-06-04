@@ -15,7 +15,6 @@ use crate::{
         Interpreter,
         InterpreterParams,
         Memory,
-        MemoryInstance,
         NotSupportedEcal,
     },
     state::{
@@ -34,6 +33,9 @@ use fuel_tx::{
     Upgrade,
     Upload,
 };
+
+#[cfg(any(test, feature = "test-helpers"))]
+use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// State machine to execute transactions and provide runtime entities on

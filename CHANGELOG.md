@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#748](https://github.com/FuelLabs/fuel-vm/pull/748): Make `VmMemoryPool::get_new` async.
+
 ## [Version 0.51.0]
 
 ### Added

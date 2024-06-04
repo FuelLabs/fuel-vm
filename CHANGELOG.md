@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#747](https://github.com/FuelLabs/fuel-vm/pull/747): Use `DependentCost` for `aloc` opcode. The cost of the `aloc` opcode is now dependent on the size of the allocation.
+
 ## [Version 0.51.0]
 
 ### Added

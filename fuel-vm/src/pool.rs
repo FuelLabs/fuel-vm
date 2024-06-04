@@ -1,9 +1,9 @@
 //! Pool of VM memory instances for reuse.
 
-use crate::interpreter::{
-    Memory,
-    MemoryInstance,
-};
+use crate::interpreter::Memory;
+
+#[cfg(any(test, feature = "test-helpers"))]
+use crate::interpreter::MemoryInstance;
 
 /// Trait for a VM memory pool.
 pub trait VmMemoryPool: Sync {

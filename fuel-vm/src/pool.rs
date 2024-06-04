@@ -1,9 +1,9 @@
 //! Pool of VM memory instances for reuse.
 
-use crate::interpreter::{
-    Memory,
-    MemoryInstance,
-};
+use crate::interpreter::Memory;
+
+#[cfg(any(test, feature = "test-helpers"))]
+use crate::interpreter::MemoryInstance;
 
 /// Trait for a VM memory pool.
 pub trait VmMemoryPool: Sync {
@@ -11,7 +11,7 @@ pub trait VmMemoryPool: Sync {
     type Memory: Memory + Send + Sync + 'static;
 
     /// Gets a new VM memory instance from the pool.
-    fn get_new(&self) -> Self::Memory;
+    fn get_new(&self) -> impl core::future::Future<Output = Self::Memory> + Send;
 }
 
 /// Dummy pool that just returns new instance every time.
@@ -23,7 +23,7 @@ pub struct DummyPool;
 impl VmMemoryPool for DummyPool {
     type Memory = MemoryInstance;
 
-    fn get_new(&self) -> Self::Memory {
-        MemoryInstance::new()
+    fn get_new(&self) -> impl core::future::Future<Output = Self::Memory> + Send {
+        core::future::ready(MemoryInstance::new())
     }
 }

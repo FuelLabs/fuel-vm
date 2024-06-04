@@ -251,7 +251,7 @@ where
             {
                 let tx = kind.tx().clone();
                 let my_params = params.clone();
-                let mut memory = pool.get_new().await;
+                let mut memory = pool.get_new();
 
                 let verify_task = E::create_task(move || {
                     Interpreter::check_predicate(

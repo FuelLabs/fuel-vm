@@ -18,6 +18,7 @@ env:
   CARGO_TERM_COLOR: always
   RUST_VERSION: 1.75.0
   NIGHTLY_RUST_VERSION: nightly-2024-02-07
+  GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
   check-changelog:
@@ -104,6 +105,42 @@ jobs:
         with:
           version: "0.36.4"
       - run: cargo ${{ matrix.command }} ${{ matrix.args }}
+
+  publish-codecov:
+    name: Publish code coverage report on GitHub pages branch
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    needs:
+      - cargo
+    permissions: # Write access to push changes to pages
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Install cargo-llvm-codecov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Code coverage report
+        run: cargo llvm-cov --all-features --html
+
+      - name: Checkout the repo again for pushing pages revision
+        uses: actions/checkout@v3
+        with:
+          ref: 'codecov-pages'
+          path: 'pages-branch'
+
+      - name: Push codecov report to it's branch
+        working-directory: ./pages-branch
+        run: |
+          git config user.email "2204863+Dentosal@users.noreply.github.com"
+          git config user.name "Dentosal"
+          cp -r ../target/llvm-cov/html ${{ env.GIT_BRANCH }}
+          git add .
+          git commit -m "Update codecov for ${{ env.GIT_BRANCH }}"
+          git push
 
   rustfmt:
     runs-on: buildjet-4vcpu-ubuntu-2204

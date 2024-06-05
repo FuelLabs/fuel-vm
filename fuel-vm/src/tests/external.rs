@@ -6,23 +6,34 @@ use fuel_asm::{
     Word,
 };
 use fuel_tx::{
-    ConsensusParameters, Finalizable, PanicReason, Receipt, Script, ScriptExecutionResult, TransactionBuilder
+    ConsensusParameters,
+    Finalizable,
+    PanicReason,
+    Receipt,
+    Script,
+    ScriptExecutionResult,
+    TransactionBuilder,
 };
 use fuel_vm::prelude::*;
 use itertools::Itertools;
 use test_case::test_case;
 
-use crate::tests::test_helpers::{assert_panics, run_script};
+use crate::tests::test_helpers::{
+    assert_panics,
+    run_script,
+};
 
 #[test]
 fn attempt_ecal_without_handler() {
-    let receipts = run_script(vec![
-        op::ecal(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-    ]);
+    let receipts = run_script(vec![op::ecal(
+        RegId::ZERO,
+        RegId::ZERO,
+        RegId::ZERO,
+        RegId::ZERO,
+    )]);
 
     assert_panics(&receipts, PanicReason::EcalError);
 }
-
 
 /// An ECAL opcode handler function, which charges for `noop` and does nothing.
 #[derive(Debug, Default, Clone, Copy)]

@@ -1,7 +1,11 @@
 #![cfg(feature = "std")]
 
 use fuel_asm::PanicReason;
-use rand::{rngs::StdRng, Rng, SeedableRng};
+use rand::{
+    rngs::StdRng,
+    Rng,
+    SeedableRng,
+};
 use test_case::test_case;
 
 use fuel_asm::{
@@ -363,10 +367,10 @@ fn test_push_pop_ops() {
             (op::pshh(mask), op::poph(mask))
         };
         let receipts = run_script(vec![
-            op::log(RegId::WRITABLE, 0x20, 0x30, RegId::LAST),
+            op::log(RegId::WRITABLE, 0x20, 0x30, 0x3f),
             push,
             pop,
-            op::log(RegId::WRITABLE, 0x20, 0x30, RegId::LAST),
+            op::log(RegId::WRITABLE, 0x20, 0x30, 0x3f),
             op::ret(RegId::ONE),
         ]);
 

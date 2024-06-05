@@ -446,13 +446,10 @@ impl RegId {
     pub const SP: Self = Self(0x05);
     /// Stack start pointer. Memory address of bottom of current writable stack area.
     pub const SSP: Self = Self(0x04);
-    /// Contains zero (0), for convenience.
-    pub const ZERO: Self = Self(0x00);
-
     /// Smallest writable register.
     pub const WRITABLE: Self = Self(0x10);
-    /// Largest writable register.
-    pub const LAST: Self = Self(0x3f);
+    /// Contains zero (0), for convenience.
+    pub const ZERO: Self = Self(0x00);
 
     /// Construct a register ID from the given value.
     ///

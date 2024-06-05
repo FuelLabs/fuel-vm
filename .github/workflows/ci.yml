@@ -132,15 +132,21 @@ jobs:
           ref: 'codecov-pages'
           path: 'pages-branch'
 
-      - name: Push codecov report to it's branch
+      - name: Push codecov report to pages branch
         working-directory: ./pages-branch
         run: |
+          export BRANCH_B64=$(echo -n "${{ env.GIT_BRANCH }}" | basenc --base64url)
           git config user.email "2204863+Dentosal@users.noreply.github.com"
           git config user.name "Dentosal"
-          cp -r ../target/llvm-cov/html ${{ env.GIT_BRANCH }}
+          cp -r ../target/llvm-cov/html "$BRANCH_B64"
+          python3 ../.github/workflows/scripts/generate_pages_index.py > index.html
           git add .
           git commit -m "Update codecov for ${{ env.GIT_BRANCH }}"
           git push
+          export PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_B64/index.html"
+          echo "$PAGES_URL"
+          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY          
+        
 
   rustfmt:
     runs-on: buildjet-4vcpu-ubuntu-2204

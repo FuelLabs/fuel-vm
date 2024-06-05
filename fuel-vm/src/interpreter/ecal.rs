@@ -41,7 +41,7 @@ where
         M: Memory;
 }
 
-/// Default ECAL opcode handler function, which charges for `noop` and does nothing.
+/// Default ECAL opcode handler function, which just errors immediately.
 impl EcalHandler for NotSupportedEcal {
     fn ecal<M, S, Tx>(
         _: &mut Interpreter<M, S, Tx, Self>,

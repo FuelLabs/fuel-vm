@@ -1,6 +1,7 @@
 #![cfg(feature = "std")]
 
 use fuel_asm::PanicReason;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 use test_case::test_case;
 
 use fuel_asm::{
@@ -16,6 +17,7 @@ use fuel_vm::{
 
 use super::test_helpers::{
     assert_panics,
+    assert_success,
     run_script,
     set_full_word,
 };
@@ -347,6 +349,50 @@ fn test_meq() {
         assert_eq!(*rd, 0);
     } else {
         panic!("Expected Log receipt");
+    }
+}
+
+#[test]
+fn test_push_pop_ops() {
+    let rng = &mut StdRng::seed_from_u64(1234);
+    for _ in 0..1000 {
+        let mask = rng.gen::<u32>() & 0x00ff_ffff;
+        let (push, pop) = if rng.gen() {
+            (op::pshl(mask), op::popl(mask))
+        } else {
+            (op::pshh(mask), op::poph(mask))
+        };
+        let receipts = run_script(vec![
+            op::log(RegId::WRITABLE, 0x20, 0x30, RegId::LAST),
+            push,
+            pop,
+            op::log(RegId::WRITABLE, 0x20, 0x30, RegId::LAST),
+            op::ret(RegId::ONE),
+        ]);
+
+        assert_success(&receipts);
+
+        let Receipt::Log {
+            ra: a1,
+            rb: b1,
+            rc: c1,
+            rd: d1,
+            ..
+        } = receipts[0]
+        else {
+            panic!("Expected log receipt");
+        };
+        let Receipt::Log {
+            ra: a2,
+            rb: b2,
+            rc: c2,
+            rd: d2,
+            ..
+        } = receipts[1]
+        else {
+            panic!("Expected log receipt");
+        };
+        assert_eq!([a1, b1, c1, d1], [a2, b2, c2, d2]);
     }
 }
 

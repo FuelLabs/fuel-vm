@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#751](https://github.com/FuelLabs/fuel-vm/pull/751):  Improve test coverage.
+
 ## [Version 0.52.0]
 
 ### Changed

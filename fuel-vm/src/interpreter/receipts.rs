@@ -12,13 +12,7 @@ use fuel_types::{
     Bytes32,
 };
 
-use crate::{
-    error::SimpleResult,
-    prelude::{
-        Bug,
-        BugVariant,
-    },
-};
+use crate::error::SimpleResult;
 
 /// Receipts and the associated Merkle tree
 #[derive(Debug, Default, Clone)]
@@ -36,7 +30,7 @@ impl ReceiptsCtx {
     /// Returns a panic if the context is full.
     pub fn push(&mut self, receipt: Receipt) -> SimpleResult<()> {
         if self.receipts.len() == Self::MAX_RECEIPTS {
-            return Err(Bug::new(BugVariant::ReceiptsCtxFull).into())
+            unreachable!("Pushing to a full receipts context is a bug");
         }
 
         // Last two slots can be only used for ending the script,

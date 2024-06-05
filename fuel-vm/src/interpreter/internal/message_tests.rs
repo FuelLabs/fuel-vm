@@ -5,10 +5,7 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::{
-    consts::MEM_SIZE,
-    error::PanicOrBug,
-};
+use crate::consts::MEM_SIZE;
 
 use super::*;
 use fuel_tx::{
@@ -49,11 +46,11 @@ fn test_absolute_output_offset(
     ; "Output at 200 in memory"
 )]
 #[test_case(
-    MEM_SIZE - 1 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow))
+    MEM_SIZE - 1 => Err(PanicReason::MemoryOverflow)
     ; "Output at MEM_SIZE - 1 should overflow"
 )]
 #[test_case(
-    MEM_SIZE - 1 - 112 => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow))
+    MEM_SIZE - 1 - 112 => Err(PanicReason::MemoryOverflow)
     ; "Output at MEM_SIZE - 1 - output_size should overflow"
 )]
 fn test_update_memory_output(tx_offset: usize) -> SimpleResult<MemoryInstance> {

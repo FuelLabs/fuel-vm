@@ -3,8 +3,6 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::error::PanicOrBug;
-
 use super::*;
 
 #[test]
@@ -82,7 +80,7 @@ fn test_return() {
         &mut context,
     )
     .ret_data(Word::MAX, Word::MAX);
-    assert_eq!(r, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
+    assert_eq!(r, Err(PanicReason::MemoryOverflow));
 
     let r = input(
         &mut frames,
@@ -92,7 +90,7 @@ fn test_return() {
         &mut context,
     )
     .ret_data(VM_MAX_RAM, 1);
-    assert_eq!(r, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
+    assert_eq!(r, Err(PanicReason::MemoryOverflow));
 
     let r = input(
         &mut frames,
@@ -102,7 +100,7 @@ fn test_return() {
         &mut context,
     )
     .ret_data(0, VM_MAX_RAM + 1);
-    assert_eq!(r, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
+    assert_eq!(r, Err(PanicReason::MemoryOverflow));
 
     let r = input(
         &mut frames,

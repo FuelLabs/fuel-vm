@@ -134,8 +134,6 @@ pub mod prelude {
         },
         context::Context,
         error::{
-            Bug,
-            BugVariant,
             InterpreterError,
             RuntimeError,
         },

@@ -1,6 +1,4 @@
 use crate::prelude::{
-    Bug,
-    BugVariant,
     ExecutableTransaction,
     Interpreter,
     InterpreterStorage,
@@ -61,7 +59,7 @@ where
             base_asset_id,
             gas_price,
         )
-        .map_err(|e| Bug::new(BugVariant::UncomputableRefund).with_message(e))?;
+        .expect("Uncomputable refund");
 
         Ok(())
     }

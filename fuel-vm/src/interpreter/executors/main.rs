@@ -14,7 +14,6 @@ use crate::{
     },
     context::Context,
     error::{
-        Bug,
         InterpreterError,
         PredicateVerificationFailed,
     },
@@ -29,10 +28,7 @@ use crate::{
     },
     pool::VmMemoryPool,
     predicate::RuntimePredicate,
-    prelude::{
-        BugVariant,
-        RuntimeError,
-    },
+    prelude::RuntimeError,
     state::{
         ExecuteState,
         ProgramState,
@@ -368,9 +364,9 @@ where
         let result = vm.verify_predicate();
         let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
 
-        let gas_used = available_gas
-            .checked_sub(vm.remaining_gas())
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
+        let gas_used = available_gas.checked_sub(vm.remaining_gas()).expect(
+            "Available gas cannot be less than remaining gas, as calculated above",
+        );
 
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
@@ -682,11 +678,7 @@ where
         let bytecode_subsection = upload
             .witnesses()
             .get(*upload.bytecode_witness_index() as usize)
-            .ok_or(InterpreterError::Bug(Bug::new(
-                // It shouldn't be possible since `Checked<Upload>` guarantees
-                // the existence of the witness.
-                BugVariant::WitnessIndexOutOfBounds,
-            )))?;
+            .expect("Checked<Upload> validity: The bytecode witness index must exist");
 
         uploaded_bytecode.extend(bytecode_subsection.as_ref());
 
@@ -697,9 +689,7 @@ where
         // It shouldn't be possible since `Checked<Upload>` guarantees
         // the validity of the Merkle proof.
         if new_uploaded_subsections_number > *upload.subsections_number() {
-            return Err(InterpreterError::Bug(Bug::new(
-                BugVariant::NextSubsectionIndexIsHigherThanTotalNumberOfParts,
-            )))
+            unreachable!("Checked<Upload> validity: The number of uploaded subsections cannot exceed the total number of subsections");
         }
 
         let updated_uploaded_bytecode =
@@ -809,7 +799,7 @@ where
 
             let gas_used = gas_limit
                 .checked_sub(self.remaining_gas())
-                .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
+                .expect("gas limit cannot be smaller than remaining gas");
 
             // Catch VM panic and don't propagate, generating a receipt
             let (status, program) = match program {

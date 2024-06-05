@@ -10,7 +10,6 @@ use fuel_asm::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
-    error::PanicOrBug,
     interpreter::memory::{
         pop_selected_registers,
         push_selected_registers,
@@ -112,10 +111,7 @@ fn test_push_stack_overflow() {
         Imm24::new(1),
     );
 
-    assert_eq!(
-        result,
-        Err(PanicOrBug::Panic(PanicReason::MemoryGrowthOverlap))
-    );
+    assert_eq!(result, Err(PanicReason::MemoryGrowthOverlap));
 }
 
 #[test]
@@ -139,7 +135,7 @@ fn test_pop_from_empty_stack() {
         Imm24::new(0b111),
     );
 
-    assert_eq!(result, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
+    assert_eq!(result, Err(PanicReason::MemoryOverflow));
 }
 
 #[test]
@@ -163,5 +159,5 @@ fn test_pop_sp_overflow() {
         Imm24::new(0b111),
     );
 
-    assert_eq!(result, Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)));
+    assert_eq!(result, Err(PanicReason::MemoryOverflow));
 }

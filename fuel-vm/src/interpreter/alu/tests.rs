@@ -7,7 +7,6 @@ use core::ops::Div;
 use fuel_asm::Imm12;
 use test_case::test_case;
 
-use crate::error::PanicOrBug;
 #[derive(Debug, PartialEq, Eq)]
 struct CommonInput {
     of: Word,
@@ -32,7 +31,7 @@ struct CommonInput {
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b00, u64::MAX as u128, 1 => Err(PanicOrBug::Panic(PanicReason::ArithmeticOverflow));
+    0b00, u64::MAX as u128, 1 => Err(PanicReason::ArithmeticOverflow);
     "add u64::MAX 1 not wrapping"
 )]
 #[test_case(
@@ -79,7 +78,7 @@ fn test_add(
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b0, 10, 0, true => Err(PanicOrBug::Panic(PanicReason::ArithmeticError));
+    0b0, 10, 0, true => Err(PanicReason::ArithmeticError);
     "div 10 0 error flag"
 )]
 #[test_case(
@@ -123,12 +122,12 @@ fn test_div(
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b00, 10, u64::MAX - 100 => Err(PanicOrBug::Panic(PanicReason::ArithmeticOverflow));
+    0b00, 10, u64::MAX - 100 => Err(PanicReason::ArithmeticOverflow);
     "larger than 32 bit exp"
 )]
 #[test_case(
     CommonInput { of: 0, err: 0, pc: 0 },
-    0b00, 10, (u32::MAX as u64)+ 1 => Err(PanicOrBug::Panic(PanicReason::ArithmeticOverflow));
+    0b00, 10, (u32::MAX as u64)+ 1 => Err(PanicReason::ArithmeticOverflow);
     "just larger than 32 bit exp"
 )]
 #[test_case(

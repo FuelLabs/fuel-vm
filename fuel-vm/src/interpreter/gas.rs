@@ -1,14 +1,7 @@
 use super::Interpreter;
 use crate::{
     constraints::reg_key::*,
-    error::{
-        PanicOrBug,
-        SimpleResult,
-    },
-    prelude::{
-        Bug,
-        BugVariant,
-    },
+    error::SimpleResult,
     profiler::Profiler,
 };
 
@@ -92,7 +85,7 @@ fn dependent_gas_charge_without_base_inner(
     ggas: RegMut<GGAS>,
     gas_cost: DependentCost,
     arg: Word,
-) -> Result<Word, PanicOrBug> {
+) -> SimpleResult<Word> {
     let cost = gas_cost.resolve_without_base(arg);
     gas_charge_inner(cgas, ggas, cost).map(|_| cost)
 }
@@ -114,7 +107,7 @@ fn dependent_gas_charge_inner(
     ggas: RegMut<GGAS>,
     gas_cost: DependentCost,
     arg: Word,
-) -> Result<Word, PanicOrBug> {
+) -> SimpleResult<Word> {
     let cost = gas_cost.resolve(arg);
     gas_charge_inner(cgas, ggas, cost).map(|_| cost)
 }
@@ -135,21 +128,19 @@ fn gas_charge_inner(
     gas: Word,
 ) -> SimpleResult<()> {
     if *cgas > *ggas {
-        Err(Bug::new(BugVariant::GlobalGasLessThanContext).into())
+        unreachable!("CGAS should never be greater than GGAS");
     } else if gas > *cgas {
         *ggas = (*ggas)
             .checked_sub(*cgas)
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
+            .expect("CGAS should never be greater than GGAS");
         *cgas = 0;
 
         Err(PanicReason::OutOfGas.into())
     } else {
-        *cgas = (*cgas)
-            .checked_sub(gas)
-            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
+        *cgas = (*cgas).checked_sub(gas).expect("checked above");
         *ggas = (*ggas)
             .checked_sub(gas)
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
+            .expect("CGAS should never be greater than GGAS");
 
         Ok(())
     }

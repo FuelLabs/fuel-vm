@@ -38,10 +38,6 @@ use crate::{
         PanicContext,
         RuntimeBalances,
     },
-    prelude::{
-        Bug,
-        BugVariant,
-    },
     profiler::Profiler,
     storage::{
         ContractsAssetsStorage,
@@ -50,7 +46,6 @@ use crate::{
     },
 };
 use alloc::vec::Vec;
-use core::cmp;
 use fuel_asm::{
     Instruction,
     PanicInstruction,
@@ -186,7 +181,7 @@ impl RetCtx<'_> {
 
             registers[RegId::CGAS] = registers[RegId::CGAS]
                 .checked_add(frame.context_gas())
-                .ok_or_else(|| Bug::new(BugVariant::ContextGasOverflow))?;
+                .expect("Context should never generate execess gas, but reclaiming it overflows");
 
             let cgas = registers[RegId::CGAS];
             let ggas = registers[RegId::GGAS];
@@ -485,7 +480,7 @@ where
 
         let total_size_in_stack = CallFrame::serialized_size()
             .checked_add(code_size_padded)
-            .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
+            .expect("Code size can't be so large that it overflows when added to the frame size");
 
         let profiler = ProfileGas {
             pc: self.registers.system_registers.pc.as_ref(),
@@ -545,15 +540,15 @@ where
             )?;
         }
 
-        let forward_gas_amount = cmp::min(
-            *self.registers.system_registers.cgas,
-            self.params.amount_of_gas_to_forward,
-        );
+        let forward_gas_amount = self
+            .params
+            .amount_of_gas_to_forward
+            .min(*self.registers.system_registers.cgas);
 
         // subtract gas
         *self.registers.system_registers.cgas = (*self.registers.system_registers.cgas)
             .checked_sub(forward_gas_amount)
-            .ok_or_else(|| Bug::new(BugVariant::ContextGasUnderflow))?;
+            .expect("checked above");
 
         // Construct frame
         let mut frame = CallFrame::new(

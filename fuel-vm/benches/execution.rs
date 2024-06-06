@@ -37,7 +37,7 @@ fn execution(c: &mut Criterion) {
     );
     let script = TransactionBuilder::script(
         vec![
-            op::meq(RegId::new(0x10), RegId::ZERO, RegId::ZERO, RegId::ZERO),
+            op::meq(RegId::WRITABLE, RegId::ZERO, RegId::ZERO, RegId::ZERO),
             op::jmpb(RegId::ZERO, 0),
         ]
         .into_iter()
@@ -84,7 +84,7 @@ fn execution(c: &mut Criterion) {
 
     let script = TransactionBuilder::script(
         vec![
-            op::add(RegId::new(0x10), RegId::ZERO, RegId::ONE),
+            op::add(RegId::WRITABLE, RegId::ZERO, RegId::ONE),
             op::jmpb(RegId::ZERO, 0),
         ]
         .into_iter()
@@ -129,7 +129,7 @@ fn execution(c: &mut Criterion) {
 
     let script = TransactionBuilder::script(
         vec![
-            op::not(RegId::new(0x10), RegId::ZERO),
+            op::not(RegId::WRITABLE, RegId::ZERO),
             op::jmpb(RegId::ZERO, 0),
         ]
         .into_iter()

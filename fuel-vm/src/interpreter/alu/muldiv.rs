@@ -83,6 +83,7 @@ mod tests {
     use super::*;
 
     #[rstest::rstest]
+    #[case(0, 0, 0, 0, 0)]
     #[case(0, 0, 1, 0, 0)]
     #[case(0, 5, 1, 0, 0)]
     #[case(9, 9, 1, 81, 0)]

@@ -3,6 +3,7 @@ use alloc::vec;
 use crate::prelude::*;
 use fuel_asm::{
     op,
+    Flags,
     Imm18,
     Instruction,
     RegId,
@@ -72,16 +73,17 @@ fn alu_overflow(program: &[Instruction], reg: RegisterId, expected: u128, boolea
 
     assert_eq!(&PanicReason::ArithmeticOverflow, result.reason());
 
-    // TODO avoid magic constants
-    // https://github.com/FuelLabs/fuel-asm/issues/60
-    let script = [op::movi(0x10, 0x02), op::flag(0x10)]
-        .into_iter()
-        .chain(program.iter().copied())
-        .chain([
-            op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
-            op::ret(RegId::ONE),
-        ])
-        .collect();
+    let script = [
+        op::movi(0x10, Flags::WRAPPING.bits().try_into().unwrap()),
+        op::flag(0x10),
+    ]
+    .into_iter()
+    .chain(program.iter().copied())
+    .chain([
+        op::log(u8::try_from(reg).unwrap(), RegId::OF, 0, 0),
+        op::ret(RegId::ONE),
+    ])
+    .collect();
 
     let result = test_context
         .start_script(script, vec![])
@@ -130,9 +132,7 @@ fn alu_wrapping(
         .flat_map(|(r, v)| set_full_word(*r, *v));
 
     let script = vec![
-        // TODO avoid magic constants
-        // https://github.com/FuelLabs/fuel-asm/issues/60
-        op::movi(RegId::WRITABLE, 0x2),
+        op::movi(RegId::WRITABLE, Flags::WRAPPING.bits().try_into().unwrap()),
         op::flag(RegId::WRITABLE),
     ]
     .into_iter()
@@ -197,17 +197,18 @@ fn alu_err(
 
     assert_eq!(&PanicReason::ArithmeticError, result.reason());
 
-    // TODO avoid magic constants
-    // https://github.com/FuelLabs/fuel-asm/issues/60
-    let script = [op::movi(0x10, 0x01), op::flag(0x10)]
-        .into_iter()
-        .chain(
-            registers_init
-                .iter()
-                .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v)),
-        )
-        .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)])
-        .collect();
+    let script = [
+        op::movi(0x10, Flags::UNSAFEMATH.bits().try_into().unwrap()),
+        op::flag(0x10),
+    ]
+    .into_iter()
+    .chain(
+        registers_init
+            .iter()
+            .map(|(r, v)| op::movi(u8::try_from(*r).unwrap(), *v)),
+    )
+    .chain([ins, op::log(reg, 0, 0, 0), op::ret(RegId::ONE)])
+    .collect();
 
     let result = test_context
         .start_script(script, vec![])

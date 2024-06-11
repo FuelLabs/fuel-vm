@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#751](https://github.com/FuelLabs/fuel-vm/pull/751):  Improve test coverage.
 
+### Changed
+
+- [#753](https://github.com/FuelLabs/fuel-vm/pull/753): Fix an ownership check bug in `CCP` instruction.
+
 ## [Version 0.52.0]
 
 ### Changed

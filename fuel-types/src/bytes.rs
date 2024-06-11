@@ -22,6 +22,19 @@ pub const fn padded_len_usize(len: usize) -> Option<usize> {
     }
 }
 
+/// Return the word-padded length of an arbitrary length.
+/// Returns None if the length is too large to be represented as `Word`.
+#[allow(clippy::arithmetic_side_effects)] // Safety: (a % b) < b
+pub const fn padded_len_word(len: Word) -> Option<Word> {
+    let modulo = len % WORD_SIZE as Word;
+    if modulo == 0 {
+        Some(len)
+    } else {
+        let padding = WORD_SIZE as Word - modulo;
+        len.checked_add(padding)
+    }
+}
+
 #[cfg(feature = "unsafe")]
 #[allow(unsafe_code)]
 /// Add a conversion from arbitrary slices into arrays

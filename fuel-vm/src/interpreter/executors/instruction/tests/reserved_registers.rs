@@ -3,13 +3,20 @@ use alloc::{
     vec,
 };
 
-use super::*;
 use crate::{
     checked_transaction::IntoChecked,
+    fuel_asm::{
+        op,
+        Instruction,
+        Opcode,
+        PanicReason::ReservedRegisterNotWritable,
+        RegId,
+    },
     interpreter::InterpreterParams,
     prelude::{
         FeeParameters,
         MemoryStorage,
+        *,
     },
 };
 use fuel_asm::PanicReason;
@@ -53,7 +60,8 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let mut consensus_params = ConsensusParameters::default();
     consensus_params.set_fee_params(fee_params);
 
-    let mut vm = Interpreter::<_, _>::with_storage(
+    let mut vm = Interpreter::<_, _, _>::with_storage(
+        MemoryInstance::new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );

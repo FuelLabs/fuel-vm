@@ -11,7 +11,6 @@ use core::{
 
 use crate::{
     context::Context,
-    interpreter::memory::Memory,
     storage::{
         ContractsStateData,
         MemoryStorage,
@@ -25,7 +24,7 @@ mod scwq;
 mod srwq;
 mod swwq;
 
-fn mem(chains: &[&[u8]]) -> Memory {
+fn mem(chains: &[&[u8]]) -> MemoryInstance {
     let mut vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();
     vec.resize(MEM_SIZE, 0);
     vec.into()
@@ -67,7 +66,7 @@ fn test_state_read_word(
     key: Word,
 ) -> Result<(Word, Word), RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let is = 4;
@@ -137,7 +136,7 @@ fn test_state_write_word(
     key: Word,
 ) -> Result<Word, RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let mut pc = 4;

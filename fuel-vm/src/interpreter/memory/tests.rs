@@ -21,7 +21,8 @@ fn memcopy() {
     let mut consensus_params = ConsensusParameters::default();
     consensus_params.set_tx_params(tx_params);
 
-    let mut vm = Interpreter::<_, _>::with_storage(
+    let mut vm = Interpreter::<_, _, _>::with_storage(
+        MemoryInstance::new(),
         MemoryStorage::default(),
         InterpreterParams::new(zero_gas_price, &consensus_params),
     );
@@ -90,7 +91,7 @@ fn memcopy() {
 
 #[test]
 fn stack_alloc_ownership() {
-    let mut vm = Interpreter::<_, _>::with_memory_storage();
+    let mut vm = Interpreter::<_, _, _>::with_memory_storage();
     let gas_price = 0;
     let consensus_params = ConsensusParameters::standard();
 
@@ -223,7 +224,7 @@ fn test_mem_write(
     data: &[u8],
     owner: OwnershipRegisters,
 ) -> (bool, [u8; 100]) {
-    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0u8; MEM_SIZE].try_into().unwrap();
     let r = match memory.write(owner, addr, data.len()) {
         Ok(target) => {
             target.copy_from_slice(data);
@@ -265,7 +266,7 @@ fn test_copy_from_slice_zero_fill(
     src_offset: usize,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
-    let mut memory: Memory = vec![0xffu8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();
     let r = copy_from_slice_zero_fill(
         &mut memory,
         OwnershipRegisters::test_full_stack(),

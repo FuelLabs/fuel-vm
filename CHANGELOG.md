@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#751](https://github.com/FuelLabs/fuel-vm/pull/751):  Improve test coverage.
+
+## [Version 0.52.0]
+
+### Changed
+
+#### Breaking
+
+- [#748](https://github.com/FuelLabs/fuel-vm/pull/748): Make `VmMemoryPool::get_new` async.
+- [#747](https://github.com/FuelLabs/fuel-vm/pull/747): Use `DependentCost` for `aloc` opcode. The cost of the `aloc` opcode is now dependent on the size of the allocation.
+
+## [Version 0.51.0]
+
+### Added
+
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732):  Adds `reset` method to VM memory.
+
+#### Breaking
+
+- [#732](https://github.com/FuelLabs/fuel-vm/pull/732): Makes the VM generic over the memory type, allowing reuse of relatively expensive-to-allocate VM memories through `VmMemoryPool`. Functions and traits which require VM initalization such as `estimate_predicates` now take either the memory or `VmMemoryPool` as an argument. The `Interpterter::eq` method now only compares accessible memory regions. `Memory` was renamed into `MemoryInstance` and `Memory` is a trait now.
+
+### Changed
+
+#### Breaking
+
+- [#743](https://github.com/FuelLabs/fuel-vm/pull/743): Zeroes `$flag` on `CALL`, so that contracts can assume clean `$flag` state.
+- [#737](https://github.com/FuelLabs/fuel-vm/pull/737): Panic on instructions with non-zero reserved part.
+
+## [Version 0.50.0]
+
 ### Changed
 
 - [#725](https://github.com/FuelLabs/fuel-vm/pull/725): Adds more clippy lints to catch possible integer overflow and casting bugs on compile time.
@@ -19,6 +51,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#725](https://github.com/FuelLabs/fuel-vm/pull/725): `UtxoId::from_str` now rejects inputs with multiple `0x` prefixes. Many `::from_str` implementations also reject extra data in the end of the input, instead of silently ignoring it. `UtxoId::from_str` allows a single `:` between the fields. Unused `GasUnit` struct removed.
 - [#726](https://github.com/FuelLabs/fuel-vm/pull/726): Removed code related to Binary Merkle Sum Trees (BMSTs). The BMST is deprecated and not used in production environments. 
 - [#729](https://github.com/FuelLabs/fuel-vm/pull/729): Removed default implementation of `Node::key_size_bits`, implementors must now define it themselves. Also some helper traits have been merged together, or their types changed.
+### Fixed
+
+#### Breaking
+
+- [#736](https://github.com/FuelLabs/fuel-vm/pull/736): LDC instruction now works in internal contexts as well. Call frames use code size padded to word alignment.
 
 ## [Version 0.49.0]
 

@@ -18,7 +18,7 @@ const DEFAULT_OWNER: OwnershipRegisters = OwnershipRegisters {
 struct SRWQInput {
     storage_slots: Vec<([u8; 32], ContractsStateData)>,
     context: Context,
-    memory: Memory,
+    memory: MemoryInstance,
     owner: OwnershipRegisters,
     destination_pointer: Word,
     origin_key_pointer: Word,
@@ -163,7 +163,7 @@ struct SRWQInput {
 )]
 fn test_state_read_qword(
     input: SRWQInput,
-) -> Result<(Memory, bool), RuntimeError<Infallible>> {
+) -> Result<(MemoryInstance, bool), RuntimeError<Infallible>> {
     let SRWQInput {
         storage_slots,
         context,
@@ -187,8 +187,8 @@ fn test_state_read_qword(
     let mut pc = 0;
     state_read_qword(
         &storage,
-        &mut memory,
         &context,
+        &mut memory,
         RegMut::new(&mut pc),
         Reg::new(&0),
         owner,

@@ -713,6 +713,60 @@ macro_rules! op_unpack {
     () => {};
 }
 
+// Generate a method for checking that the reserved part of the
+// instruction is zero. This is private, as invalid instructions
+// cannot be constructed outside this crate.
+macro_rules! op_reserved_part {
+    (RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            let (_, imm) = unpack::ra_imm18_from_bytes(self.0);
+            imm.0 == 0
+        }
+    };
+    (RegId RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            let (_, _, imm) = unpack::ra_rb_imm12_from_bytes(self.0);
+            imm.0 == 0
+        }
+    };
+    (RegId RegId RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            let (_, _, _, imm) = unpack::ra_rb_rc_imm06_from_bytes(self.0);
+            imm.0 == 0
+        }
+    };
+    (RegId RegId RegId RegId) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (RegId RegId RegId Imm06) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (RegId RegId Imm12) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (RegId Imm18) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    (Imm24) => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            true
+        }
+    };
+    () => {
+        pub(crate) fn reserved_part_is_zero(self) -> bool {
+            self.0 == [0; 3]
+        }
+    };
+}
+
 // Generate a private fn for use within the `Instruction::reg_ids` implementation.
 macro_rules! op_reg_ids {
     (RegId) => {
@@ -1045,6 +1099,12 @@ macro_rules! impl_instructions {
     };
     (impl_opcode_test_construct) => {};
 
+    // Recursively generate a test constructor for each opcode
+    (tests $doc:literal $ix:literal $Op:ident $op:ident [$($fname:ident: $field:ident)*] $($rest:tt)*) => {
+        op_test!($Op $op [$($field)*]);
+        impl_instructions!(tests $($rest)*);
+    };
+    (tests) => {};
 
     // Implement constructors and accessors for register and immediate values.
     (impl_op $doc:literal $ix:literal $Op:ident $op:ident [$($fname:ident: $field:ident)*] $($rest:tt)*) => {
@@ -1058,6 +1118,7 @@ macro_rules! impl_instructions {
 
         impl $Op {
             op_unpack!($($field)*);
+            op_reserved_part!($($field)*);
             op_reg_ids!($($field)*);
         }
 
@@ -1173,7 +1234,13 @@ macro_rules! impl_instructions {
             fn try_from([op, a, b, c]: [u8; 4]) -> Result<Self, Self::Error> {
                 match Opcode::try_from(op)? {
                     $(
-                        Opcode::$Op => Ok(Self::$Op(op::$Op([a, b, c]))),
+                        Opcode::$Op => Ok(Self::$Op({
+                            let op = op::$Op([a, b, c]);
+                            if !op.reserved_part_is_zero() {
+                                return Err(InvalidOpcode);
+                            }
+                            op
+                        })),
                     )*
                 }
             }
@@ -1203,6 +1270,13 @@ macro_rules! impl_instructions {
         impl_instructions!(impl_opcode $($tts)*);
         impl_instructions!(impl_instruction $($tts)*);
         impl_instructions!(impl_opcode_test_construct $($tts)*);
+
+
+        #[cfg(test)]
+        mod opcode_tests {
+            use super::*;
+            impl_instructions!(tests $($tts)*);
+        }
     };
 }
 
@@ -1231,4 +1305,125 @@ macro_rules! enum_try_from {
             }
         }
     }
+}
+
+#[cfg(test)]
+// Generate a test for the instruction.
+macro_rules! op_test {
+    ($Op:ident $op:ident[RegId]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, false, false, false);
+        }
+    };
+    ($Op:ident $op:ident[RegId RegId]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, true, false, false);
+        }
+    };
+    ($Op:ident $op:ident[RegId RegId RegId]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, true, true, false);
+        }
+    };
+    ($Op:ident $op:ident[RegId RegId RegId RegId]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, true, true, true);
+        }
+    };
+    ($Op:ident $op:ident[RegId RegId RegId Imm06]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, true, true, true);
+        }
+    };
+    ($Op:ident $op:ident[RegId RegId Imm12]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, true, true, true);
+        }
+    };
+    ($Op:ident $op:ident[RegId Imm18]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, true, true, true);
+        }
+    };
+    ($Op:ident $op:ident[Imm24]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, true, true, true, true);
+        }
+    };
+    ($Op:ident $op:ident[]) => {
+        #[test]
+        fn $op() {
+            crate::macros::test_reserved_part(Opcode::$Op, false, false, false, false);
+        }
+    };
+}
+
+#[cfg(test)]
+fn bytes(a: u8, b: u8, c: u8, d: u8) -> [u8; 3] {
+    use crate::RegId;
+    crate::pack::bytes_from_ra_rb_rc_rd(
+        RegId::new(a),
+        RegId::new(b),
+        RegId::new(c),
+        RegId::new(d),
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn test_reserved_part(
+    opcode: crate::Opcode,
+    zero_should_pass: bool,
+    first_should_pass: bool,
+    second_should_pass: bool,
+    third_should_pass: bool,
+) {
+    use crate::Instruction;
+
+    // Args: 0
+    let [a, b, c] = bytes(0, 0, 0, 0);
+    Instruction::try_from([opcode as u8, a, b, c]).unwrap();
+    let [a, b, c] = bytes(1, 0, 0, 0);
+    let zero_is_error = Instruction::try_from([opcode as u8, a, b, c]).is_ok();
+    assert_eq!(
+        zero_should_pass, zero_is_error,
+        "Opcode: {opcode:?} failed zero"
+    );
+
+    // Args: 1
+    let [a, b, c] = bytes(0, 0, 0, 0);
+    Instruction::try_from([opcode as u8, a, b, c]).unwrap();
+    let [a, b, c] = bytes(0, 1, 0, 0);
+    let first_is_error = Instruction::try_from([opcode as u8, a, b, c]).is_ok();
+    assert_eq!(
+        first_should_pass, first_is_error,
+        "Opcode: {opcode:?} failed first"
+    );
+
+    // Args: 2
+    let [a, b, c] = bytes(0, 0, 0, 0);
+    Instruction::try_from([opcode as u8, a, b, c]).unwrap();
+    let [a, b, c] = bytes(0, 0, 1, 0);
+    let second_is_error = Instruction::try_from([opcode as u8, a, b, c]).is_ok();
+    assert_eq!(
+        second_should_pass, second_is_error,
+        "Opcode: {opcode:?} failed second"
+    );
+
+    // Args: 3
+    let [a, b, c] = bytes(0, 0, 0, 0);
+    Instruction::try_from([opcode as u8, a, b, c]).unwrap();
+    let [a, b, c] = bytes(0, 0, 0, 1);
+    let third_is_error = Instruction::try_from([opcode as u8, a, b, c]).is_ok();
+    assert_eq!(
+        third_should_pass, third_is_error,
+        "Opcode: {opcode:?} failed third"
+    );
 }

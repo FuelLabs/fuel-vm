@@ -103,7 +103,6 @@ impl Node {
             // of the two leaves diverge. The joined node may be a direct parent
             // of the leaves or an ancestor multiple generations above the
             // leaves.
-            // N.B.: A leaf can be a placeholder.
             #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
             let parent_depth = path_node.common_path_length(side_node) as u32;
             #[allow(clippy::arithmetic_side_effects)] // parent_depth <= max_height

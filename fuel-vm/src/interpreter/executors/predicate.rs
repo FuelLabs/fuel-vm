@@ -1,6 +1,9 @@
 use crate::{
     error::PredicateVerificationFailed,
-    interpreter::EcalHandler,
+    interpreter::{
+        EcalHandler,
+        Memory,
+    },
     prelude::{
         ExecutableTransaction,
         Interpreter,
@@ -15,11 +18,11 @@ use crate::{
 use fuel_asm::{
     PanicReason,
     RegId,
-    Word,
 };
 
-impl<Tx, Ecal> Interpreter<PredicateStorage, Tx, Ecal>
+impl<M, Tx, Ecal> Interpreter<M, PredicateStorage, Tx, Ecal>
 where
+    M: Memory,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
 {
@@ -33,9 +36,6 @@ where
             .expect("The predicate is not initialized")
             .program()
             .words();
-
-        self.registers[RegId::PC] = range.start as Word;
-        self.registers[RegId::IS] = range.start as Word;
 
         loop {
             if range.end <= self.registers[RegId::PC] {

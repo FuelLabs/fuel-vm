@@ -182,9 +182,6 @@ fn test_block_hash() {
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     let mut pc = 4;
     block_hash(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 40).unwrap();
@@ -213,9 +210,6 @@ fn test_coinbase() {
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     let mut pc = 4;
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();

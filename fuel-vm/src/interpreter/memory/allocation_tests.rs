@@ -45,9 +45,6 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> SimpleResult<()> {
         ssp: 0,
         hp: MEM_SIZE as Word,
         prev_hp: MEM_SIZE as Word,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     if has_ownership {
         owner.ssp = a;
@@ -64,30 +61,18 @@ fn test_memclear(has_ownership: bool, a: Word, b: Word) -> SimpleResult<()> {
     Ok(())
 }
 
-#[test_case(true, 1, 20, 0 => Ok(()); "Can copy zero bytes")]
-#[test_case(true, 1, 20, 10 => Ok(()); "Can copy some bytes")]
-#[test_case(true, 10, 20, 10 => Ok(()); "Can copy some bytes in close range")]
-#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b <= a < bc")]
-#[test_case(true, 14, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b < ac <= bc")]
-#[test_case(true, 21, 22, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a <= b < ac")]
-#[test_case(true, 21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a < bc <= ac")]
-fn test_memcopy(has_ownership: bool, a: Word, b: Word, c: Word) -> SimpleResult<()> {
+#[test_case(1, 20, 0 => Ok(()); "Can copy zero bytes")]
+#[test_case(1, 20, 10 => Ok(()); "Can copy some bytes")]
+#[test_case(10, 20, 10 => Ok(()); "Can copy some bytes in close range")]
+#[test_case(21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b <= a < bc")]
+#[test_case(14, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "b < ac <= bc")]
+#[test_case(21, 22, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a <= b < ac")]
+#[test_case(21, 20, 10 => Err(PanicReason::MemoryWriteOverlap.into()); "a < bc <= ac")]
+fn test_memcopy(a: Word, b: Word, c: Word) -> SimpleResult<()> {
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[b as usize..b as usize + c as usize].copy_from_slice(&vec![2u8; c as usize]);
     let mut pc = 4;
-    let mut owner = OwnershipRegisters {
-        sp: 0,
-        ssp: 0,
-        hp: 0,
-        prev_hp: 0,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    if has_ownership {
-        owner.ssp = b - 1;
-        owner.sp = b + c + 1;
-    }
+    let owner = OwnershipRegisters::test_full_stack();
 
     memcopy(&mut memory, owner, RegMut::new(&mut pc), a, b, c)?;
 
@@ -229,9 +214,6 @@ fn test_store_byte(has_ownership: bool, a: Word, b: Word, c: Word) -> SimpleResu
         ssp: 0,
         hp: VM_MAX_RAM,
         prev_hp: VM_MAX_RAM,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     if has_ownership {
         owner.ssp = b;
@@ -261,9 +243,6 @@ fn test_store_byte_more(
         ssp: 0,
         hp: 0,
         prev_hp: VM_MAX_RAM,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
 
     let is_error = a + c >= MEM_SIZE as u64;
@@ -291,9 +270,6 @@ fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Imm12) -> SimpleRes
         ssp: 0,
         hp: VM_MAX_RAM,
         prev_hp: VM_MAX_RAM,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     if has_ownership {
         owner.ssp = b;

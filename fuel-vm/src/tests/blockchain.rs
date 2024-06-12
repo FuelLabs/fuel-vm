@@ -10,6 +10,7 @@ use crate::{
     prelude::*,
     script_with_data_offset,
     storage::ContractsStateData,
+    tests::test_helpers::set_full_word,
     util::test_helpers::{
         check_expected_reason_for_instructions,
         check_expected_reason_for_instructions_with_client,
@@ -1127,16 +1128,55 @@ fn code_copy_b_gt_vm_max_ram() {
 }
 
 #[test]
-fn code_copy_c_gt_vm_max_ram() {
-    let reg_a = 0x20;
-    // test overflow add
-    let code_copy = vec![
-        op::slli(reg_a, RegId::ONE, MAX_MEM_SHL),
-        op::addi(reg_a, reg_a, 1),
-        op::ccp(RegId::ZERO, RegId::ZERO, reg_a, RegId::ZERO),
+fn code_copy_ownership_overflow() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program = vec![
+        op::movi(0x20, 32),
+        op::aloc(0x20),
+        op::movi(0x21, 33),
+        op::ccp(RegId::HP, 0x10, RegId::ZERO, 0x21),
+        op::ret(RegId::ONE),
     ];
 
-    check_expected_reason_for_instructions(code_copy, MemoryOverflow);
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+    let mut script = set_full_word(0x10, VM_MAX_RAM);
+    script.extend(vec![
+        op::movi(0x10, 1000), // Just some big number
+        op::aloc(0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::ScriptData),
+        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut script_data = vec![];
+
+    script_data.extend(contract_id.as_ref());
+    script_data.extend(0u64.to_be_bytes());
+    script_data.extend(0u64.to_be_bytes());
+
+    let result = test_context
+        .start_script(script.clone(), script_data)
+        .script_gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+
+    assert!(
+        receipts
+            .iter()
+            .any(|r| if let Receipt::Panic { reason, .. } = r {
+                reason.reason() == &PanicReason::MemoryOwnership
+            } else {
+                false
+            }),
+        "memory ownership check bypassed"
+    );
 }
 
 #[test]

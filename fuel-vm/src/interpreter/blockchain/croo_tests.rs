@@ -36,9 +36,6 @@ fn initialize_ownership_registers() -> OwnershipRegisters {
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     }
 }
 

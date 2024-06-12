@@ -1179,66 +1179,6 @@ fn code_copy_ownership_overflow() {
     );
 }
 
-/// TODO: remove this test after review, the one above covers it better
-#[test]
-fn code_copy_ownership_overflow_poc() {
-    let mut test_context = TestBuilder::new(2322u64);
-    let gas_limit = 1_000_000;
-
-    let program = vec![
-        op::movi(0x10, 0x20),
-        op::aloc(0x10),
-        op::movi(0x19, 0x2898),
-        op::movi(0x24, 2048),
-        op::movi(0x15, 0x864),
-        op::addi(0x16, RegId::HP, 0x10),
-        op::ccp(0x16, 0x19, 0x24, 0x15),
-        op::ret(RegId::ONE),
-    ];
-
-    let contract_id = test_context.setup_contract(program, None, None).contract_id;
-
-    let (script, script_data_offset) = script_with_data_offset!(
-        data_offset,
-        vec![
-            op::movi(0x10, 0x3FFD2),
-            op::slli(0x10, 0x10, 8),
-            op::aloc(0x10),
-            op::movi(0x10, data_offset as Immediate18),
-            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-            op::ret(RegId::ONE),
-        ],
-        test_context.get_tx_params().tx_offset()
-    );
-
-    let mut script_data = vec![];
-
-    let random_arg: Word = 0;
-
-    let call_data_offset = script_data_offset as usize + ContractId::LEN + 2 * WORD_SIZE;
-    let call_data_offset = call_data_offset as Word;
-
-    script_data.extend(contract_id.as_ref());
-    script_data.extend(random_arg.to_be_bytes());
-    script_data.extend(call_data_offset.to_be_bytes());
-
-    let result = test_context
-        .start_script(script.clone(), script_data)
-        .script_gas_limit(gas_limit)
-        .contract_input(contract_id)
-        .fee_input()
-        .contract_output(&contract_id)
-        .execute();
-
-    let receipts = result.receipts();
-
-    let panic_found = receipts
-        .iter()
-        .any(|receipt| matches!(receipt, Receipt::Panic { .. }));
-
-    assert!(panic_found, "memory ownership check bypassed");
-}
-
 #[test]
 fn code_root_a_plus_32_overflow() {
     // Given

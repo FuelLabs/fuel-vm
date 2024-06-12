@@ -248,6 +248,7 @@ fn test_binary_op_reg(op: fn(u8, u8) -> Instruction, a: Word) -> AluResultForFla
 #[test_case(op::exp, 1, u64::MAX => AluResultForFlags::invariant_ok(1))]
 #[test_case(op::exp, u64::MAX, 1 => AluResultForFlags::invariant_ok(u64::MAX))]
 #[test_case(op::exp, u32::MAX as u64, 2 => AluResultForFlags::invariant_ok((u32::MAX as u64).pow(2)))]
+#[test_case(op::exp, 10, (u32::MAX as u64) + 1 => AluResultForFlags::wrapping_fixed())]
 #[test_case(op::exp, u64::MAX, 2 => AluResultForFlags::wrapping_fixed())]
 #[test_case(op::mlog, 0, 0 => AluResultForFlags::error())]
 #[test_case(op::mlog, 1, 0 => AluResultForFlags::error())]

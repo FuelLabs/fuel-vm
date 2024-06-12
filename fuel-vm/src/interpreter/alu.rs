@@ -19,9 +19,6 @@ use fuel_types::{
 mod muldiv;
 mod wideint;
 
-#[cfg(test)]
-mod tests;
-
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: ExecutableTransaction,

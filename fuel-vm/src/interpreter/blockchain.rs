@@ -28,7 +28,7 @@ use crate::{
             tx_id,
         },
         memory::{
-            copy_from_slice_zero_fill_noownerchecks,
+            copy_from_slice_zero_fill,
             OwnershipRegisters,
         },
         receipts::ReceiptsCtx,
@@ -111,6 +111,7 @@ where
                 ggas,
                 ssp,
                 sp,
+                hp,
                 fp,
                 pc,
                 is,
@@ -133,6 +134,7 @@ where
             ggas,
             ssp,
             sp,
+            hp: hp.as_ref(),
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -381,21 +383,23 @@ where
         d: Word,
     ) -> IoResult<(), S::DataError> {
         let owner = self.ownership_registers();
-        let contract_id = self.internal_contract();
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, fp, .. }, mut w) =
+            split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let Self {
             ref storage,
+            ref context,
             ref mut memory,
             ..
         } = self;
 
         state_read_qword(
-            &contract_id?,
             storage,
+            context,
             memory.as_mut(),
             pc,
+            fp.as_ref(),
             owner,
             result,
             StateReadQWordParams {
@@ -548,6 +552,7 @@ struct LoadContractCodeCtx<'vm, S, I> {
     ggas: RegMut<'vm, GGAS>,
     ssp: RegMut<'vm, SSP>,
     sp: RegMut<'vm, SP>,
+    hp: Reg<'vm, HP>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
@@ -625,13 +630,18 @@ where
             contract_len as u64,
         )?;
 
+        // Set up ownership registers for the copy using old ssp
+        let owner =
+            OwnershipRegisters::only_allow_stack_write(new_sp, *self.ssp, *self.hp);
+
         // Mark stack space as allocated
         *self.sp = new_sp;
         *self.ssp = new_sp;
 
-        // Copy the code. Ownership checks are not used as the stack is adjusted above.
-        copy_from_slice_zero_fill_noownerchecks(
+        // Copy the code.
+        copy_from_slice_zero_fill(
             self.memory,
+            owner,
             contract_bytes,
             region_start,
             contract_offset,
@@ -786,11 +796,7 @@ where
             .try_into()
             .map_err(|_| PanicReason::MemoryOverflow)?;
 
-        // Check target memory range ownership
-        if !self.owner.has_ownership_range(&(dst_addr..length)) {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
+        self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
 
         let contract = super::contract::contract(self.storage, &contract_id)?;
@@ -811,8 +817,9 @@ where
         )?;
 
         // Owner checks already performed above
-        copy_from_slice_zero_fill_noownerchecks(
+        copy_from_slice_zero_fill(
             self.memory,
+            self.owner,
             contract.as_ref().as_ref(),
             dst_addr,
             offset,
@@ -1172,11 +1179,13 @@ struct StateReadQWordParams {
     num_slots: Word,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn state_read_qword<S: InterpreterStorage>(
-    contract_id: &ContractId,
     storage: &S,
+    context: &Context,
     memory: &mut MemoryInstance,
     pc: RegMut<PC>,
+    fp: Reg<FP>,
     ownership_registers: OwnershipRegisters,
     result_register: &mut Word,
     params: StateReadQWordParams,
@@ -1187,17 +1196,15 @@ fn state_read_qword<S: InterpreterStorage>(
         num_slots,
     } = params;
 
+    let contract_id = internal_contract(context, fp, memory)?;
     let num_slots = convert::to_usize(num_slots).ok_or(PanicReason::TooManySlots)?;
     let slots_len = Bytes32::LEN.saturating_mul(num_slots);
-    let target_range = memory.verify(destination_pointer, slots_len)?;
-    ownership_registers.verify_ownership(&target_range.words())?;
-    ownership_registers.verify_internal_context()?;
-
     let origin_key = Bytes32::new(memory.read_bytes(origin_key_pointer)?);
+    let dst = memory.write(ownership_registers, destination_pointer, slots_len)?;
 
     let mut all_set = true;
     let result: Vec<u8> = storage
-        .contract_state_range(contract_id, &origin_key, num_slots)
+        .contract_state_range(&contract_id, &origin_key, num_slots)
         .map_err(RuntimeError::Storage)?
         .into_iter()
         .flat_map(|bytes| match bytes {
@@ -1211,9 +1218,7 @@ fn state_read_qword<S: InterpreterStorage>(
 
     *result_register = all_set as Word;
 
-    memory
-        .write_noownerchecks(destination_pointer, result.len())?
-        .copy_from_slice(&result);
+    dst.copy_from_slice(&result);
 
     inc_pc(pc)?;
 

@@ -1,4 +1,7 @@
-use alloc::vec;
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use test_case::test_case;
 
 use crate::prelude::*;

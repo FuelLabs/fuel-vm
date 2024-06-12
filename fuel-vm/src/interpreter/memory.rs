@@ -898,14 +898,11 @@ pub struct OwnershipRegisters {
 
 impl OwnershipRegisters {
     pub(crate) fn new<M, S, Tx, Ecal>(vm: &Interpreter<M, S, Tx, Ecal>) -> Self {
-        let prev_hp = if vm.context.is_external() {
-            VM_MAX_RAM
-        } else {
-            vm.frames
-                .last()
-                .map(|frame| frame.registers()[RegId::HP])
-                .unwrap_or(VM_MAX_RAM)
-        };
+        let prev_hp = vm
+            .frames
+            .last()
+            .map(|frame| frame.registers()[RegId::HP])
+            .unwrap_or(VM_MAX_RAM);
 
         OwnershipRegisters {
             sp: vm.registers[RegId::SP],

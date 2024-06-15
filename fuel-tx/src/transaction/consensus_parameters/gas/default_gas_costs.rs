@@ -3,7 +3,7 @@ use super::*;
 /// hash
 pub const GIT: &str = "98341e564b75d1157e61d7d5f38612f6224a5b30";
 pub fn default_gas_costs() -> GasCostsValues {
-    GasCostsValuesV2 {
+    GasCostsValuesV3 {
         add: 1,
         addi: 1,
         and: 1,
@@ -13,7 +13,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         bhsh: 1,
         burn: 132,
         cb: 1,
-        cfei: 1,
         cfsi: 1,
         div: 1,
         divi: 1,
@@ -91,6 +90,14 @@ pub fn default_gas_costs() -> GasCostsValues {
         xor: 1,
         xori: 1,
         aloc: DependentCost::LightOperation {
+            base: 2,
+            units_per_gas: 214,
+        },
+        cfe: DependentCost::LightOperation {
+            base: 2,
+            units_per_gas: 214,
+        },
+        cfei: DependentCost::LightOperation {
             base: 2,
             units_per_gas: 214,
         },

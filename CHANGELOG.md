@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- [#766](https://github.com/FuelLabs/fuel-vm/pull/766): Use correct gas price when validating native signatures
+
 ## [Version 0.53.0]
 
 ### Added

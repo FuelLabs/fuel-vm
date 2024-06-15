@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+#### Breaking
+
+- [#767](https://github.com/FuelLabs/fuel-vm/pull/767): Fixed no zeroing malleable fields for `Create` transaction.
+
 ## [Version 0.53.0]
 
 ### Added

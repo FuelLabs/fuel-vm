@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Changed
+- [#768](https://github.com/FuelLabs/fuel-vm/pull/768): Charge for LDC opcode before loading the contract into memory.
 
 #### Breaking
 - [#765](https://github.com/FuelLabs/fuel-vm/pull/765): corrected the gas units for WDOP and WQOP

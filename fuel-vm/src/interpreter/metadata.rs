@@ -329,7 +329,7 @@ impl<Tx> GTFInput<'_, Tx> {
                     .map_err(|_| PanicReason::InvalidMetadataIdentifier)?;
                 input_contract_to_output_index
                     .get(&b)
-                    .map(|idx| *idx)
+                    .copied()
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputContractId => ofs.saturating_add(

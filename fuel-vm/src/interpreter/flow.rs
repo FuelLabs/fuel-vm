@@ -374,7 +374,6 @@ where
         self.gas_charge(gas_cost.base())?;
         let current_contract =
             current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
-        let input_contracts = self.tx.input_contracts().copied().collect::<Vec<_>>();
 
         PrepareCallCtx {
             params,
@@ -385,7 +384,7 @@ where
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
             input_contracts: InputContracts::new(
-                input_contracts.iter(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             new_storage_gas_per_byte,
@@ -444,7 +443,7 @@ impl<'a> PrepareCallRegisters<'a> {
     }
 }
 
-struct PrepareCallCtx<'vm, S, I> {
+struct PrepareCallCtx<'vm, S> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
     memory: &'vm mut MemoryInstance,
@@ -453,17 +452,16 @@ struct PrepareCallCtx<'vm, S, I> {
     runtime_balances: &'vm mut RuntimeBalances,
     new_storage_gas_per_byte: Word,
     storage: &'vm mut S,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
     profiler: &'vm mut Profiler,
 }
 
-impl<'vm, S, I> PrepareCallCtx<'vm, S, I>
+impl<'vm, S> PrepareCallCtx<'vm, S>
 where
     S: InterpreterStorage,
-    I: Iterator<Item = &'vm ContractId>,
 {
     fn prepare_call(mut self) -> IoResult<(), S::DataError>
     where

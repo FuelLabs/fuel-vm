@@ -4,7 +4,6 @@ use crate::{
             CoinPredicate,
             CoinSigned,
         },
-        contract::Contract,
         message::{
             MessageCoinPredicate,
             MessageDataPredicate,
@@ -441,22 +440,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         let asset_ids = asset_ids.sorted().dedup();
 
         asset_ids.collect_vec().into_iter()
-    }
-
-    /// Returns ids of all `Input::Contract` that are present in the inputs.
-    // TODO: Return `Vec<input::Contract>` instead
-    fn input_contracts(&self) -> IntoIter<&fuel_types::ContractId> {
-        let mut inputs: Vec<_> = self
-            .inputs()
-            .iter()
-            .filter_map(|input| match input {
-                Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
-                _ => None,
-            })
-            .collect();
-        inputs.sort();
-        inputs.dedup();
-        inputs.into_iter()
     }
 
     /// Checks that all owners of inputs in the predicates are valid.

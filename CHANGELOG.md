@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#770](https://github.com/FuelLabs/fuel-vm/pull/770): Cache contract inputs in the VM.
+
 ### Changed
 - [#768](https://github.com/FuelLabs/fuel-vm/pull/768): Charge for LDC opcode before loading the contract into memory.
 

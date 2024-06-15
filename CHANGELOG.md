@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.54.0]
+
 ### Added
 
 - [#770](https://github.com/FuelLabs/fuel-vm/pull/770): Cache contract inputs in the VM.

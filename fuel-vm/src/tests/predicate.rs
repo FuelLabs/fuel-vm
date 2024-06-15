@@ -570,10 +570,12 @@ fn synchronous_estimate_predicates_respects_total_tx_gas_limit() {
     let limit = 1_000_000;
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let mut params = CheckPredicateParams::default();
-    params.max_gas_per_predicate = limit;
-    params.max_gas_per_tx = limit;
-    params.gas_costs = GasCosts::unit();
+    let params = CheckPredicateParams {
+        max_gas_per_predicate: limit,
+        max_gas_per_tx: limit,
+        gas_costs: GasCosts::unit(),
+        ..Default::default()
+    };
 
     // Infinite loop
     let predicate = vec![op::noop(), op::jmpb(RegId::ZERO, 0)]

@@ -613,15 +613,13 @@ where
         self.input_contracts.check(&contract_id)?;
 
         // Fetch the storage contract
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
-        let contract_len = contract_bytes.len();
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
             current_contract,
             profiler: self.profiler,
         };
+        let contract_len = contract_size(&self.storage, &contract_id)?;
         dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
@@ -629,6 +627,8 @@ where
             self.gas_cost,
             contract_len as u64,
         )?;
+        let contract = super::contract::contract(self.storage, &contract_id)?;
+        let contract_bytes = contract.as_ref().as_ref();
 
         // Set up ownership registers for the copy using old ssp
         let owner =

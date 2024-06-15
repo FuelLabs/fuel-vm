@@ -367,6 +367,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     let mut frames = Vec::default();
     let current_contract = context.is_internal().then_some(ContractId::default());
 
+    let input_contracts = input_contracts.into_iter().collect();
     let input = PrepareCallCtx {
         params,
         registers,
@@ -375,7 +376,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
         gas_cost,
         runtime_balances: &mut runtime_balances,
         storage: &mut storage,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         new_storage_gas_per_byte: 0,
         receipts: &mut receipts,
         frames: &mut frames,

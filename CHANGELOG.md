@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 #### Breaking
-- [#765](https://github.com/FuelLabs/fuel-vm/pull/765): corrected the gas units for WDOP and WQOP
+- [#769](https://github.com/FuelLabs/fuel-vm/pull/769): Use `DependentCost` for `CFE` and `CFEI` opcodes.
+- [#765](https://github.com/FuelLabs/fuel-vm/pull/765): Corrected the gas units for WDOP and WQOP
 
 ## [Version 0.53.0]
 

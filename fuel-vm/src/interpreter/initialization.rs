@@ -43,7 +43,7 @@ where
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        tx.prepare_init_execute();
+        tx.prepare_sign();
         self.tx = tx;
         self.input_contracts = self
             .tx

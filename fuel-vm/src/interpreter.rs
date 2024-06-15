@@ -520,11 +520,6 @@ pub trait ExecutableTransaction:
             _ => Ok(()),
         })
     }
-
-    /// Prepares the transaction for execution.
-    fn prepare_init_execute(&mut self) {
-        self.prepare_sign()
-    }
 }
 
 impl ExecutableTransaction for Create {
@@ -539,8 +534,6 @@ impl ExecutableTransaction for Create {
     fn transaction_type() -> Word {
         TransactionRepr::Create as Word
     }
-
-    fn prepare_init_execute(&mut self) {}
 }
 
 impl ExecutableTransaction for Script {

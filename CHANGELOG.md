@@ -7,10 +7,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [#770](https://github.com/FuelLabs/fuel-vm/pull/770): Cache contract inputs in the VM.
+
 ### Changed
+- [#768](https://github.com/FuelLabs/fuel-vm/pull/768): Charge for LDC opcode before loading the contract into memory.
+
+- [#771](https://github.com/FuelLabs/fuel-vm/pull/771): Take into account spent gas during synchronous predicates estimation.
 
 #### Breaking
-- [#765](https://github.com/FuelLabs/fuel-vm/pull/765): corrected the gas units for WDOP and WQOP
+- [#769](https://github.com/FuelLabs/fuel-vm/pull/769): Use `DependentCost` for `CFE` and `CFEI` opcodes.
+- [#767](https://github.com/FuelLabs/fuel-vm/pull/767): Fixed no zeroing malleable fields for `Create` transaction.
+- [#765](https://github.com/FuelLabs/fuel-vm/pull/765): Corrected the gas units for WDOP and WQOP.
+
+### Removed
+- [#772](https://github.com/FuelLabs/fuel-vm/pull/772): Removed redundant `self.receipts.root()` call.
 
 ## [Version 0.53.0]
 

@@ -611,15 +611,16 @@ where
             }
 
             Instruction::CFEI(cfei) => {
-                self.gas_charge(self.gas_costs().cfei())?;
-                let imm = cfei.unpack();
-                self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
+                let number_of_bytes = cfei.unpack().into();
+                self.dependent_gas_charge(self.gas_costs().cfei(), number_of_bytes)?;
+                self.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
             }
 
             Instruction::CFE(cfe) => {
-                self.gas_charge(self.gas_costs().cfei())?;
                 let a = cfe.unpack();
-                self.stack_pointer_overflow(Word::overflowing_add, r!(a))?;
+                let number_of_bytes = r!(a);
+                self.dependent_gas_charge(self.gas_costs().cfe(), number_of_bytes)?;
+                self.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
             }
 
             Instruction::CFSI(cfsi) => {

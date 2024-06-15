@@ -131,16 +131,7 @@ impl<'a, Tx> PredicateRunKind<'a, Tx> {
 #[derive(Debug, Clone, Copy)]
 enum PredicateAction {
     Verifying,
-    Estimating,
-}
-
-impl<Tx> From<&PredicateRunKind<'_, Tx>> for PredicateAction {
-    fn from(kind: &PredicateRunKind<'_, Tx>) -> Self {
-        match kind {
-            PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
-            PredicateRunKind::Estimating(_) => PredicateAction::Estimating,
-        }
-    }
+    Estimating { available_gas: Word },
 }
 
 impl<Tx> Interpreter<&mut MemoryInstance, PredicateStorage, Tx>
@@ -161,7 +152,7 @@ where
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let tx = checked.transaction();
-        Self::run_predicate(PredicateRunKind::Verifying(tx), params, memory.as_mut())
+        Self::run_predicates(PredicateRunKind::Verifying(tx), params, memory.as_mut())
     }
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -199,7 +190,7 @@ where
         params: &CheckPredicateParams,
         mut memory: impl Memory,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
-        let predicates_checked = Self::run_predicate(
+        let predicates_checked = Self::run_predicates(
             PredicateRunKind::Estimating(transaction),
             params,
             memory.as_mut(),
@@ -242,8 +233,17 @@ where
         E: ParallelExecutor,
     {
         let mut checks = vec![];
-        let predicate_action = PredicateAction::from(&kind);
         let tx_offset = params.tx_offset;
+
+        let max_gas_per_tx = params.max_gas_per_tx;
+        let max_gas_per_predicate = params.max_gas_per_predicate;
+        let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
+        let predicate_action = match kind {
+            PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
+            PredicateRunKind::Estimating(_) => {
+                PredicateAction::Estimating { available_gas }
+            }
+        };
 
         for index in 0..kind.tx().inputs().len() {
             if let Some(predicate) =
@@ -254,14 +254,16 @@ where
                 let mut memory = pool.get_new().await;
 
                 let verify_task = E::create_task(move || {
-                    Interpreter::check_predicate(
+                    let (used_gas, result) = Interpreter::check_predicate(
                         tx,
                         index,
                         predicate_action,
                         predicate,
                         my_params,
                         memory.as_mut(),
-                    )
+                    );
+
+                    result.map(|_| (used_gas, index))
                 });
 
                 checks.push(verify_task);
@@ -273,13 +275,18 @@ where
         Self::finalize_check_predicate(kind, checks, params)
     }
 
-    fn run_predicate(
+    fn run_predicates(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
-        let predicate_action = PredicateAction::from(&kind);
         let mut checks = vec![];
+
+        let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
+        let max_gas_per_tx = params.max_gas_per_tx;
+        let max_gas_per_predicate = params.max_gas_per_predicate;
+        let mut available_gas =
+            core::cmp::min(max_gas_per_predicate, max_gas_per_tx).saturating_sub(max_gas);
 
         for index in 0..kind.tx().inputs().len() {
             let tx = kind.tx().clone();
@@ -287,14 +294,23 @@ where
             if let Some(predicate) =
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
             {
-                checks.push(Interpreter::check_predicate(
+                let predicate_action = match kind {
+                    PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
+                    PredicateRunKind::Estimating(_) => {
+                        PredicateAction::Estimating { available_gas }
+                    }
+                };
+                let (gas_used, result) = Interpreter::check_predicate(
                     tx,
                     index,
                     predicate_action,
                     predicate,
                     params.clone(),
                     memory.as_mut(),
-                ));
+                );
+                available_gas = available_gas.saturating_sub(gas_used);
+                let result = result.map(|_| (gas_used, index));
+                checks.push(result);
             }
         }
 
@@ -308,7 +324,7 @@ where
         predicate: RuntimePredicate,
         params: CheckPredicateParams,
         memory: &mut MemoryInstance,
-    ) -> Result<(Word, usize), PredicateVerificationFailed> {
+    ) -> (Word, Result<(), PredicateVerificationFailed>) {
         match &tx.inputs()[index] {
             Input::CoinPredicate(CoinPredicate {
                 owner: address,
@@ -326,14 +342,12 @@ where
                 ..
             }) => {
                 if !Input::is_predicate_owner_valid(address, predicate) {
-                    return Err(PredicateVerificationFailed::InvalidOwner);
+                    return (0, Err(PredicateVerificationFailed::InvalidOwner));
                 }
             }
             _ => {}
         }
 
-        let max_gas_per_tx = params.max_gas_per_tx;
-        let max_gas_per_predicate = params.max_gas_per_predicate;
         let zero_gas_price = 0;
         let interpreter_params = InterpreterParams::new(zero_gas_price, params);
 
@@ -343,47 +357,48 @@ where
             interpreter_params,
         );
 
-        let available_gas = match predicate_action {
+        let (context, available_gas) = match predicate_action {
             PredicateAction::Verifying => {
                 let context = Context::PredicateVerification { program: predicate };
-                let available_gas =
-                    if let Some(x) = tx.inputs()[index].predicate_gas_used() {
-                        x
-                    } else {
-                        return Err(PredicateVerificationFailed::GasNotSpecified);
-                    };
+                let available_gas = tx.inputs()[index]
+                    .predicate_gas_used()
+                    .expect("We only run predicates at this stage, so it should exist.");
 
-                vm.init_predicate(context, tx, available_gas)?;
-                available_gas
+                (context, available_gas)
             }
-            PredicateAction::Estimating => {
+            PredicateAction::Estimating { available_gas } => {
                 let context = Context::PredicateEstimation { program: predicate };
-                let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
 
-                vm.init_predicate(context, tx, available_gas)?;
-                available_gas
+                (context, available_gas)
             }
         };
+
+        if let Err(err) = vm.init_predicate(context, tx, available_gas) {
+            return (0, Err(err.into()));
+        }
 
         let result = vm.verify_predicate();
         let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
 
-        let gas_used = available_gas
-            .checked_sub(vm.remaining_gas())
-            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
+        let Some(gas_used) = available_gas.checked_sub(vm.remaining_gas()) else {
+            return (0, Err(Bug::new(BugVariant::GlobalGasUnderflow).into()));
+        };
 
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
-                result?;
-                return Err(PredicateVerificationFailed::False);
+                return if let Err(err) = result {
+                    (gas_used, Err(err))
+                } else {
+                    (gas_used, Err(PredicateVerificationFailed::False))
+                }
             }
 
             if vm.remaining_gas() != 0 {
-                return Err(PredicateVerificationFailed::GasMismatch);
+                return (gas_used, Err(PredicateVerificationFailed::GasMismatch));
             }
         }
 
-        Ok((gas_used, index))
+        (gas_used, Ok(()))
     }
 
     fn finalize_check_predicate(
@@ -842,11 +857,6 @@ where
 
             if program.is_debug() {
                 self.debugger_set_last_state(program);
-            }
-
-            if let Some(script) = self.tx.as_script_mut() {
-                let receipts_root = self.receipts.root();
-                *script.receipts_root_mut() = receipts_root;
             }
 
             let revert = matches!(program, ProgramState::Revert(_));

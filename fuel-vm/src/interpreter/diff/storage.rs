@@ -95,6 +95,9 @@ where
             receipts: self.receipts,
             tx: self.tx,
             initial_balances: self.initial_balances,
+            input_contracts: self.input_contracts,
+            input_contracts_index_to_output_index: self
+                .input_contracts_index_to_output_index,
             storage: self.storage.0,
             debugger: self.debugger,
             context: self.context,
@@ -174,6 +177,9 @@ where
             receipts: self.receipts,
             tx: self.tx,
             initial_balances: self.initial_balances,
+            input_contracts: self.input_contracts,
+            input_contracts_index_to_output_index: self
+                .input_contracts_index_to_output_index,
             storage: Record::new(self.storage),
             debugger: self.debugger,
             context: self.context,

@@ -3,10 +3,7 @@
 use alloc::vec;
 
 use crate::storage::MemoryStorage;
-use core::{
-    convert::Infallible,
-    iter,
-};
+use core::convert::Infallible;
 
 use super::*;
 use crate::interpreter::PanicContext;
@@ -230,14 +227,15 @@ fn test_code_size() {
     let is = 0;
     let mut cgas = 0;
     let mut ggas = 0;
-    let input_contract = [contract_id];
+    let input_contracts = [contract_id];
+    let input_contracts = input_contracts.into_iter().collect();
     let mut panic_context = PanicContext::None;
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
         profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -254,7 +252,7 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
@@ -267,11 +265,12 @@ fn test_code_size() {
     assert_eq!(pc, 8);
     assert_eq!(result, 100);
 
+    let input_contracts = Default::default();
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),

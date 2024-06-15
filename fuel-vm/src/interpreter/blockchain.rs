@@ -126,7 +126,7 @@ where
             storage: &mut self.storage,
             contract_max_size,
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             gas_cost,
@@ -210,7 +210,7 @@ where
         let input = CodeCopyCtx {
             memory: self.memory.as_mut(),
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             storage: &mut self.storage,
@@ -273,7 +273,7 @@ where
             gas_cost,
             profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             current_contract,
@@ -310,7 +310,7 @@ where
             gas_cost,
             profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             current_contract,
@@ -540,12 +540,12 @@ where
     }
 }
 
-struct LoadContractCodeCtx<'vm, S, I> {
+struct LoadContractCodeCtx<'vm, S> {
     contract_max_size: u64,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
     profiler: &'vm mut Profiler,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     storage: &'vm S,
     gas_cost: DependentCost,
     cgas: RegMut<'vm, CGAS>,
@@ -558,7 +558,7 @@ struct LoadContractCodeCtx<'vm, S, I> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I>
+impl<'vm, S> LoadContractCodeCtx<'vm, S>
 where
     S: InterpreterStorage,
 {
@@ -577,7 +577,6 @@ where
         length_unpadded: Word,
     ) -> IoResult<(), S::DataError>
     where
-        I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
         let ssp = *self.ssp;
@@ -613,15 +612,13 @@ where
         self.input_contracts.check(&contract_id)?;
 
         // Fetch the storage contract
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
-        let contract_len = contract_bytes.len();
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
             current_contract,
             profiler: self.profiler,
         };
+        let contract_len = contract_size(&self.storage, &contract_id)?;
         dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
@@ -629,6 +626,8 @@ where
             self.gas_cost,
             contract_len as u64,
         )?;
+        let contract = super::contract::contract(self.storage, &contract_id)?;
+        let contract_bytes = contract.as_ref().as_ref();
 
         // Set up ownership registers for the copy using old ssp
         let owner =
@@ -762,9 +761,9 @@ where
     }
 }
 
-struct CodeCopyCtx<'vm, S, I> {
+struct CodeCopyCtx<'vm, S> {
     memory: &'vm mut MemoryInstance,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     storage: &'vm S,
     profiler: &'vm mut Profiler,
     current_contract: Option<ContractId>,
@@ -776,7 +775,7 @@ struct CodeCopyCtx<'vm, S, I> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I> CodeCopyCtx<'vm, S, I>
+impl<'vm, S> CodeCopyCtx<'vm, S>
 where
     S: InterpreterStorage,
 {
@@ -788,7 +787,6 @@ where
         length: Word,
     ) -> IoResult<(), S::DataError>
     where
-        I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
@@ -877,12 +875,12 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     Ok(())
 }
 
-struct CodeRootCtx<'vm, S, I> {
+struct CodeRootCtx<'vm, S> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     current_contract: Option<ContractId>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -891,7 +889,7 @@ struct CodeRootCtx<'vm, S, I> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
+impl<'vm, S> CodeRootCtx<'vm, S> {
     pub(crate) fn code_root(mut self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
@@ -930,12 +928,12 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
     }
 }
 
-struct CodeSizeCtx<'vm, S, I> {
+struct CodeSizeCtx<'vm, S> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     current_contract: Option<ContractId>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -943,7 +941,7 @@ struct CodeSizeCtx<'vm, S, I> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
+impl<'vm, S> CodeSizeCtx<'vm, S> {
     pub(crate) fn code_size(
         mut self,
         result: &mut Word,

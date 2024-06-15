@@ -42,6 +42,7 @@ fn test_load_contract_in_script() -> IoResult<(), Infallible> {
 
     let mut panic_context = PanicContext::None;
     let input_contracts = [contract_id];
+    let input_contracts = input_contracts.into_iter().collect();
     let input = LoadContractCodeCtx {
         contract_max_size: 100,
         storage: &storage,
@@ -50,7 +51,7 @@ fn test_load_contract_in_script() -> IoResult<(), Infallible> {
             block_height: Default::default(),
         },
         profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -100,6 +101,7 @@ fn test_load_contract_in_call() -> IoResult<(), Infallible> {
 
     let mut panic_context = PanicContext::None;
     let input_contracts = [contract_id];
+    let input_contracts = input_contracts.into_iter().collect();
     let input = LoadContractCodeCtx {
         contract_max_size: 100,
         storage: &storage,
@@ -108,7 +110,7 @@ fn test_load_contract_in_call() -> IoResult<(), Infallible> {
             block_height: Default::default(),
         },
         profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -155,11 +157,12 @@ fn test_code_copy() -> IoResult<(), Infallible> {
         .unwrap();
 
     let input_contracts = [contract_id];
+    let input_contracts = input_contracts.into_iter().collect();
     let mut panic_context = PanicContext::None;
     let input = CodeCopyCtx {
         storage: &storage,
         memory: &mut memory,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         owner: OwnershipRegisters {

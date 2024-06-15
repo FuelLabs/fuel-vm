@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Breaking
 - [#765](https://github.com/FuelLabs/fuel-vm/pull/765): corrected the gas units for WDOP and WQOP
 
+### Removed
+- [#772](https://github.com/FuelLabs/fuel-vm/pull/772): Removed redundant `self.receipts.root()` call.
+
 ## [Version 0.53.0]
 
 ### Added

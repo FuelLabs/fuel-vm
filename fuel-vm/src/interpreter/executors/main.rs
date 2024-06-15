@@ -285,11 +285,8 @@ where
         let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
         let max_gas_per_tx = params.max_gas_per_tx;
         let max_gas_per_predicate = params.max_gas_per_predicate;
-        let mut available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx)
-            .checked_sub(max_gas)
-            .ok_or(
-                PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
-            )?;
+        let mut available_gas =
+            core::cmp::min(max_gas_per_predicate, max_gas_per_tx).saturating_sub(max_gas);
 
         for index in 0..kind.tx().inputs().len() {
             let tx = kind.tx().clone();

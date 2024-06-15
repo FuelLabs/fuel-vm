@@ -201,7 +201,7 @@ async fn get_verifying_predicate() {
 async fn execute_gas_metered_predicates(
     predicates: Vec<Vec<Instruction>>,
 ) -> Result<u64, ()> {
-    const GAS_LIMIT: Word = 10000;
+    const GAS_LIMIT: Word = 100_000;
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let arb_max_fee = 2_000;
@@ -404,7 +404,7 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        rng.gen(),
+        0,
         predicate,
         vec![],
     );

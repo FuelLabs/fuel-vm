@@ -83,7 +83,7 @@ fn estimate_gas_gives_proper_gas_used() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        rng.gen(),
+        0,
         predicate,
         vec![],
     );

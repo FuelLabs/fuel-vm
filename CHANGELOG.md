@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - [#768](https://github.com/FuelLabs/fuel-vm/pull/768): Charge for LDC opcode before loading the contract into memory.
 
+- [#771](https://github.com/FuelLabs/fuel-vm/pull/771): Take into account spent gas during synchronous predicates estimation.
+
 #### Breaking
 - [#769](https://github.com/FuelLabs/fuel-vm/pull/769): Use `DependentCost` for `CFE` and `CFEI` opcodes.
 - [#767](https://github.com/FuelLabs/fuel-vm/pull/767): Fixed no zeroing malleable fields for `Create` transaction.

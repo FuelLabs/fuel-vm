@@ -563,3 +563,46 @@ async fn gas_used_by_predicates_more_than_limit() {
         CheckError::PredicateVerificationFailed(_)
     ));
 }
+
+#[test]
+#[ntest::timeout(5_000)]
+fn synchronous_estimate_predicates_respects_total_tx_gas_limit() {
+    let limit = 1_000_000;
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    let mut params = CheckPredicateParams::default();
+    params.max_gas_per_predicate = limit;
+    params.max_gas_per_tx = limit;
+    params.gas_costs = GasCosts::unit();
+
+    // Infinite loop
+    let predicate = vec![op::noop(), op::jmpb(RegId::ZERO, 0)]
+        .into_iter()
+        .collect::<Vec<u8>>();
+    let predicate_owner = Input::predicate_owner(&predicate);
+
+    let mut builder = TransactionBuilder::script(vec![], vec![]);
+    builder.max_fee_limit(1000).maturity(Default::default());
+
+    let coin_amount = 100_000;
+
+    for _ in 0..255 {
+        builder.add_input(Input::coin_predicate(
+            rng.gen(),
+            predicate_owner,
+            coin_amount,
+            AssetId::default(),
+            rng.gen(),
+            0,
+            predicate.clone(),
+            vec![],
+        ));
+    }
+    let mut transaction = builder.finalize();
+
+    // When
+    let result = transaction.estimate_predicates(&params, MemoryInstance::new());
+
+    // Then
+    assert_eq!(Ok(()), result);
+}

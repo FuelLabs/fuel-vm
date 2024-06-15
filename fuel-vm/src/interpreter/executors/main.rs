@@ -844,11 +844,6 @@ where
                 self.debugger_set_last_state(program);
             }
 
-            if let Some(script) = self.tx.as_script_mut() {
-                let receipts_root = self.receipts.root();
-                *script.receipts_root_mut() = receipts_root;
-            }
-
             let revert = matches!(program, ProgramState::Revert(_));
             let gas_price = self.gas_price();
             Self::finalize_outputs(

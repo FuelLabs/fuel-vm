@@ -606,9 +606,6 @@ where
             return Err(PanicReason::ContractMaxSize.into())
         }
 
-        let new_sp = ssp.saturating_add(length);
-        self.memory.grow_stack(new_sp)?;
-
         self.input_contracts.check(&contract_id)?;
 
         // Fetch the storage contract
@@ -619,15 +616,19 @@ where
             profiler: self.profiler,
         };
         let contract_len = contract_size(&self.storage, &contract_id)?;
+        let charge_len = core::cmp::max(contract_len as u64, length);
         dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
             profiler,
             self.gas_cost,
-            contract_len as u64,
+            charge_len,
         )?;
         let contract = super::contract::contract(self.storage, &contract_id)?;
         let contract_bytes = contract.as_ref().as_ref();
+
+        let new_sp = ssp.saturating_add(length);
+        self.memory.grow_stack(new_sp)?;
 
         // Set up ownership registers for the copy using old ssp
         let owner =

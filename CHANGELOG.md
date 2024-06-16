@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.54.1]
+
 ### Changed
 - [#776](https://github.com/FuelLabs/fuel-vm/pull/776): Charge for max length in LDC opcode.
 

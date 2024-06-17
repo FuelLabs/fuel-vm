@@ -193,16 +193,16 @@ where
                 self.alu_wideint_cmp_u128(a.into(), r!(b), r!(c), args)?;
             }
 
-            Instruction::WQCM(wdcm) => {
+            Instruction::WQCM(wqcm) => {
                 self.gas_charge(self.gas_costs().wqcm())?;
-                let (a, b, c, imm) = wdcm.unpack();
+                let (a, b, c, imm) = wqcm.unpack();
                 let args = wideint::CompareArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u256(a.into(), r!(b), r!(c), args)?;
             }
 
             Instruction::WDOP(wdop) => {
-                self.gas_charge(self.gas_costs().wdcm())?;
+                self.gas_charge(self.gas_costs().wdop())?;
                 let (a, b, c, imm) = wdop.unpack();
                 let args = wideint::MathArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
@@ -210,7 +210,7 @@ where
             }
 
             Instruction::WQOP(wqop) => {
-                self.gas_charge(self.gas_costs().wqcm())?;
+                self.gas_charge(self.gas_costs().wqop())?;
                 let (a, b, c, imm) = wqop.unpack();
                 let args = wideint::MathArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
@@ -611,15 +611,16 @@ where
             }
 
             Instruction::CFEI(cfei) => {
-                self.gas_charge(self.gas_costs().cfei())?;
-                let imm = cfei.unpack();
-                self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
+                let number_of_bytes = cfei.unpack().into();
+                self.dependent_gas_charge(self.gas_costs().cfei(), number_of_bytes)?;
+                self.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
             }
 
             Instruction::CFE(cfe) => {
-                self.gas_charge(self.gas_costs().cfei())?;
                 let a = cfe.unpack();
-                self.stack_pointer_overflow(Word::overflowing_add, r!(a))?;
+                let number_of_bytes = r!(a);
+                self.dependent_gas_charge(self.gas_costs().cfe(), number_of_bytes)?;
+                self.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
             }
 
             Instruction::CFSI(cfsi) => {

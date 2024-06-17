@@ -4,10 +4,14 @@ use core::convert::Infallible;
 
 use alloc::vec;
 
-use crate::storage::MemoryStorage;
-
 use super::*;
-use crate::interpreter::internal::absolute_output_mem_range;
+use crate::{
+    interpreter::{
+        internal::absolute_output_mem_range,
+        PanicContext,
+    },
+    storage::MemoryStorage,
+};
 use fuel_tx::{
     field::{
         Inputs,
@@ -35,14 +39,12 @@ fn test_contract_balance(b: Word, c: Word) -> IoResult<(), Infallible> {
     let mut pc = 4;
 
     let mut panic_context = PanicContext::None;
+    let input_contracts = [contract_id].into_iter().collect();
     let input = ContractBalanceCtx {
         storage: &mut storage,
         memory: &mut memory,
         pc: RegMut::new(&mut pc),
-        input_contracts: InputContracts::new(
-            [&contract_id].into_iter(),
-            &mut panic_context,
-        ),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
     };
     let mut result = 0;
 
@@ -132,6 +134,7 @@ fn test_transfer(
         RECIPIENT_CONTRACT_ID,
     )];
 
+    let input_contracts = [RECIPIENT_CONTRACT_ID].into_iter().collect();
     let transfer_ctx = TransferCtx {
         storage: &mut storage,
         memory: &mut memory,
@@ -142,6 +145,7 @@ fn test_transfer(
         profiler: &mut Default::default(),
         new_storage_gas_per_byte: 1,
         tx: &mut tx,
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         tx_offset: 0,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -152,7 +156,6 @@ fn test_transfer(
     // When
 
     transfer_ctx.transfer(
-        &mut panic_context,
         requested_contract_id_offset,
         transfer_amount,
         requested_asset_id_offset,
@@ -286,6 +289,8 @@ fn test_transfer_output(
     let output_range =
         absolute_output_mem_range(&tx, tx_offset, output_index as usize).unwrap();
 
+    let input_contracts = [SOURCE_CONTRACT_ID].into_iter().collect();
+    let mut panic_context = PanicContext::None;
     let transfer_ctx = TransferCtx {
         storage: &mut storage,
         memory: &mut memory,
@@ -296,6 +301,7 @@ fn test_transfer_output(
         profiler: &mut Default::default(),
         new_storage_gas_per_byte: 1,
         tx: &mut tx,
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         tx_offset,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),

@@ -15,6 +15,7 @@ use fuel_types::{
     ContractId,
     MessageId,
     Nonce,
+    SubAssetId,
     Word,
 };
 
@@ -139,14 +140,14 @@ pub enum Receipt {
         data: Option<Vec<u8>>,
     },
     Mint {
-        sub_id: Bytes32,
+        sub_id: SubAssetId,
         contract_id: ContractId,
         val: Word,
         pc: Word,
         is: Word,
     },
     Burn {
-        sub_id: Bytes32,
+        sub_id: SubAssetId,
         contract_id: ContractId,
         val: Word,
         pc: Word,
@@ -403,7 +404,7 @@ impl Receipt {
     }
 
     pub fn mint(
-        sub_id: Bytes32,
+        sub_id: SubAssetId,
         contract_id: ContractId,
         val: Word,
         pc: Word,
@@ -419,7 +420,7 @@ impl Receipt {
     }
 
     pub fn burn(
-        sub_id: Bytes32,
+        sub_id: SubAssetId,
         contract_id: ContractId,
         val: Word,
         pc: Word,
@@ -453,7 +454,7 @@ impl Receipt {
         })
     }
 
-    pub const fn sub_id(&self) -> Option<&Bytes32> {
+    pub const fn sub_id(&self) -> Option<&SubAssetId> {
         match self {
             Self::Mint { sub_id, .. } => Some(sub_id),
             Self::Burn { sub_id, .. } => Some(sub_id),

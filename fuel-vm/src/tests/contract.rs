@@ -16,7 +16,10 @@ use fuel_tx::{
     ConsensusParameters,
     Witness,
 };
-use fuel_types::canonical::Serialize;
+use fuel_types::{
+    canonical::Serialize,
+    SubAssetId,
+};
 use rand::{
     rngs::StdRng,
     Rng,
@@ -115,7 +118,7 @@ fn mint_burn() {
 
     let contract_id = test_context.setup_contract(program, None, None).contract_id;
 
-    let asset_id = contract_id.asset_id(&Bytes32::zeroed());
+    let asset_id = contract_id.asset_id(&SubAssetId::zeroed());
 
     let (script_call, _) = script_with_data_offset!(
         data_offset,

@@ -788,7 +788,7 @@ const M: Word = Word::MAX;
 #[test_case(0, 1, 0, 0, 2 => ((0, 1, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd 1 over src balance")]
 #[test_case(0, 0, 0, 0, M => ((0, 0, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd max over empty src balance")]
 #[test_case(0, 1, 0, 0, M => ((0, 1, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd max over src balance")]
-fn call_forwarding_internal(
+fn call_forwarding(
     balance_in: Word,
     balance_src: Word,
     balance_dst: Word,

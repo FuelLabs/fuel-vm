@@ -252,6 +252,8 @@ fn mint_burn_bounds<R: Into<u8>>(
     assert_eq!(extract_novalue(&run(test_context, contract_id)), result);
 }
 
+type MintOrBurnOpcode = fn(RegId, RegId) -> Instruction;
+
 #[test_case(vec![(op::mint, 0, 0)] => RunResult::Success(()); "Mint 0")]
 #[test_case(vec![(op::burn, 0, 0)] => RunResult::Success(()); "Burn 0")]
 #[test_case(vec![(op::mint, 100, 0)] => RunResult::Success(()); "Mint 100")]
@@ -264,9 +266,7 @@ fn mint_burn_bounds<R: Into<u8>>(
 #[test_case(vec![(op::burn, Word::MAX, 0)] => RunResult::Panic(PanicReason::NotEnoughBalance); "Burn nonexisting Word::MAX")]
 #[test_case(vec![(op::mint, Word::MAX, 0), (op::mint, 1, 0)] => RunResult::Panic(PanicReason::BalanceOverflow); "Mint overflow")]
 #[test_case(vec![(op::mint, Word::MAX, 0), (op::burn, 1, 0), (op::mint, 2, 0)] => RunResult::Panic(PanicReason::BalanceOverflow); "Mint,Burn,Mint overflow")]
-fn mint_burn_single_sequence(
-    seq: Vec<(fn(RegId, RegId) -> Instruction, Word, u8)>,
-) -> RunResult<()> {
+fn mint_burn_single_sequence(seq: Vec<(MintOrBurnOpcode, Word, u8)>) -> RunResult<()> {
     let reg_len: u8 = 0x10;
     let reg_mint_amount: u8 = 0x11;
 
@@ -651,23 +651,23 @@ fn transfer_to_output(
     let result = extract_result(&receipts, first_tro);
 
     if let Some(Output::Variable {
-        to,
-        amount,
-        asset_id,
+        to: var_to,
+        amount: var_amount,
+        asset_id: var_asset_id,
     }) = tx.outputs().get(to_index as usize).copied()
     {
         if result.is_ok() {
-            assert_eq!(amount, amount, "Transfer amount is wrong");
-            assert_eq!(asset_id, asset_id, "Transfer asset id is wrong");
+            assert_eq!(var_amount, amount, "Transfer amount is wrong");
+            assert_eq!(var_asset_id, asset_id, "Transfer asset id is wrong");
         } else {
             assert_eq!(
-                to,
+                var_to,
                 Address::zeroed(),
                 "Transfer target should be zeroed on failure"
             );
-            assert_eq!(amount, 0, "Transfer amount should be 0 on failure");
+            assert_eq!(var_amount, 0, "Transfer amount should be 0 on failure");
             assert_eq!(
-                asset_id,
+                var_asset_id,
                 AssetId::zeroed(),
                 "Transfer asset id should be zeroed on failure"
             );

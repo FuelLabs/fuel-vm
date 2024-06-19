@@ -1,0 +1,879 @@
+use rstest::rstest;
+use test_case::test_case;
+
+use fuel_asm::{
+    op,
+    GTFArgs,
+    Instruction,
+    RegId,
+    Word,
+};
+use fuel_tx::{
+    field::Outputs,
+    Address,
+    AssetId,
+    Bytes32,
+    ContractId,
+    ContractIdExt,
+    Output,
+    PanicReason,
+    Receipt,
+    ScriptExecutionResult,
+};
+use fuel_types::canonical::Serialize;
+
+use crate::{
+    call::Call,
+    consts::VM_MAX_RAM,
+    prelude::TestBuilder,
+    tests::test_helpers::set_full_word,
+    util::test_helpers::find_change,
+};
+
+fn run(mut test_context: TestBuilder, call_contract_id: ContractId) -> Vec<Receipt> {
+    let script_ops = vec![
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+        op::ret(RegId::ONE),
+    ];
+    let script_data: Vec<u8> = [Call::new(call_contract_id, 0, 0).to_bytes().as_slice()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .collect();
+
+    test_context
+        .start_script(script_ops, script_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(call_contract_id)
+        .fee_input()
+        .contract_output(&call_contract_id)
+        .execute()
+        .receipts()
+        .to_vec()
+}
+
+/// `value_extractor` is called only on success
+fn extract_result<T>(
+    receipts: &[Receipt],
+    value_extractor: fn(&[Receipt]) -> Option<T>,
+) -> RunResult<T> {
+    let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() else {
+        unreachable!("No script result");
+    };
+
+    match *result {
+        ScriptExecutionResult::Success => match value_extractor(receipts) {
+            Some(v) => RunResult::Success(v),
+            None => RunResult::UnableToExtractValue,
+        },
+        ScriptExecutionResult::Revert => RunResult::Revert,
+        ScriptExecutionResult::Panic => RunResult::Panic({
+            let Receipt::Panic { reason, .. } = receipts[receipts.len() - 2] else {
+                unreachable!("No panic receipt");
+            };
+            *reason.reason()
+        }),
+        ScriptExecutionResult::GenericFailure(value) => RunResult::GenericFailure(value),
+    }
+}
+
+fn extract_novalue(receipts: &[Receipt]) -> RunResult<()> {
+    extract_result(receipts, |_| Some(()))
+}
+
+fn first_log(receipts: &[Receipt]) -> Option<Word> {
+    receipts
+        .iter()
+        .filter_map(|receipt| match receipt {
+            Receipt::Log { ra, .. } => Some(*ra),
+            _ => None,
+        })
+        .next()
+}
+
+fn first_tro(receipts: &[Receipt]) -> Option<Word> {
+    receipts
+        .iter()
+        .filter_map(|receipt| match receipt {
+            Receipt::TransferOut { amount, .. } => Some(*amount),
+            _ => None,
+        })
+        .next()
+}
+
+#[derive(Debug, PartialEq)]
+enum RunResult<T> {
+    Success(T),
+    UnableToExtractValue,
+    Revert,
+    Panic(PanicReason),
+    GenericFailure(u64),
+}
+impl<T> RunResult<T> {
+    fn is_ok(&self) -> bool {
+        matches!(self, RunResult::Success(_))
+    }
+
+    fn map<F: FnOnce(T) -> R, R>(self, f: F) -> RunResult<R> {
+        match self {
+            RunResult::Success(v) => RunResult::Success(f(v)),
+            RunResult::UnableToExtractValue => RunResult::UnableToExtractValue,
+            RunResult::Revert => RunResult::Revert,
+            RunResult::Panic(r) => RunResult::Panic(r),
+            RunResult::GenericFailure(v) => RunResult::GenericFailure(v),
+        }
+    }
+}
+
+const REG_DATA_PTR: u8 = 0x3f;
+const REG_HELPER: u8 = 0x3e;
+
+#[test_case(0, 0, op::bal(0x20, RegId::HP, REG_DATA_PTR) => RunResult::Success(0); "Works correctly with balance 0")]
+#[test_case(1234, 0, op::bal(0x20, RegId::HP, REG_DATA_PTR) => RunResult::Success(1234); "Works correctly with balance 1234")]
+#[test_case(Word::MAX, 0, op::bal(0x20, RegId::HP, REG_DATA_PTR) => RunResult::Success(Word::MAX); "Works correctly with balance Word::MAX")]
+#[test_case(0, Word::MAX - 31, op::bal(0x20, REG_HELPER, REG_DATA_PTR) => RunResult::Panic(PanicReason::MemoryOverflow); "$rB + 32 overflows")]
+#[test_case(0, VM_MAX_RAM - 31, op::bal(0x20, REG_HELPER, REG_DATA_PTR) => RunResult::Panic(PanicReason::MemoryOverflow); "$rB + 32 > VM_MAX_RAM")]
+#[test_case(0, Word::MAX - 31, op::bal(0x20, RegId::HP, REG_HELPER) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 overflows")]
+#[test_case(0, VM_MAX_RAM - 31, op::bal(0x20, RegId::HP, REG_HELPER) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 > VM_MAX_RAM")]
+#[test_case(0, 0, op::bal(0x20, RegId::HP, RegId::ZERO) => RunResult::Panic(PanicReason::ContractNotInInputs); "Contract not in inputs")]
+fn bal_external(amount: Word, helper: Word, bal_instr: Instruction) -> RunResult<Word> {
+    let reg_len: u8 = 0x10;
+
+    let mut ops = set_full_word(REG_HELPER.into(), helper);
+    ops.extend(set_full_word(
+        reg_len.into(),
+        (ContractId::LEN + AssetId::LEN) as Word,
+    ));
+    ops.extend([
+        // Compute asset id from contract id and sub asset id
+        op::aloc(reg_len),
+        op::gtf_args(REG_DATA_PTR, RegId::ZERO, GTFArgs::ScriptData),
+        bal_instr,
+        op::log(0x20, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let contract_id = test_context
+        .setup_contract(
+            vec![op::ret(RegId::ONE)],
+            Some((AssetId::zeroed(), amount)),
+            None,
+        )
+        .contract_id;
+
+    let result = test_context
+        .start_script(ops, contract_id.to_bytes())
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    extract_result(result.receipts(), first_log)
+}
+
+#[test_case(0, 0, op::bal(0x20, RegId::HP, REG_DATA_PTR) => RunResult::Success(0); "Works correctly with balance 0")]
+#[test_case(1234, 0, op::bal(0x20, RegId::HP, REG_DATA_PTR) => RunResult::Success(1234); "Works correctly with balance 1234")]
+#[test_case(Word::MAX, 0, op::bal(0x20, RegId::HP, REG_DATA_PTR) => RunResult::Success(Word::MAX); "Works correctly with balance Word::MAX")]
+#[test_case(0, Word::MAX - 31, op::bal(0x20, REG_HELPER, REG_DATA_PTR) => RunResult::Panic(PanicReason::MemoryOverflow); "$rB + 32 overflows")]
+#[test_case(0, VM_MAX_RAM - 31, op::bal(0x20, REG_HELPER, REG_DATA_PTR) => RunResult::Panic(PanicReason::MemoryOverflow); "$rB + 32 > VM_MAX_RAM")]
+#[test_case(0, Word::MAX - 31, op::bal(0x20, RegId::HP, REG_HELPER) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 overflows")]
+#[test_case(0, VM_MAX_RAM - 31, op::bal(0x20, RegId::HP, REG_HELPER) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 > VM_MAX_RAM")]
+#[test_case(0, 0, op::bal(0x20, RegId::HP, RegId::ZERO) => RunResult::Panic(PanicReason::ContractNotInInputs); "Contract not in inputs")]
+fn mint_and_bal(
+    mint_amount: Word,
+    helper: Word,
+    bal_instr: Instruction,
+) -> RunResult<Word> {
+    let reg_len: u8 = 0x10;
+    let reg_mint_amount: u8 = 0x11;
+
+    let mut ops = set_full_word(reg_mint_amount.into(), mint_amount);
+    ops.extend(set_full_word(REG_HELPER.into(), helper));
+    ops.extend(set_full_word(
+        reg_len.into(),
+        (ContractId::LEN + AssetId::LEN) as Word,
+    ));
+    ops.extend([
+        // Compute asset id from contract id and sub asset id
+        op::aloc(reg_len),
+        op::mint(reg_mint_amount, RegId::HP), // Mint using the zero subid.
+        op::gtf_args(REG_DATA_PTR, RegId::ZERO, GTFArgs::ScriptData),
+        op::mcpi(RegId::HP, REG_DATA_PTR, ContractId::LEN.try_into().unwrap()),
+        op::s256(RegId::HP, RegId::HP, reg_len),
+        bal_instr,
+        op::log(0x20, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let contract_id = test_context.setup_contract(ops, None, None).contract_id;
+    extract_result(&run(test_context, contract_id), first_log)
+}
+
+#[rstest]
+#[case(0, RegId::HP, RunResult::Success(()))]
+#[case(Word::MAX, RegId::HP, RunResult::Success(()))]
+#[case(Word::MAX - 31, REG_HELPER, RunResult::Panic(PanicReason::MemoryOverflow))]
+#[case(VM_MAX_RAM - 31, REG_HELPER, RunResult::Panic(PanicReason::MemoryOverflow))]
+fn mint_burn_bounds<R: Into<u8>>(
+    #[values(op::mint, op::burn)] instr: fn(RegId, R) -> Instruction,
+    #[case] helper: Word,
+    #[case] sub_id_ptr_reg: R,
+    #[case] result: RunResult<()>,
+) {
+    let reg_len: u8 = 0x10;
+
+    let mut ops = set_full_word(REG_HELPER.into(), helper);
+    ops.extend(set_full_word(
+        reg_len.into(),
+        (ContractId::LEN + AssetId::LEN) as Word,
+    ));
+    ops.extend([
+        // Compute asset id from contract id and sub asset id
+        op::gtf_args(REG_DATA_PTR, RegId::ZERO, GTFArgs::ScriptData),
+        op::aloc(reg_len),
+        instr(RegId::ZERO, sub_id_ptr_reg),
+        op::log(RegId::ZERO, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let contract_id = test_context
+        .setup_contract(ops, Some((AssetId::zeroed(), Word::MAX - helper)), None) // Ensure enough but not too much balance
+        .contract_id;
+    assert_eq!(extract_novalue(&run(test_context, contract_id)), result);
+}
+
+#[test_case(vec![(op::mint, 0, 0)] => RunResult::Success(()); "Mint 0")]
+#[test_case(vec![(op::burn, 0, 0)] => RunResult::Success(()); "Burn 0")]
+#[test_case(vec![(op::mint, 100, 0)] => RunResult::Success(()); "Mint 100")]
+#[test_case(vec![(op::mint, Word::MAX, 0)] => RunResult::Success(()); "Mint Word::MAX")]
+#[test_case(vec![(op::mint, 100, 0), (op::burn, 100, 0)] => RunResult::Success(()); "Mint 100, Burn all")]
+#[test_case(vec![(op::mint, Word::MAX, 0), (op::burn, Word::MAX, 0)] => RunResult::Success(()); "Mint Word::MAX, Burn all")]
+#[test_case(vec![(op::mint, 100, 0), (op::mint, 10, 0), (op::burn, 20, 0)] => RunResult::Success(()); "Mint 10 and 10, Burn all")]
+#[test_case(vec![(op::mint, 2, 0), (op::mint, 3, 1), (op::burn, 2, 0), (op::burn, 3, 1)] => RunResult::Success(()); "Mint multiple assets, Burn all")]
+#[test_case(vec![(op::burn, 1, 0)] => RunResult::Panic(PanicReason::NotEnoughBalance); "Burn nonexisting 1")]
+#[test_case(vec![(op::burn, Word::MAX, 0)] => RunResult::Panic(PanicReason::NotEnoughBalance); "Burn nonexisting Word::MAX")]
+#[test_case(vec![(op::mint, Word::MAX, 0), (op::mint, 1, 0)] => RunResult::Panic(PanicReason::BalanceOverflow); "Mint overflow")]
+#[test_case(vec![(op::mint, Word::MAX, 0), (op::burn, 1, 0), (op::mint, 2, 0)] => RunResult::Panic(PanicReason::BalanceOverflow); "Mint,Burn,Mint overflow")]
+fn mint_burn_single_sequence(
+    seq: Vec<(fn(RegId, RegId) -> Instruction, Word, u8)>,
+) -> RunResult<()> {
+    let reg_len: u8 = 0x10;
+    let reg_mint_amount: u8 = 0x11;
+
+    let mut ops = vec![
+        // Allocate space for sub asset id
+        op::movi(reg_len, 32),
+        op::aloc(reg_len),
+    ];
+
+    for (mint_or_burn, amount, sub_id) in seq {
+        ops.push(op::sb(RegId::HP, sub_id, 0));
+        ops.extend(set_full_word(reg_mint_amount.into(), amount));
+        ops.push(mint_or_burn(reg_mint_amount.into(), RegId::HP));
+    }
+    ops.push(op::ret(RegId::ONE));
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let contract_id = test_context.setup_contract(ops, None, None).contract_id;
+    extract_novalue(&run(test_context, contract_id))
+}
+
+#[test_case(vec![false] => RunResult::Panic(PanicReason::NotEnoughBalance); "Burn")]
+#[test_case(vec![true, false, false] => RunResult::Panic(PanicReason::NotEnoughBalance); "Mint,Burn,Burn")]
+#[test_case(vec![true, true, false] => RunResult::Success(1); "Mint,Mint,Burn")]
+fn mint_burn_many_calls_sequence(seq: Vec<bool>) -> RunResult<Word> {
+    let reg_len: u8 = 0x10;
+    let reg_jump: u8 = 0x11;
+
+    let ops = vec![
+        // Allocate space for zero sub asset id
+        op::movi(reg_len, 32),
+        op::aloc(reg_len),
+        op::jmpf(reg_jump, 0),
+        op::mint(RegId::ONE, RegId::HP), // Jump of 0 - mint 1
+        op::ret(RegId::ONE),             // Jump of 1 - do nothing
+        op::burn(RegId::ONE, RegId::HP), // Jump of 2 - burn 1
+        op::ret(RegId::ONE),             // Jump of 3 - do nothing
+    ];
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let contract_id = test_context.setup_contract(ops, None, None).contract_id;
+
+    for instr in seq {
+        let script_ops = vec![
+            op::movi(reg_jump, if instr { 0 } else { 2 }),
+            op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ];
+        let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
+            .into_iter()
+            .flatten()
+            .copied()
+            .collect();
+
+        let receipts = test_context
+            .start_script(script_ops, script_data)
+            .script_gas_limit(1_000_000)
+            .contract_input(contract_id)
+            .fee_input()
+            .contract_output(&contract_id)
+            .execute()
+            .receipts()
+            .to_vec();
+
+        let result = extract_novalue(&receipts);
+        if !result.is_ok() {
+            return result.map(|_| unreachable!());
+        }
+    }
+
+    RunResult::Success(
+        test_context.get_contract_balance(
+            &contract_id,
+            &contract_id.asset_id(&Bytes32::zeroed()),
+        ),
+    )
+}
+
+#[test_case(0, 10, 0 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins")]
+#[test_case(1, 10, 0 => RunResult::Success((9, 1)); "Can transfer 1 coins to empty")]
+#[test_case(1, 10, 5 => RunResult::Success((9, 6)); "Can transfer 1 coins to non-empty")]
+#[test_case(11, 10, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer just over balance coins")]
+#[test_case(Word::MAX, 0, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer max over balance coins")]
+#[test_case(1, 1, Word::MAX => RunResult::Panic(PanicReason::BalanceOverflow); "Cannot overflow balance of contract")]
+#[test_case(Word::MAX, Word::MAX, 0 => RunResult::Success((0, Word::MAX)); "Can transfer Word::MAX coins to empty contract")]
+fn transfer_to_contract_external(
+    amount: Word,
+    balance: Word,
+    other_balance: Word,
+) -> RunResult<(Word, Word)> {
+    let contract_id_ptr = 0x11;
+    let asset_id_ptr = 0x12;
+    let reg_amount = 0x13;
+
+    let mut ops = set_full_word(reg_amount.into(), amount);
+
+    ops.extend(&[
+        op::gtf_args(contract_id_ptr, RegId::ZERO, GTFArgs::ScriptData),
+        op::addi(
+            asset_id_ptr,
+            contract_id_ptr,
+            ContractId::LEN.try_into().unwrap(),
+        ),
+        op::tr(contract_id_ptr, reg_amount, asset_id_ptr),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let asset_id = AssetId::new([1; 32]);
+
+    let contract = test_context
+        .setup_contract(
+            vec![op::ret(RegId::ONE)],
+            Some((asset_id, other_balance)),
+            None,
+        )
+        .contract_id;
+
+    let script_data: Vec<u8> = contract
+        .to_bytes()
+        .into_iter()
+        .chain(asset_id.to_bytes())
+        .collect();
+
+    let (_, tx, receipts) = test_context
+        .start_script(ops, script_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(contract)
+        .coin_input(asset_id, balance)
+        .fee_input()
+        .contract_output(&contract)
+        .change_output(asset_id)
+        .execute()
+        .into_inner();
+
+    let change = find_change(tx.outputs().to_vec(), asset_id);
+    let result = extract_novalue(&receipts);
+    if !result.is_ok() {
+        assert_eq!(change, balance, "Revert should not change balance")
+    }
+    result.map(|()| {
+        (
+            change,
+            test_context.get_contract_balance(&contract, &asset_id),
+        )
+    })
+}
+
+#[test_case(1, 0, 10, 0 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to empty other")]
+#[test_case(1, 0, 10, 5 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to non-empty other")]
+#[test_case(0, 0, 10, 0 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to self")]
+#[test_case(1, 1, 10, 0 => RunResult::Success((9, 1)); "Can transfer 1 coins to other")]
+#[test_case(0, 1, 10, 0 => RunResult::Success((10, 0)); "Can transfer 1 coins to self")]
+#[test_case(1, 11, 10, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer just over balance coins to other")]
+#[test_case(0, 11, 10, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer just over balance coins to self")]
+#[test_case(1, Word::MAX, 0, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer max over balance coins to other")]
+#[test_case(0, Word::MAX, 0, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer max over balance coins to self")]
+#[test_case(1, 1, 1, Word::MAX => RunResult::Panic(PanicReason::BalanceOverflow); "Cannot overflow balance of other contract")]
+#[test_case(0, Word::MAX, Word::MAX, 0 => RunResult::Success((Word::MAX, 0)); "Can transfer Word::MAX coins to self")]
+#[test_case(1, Word::MAX, Word::MAX, 0 => RunResult::Success((0, Word::MAX)); "Can transfer Word::MAX coins to empty other")]
+#[test_case(2, 1, 1, 0 => RunResult::Panic(PanicReason::ContractNotInInputs); "Transfer target not in inputs")]
+fn transfer_to_contract_internal(
+    to: usize, // 0 = self, 1 = other, 2 = non-existing
+    amount: Word,
+    balance: Word,
+    other_balance: Word,
+) -> RunResult<(Word, Word)> {
+    let reg_tmp = 0x10;
+    let contract_id_ptr = 0x11;
+    let asset_id_ptr = 0x12;
+    let reg_amount = 0x13;
+
+    let mut ops = set_full_word(reg_amount.into(), amount);
+
+    ops.extend(&[
+        op::gtf_args(reg_tmp, RegId::ZERO, GTFArgs::ScriptData),
+        op::addi(contract_id_ptr, reg_tmp, Call::LEN.try_into().unwrap()),
+        op::addi(
+            asset_id_ptr,
+            contract_id_ptr,
+            ContractId::LEN.try_into().unwrap(),
+        ),
+        op::tr(contract_id_ptr, reg_amount, asset_id_ptr),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let asset_id = AssetId::new([1; 32]);
+
+    let this_contract = test_context
+        .setup_contract(ops, Some((asset_id, balance)), None)
+        .contract_id;
+
+    let other_contract = test_context
+        .setup_contract(
+            vec![op::ret(RegId::ONE)],
+            Some((asset_id, other_balance)),
+            None,
+        )
+        .contract_id;
+
+    let script_ops = vec![
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+        op::ret(RegId::ONE),
+    ];
+    let script_data: Vec<u8> = [Call::new(this_contract, 0, 0).to_bytes().as_slice()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .chain(match to {
+            0 => this_contract.to_bytes(),
+            1 => other_contract.to_bytes(),
+            _ => vec![1u8; 32], // Non-existing contract
+        })
+        .chain(asset_id.to_bytes())
+        .collect();
+
+    let result = test_context
+        .start_script(script_ops, script_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(this_contract)
+        .contract_input(other_contract)
+        .fee_input()
+        .contract_output(&this_contract)
+        .contract_output(&other_contract)
+        .execute();
+
+    extract_novalue(result.receipts()).map(|()| {
+        (
+            test_context.get_contract_balance(&this_contract, &asset_id),
+            test_context.get_contract_balance(&other_contract, &asset_id),
+        )
+    })
+}
+
+#[test_case(None, None => RunResult::Success(()); "Normal case works")]
+#[test_case(Some(Word::MAX - 31), None => RunResult::Panic(PanicReason::MemoryOverflow); "$rA + 32 overflows")]
+#[test_case(Some(VM_MAX_RAM - 31), None => RunResult::Panic(PanicReason::MemoryOverflow); "$rA + 32 > VM_MAX_RAM")]
+#[test_case(None, Some(Word::MAX - 31) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 overflows")]
+#[test_case(None, Some(VM_MAX_RAM - 31) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 > VM_MAX_RAM")]
+fn transfer_to_contract_bounds(
+    overwrite_contract_id_ptr: Option<Word>,
+    overwrite_asset_id_ptr: Option<Word>,
+) -> RunResult<()> {
+    let reg_tmp = 0x10;
+    let contract_id_ptr = 0x11;
+    let asset_id_ptr = 0x12;
+
+    let mut ops = vec![
+        op::gtf_args(reg_tmp, RegId::ZERO, GTFArgs::ScriptData),
+        op::addi(contract_id_ptr, reg_tmp, Call::LEN.try_into().unwrap()),
+        op::addi(
+            asset_id_ptr,
+            contract_id_ptr,
+            ContractId::LEN.try_into().unwrap(),
+        ),
+    ];
+
+    if let Some(value) = overwrite_contract_id_ptr {
+        ops.extend(set_full_word(contract_id_ptr.into(), value));
+    }
+
+    if let Some(value) = overwrite_asset_id_ptr {
+        ops.extend(set_full_word(asset_id_ptr.into(), value));
+    }
+
+    ops.extend(&[
+        op::tr(contract_id_ptr, RegId::ONE, asset_id_ptr),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let asset_id = AssetId::new([1; 32]);
+
+    let this_contract = test_context
+        .setup_contract(ops, Some((asset_id, Word::MAX)), None)
+        .contract_id;
+
+    let script_ops = vec![
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+        op::ret(RegId::ONE),
+    ];
+    let script_data: Vec<u8> = [Call::new(this_contract, 0, 0).to_bytes().as_slice()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .chain(this_contract.to_bytes())
+        .chain(asset_id.to_bytes())
+        .collect();
+
+    let result = test_context
+        .start_script(script_ops, script_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(this_contract)
+        .fee_input()
+        .contract_output(&this_contract)
+        .execute();
+
+    extract_novalue(result.receipts())
+}
+
+#[test_case(false, 0, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to non-Variable output")]
+#[test_case(false, 1, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to valid output")]
+#[test_case(false, 9, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to non-existing output")]
+#[test_case(false, 1, 1, 10 => RunResult::Success((1, 9)); "(external) Can transfer 1 coins")]
+#[test_case(false, 1, 11, 10 => RunResult::Panic(PanicReason::NotEnoughBalance); "(external) Cannot transfer just over balance coins")]
+#[test_case(false, 1, Word::MAX, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "(external) Cannot transfer max over balance coins")]
+#[test_case(false, 1, Word::MAX, Word::MAX => RunResult::Success((Word::MAX, 0)); "(external) Can transfer Word::MAX coins")]
+#[test_case(false, 0, 1, 10 => RunResult::Panic(PanicReason::OutputNotFound); "(external) Target output is not Variable")]
+#[test_case(false, 9, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(external) Target output doesn't exist")]
+#[test_case(true, 0, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to non-Variable output")]
+#[test_case(true, 1, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to valid output")]
+#[test_case(true, 9, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to non-existing output")]
+#[test_case(true, 1, 1, 10 => RunResult::Success((1, 9)); "(internal) Can transfer 1 coins")]
+#[test_case(true, 1, 11, 10 => RunResult::Panic(PanicReason::NotEnoughBalance); "(internal) Cannot transfer just over balance coins")]
+#[test_case(true, 1, Word::MAX, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "(internal) Cannot transfer max over balance coins")]
+#[test_case(true, 1, Word::MAX, Word::MAX => RunResult::Success((Word::MAX, 0)); "(internal) Can transfer Word::MAX coins")]
+#[test_case(true, 0, 1, 10 => RunResult::Panic(PanicReason::OutputNotFound); "(internal) Target output is not Variable")]
+#[test_case(true, 9, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(internal) Target output doesn't exist")]
+fn transfer_to_output(
+    internal: bool,
+    to_index: Word, // 1 = the variable output
+    amount: Word,
+    balance: Word,
+) -> RunResult<(Word, Word)> {
+    let reg_tmp = 0x10;
+    let asset_id_ptr = 0x12;
+    let reg_amount = 0x13;
+    let reg_index = 0x14;
+
+    let mut ops = set_full_word(reg_amount.into(), amount);
+    ops.extend(set_full_word(reg_index.into(), to_index));
+    ops.extend(&[
+        op::gtf_args(reg_tmp, RegId::ZERO, GTFArgs::ScriptData),
+        op::addi(asset_id_ptr, reg_tmp, Call::LEN.try_into().unwrap()),
+        op::tro(reg_tmp, reg_index, reg_amount, asset_id_ptr),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let asset_id = AssetId::new([1; 32]);
+
+    let contract_id = test_context
+        .setup_contract(ops.clone(), Some((asset_id, balance)), None)
+        .contract_id;
+
+    let script_ops = if internal {
+        vec![
+            op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+            op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+            op::ret(RegId::ONE),
+        ]
+    } else {
+        ops
+    };
+
+    let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .chain(asset_id.to_bytes())
+        .collect();
+
+    let mut builder = test_context
+        .start_script(script_ops, script_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .variable_output(asset_id);
+
+    if !internal {
+        builder = builder
+            .coin_input(asset_id, balance)
+            .change_output(asset_id);
+    }
+
+    let (_, tx, receipts) = builder.execute().into_inner();
+    let result = extract_result(&receipts, first_tro);
+
+    if let Some(Output::Variable {
+        to,
+        amount,
+        asset_id,
+    }) = tx.outputs().get(to_index as usize).copied()
+    {
+        if result.is_ok() {
+            assert_eq!(amount, amount, "Transfer amount is wrong");
+            assert_eq!(asset_id, asset_id, "Transfer asset id is wrong");
+        } else {
+            assert_eq!(
+                to,
+                Address::zeroed(),
+                "Transfer target should be zeroed on failure"
+            );
+            assert_eq!(amount, 0, "Transfer amount should be 0 on failure");
+            assert_eq!(
+                asset_id,
+                AssetId::zeroed(),
+                "Transfer asset id should be zeroed on failure"
+            );
+        }
+    }
+
+    if !result.is_ok() && !internal {
+        assert_eq!(
+            find_change(tx.outputs().to_vec(), asset_id),
+            balance,
+            "Revert should not change balance"
+        )
+    }
+
+    result.map(|tr| {
+        (
+            tr,
+            if internal {
+                test_context.get_contract_balance(&contract_id, &asset_id)
+            } else {
+                find_change(tx.outputs().to_vec(), asset_id)
+            },
+        )
+    })
+}
+
+#[test_case(None, None => RunResult::Success(()); "Normal case works")]
+#[test_case(Some(Word::MAX - 31), None => RunResult::Panic(PanicReason::MemoryOverflow); "$rA + 32 overflows")]
+#[test_case(Some(VM_MAX_RAM - 31), None => RunResult::Panic(PanicReason::MemoryOverflow); "$rA + 32 > VM_MAX_RAM")]
+#[test_case(None, Some(Word::MAX - 31) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 overflows")]
+#[test_case(None, Some(VM_MAX_RAM - 31) => RunResult::Panic(PanicReason::MemoryOverflow); "$rC + 32 > VM_MAX_RAM")]
+fn transfer_to_output_bounds(
+    overwrite_contract_id_ptr: Option<Word>,
+    overwrite_asset_id_ptr: Option<Word>,
+) -> RunResult<()> {
+    let reg_tmp = 0x10;
+    let contract_id_ptr = 0x11;
+    let asset_id_ptr = 0x12;
+
+    let mut ops = vec![
+        op::gtf_args(reg_tmp, RegId::ZERO, GTFArgs::ScriptData),
+        op::addi(contract_id_ptr, reg_tmp, Call::LEN.try_into().unwrap()),
+        op::addi(
+            asset_id_ptr,
+            contract_id_ptr,
+            ContractId::LEN.try_into().unwrap(),
+        ),
+    ];
+
+    if let Some(value) = overwrite_contract_id_ptr {
+        ops.extend(set_full_word(contract_id_ptr.into(), value));
+    }
+
+    if let Some(value) = overwrite_asset_id_ptr {
+        ops.extend(set_full_word(asset_id_ptr.into(), value));
+    }
+
+    ops.extend(&[
+        op::tro(contract_id_ptr, RegId::ONE, RegId::ONE, asset_id_ptr),
+        op::ret(RegId::ONE),
+    ]);
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let asset_id = AssetId::new([1; 32]);
+
+    let this_contract = test_context
+        .setup_contract(ops, Some((asset_id, Word::MAX)), None)
+        .contract_id;
+
+    let script_ops = vec![
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+        op::ret(RegId::ONE),
+    ];
+    let script_data: Vec<u8> = [Call::new(this_contract, 0, 0).to_bytes().as_slice()]
+        .into_iter()
+        .flatten()
+        .copied()
+        .chain(this_contract.to_bytes())
+        .chain(asset_id.to_bytes())
+        .collect();
+
+    let result = test_context
+        .start_script(script_ops, script_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(this_contract)
+        .fee_input()
+        .contract_output(&this_contract)
+        .variable_output(asset_id)
+        .execute();
+
+    extract_novalue(result.receipts())
+}
+
+const M: Word = Word::MAX;
+
+// Calls script -> src -> dst
+#[test_case(0, 0, 0, 0, 0 => ((0, 0, 0), RunResult::Success(())); "No coins moving, zero balances")]
+#[test_case(1, 1, 1, 0, 0 => ((1, 1, 1), RunResult::Success(())); "No coins moving, nonzero balances")]
+#[test_case(1, 0, 0, 1, 0 => ((0, 1, 0), RunResult::Success(())); "Fwd 1 from script to src")]
+#[test_case(0, 1, 0, 0, 1 => ((0, 0, 1), RunResult::Success(())); "Fwd 1 from src to dst")]
+#[test_case(1, 0, 0, 1, 1 => ((0, 0, 1), RunResult::Success(())); "Fwd 1 from script to dst")]
+#[test_case(1, 2, 3, 1, 3 => ((0, 0, 6), RunResult::Success(())); "Fwd combination full")]
+#[test_case(5, 5, 1, 3, 2 => ((2, 6, 3), RunResult::Success(())); "Fwd combination partial")]
+#[test_case(M, 0, 0, M, 0 => ((0, M, 0), RunResult::Success(())); "Fwd Word::MAX from script to src")]
+#[test_case(0, M, 0, 0, M => ((0, 0, M), RunResult::Success(())); "Fwd Word::MAX from src to dst")]
+#[test_case(M, 0, 0, M, M => ((0, 0, M), RunResult::Success(())); "Fwd Word::MAX from script to dst")]
+#[test_case(1, M, 0, 1, 0 => ((1, M, 0), RunResult::Panic(PanicReason::BalanceOverflow)); "Fwd 1 overflow on src")]
+#[test_case(0, 1, M, 0, 1 => ((0, 1, M), RunResult::Panic(PanicReason::BalanceOverflow)); "Fwd 1 overflow on dst")]
+#[test_case(M, 1, 0, M, 0 => ((M, 1, 0), RunResult::Panic(PanicReason::BalanceOverflow)); "Fwd Word::MAX overflow on src")]
+#[test_case(0, M, 1, 0, M => ((0, M, 1), RunResult::Panic(PanicReason::BalanceOverflow)); "Fwd Word::MAX overflow on dst")]
+#[test_case(M, M, M, M, M => ((M, M, M), RunResult::Panic(PanicReason::BalanceOverflow)); "Fwd Word::MAX both")]
+#[test_case(0, 0, 0, 1, 0 => ((0, 0, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd 1 over empty script balance")]
+#[test_case(1, 0, 0, 2, 0 => ((1, 0, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd 1 over script balance")]
+#[test_case(0, 0, 0, M, 0 => ((0, 0, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd max over empty script balance")]
+#[test_case(1, 0, 0, M, 0 => ((1, 0, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd max over script balance")]
+#[test_case(0, 0, 0, 0, 1 => ((0, 0, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd 1 over empty src balance")]
+#[test_case(0, 1, 0, 0, 2 => ((0, 1, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd 1 over src balance")]
+#[test_case(0, 0, 0, 0, M => ((0, 0, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd max over empty src balance")]
+#[test_case(0, 1, 0, 0, M => ((0, 1, 0), RunResult::Panic(PanicReason::NotEnoughBalance)); "Fwd max over src balance")]
+fn call_forwarding_internal(
+    balance_in: Word,
+    balance_src: Word,
+    balance_dst: Word,
+    fwd_to_src: Word,
+    fwd_to_dst: Word,
+) -> ((Word, Word, Word), RunResult<()>) {
+    let reg_tmp = 0x10;
+    let reg_dst_contract_ptr = 0x11;
+    let reg_fwd_to_src: u8 = 0x12;
+    let reg_fwd_to_dst: u8 = 0x13;
+    let reg_asset_id_ptr: u8 = 0x14;
+
+    let mut test_context = TestBuilder::new(1234u64);
+    let asset_id = AssetId::new([1; 32]);
+
+    // Setup the dst contract. This does nothing, just holds/receives the balance.
+    let dst_contract = test_context
+        .setup_contract(
+            vec![op::ret(RegId::ONE)],
+            Some((asset_id, balance_dst)),
+            None,
+        )
+        .contract_id;
+
+    // Setup the src contract. This just calls the dst to forward the coins.
+    let src_contract = test_context
+        .setup_contract(
+            vec![
+                op::call(reg_dst_contract_ptr, reg_fwd_to_dst, RegId::HP, RegId::CGAS),
+                op::ret(RegId::ONE),
+            ],
+            Some((asset_id, balance_src)),
+            None,
+        )
+        .contract_id;
+
+    // Setup the script that does the call.
+    let mut script_ops = Vec::new();
+    script_ops.extend(set_full_word(reg_fwd_to_src.into(), fwd_to_src));
+    script_ops.extend(set_full_word(reg_fwd_to_dst.into(), fwd_to_dst));
+    script_ops.extend(&[
+        op::movi(reg_tmp, AssetId::LEN.try_into().unwrap()),
+        op::aloc(reg_tmp),
+        op::gtf_args(reg_tmp, RegId::ZERO, GTFArgs::ScriptData),
+        op::addi(
+            reg_asset_id_ptr,
+            reg_tmp,
+            (Call::LEN * 2).try_into().unwrap(),
+        ),
+        op::mcpi(
+            RegId::HP,
+            reg_asset_id_ptr,
+            AssetId::LEN.try_into().unwrap(),
+        ),
+        op::addi(reg_dst_contract_ptr, reg_tmp, Call::LEN.try_into().unwrap()),
+        op::call(reg_tmp, reg_fwd_to_src, RegId::HP, RegId::CGAS),
+        op::ret(RegId::ONE),
+    ]);
+
+    let script_data: Vec<u8> = [
+        Call::new(src_contract, 0, 0).to_bytes().as_slice(),
+        Call::new(dst_contract, 0, 0).to_bytes().as_slice(),
+    ]
+    .into_iter()
+    .flatten()
+    .copied()
+    .chain(asset_id.to_bytes())
+    .collect();
+
+    let (_, tx, receipts) = test_context
+        .start_script(script_ops, script_data)
+        .script_gas_limit(1_000_000)
+        .contract_input(src_contract)
+        .contract_input(dst_contract)
+        .coin_input(asset_id, balance_in)
+        .fee_input()
+        .contract_output(&src_contract)
+        .contract_output(&dst_contract)
+        .change_output(asset_id)
+        .execute()
+        .into_inner();
+
+    let result = extract_novalue(&receipts);
+    let change = find_change(tx.outputs().to_vec(), asset_id);
+    (
+        (
+            change,
+            test_context.get_contract_balance(&src_contract, &asset_id),
+            test_context.get_contract_balance(&dst_contract, &asset_id),
+        ),
+        result,
+    )
+}

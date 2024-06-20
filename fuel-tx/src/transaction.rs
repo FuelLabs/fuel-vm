@@ -100,6 +100,7 @@ pub enum Transaction {
     Mint(Mint),
     Upgrade(Upgrade),
     Upload(Upload),
+    Blob(Blob),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -563,6 +564,12 @@ impl From<Upload> for Transaction {
     }
 }
 
+impl From<Blob> for Transaction {
+    fn from(tx: Blob) -> Self {
+        Self::Blob(tx)
+    }
+}
+
 impl Serialize for Transaction {
     fn size_static(&self) -> usize {
         match self {
@@ -571,6 +578,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.size_static(),
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
+            Self::Blob(tx) => tx.size_static(),
         }
     }
 
@@ -581,6 +589,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.size_dynamic(),
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
+            Self::Blob(tx) => tx.size_dynamic(),
         }
     }
 
@@ -594,6 +603,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.encode_static(buffer),
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
+            Self::Blob(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -607,6 +617,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.encode_dynamic(buffer),
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
+            Self::Blob(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -637,6 +648,9 @@ impl Deserialize for Transaction {
             TransactionRepr::Upload => {
                 Ok(<Upload as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::Blob => {
+                Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
+            }
         }
     }
 
@@ -650,6 +664,7 @@ impl Deserialize for Transaction {
             Self::Mint(tx) => tx.decode_dynamic(buffer),
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
+            Self::Blob(tx) => tx.decode_dynamic(buffer),
         }
     }
 }

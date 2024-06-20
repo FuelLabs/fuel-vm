@@ -14,6 +14,8 @@ use crate::{
         Executable,
         Script,
     },
+    Blob,
+    BlobBody,
     ConsensusParameters,
     ContractParameters,
     FeeParameters,
@@ -187,6 +189,20 @@ impl TransactionBuilder<Upload> {
     pub fn upload(body: UploadBody) -> Self {
         let tx = Upload {
             body,
+            policies: Policies::new().with_max_fee(0),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            metadata: None,
+        };
+        Self::with_tx(tx)
+    }
+}
+
+impl TransactionBuilder<Blob> {
+    pub fn blob(data: Vec<u8>) -> Self {
+        let tx = Blob {
+            body: BlobBody { data },
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),

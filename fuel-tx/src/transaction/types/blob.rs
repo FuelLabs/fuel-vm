@@ -41,7 +41,7 @@ pub struct BlobMetadata;
 #[canonical(prefix = TransactionRepr::Blob)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct BlobBody {
-    data: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 impl PrepareSign for BlobBody {

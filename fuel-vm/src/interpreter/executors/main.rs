@@ -19,6 +19,7 @@ use crate::{
         PredicateVerificationFailed,
     },
     interpreter::{
+        blob::BlobIdExt,
         CheckedMetadata,
         EcalHandler,
         ExecutableTransaction,
@@ -39,6 +40,7 @@ use crate::{
         StateTransitionRef,
     },
     storage::{
+        BlobData,
         InterpreterStorage,
         PredicateStorage,
     },
@@ -66,6 +68,7 @@ use fuel_tx::{
     field::{
         BytecodeRoot,
         BytecodeWitnessIndex,
+        ChargeableBody,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
@@ -83,6 +86,7 @@ use fuel_tx::{
             MessageDataPredicate,
         },
     },
+    Blob,
     ConsensusParameters,
     Contract,
     Create,
@@ -99,6 +103,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     AssetId,
+    BlobId,
     Word,
 };
 
@@ -733,6 +738,42 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    S: InterpreterStorage,
+{
+    fn blob_inner(
+        blob: &mut Blob,
+        storage: &mut S,
+        initial_balances: InitialBalances,
+        gas_costs: &GasCosts,
+        fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
+        gas_price: Word,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        let blob_id = BlobId::compute(&blob.body().data);
+
+        storage
+            .storage_as_mut::<BlobData>()
+            .insert(&blob_id, &blob.body().data)
+            .map_err(RuntimeError::Storage)?;
+
+        Self::finalize_outputs(
+            blob,
+            gas_costs,
+            fee_params,
+            base_asset_id,
+            false,
+            0,
+            &initial_balances,
+            &RuntimeBalances::try_from(initial_balances.clone())?,
+            gas_price,
+        )?;
+
+        Ok(())
+    }
+}
+
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
     M: Memory,
 
     S: InterpreterStorage,
@@ -779,6 +820,17 @@ where
         } else if let Some(upload) = self.tx.as_upload_mut() {
             Self::upload_inner(
                 upload,
+                &mut self.storage,
+                self.initial_balances.clone(),
+                &gas_costs,
+                &fee_params,
+                &base_asset_id,
+                gas_price,
+            )?;
+            ProgramState::Return(1)
+        } else if let Some(blob) = self.tx.as_blob_mut() {
+            Self::blob_inner(
+                blob,
                 &mut self.storage,
                 self.initial_balances.clone(),
                 &gas_costs,

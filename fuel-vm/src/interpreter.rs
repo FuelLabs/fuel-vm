@@ -51,6 +51,7 @@ use fuel_types::{
 
 mod alu;
 mod balances;
+mod blob;
 mod blockchain;
 mod constructors;
 pub mod contract;
@@ -76,6 +77,7 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
+pub use blob::BlobIdExt;
 pub use ecal::{
     EcalHandler,
     PredicateErrorEcal,

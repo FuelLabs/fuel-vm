@@ -242,6 +242,9 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::CFE => false,
         Opcode::CFS => false,
         Opcode::ECAL => true,
+        Opcode::BSIZ => true,
+        Opcode::BLDC => false,
+        Opcode::BLDD => false,
     }
 }
 
@@ -357,5 +360,8 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::CFE => false,
         Opcode::CFS => false,
         Opcode::ECAL => true,
+        Opcode::BSIZ => false,
+        Opcode::BLDC => false,
+        Opcode::BLDD => false,
     }
 }

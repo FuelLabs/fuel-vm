@@ -44,6 +44,8 @@ use core::ops::{
     DerefMut,
 };
 
+use super::blob_data::BlobData;
+
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
@@ -54,6 +56,9 @@ pub trait InterpreterStorage:
     + StorageSize<ContractsState, Error = Self::DataError>
     + StorageRead<ContractsState, Error = Self::DataError>
     + StorageMutate<UploadedBytecodes, Error = Self::DataError>
+    + StorageWrite<BlobData, Error = Self::DataError>
+    + StorageSize<BlobData, Error = Self::DataError>
+    + StorageRead<BlobData, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.

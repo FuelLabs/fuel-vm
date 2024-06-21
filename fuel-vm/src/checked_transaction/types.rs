@@ -76,11 +76,16 @@ pub mod create {
         Create,
         FormatValidityChecks,
     };
-    use fuel_types::BlockHeight;
+    use fuel_types::{
+        AssetId,
+        BlockHeight,
+    };
 
     /// Metadata produced by checking [`fuel_tx::Create`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
+        /// The base asset id.
+        pub base_asset_id: AssetId,
         /// See [`NonRetryableFreeBalances`].
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
@@ -114,6 +119,7 @@ pub mod create {
             );
 
             let metadata = CheckedMetadata {
+                base_asset_id: *consensus_params.base_asset_id(),
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
                 min_gas: self
@@ -181,11 +187,16 @@ pub mod script {
         FormatValidityChecks,
         Script,
     };
-    use fuel_types::BlockHeight;
+    use fuel_types::{
+        AssetId,
+        BlockHeight,
+    };
 
     /// Metadata produced by checking [`fuel_tx::Script`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
+        /// The base asset id.
+        pub base_asset_id: AssetId,
         /// See [`NonRetryableFreeBalances`].
         pub non_retryable_balances: NonRetryableFreeBalances,
         /// See [`RetryableAmount`].
@@ -217,6 +228,7 @@ pub mod script {
             } = initial_free_balances(&self, consensus_params.base_asset_id())?;
 
             let metadata = CheckedMetadata {
+                base_asset_id: *consensus_params.base_asset_id(),
                 non_retryable_balances: NonRetryableFreeBalances(non_retryable_balances),
                 retryable_balance: RetryableAmount {
                     amount: retryable_balance,
@@ -255,11 +267,16 @@ pub mod upgrade {
         FormatValidityChecks,
         Upgrade,
     };
-    use fuel_types::BlockHeight;
+    use fuel_types::{
+        AssetId,
+        BlockHeight,
+    };
 
     /// Metadata produced by checking [`fuel_tx::Upgrade`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
+        /// The base asset id.
+        pub base_asset_id: AssetId,
         /// See [`NonRetryableFreeBalances`].
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
@@ -293,6 +310,7 @@ pub mod upgrade {
             );
 
             let metadata = CheckedMetadata {
+                base_asset_id: *consensus_params.base_asset_id(),
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
                 min_gas: self
@@ -327,11 +345,16 @@ pub mod upload {
         FormatValidityChecks,
         Upload,
     };
-    use fuel_types::BlockHeight;
+    use fuel_types::{
+        AssetId,
+        BlockHeight,
+    };
 
     /// Metadata produced by checking [`fuel_tx::Upload`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
+        /// The base asset id.
+        pub base_asset_id: AssetId,
         /// See [`NonRetryableFreeBalances`].
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
@@ -365,6 +388,7 @@ pub mod upload {
             );
 
             let metadata = CheckedMetadata {
+                base_asset_id: *consensus_params.base_asset_id(),
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
                 min_gas: self

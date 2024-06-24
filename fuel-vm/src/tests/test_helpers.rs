@@ -87,3 +87,62 @@ pub fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
         unreachable!("No script receipt for a paniced tx");
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RunResult<T> {
+    Success(T),
+    UnableToExtractValue,
+    Revert,
+    Panic(PanicReason),
+    GenericFailure(u64),
+}
+
+impl<T> RunResult<T> {
+    pub fn is_ok(&self) -> bool {
+        matches!(self, RunResult::Success(_))
+    }
+
+    pub fn map<F: FnOnce(T) -> R, R>(self, f: F) -> RunResult<R> {
+        match self {
+            RunResult::Success(v) => RunResult::Success(f(v)),
+            RunResult::UnableToExtractValue => RunResult::UnableToExtractValue,
+            RunResult::Revert => RunResult::Revert,
+            RunResult::Panic(r) => RunResult::Panic(r),
+            RunResult::GenericFailure(v) => RunResult::GenericFailure(v),
+        }
+    }
+
+    /// Extract the value from the receipts, using the provided extractor function
+    /// to get even more data about successfull runs.
+    pub fn extract(
+        receipts: &[Receipt],
+        value_extractor: fn(&[Receipt]) -> Option<T>,
+    ) -> RunResult<T> {
+        let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() else {
+            unreachable!("No script result");
+        };
+
+        match *result {
+            ScriptExecutionResult::Success => match value_extractor(receipts) {
+                Some(v) => RunResult::Success(v),
+                None => RunResult::UnableToExtractValue,
+            },
+            ScriptExecutionResult::Revert => RunResult::Revert,
+            ScriptExecutionResult::Panic => RunResult::Panic({
+                let Receipt::Panic { reason, .. } = receipts[receipts.len() - 2] else {
+                    unreachable!("No panic receipt");
+                };
+                *reason.reason()
+            }),
+            ScriptExecutionResult::GenericFailure(value) => {
+                RunResult::GenericFailure(value)
+            }
+        }
+    }
+}
+
+impl RunResult<()> {
+    pub fn extract_novalue(receipts: &[Receipt]) -> RunResult<()> {
+        Self::extract(receipts, |_| Some(()))
+    }
+}

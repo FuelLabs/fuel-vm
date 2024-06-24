@@ -18,65 +18,11 @@ use rand::{
 };
 use test_case::test_case;
 
-use super::test_helpers::assert_success;
+use super::test_helpers::{
+    assert_success,
+    RunResult,
+};
 use crate::tests::test_helpers::set_full_word;
-
-#[derive(Debug, PartialEq)]
-enum RunResult<T> {
-    Success(T),
-    UnableToExtractValue,
-    Revert,
-    Panic(PanicReason),
-    GenericFailure(u64),
-}
-
-impl<T> RunResult<T> {
-    fn is_ok(&self) -> bool {
-        matches!(self, RunResult::Success(_))
-    }
-
-    fn map<F: FnOnce(T) -> R, R>(self, f: F) -> RunResult<R> {
-        match self {
-            RunResult::Success(v) => RunResult::Success(f(v)),
-            RunResult::UnableToExtractValue => RunResult::UnableToExtractValue,
-            RunResult::Revert => RunResult::Revert,
-            RunResult::Panic(r) => RunResult::Panic(r),
-            RunResult::GenericFailure(v) => RunResult::GenericFailure(v),
-        }
-    }
-
-    fn extract(
-        receipts: &[Receipt],
-        value_extractor: fn(&[Receipt]) -> Option<T>,
-    ) -> RunResult<T> {
-        let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() else {
-            unreachable!("No script result");
-        };
-
-        match *result {
-            ScriptExecutionResult::Success => match value_extractor(receipts) {
-                Some(v) => RunResult::Success(v),
-                None => RunResult::UnableToExtractValue,
-            },
-            ScriptExecutionResult::Revert => RunResult::Revert,
-            ScriptExecutionResult::Panic => RunResult::Panic({
-                let Receipt::Panic { reason, .. } = receipts[receipts.len() - 2] else {
-                    unreachable!("No panic receipt");
-                };
-                *reason.reason()
-            }),
-            ScriptExecutionResult::GenericFailure(value) => {
-                RunResult::GenericFailure(value)
-            }
-        }
-    }
-}
-
-impl RunResult<()> {
-    fn extract_novalue(receipts: &[Receipt]) -> RunResult<()> {
-        Self::extract(receipts, |_| Some(()))
-    }
-}
 
 #[rstest::rstest]
 fn blob_size_and_load_whole(

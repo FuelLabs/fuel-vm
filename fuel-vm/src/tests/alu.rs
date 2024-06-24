@@ -15,12 +15,12 @@ use fuel_asm::{
 use fuel_tx::{
     PanicReason,
     Receipt,
-    ScriptExecutionResult,
 };
 
 use super::test_helpers::{
     run_script,
     set_full_word,
+    RunResult,
 };
 
 fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
@@ -71,34 +71,19 @@ fn reserved_register() {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AluResult {
-    Success { value: Word, of: Word, err: Word },
-    MissingLog,
-    Revert,
-    Panic(PanicReason),
-    GenericFailure(u64),
+pub struct AluOk {
+    value: Word,
+    of: Word,
+    err: Word,
 }
-impl AluResult {
-    fn simple(value: Word) -> Self {
-        Self::Success {
-            value,
-            of: 0,
-            err: 0,
-        }
-    }
 
-    fn overflow(value: Word, of: Word) -> Self {
-        Self::Success { value, of, err: 0 }
-    }
-
-    fn error() -> Self {
-        Self::Success {
-            value: 0,
-            of: 0,
-            err: 1,
-        }
+impl From<AluOk> for RunResult<AluOk> {
+    fn from(a: AluOk) -> Self {
+        Self::Success(a)
     }
 }
+
+type AluResult = RunResult<AluOk>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct AluResultForFlags {
@@ -111,43 +96,67 @@ struct AluResultForFlags {
 impl AluResultForFlags {
     /// The operation isn't affected by the flags
     fn invariant_ok(value: Word) -> Self {
+        let v = AluOk {
+            value,
+            of: 0,
+            err: 0,
+        }
+        .into();
         Self {
-            normal: AluResult::simple(value),
-            wrapping: AluResult::simple(value),
-            unsafemath: AluResult::simple(value),
-            wrapping_unsafemath: AluResult::simple(value),
+            normal: v,
+            wrapping: v,
+            unsafemath: v,
+            wrapping_unsafemath: v,
         }
     }
 
     /// The operation wraps around if wrapping is enabled, otherwise it panics
     fn wrapping_ok(value: u128) -> Self {
         let wrapped = value as Word;
-        let overflow = (value >> 64) as Word;
+        let of = (value >> 64) as Word;
+        let wrapping = AluOk {
+            value: wrapped,
+            of,
+            err: 0,
+        }
+        .into();
         Self {
             normal: AluResult::Panic(PanicReason::ArithmeticOverflow),
-            wrapping: AluResult::overflow(wrapped, overflow),
+            wrapping,
             unsafemath: AluResult::Panic(PanicReason::ArithmeticOverflow),
-            wrapping_unsafemath: AluResult::overflow(wrapped, overflow),
+            wrapping_unsafemath: wrapping,
         }
     }
 
     /// Like wrapping_ok, but value is 0 and overflow part is 1
     fn wrapping_fixed() -> Self {
+        let wrapping = AluOk {
+            value: 0,
+            of: 1,
+            err: 0,
+        }
+        .into();
         Self {
             normal: AluResult::Panic(PanicReason::ArithmeticOverflow),
-            wrapping: AluResult::overflow(0, 1),
+            wrapping,
             unsafemath: AluResult::Panic(PanicReason::ArithmeticOverflow),
-            wrapping_unsafemath: AluResult::overflow(0, 1),
+            wrapping_unsafemath: wrapping,
         }
     }
 
     /// The operation sets $err on error flag, and panics otherwise
     fn error() -> Self {
+        let err = AluOk {
+            value: 0,
+            of: 0,
+            err: 1,
+        }
+        .into();
         Self {
             normal: AluResult::Panic(PanicReason::ArithmeticError),
             wrapping: AluResult::Panic(PanicReason::ArithmeticError),
-            unsafemath: AluResult::error(),
-            wrapping_unsafemath: AluResult::error(),
+            unsafemath: err,
+            wrapping_unsafemath: err,
         }
     }
 }
@@ -162,33 +171,17 @@ fn run_alu_op(op: Instruction, reg_args: Vec<Word>, flags: Flags) -> AluResult {
     code.push(op::ret(RegId::ZERO));
 
     let receipts = run_script(code);
-    let Some(Receipt::ScriptResult { result, .. }) = receipts.last() else {
-        panic!("Script result receipt missing")
-    };
 
-    match result {
-        ScriptExecutionResult::Success => {
-            if let Some(Receipt::Log { ra, rb, rc, .. }) = receipts.first() {
-                AluResult::Success {
-                    value: *ra,
-                    of: *rb,
-                    err: *rc,
-                }
-            } else {
-                AluResult::MissingLog
-            }
-        }
-        ScriptExecutionResult::Revert => AluResult::Revert,
-        ScriptExecutionResult::Panic => {
-            assert!(receipts.len() > 1, "Panic receipt missing");
-            let Some(Receipt::Panic { reason, .. }) = receipts.get(receipts.len() - 2)
-            else {
-                panic!("Panic receipt missing")
-            };
-            AluResult::Panic(*reason.reason())
-        }
-        ScriptExecutionResult::GenericFailure(e) => AluResult::GenericFailure(*e),
-    }
+    AluResult::extract(&receipts, |receipts| {
+        let Some(Receipt::Log { ra, rb, rc, .. }) = receipts.first() else {
+            return None;
+        };
+        Some(AluOk {
+            value: *ra,
+            of: *rb,
+            err: *rc,
+        })
+    })
 }
 
 const M64: u128 = u64::MAX as u128;

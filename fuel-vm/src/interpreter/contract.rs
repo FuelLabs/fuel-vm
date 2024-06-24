@@ -57,9 +57,6 @@ use fuel_types::{
 
 use alloc::borrow::Cow;
 
-#[cfg(test)]
-mod tests;
-
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     M: Memory,

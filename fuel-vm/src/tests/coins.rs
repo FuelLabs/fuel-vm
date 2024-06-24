@@ -3,6 +3,7 @@ use alloc::{
     vec::Vec,
 };
 
+use rand::Rng;
 use rstest::rstest;
 use test_case::test_case;
 
@@ -387,7 +388,7 @@ fn transfer_to_contract_external(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id = AssetId::new([1; 32]);
+    let asset_id: AssetId = test_context.rng.gen();
 
     let contract = test_context
         .setup_contract(
@@ -427,21 +428,30 @@ fn transfer_to_contract_external(
     })
 }
 
-#[test_case(1, 0, 10, 0 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to empty other")]
-#[test_case(1, 0, 10, 5 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to non-empty other")]
-#[test_case(0, 0, 10, 0 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to self")]
-#[test_case(1, 1, 10, 0 => RunResult::Success((9, 1)); "Can transfer 1 coins to other")]
-#[test_case(0, 1, 10, 0 => RunResult::Success((10, 0)); "Can transfer 1 coins to self")]
-#[test_case(1, 11, 10, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer just over balance coins to other")]
-#[test_case(0, 11, 10, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer just over balance coins to self")]
-#[test_case(1, Word::MAX, 0, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer max over balance coins to other")]
-#[test_case(0, Word::MAX, 0, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer max over balance coins to self")]
-#[test_case(1, 1, 1, Word::MAX => RunResult::Panic(PanicReason::BalanceOverflow); "Cannot overflow balance of other contract")]
-#[test_case(0, Word::MAX, Word::MAX, 0 => RunResult::Success((Word::MAX, 0)); "Can transfer Word::MAX coins to self")]
-#[test_case(1, Word::MAX, Word::MAX, 0 => RunResult::Success((0, Word::MAX)); "Can transfer Word::MAX coins to empty other")]
-#[test_case(2, 1, 1, 0 => RunResult::Panic(PanicReason::ContractNotInInputs); "Transfer target not in inputs")]
+enum TrTo {
+    /// Transfer to self
+    This,
+    /// Transfer to other contract
+    Other,
+    /// Transfer to non-existing contract
+    NonExisting,
+}
+
+#[test_case(TrTo::Other, 0, 10, 0 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to empty other")]
+#[test_case(TrTo::Other, 0, 10, 5 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to non-empty other")]
+#[test_case(TrTo::This, 0, 10, 0 => RunResult::Panic(PanicReason::TransferZeroCoins); "Cannot transfer 0 coins to self")]
+#[test_case(TrTo::Other, 1, 10, 0 => RunResult::Success((9, 1)); "Can transfer 1 coins to other")]
+#[test_case(TrTo::This, 1, 10, 0 => RunResult::Success((10, 0)); "Can transfer 1 coins to self")]
+#[test_case(TrTo::Other, 11, 10, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer just over balance coins to other")]
+#[test_case(TrTo::This, 11, 10, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer just over balance coins to self")]
+#[test_case(TrTo::Other, Word::MAX, 0, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer max over balance coins to other")]
+#[test_case(TrTo::This, Word::MAX, 0, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "Cannot transfer max over balance coins to self")]
+#[test_case(TrTo::Other, 1, 1, Word::MAX => RunResult::Panic(PanicReason::BalanceOverflow); "Cannot overflow balance of other contract")]
+#[test_case(TrTo::This, Word::MAX, Word::MAX, 0 => RunResult::Success((Word::MAX, 0)); "Can transfer Word::MAX coins to self")]
+#[test_case(TrTo::Other, Word::MAX, Word::MAX, 0 => RunResult::Success((0, Word::MAX)); "Can transfer Word::MAX coins to empty other")]
+#[test_case(TrTo::NonExisting, 1, 1, 0 => RunResult::Panic(PanicReason::ContractNotInInputs); "Transfer target not in inputs")]
 fn transfer_to_contract_internal(
-    to: usize, // 0 = self, 1 = other, 2 = non-existing
+    to: TrTo,
     amount: Word,
     balance: Word,
     other_balance: Word,
@@ -466,7 +476,7 @@ fn transfer_to_contract_internal(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id = AssetId::new([1; 32]);
+    let asset_id: AssetId = test_context.rng.gen();
 
     let this_contract = test_context
         .setup_contract(ops, Some((asset_id, balance)), None)
@@ -490,9 +500,9 @@ fn transfer_to_contract_internal(
         .flatten()
         .copied()
         .chain(match to {
-            0 => this_contract.to_bytes(),
-            1 => other_contract.to_bytes(),
-            _ => vec![1u8; 32], // Non-existing contract
+            TrTo::This => this_contract.to_bytes(),
+            TrTo::Other => other_contract.to_bytes(),
+            TrTo::NonExisting => vec![1u8; 32], // Non-existing contract
         })
         .chain(asset_id.to_bytes())
         .collect();
@@ -552,7 +562,7 @@ fn transfer_to_contract_bounds(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id = AssetId::new([1; 32]);
+    let asset_id: AssetId = test_context.rng.gen();
 
     let this_contract = test_context
         .setup_contract(ops, Some((asset_id, Word::MAX)), None)
@@ -582,26 +592,36 @@ fn transfer_to_contract_bounds(
     extract_novalue(result.receipts())
 }
 
-#[test_case(false, 0, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to non-Variable output")]
-#[test_case(false, 1, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to valid output")]
-#[test_case(false, 9, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to non-existing output")]
-#[test_case(false, 1, 1, 10 => RunResult::Success((1, 9)); "(external) Can transfer 1 coins")]
-#[test_case(false, 1, 11, 10 => RunResult::Panic(PanicReason::NotEnoughBalance); "(external) Cannot transfer just over balance coins")]
-#[test_case(false, 1, Word::MAX, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "(external) Cannot transfer max over balance coins")]
-#[test_case(false, 1, Word::MAX, Word::MAX => RunResult::Success((Word::MAX, 0)); "(external) Can transfer Word::MAX coins")]
-#[test_case(false, 0, 1, 10 => RunResult::Panic(PanicReason::OutputNotFound); "(external) Target output is not Variable")]
-#[test_case(false, 9, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(external) Target output doesn't exist")]
-#[test_case(true, 0, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to non-Variable output")]
-#[test_case(true, 1, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to valid output")]
-#[test_case(true, 9, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to non-existing output")]
-#[test_case(true, 1, 1, 10 => RunResult::Success((1, 9)); "(internal) Can transfer 1 coins")]
-#[test_case(true, 1, 11, 10 => RunResult::Panic(PanicReason::NotEnoughBalance); "(internal) Cannot transfer just over balance coins")]
-#[test_case(true, 1, Word::MAX, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "(internal) Cannot transfer max over balance coins")]
-#[test_case(true, 1, Word::MAX, Word::MAX => RunResult::Success((Word::MAX, 0)); "(internal) Can transfer Word::MAX coins")]
-#[test_case(true, 0, 1, 10 => RunResult::Panic(PanicReason::OutputNotFound); "(internal) Target output is not Variable")]
-#[test_case(true, 9, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(internal) Target output doesn't exist")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Ctx {
+    Internal,
+    External,
+}
+
+const M: Word = Word::MAX;
+
+#[test_case(Ctx::External, 0, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to non-Variable output")]
+#[test_case(Ctx::External, 1, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to valid output")]
+#[test_case(Ctx::External, 9, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(external) Cannot transfer 0 coins to non-existing output")]
+#[test_case(Ctx::External, 1, 1, 10 => RunResult::Success((1, 9)); "(external) Can transfer 1 coins")]
+#[test_case(Ctx::External, 1, 11, 10 => RunResult::Panic(PanicReason::NotEnoughBalance); "(external) Cannot transfer just over balance coins")]
+#[test_case(Ctx::External, 1, M, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "(external) Cannot transfer max over balance coins")]
+#[test_case(Ctx::External, 1, M, M => RunResult::Success((Word::MAX, 0)); "(external) Can transfer Word::MAX coins")]
+#[test_case(Ctx::External, 0, 1, 10 => RunResult::Panic(PanicReason::OutputNotFound); "(external) Target output is not Variable")]
+#[test_case(Ctx::External, 9, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(external) Target output doesn't exist")]
+#[test_case(Ctx::External, M, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(external) Target output is Word::MAX")]
+#[test_case(Ctx::Internal, 0, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to non-Variable output")]
+#[test_case(Ctx::Internal, 1, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to valid output")]
+#[test_case(Ctx::Internal, 9, 0, 10 => RunResult::Panic(PanicReason::TransferZeroCoins); "(internal) Cannot transfer 0 coins to non-existing output")]
+#[test_case(Ctx::Internal, 1, 1, 10 => RunResult::Success((1, 9)); "(internal) Can transfer 1 coins")]
+#[test_case(Ctx::Internal, 1, 11, 10 => RunResult::Panic(PanicReason::NotEnoughBalance); "(internal) Cannot transfer just over balance coins")]
+#[test_case(Ctx::Internal, 1, M, 0 => RunResult::Panic(PanicReason::NotEnoughBalance); "(internal) Cannot transfer max over balance coins")]
+#[test_case(Ctx::Internal, 1, M, M => RunResult::Success((Word::MAX, 0)); "(internal) Can transfer Word::MAX coins")]
+#[test_case(Ctx::Internal, 0, 1, 10 => RunResult::Panic(PanicReason::OutputNotFound); "(internal) Target output is not Variable")]
+#[test_case(Ctx::Internal, 9, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(internal) Target output doesn't exist")]
+#[test_case(Ctx::Internal, M, 1, 1 => RunResult::Panic(PanicReason::OutputNotFound); "(internal) Target output is Word::MAX")]
 fn transfer_to_output(
-    internal: bool,
+    ctx: Ctx,
     to_index: Word, // 1 = the variable output
     amount: Word,
     balance: Word,
@@ -621,20 +641,19 @@ fn transfer_to_output(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id = AssetId::new([1; 32]);
+    let asset_id: AssetId = test_context.rng.gen();
 
     let contract_id = test_context
         .setup_contract(ops.clone(), Some((asset_id, balance)), None)
         .contract_id;
 
-    let script_ops = if internal {
-        vec![
+    let script_ops = match ctx {
+        Ctx::Internal => vec![
             op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),
-        ]
-    } else {
-        ops
+        ],
+        Ctx::External => ops,
     };
 
     let script_data: Vec<u8> = [Call::new(contract_id, 0, 0).to_bytes().as_slice()]
@@ -652,7 +671,7 @@ fn transfer_to_output(
         .contract_output(&contract_id)
         .variable_output(asset_id);
 
-    if !internal {
+    if ctx == Ctx::External {
         builder = builder
             .coin_input(asset_id, balance)
             .change_output(asset_id);
@@ -685,7 +704,7 @@ fn transfer_to_output(
         }
     }
 
-    if !result.is_ok() && !internal {
+    if !result.is_ok() && ctx == Ctx::External {
         assert_eq!(
             find_change(tx.outputs().to_vec(), asset_id),
             balance,
@@ -696,7 +715,7 @@ fn transfer_to_output(
     result.map(|tr| {
         (
             tr,
-            if internal {
+            if ctx == Ctx::Internal {
                 test_context.get_contract_balance(&contract_id, &asset_id)
             } else {
                 find_change(tx.outputs().to_vec(), asset_id)
@@ -742,7 +761,7 @@ fn transfer_to_output_bounds(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id = AssetId::new([1; 32]);
+    let asset_id: AssetId = test_context.rng.gen();
 
     let this_contract = test_context
         .setup_contract(ops, Some((asset_id, Word::MAX)), None)
@@ -772,8 +791,6 @@ fn transfer_to_output_bounds(
 
     extract_novalue(result.receipts())
 }
-
-const M: Word = Word::MAX;
 
 // Calls script -> src -> dst
 #[test_case(0, 0, 0, 0, 0 => ((0, 0, 0), RunResult::Success(())); "No coins moving, zero balances")]
@@ -813,7 +830,7 @@ fn call_forwarding(
     let reg_asset_id_ptr: u8 = 0x14;
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id = AssetId::new([1; 32]);
+    let asset_id: AssetId = test_context.rng.gen();
 
     // Setup the dst contract. This does nothing, just holds/receives the balance.
     let dst_contract = test_context

@@ -176,7 +176,7 @@ pub mod test_helpers {
     }
 
     pub struct TestBuilder {
-        rng: StdRng,
+        pub rng: StdRng,
         gas_price: Word,
         max_fee_limit: Word,
         script_gas_limit: Word,

@@ -59,7 +59,7 @@ where
                 ))
             })?,
         );
-        if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP] {
+        if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SP] {
             return Err(InterpreterError::PanicInstruction(PanicInstruction::error(
                 PanicReason::MemoryNotExecutable,
                 instruction,
@@ -903,12 +903,6 @@ where
                 // We charge for this inside the function.
                 let (a, b) = bsiz.unpack();
                 self.blob_size(a.into(), r!(b))?;
-            }
-
-            Instruction::BLDC(bldc) => {
-                // We charge for this inside the function.
-                let (a, b, c) = bldc.unpack();
-                self.blob_load_code(r!(a), r!(b), r!(c))?;
             }
 
             Instruction::BLDD(bldd) => {

@@ -178,10 +178,6 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 17,
             units_per_gas: 790,
         },
-        bldc: DependentCost::LightOperation {
-            base: 15,
-            units_per_gas: 272,
-        },
         bldd: DependentCost::LightOperation {
             base: 15,
             units_per_gas: 272,

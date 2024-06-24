@@ -266,7 +266,7 @@ fn blob_load_data_bounds(
 
 #[test_case(true; "script")]
 #[test_case(false; "contract")]
-fn blob_load_code_and_jump_happypath(external: bool) {
+fn blob_load_and_jump_happypath(external: bool) {
     let mut test_context = TestBuilder::new(1234u64);
 
     let canary = test_context.rng.gen();
@@ -298,7 +298,9 @@ fn blob_load_code_and_jump_happypath(external: bool) {
     ops.extend([
         op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
         op::move_(0x13, RegId::SSP), // Store jump target
-        op::bldc(0x10, 0x11, 0x12),
+        op::move_(0x14, RegId::SP),  // Store load target
+        op::cfe(0x12),
+        op::bldd(0x14, 0x10, RegId::ZERO, 0x12),
         op::sub(0x10, 0x13, RegId::IS), // Compute offset
         op::divi(0x10, 0x10, 4),        // Div for jmp instruction
         op::jmp(0x10),                  // Jump to loaded code
@@ -350,7 +352,7 @@ fn blob_load_code_and_jump_happypath(external: bool) {
 
 /// Sequentially load multiple blobs.
 #[test]
-fn blob_load_code_multiple() {
+fn blob_load_multiple() {
     let mut test_context = TestBuilder::new(1234u64);
 
     let num_blobs = 10;
@@ -376,14 +378,16 @@ fn blob_load_code_multiple() {
         op::move_(0x13, RegId::SSP), // Store jump target
         op::movi(0x14, num_blobs),   // Loop counter
         // jnzb loop start
-        op::bsiz(0x12, 0x10),              // Get size
-        op::bldc(0x10, RegId::ZERO, 0x12), // Load full blob code
-        op::addi(0x10, 0x10, 32),          // Next blob id pointer
-        op::subi(0x14, 0x14, 1),           // Decrement loop counter
-        op::jnzb(0x14, RegId::ZERO, 3),    // Loop
-        op::sub(0x10, 0x13, RegId::IS),    // Compute offset
-        op::divi(0x10, 0x10, 4),           // Div for jmp instruction
-        op::jmp(0x10),                     // Jump to loaded code
+        op::bsiz(0x12, 0x10),                    // Get size
+        op::move_(0x15, RegId::SP),              // Store $sp to target to
+        op::cfe(0x12),                           // Extend stack
+        op::bldd(0x15, 0x10, RegId::ZERO, 0x12), // Load full blob code
+        op::addi(0x10, 0x10, 32),                // Next blob id pointer
+        op::subi(0x14, 0x14, 1),                 // Decrement loop counter
+        op::jnzb(0x14, RegId::ZERO, 5),          // Loop
+        op::sub(0x10, 0x13, RegId::IS),          // Compute offset
+        op::divi(0x10, 0x10, 4),                 // Div for jmp instruction
+        op::jmp(0x10),                           // Jump to loaded code
     ];
 
     let state = test_context
@@ -395,6 +399,8 @@ fn blob_load_code_multiple() {
         .fee_input()
         .execute();
 
+    dbg!(state.receipts());
+
     assert_success(state.receipts());
     let extracted: Vec<Word> = state
         .receipts()
@@ -405,106 +411,4 @@ fn blob_load_code_multiple() {
         })
         .collect();
     assert_eq!(extracted, (0..num_blobs as Word).collect::<Vec<Word>>());
-}
-
-#[test]
-fn blob_load_code_preserves_stack_values() {
-    let mut test_context = TestBuilder::new(1234u64);
-
-    let canary1: u64 = test_context.rng.gen();
-    let canary2: u64 = test_context.rng.gen();
-
-    let blob_data: Vec<u8> = canary1.to_be_bytes().into_iter().collect();
-
-    let blob_id = BlobId::compute(&blob_data);
-    test_context.setup_blob(blob_data.clone());
-
-    let mut ops = set_full_word(0x12, blob_data.len() as u64);
-    ops.extend(set_full_word(0x13, canary2));
-    ops.extend([
-        // Store canary to stack
-        op::cfei(8),
-        op::sw(RegId::SSP, 0x13, 0),
-        op::move_(0x14, RegId::SSP),
-        // Load more code
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::bldc(0x10, 0x11, 0x12),
-        // Log the canary
-        op::movi(0x15, 8),
-        op::logd(RegId::ZERO, RegId::ZERO, 0x14, 0x15),
-        op::ret(RegId::ONE),
-    ]);
-
-    let state = test_context
-        .start_script(ops, blob_id.to_bytes())
-        .script_gas_limit(1_000_000)
-        .fee_input()
-        .execute();
-
-    assert_success(state.receipts());
-    let extracted = state
-        .receipts()
-        .iter()
-        .filter_map(|receipt| match receipt {
-            Receipt::LogData { data, .. } => Some(data.clone().unwrap()),
-            _ => None,
-        })
-        .next()
-        .expect("Missing logdata receipt");
-    let extracted = Word::from_be_bytes(extracted.try_into().unwrap());
-    assert_eq!(extracted, canary2);
-}
-
-#[test_case(0, vec![] => RunResult::Success(vec![]); "load empty blob")]
-#[test_case(1, vec![] => RunResult::Success(vec![0]); "load blob of size 1")]
-#[test_case(2, vec![] => RunResult::Success(vec![0, 1]); "load blob of size 2")]
-#[test_case(2, vec![op::movi(0x12, 4)] => RunResult::Success(vec![0, 1, 0, 0]); "load past end zero fills")]
-#[test_case(1, vec![op::movi(0x10, 0)] => RunResult::Panic(PanicReason::BlobNotFound) ; "no such blob")]
-#[test_case(1, set_full_word(0x10, VM_MAX_RAM - 30) => RunResult::Panic(PanicReason::MemoryOverflow) ; "blob id ends outside ram")]
-#[test_case(1, set_full_word(0x10, VM_MAX_RAM) => RunResult::Panic(PanicReason::MemoryOverflow) ; "blob id starts outside ram")]
-#[test_case(1, set_full_word(0x10, Word::MAX - 32) => RunResult::Panic(PanicReason::MemoryOverflow) ; "blob id ends Word::MAX")]
-#[test_case(1, set_full_word(0x10, Word::MAX) => RunResult::Panic(PanicReason::MemoryOverflow) ; "blob id starts at Word::MAX")]
-#[test_case(4, vec![op::movi(0x11, 1)] => RunResult::Success(vec![1, 2, 3, 0]); "offset 1")]
-#[test_case(4, vec![op::movi(0x11, 1), op::movi(0x12, 2)] => RunResult::Success(vec![1, 2]); "offset 1 len 2")]
-#[test_case(2, set_full_word(0x11, Word::MAX) => RunResult::Success(vec![0, 0]); "offset Word::MAX")]
-#[test_case(4, vec![op::sub(0x14, RegId::HP, RegId::SP), op::aloc(0x14)] => RunResult::Panic(PanicReason::MemoryGrowthOverlap) ; "would overlap heap")]
-#[test_case(4, vec![op::sub(0x14, RegId::HP, RegId::SP),op::subi(0x14, 0x14, 4), op::aloc(0x14)] => RunResult::Success(vec![0,1,2,3]) ; "barely fits")]
-fn blob_load_code_bounds(
-    size: usize,
-    modifications: Vec<Instruction>,
-) -> RunResult<Vec<u8>> {
-    let mut test_context = TestBuilder::new(1234u64);
-
-    let blob_data: Vec<u8> = (0..size).map(|v| v as u8).collect();
-
-    let blob_id = BlobId::compute(&blob_data);
-    test_context.setup_blob(blob_data.clone());
-
-    let mut ops = set_full_word(0x12, blob_data.len() as u64);
-    ops.extend([
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::move_(0x20, RegId::SP),
-    ]);
-    ops.extend(modifications);
-    ops.extend([
-        op::bldc(0x10, 0x11, 0x12),
-        op::logd(RegId::ZERO, RegId::ZERO, 0x20, 0x12),
-        op::ret(RegId::ONE),
-    ]);
-
-    let state = test_context
-        .start_script(ops, blob_id.to_bytes())
-        .script_gas_limit(1_000_000)
-        .fee_input()
-        .execute();
-
-    RunResult::extract(state.receipts(), |receipts| {
-        receipts
-            .iter()
-            .filter_map(|receipt| match receipt {
-                Receipt::LogData { data, .. } => Some(data.clone().unwrap()),
-                _ => None,
-            })
-            .next()
-    })
 }

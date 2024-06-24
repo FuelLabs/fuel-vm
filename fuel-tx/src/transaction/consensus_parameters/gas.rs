@@ -1070,15 +1070,6 @@ impl GasCostsValues {
         }
     }
 
-    pub fn bldc(&self) -> DependentCost {
-        match self {
-            GasCostsValues::V1(_v1) => todo!(), // TODO
-            GasCostsValues::V2(_v2) => todo!(), // TODO
-            GasCostsValues::V3(_v3) => todo!(), // TODO
-            GasCostsValues::V4(v4) => v4.bldc,
-        }
-    }
-
     pub fn bldd(&self) -> DependentCost {
         match self {
             GasCostsValues::V1(_v1) => todo!(), // TODO
@@ -1511,7 +1502,7 @@ pub struct GasCostsValuesV3 {
 
 /// Gas costs for every op.
 /// The difference with [`GasCostsValuesV3`]:
-/// - Added `bsiz`, `bldc`, `bldd` instructions
+/// - Added `bsiz`, `bldd` instructions
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(default = "GasCostsValuesV4::unit")]
@@ -1610,7 +1601,6 @@ pub struct GasCostsValuesV4 {
     // Dependent
     pub aloc: DependentCost,
     pub bsiz: DependentCost,
-    pub bldc: DependentCost,
     pub bldd: DependentCost,
     pub cfe: DependentCost,
     pub cfei: DependentCost,
@@ -2502,7 +2492,6 @@ impl GasCostsValuesV4 {
             xori: 0,
             aloc: DependentCost::free(),
             bsiz: DependentCost::free(),
-            bldc: DependentCost::free(),
             bldd: DependentCost::free(),
             cfe: DependentCost::free(),
             cfei: DependentCost::free(),
@@ -2624,7 +2613,6 @@ impl GasCostsValuesV4 {
             xori: 1,
             aloc: DependentCost::unit(),
             bsiz: DependentCost::unit(),
-            bldc: DependentCost::unit(),
             bldd: DependentCost::unit(),
             cfe: DependentCost::unit(),
             cfei: DependentCost::unit(),

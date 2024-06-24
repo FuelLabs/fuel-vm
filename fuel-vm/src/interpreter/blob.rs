@@ -86,25 +86,14 @@ where
 
         let sp = self.registers[RegId::SP];
         let ssp = self.registers[RegId::SSP];
-        let copy_len = sp.checked_sub(ssp).expect("Required ssp <= sp");
-
-        self.dependent_gas_charge_without_base(
-            self.interpreter_params.gas_costs.mcp(),
-            copy_len,
-        )?;
 
         // Allocate stack memory
         let new_sp = sp.saturating_add(len);
         let new_ssp = ssp.saturating_add(len);
         self.memory.as_mut().grow_stack(new_sp)?;
 
-        // Copy the stack to the new location
-        self.memory
-            .as_mut()
-            .memcopy_noownerchecks(new_ssp, ssp, copy_len)?; // TODO: optimize using specialized memcopy
-
-        // Load the blob into the stack
-        let dst = self.memory.as_mut().write_noownerchecks(ssp, len)?;
+        // Load the blob on top of the stack
+        let dst = self.memory.as_mut().write_noownerchecks(sp, len)?;
         load_blob_zerofill(&self.storage, &blob_id, dst, blob_offset)?;
 
         // Update the stack pointer

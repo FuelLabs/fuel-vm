@@ -301,12 +301,13 @@ fn blob_load_code_preserves_stack_values() {
         // Store canary to stack
         op::cfei(8),
         op::sw(RegId::SSP, 0x13, 0),
+        op::move_(0x14, RegId::SSP),
         // Load more code
         op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
         op::bldc(0x10, 0x11, 0x12),
-        // Log the canary in new position
+        // Log the canary
         op::movi(0x15, 8),
-        op::logd(RegId::ZERO, RegId::ZERO, RegId::SSP, 0x15),
+        op::logd(RegId::ZERO, RegId::ZERO, 0x14, 0x15),
         op::ret(RegId::ONE),
     ]);
 

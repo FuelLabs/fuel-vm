@@ -288,10 +288,15 @@ fn mint_burn_single_sequence(seq: Vec<(MintOrBurnOpcode, Word, u8)>) -> RunResul
     extract_novalue(&run(test_context, contract_id))
 }
 
-#[test_case(vec![false] => RunResult::Panic(PanicReason::NotEnoughBalance); "Burn")]
-#[test_case(vec![true, false, false] => RunResult::Panic(PanicReason::NotEnoughBalance); "Mint,Burn,Burn")]
-#[test_case(vec![true, true, false] => RunResult::Success(1); "Mint,Mint,Burn")]
-fn mint_burn_many_calls_sequence(seq: Vec<bool>) -> RunResult<Word> {
+enum MintOrBurn {
+    Mint,
+    Burn,
+}
+
+#[test_case(vec![MintOrBurn::Burn] => RunResult::Panic(PanicReason::NotEnoughBalance); "Burn")]
+#[test_case(vec![MintOrBurn::Mint, MintOrBurn::Burn, MintOrBurn::Burn] => RunResult::Panic(PanicReason::NotEnoughBalance); "Mint,Burn,Burn")]
+#[test_case(vec![MintOrBurn::Mint, MintOrBurn::Mint, MintOrBurn::Burn] => RunResult::Success(1); "Mint,Mint,Burn")]
+fn mint_burn_many_calls_sequence(seq: Vec<MintOrBurn>) -> RunResult<Word> {
     let reg_len: u8 = 0x10;
     let reg_jump: u8 = 0x11;
 
@@ -311,7 +316,13 @@ fn mint_burn_many_calls_sequence(seq: Vec<bool>) -> RunResult<Word> {
 
     for instr in seq {
         let script_ops = vec![
-            op::movi(reg_jump, if instr { 0 } else { 2 }),
+            op::movi(
+                reg_jump,
+                match instr {
+                    MintOrBurn::Mint => 0,
+                    MintOrBurn::Burn => 2,
+                },
+            ),
             op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
             op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
             op::ret(RegId::ONE),

@@ -13,6 +13,7 @@ mod blob;
 mod blockchain;
 mod cgas;
 mod code_coverage;
+mod coins;
 mod contract;
 mod crypto;
 mod encoding;

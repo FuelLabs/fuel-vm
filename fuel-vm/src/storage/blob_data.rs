@@ -1,10 +1,7 @@
-use crate::double_key;
 use fuel_storage::Mappable;
 use fuel_types::{
     fmt_truncated_hex,
     BlobId,
-    Bytes32,
-    ContractId,
 };
 
 use alloc::vec::Vec;
@@ -28,14 +25,6 @@ impl Mappable for BlobData {
     type OwnedValue = BlobBytes;
     type Value = [u8];
 }
-
-double_key!(
-    ContractsStateKey,
-    ContractId,
-    contract_id,
-    Bytes32,
-    state_key
-);
 
 /// Storage type for blob bytes
 #[derive(Derivative, Clone, PartialEq, Eq, Hash)]

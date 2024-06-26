@@ -375,6 +375,10 @@ impl Transaction {
         matches!(self, Self::Upload { .. })
     }
 
+    pub const fn is_blob(&self) -> bool {
+        matches!(self, Self::Blob { .. })
+    }
+
     pub const fn as_script(&self) -> Option<&Script> {
         match self {
             Self::Script(script) => Some(script),

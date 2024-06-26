@@ -85,6 +85,17 @@ impl UniqueFormatValidityChecks for Blob {
         &self,
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
+        let index = self.body.witness_index as usize;
+        let witness = self
+            .witnesses
+            .get(index)
+            .ok_or(ValidityError::InputWitnessIndexBounds { index })?;
+
+        // Verify that blob id is correct
+        if BlobId::compute(witness.as_ref()) != self.body.id {
+            return Err(ValidityError::TransactionBlobIdVerificationFailed);
+        }
+
         self.inputs
             .iter()
             .enumerate()

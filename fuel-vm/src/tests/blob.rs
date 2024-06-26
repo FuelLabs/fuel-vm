@@ -2,7 +2,10 @@ use crate::{
     consts::VM_MAX_RAM,
     prelude::*,
 };
-use alloc::vec;
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use fuel_asm::{
     op,
     RegId,

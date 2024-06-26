@@ -129,6 +129,8 @@ pub mod test_helpers {
             Outputs,
             ReceiptsRoot,
         },
+        BlobBody,
+        BlobIdExt,
         ConsensusParameters,
         Contract,
         ContractParameters,
@@ -155,6 +157,7 @@ pub mod test_helpers {
         },
         Address,
         AssetId,
+        BlobId,
         BlockHeight,
         ChainId,
         ContractId,
@@ -476,13 +479,19 @@ pub mod test_helpers {
         }
 
         pub fn setup_blob(&mut self, data: Vec<u8>) {
-            let tx = TransactionBuilder::blob(data)
-                .max_fee_limit(self.max_fee_limit)
-                .maturity(Default::default())
-                .add_random_fee_input()
-                .finalize()
-                .into_checked(self.block_height, &self.consensus_params)
-                .expect("failed to check tx");
+            let id = BlobId::compute(data.as_slice());
+
+            let tx = TransactionBuilder::blob(BlobBody {
+                id,
+                witness_index: 0,
+            })
+            .add_witness(data.into())
+            .max_fee_limit(self.max_fee_limit)
+            .maturity(Default::default())
+            .add_random_fee_input()
+            .finalize()
+            .into_checked(self.block_height, &self.consensus_params)
+            .expect("failed to check tx");
 
             let interpreter_params =
                 InterpreterParams::new(self.gas_price, &self.consensus_params);

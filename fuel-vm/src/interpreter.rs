@@ -77,7 +77,6 @@ use crate::profiler::Profiler;
 use crate::profiler::InstructionLocation;
 
 pub use balances::RuntimeBalances;
-pub use blob::BlobIdExt;
 pub use ecal::{
     EcalHandler,
     PredicateErrorEcal,

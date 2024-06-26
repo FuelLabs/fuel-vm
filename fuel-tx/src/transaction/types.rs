@@ -14,6 +14,7 @@ mod witness;
 pub use blob::{
     Blob,
     BlobBody,
+    BlobIdExt,
     BlobMetadata,
 };
 pub use chargeable_transaction::{

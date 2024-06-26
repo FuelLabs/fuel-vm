@@ -4,7 +4,10 @@
 use super::*;
 use crate::field::Witnesses;
 use fuel_asm::op;
-use fuel_types::BlockHeight;
+use fuel_types::{
+    BlobId,
+    BlockHeight,
+};
 
 // Creates a predicate that always is valid - returns `true`.
 fn predicate() -> Vec<u8> {
@@ -16,7 +19,12 @@ fn test_params() -> ConsensusParameters {
 }
 
 fn valid_blob_transaction() -> TransactionBuilder<Blob> {
-    let mut builder = TransactionBuilder::blob(vec![1; 100]);
+    let blob_data = vec![1; 100];
+    let mut builder = TransactionBuilder::blob(BlobBody {
+        id: BlobId::compute(&blob_data),
+        witness_index: 0,
+    });
+    builder.add_witness(blob_data.into());
     builder.max_fee_limit(0);
     builder.add_input(Input::coin_predicate(
         Default::default(),

@@ -22,12 +22,22 @@ use derivative::Derivative;
 use fuel_types::{
     bytes::WORD_SIZE,
     canonical::Serialize,
+    BlobId,
     ChainId,
     Word,
 };
 
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+/// Adds method to `BlobId` to compute the it from blob data.
+pub trait BlobIdExt {
+    /// Computes the `BlobId` from by hashing the given data.
+    fn compute(data: &[u8]) -> Self;
+}
+
+impl BlobIdExt for BlobId {
+    fn compute(data: &[u8]) -> Self {
+        Self::new(*fuel_crypto::Hasher::hash(data))
+    }
+}
 
 pub type Blob = ChargeableTransaction<BlobBody, BlobMetadata>;
 
@@ -41,7 +51,11 @@ pub struct BlobMetadata;
 #[canonical(prefix = TransactionRepr::Blob)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct BlobBody {
-    pub data: Vec<u8>,
+    /// Hash of the bytecode. Used both as a unique identifier and to verify the
+    /// bytecode.
+    pub id: BlobId,
+    /// The witness index of the subsection of the bytecode.
+    pub witness_index: u16,
 }
 
 impl PrepareSign for BlobBody {
@@ -147,9 +161,12 @@ impl crate::Cacheable for Blob {
 
 mod field {
     use super::*;
-    use crate::field::ChargeableBody;
+    use crate::field::{
+        self,
+        BlobId as _,
+    };
 
-    impl ChargeableBody<BlobBody> for Blob {
+    impl field::ChargeableBody<BlobBody> for Blob {
         fn body(&self) -> &BlobBody {
             &self.body
         }
@@ -160,6 +177,40 @@ mod field {
 
         fn body_offset_end(&self) -> usize {
             WORD_SIZE // `Transaction` enum discriminant
+        }
+    }
+
+    impl field::BlobId for Blob {
+        #[inline(always)]
+        fn blob_id(&self) -> &BlobId {
+            &self.body.id
+        }
+
+        #[inline(always)]
+        fn blob_id_mut(&mut self) -> &mut BlobId {
+            &mut self.body.id
+        }
+
+        #[inline(always)]
+        fn blob_id_offset_static() -> usize {
+            WORD_SIZE // `Transaction` enum discriminant
+        }
+    }
+
+    impl field::BytecodeWitnessIndex for Blob {
+        #[inline(always)]
+        fn bytecode_witness_index(&self) -> &u16 {
+            &self.body.witness_index
+        }
+
+        #[inline(always)]
+        fn bytecode_witness_index_mut(&mut self) -> &mut u16 {
+            &mut self.body.witness_index
+        }
+
+        #[inline(always)]
+        fn bytecode_witness_index_offset_static() -> usize {
+            Self::blob_id_offset_static().saturating_add(BlobId::LEN)
         }
     }
 }

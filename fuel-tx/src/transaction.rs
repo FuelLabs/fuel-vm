@@ -24,6 +24,7 @@ use fuel_types::{
     },
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     Nonce,
     Salt,
@@ -279,6 +280,45 @@ impl Transaction {
         };
         witnesses.push(subsection.subsection.into());
         Upload {
+            body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
+    }
+
+    pub fn blob(
+        body: BlobBody,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        witnesses: Vec<Witness>,
+    ) -> Blob {
+        Blob {
+            body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
+    }
+
+    pub fn blob_from_bytes(
+        bytes: Vec<u8>,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        mut witnesses: Vec<Witness>,
+    ) -> Blob {
+        let body = BlobBody {
+            id: BlobId::compute(&bytes),
+            witness_index: u16::try_from(witnesses.len()).unwrap_or(u16::MAX),
+        };
+        witnesses.push(bytes.into());
+        Blob {
             body,
             policies,
             inputs,
@@ -967,6 +1007,16 @@ pub mod field {
         }
 
         fn bytecode_root_offset_static() -> usize;
+    }
+
+    pub trait BlobId {
+        fn blob_id(&self) -> &fuel_types::BlobId;
+        fn blob_id_mut(&mut self) -> &mut fuel_types::BlobId;
+        fn blob_id_offset(&self) -> usize {
+            Self::blob_id_offset_static()
+        }
+
+        fn blob_id_offset_static() -> usize;
     }
 
     pub trait SubsectionIndex {

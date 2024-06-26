@@ -200,9 +200,9 @@ impl TransactionBuilder<Upload> {
 }
 
 impl TransactionBuilder<Blob> {
-    pub fn blob(data: Vec<u8>) -> Self {
+    pub fn blob(body: BlobBody) -> Self {
         let tx = Blob {
-            body: BlobBody { data },
+            body,
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
             outputs: Default::default(),

@@ -1,6 +1,5 @@
 use crate::{
     consts::VM_MAX_RAM,
-    interpreter::BlobIdExt,
     prelude::*,
 };
 use alloc::vec;
@@ -344,8 +343,6 @@ fn blob_load_multiple() {
         .script_gas_limit(1_000_000)
         .fee_input()
         .execute();
-
-    dbg!(state.receipts());
 
     assert_success(state.receipts());
     let extracted: Vec<Word> = state

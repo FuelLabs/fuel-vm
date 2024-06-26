@@ -19,7 +19,6 @@ use crate::{
         PredicateVerificationFailed,
     },
     interpreter::{
-        blob::BlobIdExt,
         CheckedMetadata,
         EcalHandler,
         ExecutableTransaction,
@@ -66,9 +65,9 @@ use fuel_storage::{
 };
 use fuel_tx::{
     field::{
+        BlobId as _,
         BytecodeRoot,
         BytecodeWitnessIndex,
-        ChargeableBody,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
@@ -87,6 +86,7 @@ use fuel_tx::{
         },
     },
     Blob,
+    BlobIdExt,
     ConsensusParameters,
     Contract,
     Create,
@@ -749,11 +749,26 @@ where
         base_asset_id: &AssetId,
         gas_price: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
-        let blob_id = BlobId::compute(&blob.body().data);
+        let blob_data = blob
+            .witnesses()
+            .get(*blob.bytecode_witness_index() as usize)
+            .ok_or(InterpreterError::Bug(Bug::new(
+                // It shouldn't be possible since `Checked<Blob>` guarantees
+                // the existence of the witness.
+                BugVariant::WitnessIndexOutOfBounds,
+            )))?;
+
+        let blob_id = blob.blob_id();
+
+        debug_assert_eq!(
+            BlobId::compute(blob_data.as_ref()),
+            *blob_id,
+            "Tx has invalid BlobId",
+        );
 
         storage
             .storage_as_mut::<BlobData>()
-            .insert(&blob_id, &blob.body().data)
+            .insert(blob_id, blob_data.as_ref())
             .map_err(RuntimeError::Storage)?;
 
         Self::finalize_outputs(

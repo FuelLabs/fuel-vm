@@ -25,18 +25,6 @@ use super::{
     WriteRegKey,
 };
 
-/// Adds method to `BlobId` to compute the it from blob data.
-pub trait BlobIdExt {
-    /// Computes the `BlobId` from by hashing the given data.
-    fn compute(data: &[u8]) -> Self;
-}
-
-impl BlobIdExt for BlobId {
-    fn compute(data: &[u8]) -> Self {
-        Self::new(*fuel_crypto::Hasher::hash(data))
-    }
-}
-
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     M: Memory,

@@ -85,6 +85,7 @@ pub use transaction::{
     policies,
     Blob,
     BlobBody,
+    BlobIdExt,
     BlobMetadata,
     Cacheable,
     Chargeable,

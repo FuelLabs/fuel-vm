@@ -418,6 +418,7 @@ pub mod blob {
         NonRetryableFreeBalances,
     };
     use fuel_tx::{
+        AssetId,
         Blob,
         Cacheable,
         Chargeable,
@@ -429,6 +430,8 @@ pub mod blob {
     /// Metadata produced by checking [`fuel_tx::Blob`].
     #[derive(Debug, Clone, Eq, PartialEq, Hash)]
     pub struct CheckedMetadata {
+        /// The base asset id.
+        pub base_asset_id: AssetId,
         /// See [`NonRetryableFreeBalances`].
         pub free_balances: NonRetryableFreeBalances,
         /// The block height this tx was verified with
@@ -462,6 +465,7 @@ pub mod blob {
             );
 
             let metadata = CheckedMetadata {
+                base_asset_id: *consensus_params.base_asset_id(),
                 free_balances: NonRetryableFreeBalances(non_retryable_balances),
                 block_height,
                 min_gas: self

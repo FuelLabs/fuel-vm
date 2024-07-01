@@ -16,6 +16,7 @@ use crate::{
     },
     ConsensusParameters,
     ContractParameters,
+    CreateMetadata,
     FeeParameters,
     GasCosts,
     Input,
@@ -42,6 +43,7 @@ use crate::{
 use crate::{
     field::{
         MaxFeeLimit,
+        Outputs,
         WitnessLimit,
     },
     policies::Policies,
@@ -166,6 +168,17 @@ impl TransactionBuilder<Create> {
         tx.witnesses_mut().push(bytecode);
 
         Self::with_tx(tx)
+    }
+
+    pub fn add_contract_created(&mut self) -> &mut Self {
+        let create_metadata = CreateMetadata::compute(&self.tx)
+            .expect("Should be able to compute metadata");
+
+        self.tx.outputs_mut().push(Output::contract_created(
+            create_metadata.contract_id,
+            create_metadata.state_root,
+        ));
+        self
     }
 }
 

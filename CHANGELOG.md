@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 - [#784](https://github.com/FuelLabs/fuel-vm/pull/784): Avoid storage lookups for side nodes in the SMT.
 
+### Fixed
+
+#### Breaking
+- [#785](https://github.com/FuelLabs/fuel-vm/pull/785): Require `ContractCreated` output in the `Create` transaction. The `TransactionBuilder<Create>` has a `add_contract_created` method to simplify the creation of the `ContractCreated` output for tests.
+
+
 ## [Version 0.54.1]
 
 ### Changed

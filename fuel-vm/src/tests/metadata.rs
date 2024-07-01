@@ -83,12 +83,11 @@ fn metadata() {
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract_metadata = contract.id(&salt, &contract_root, &state_root);
-    let output = Output::contract_created(contract_metadata, state_root);
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
         .add_random_fee_input()
-        .add_output(output)
+        .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
@@ -134,13 +133,10 @@ fn metadata() {
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
     let contract_call = contract.id(&salt, &contract_root, &state_root);
-
-    let output = Output::contract_created(contract_call, state_root);
-
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
         .add_random_fee_input()
-        .add_output(output)
+        .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
@@ -386,7 +382,6 @@ fn get_transaction_fields() {
         Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
 
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
-        .add_output(Output::contract_created(contract_id, state_root))
         .add_unsigned_coin_input(
             SecretKey::random(rng),
             rng.gen(),
@@ -394,6 +389,7 @@ fn get_transaction_fields() {
             AssetId::zeroed(),
             rng.gen(),
         )
+        .add_contract_created()
         .finalize_checked(height);
 
     client.deploy(tx).unwrap();

@@ -801,6 +801,7 @@ where
         let contract = super::contract::contract(self.storage, &contract_id)?;
         let contract_bytes = contract.as_ref().as_ref();
         let contract_len = contract_bytes.len();
+        let charge_len = core::cmp::max(contract_len as u64, length);
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
@@ -812,7 +813,7 @@ where
             self.ggas,
             profiler,
             self.gas_cost,
-            contract_len as u64,
+            charge_len,
         )?;
 
         // Owner checks already performed above

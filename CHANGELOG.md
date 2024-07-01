@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 #### Breaking
+- [#786](https://github.com/FuelLabs/fuel-vm/pull/786): Fixed the CCP opcode to charge for the length from the input arguments.
 - [#785](https://github.com/FuelLabs/fuel-vm/pull/785): Require `ContractCreated` output in the `Create` transaction. The `TransactionBuilder<Create>` has a `add_contract_created` method to simplify the creation of the `ContractCreated` output for tests.
 
 ## [Version 0.54.1]

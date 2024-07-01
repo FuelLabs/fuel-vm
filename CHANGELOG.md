@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [#781](https://github.com/FuelLabs/fuel-vm/pull/781): Added `base_asset_id` to checked metadata.
 
+### Changed
+- [#787](https://github.com/FuelLabs/fuel-vm/pull/787): Fixed charge functions to profile cost before charging.
+
 ### Fixed
 
 #### Breaking

@@ -1,4 +1,5 @@
 use super::*;
+use crate::error::PanicOrBug;
 use test_case::test_case;
 
 struct GasChargeInput {
@@ -103,11 +104,26 @@ fn test_dependent_gas_charge(input: DepGasChargeInput) -> SimpleResult<GasCharge
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    dependent_gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas_cost, dependent_factor)
-        .map(|_| GasChargeOutput {
-            cgas: *cgas,
-            ggas: *ggas,
-        })
+    let pc = 0;
+    let is = 0;
+    let profiler = ProfileGas {
+        pc: Reg::new(&pc),
+        is: Reg::new(&is),
+        current_contract: None,
+        profiler: &mut Profiler::default(),
+    };
+
+    dependent_gas_charge(
+        cgas.as_mut(),
+        ggas.as_mut(),
+        profiler,
+        gas_cost,
+        dependent_factor,
+    )
+    .map(|_| GasChargeOutput {
+        cgas: *cgas,
+        ggas: *ggas,
+    })
 }
 
 #[test_case(
@@ -161,11 +177,20 @@ fn test_dependent_gas_charge_wihtout_base(
         mut ggas,
         dependent_factor,
     } = input;
+    let pc = 0;
+    let is = 0;
+    let profiler = ProfileGas {
+        pc: Reg::new(&pc),
+        is: Reg::new(&is),
+        current_contract: None,
+        profiler: &mut Profiler::default(),
+    };
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    dependent_gas_charge_without_base_inner(
+    dependent_gas_charge_without_base(
         cgas.as_mut(),
         ggas.as_mut(),
+        profiler,
         gas_cost,
         dependent_factor,
     )

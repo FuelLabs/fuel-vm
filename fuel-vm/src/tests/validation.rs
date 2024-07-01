@@ -122,10 +122,7 @@ fn malleable_fields_do_not_affect_validity_of_create() {
             predicate_bytecode,
             predicate_data,
         ))
-        .add_output(Output::contract_created(
-            Contract::EMPTY_CONTRACT_ID,
-            Default::default(),
-        ))
+        .add_contract_created()
         .add_output(Output::change(
             Default::default(),
             Default::default(),

@@ -694,8 +694,7 @@ where
             .checked_sub(a)
             .ok_or(PanicReason::NotEnoughBalance)?;
 
-        let _ = self
-            .storage
+        self.storage
             .contract_asset_id_balance_insert(&contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
@@ -735,7 +734,7 @@ where
 
         let old_value = self
             .storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, balance)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
         if old_value.is_none() {
@@ -1054,8 +1053,8 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let mut value = Bytes32::zeroed();
     value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
-    let (_size, prev) = storage
-        .contract_state_insert(&contract, &key, value.as_ref())
+    let prev = storage
+        .contract_state_replace(&contract, &key, value.as_ref())
         .map_err(RuntimeError::Storage)?;
 
     *created_new = prev.is_none() as Word;

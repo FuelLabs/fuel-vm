@@ -246,6 +246,10 @@ impl UniqueFormatValidityChecks for Create {
                 _ => Ok(()),
             })?;
 
+        if !contract_created {
+            return Err(ValidityError::TransactionOutputDoesntContainContractCreated);
+        }
+
         Ok(())
     }
 }

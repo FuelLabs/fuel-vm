@@ -152,6 +152,7 @@ fn valid_create_tx() -> Checked<Create> {
     TransactionBuilder::create(witness, salt, vec![])
         .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
+        .add_contract_created()
         .finalize_checked_basic(Default::default())
 }
 

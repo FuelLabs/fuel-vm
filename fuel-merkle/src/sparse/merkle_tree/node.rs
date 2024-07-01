@@ -93,6 +93,20 @@ impl Node {
         }
     }
 
+    pub fn create_node_from_hashes(
+        bytes_lo: Bytes32,
+        bytes_hi: Bytes32,
+        height: u32,
+    ) -> Self {
+        Self::Node {
+            hash: calculate_node_hash(&bytes_lo, &bytes_hi),
+            height,
+            prefix: Prefix::Node,
+            bytes_lo,
+            bytes_hi,
+        }
+    }
+
     pub fn create_node_on_path(
         path: &dyn Path,
         path_node: &Node,
@@ -179,14 +193,14 @@ impl Node {
         }
     }
 
-    fn bytes_lo(&self) -> &Bytes32 {
+    pub fn bytes_lo(&self) -> &Bytes32 {
         match self {
             Node::Node { bytes_lo, .. } => bytes_lo,
             Node::Placeholder => zero_sum(),
         }
     }
 
-    fn bytes_hi(&self) -> &Bytes32 {
+    pub fn bytes_hi(&self) -> &Bytes32 {
         match self {
             Node::Node { bytes_hi, .. } => bytes_hi,
             Node::Placeholder => zero_sum(),
@@ -407,7 +421,12 @@ where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
+    type ChildKey = Bytes32;
     type Error = StorageNodeError<StorageType::Error>;
+
+    fn key(&self) -> Self::ChildKey {
+        *self.hash()
+    }
 
     fn left_child(&self) -> ChildResult<Self> {
         if self.is_leaf() {
@@ -429,6 +448,15 @@ where
             .map_err(StorageNodeError::DeserializeError)?)
     }
 
+    fn left_child_key(
+        &self,
+    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+        if self.is_leaf() {
+            return Err(ChildError::NodeIsLeaf)
+        }
+        Ok(*self.node.left_child_key())
+    }
+
     fn right_child(&self) -> ChildResult<Self> {
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf)
@@ -447,6 +475,15 @@ where
             .try_into()
             .map(|node| Self::new(self.storage, node))
             .map_err(StorageNodeError::DeserializeError)?)
+    }
+
+    fn right_child_key(
+        &self,
+    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+        if self.is_leaf() {
+            return Err(ChildError::NodeIsLeaf)
+        }
+        Ok(*self.node.right_child_key())
     }
 }
 

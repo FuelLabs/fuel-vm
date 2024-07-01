@@ -24,9 +24,17 @@ pub trait Node {
 
 pub trait ParentNode: Sized + Node {
     type Error;
+    type ChildKey;
 
+    fn key(&self) -> Self::ChildKey;
     fn left_child(&self) -> ChildResult<Self>;
+    fn left_child_key(
+        &self,
+    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>>;
     fn right_child(&self) -> ChildResult<Self>;
+    fn right_child_key(
+        &self,
+    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>>;
 }
 
 #[allow(type_alias_bounds)]

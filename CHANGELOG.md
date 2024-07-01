@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [#781](https://github.com/FuelLabs/fuel-vm/pull/781): Added `base_asset_id` to checked metadata.
 
+### Fixed
+
+#### Breaking
+- [#786](https://github.com/FuelLabs/fuel-vm/pull/786): Fixed the CCP opcode to charge for the length from the input arguments.
+
 ## [Version 0.54.1]
 
 ### Changed

@@ -73,23 +73,34 @@ pub trait StorageInspect<Type: Mappable> {
 /// Generic should implement [`Mappable`] trait with all storage type information.
 pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
     /// Append `Key->Value` mapping to the storage.
+    fn insert(
+        &mut self,
+        key: &Type::Key,
+        value: &Type::Value,
+    ) -> Result<(), Self::Error> {
+        self.replace(key, value).map(|_| ())
+    }
+
+    /// Append `Key->Value` mapping to the storage.
     ///
     /// If `Key` was already mappped to a value, return the replaced value as
     /// `Ok(Some(Value))`. Return `Ok(None)` otherwise.
-    fn insert(
+    fn replace(
         &mut self,
         key: &Type::Key,
         value: &Type::Value,
     ) -> Result<Option<Type::OwnedValue>, Self::Error>;
 
     /// Remove `Key->Value` mapping from the storage.
+    fn remove(&mut self, key: &Type::Key) -> Result<(), Self::Error> {
+        self.take(key).map(|_| ())
+    }
+
+    /// Remove `Key->Value` mapping from the storage.
     ///
     /// Return `Ok(Some(Value))` if the value was present. If the key wasn't found, return
     /// `Ok(None)`.
-    fn remove(
-        &mut self,
-        key: &Type::Key,
-    ) -> Result<Option<Type::OwnedValue>, Self::Error>;
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.
@@ -133,27 +144,27 @@ pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> 
 /// This trait should skip any serialization and simply copy the raw bytes
 /// to the storage.
 pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
-    /// Write the value to the given key from the provided buffer.
+    /// Write the bytes to the given key from the provided buffer.
     ///
     /// Does not perform any serialization.
     ///
     /// Returns the number of bytes written.
-    fn write(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error>;
+    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error>;
 
-    /// Write the value to the given key from the provided buffer and
-    /// return the previous value if it existed.
+    /// Write the bytes to the given key from the provided buffer and
+    /// return the previous bytes if it existed.
     ///
     /// Does not perform any serialization.
     ///
     /// Returns the number of bytes written and the previous value if it existed.
-    fn replace(
+    fn replace_bytes(
         &mut self,
         key: &Type::Key,
         buf: &[u8],
     ) -> Result<(usize, Option<Vec<u8>>), Self::Error>;
 
-    /// Removes a value from the storage and returning it without deserializing it.
-    fn take(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
+    /// Removes a bytes from the storage and returning it without deserializing it.
+    fn take_bytes(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;
 }
 
 /// Returns the merkle root for the `StorageType` per merkle `Key`. Per one storage, it is

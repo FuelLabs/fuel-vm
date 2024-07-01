@@ -37,7 +37,7 @@ fn test_burn(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -115,7 +115,7 @@ fn test_mint(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -221,7 +221,7 @@ fn test_code_size() {
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-        .write(&ContractId::from([3u8; 32]), &[1u8; 100])
+        .write_bytes(&ContractId::from([3u8; 32]), &[1u8; 100])
         .unwrap();
     let mut pc = 4;
     let is = 0;

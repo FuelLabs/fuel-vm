@@ -353,12 +353,12 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::default();
     for (id, code) in storage_contract {
         StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-            .write(&id, code.as_ref())
+            .write_bytes(&id, code.as_ref())
             .unwrap();
     }
     for (a, n) in storage_balance.iter() {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&ContractId::default(), a, *n)
+            .contract_asset_id_balance_replace(&ContractId::default(), a, *n)
             .unwrap();
         assert!(old_balance.is_none());
     }

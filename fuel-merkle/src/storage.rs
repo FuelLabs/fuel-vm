@@ -14,12 +14,8 @@ pub trait StorageInspectInfallible<Type: Mappable> {
 }
 
 pub trait StorageMutateInfallible<Type: Mappable> {
-    fn insert(
-        &mut self,
-        key: &Type::Key,
-        value: &Type::Value,
-    ) -> Option<Type::OwnedValue>;
-    fn remove(&mut self, key: &Type::Key) -> Option<Type::OwnedValue>;
+    fn insert(&mut self, key: &Type::Key, value: &Type::Value);
+    fn remove(&mut self, key: &Type::Key);
 }
 
 impl<S, Type> StorageInspectInfallible<Type> for S
@@ -43,16 +39,12 @@ where
     S: StorageMutate<Type, Error = Infallible>,
     Type: Mappable,
 {
-    fn insert(
-        &mut self,
-        key: &Type::Key,
-        value: &Type::Value,
-    ) -> Option<Type::OwnedValue> {
+    fn insert(&mut self, key: &Type::Key, value: &Type::Value) {
         <Self as StorageMutate<Type>>::insert(self, key, value)
             .expect("Expected insert() to be infallible")
     }
 
-    fn remove(&mut self, key: &Type::Key) -> Option<Type::OwnedValue> {
+    fn remove(&mut self, key: &Type::Key) {
         <Self as StorageMutate<Type>>::remove(self, key)
             .expect("Expected remove() to be infallible")
     }

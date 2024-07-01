@@ -207,7 +207,7 @@ pub trait InterpreterStorage:
         Ok(())
     }
 
-    /// Insert a key-value mapping in a contract storage.
+    /// Insert a key-value mapping into a contract storage.
     fn contract_state_replace(
         &mut self,
         contract: &ContractId,

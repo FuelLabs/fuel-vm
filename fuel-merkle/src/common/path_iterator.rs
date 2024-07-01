@@ -1,5 +1,6 @@
 use crate::common::{
     node::{
+        ChildKeyResult,
         ChildResult,
         ParentNode,
     },
@@ -83,7 +84,7 @@ use crate::common::{
 /// 12`.
 pub struct PathIter<T: ParentNode> {
     leaf_key: T::Key,
-    current: Option<(ChildResult<T>, ChildResult<T>)>,
+    current: Option<(ChildResult<T>, ChildKeyResult<T>)>,
     current_offset: u32,
 }
 
@@ -93,7 +94,7 @@ where
     T::Key: Clone,
 {
     pub fn new(root: &T, leaf_key: &T::Key) -> Self {
-        let initial = (Ok(root.clone()), Ok(root.clone()));
+        let initial = (Ok(root.clone()), Ok(root.key()));
 
         #[rustfmt::skip]
         // The initial offset from the most significant bit (MSB).
@@ -154,7 +155,7 @@ where
     T: ParentNode,
     T::Key: Path,
 {
-    type Item = (ChildResult<T>, ChildResult<T>);
+    type Item = (ChildResult<T>, ChildKeyResult<T>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let value = self.current.take();
@@ -172,10 +173,10 @@ where
                         }
                         match instruction {
                             Side::Left => {
-                                (path_node.left_child(), path_node.right_child())
+                                (path_node.left_child(), path_node.right_child_key())
                             }
                             Side::Right => {
-                                (path_node.right_child(), path_node.left_child())
+                                (path_node.right_child(), path_node.left_child_key())
                             }
                         }
                     });
@@ -216,6 +217,7 @@ where
 mod test {
     use crate::common::{
         node::{
+            ChildKeyResult,
             ChildResult,
             Node,
             ParentNode,
@@ -291,14 +293,27 @@ mod test {
     }
 
     impl ParentNode for TestNode {
+        type ChildKey = u64;
         type Error = Infallible;
+
+        fn key(&self) -> Self::ChildKey {
+            self.in_order_index()
+        }
 
         fn left_child(&self) -> ChildResult<Self> {
             Ok(TestNode::child(self, -1))
         }
 
+        fn left_child_key(&self) -> ChildKeyResult<Self> {
+            self.left_child().map(|node| node.in_order_index())
+        }
+
         fn right_child(&self) -> ChildResult<Self> {
             Ok(TestNode::child(self, 1))
+        }
+
+        fn right_child_key(&self) -> ChildKeyResult<Self> {
+            self.right_child().map(|node| node.in_order_index())
         }
     }
 
@@ -324,10 +339,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(0);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(3),
@@ -339,10 +354,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(1);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(3),
@@ -354,10 +369,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(2);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(3),
@@ -369,10 +384,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(3);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(3),
@@ -384,10 +399,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(4);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(11),
@@ -399,10 +414,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(5);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(11),
@@ -414,10 +429,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(6);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(11),
@@ -429,10 +444,10 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(7);
-            let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+            let path: Vec<TestNode> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(path, _)| path.unwrap())
+                .collect();
             let expected_path = vec![
                 Node::from_in_order_index(7),
                 Node::from_in_order_index(11),
@@ -465,120 +480,120 @@ mod test {
 
         {
             let leaf = Node::from_leaf_index(0);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(11), // Sibling of node 3
-                Node::from_in_order_index(5),  // Sibling of node 1
-                Node::from_leaf_index(1),      // Sibling of leaf 0
+                Node::from_in_order_index(7).value,  // Root's dummy side
+                Node::from_in_order_index(11).value, // Sibling of node 3
+                Node::from_in_order_index(5).value,  // Sibling of node 1
+                Node::from_leaf_index(1).value,      // Sibling of leaf 0
             ];
             assert_eq!(side, expected_side);
         }
 
         {
             let leaf = Node::from_leaf_index(1);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(11), // Sibling of node 3
-                Node::from_in_order_index(5),  // Sibling of node 1
-                Node::from_leaf_index(0),      // Sibling of leaf 1
+                Node::from_in_order_index(7).value,  // Root's dummy side
+                Node::from_in_order_index(11).value, // Sibling of node 3
+                Node::from_in_order_index(5).value,  // Sibling of node 1
+                Node::from_leaf_index(0).value,      // Sibling of leaf 1
             ];
             assert_eq!(side, expected_side);
         }
 
         {
             let leaf = Node::from_leaf_index(2);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(11), // Sibling of node 3
-                Node::from_in_order_index(1),  // Sibling of node 5
-                Node::from_leaf_index(3),      // Sibling of leaf 2
+                Node::from_in_order_index(7).value,  // Root's dummy side
+                Node::from_in_order_index(11).value, // Sibling of node 3
+                Node::from_in_order_index(1).value,  // Sibling of node 5
+                Node::from_leaf_index(3).value,      // Sibling of leaf 2
             ];
             assert_eq!(side, expected_side);
         }
 
         {
             let leaf = Node::from_leaf_index(3);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(11), // Sibling of node 3
-                Node::from_in_order_index(1),  // Sibling of node 5
-                Node::from_leaf_index(2),      // Sibling of leaf 3
+                Node::from_in_order_index(7).value,  // Root's dummy side
+                Node::from_in_order_index(11).value, // Sibling of node 3
+                Node::from_in_order_index(1).value,  // Sibling of node 5
+                Node::from_leaf_index(2).value,      // Sibling of leaf 3
             ];
             assert_eq!(side, expected_side);
         }
 
         {
             let leaf = Node::from_leaf_index(4);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(3), // Sibling of node 11
-                Node::from_in_order_index(13), // Sibling of node 9
-                Node::from_leaf_index(5),     // Sibling of leaf 4
+                Node::from_in_order_index(7).value,  // Root's dummy side
+                Node::from_in_order_index(3).value,  // Sibling of node 11
+                Node::from_in_order_index(13).value, // Sibling of node 9
+                Node::from_leaf_index(5).value,      // Sibling of leaf 4
             ];
             assert_eq!(side, expected_side);
         }
 
         {
             let leaf = Node::from_leaf_index(5);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(3), // Sibling of node 11
-                Node::from_in_order_index(13), // Sibling of node 9
-                Node::from_leaf_index(4),     // Sibling of leaf 5
+                Node::from_in_order_index(7).value,  // Root's dummy side
+                Node::from_in_order_index(3).value,  // Sibling of node 11
+                Node::from_in_order_index(13).value, // Sibling of node 9
+                Node::from_leaf_index(4).value,      // Sibling of leaf 5
             ];
             assert_eq!(side, expected_side);
         }
 
         {
             let leaf = Node::from_leaf_index(6);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(3), // Sibling of node 11
-                Node::from_in_order_index(9), // Sibling of node 13
-                Node::from_leaf_index(7),     // Sibling of leaf 6
+                Node::from_in_order_index(7).value, // Root's dummy side
+                Node::from_in_order_index(3).value, // Sibling of node 11
+                Node::from_in_order_index(9).value, // Sibling of node 13
+                Node::from_leaf_index(7).value,     // Sibling of leaf 6
             ];
             assert_eq!(side, expected_side);
         }
 
         {
             let leaf = Node::from_leaf_index(7);
-            let (_, side): (Vec<TestNode>, Vec<TestNode>) = root
+            let side: Vec<_> = root
                 .as_path_iter(&leaf.leaf_key())
-                .map(|(path, side)| (path.unwrap(), side.unwrap()))
-                .unzip();
+                .map(|(_, side)| side.unwrap())
+                .collect();
             let expected_side = vec![
-                Node::from_in_order_index(7),
-                Node::from_in_order_index(3), // Sibling of node 11
-                Node::from_in_order_index(9), // Sibling of node 13
-                Node::from_leaf_index(6),     // Sibling of leaf 7
+                Node::from_in_order_index(7).value, // Root's dummy side
+                Node::from_in_order_index(3).value, // Sibling of node 11
+                Node::from_in_order_index(9).value, // Sibling of node 13
+                Node::from_leaf_index(6).value,     // Sibling of leaf 7
             ];
             assert_eq!(side, expected_side);
         }
@@ -590,10 +605,10 @@ mod test {
         let root = Node::from_in_order_index(15); // 2^4 - 1
         let leaf = Node::from_leaf_index(4); // 0b0100
 
-        let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+        let path: Vec<TestNode> = root
             .as_path_iter(&leaf.leaf_key())
-            .map(|(path, side)| (path.unwrap(), side.unwrap()))
-            .unzip();
+            .map(|(path, _)| path.unwrap())
+            .collect();
 
         let expected_path = vec![
             Node::from_in_order_index(15),
@@ -611,10 +626,10 @@ mod test {
         let root = Node::from_in_order_index(255); // 2^8 - 1
         let leaf = Node::from_leaf_index(61); // 0b00111101
 
-        let (path, _): (Vec<TestNode>, Vec<TestNode>) = root
+        let path: Vec<TestNode> = root
             .as_path_iter(&leaf.leaf_key())
-            .map(|(path, side)| (path.unwrap(), side.unwrap()))
-            .unzip();
+            .map(|(path, _)| path.unwrap())
+            .collect();
 
         let expected_path = vec![
             Node::from_in_order_index(255),
@@ -636,13 +651,13 @@ mod test {
         let root = Node::from_in_order_index(0);
         let leaf = Node::from_leaf_index(0);
 
-        let (path, side): (Vec<TestNode>, Vec<TestNode>) = root
+        let (path, side): (Vec<TestNode>, Vec<_>) = root
             .as_path_iter(&leaf.leaf_key())
             .map(|(path, side)| (path.unwrap(), side.unwrap()))
             .unzip();
 
         let expected_path = vec![Node::from_in_order_index(0)];
-        let expected_side = vec![Node::from_in_order_index(0)];
+        let expected_side = vec![0];
         assert_eq!(path, expected_path);
         assert_eq!(side, expected_side);
     }

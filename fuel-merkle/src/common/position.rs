@@ -1,5 +1,6 @@
 use crate::common::{
     node::{
+        ChildKeyResult,
         Node,
         ParentNode,
     },
@@ -328,9 +329,7 @@ impl ParentNode for Position {
         }
     }
 
-    fn left_child_key(
-        &self,
-    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+    fn left_child_key(&self) -> ChildKeyResult<Self> {
         ParentNode::left_child(self).map(|child| child.in_order_index())
     }
 
@@ -342,9 +341,7 @@ impl ParentNode for Position {
         }
     }
 
-    fn right_child_key(
-        &self,
-    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+    fn right_child_key(&self) -> ChildKeyResult<Self> {
         ParentNode::right_child(self).map(|child| child.in_order_index())
     }
 }

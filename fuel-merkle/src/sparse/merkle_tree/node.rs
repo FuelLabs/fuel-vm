@@ -33,6 +33,7 @@ use crate::{
     },
 };
 
+use crate::common::node::ChildKeyResult;
 use core::{
     fmt,
     marker::PhantomData,
@@ -448,9 +449,7 @@ where
             .map_err(StorageNodeError::DeserializeError)?)
     }
 
-    fn left_child_key(
-        &self,
-    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+    fn left_child_key(&self) -> ChildKeyResult<Self> {
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf)
         }
@@ -477,9 +476,7 @@ where
             .map_err(StorageNodeError::DeserializeError)?)
     }
 
-    fn right_child_key(
-        &self,
-    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+    fn right_child_key(&self) -> ChildKeyResult<Self> {
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf)
         }

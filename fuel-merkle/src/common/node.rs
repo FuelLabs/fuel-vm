@@ -28,17 +28,16 @@ pub trait ParentNode: Sized + Node {
 
     fn key(&self) -> Self::ChildKey;
     fn left_child(&self) -> ChildResult<Self>;
-    fn left_child_key(
-        &self,
-    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>>;
+    fn left_child_key(&self) -> ChildKeyResult<Self>;
     fn right_child(&self) -> ChildResult<Self>;
-    fn right_child_key(
-        &self,
-    ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>>;
+    fn right_child_key(&self) -> ChildKeyResult<Self>;
 }
 
 #[allow(type_alias_bounds)]
 pub type ChildResult<T: ParentNode> = Result<T, ChildError<T::Key, T::Error>>;
+#[allow(type_alias_bounds)]
+pub type ChildKeyResult<T: ParentNode> =
+    Result<T::ChildKey, ChildError<T::Key, T::Error>>;
 
 #[derive(Debug, Clone, derive_more::Display)]
 pub enum ChildError<Key, E>

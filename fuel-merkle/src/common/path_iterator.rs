@@ -1,6 +1,6 @@
 use crate::common::{
     node::{
-        ChildError,
+        ChildKeyResult,
         ChildResult,
         ParentNode,
     },
@@ -84,10 +84,7 @@ use crate::common::{
 /// 12`.
 pub struct PathIter<T: ParentNode> {
     leaf_key: T::Key,
-    current: Option<(
-        ChildResult<T>,
-        Result<T::ChildKey, ChildError<T::Key, T::Error>>,
-    )>,
+    current: Option<(ChildResult<T>, ChildKeyResult<T>)>,
     current_offset: u32,
 }
 
@@ -158,10 +155,7 @@ where
     T: ParentNode,
     T::Key: Path,
 {
-    type Item = (
-        ChildResult<T>,
-        Result<T::ChildKey, ChildError<T::Key, T::Error>>,
-    );
+    type Item = (ChildResult<T>, ChildKeyResult<T>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let value = self.current.take();
@@ -223,7 +217,7 @@ where
 mod test {
     use crate::common::{
         node::{
-            ChildError,
+            ChildKeyResult,
             ChildResult,
             Node,
             ParentNode,
@@ -310,9 +304,7 @@ mod test {
             Ok(TestNode::child(self, -1))
         }
 
-        fn left_child_key(
-            &self,
-        ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+        fn left_child_key(&self) -> ChildKeyResult<Self> {
             self.left_child().map(|node| node.in_order_index())
         }
 
@@ -320,9 +312,7 @@ mod test {
             Ok(TestNode::child(self, 1))
         }
 
-        fn right_child_key(
-            &self,
-        ) -> Result<Self::ChildKey, ChildError<Self::Key, Self::Error>> {
+        fn right_child_key(&self) -> ChildKeyResult<Self> {
             self.right_child().map(|node| node.in_order_index())
         }
     }

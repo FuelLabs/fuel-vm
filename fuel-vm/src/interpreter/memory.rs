@@ -145,8 +145,11 @@ impl MemoryInstance {
 
     /// Grows the stack to be at least `new_sp` bytes.
     pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
-        #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
-        let new_sp = new_sp.min(MEM_SIZE as Word) as usize;
+        if new_sp > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow);
+        }
+        #[allow(clippy::cast_possible_truncation)] // Safety: VM_MAX_RAM is usize
+        let new_sp = new_sp as usize;
         if new_sp > self.stack.len() {
             if new_sp > self.hp {
                 return Err(PanicReason::MemoryGrowthOverlap)

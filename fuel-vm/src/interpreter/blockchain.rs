@@ -41,6 +41,7 @@ use crate::{
     },
     prelude::Profiler,
     storage::{
+        BlobData,
         ContractsAssetsStorage,
         ContractsRawCode,
         ContractsStateData,
@@ -48,10 +49,17 @@ use crate::{
     },
 };
 use alloc::vec::Vec;
-use fuel_asm::PanicReason;
-use fuel_storage::StorageSize;
+use fuel_asm::{
+    Imm06,
+    PanicReason,
+};
+use fuel_storage::{
+    StorageInspect,
+    StorageSize,
+};
 use fuel_tx::{
     consts::BALANCE_ENTRY_SIZE,
+    BlobId,
     ContractIdExt,
     DependentCost,
     Receipt,
@@ -96,9 +104,10 @@ where
     /// ```
     pub(crate) fn load_contract_code(
         &mut self,
-        contract_id_addr: Word,
-        contract_offset: Word,
+        id_addr: Word,
+        offset: Word,
         length_unpadded: Word,
+        mode: Imm06,
     ) -> IoResult<(), S::DataError> {
         let gas_cost = self.gas_costs().ldc();
         // Charge only for the `base` execution.
@@ -139,7 +148,12 @@ where
             pc,
             is: is.as_ref(),
         };
-        input.load_contract_code(contract_id_addr, contract_offset, length_unpadded)
+
+        match mode.to_u8() {
+            0 => input.load_contract_code(id_addr, offset, length_unpadded),
+            1 => input.load_blob_code(id_addr, offset, length_unpadded),
+            _ => Err(PanicReason::InvalidImmediateValue.into()),
+        }
     }
 
     pub(crate) fn burn(&mut self, a: Word, b: Word) -> IoResult<(), S::DataError> {
@@ -645,6 +659,115 @@ where
             contract_bytes,
             region_start,
             contract_offset,
+            length,
+        )?;
+
+        // Update frame code size, if we have a stack frame (i.e. fp > 0)
+        if self.context.is_internal() {
+            let code_size_ptr =
+                (*self.fp).saturating_add(CallFrame::code_size_offset() as Word);
+            let old_code_size =
+                Word::from_be_bytes(self.memory.read_bytes(code_size_ptr)?);
+            let old_code_size = padded_len_word(old_code_size)
+                .expect("Code size cannot overflow with padding");
+            let new_code_size = old_code_size
+                .checked_add(length as Word)
+                .ok_or(PanicReason::MemoryOverflow)?;
+
+            self.memory
+                .write_bytes_noownerchecks(code_size_ptr, new_code_size.to_be_bytes())?;
+        }
+
+        inc_pc(self.pc)?;
+
+        Ok(())
+    }
+
+    /// Loads blob ID pointed by `a`, and then for that blob,
+    /// copies `c` bytes from it starting from offset `b` into the stack.
+    /// ```txt
+    /// contract_id = mem[$rA, 32]
+    /// contract_code = contracts[contract_id]
+    /// mem[$ssp, $rC] = contract_code[$rB, $rC]
+    /// ```
+    /// Returns the total length of the contract code that was loaded from storage.
+    pub(crate) fn load_blob_code(
+        mut self,
+        blob_id_addr: Word,
+        blob_offset: Word,
+        length_unpadded: Word,
+    ) -> IoResult<(), S::DataError>
+    where
+        S: InterpreterStorage,
+    {
+        let ssp = *self.ssp;
+        let sp = *self.sp;
+        let region_start = ssp;
+
+        if ssp != sp {
+            return Err(PanicReason::ExpectedUnallocatedStack.into())
+        }
+
+        let blob_id = BlobId::from(self.memory.read_bytes(blob_id_addr)?);
+        let blob_offset: usize = blob_offset
+            .try_into()
+            .map_err(|_| PanicReason::MemoryOverflow)?;
+
+        let current_contract = current_contract(self.context, self.fp, self.memory)?;
+
+        let length = bytes::padded_len_usize(
+            length_unpadded
+                .try_into()
+                .map_err(|_| PanicReason::MemoryOverflow)?,
+        )
+        .map(|len| len as Word)
+        .unwrap_or(Word::MAX);
+
+        let Some(blob_len) =
+            <S as StorageSize<BlobData>>::size_of_value(self.storage, &blob_id)
+                .map_err(RuntimeError::Storage)?
+        else {
+            return Err(PanicReason::BlobNotFound.into());
+        };
+
+        // Fetch the storage blob
+        let profiler = ProfileGas {
+            pc: self.pc.as_ref(),
+            is: self.is,
+            current_contract,
+            profiler: self.profiler,
+        };
+        let charge_len = core::cmp::max(blob_len as u64, length);
+        dependent_gas_charge_without_base(
+            self.cgas,
+            self.ggas,
+            profiler,
+            self.gas_cost,
+            charge_len,
+        )?;
+        let blob = <S as StorageInspect<BlobData>>::get(self.storage, &blob_id)
+            .map_err(RuntimeError::Storage)?
+            .ok_or(PanicReason::BlobNotFound)?;
+        let blob_bytes = blob.as_ref().as_ref();
+
+        let new_sp = ssp.saturating_add(length);
+        self.memory.grow_stack(new_sp)?;
+
+        // Set up ownership registers for the copy using old ssp
+        let owner =
+            OwnershipRegisters::only_allow_stack_write(new_sp, *self.ssp, *self.hp);
+
+        // Mark stack space as allocated
+        *self.sp = new_sp;
+        *self.ssp = new_sp;
+
+        // Copy the code.
+        copy_from_slice_zero_fill(
+            self.memory,
+            owner,
+            blob_bytes,
+            region_start,
+            blob_offset,
             length,
         )?;
 

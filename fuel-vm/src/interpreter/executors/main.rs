@@ -1120,6 +1120,38 @@ where
     }
 }
 
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
+    S: InterpreterStorage,
+{
+    /// Executes `Blob` transaction without initialization VM and without invalidation
+    /// of the last state of execution of the `Script` transaction.
+    ///
+    /// Returns `Blob` transaction with all modifications after execution.
+    pub fn blob(
+        &mut self,
+        tx: Ready<Blob>,
+    ) -> Result<Blob, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut blob, metadata): (Blob, <Blob as IntoChecked>::Metadata) =
+            checked.into();
+        let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
+        Self::blob_inner(
+            &mut blob,
+            &mut self.storage,
+            metadata.balances(),
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
+            &base_asset_id,
+            gas_price,
+        )?;
+        Ok(blob)
+    }
+}
+
 impl<M, S: InterpreterStorage, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     fn verify_ready_tx<Tx2: IntoChecked>(
         &self,

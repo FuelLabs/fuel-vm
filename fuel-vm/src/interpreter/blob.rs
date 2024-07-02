@@ -1,3 +1,5 @@
+#![allow(dead_code)] // These will be used in the future
+
 use fuel_asm::{
     RegisterId,
     Word,
@@ -73,9 +75,7 @@ where
         let owner = self.ownership_registers();
         let dst = self.memory.as_mut().write(owner, dst_ptr, len)?;
 
-        let storage = &self.storage;
-        let blob_id = &blob_id;
-        let blob = <S as StorageInspect<BlobData>>::get(storage, blob_id)
+        let blob = <S as StorageInspect<BlobData>>::get(&self.storage, &blob_id)
             .map_err(RuntimeError::Storage)?
             .ok_or(PanicReason::BlobNotFound)?;
         let blob = blob.as_ref().as_ref();

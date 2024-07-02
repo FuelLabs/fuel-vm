@@ -183,7 +183,7 @@ impl_instructions! {
     "Get current block proposer's address."
     0x31 CB cb [dst: RegId]
     "Load a contract's code as executable."
-    0x32 LDC ldc [contract_id_addr: RegId offset: RegId len: RegId]
+    0x32 LDC ldc [contract_id_addr: RegId offset: RegId len: RegId mode: Imm06]
     "Log an event."
     0x33 LOG log [a: RegId b: RegId c: RegId d: RegId]
     "Log data."
@@ -340,11 +340,6 @@ impl_instructions! {
 
     "Call external function"
     0xb0 ECAL ecal [a: RegId b: RegId c: RegId d: RegId]
-
-    "Get blob size"
-    0xba BSIZ bsiz [dst: RegId blob_id_ptr: RegId]
-    "Load blob as data"
-    0xbb BLDD bldd [dst_ptr: RegId blob_id_ptr: RegId offset: RegId len: RegId]
 }
 
 impl Instruction {
@@ -993,7 +988,7 @@ fn check_predicate_allowed() {
             let should_allow = match repr {
                 BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG
                 | LOGD | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ
-                | TIME | TR | TRO | ECAL | BSIZ | BLDD => false,
+                | TIME | TR | TRO | ECAL => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

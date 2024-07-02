@@ -55,10 +55,19 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
 }
 
 /// Assert that transaction didn't panic
+#[track_caller]
 pub fn assert_success(receipts: &[Receipt]) {
     if let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() {
         if *result != ScriptExecutionResult::Success {
-            panic!("Expected vm success, got {result:?} instead");
+            let Some(Receipt::Panic { reason, .. }) = receipts.get(receipts.len() - 2)
+            else {
+                panic!("Expected vm success, got {result:?} instead (panic receipt missing!)");
+            };
+
+            panic!(
+                "Expected vm success, got {result:?} ({:?}) instead",
+                reason.reason()
+            );
         }
     } else {
         unreachable!("No script result");

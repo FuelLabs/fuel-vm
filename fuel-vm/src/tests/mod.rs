@@ -9,7 +9,6 @@ mod test_helpers;
 
 mod alu;
 mod backtrace;
-mod blob;
 mod blockchain;
 mod cgas;
 mod code_coverage;

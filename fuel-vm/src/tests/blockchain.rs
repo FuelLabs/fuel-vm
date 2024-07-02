@@ -69,17 +69,12 @@ fn deploy_contract<M>(
 ) where
     M: Memory,
 {
-    let code_root = Contract::root_from_code(contract.as_ref());
-    let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id =
-        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
-
     let tx_params = TxParameters::default();
     let height = Default::default();
     let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
         .with_tx_params(tx_params)
-        .add_output(Output::contract_created(contract_id, state_root))
         .add_random_fee_input()
+        .add_contract_created()
         .finalize_checked(height);
 
     client
@@ -598,8 +593,7 @@ where
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
     let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let output0 = Output::contract_created(contract_id, state_root);
-    let output1 = Output::contract(0, rng.gen(), rng.gen());
+    let output0 = Output::contract(0, rng.gen(), rng.gen());
 
     let consensus_params = ConsensusParameters::standard();
 
@@ -607,7 +601,7 @@ where
         TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
             .maturity(maturity)
             .add_random_fee_input()
-            .add_output(output0)
+            .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -669,7 +663,7 @@ where
     .maturity(maturity)
     .add_input(input0.clone())
     .add_random_fee_input()
-    .add_output(output1)
+    .add_output(output0)
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");
@@ -686,7 +680,7 @@ where
             .maturity(maturity)
             .add_input(input0)
             .add_random_fee_input()
-            .add_output(output1)
+            .add_output(output0)
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -741,12 +735,10 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
-    let output0 = Output::contract_created(contract_id, state_root);
-
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
         .add_random_fee_input()
-        .add_output(output0)
+        .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
@@ -2125,15 +2117,13 @@ fn various_ldc_issues_poc() {
     let target_contract_id =
         target_contract.id(&salt, &target_contract_root, &target_state_root);
 
-    let output0 = Output::contract_created(target_contract_id, target_state_root);
-
     let consensus_params = ConsensusParameters::standard();
 
     let tx_create_target =
         TransactionBuilder::create(target_program.clone(), salt, vec![])
             .maturity(maturity)
             .add_random_fee_input()
-            .add_output(output0)
+            .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -2198,16 +2188,13 @@ fn various_ldc_issues_poc() {
     let loader_state_root = Contract::default_state_root();
     let loader_contract_id =
         loader_contract.id(&salt, &loader_contract_root, &loader_state_root);
-
-    let output0 = Output::contract_created(loader_contract_id, loader_state_root);
-
     let consensus_params = ConsensusParameters::standard();
 
     let tx_create_loader =
         TransactionBuilder::create(loader_program.clone(), salt, vec![])
             .maturity(maturity)
             .add_random_fee_input()
-            .add_output(output0)
+            .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");

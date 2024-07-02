@@ -95,6 +95,7 @@ pub use transaction::{
     ConsensusParameters,
     ContractParameters,
     Create,
+    CreateMetadata,
     DependentCost,
     Executable,
     FeeParameters,

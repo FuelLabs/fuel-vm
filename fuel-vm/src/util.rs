@@ -454,7 +454,7 @@ pub mod test_helpers {
                 .max_fee_limit(self.max_fee_limit)
                 .maturity(Default::default())
                 .add_random_fee_input()
-                .add_output(Output::contract_created(contract_id, storage_root))
+                .add_contract_created()
                 .finalize()
                 .into_checked(self.block_height, &self.consensus_params)
                 .expect("failed to check tx");
@@ -684,8 +684,8 @@ pub mod test_helpers {
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
             .max_fee_limit(zero_fee_limit)
             .with_tx_params(tx_params)
-            .add_output(Output::contract_created(contract_id, state_root))
             .add_random_fee_input()
+            .add_contract_created()
             .finalize_checked(height);
 
         client

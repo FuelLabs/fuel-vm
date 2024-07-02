@@ -24,6 +24,7 @@ pub use chargeable_transaction::{
 pub use create::{
     Create,
     CreateBody,
+    CreateMetadata,
 };
 pub use mint::Mint;
 pub use script::{

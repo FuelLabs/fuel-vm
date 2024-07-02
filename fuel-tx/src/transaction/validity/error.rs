@@ -180,4 +180,6 @@ pub enum ValidityError {
     SerializedWitnessTooLarge {
         index: usize,
     },
+    /// The `Create` transaction doesn't contain `Output::ContractCreated`.
+    TransactionOutputDoesntContainContractCreated,
 }

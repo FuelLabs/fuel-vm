@@ -147,6 +147,8 @@ enum_from! {
         BytecodeAlreadyUploaded = 0x34,
         /// The part of the bytecode is not sequentially connected to the previous parts.
         ThePartIsNotSequentiallyConnected = 0x35,
+        /// The requested blob is not found
+        BlobNotFound = 0x36,
     }
 }
 

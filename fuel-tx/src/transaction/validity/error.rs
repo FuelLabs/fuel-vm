@@ -90,6 +90,10 @@ pub enum ValidityError {
     TransactionOutputContainsContractCreated {
         index: usize,
     },
+    /// The output contains a `Output::Coin` which is not allowed.
+    TransactionOutputContainsCoin {
+        index: usize,
+    },
     /// The block height of the checking doesn't match the transaction's block height.
     /// `Mint` transaction only exists in the scope of the block.
     TransactionMintIncorrectBlockHeight,
@@ -112,6 +116,8 @@ pub enum ValidityError {
     /// The total number of bytecode subsections in the `Upload` transaction exceeds the
     /// limit.
     TransactionUploadTooManyBytecodeSubsections,
+    /// Blob id of the transaction differs from the data.
+    TransactionBlobIdVerificationFailed,
     /// The transaction exceeded the size limit.
     TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded

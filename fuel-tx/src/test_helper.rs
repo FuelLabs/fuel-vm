@@ -134,6 +134,7 @@ mod use_std {
                         Transaction::Mint(_) => (),
                         Transaction::Upgrade(_) => (),
                         Transaction::Upload(_) => (),
+                        Transaction::Blob(_) => (),
                     })
                     .unwrap_or(());
 

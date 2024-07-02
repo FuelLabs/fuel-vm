@@ -45,6 +45,7 @@ impl UniqueIdentifier for Transaction {
             Self::Mint(tx) => tx.id(chain_id),
             Self::Upgrade(tx) => tx.id(chain_id),
             Self::Upload(tx) => tx.id(chain_id),
+            Self::Blob(tx) => tx.id(chain_id),
         }
     }
 
@@ -55,6 +56,7 @@ impl UniqueIdentifier for Transaction {
             Self::Mint(tx) => tx.cached_id(),
             Self::Upgrade(tx) => tx.cached_id(),
             Self::Upload(tx) => tx.cached_id(),
+            Self::Blob(tx) => tx.cached_id(),
         }
     }
 }

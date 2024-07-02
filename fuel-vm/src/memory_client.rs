@@ -16,6 +16,7 @@ use crate::{
 };
 use core::convert::Infallible;
 use fuel_tx::{
+    Blob,
     Create,
     FeeParameters,
     GasCosts,
@@ -117,6 +118,11 @@ where
     /// Executes `Upload` transaction.
     pub fn upload(&mut self, tx: Checked<Upload>) -> Option<Upload> {
         self.transactor.upload(tx).ok()
+    }
+
+    /// Executes `Blob` transaction.
+    pub fn blob(&mut self, tx: Checked<Blob>) -> Option<Blob> {
+        self.transactor.blob(tx).ok()
     }
 
     /// Execute a transaction.

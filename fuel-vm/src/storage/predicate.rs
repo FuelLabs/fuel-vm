@@ -29,6 +29,7 @@ use fuel_types::{
 
 use super::{
     interpreter::ContractsAssetsStorage,
+    BlobData,
     ContractsRawCode,
     ContractsState,
     ContractsStateData,
@@ -40,6 +41,8 @@ use super::{
 /// operations. However, predicates, as defined in the protocol, cannot execute contract
 /// opcodes. This means its storage backend for predicate execution shouldn't provide any
 /// functionality.
+///
+/// TODO: blob storage should be implemented
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PredicateStorage;
 
@@ -189,6 +192,57 @@ impl StorageWrite<ContractsState> for PredicateStorage {
     fn take(
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Err(StorageUnavailable)
+    }
+}
+
+impl StorageSize<BlobData> for PredicateStorage {
+    fn size_of_value(
+        &self,
+        _key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<usize>, StorageUnavailable> {
+        Err(StorageUnavailable)
+    }
+}
+
+impl StorageRead<BlobData> for PredicateStorage {
+    fn read(
+        &self,
+        _key: &<BlobData as Mappable>::Key,
+        _buf: &mut [u8],
+    ) -> Result<Option<usize>, StorageUnavailable> {
+        Err(StorageUnavailable)
+    }
+
+    fn read_alloc(
+        &self,
+        _key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, StorageUnavailable> {
+        Err(StorageUnavailable)
+    }
+}
+
+impl StorageWrite<BlobData> for PredicateStorage {
+    fn write(
+        &mut self,
+        _key: &<BlobData as Mappable>::Key,
+        _buf: &[u8],
+    ) -> Result<usize, Self::Error> {
+        Err(StorageUnavailable)
+    }
+
+    fn replace(
+        &mut self,
+        _key: &<BlobData as Mappable>::Key,
+        _buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+        Err(StorageUnavailable)
+    }
+
+    fn take(
+        &mut self,
+        _key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
         Err(StorageUnavailable)
     }

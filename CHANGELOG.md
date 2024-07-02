@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [#781](https://github.com/FuelLabs/fuel-vm/pull/781): Added `base_asset_id` to checked metadata.
 
+#### Breaking
+
+- [#780](https://github.com/FuelLabs/fuel-vm/pull/780): Added `Blob` transaction, and `BSIZ` and `BLDD` instructions. Also allows `LDC` to load blobs.
+
 ### Fixed
 
 #### Breaking

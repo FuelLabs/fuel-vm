@@ -1,6 +1,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(non_snake_case)]
 
+mod blob;
 mod upgrade;
 mod upload;
 

@@ -1,5 +1,3 @@
-#![allow(dead_code)] // These will be used in the future
-
 use fuel_asm::{
     RegisterId,
     Word,

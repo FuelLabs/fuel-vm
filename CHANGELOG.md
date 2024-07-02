@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 
-- [#780](https://github.com/FuelLabs/fuel-vm/pull/780): Added `Blob` transaction, and allows `LDC` to load them.
+- [#780](https://github.com/FuelLabs/fuel-vm/pull/780): Added `Blob` transaction, and `BSIZ` and `BLDD` instructions. Also allows `LDC` to load blobs.
 
 ## [Version 0.54.1]
 

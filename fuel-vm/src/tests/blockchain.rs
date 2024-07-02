@@ -2361,13 +2361,13 @@ where
     *actual_gas_used
 }
 
-fn ldcv2__load_len_of_target_blob<'a, M>(
-    client: &'a mut MemoryClient<M>,
+fn ldcv2__load_len_of_target_blob<M>(
+    client: &mut MemoryClient<M>,
     offset: u16,
     len: u16,
     blob_code: Vec<u8>,
     include_log_d: bool,
-) -> &'a [Receipt]
+) -> &[Receipt]
 where
     M: Memory,
 {

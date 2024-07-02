@@ -898,6 +898,18 @@ where
                 let (a, b, c, d) = ecal.unpack();
                 self.external_call(a, b, c, d)?;
             }
+
+            Instruction::BSIZ(bsiz) => {
+                // We charge for this inside the function.
+                let (a, b) = bsiz.unpack();
+                self.blob_size(a.into(), r!(b))?;
+            }
+
+            Instruction::BLDD(bldd) => {
+                // We charge for this inside the function.
+                let (a, b, c, d) = bldd.unpack();
+                self.blob_load_data(r!(a), r!(b), r!(c), r!(d))?;
+            }
         }
 
         Ok(ExecuteState::Proceed)

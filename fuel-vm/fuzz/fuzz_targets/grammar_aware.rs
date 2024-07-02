@@ -4,8 +4,10 @@
 use std::hint::black_box;
 
 use libfuzzer_sys::fuzz_target;
+use fuel_vm::fuel_tx::field::MaxFeeLimit;
 
 use fuel_vm::prelude::*;
+use fuel_vm::prelude::policies::Policies;
 
 #[derive(arbitrary::Arbitrary, Debug)]
 struct FuzzData {
@@ -18,22 +20,22 @@ fuzz_target!(|data: FuzzData| {
 
     let gas_price = 0;
     let gas_limit = 1_000;
-    let maturity = Default::default();
     let height = Default::default();
-    let params = ConsensusParameters::DEFAULT;
+    let params = ConsensusParameters::standard();
 
-    let tx = Transaction::script(
-        gas_price,
+    let mut tx = Transaction::script(
         gas_limit,
-        maturity,
-        data.program.iter().copied().collect(),
+        data.program.iter().copied().map(|op| op as u8).collect::<Vec<u8>>(),
         data.script_data,
+        Policies::new(),
         vec![],
         vec![],
         vec![],
-    )
-    .into_checked(height, &params)
-    .expect("failed to generate a checked tx");
+    );
+
+    tx.set_max_fee_limit(1_000);
+
+    let tx = tx.into_checked(height, &params).expect("failed to generate a checked tx");
 
     drop(black_box(client.transact(tx)));
 });

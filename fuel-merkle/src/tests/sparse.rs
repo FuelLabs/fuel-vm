@@ -44,7 +44,7 @@ struct TestTable;
 impl Mappable for TestTable {
     type Key = Self::OwnedKey;
     type OwnedKey = Bytes32;
-    type OwnedValue = Primitive;
+    type OwnedValue = Primitive<32>;
     type Value = Self::OwnedValue;
 }
 
@@ -105,7 +105,7 @@ prop_compose! {
 }
 
 prop_compose! {
-    fn random_tree(min: usize, max: usize)(kv in key_values(min, max)) -> (Vec<(Key, Value)>, MerkleTree<TestTable, StorageMap<TestTable>>) {
+    fn random_tree(min: usize, max: usize)(kv in key_values(min, max)) -> (Vec<(Key, Value)>, MerkleTree<32, TestTable, StorageMap<TestTable>>) {
         let storage = StorageMap::<TestTable>::new();
         let iter = kv.clone().into_iter().map(|(key, value)| (MerkleTreeKey::new(key), value));
         let tree = MerkleTree::from_set(storage, iter).expect("Unable to create Merkle tree");

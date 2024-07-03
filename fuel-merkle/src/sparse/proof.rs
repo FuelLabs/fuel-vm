@@ -4,8 +4,6 @@ use crate::{
             Path,
             Side,
         },
-        sum,
-        Bytes32,
         ProofSet,
     },
     sparse::{
@@ -18,6 +16,10 @@ use crate::{
     },
 };
 
+use crate::{
+    common::Bytes,
+    sparse::hash::sum_truncated,
+};
 use alloc::vec::Vec;
 use core::{
     fmt,
@@ -25,13 +27,13 @@ use core::{
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Proof {
-    Inclusion(InclusionProof),
-    Exclusion(ExclusionProof),
+pub enum Proof<const KEY_SIZE: usize> {
+    Inclusion(InclusionProof<KEY_SIZE>),
+    Exclusion(ExclusionProof<KEY_SIZE>),
 }
 
-impl Proof {
-    pub fn proof_set(&self) -> &ProofSet {
+impl<const KEY_SIZE: usize> Proof<KEY_SIZE> {
+    pub fn proof_set(&self) -> &ProofSet<KEY_SIZE> {
         match self {
             Proof::Inclusion(proof) => &proof.proof_set,
             Proof::Exclusion(proof) => &proof.proof_set,
@@ -51,19 +53,24 @@ impl Proof {
 }
 
 #[derive(Clone, Eq, PartialEq)]
-pub struct InclusionProof {
-    pub proof_set: ProofSet,
+pub struct InclusionProof<const KEY_SIZE: usize> {
+    pub proof_set: ProofSet<KEY_SIZE>,
 }
 
-impl InclusionProof {
-    pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey, value: &[u8]) -> bool {
+impl<const KEY_SIZE: usize> InclusionProof<KEY_SIZE> {
+    pub fn verify(
+        &self,
+        root: &Bytes<KEY_SIZE>,
+        key: &MerkleTreeKey<KEY_SIZE>,
+        value: &[u8],
+    ) -> bool {
         let Self { proof_set } = self;
 
         if proof_set.len() > 256usize {
             return false;
         }
 
-        let mut current = calculate_leaf_hash(key, &sum(value));
+        let mut current = calculate_leaf_hash(key, &sum_truncated(value));
         for (i, side_hash) in proof_set.iter().enumerate() {
             #[allow(clippy::arithmetic_side_effects)] // Cannot underflow
             let index =
@@ -77,7 +84,7 @@ impl InclusionProof {
     }
 }
 
-impl Debug for InclusionProof {
+impl<const KEY_SIZE: usize> Debug for InclusionProof<KEY_SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let proof_set = self.proof_set.iter().map(hex::encode).collect::<Vec<_>>();
         f.debug_struct("InclusionProof")
@@ -87,20 +94,20 @@ impl Debug for InclusionProof {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum ExclusionLeaf {
-    Leaf(ExclusionLeafData),
+pub enum ExclusionLeaf<const KEY_SIZE: usize> {
+    Leaf(ExclusionLeafData<KEY_SIZE>),
     Placeholder,
 }
 
 #[derive(Clone, Eq, PartialEq)]
-pub struct ExclusionLeafData {
+pub struct ExclusionLeafData<const KEY_SIZE: usize> {
     /// The leaf key.
-    pub leaf_key: Bytes32,
+    pub leaf_key: Bytes<KEY_SIZE>,
     /// Hash of the value of the leaf.
-    pub leaf_value: Bytes32,
+    pub leaf_value: Bytes<KEY_SIZE>,
 }
 
-impl Debug for ExclusionLeafData {
+impl<const KEY_SIZE: usize> Debug for ExclusionLeafData<KEY_SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExclusionLeafData")
             .field("Leaf key", &hex::encode(self.leaf_key))
@@ -109,8 +116,8 @@ impl Debug for ExclusionLeafData {
     }
 }
 
-impl ExclusionLeaf {
-    fn hash(&self) -> Bytes32 {
+impl<const KEY_SIZE: usize> ExclusionLeaf<KEY_SIZE> {
+    fn hash(&self) -> Bytes<KEY_SIZE> {
         match self {
             ExclusionLeaf::Leaf(data) => {
                 calculate_leaf_hash(&data.leaf_key, &data.leaf_value)
@@ -121,13 +128,13 @@ impl ExclusionLeaf {
 }
 
 #[derive(Clone, Eq, PartialEq)]
-pub struct ExclusionProof {
-    pub proof_set: ProofSet,
-    pub leaf: ExclusionLeaf,
+pub struct ExclusionProof<const KEY_SIZE: usize> {
+    pub proof_set: ProofSet<KEY_SIZE>,
+    pub leaf: ExclusionLeaf<KEY_SIZE>,
 }
 
-impl ExclusionProof {
-    pub fn verify(&self, root: &Bytes32, key: &MerkleTreeKey) -> bool {
+impl<const KEY_SIZE: usize> ExclusionProof<KEY_SIZE> {
+    pub fn verify(&self, root: &Bytes<KEY_SIZE>, key: &MerkleTreeKey<KEY_SIZE>) -> bool {
         let Self { proof_set, leaf } = self;
 
         if let ExclusionLeaf::Leaf(data) = leaf {
@@ -154,7 +161,7 @@ impl ExclusionProof {
     }
 }
 
-impl Debug for ExclusionProof {
+impl<const KEY_SIZE: usize> Debug for ExclusionProof<KEY_SIZE> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let proof_set = self.proof_set.iter().map(hex::encode).collect::<Vec<_>>();
         f.debug_struct("ExclusionProof")
@@ -186,7 +193,7 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = Bytes32;
-        type OwnedValue = Primitive;
+        type OwnedValue = Primitive<32>;
         type Value = Self::OwnedValue;
     }
 
@@ -637,7 +644,7 @@ mod test_random {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = Bytes32;
-        type OwnedValue = Primitive;
+        type OwnedValue = Primitive<32>;
         type Value = Self::OwnedValue;
     }
 
@@ -764,7 +771,7 @@ mod test_random {
         let root = tree.root();
 
         // Given
-        let key: MerkleTreeKey = random_bytes32(&mut rng).into();
+        let key: MerkleTreeKey<32> = random_bytes32(&mut rng).into();
         let proof = tree.generate_proof(&key).unwrap();
 
         // When

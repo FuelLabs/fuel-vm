@@ -1,13 +1,14 @@
 use crate::{
     common::{
+        Bytes,
         Bytes32,
         StorageMap,
     },
     sparse::{
         self,
         merkle_tree::MerkleTreeKey,
+        primitive::Primitive,
         proof::Proof,
-        Primitive,
     },
     storage::{
         Mappable,
@@ -27,10 +28,12 @@ use alloc::{
 #[derive(Debug)]
 pub struct NodesTable;
 
+const DEFAULT_KEY_SIZE: usize = 32;
+
 impl Mappable for NodesTable {
     type Key = Self::OwnedKey;
-    type OwnedKey = Bytes32;
-    type OwnedValue = Primitive;
+    type OwnedKey = Bytes<DEFAULT_KEY_SIZE>;
+    type OwnedValue = Primitive<DEFAULT_KEY_SIZE>;
     type Value = Self::OwnedValue;
 }
 
@@ -58,7 +61,7 @@ impl MerkleTree {
     /// data.
     pub fn from_set<I, D>(set: I) -> Self
     where
-        I: Iterator<Item = (MerkleTreeKey, D)>,
+        I: Iterator<Item = (MerkleTreeKey<DEFAULT_KEY_SIZE>, D)>,
         D: AsRef<[u8]>,
     {
         let tree = SparseMerkleTree::from_set(Storage::new(), set)
@@ -74,9 +77,9 @@ impl MerkleTree {
     /// not incur the overhead of storage writes. This can be helpful when we
     /// know all the key-values in the set upfront and we will not need to
     /// update the set in the future.
-    pub fn root_from_set<I, D>(set: I) -> Bytes32
+    pub fn root_from_set<I, D>(set: I) -> Bytes<DEFAULT_KEY_SIZE>
     where
-        I: Iterator<Item = (MerkleTreeKey, D)>,
+        I: Iterator<Item = (MerkleTreeKey<DEFAULT_KEY_SIZE>, D)>,
         D: AsRef<[u8]>,
     {
         #[derive(Default)]
@@ -85,7 +88,11 @@ impl MerkleTree {
         impl StorageInspect<NodesTable> for EmptyStorage {
             type Error = core::convert::Infallible;
 
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+            fn get(
+                &self,
+                _: &Bytes32,
+            ) -> Result<Option<Cow<Primitive<DEFAULT_KEY_SIZE>>>, Self::Error>
+            {
                 Ok(None)
             }
 
@@ -97,13 +104,16 @@ impl MerkleTree {
         impl StorageMutate<NodesTable> for EmptyStorage {
             fn insert(
                 &mut self,
-                _: &Bytes32,
-                _: &Primitive,
-            ) -> Result<Option<Primitive>, Self::Error> {
+                _: &Bytes<DEFAULT_KEY_SIZE>,
+                _: &Primitive<DEFAULT_KEY_SIZE>,
+            ) -> Result<Option<Primitive<DEFAULT_KEY_SIZE>>, Self::Error> {
                 Ok(None)
             }
 
-            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+            fn remove(
+                &mut self,
+                _: &Bytes<DEFAULT_KEY_SIZE>,
+            ) -> Result<Option<Primitive<DEFAULT_KEY_SIZE>>, Self::Error> {
                 Ok(None)
             }
         }
@@ -121,20 +131,29 @@ impl MerkleTree {
     /// This can be helpful when we know all the key-values in the set upfront
     /// and we need to defer storage writes, such as expensive database inserts,
     /// for batch operations later in the process.
-    pub fn nodes_from_set<I, D>(set: I) -> (Bytes32, Vec<(Bytes32, Primitive)>)
+    pub fn nodes_from_set<I, D>(
+        set: I,
+    ) -> (
+        Bytes<DEFAULT_KEY_SIZE>,
+        Vec<(Bytes<DEFAULT_KEY_SIZE>, Primitive<DEFAULT_KEY_SIZE>)>,
+    )
     where
-        I: Iterator<Item = (MerkleTreeKey, D)>,
+        I: Iterator<Item = (MerkleTreeKey<DEFAULT_KEY_SIZE>, D)>,
         D: AsRef<[u8]>,
     {
         #[derive(Default)]
         struct VectorStorage {
-            storage: Vec<(Bytes32, Primitive)>,
+            storage: Vec<(Bytes32, Primitive<DEFAULT_KEY_SIZE>)>,
         }
 
         impl StorageInspect<NodesTable> for VectorStorage {
             type Error = core::convert::Infallible;
 
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
+            fn get(
+                &self,
+                _: &Bytes32,
+            ) -> Result<Option<Cow<Primitive<DEFAULT_KEY_SIZE>>>, Self::Error>
+            {
                 unimplemented!("Read operation is not supported")
             }
 
@@ -146,14 +165,17 @@ impl MerkleTree {
         impl StorageMutate<NodesTable> for VectorStorage {
             fn insert(
                 &mut self,
-                key: &Bytes32,
-                value: &Primitive,
-            ) -> Result<Option<Primitive>, Self::Error> {
+                key: &Bytes<DEFAULT_KEY_SIZE>,
+                value: &Primitive<DEFAULT_KEY_SIZE>,
+            ) -> Result<Option<Primitive<DEFAULT_KEY_SIZE>>, Self::Error> {
                 self.storage.push((*key, *value));
                 Ok(None)
             }
 
-            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+            fn remove(
+                &mut self,
+                _: &Bytes<DEFAULT_KEY_SIZE>,
+            ) -> Result<Option<Primitive<DEFAULT_KEY_SIZE>>, Self::Error> {
                 unimplemented!("Remove operation is not supported")
             }
         }
@@ -167,11 +189,11 @@ impl MerkleTree {
         (root, nodes)
     }
 
-    pub fn update(&mut self, key: MerkleTreeKey, data: &[u8]) {
+    pub fn update(&mut self, key: MerkleTreeKey<DEFAULT_KEY_SIZE>, data: &[u8]) {
         let _ = self.tree.update(key, data);
     }
 
-    pub fn delete(&mut self, key: MerkleTreeKey) {
+    pub fn delete(&mut self, key: MerkleTreeKey<DEFAULT_KEY_SIZE>) {
         let _ = self.tree.delete(key);
     }
 
@@ -179,7 +201,10 @@ impl MerkleTree {
         self.tree.root()
     }
 
-    pub fn generate_proof(&self, key: &MerkleTreeKey) -> Option<Proof> {
+    pub fn generate_proof(
+        &self,
+        key: &MerkleTreeKey<DEFAULT_KEY_SIZE>,
+    ) -> Option<Proof<DEFAULT_KEY_SIZE>> {
         self.tree.generate_proof(key).ok()
     }
 }
@@ -195,7 +220,7 @@ mod test {
     use super::*;
     use crate::common::sum;
 
-    fn key(data: &[u8]) -> MerkleTreeKey {
+    fn key(data: &[u8]) -> MerkleTreeKey<DEFAULT_KEY_SIZE> {
         MerkleTreeKey::new_without_hash(sum(data))
     }
 

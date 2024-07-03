@@ -16,10 +16,10 @@ use crate::{
         error::DeserializeError,
         node::ChildError,
         AsPathIterator,
-        Bytes32,
+        Bytes,
     },
     sparse::{
-        empty_sum,
+        hash::sum_truncated,
         proof::{
             ExclusionLeaf,
             ExclusionLeafData,
@@ -50,12 +50,12 @@ use core::{
 };
 
 #[derive(Debug, Clone, derive_more::Display)]
-pub enum MerkleTreeError<StorageError> {
+pub enum MerkleTreeError<const KEY_SIZE: usize, StorageError> {
     #[display(
         fmt = "cannot load node with key {}; the key is not found in storage",
         "hex::encode(_0)"
     )]
-    LoadError(Bytes32),
+    LoadError(Bytes<KEY_SIZE>),
 
     #[display(fmt = "{}", _0)]
     StorageError(StorageError),
@@ -64,11 +64,13 @@ pub enum MerkleTreeError<StorageError> {
     DeserializeError(DeserializeError),
 
     #[display(fmt = "{}", _0)]
-    ChildError(ChildError<Bytes32, StorageNodeError<StorageError>>),
+    ChildError(ChildError<Bytes<KEY_SIZE>, StorageNodeError<StorageError>>),
 }
 
-impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
-    fn from(err: StorageError) -> MerkleTreeError<StorageError> {
+impl<const KEY_SIZE: usize, StorageError> From<StorageError>
+    for MerkleTreeError<KEY_SIZE, StorageError>
+{
+    fn from(err: StorageError) -> MerkleTreeError<KEY_SIZE, StorageError> {
         MerkleTreeError::StorageError(err)
     }
 }
@@ -77,19 +79,16 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 /// The type contains only one constructor that hashes the storage key.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub struct MerkleTreeKey(Bytes32);
+pub struct MerkleTreeKey<const N: usize>(Bytes<N>);
 
-impl MerkleTreeKey {
+impl<const N: usize> MerkleTreeKey<N> {
     /// The safe way to create a `Self`. It hashes the `storage_key`, making
     /// it entirely random and preventing SMT structure manipulation.
     pub fn new<B>(storage_key: B) -> Self
     where
         B: AsRef<[u8]>,
     {
-        use digest::Digest;
-        let mut hash = sha2::Sha256::new();
-        hash.update(storage_key.as_ref());
-        let hash = hash.finalize().into();
+        let hash = sum_truncated(storage_key);
 
         Self(hash)
     }
@@ -103,7 +102,7 @@ impl MerkleTreeKey {
     /// was randomly generated like `ContractId` or `AssetId`.
     pub unsafe fn convert<B>(storage_key: B) -> Self
     where
-        B: Into<Bytes32>,
+        B: Into<Bytes<N>>,
     {
         Self(storage_key.into())
     }
@@ -111,38 +110,38 @@ impl MerkleTreeKey {
     #[cfg(any(test, feature = "test-helpers"))]
     pub fn new_without_hash<B>(storage_key: B) -> Self
     where
-        B: Into<Bytes32>,
+        B: Into<Bytes<N>>,
     {
         unsafe { Self::convert(storage_key) }
     }
 }
 
-impl Debug for MerkleTreeKey {
+impl<const N: usize> Debug for MerkleTreeKey<N> {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         f.write_str(&format!("MerkleTreeKey({})", hex::encode(self.0)))
     }
 }
 
-impl From<MerkleTreeKey> for Bytes32 {
-    fn from(value: MerkleTreeKey) -> Self {
+impl<const N: usize> From<MerkleTreeKey<N>> for Bytes<N> {
+    fn from(value: MerkleTreeKey<N>) -> Self {
         value.0
     }
 }
 
-impl AsRef<[u8]> for MerkleTreeKey {
+impl<const N: usize> AsRef<[u8]> for MerkleTreeKey<N> {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
 
-impl AsRef<Bytes32> for MerkleTreeKey {
-    fn as_ref(&self) -> &Bytes32 {
+impl<const N: usize> AsRef<Bytes<N>> for MerkleTreeKey<N> {
+    fn as_ref(&self) -> &Bytes<N> {
         &self.0
     }
 }
 
-impl Deref for MerkleTreeKey {
-    type Target = Bytes32;
+impl<const N: usize> Deref for MerkleTreeKey<N> {
+    type Target = Bytes<N>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -150,25 +149,27 @@ impl Deref for MerkleTreeKey {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl From<Bytes32> for MerkleTreeKey {
-    fn from(value: Bytes32) -> Self {
+impl<const N: usize> From<Bytes<N>> for MerkleTreeKey<N> {
+    fn from(value: Bytes<N>) -> Self {
         Self::new_without_hash(value)
     }
 }
 
 #[derive(Debug)]
-pub struct MerkleTree<TableType, StorageType> {
-    root_node: Node,
+pub struct MerkleTree<const KEY_SIZE: usize, TableType, StorageType> {
+    root_node: Node<KEY_SIZE>,
     storage: StorageType,
     phantom_table: PhantomData<TableType>,
 }
 
-impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
-    pub const fn empty_root() -> &'static Bytes32 {
-        empty_sum()
+impl<const KEY_SIZE: usize, TableType, StorageType>
+    MerkleTree<KEY_SIZE, TableType, StorageType>
+{
+    pub fn empty_root() -> &'static Bytes<KEY_SIZE> {
+        crate::sparse::hash::zero_sum()
     }
 
-    pub fn root(&self) -> Bytes32 {
+    pub fn root(&self) -> Bytes<KEY_SIZE> {
         *self.root_node().hash()
     }
 
@@ -180,19 +181,24 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
         &self.storage
     }
 
-    fn root_node(&self) -> &Node {
+    fn root_node(&self) -> &Node<KEY_SIZE> {
         &self.root_node
     }
 
-    fn set_root_node(&mut self, node: Node) {
-        debug_assert!(node.is_leaf() || node.height() == Node::max_height());
+    fn set_root_node(&mut self, node: Node<KEY_SIZE>) {
+        debug_assert!(node.is_leaf() || node.height() == Node::<KEY_SIZE>::max_height());
         self.root_node = node;
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType, StorageError>
+    MerkleTree<KEY_SIZE, TableType, StorageType>
 where
-    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
+    >,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
     pub fn new(storage: StorageType) -> Self {
@@ -205,8 +211,8 @@ where
 
     pub fn load(
         storage: StorageType,
-        root: &Bytes32,
-    ) -> Result<Self, MerkleTreeError<StorageError>> {
+        root: &Bytes<KEY_SIZE>,
+    ) -> Result<Self, MerkleTreeError<KEY_SIZE, StorageError>> {
         if root == Self::empty_root() {
             let tree = Self::new(storage);
             Ok(tree)
@@ -228,21 +234,25 @@ where
 
     fn path_set(
         &self,
-        leaf_key: &Bytes32,
-    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+        leaf_key: &Bytes<KEY_SIZE>,
+    ) -> Result<
+        (Vec<Node<KEY_SIZE>>, Vec<Node<KEY_SIZE>>),
+        MerkleTreeError<KEY_SIZE, StorageError>,
+    > {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
-        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
-            .as_path_iter(leaf_key)
-            .map(|(path_node, side_node)| {
-                Ok((
-                    path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                    side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                ))
-            })
-            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
-            .into_iter()
-            .unzip();
+        let (mut path_nodes, mut side_nodes): (Vec<Node<KEY_SIZE>>, Vec<Node<KEY_SIZE>>) =
+            root_storage_node
+                .as_path_iter(leaf_key)
+                .map(|(path_node, side_node)| {
+                    Ok((
+                        path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                        side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                    ))
+                })
+                .collect::<Result<Vec<_>, MerkleTreeError<KEY_SIZE, StorageError>>>()?
+                .into_iter()
+                .unzip();
         path_nodes.reverse();
         side_nodes.reverse();
         side_nodes.pop(); // The last element in the side nodes list is the
@@ -252,9 +262,14 @@ where
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType, StorageError>
+    MerkleTree<KEY_SIZE, TableType, StorageType>
 where
-    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
+    >,
     StorageType: StorageMutate<TableType, Error = StorageError>,
 {
     /// Build a sparse Merkle tree from a set of key-value pairs. This is
@@ -270,18 +285,18 @@ where
     ) -> Result<Self, StorageError>
     where
         I: Iterator<Item = (B, D)>,
-        B: Into<Bytes32>,
+        B: Into<Bytes<KEY_SIZE>>,
         D: AsRef<[u8]>,
     {
         let sorted = set
             .into_iter()
             .map(|(k, v)| (k.into(), v))
-            .collect::<alloc::collections::BTreeMap<Bytes32, D>>();
+            .collect::<alloc::collections::BTreeMap<Bytes<KEY_SIZE>, D>>();
         let mut branches = sorted
             .iter()
             .filter(|(_, value)| !value.as_ref().is_empty())
             .map(|(key, data)| Node::create_leaf(key, data))
-            .map(Into::<Branch>::into)
+            .map(Into::<Branch<KEY_SIZE>>::into)
             .collect::<Vec<_>>();
 
         for branch in branches.iter() {
@@ -301,7 +316,7 @@ where
             return Ok(tree)
         }
 
-        let mut nodes = Vec::<Branch>::with_capacity(branches.len());
+        let mut nodes = Vec::<Branch<KEY_SIZE>>::with_capacity(branches.len());
         let mut proximities = Vec::<u32>::with_capacity(branches.len());
 
         // Building the tree starts by merging all leaf nodes where possible.
@@ -389,7 +404,7 @@ where
         let path = top.bits;
         let height = node.height();
         #[allow(clippy::arithmetic_side_effects)] // height <= max_height
-        let depth = Node::max_height() - height;
+        let depth = Node::<KEY_SIZE>::max_height() - height;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth as usize);
         for placeholder in placeholders {
             node = Node::create_node_on_path(&path, &node, &placeholder);
@@ -406,9 +421,9 @@ where
 
     pub fn update(
         &mut self,
-        key: MerkleTreeKey,
+        key: MerkleTreeKey<KEY_SIZE>,
         data: &[u8],
-    ) -> Result<(), MerkleTreeError<StorageError>> {
+    ) -> Result<(), MerkleTreeError<KEY_SIZE, StorageError>> {
         if data.is_empty() {
             // If the data is empty, this signifies a delete operation for the
             // given key.
@@ -436,15 +451,15 @@ where
 
     pub fn delete(
         &mut self,
-        key: MerkleTreeKey,
-    ) -> Result<(), MerkleTreeError<StorageError>> {
+        key: MerkleTreeKey<KEY_SIZE>,
+    ) -> Result<(), MerkleTreeError<KEY_SIZE, StorageError>> {
         if self.root() == *Self::empty_root() {
             // The zero root signifies that all leaves are empty, including the
             // given key.
             return Ok(())
         }
 
-        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) =
+        let (path_nodes, side_nodes): (Vec<Node<KEY_SIZE>>, Vec<Node<KEY_SIZE>>) =
             self.path_set(key.as_ref())?;
 
         match path_nodes.first() {
@@ -463,9 +478,9 @@ where
 
     fn update_with_path_set(
         &mut self,
-        requested_leaf_node: &Node,
-        path_nodes: &[Node],
-        side_nodes: &[Node],
+        requested_leaf_node: &Node<KEY_SIZE>,
+        path_nodes: &[Node<KEY_SIZE>],
+        side_nodes: &[Node<KEY_SIZE>],
     ) -> Result<(), StorageError> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
@@ -541,9 +556,9 @@ where
 
     fn delete_with_path_set(
         &mut self,
-        requested_leaf_key: &Bytes32,
-        path_nodes: &[Node],
-        side_nodes: &[Node],
+        requested_leaf_key: &Bytes<KEY_SIZE>,
+        path_nodes: &[Node<KEY_SIZE>],
+        side_nodes: &[Node<KEY_SIZE>],
     ) -> Result<(), StorageError> {
         for node in path_nodes {
             self.storage.remove(node.hash())?;
@@ -606,15 +621,20 @@ where
     }
 }
 
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+impl<const KEY_SIZE: usize, TableType, StorageType, StorageError>
+    MerkleTree<KEY_SIZE, TableType, StorageType>
 where
-    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    TableType: Mappable<
+        Key = Bytes<KEY_SIZE>,
+        Value = Primitive<KEY_SIZE>,
+        OwnedValue = Primitive<KEY_SIZE>,
+    >,
     StorageType: StorageInspect<TableType, Error = StorageError>,
 {
     pub fn generate_proof(
         &self,
-        key: &MerkleTreeKey,
-    ) -> Result<Proof, MerkleTreeError<StorageError>> {
+        key: &MerkleTreeKey<KEY_SIZE>,
+    ) -> Result<Proof<KEY_SIZE>, MerkleTreeError<KEY_SIZE, StorageError>> {
         let path = key.as_ref();
         let (path_nodes, side_nodes) = self.path_set(path)?;
         // Identify the closest leaf that is included in the tree to the
@@ -713,11 +733,11 @@ mod test {
     impl Mappable for TestTable {
         type Key = Self::OwnedKey;
         type OwnedKey = Bytes32;
-        type OwnedValue = Primitive;
+        type OwnedValue = Primitive<32>;
         type Value = Self::OwnedValue;
     }
 
-    fn key<B: AsRef<[u8]>>(data: B) -> MerkleTreeKey {
+    fn key<B: AsRef<[u8]>>(data: B) -> MerkleTreeKey<32> {
         MerkleTreeKey::new(data.as_ref())
     }
 

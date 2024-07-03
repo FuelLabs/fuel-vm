@@ -8,10 +8,12 @@ use crate::{
     consts::*,
     prelude::*,
     script_with_data_offset,
+    tests::test_helpers::assert_success,
     util::test_helpers::TestBuilder,
 };
 use fuel_asm::{
     op,
+    Flags,
     RegId,
 };
 use fuel_crypto::Hasher;
@@ -219,6 +221,73 @@ fn call_frame_code_offset() {
     assert_eq!(ssp, sp + stack);
     assert_eq!(ssp, fp + stack);
     assert_eq!(ssp, sp_p);
+}
+
+#[test]
+fn call_zeroes_flag() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program = vec![
+        op::log(RegId::FLAG, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ];
+
+    let contract_id = test_context.setup_contract(program, None, None).contract_id;
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, Flags::UNSAFEMATH.bits().try_into().unwrap()),
+            op::flag(0x10),
+            op::movi(0x10, data_offset as Immediate18),
+            op::addi(0x11, 0x10, ContractId::LEN as Immediate12),
+            op::call(0x10, RegId::ZERO, 0x10, 0x10),
+            op::log(RegId::FLAG, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+            op::ret(0x30),
+        ],
+        test_context.get_tx_params().tx_offset()
+    );
+
+    let mut script_data = contract_id.to_vec();
+    script_data.extend([0u8; WORD_SIZE * 2]);
+
+    let result = test_context
+        .start_script(script, script_data)
+        .script_gas_limit(gas_limit)
+        .contract_input(contract_id)
+        .fee_input()
+        .contract_output(&contract_id)
+        .execute();
+
+    let receipts = result.receipts();
+
+    assert_success(receipts);
+
+    let Receipt::Log {
+        ra: flag_in_call, ..
+    } = &receipts[1]
+    else {
+        panic!("Expected log receipt");
+    };
+    let Receipt::Log {
+        ra: flag_after_call,
+        ..
+    } = &receipts[3]
+    else {
+        panic!("Expected log receipt");
+    };
+
+    assert_eq!(
+        *flag_in_call,
+        Flags::empty().bits(),
+        "Call should zero $flag"
+    );
+    assert_eq!(
+        *flag_after_call,
+        Flags::UNSAFEMATH.bits(),
+        "Return should restore $flag"
+    );
 }
 
 #[test]

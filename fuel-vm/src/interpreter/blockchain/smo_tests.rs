@@ -8,10 +8,7 @@ use alloc::{
 };
 
 use crate::{
-    interpreter::{
-        contract::balance as contract_balance,
-        memory::Memory,
-    },
+    interpreter::contract::balance as contract_balance,
     storage::MemoryStorage,
 };
 
@@ -213,14 +210,14 @@ fn test_smo(
     let mut rng = StdRng::seed_from_u64(100);
     let base_asset_id = rng.gen();
 
-    let mut memory: Memory = vec![0; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0; MEM_SIZE].try_into().unwrap();
     for (offset, bytes) in mem {
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
     let mut receipts = Default::default();
     let mut storage = MemoryStorage::default();
     let old_balance = storage
-        .contract_asset_id_balance_insert(
+        .contract_asset_id_balance_replace(
             &ContractId::default(),
             &base_asset_id,
             initial_balance,

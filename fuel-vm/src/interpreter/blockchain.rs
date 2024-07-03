@@ -28,7 +28,7 @@ use crate::{
             tx_id,
         },
         memory::{
-            copy_from_slice_zero_fill_noownerchecks,
+            copy_from_slice_zero_fill,
             OwnershipRegisters,
         },
         receipts::ReceiptsCtx,
@@ -36,6 +36,7 @@ use crate::{
         InputContracts,
         Interpreter,
         Memory,
+        MemoryInstance,
         RuntimeBalances,
     },
     prelude::Profiler,
@@ -57,6 +58,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     bytes,
+    bytes::padded_len_word,
     Address,
     AssetId,
     BlockHeight,
@@ -77,8 +79,9 @@ mod smo_tests;
 #[cfg(test)]
 mod test;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
@@ -102,14 +105,13 @@ where
         // We will charge for the contracts size in the `load_contract_code`.
         self.gas_charge(gas_cost.base())?;
         let contract_max_size = self.contract_max_size();
-        let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
         let (
             SystemRegisters {
                 cgas,
                 ggas,
                 ssp,
                 sp,
+                hp,
                 fp,
                 pc,
                 is,
@@ -118,20 +120,21 @@ where
             _,
         ) = split_registers(&mut self.registers);
         let input = LoadContractCodeCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
+            context: &self.context,
             profiler: &mut self.profiler,
             storage: &mut self.storage,
             contract_max_size,
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             gas_cost,
-            current_contract,
             cgas,
             ggas,
             ssp,
             sp,
+            hp: hp.as_ref(),
             fp: fp.as_ref(),
             pc,
             is: is.as_ref(),
@@ -145,7 +148,7 @@ where
         BurnCtx {
             storage: &mut self.storage,
             context: &self.context,
-            memory: &self.memory,
+            memory: self.memory.as_ref(),
             receipts: &mut self.receipts,
             fp: fp.as_ref(),
             pc,
@@ -170,7 +173,7 @@ where
         MintCtx {
             storage: &mut self.storage,
             context: &self.context,
-            memory: &self.memory,
+            memory: self.memory.as_ref(),
             receipts: &mut self.receipts,
             profiler: &mut self.profiler,
             new_storage_gas_per_byte,
@@ -196,7 +199,7 @@ where
         self.gas_charge(gas_cost.base())?;
 
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let owner = self.ownership_registers();
         let (
             SystemRegisters {
@@ -205,9 +208,9 @@ where
             _,
         ) = split_registers(&mut self.registers);
         let input = CodeCopyCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             storage: &mut self.storage,
@@ -227,7 +230,7 @@ where
         let owner = self.ownership_registers();
         block_hash(
             &self.storage,
-            &mut self.memory,
+            self.memory.as_mut(),
             owner,
             self.registers.pc_mut(),
             a,
@@ -245,7 +248,7 @@ where
         let owner = self.ownership_registers();
         coinbase(
             &self.storage,
-            &mut self.memory,
+            self.memory.as_mut(),
             owner,
             self.registers.pc_mut(),
             a,
@@ -256,7 +259,7 @@ where
         let gas_cost = self.gas_costs().croo();
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let owner = self.ownership_registers();
         let (
             SystemRegisters {
@@ -265,12 +268,12 @@ where
             _,
         ) = split_registers(&mut self.registers);
         CodeRootCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
             profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             current_contract,
@@ -293,7 +296,7 @@ where
         // We will charge for the contracts size in the `code_size`.
         self.gas_charge(gas_cost.base())?;
         let current_contract =
-            current_contract(&self.context, self.registers.fp(), &self.memory)?;
+            current_contract(&self.context, self.registers.fp(), self.memory.as_ref())?;
         let (
             SystemRegisters {
                 cgas, ggas, pc, is, ..
@@ -302,12 +305,12 @@ where
         ) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = CodeSizeCtx {
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
             profiler: &mut self.profiler,
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
             current_contract,
@@ -336,7 +339,7 @@ where
             ..
         } = self;
 
-        state_clear_qword(&contract_id?, storage, memory, pc, result, input)
+        state_clear_qword(&contract_id?, storage, memory.as_ref(), pc, result, input)
     }
 
     pub(crate) fn state_read_word(
@@ -361,7 +364,7 @@ where
         state_read_word(
             StateReadWordCtx {
                 storage,
-                memory,
+                memory: memory.as_ref(),
                 context,
                 fp: fp.as_ref(),
                 pc,
@@ -380,21 +383,23 @@ where
         d: Word,
     ) -> IoResult<(), S::DataError> {
         let owner = self.ownership_registers();
-        let contract_id = self.internal_contract();
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let (SystemRegisters { pc, fp, .. }, mut w) =
+            split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let Self {
             ref storage,
+            ref context,
             ref mut memory,
             ..
         } = self;
 
         state_read_qword(
-            &contract_id?,
             storage,
-            memory,
+            context,
+            memory.as_mut(),
             pc,
+            fp.as_ref(),
             owner,
             result,
             StateReadQWordParams {
@@ -433,7 +438,7 @@ where
         state_write_word(
             StateWriteWordCtx {
                 storage,
-                memory,
+                memory: memory.as_ref(),
                 context,
                 profiler: &mut self.profiler,
                 new_storage_gas_per_byte,
@@ -482,7 +487,7 @@ where
         state_write_qword(
             &contract_id?,
             storage,
-            memory,
+            memory.as_ref(),
             &mut self.profiler,
             new_storage_per_byte,
             self.frames.last().map(|frame| frame.to()).copied(),
@@ -519,7 +524,7 @@ where
         let input = MessageOutputCtx {
             base_asset_id,
             max_message_data_length,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             receipts: &mut self.receipts,
             balances: &mut self.balances,
             storage: &mut self.storage,
@@ -535,24 +540,25 @@ where
     }
 }
 
-struct LoadContractCodeCtx<'vm, S, I> {
+struct LoadContractCodeCtx<'vm, S> {
     contract_max_size: u64,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
+    context: &'vm Context,
     profiler: &'vm mut Profiler,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     storage: &'vm S,
-    current_contract: Option<ContractId>,
     gas_cost: DependentCost,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     ssp: RegMut<'vm, SSP>,
     sp: RegMut<'vm, SP>,
+    hp: Reg<'vm, HP>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I> LoadContractCodeCtx<'vm, S, I>
+impl<'vm, S> LoadContractCodeCtx<'vm, S>
 where
     S: InterpreterStorage,
 {
@@ -571,12 +577,10 @@ where
         length_unpadded: Word,
     ) -> IoResult<(), S::DataError>
     where
-        I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
-        let fp = *self.fp;
         let region_start = ssp;
 
         if ssp != sp {
@@ -587,6 +591,8 @@ where
         let contract_offset: usize = contract_offset
             .try_into()
             .map_err(|_| PanicReason::MemoryOverflow)?;
+
+        let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
         let length = bytes::padded_len_usize(
             length_unpadded
@@ -600,55 +606,62 @@ where
             return Err(PanicReason::ContractMaxSize.into())
         }
 
-        let new_sp = ssp.saturating_add(length);
-        self.memory.grow_stack(new_sp)?;
-
         self.input_contracts.check(&contract_id)?;
 
         // Fetch the storage contract
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
-        let contract_len = contract_bytes.len();
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
-            current_contract: self.current_contract,
+            current_contract,
             profiler: self.profiler,
         };
+        let contract_len = contract_size(&self.storage, &contract_id)?;
+        let charge_len = core::cmp::max(contract_len as u64, length);
         dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
             profiler,
             self.gas_cost,
-            contract_len as u64,
+            charge_len,
         )?;
+        let contract = super::contract::contract(self.storage, &contract_id)?;
+        let contract_bytes = contract.as_ref().as_ref();
+
+        let new_sp = ssp.saturating_add(length);
+        self.memory.grow_stack(new_sp)?;
+
+        // Set up ownership registers for the copy using old ssp
+        let owner =
+            OwnershipRegisters::only_allow_stack_write(new_sp, *self.ssp, *self.hp);
 
         // Mark stack space as allocated
         *self.sp = new_sp;
         *self.ssp = new_sp;
 
-        // Copy the code. Ownership checks are not used as the stack is adjusted above.
-        copy_from_slice_zero_fill_noownerchecks(
+        // Copy the code.
+        copy_from_slice_zero_fill(
             self.memory,
+            owner,
             contract_bytes,
             region_start,
             contract_offset,
             length,
         )?;
 
-        // Update frame pointer, if we have a stack frame (e.g. fp > 0)
-        if fp > 0 {
-            let size = CallFrame::code_size_offset().saturating_add(WORD_SIZE);
-
-            let old_code_size = Word::from_be_bytes(self.memory.read_bytes(fp)?);
-
+        // Update frame code size, if we have a stack frame (i.e. fp > 0)
+        if self.context.is_internal() {
+            let code_size_ptr =
+                (*self.fp).saturating_add(CallFrame::code_size_offset() as Word);
+            let old_code_size =
+                Word::from_be_bytes(self.memory.read_bytes(code_size_ptr)?);
+            let old_code_size = padded_len_word(old_code_size)
+                .expect("Code size cannot overflow with padding");
             let new_code_size = old_code_size
                 .checked_add(length as Word)
                 .ok_or(PanicReason::MemoryOverflow)?;
 
             self.memory
-                .write_noownerchecks(fp, size)?
-                .copy_from_slice(&new_code_size.to_be_bytes());
+                .write_bytes_noownerchecks(code_size_ptr, new_code_size.to_be_bytes())?;
         }
 
         inc_pc(self.pc)?;
@@ -660,7 +673,7 @@ where
 struct BurnCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
-    memory: &'vm Memory,
+    memory: &'vm MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
@@ -681,8 +694,7 @@ where
             .checked_sub(a)
             .ok_or(PanicReason::NotEnoughBalance)?;
 
-        let _ = self
-            .storage
+        self.storage
             .contract_asset_id_balance_insert(&contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
@@ -697,7 +709,7 @@ where
 struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
-    memory: &'vm Memory,
+    memory: &'vm MemoryInstance,
     profiler: &'vm mut Profiler,
     receipts: &'vm mut ReceiptsCtx,
     new_storage_gas_per_byte: Word,
@@ -722,7 +734,7 @@ where
 
         let old_value = self
             .storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, balance)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, balance)
             .map_err(RuntimeError::Storage)?;
 
         if old_value.is_none() {
@@ -749,9 +761,9 @@ where
     }
 }
 
-struct CodeCopyCtx<'vm, S, I> {
-    memory: &'vm mut Memory,
-    input_contracts: InputContracts<'vm, I>,
+struct CodeCopyCtx<'vm, S> {
+    memory: &'vm mut MemoryInstance,
+    input_contracts: InputContracts<'vm>,
     storage: &'vm S,
     profiler: &'vm mut Profiler,
     current_contract: Option<ContractId>,
@@ -763,7 +775,7 @@ struct CodeCopyCtx<'vm, S, I> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I> CodeCopyCtx<'vm, S, I>
+impl<'vm, S> CodeCopyCtx<'vm, S>
 where
     S: InterpreterStorage,
 {
@@ -775,7 +787,6 @@ where
         length: Word,
     ) -> IoResult<(), S::DataError>
     where
-        I: Iterator<Item = &'vm ContractId>,
         S: InterpreterStorage,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
@@ -783,16 +794,13 @@ where
             .try_into()
             .map_err(|_| PanicReason::MemoryOverflow)?;
 
-        // Check target memory range ownership
-        if !self.owner.has_ownership_range(&(dst_addr..length)) {
-            return Err(PanicReason::MemoryOverflow.into())
-        }
-
+        self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
 
         let contract = super::contract::contract(self.storage, &contract_id)?;
         let contract_bytes = contract.as_ref().as_ref();
         let contract_len = contract_bytes.len();
+        let charge_len = core::cmp::max(contract_len as u64, length);
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
@@ -804,12 +812,13 @@ where
             self.ggas,
             profiler,
             self.gas_cost,
-            contract_len as u64,
+            charge_len,
         )?;
 
         // Owner checks already performed above
-        copy_from_slice_zero_fill_noownerchecks(
+        copy_from_slice_zero_fill(
             self.memory,
+            self.owner,
             contract.as_ref().as_ref(),
             dst_addr,
             offset,
@@ -822,7 +831,7 @@ where
 
 pub(crate) fn block_hash<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -856,7 +865,7 @@ pub(crate) fn block_height(
 
 pub(crate) fn coinbase<S: InterpreterStorage>(
     storage: &S,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -867,12 +876,12 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     Ok(())
 }
 
-struct CodeRootCtx<'vm, S, I> {
+struct CodeRootCtx<'vm, S> {
     storage: &'vm S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     current_contract: Option<ContractId>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -881,7 +890,7 @@ struct CodeRootCtx<'vm, S, I> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
+impl<'vm, S> CodeRootCtx<'vm, S> {
     pub(crate) fn code_root(mut self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
@@ -920,12 +929,12 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeRootCtx<'vm, S, I> {
     }
 }
 
-struct CodeSizeCtx<'vm, S, I> {
+struct CodeSizeCtx<'vm, S> {
     storage: &'vm S,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
     profiler: &'vm mut Profiler,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
     current_contract: Option<ContractId>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -933,7 +942,7 @@ struct CodeSizeCtx<'vm, S, I> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
+impl<'vm, S> CodeSizeCtx<'vm, S> {
     pub(crate) fn code_size(
         mut self,
         result: &mut Word,
@@ -968,7 +977,7 @@ impl<'vm, S, I: Iterator<Item = &'vm ContractId>> CodeSizeCtx<'vm, S, I> {
 
 pub(crate) struct StateReadWordCtx<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm Memory,
+    pub memory: &'vm MemoryInstance,
     pub context: &'vm Context,
     pub fp: Reg<'vm, FP>,
     pub pc: RegMut<'vm, PC>,
@@ -1009,7 +1018,7 @@ pub(crate) fn state_read_word<S: InterpreterStorage>(
 
 pub(crate) struct StateWriteWordCtx<'vm, S> {
     pub storage: &'vm mut S,
-    pub memory: &'vm Memory,
+    pub memory: &'vm MemoryInstance,
     pub context: &'vm Context,
     pub profiler: &'vm mut Profiler,
     pub new_storage_gas_per_byte: Word,
@@ -1045,8 +1054,8 @@ pub(crate) fn state_write_word<S: InterpreterStorage>(
     let mut value = Bytes32::zeroed();
     value.as_mut()[..WORD_SIZE].copy_from_slice(&c.to_be_bytes());
 
-    let (_size, prev) = storage
-        .contract_state_insert(&contract, &key, value.as_ref())
+    let prev = storage
+        .contract_state_replace(&contract, &key, value.as_ref())
         .map_err(RuntimeError::Storage)?;
 
     *created_new = prev.is_none() as Word;
@@ -1096,7 +1105,7 @@ where
 {
     base_asset_id: AssetId,
     max_message_data_length: u64,
-    memory: &'vm mut Memory,
+    memory: &'vm mut MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
     balances: &'vm mut RuntimeBalances,
     storage: &'vm mut S,
@@ -1169,11 +1178,13 @@ struct StateReadQWordParams {
     num_slots: Word,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn state_read_qword<S: InterpreterStorage>(
-    contract_id: &ContractId,
     storage: &S,
-    memory: &mut Memory,
+    context: &Context,
+    memory: &mut MemoryInstance,
     pc: RegMut<PC>,
+    fp: Reg<FP>,
     ownership_registers: OwnershipRegisters,
     result_register: &mut Word,
     params: StateReadQWordParams,
@@ -1184,17 +1195,15 @@ fn state_read_qword<S: InterpreterStorage>(
         num_slots,
     } = params;
 
+    let contract_id = internal_contract(context, fp, memory)?;
     let num_slots = convert::to_usize(num_slots).ok_or(PanicReason::TooManySlots)?;
     let slots_len = Bytes32::LEN.saturating_mul(num_slots);
-    let target_range = memory.verify(destination_pointer, slots_len)?;
-    ownership_registers.verify_ownership(&target_range.words())?;
-    ownership_registers.verify_internal_context()?;
-
     let origin_key = Bytes32::new(memory.read_bytes(origin_key_pointer)?);
+    let dst = memory.write(ownership_registers, destination_pointer, slots_len)?;
 
     let mut all_set = true;
     let result: Vec<u8> = storage
-        .contract_state_range(contract_id, &origin_key, num_slots)
+        .contract_state_range(&contract_id, &origin_key, num_slots)
         .map_err(RuntimeError::Storage)?
         .into_iter()
         .flat_map(|bytes| match bytes {
@@ -1208,9 +1217,7 @@ fn state_read_qword<S: InterpreterStorage>(
 
     *result_register = all_set as Word;
 
-    memory
-        .write_noownerchecks(destination_pointer, result.len())?
-        .copy_from_slice(&result);
+    dst.copy_from_slice(&result);
 
     inc_pc(pc)?;
 
@@ -1230,7 +1237,7 @@ struct StateWriteQWord {
 fn state_write_qword<'vm, S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
-    memory: &Memory,
+    memory: &MemoryInstance,
     profiler: &'vm mut Profiler,
     new_storage_gas_per_byte: Word,
     current_contract: Option<ContractId>,
@@ -1300,7 +1307,7 @@ impl StateClearQWord {
 fn state_clear_qword<S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
-    memory: &Memory,
+    memory: &MemoryInstance,
     pc: RegMut<PC>,
     result_register: &mut Word,
     input: StateClearQWord,

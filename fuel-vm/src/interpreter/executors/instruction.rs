@@ -14,6 +14,7 @@ use crate::{
         EcalHandler,
         ExecutableTransaction,
         Interpreter,
+        Memory,
     },
     state::ExecuteState,
     storage::InterpreterStorage,
@@ -31,8 +32,9 @@ use fuel_types::Word;
 
 use core::ops::Div;
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
@@ -50,7 +52,7 @@ where
     ) -> Result<RawInstruction, InterpreterError<S::DataError>> {
         let pc = self.registers[RegId::PC];
         let instruction = RawInstruction::from_be_bytes(
-            self.memory.read_bytes(pc).map_err(|reason| {
+            self.memory().read_bytes(pc).map_err(|reason| {
                 InterpreterError::PanicInstruction(PanicInstruction::error(
                     reason,
                     0, // The value is meaningless since fetch was out-of-bounds
@@ -191,16 +193,16 @@ where
                 self.alu_wideint_cmp_u128(a.into(), r!(b), r!(c), args)?;
             }
 
-            Instruction::WQCM(wdcm) => {
+            Instruction::WQCM(wqcm) => {
                 self.gas_charge(self.gas_costs().wqcm())?;
-                let (a, b, c, imm) = wdcm.unpack();
+                let (a, b, c, imm) = wqcm.unpack();
                 let args = wideint::CompareArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
                 self.alu_wideint_cmp_u256(a.into(), r!(b), r!(c), args)?;
             }
 
             Instruction::WDOP(wdop) => {
-                self.gas_charge(self.gas_costs().wdcm())?;
+                self.gas_charge(self.gas_costs().wdop())?;
                 let (a, b, c, imm) = wdop.unpack();
                 let args = wideint::MathArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
@@ -208,7 +210,7 @@ where
             }
 
             Instruction::WQOP(wqop) => {
-                self.gas_charge(self.gas_costs().wqcm())?;
+                self.gas_charge(self.gas_costs().wqop())?;
                 let (a, b, c, imm) = wqop.unpack();
                 let args = wideint::MathArgs::from_imm(imm)
                     .ok_or(PanicReason::InvalidImmediateValue)?;
@@ -602,21 +604,23 @@ where
             }
 
             Instruction::ALOC(aloc) => {
-                self.gas_charge(self.gas_costs().aloc())?;
                 let a = aloc.unpack();
-                self.malloc(r!(a))?;
+                let number_of_bytes = r!(a);
+                self.dependent_gas_charge(self.gas_costs().aloc(), number_of_bytes)?;
+                self.malloc(number_of_bytes)?;
             }
 
             Instruction::CFEI(cfei) => {
-                self.gas_charge(self.gas_costs().cfei())?;
-                let imm = cfei.unpack();
-                self.stack_pointer_overflow(Word::overflowing_add, imm.into())?;
+                let number_of_bytes = cfei.unpack().into();
+                self.dependent_gas_charge(self.gas_costs().cfei(), number_of_bytes)?;
+                self.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
             }
 
             Instruction::CFE(cfe) => {
-                self.gas_charge(self.gas_costs().cfei())?;
                 let a = cfe.unpack();
-                self.stack_pointer_overflow(Word::overflowing_add, r!(a))?;
+                let number_of_bytes = r!(a);
+                self.dependent_gas_charge(self.gas_costs().cfe(), number_of_bytes)?;
+                self.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
             }
 
             Instruction::CFSI(cfsi) => {

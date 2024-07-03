@@ -13,14 +13,12 @@ const DEFAULT_OWNER: OwnershipRegisters = OwnershipRegisters {
     ssp: 0,
     hp: u64::MAX / 2 + 1,
     prev_hp: u64::MAX,
-    context: crate::context::Context::Call {
-        block_height: BlockHeight::new(0),
-    },
 };
 
 struct SRWQInput {
     storage_slots: Vec<([u8; 32], ContractsStateData)>,
-    memory: Memory,
+    context: Context,
+    memory: MemoryInstance,
     owner: OwnershipRegisters,
     destination_pointer: Word,
     origin_key_pointer: Word,
@@ -30,11 +28,11 @@ struct SRWQInput {
 #[test_case(
     SRWQInput{
         storage_slots: vec![],
-        memory: mem(&[]),
-        owner: OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call {
-block_height: Default::default()}),
+        memory: mem(&[&*ContractId::default()]),
+        context: Context::Call { block_height: Default::default() },
+        owner: OwnershipRegisters::test(0..1, 3..u64::MAX),
         destination_pointer: VM_MAX_RAM,
-        origin_key_pointer: 0,
+        origin_key_pointer: 32,
         num_slots: 1,
     } => matches Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
     ; "Fail when destination range exceeds VM MAX"
@@ -42,10 +40,10 @@ block_height: Default::default()}),
 #[test_case(
     SRWQInput{
         storage_slots: vec![],
-        memory: mem(&[]),
-        owner: OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call {
-block_height: Default::default()}),
-        destination_pointer: 4,
+        memory: mem(&[&*ContractId::default()]),
+        context: Context::Call { block_height: Default::default() },
+        owner: OwnershipRegisters::test(0..1, 3..u64::MAX),
+        destination_pointer: 32 + 4,
         origin_key_pointer: VM_MAX_RAM,
         num_slots: 1,
     } => matches Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
@@ -54,10 +52,10 @@ block_height: Default::default()}),
 #[test_case(
     SRWQInput{
         storage_slots: vec![],
-        memory: mem(&[]),
-        owner: OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Call {
-block_height: Default::default()}),
-        destination_pointer: 4,
+        memory: mem(&[&*ContractId::default()]),
+        context: Context::Call { block_height: Default::default() },
+        owner: OwnershipRegisters::test(0..1, 3..u64::MAX),
+        destination_pointer: 32 +4,
         origin_key_pointer: u64::MAX,
         num_slots: 1,
     } => matches Err(RuntimeError::Recoverable(PanicReason::MemoryOverflow))
@@ -66,11 +64,11 @@ block_height: Default::default()}),
 #[test_case(
     SRWQInput{
         storage_slots: vec![],
-        memory: mem(&[]),
-        owner: OwnershipRegisters::test(0..1, 3..u64::MAX, Context::Script {
-block_height: Default::default()}),
-        destination_pointer: 4,
-        origin_key_pointer: 0,
+        memory: mem(&[&*ContractId::default()]),
+        context: Context::Script { block_height: Default::default() },
+        owner: OwnershipRegisters::test(0..1, 3..u64::MAX),
+        destination_pointer: 32 + 4,
+        origin_key_pointer: 32,
         num_slots: 1,
     } => matches Err(RuntimeError::Recoverable(PanicReason::ExpectedInternalContext))
     ; "Fail when context is not inside of a call"
@@ -78,88 +76,97 @@ block_height: Default::default()}),
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(27), data(&[5; 32]))],
-        memory: mem(&[&[0; 2], &key(27)]),
+        memory: mem(&[&*ContractId::default(), &[0; 2], &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 1,
-        origin_key_pointer: 2,
+        destination_pointer: 32+1,
+        origin_key_pointer: 32+2,
         num_slots: 1,
-    } => Ok((mem(&[&[0], &[5; 32], &[27]]), true))
+    } => Ok((mem(&[&*ContractId::default(), &[0], &[5; 32], &[27]]), true))
 )]
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32]))],
-        memory: mem(&[&key(27)]),
+        memory: mem(&[&*ContractId::default(), &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 0,
-        origin_key_pointer: 0,
+        destination_pointer: 32,
+        origin_key_pointer: 32,
         num_slots: 2,
-    } => Ok((mem(&[&[5; 32], &[6; 32]]), true))
+    } => Ok((mem(&[&*ContractId::default(), &[5; 32], &[6; 32]]), true))
 )]
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
-        memory: mem(&[&key(27)]),
+        memory: mem(&[&*ContractId::default(), &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 0,
-        origin_key_pointer: 0,
+        destination_pointer: 32,
+        origin_key_pointer: 32,
         num_slots: 3,
-    } => Ok((mem(&[&[5; 32], &[6; 32], &[7; 32]]), true))
+    } => Ok((mem(&[&*ContractId::default(), &[5; 32], &[6; 32], &[7; 32]]), true))
 )]
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
-        memory: mem(&[&key(27)]),
+        memory: mem(&[&*ContractId::default(), &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 0,
-        origin_key_pointer: 0,
+        destination_pointer: 32,
+        origin_key_pointer: 32,
         num_slots: 2,
-    } => Ok((mem(&[&[5; 32], &[6; 32]]), true))
+    } => Ok((mem(&[&*ContractId::default(), &[5; 32], &[6; 32]]), true))
 )]
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(27), data(&[5; 32])), (key(30), data(&[6; 32])), (key(29), data(&[7; 32]))],
-        memory: mem(&[&key(27)]),
+        memory: mem(&[&*ContractId::default(), &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 0,
-        origin_key_pointer: 0,
+        destination_pointer: 32,
+        origin_key_pointer: 32,
         num_slots: 3,
-    } => Ok((mem(&[&[5; 32], &[0; 32], &[7; 32]]), false))
+    } => Ok((mem(&[&*ContractId::default(), &[5; 32], &[0; 32], &[7; 32]]), false))
 )]
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(27), data(&[5; 32])), (key(28), data(&[7; 32]))],
-        memory: mem(&[&key(27)]),
+        memory: mem(&[&*ContractId::default(), &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 0,
-        origin_key_pointer: 0,
+        destination_pointer: 32,
+        origin_key_pointer: 32,
         num_slots: 3,
-    } => Ok((mem(&[&[5; 32], &[7; 32], &[0; 32]]), false))
+    } => Ok((mem(&[&*ContractId::default(), &[5; 32], &[7; 32], &[0; 32]]), false))
 )]
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(26), data(&[5; 32])), (key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
-        memory: mem(&[&key(27)]),
+        memory: mem(&[&*ContractId::default(), &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 0,
-        origin_key_pointer: 0,
+        destination_pointer: 32,
+        origin_key_pointer: 32,
         num_slots: 3,
-    } => Ok((mem(&[&[0; 32], &[6; 32], &[7; 32]]), false))
+    } => Ok((mem(&[&*ContractId::default(), &[0; 32], &[6; 32], &[7; 32]]), false))
 )]
 #[test_case(
     SRWQInput{
         storage_slots: vec![(key(28), data(&[6; 32])), (key(29), data(&[7; 32]))],
-        memory: mem(&[&key(27)]),
+        memory: mem(&[&*ContractId::default(), &key(27)]),
+        context: Context::Call { block_height: Default::default() },
         owner: DEFAULT_OWNER,
-        destination_pointer: 0,
-        origin_key_pointer: 0,
+        destination_pointer: 32,
+        origin_key_pointer: 32,
         num_slots: 3,
-    } => Ok((mem(&[&[0; 32], &[6; 32], &[7; 32]]), false))
+    } => Ok((mem(&[&*ContractId::default(), &[0; 32], &[6; 32], &[7; 32]]), false))
 )]
 fn test_state_read_qword(
     input: SRWQInput,
-) -> Result<(Memory, bool), RuntimeError<Infallible>> {
+) -> Result<(MemoryInstance, bool), RuntimeError<Infallible>> {
     let SRWQInput {
         storage_slots,
+        context,
         mut memory,
         owner,
         destination_pointer,
@@ -179,10 +186,11 @@ fn test_state_read_qword(
     let mut result_register = 0u64;
     let mut pc = 0;
     state_read_qword(
-        &Default::default(),
         &storage,
+        &context,
         &mut memory,
         RegMut::new(&mut pc),
+        Reg::new(&0),
         owner,
         &mut result_register,
         StateReadQWordParams {

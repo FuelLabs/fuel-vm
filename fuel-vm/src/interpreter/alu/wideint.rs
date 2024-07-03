@@ -19,6 +19,7 @@ use super::super::{
 use crate::{
     constraints::reg_key::*,
     error::SimpleResult,
+    interpreter::Memory,
 };
 
 // This macro is used to duplicate the implementation for both 128-bit and 256-bit
@@ -62,8 +63,9 @@ macro_rules! wideint_ops {
                 $t::from_le_bytes(truncated)
             }
 
-            impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+            impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
             where
+                M: Memory,
                 Tx: ExecutableTransaction,
             {
                 pub(crate) fn [<alu_wideint_cmp_ $t:lower>](
@@ -77,11 +79,11 @@ macro_rules! wideint_ops {
                     let dest: &mut Word = &mut w[ra.try_into()?];
 
                     // LHS argument is always indirect, load it
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?)
                     } else {
                         c.into()
                     };
@@ -103,11 +105,11 @@ macro_rules! wideint_ops {
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
                     // LHS argument is always indirect, load it
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?)
                     } else {
                         c.into()
                     };
@@ -121,7 +123,7 @@ macro_rules! wideint_ops {
                     *of = overflow as Word;
                     *err = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, wrapped.to_be_bytes())?;
+                    self.memory.as_mut().write_bytes(owner_regs, dest_addr, wrapped.to_be_bytes())?;
 
                     Ok(inc_pc(pc)?)
                 }
@@ -138,13 +140,13 @@ macro_rules! wideint_ops {
 
                     // LHS is only indirect if the flag is set
                     let lhs: $t = if args.indirect_lhs {
-                        $t::from_be_bytes(self.memory.read_bytes(b)?)
+                        $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?)
                     } else {
                         b.into()
                     };
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?)
                     } else {
                         c.into()
                     };
@@ -158,7 +160,7 @@ macro_rules! wideint_ops {
                     *of = overflow as Word;
                     *err = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, wrapped.to_be_bytes())?;
+                    self.memory.as_mut().write_bytes(owner_regs, dest_addr, wrapped.to_be_bytes())?;
 
                     Ok(inc_pc(pc)?)
                 }
@@ -174,11 +176,11 @@ macro_rules! wideint_ops {
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
                     // LHS is always indirect
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?);
 
                     // RHS is only indirect if the flag is set
                     let rhs: $t = if args.indirect_rhs {
-                        $t::from_be_bytes(self.memory.read_bytes(c)?)
+                        $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?)
                     } else {
                         c.into()
                     };
@@ -203,7 +205,7 @@ macro_rules! wideint_ops {
 
                     *of = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
                     Ok(inc_pc(pc)?)
                 }
@@ -218,9 +220,9 @@ macro_rules! wideint_ops {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
-                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
-                    let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?);
+                    let rhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?);
+                    let modulus: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(d)?);
 
                     // Use wider types to avoid overflow
                     let lhs = [<to_wider_prim_ $t:lower>](lhs);
@@ -247,7 +249,7 @@ macro_rules! wideint_ops {
 
                     *of = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
                     Ok(inc_pc(pc)?)
                 }
@@ -262,9 +264,9 @@ macro_rules! wideint_ops {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
 
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
-                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
-                    let modulus: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?);
+                    let rhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?);
+                    let modulus: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(d)?);
 
                     let lhs = [<to_prim_ $t:lower>](lhs);
                     let rhs = [<to_prim_ $t:lower>](rhs);
@@ -289,7 +291,7 @@ macro_rules! wideint_ops {
 
                     *of = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
                     Ok(inc_pc(pc)?)
                 }
@@ -304,9 +306,9 @@ macro_rules! wideint_ops {
                     let owner_regs = self.ownership_registers();
                     let (SystemRegisters { mut of, mut err, pc, flag, .. }, _) = split_registers(&mut self.registers);
 
-                    let lhs: $t = $t::from_be_bytes(self.memory.read_bytes(b)?);
-                    let rhs: $t = $t::from_be_bytes(self.memory.read_bytes(c)?);
-                    let divider: $t = $t::from_be_bytes(self.memory.read_bytes(d)?);
+                    let lhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?);
+                    let rhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?);
+                    let divider: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(d)?);
 
                     const S: usize = core::mem::size_of::<$t>();
 
@@ -331,7 +333,7 @@ macro_rules! wideint_ops {
                     *of = overflows as Word;
                     *err = 0;
 
-                    self.memory.write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
+                    self.memory.as_mut().write_bytes(owner_regs, dest_addr, result.to_be_bytes())?;
 
                     Ok(inc_pc(pc)?)
                 }

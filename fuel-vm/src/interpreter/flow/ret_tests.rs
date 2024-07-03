@@ -3,10 +3,7 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::{
-    error::PanicOrBug,
-    interpreter::memory::Memory,
-};
+use crate::error::PanicOrBug;
 
 use super::*;
 
@@ -42,7 +39,7 @@ fn test_return() {
     };
 
     let mut receipts = Default::default();
-    let mut memory: Memory = vec![0u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0u8; MEM_SIZE].try_into().unwrap();
     input(
         &mut frames,
         &mut registers,
@@ -150,7 +147,7 @@ fn input<'a>(
     frames: &'a mut Vec<CallFrame>,
     registers: &'a mut [Word; VM_REGISTER_COUNT],
     receipts: &'a mut ReceiptsCtx,
-    memory: &'a mut Memory,
+    memory: &'a mut MemoryInstance,
     context: &'a mut Context,
 ) -> RetCtx<'a> {
     RetCtx {

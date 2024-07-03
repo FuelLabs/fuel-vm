@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+#![allow(non_snake_case, clippy::arithmetic_side_effects)]
 
 use core::fmt::{
     Debug,
@@ -114,7 +114,7 @@ proptest! {
     }
 
     #[test]
-    fn verify__returns_false_for_invalid_proof_set((values, tree) in random_tree(1, 1_000), arb_num: usize, proof_set: ProofSet){
+    fn verify__returns_false_for_invalid_proof_set((values, tree) in random_tree(2, 1_000), arb_num: usize, proof_set: ProofSet){
         let num_leaves = values.len();
         let index = arb_num % num_leaves;
         let data = values[index];
@@ -164,7 +164,7 @@ proptest! {
     }
 
     #[test]
-    fn verify__returns_false_for_invalid_proof_idnex((values, tree) in random_tree(1, 1_000), invalid_index: u64){
+    fn verify__returns_false_for_invalid_proof_index((values, tree) in random_tree(1, 1_000), invalid_index: u64){
         let num_leaves = values.len();
         let valid_index = num_leaves - 1;
         proptest::prop_assume!(invalid_index != valid_index as u64);
@@ -181,7 +181,7 @@ proptest! {
     }
 
     #[test]
-    fn verify__returns_false_for_invalid_proof_idnex_and_num_leaves((values, tree) in random_tree(1, 1_000), invalid_index: u64, incorrect_num_leaves: u64){
+    fn verify__returns_false_for_invalid_proof_index_and_num_leaves((values, tree) in random_tree(1, 1_000), invalid_index: u64, incorrect_num_leaves: u64){
         let num_leaves = values.len();
         let valid_index = num_leaves - 1;
         proptest::prop_assume!(invalid_index != valid_index as u64);

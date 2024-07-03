@@ -1,3 +1,5 @@
+use core::convert::Infallible;
+
 use crate::{
     binary::{
         empty_sum,
@@ -8,6 +10,12 @@ use crate::{
 
 use crate::alloc::borrow::ToOwned;
 use alloc::vec::Vec;
+
+#[derive(Debug)]
+pub(crate) enum NodeStackPushError<E> {
+    Callback(E),
+    TooLarge,
+}
 
 #[derive(Default, Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -24,22 +32,53 @@ impl MerkleRootCalculator {
         Self { stack }
     }
 
-    pub fn push(&mut self, data: &[u8]) {
-        let node = Node::create_leaf(0, data);
+    pub fn clear(&mut self) {
+        self.stack.clear();
+    }
+
+    /// Push a leaf to stack of nodes, propagating changes through the tree.
+    /// Calls `node_created` for each new node created, stopping on first error.
+    pub(crate) fn push_with_callback<F, E>(
+        &mut self,
+        node: Node,
+        mut node_created: F,
+    ) -> Result<(), NodeStackPushError<E>>
+    where
+        F: FnMut(&Node) -> Result<(), E>,
+    {
+        node_created(&node).map_err(NodeStackPushError::Callback)?;
         self.stack.push(node);
 
+        // Propagate changes through the tree.
+        #[allow(clippy::arithmetic_side_effects)] // ensured by loop condition
         while self.stack.len() > 1 {
-            let right_node = &self.stack[self.stack.len() - 1];
-            let left_node = &self.stack[self.stack.len() - 2];
-            if right_node.height() == left_node.height() {
-                let merged_node = Node::create_node(left_node, right_node);
-                self.stack.pop();
-                self.stack.pop();
-                self.stack.push(merged_node);
-            } else {
-                break
+            let rhs = &self.stack[self.stack.len() - 1];
+            let lhs = &self.stack[self.stack.len() - 2];
+            if rhs.height() != lhs.height() {
+                break;
             }
+
+            let parent_pos = lhs
+                .position()
+                .parent()
+                .map_err(|_| NodeStackPushError::TooLarge)?;
+            let new = Node::create_node(parent_pos, lhs, rhs);
+            node_created(&new).map_err(NodeStackPushError::Callback)?;
+            let _ = self.stack.pop();
+            let _ = self.stack.pop();
+            self.stack.push(new);
         }
+
+        Ok(())
+    }
+
+    /// Push a new leaf node.
+    /// Panics if the tree would be too large to compute the root for.
+    /// In practice this never occurs, as you'd run out of memory first.
+    pub fn push(&mut self, data: &[u8]) {
+        let node = Node::create_leaf(0, data).expect("Zero is a valid index for a leaf");
+        self.push_with_callback::<_, Infallible>(node, |_| Ok(()))
+            .expect("Tree too large");
     }
 
     pub fn root(mut self) -> Bytes32 {
@@ -47,9 +86,13 @@ impl MerkleRootCalculator {
             return empty_sum().to_owned()
         }
         while self.stack.len() > 1 {
-            let right_child = self.stack.pop().expect("Unable to pop element from stack");
-            let left_child = self.stack.pop().expect("Unable to pop element from stack");
-            let merged_node = Node::create_node(&left_child, &right_child);
+            let right_child = self.stack.pop().expect("Checked in loop bound");
+            let left_child = self.stack.pop().expect("Checked in loop bound");
+            let merged_pos = left_child
+                .position()
+                .parent()
+                .expect("Left child has no parent");
+            let merged_node = Node::create_node(merged_pos, &left_child, &right_child);
             self.stack.push(merged_node);
         }
         self.stack.pop().unwrap().hash().to_owned()

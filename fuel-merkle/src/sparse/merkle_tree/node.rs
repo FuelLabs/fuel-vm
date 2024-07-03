@@ -8,9 +8,8 @@ use crate::{
             ParentNode as ParentNodeTrait,
         },
         path::{
-            ComparablePath,
-            Instruction,
             Path,
+            Side,
         },
         sum,
         Bytes32,
@@ -35,7 +34,6 @@ use crate::{
 };
 
 use core::{
-    cmp,
     fmt,
     marker::PhantomData,
 };
@@ -54,7 +52,7 @@ pub(super) enum Node {
 
 impl Node {
     pub fn max_height() -> u32 {
-        Node::key_size_in_bits()
+        Node::key_size_bits()
     }
 
     pub fn new(
@@ -105,31 +103,26 @@ impl Node {
             // of the two leaves diverge. The joined node may be a direct parent
             // of the leaves or an ancestor multiple generations above the
             // leaves.
-            // N.B.: A leaf can be a placeholder.
-            let parent_depth = path_node.common_path_length(side_node);
+            #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+            let parent_depth = path_node.common_path_length(side_node) as u32;
+            #[allow(clippy::arithmetic_side_effects)] // parent_depth <= max_height
             let parent_height = Node::max_height() - parent_depth;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         } else {
             // When joining two nodes, or a node and a leaf, the joined node is
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
-            let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
+            #[allow(clippy::arithmetic_side_effects)] // Neither node cannot be root
+            let parent_height = path_node.height().max(side_node.height()) + 1;
+            #[allow(clippy::arithmetic_side_effects)] // parent_height <= max_height
             let parent_depth = Node::max_height() - parent_height;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         }
     }
@@ -138,7 +131,7 @@ impl Node {
         Self::Placeholder
     }
 
-    pub fn common_path_length(&self, other: &Node) -> u32 {
+    pub fn common_path_length(&self, other: &Node) -> u64 {
         debug_assert!(self.is_leaf());
         debug_assert!(other.is_leaf());
 
@@ -278,6 +271,11 @@ impl NodeTrait for Node {
         Node::height(self)
     }
 
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
+    }
+
     fn leaf_key(&self) -> Self::Key {
         *Node::leaf_key(self)
     }
@@ -376,6 +374,11 @@ impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageTyp
 
     fn height(&self) -> u32 {
         self.node.height()
+    }
+
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
     }
 
     fn leaf_key(&self) -> Self::Key {

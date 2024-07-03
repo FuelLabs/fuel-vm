@@ -7,11 +7,9 @@ use super::{
 use crate::{
     constraints::reg_key::*,
     consts::*,
-    context::Context,
     error::SimpleResult,
 };
 
-use derivative::Derivative;
 use fuel_asm::{
     Imm12,
     Imm24,
@@ -19,11 +17,15 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
+    fmt_truncated_hex,
     RegisterId,
     Word,
 };
 
-use core::ops::Range;
+use core::{
+    fmt,
+    ops::Range,
+};
 
 #[cfg(any(test, feature = "test-helpers"))]
 use core::ops::{
@@ -50,49 +52,64 @@ mod allocation_tests;
 #[cfg(test)]
 mod stack_tests;
 
-/// Resize the heap to at least `new_len` bytes, filling the new space with zeros.
-/// If `new_len` is less than the current length, the function does nothing.
-/// The function may grow the size more than `new_len` to avoid frequent
-/// reallocations.
-fn reverse_resize_at_least(vec: &mut Vec<u8>, new_len: usize) {
-    if vec.len() >= new_len {
-        return
-    }
+/// The trait for the memory.
+pub trait Memory: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
 
-    // To reduce small allocations, allocate at least 256 bytes at once.
-    // After that, double the allocation every time.
-    let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);
-    let mut new_vec = Vec::new();
-    new_vec.reserve_exact(cap);
-    let prefix_zeroes = cap
-        .checked_sub(vec.len())
-        .expect("Attempting to resize impossibly large heap memory");
-    new_vec.extend(core::iter::repeat(0).take(prefix_zeroes));
-    new_vec.extend(vec.iter().copied());
-    *vec = new_vec;
-}
+impl<M> Memory for M where M: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
 
 /// The memory of the VM, represented as stack and heap.
-#[derive(Debug, Clone, PartialEq, Eq, Derivative)]
-pub struct Memory {
+#[derive(Clone, Eq)]
+pub struct MemoryInstance {
     /// Stack. Grows upwards.
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     stack: Vec<u8>,
     /// Heap. Grows downwards from MEM_SIZE.
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     heap: Vec<u8>,
     /// Lowest allowed heap address, i.e. hp register value.
     /// This is needed since we can allocate extra heap for performance reasons.
     hp: usize,
 }
 
-impl Default for Memory {
+impl Default for MemoryInstance {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Memory {
+impl fmt::Debug for MemoryInstance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Memory {{ stack: ")?;
+        fmt_truncated_hex::<16>(&self.stack, f)?;
+        write!(f, ", heap: ")?;
+        let off = self.hp.saturating_sub(self.heap_offset());
+        fmt_truncated_hex::<16>(&self.heap[off..], f)?;
+        write!(f, ", hp: {} }}", self.hp)
+    }
+}
+
+impl PartialEq for MemoryInstance {
+    /// Equality comparison of the accessible memory.
+    #[allow(clippy::arithmetic_side_effects)] // Safety: hp is kept valid everywhere
+    fn eq(&self, other: &Self) -> bool {
+        self.stack == other.stack && self.hp == other.hp && {
+            let self_hs = self.hp - self.heap_offset();
+            let other_hs = other.hp - other.heap_offset();
+            self.heap[self_hs..] == other.heap[other_hs..]
+        }
+    }
+}
+
+impl AsRef<MemoryInstance> for MemoryInstance {
+    fn as_ref(&self) -> &MemoryInstance {
+        self
+    }
+}
+impl AsMut<MemoryInstance> for MemoryInstance {
+    fn as_mut(&mut self) -> &mut MemoryInstance {
+        self
+    }
+}
+
+impl MemoryInstance {
     /// Create a new VM memory.
     pub fn new() -> Self {
         Self {
@@ -100,6 +117,12 @@ impl Memory {
             heap: Vec::new(),
             hp: MEM_SIZE,
         }
+    }
+
+    /// Resets memory to initial state, keeping the original allocations.
+    pub fn reset(&mut self) {
+        self.stack.truncate(0);
+        self.hp = MEM_SIZE;
     }
 
     /// Offset of the heap section
@@ -134,22 +157,52 @@ impl Memory {
         Ok(())
     }
 
-    /// Grows the heap to be at least `new_hp` bytes.
-    pub fn grow_heap(&mut self, sp: Reg<SP>, new_hp: Word) -> Result<(), PanicReason> {
-        let new_hp_word = new_hp.min(MEM_SIZE as Word);
-        #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
-        let new_hp = new_hp_word as usize;
+    /// Grows the heap by `amount` bytes. Updates hp register.
+    pub fn grow_heap_by(
+        &mut self,
+        sp_reg: Reg<SP>,
+        mut hp_reg: RegMut<HP>,
+        amount: Word,
+    ) -> Result<(), PanicReason> {
+        debug_assert_eq!(
+            self.hp as Word, *hp_reg,
+            "HP register changed without memory update"
+        );
 
-        if new_hp_word < *sp {
+        let amount = usize::try_from(amount).map_err(|_| PanicReason::MemoryOverflow)?;
+        let new_hp = self
+            .hp
+            .checked_sub(amount)
+            .ok_or(PanicReason::MemoryOverflow)?;
+
+        if (new_hp as Word) < *sp_reg {
             return Err(PanicReason::MemoryGrowthOverlap)
         }
 
-        #[allow(clippy::arithmetic_side_effects)] // Safety: ensured above with min
+        #[allow(clippy::arithmetic_side_effects)] // Safety: self.hp is in heap
         let new_len = MEM_SIZE - new_hp;
 
-        // Expand the heap allocation
-        reverse_resize_at_least(&mut self.heap, new_len);
+        #[allow(clippy::arithmetic_side_effects)] // Safety: self.hp is in heap
+        if self.heap.len() >= new_len {
+            // No need to reallocate, but we need to zero the new space
+            // in case it was used before a memory reset.
+            let start = new_hp - self.heap_offset();
+            let end = self.hp - self.heap_offset();
+            self.heap[start..end].fill(0);
+        } else {
+            // Reallocation is needed.
+            // To reduce frequent reallocations, allocate at least 256 bytes at once.
+            // After that, double the allocation every time.
+            let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);
+            let old_len = self.heap.len();
+            let prefix_zeroes = cap - old_len;
+            self.heap.resize(cap, 0);
+            self.heap.copy_within(..old_len, prefix_zeroes);
+            self.heap[..prefix_zeroes].fill(0);
+        }
+
         self.hp = new_hp;
+        *hp_reg = new_hp as Word;
 
         // If heap enters region where stack has been, truncate the stack
         self.stack.truncate(new_hp);
@@ -254,7 +307,7 @@ impl Memory {
         len: C,
     ) -> Result<&mut [u8], PanicReason> {
         let range = self.verify(addr, len)?;
-        owner.verify_ownership(&range.words())?;
+        owner.verify_ownership(&range)?;
         self.write_noownerchecks(range.start(), range.len())
     }
 
@@ -305,7 +358,7 @@ impl Memory {
 }
 
 #[cfg(feature = "test-helpers")]
-impl From<Vec<u8>> for Memory {
+impl From<Vec<u8>> for MemoryInstance {
     fn from(stack: Vec<u8>) -> Self {
         Self {
             stack,
@@ -315,7 +368,7 @@ impl From<Vec<u8>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Index<Range<usize>> for Memory {
+impl Index<Range<usize>> for MemoryInstance {
     type Output = [u8];
 
     fn index(&self, index: Range<usize>) -> &Self::Output {
@@ -325,7 +378,7 @@ impl Index<Range<usize>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Index<RangeFrom<usize>> for Memory {
+impl Index<RangeFrom<usize>> for MemoryInstance {
     type Output = [u8];
 
     fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
@@ -334,7 +387,7 @@ impl Index<RangeFrom<usize>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl Index<RangeTo<usize>> for Memory {
+impl Index<RangeTo<usize>> for MemoryInstance {
     type Output = [u8];
 
     fn index(&self, index: RangeTo<usize>) -> &Self::Output {
@@ -343,7 +396,7 @@ impl Index<RangeTo<usize>> for Memory {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl IndexMut<Range<usize>> for Memory {
+impl IndexMut<Range<usize>> for MemoryInstance {
     fn index_mut(&mut self, index: Range<usize>) -> &mut Self::Output {
         self.write_noownerchecks(index.start, index.len())
             .expect("Memory range out of bounds")
@@ -436,7 +489,10 @@ impl MemoryRange {
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
+    M: Memory,
+{
     /// Return the registers used to determine ownership.
     pub(crate) fn ownership_registers(&self) -> OwnershipRegisters {
         OwnershipRegisters::new(self)
@@ -452,7 +508,15 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             },
             _,
         ) = split_registers(&mut self.registers);
-        stack_pointer_overflow(sp, ssp.as_ref(), hp.as_ref(), pc, f, v, &mut self.memory)
+        stack_pointer_overflow(
+            sp,
+            ssp.as_ref(),
+            hp.as_ref(),
+            pc,
+            f,
+            v,
+            self.memory.as_mut(),
+        )
     }
 
     pub(crate) fn push_selected_registers(
@@ -467,7 +531,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             program_regs,
         ) = split_registers(&mut self.registers);
         push_selected_registers(
-            &mut self.memory,
+            self.memory.as_mut(),
             sp,
             ssp.as_ref(),
             hp.as_ref(),
@@ -490,7 +554,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
             mut program_regs,
         ) = split_registers(&mut self.registers);
         pop_selected_registers(
-            &mut self.memory,
+            self.memory.as_mut(),
             sp,
             ssp.as_ref(),
             hp.as_ref(),
@@ -509,7 +573,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_byte(&self.memory, pc, result, b, c)
+        load_byte(self.memory.as_ref(), pc, result, b, c)
     }
 
     pub(crate) fn load_word(
@@ -520,39 +584,61 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_word(&self.memory, pc, result, b, c)
+        load_word(self.memory.as_ref(), pc, result, b, c)
     }
 
     pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        store_byte(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        store_byte(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
     pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Imm12) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        store_word(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        store_word(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
-    /// Expand heap by `a` bytes.
-    pub fn allocate(&mut self, a: Word) -> SimpleResult<()> {
+    /// Expand heap by `amount` bytes.
+    pub fn allocate(&mut self, amount: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
-        try_allocate(hp, sp.as_ref(), a, &mut self.memory)
+        self.memory.as_mut().grow_heap_by(sp.as_ref(), hp, amount)?;
+        Ok(())
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, pc, .. }, _) =
             split_registers(&mut self.registers);
-        malloc(hp, sp.as_ref(), pc, a, &mut self.memory)
+        malloc(hp, sp.as_ref(), pc, a, self.memory.as_mut())
     }
 
     pub(crate) fn memclear(&mut self, a: Word, b: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        memclear(&mut self.memory, owner, self.registers.pc_mut(), a, b)
+        memclear(self.memory.as_mut(), owner, self.registers.pc_mut(), a, b)
     }
 
     pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        memcopy(&mut self.memory, owner, self.registers.pc_mut(), a, b, c)
+        memcopy(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+        )
     }
 
     pub(crate) fn memeq(
@@ -564,7 +650,7 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
-        memeq(&mut self.memory, result, pc, b, c, d)
+        memeq(self.memory.as_mut(), result, pc, b, c, d)
     }
 }
 
@@ -574,7 +660,7 @@ pub(crate) fn try_update_stack_pointer(
     ssp: Reg<SSP>,
     hp: Reg<HP>,
     new_sp: Word,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
 ) -> SimpleResult<()> {
     if new_sp < *ssp {
         Err(PanicReason::MemoryOverflow.into())
@@ -594,7 +680,7 @@ pub(crate) fn stack_pointer_overflow<F>(
     pc: RegMut<PC>,
     f: F,
     v: Word,
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
 ) -> SimpleResult<()>
 where
     F: FnOnce(Word, Word) -> (Word, bool),
@@ -611,7 +697,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn push_selected_registers(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
@@ -650,7 +736,7 @@ pub(crate) fn push_selected_registers(
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pop_selected_registers(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     sp: RegMut<SP>,
     ssp: Reg<SSP>,
     hp: Reg<HP>,
@@ -685,7 +771,7 @@ pub(crate) fn pop_selected_registers(
 }
 
 pub(crate) fn load_byte(
-    memory: &Memory,
+    memory: &MemoryInstance,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -697,7 +783,7 @@ pub(crate) fn load_byte(
 }
 
 pub(crate) fn load_word(
-    memory: &Memory,
+    memory: &MemoryInstance,
     pc: RegMut<PC>,
     result: &mut Word,
     b: Word,
@@ -713,7 +799,7 @@ pub(crate) fn load_word(
 
 #[allow(clippy::cast_possible_truncation)]
 pub(crate) fn store_byte(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -725,7 +811,7 @@ pub(crate) fn store_byte(
 }
 
 pub(crate) fn store_word(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -741,36 +827,19 @@ pub(crate) fn store_word(
     Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn try_allocate(
-    mut hp: RegMut<HP>,
-    sp: Reg<SP>,
-    a: Word,
-    memory: &mut Memory,
-) -> SimpleResult<()> {
-    let (result, overflow) = hp.overflowing_sub(a);
-
-    if overflow {
-        return Err(PanicReason::MemoryOverflow.into());
-    }
-
-    memory.grow_heap(sp, result)?;
-    *hp = result;
-    Ok(())
-}
-
 pub(crate) fn malloc(
     hp: RegMut<HP>,
     sp: Reg<SP>,
     pc: RegMut<PC>,
-    a: Word,
-    memory: &mut Memory,
+    amount: Word,
+    memory: &mut MemoryInstance,
 ) -> SimpleResult<()> {
-    try_allocate(hp, sp, a, memory)?;
+    memory.grow_heap_by(sp, hp, amount)?;
     Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn memclear(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -781,7 +850,7 @@ pub(crate) fn memclear(
 }
 
 pub(crate) fn memcopy(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     a: Word,
@@ -791,8 +860,6 @@ pub(crate) fn memcopy(
     let dst_range = memory.verify(a, c)?;
     let src_range = memory.verify(b, c)?;
 
-    owner.verify_ownership(&dst_range.words())?;
-
     if dst_range.start() <= src_range.start() && src_range.start() < dst_range.end()
         || src_range.start() <= dst_range.start() && dst_range.start() < src_range.end()
         || dst_range.start() < src_range.end() && src_range.end() <= dst_range.end()
@@ -801,13 +868,14 @@ pub(crate) fn memcopy(
         return Err(PanicReason::MemoryWriteOverlap.into())
     }
 
+    owner.verify_ownership(&dst_range)?;
     memory.memcopy_noownerchecks(a, b, c)?;
 
     Ok(inc_pc(pc)?)
 }
 
 pub(crate) fn memeq(
-    memory: &mut Memory,
+    memory: &mut MemoryInstance,
     result: &mut Word,
     pc: RegMut<PC>,
     b: Word,
@@ -818,50 +886,70 @@ pub(crate) fn memeq(
     Ok(inc_pc(pc)?)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct OwnershipRegisters {
     pub(crate) sp: u64,
     pub(crate) ssp: u64,
     pub(crate) hp: u64,
+    /// Previous heap pointer, used for external contexts.
+    /// Otherwise, it's just memory size.
     pub(crate) prev_hp: u64,
-    pub(crate) context: Context,
 }
 
 impl OwnershipRegisters {
-    pub(crate) fn new<S, Tx, Ecal>(vm: &Interpreter<S, Tx, Ecal>) -> Self {
+    pub(crate) fn new<M, S, Tx, Ecal>(vm: &Interpreter<M, S, Tx, Ecal>) -> Self {
+        let prev_hp = vm
+            .frames
+            .last()
+            .map(|frame| frame.registers()[RegId::HP])
+            .unwrap_or(VM_MAX_RAM);
+
         OwnershipRegisters {
             sp: vm.registers[RegId::SP],
             ssp: vm.registers[RegId::SSP],
             hp: vm.registers[RegId::HP],
-            prev_hp: vm
-                .frames
-                .last()
-                .map(|frame| frame.registers()[RegId::HP])
-                .unwrap_or(0),
-            context: vm.context.clone(),
+            prev_hp,
+        }
+    }
+
+    /// Create an instance that only allows stack writes.
+    pub(crate) fn only_allow_stack_write(sp: u64, ssp: u64, hp: u64) -> Self {
+        debug_assert!(sp <= VM_MAX_RAM);
+        debug_assert!(ssp <= VM_MAX_RAM);
+        debug_assert!(hp <= VM_MAX_RAM);
+        debug_assert!(ssp <= sp);
+        debug_assert!(sp <= hp);
+        OwnershipRegisters {
+            sp,
+            ssp,
+            hp,
+            prev_hp: hp,
+        }
+    }
+
+    /// Allows all writes, whole memory is stack.allocated
+    #[cfg(test)]
+    pub(crate) fn test_full_stack() -> Self {
+        OwnershipRegisters {
+            sp: VM_MAX_RAM,
+            ssp: 0,
+            hp: VM_MAX_RAM,
+            prev_hp: VM_MAX_RAM,
         }
     }
 
     pub(crate) fn verify_ownership(
         &self,
-        range: &Range<Word>,
+        range: &MemoryRange,
     ) -> Result<(), PanicReason> {
-        if self.has_ownership_range(range) {
+        if self.has_ownership_range(&range.words()) {
             Ok(())
         } else {
             Err(PanicReason::MemoryOwnership)
         }
     }
 
-    pub(crate) fn verify_internal_context(&self) -> Result<(), PanicReason> {
-        if self.context.is_internal() {
-            Ok(())
-        } else {
-            Err(PanicReason::ExpectedInternalContext)
-        }
-    }
-
-    pub(crate) fn has_ownership_range(&self, range: &Range<Word>) -> bool {
+    pub fn has_ownership_range(&self, range: &Range<Word>) -> bool {
         self.has_ownership_stack(range) || self.has_ownership_heap(range)
     }
 
@@ -893,39 +981,27 @@ impl OwnershipRegisters {
             return false
         }
 
-        let heap_end = if self.context.is_external() {
-            VM_MAX_RAM
-        } else {
-            self.prev_hp
-        };
-
-        self.hp != heap_end && range.end <= heap_end
+        self.hp != self.prev_hp && range.end <= self.prev_hp
     }
 }
 
 /// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
 /// Performs overflow and memory range checks, but no ownership checks.
-pub(crate) fn copy_from_slice_zero_fill_noownerchecks<A: ToAddr, B: ToAddr>(
-    memory: &mut Memory,
+pub(crate) fn copy_from_slice_zero_fill<A: ToAddr, B: ToAddr>(
+    memory: &mut MemoryInstance,
+    owner: OwnershipRegisters,
     src: &[u8],
     dst_addr: A,
     src_offset: usize,
     len: B,
 ) -> SimpleResult<()> {
-    let range = memory.verify(dst_addr, len)?;
+    let range = memory.write(owner, dst_addr, len)?;
 
     let src_end = src_offset.saturating_add(range.len()).min(src.len());
     let data = src.get(src_offset..src_end).unwrap_or_default();
-    let (r_data, r_zero) = range.split_at_offset(data.len());
 
-    memory
-        .write_noownerchecks(r_data.start(), r_data.len())
-        .expect("Range verified above")
-        .copy_from_slice(data);
-    memory
-        .write_noownerchecks(r_zero.start(), r_zero.len())
-        .expect("Range verified above")
-        .fill(0);
+    range[..data.len()].copy_from_slice(data);
+    range[data.len()..].fill(0);
 
     Ok(())
 }

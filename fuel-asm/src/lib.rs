@@ -75,7 +75,8 @@ pub struct Imm24(u32);
 /// An instruction in its raw, packed, unparsed representation.
 pub type RawInstruction = u32;
 
-/// Failed to parse a `u8` as a valid or non-reserved opcode.
+/// Given opcode doesn't exist, or is the reserved part of
+/// the instruction (i.e. space outside arguments) is non-zero.
 #[derive(Debug, Eq, PartialEq)]
 pub struct InvalidOpcode;
 

@@ -2,14 +2,8 @@
 
 use alloc::vec;
 
-use crate::{
-    interpreter::memory::Memory,
-    storage::MemoryStorage,
-};
-use core::{
-    convert::Infallible,
-    iter,
-};
+use crate::storage::MemoryStorage;
+use core::convert::Infallible;
 
 use super::*;
 use crate::interpreter::PanicContext;
@@ -33,7 +27,7 @@ fn test_burn(
     sub_id: [u8; 32],
 ) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
@@ -43,7 +37,7 @@ fn test_burn(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -111,7 +105,7 @@ fn test_mint(
     sub_id: [u8; 32],
 ) -> IoResult<(), Infallible> {
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
@@ -121,7 +115,7 @@ fn test_mint(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -179,15 +173,12 @@ fn test_mint(
 #[test]
 fn test_block_hash() {
     let storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     let mut pc = 4;
     block_hash(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 40).unwrap();
@@ -210,15 +201,12 @@ fn test_block_height() {
 #[test]
 fn test_coinbase() {
     let storage = MemoryStorage::new(Default::default(), ContractId::zeroed());
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     let mut pc = 4;
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
@@ -230,23 +218,24 @@ fn test_coinbase() {
 fn test_code_size() {
     let contract_id = ContractId::new([3u8; ContractId::LEN]);
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-        .write(&ContractId::from([3u8; 32]), &[1u8; 100])
+        .write_bytes(&ContractId::from([3u8; 32]), &[1u8; 100])
         .unwrap();
     let mut pc = 4;
     let is = 0;
     let mut cgas = 0;
     let mut ggas = 0;
-    let input_contract = [contract_id];
+    let input_contracts = [contract_id];
+    let input_contracts = input_contracts.into_iter().collect();
     let mut panic_context = PanicContext::None;
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
         profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -263,7 +252,7 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
@@ -276,11 +265,12 @@ fn test_code_size() {
     assert_eq!(pc, 8);
     assert_eq!(result, 100);
 
+    let input_contracts = Default::default();
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),

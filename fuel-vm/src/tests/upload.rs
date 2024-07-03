@@ -74,7 +74,7 @@ fn valid_transaction_from_subsection(subsection: UploadSubsection) -> Ready<Uplo
 
 #[test]
 fn transact__uploads_bytecode_with_one_subsection() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
     let subsections =
         UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
     let root = subsections[0].root;
@@ -106,7 +106,7 @@ fn transact__uploads_bytecode_with_one_subsection() {
 
 #[test]
 fn transact__uploads_bytecode_with_several_subsections() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
 
     // Given
     let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
@@ -134,7 +134,7 @@ fn transact__uploads_bytecode_with_several_subsections() {
 
 #[test]
 fn transact__uploads_bytecode_with_half_of_subsections() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
 
     // Given
     let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
@@ -163,7 +163,7 @@ fn transact__uploads_bytecode_with_half_of_subsections() {
 
 #[test]
 fn transact__fails_for_completed_bytecode() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
     let subsections =
         UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
     assert_eq!(subsections.len(), 1);
@@ -186,7 +186,7 @@ fn transact__fails_for_completed_bytecode() {
 
 #[test]
 fn transact__fails_when_the_ordering_of_uploading_is_wrong__missed_first_subsection() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
     let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
     assert!(subsections.len() > 1);
 
@@ -207,7 +207,7 @@ fn transact__fails_when_the_ordering_of_uploading_is_wrong__missed_first_subsect
 
 #[test]
 fn transact__fails_when_the_ordering_of_uploading_is_wrong__skipped_second_subsection() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
     let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
     assert!(subsections.len() >= 3);
     let first_subsection = valid_transaction_from_subsection(subsections[0].clone());
@@ -233,7 +233,7 @@ fn transact__fails_when_the_ordering_of_uploading_is_wrong__skipped_second_subse
 #[test]
 fn transact__fails_when_the_ordering_of_uploading_is_wrong__second_subsection_sent_twice()
 {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
     let subsections = UploadSubsection::split_bytecode(&bytecode(), 123).unwrap();
     assert!(subsections.len() >= 3);
     let first_subsection = valid_transaction_from_subsection(subsections[0].clone());
@@ -316,7 +316,7 @@ fn check__fails_when_total_number_is_zero() {
 
 #[test]
 fn transact__with_zero_gas_price_doesnt_affect_change_output() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
     let subsections =
         UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
 
@@ -341,7 +341,7 @@ fn transact__with_zero_gas_price_doesnt_affect_change_output() {
 
 #[test]
 fn transact__with_non_zero_gas_price_affects_change_output() {
-    let mut client = Interpreter::<_, Upload>::with_memory_storage();
+    let mut client = Interpreter::<_, _, Upload>::with_memory_storage();
     let subsections =
         UploadSubsection::split_bytecode(&bytecode(), BYTECODE_SIZE).unwrap();
 

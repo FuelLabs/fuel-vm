@@ -19,6 +19,8 @@ pub extern crate alloc;
 extern crate core;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
+#[cfg(test)]
+use criterion as _;
 
 pub mod backtrace;
 pub mod call;
@@ -31,6 +33,7 @@ pub mod crypto;
 pub mod error;
 pub mod interpreter;
 pub mod memory_client;
+pub mod pool;
 pub mod predicate;
 pub mod state;
 pub mod storage;
@@ -84,6 +87,7 @@ pub mod prelude {
         Instruction,
         Opcode,
         PanicReason,
+        RegId,
     };
     #[doc(no_inline)]
     pub use fuel_crypto::{
@@ -138,9 +142,12 @@ pub mod prelude {
         interpreter::{
             ExecutableTransaction,
             Interpreter,
+            Memory,
+            MemoryInstance,
             MemoryRange,
         },
         memory_client::MemoryClient,
+        pool::VmMemoryPool,
         predicate::RuntimePredicate,
         state::{
             Debugger,

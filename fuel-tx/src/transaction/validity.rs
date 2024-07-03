@@ -393,11 +393,6 @@ where
                     Output::Change { asset_id, .. } if input_asset_id == asset_id => {
                         Some(())
                     }
-                    Output::Change { asset_id, .. }
-                        if asset_id != base_asset_id && input_asset_id == asset_id =>
-                    {
-                        Some(())
-                    }
                     _ => None,
                 })
                 .count()

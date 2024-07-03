@@ -84,7 +84,7 @@ macro_rules! key_methods {
                 /// Convert to usize.
                 #[wasm_bindgen(js_name = as_usize)]
                 pub fn as_usize_typescript(&self) -> usize {
-                    self.0 as usize
+                    usize::try_from(self.0).expect("Cannot convert to usize")
                 }
             }
 

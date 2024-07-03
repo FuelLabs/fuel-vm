@@ -4,8 +4,8 @@ use crate::common::{
         ParentNode,
     },
     path::{
-        Instruction,
         Path,
+        Side,
     },
 };
 
@@ -139,7 +139,8 @@ where
         // 0      7     00  02  04  06  08  10  12  14   252 254
         //              00  01  02  03  04  05  06  07   126 127
         //
-        let initial_offset = T::key_size_in_bits() - root.height();
+        let initial_offset = T::key_size_bits().checked_sub(root.height())
+        .expect("Root height more than key size allows, ParentNode impl is incorrect");
         Self {
             leaf_key: leaf_key.clone(),
             current: Some(initial),
@@ -164,12 +165,16 @@ where
                     let path = &self.leaf_key;
                     let instruction = path.get_instruction(self.current_offset);
                     self.current = instruction.map(|instruction| {
-                        self.current_offset += 1;
+                        // get_instruction ensures current_offset is ok
+                        #[allow(clippy::arithmetic_side_effects)]
+                        {
+                            self.current_offset += 1;
+                        }
                         match instruction {
-                            Instruction::Left => {
+                            Side::Left => {
                                 (path_node.left_child(), path_node.right_child())
                             }
-                            Instruction::Right => {
+                            Side::Right => {
                                 (path_node.right_child(), path_node.left_child())
                             }
                         }
@@ -203,6 +208,11 @@ where
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::restriction,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss
+)]
 mod test {
     use crate::common::{
         node::{
@@ -260,6 +270,11 @@ mod test {
 
         fn height(&self) -> u32 {
             TestNode::height(self)
+        }
+
+        #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+        fn key_size_bits() -> u32 {
+            core::mem::size_of::<Self::Key>() as u32 * 8
         }
 
         fn leaf_key(&self) -> Self::Key {

@@ -21,7 +21,6 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field,
-    output,
     Chargeable,
     Create,
     Executable,
@@ -79,6 +78,7 @@ pub use ecal::{
 };
 pub use memory::{
     Memory,
+    MemoryInstance,
     MemoryRange,
 };
 
@@ -112,13 +112,15 @@ pub struct NotSupportedEcal;
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<S, Tx = (), Ecal = NotSupportedEcal> {
+pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Memory,
+    memory: M,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
     tx: Tx,
     initial_balances: InitialBalances,
+    input_contracts: alloc::collections::BTreeSet<ContractId>,
+    input_contracts_index_to_output_index: alloc::collections::BTreeMap<u16, u16>,
     storage: S,
     debugger: Debugger,
     context: Context,
@@ -202,17 +204,21 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<M: Memory, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the VM memory
-    pub fn memory(&self) -> &Memory {
-        &self.memory
+    pub fn memory(&self) -> &MemoryInstance {
+        self.memory.as_ref()
     }
+}
 
+impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns mutable access to the vm memory
-    pub fn memory_mut(&mut self) -> &mut Memory {
-        &mut self.memory
+    pub fn memory_mut(&mut self) -> &mut MemoryInstance {
+        self.memory.as_mut()
     }
+}
 
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
@@ -344,13 +350,13 @@ fn current_location(
     InstructionLocation::new(current_contract, offset)
 }
 
-impl<S, Tx, Ecal> AsRef<S> for Interpreter<S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<S, Tx, Ecal> AsMut<S> for Interpreter<S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }
@@ -514,20 +520,6 @@ pub trait ExecutableTransaction:
             _ => Ok(()),
         })
     }
-
-    /// Finds `Output::Contract` corresponding to the `input` index.
-    fn find_output_contract(&self, input: usize) -> Option<(usize, &Output)> {
-        self.outputs().iter().enumerate().find(|(_idx, o)| {
-            matches!(o, Output::Contract( output::contract::Contract {
-                input_index, ..
-            }) if *input_index as usize == input)
-        })
-    }
-
-    /// Prepares the transaction for execution.
-    fn prepare_init_execute(&mut self) {
-        self.prepare_sign()
-    }
 }
 
 impl ExecutableTransaction for Create {
@@ -542,8 +534,6 @@ impl ExecutableTransaction for Create {
     fn transaction_type() -> Word {
         TransactionRepr::Create as Word
     }
-
-    fn prepare_init_execute(&mut self) {}
 }
 
 impl ExecutableTransaction for Script {
@@ -639,22 +629,25 @@ impl CheckedMetadata for UploadCheckedMetadata {
     }
 }
 
-pub(crate) struct InputContracts<'vm, I> {
-    tx_input_contracts: I,
+pub(crate) struct InputContracts<'vm> {
+    input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
     panic_context: &'vm mut PanicContext,
 }
 
-impl<'vm, I: Iterator<Item = &'vm ContractId>> InputContracts<'vm, I> {
-    pub fn new(tx_input_contracts: I, panic_context: &'vm mut PanicContext) -> Self {
+impl<'vm> InputContracts<'vm> {
+    pub fn new(
+        input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
+        panic_context: &'vm mut PanicContext,
+    ) -> Self {
         Self {
-            tx_input_contracts,
+            input_contracts,
             panic_context,
         }
     }
 
     /// Checks that the contract is declared in the transaction inputs.
     pub fn check(&mut self, contract: &ContractId) -> SimpleResult<()> {
-        if !self.tx_input_contracts.any(|input| input == contract) {
+        if !self.input_contracts.contains(contract) {
             *self.panic_context = PanicContext::ContractId(*contract);
             Err(PanicReason::ContractNotInInputs.into())
         } else {

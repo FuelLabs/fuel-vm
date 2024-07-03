@@ -43,6 +43,11 @@ pub use types::*;
 
 use crate::{
     error::PredicateVerificationFailed,
+    interpreter::{
+        Memory,
+        MemoryInstance,
+    },
+    pool::VmMemoryPool,
     prelude::*,
 };
 
@@ -296,10 +301,28 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     where
         Checked<Self>: CheckPredicates,
     {
+        self.into_checked_reusable_memory(
+            block_height,
+            consensus_params,
+            MemoryInstance::new(),
+        )
+    }
+
+    /// Returns transaction that passed all `Checks` accepting reusable memory
+    /// to run predicates.
+    fn into_checked_reusable_memory(
+        self,
+        block_height: BlockHeight,
+        consensus_params: &ConsensusParameters,
+        memory: impl Memory,
+    ) -> Result<Checked<Self>, CheckError>
+    where
+        Checked<Self>: CheckPredicates,
+    {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
             .check_signatures(&consensus_params.chain_id())?
-            .check_predicates(&check_predicate_params)
+            .check_predicates(&check_predicate_params, memory)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -369,12 +392,17 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
 #[async_trait::async_trait]
 pub trait CheckPredicates: Sized {
     /// Performs predicates verification of the transaction.
-    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError>;
+    fn check_predicates(
+        self,
+        params: &CheckPredicateParams,
+        memory: impl Memory,
+    ) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
     async fn check_predicates_async<E: ParallelExecutor>(
         self,
         params: &CheckPredicateParams,
+        pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError>;
 }
 
@@ -385,12 +413,14 @@ pub trait EstimatePredicates: Sized {
     fn estimate_predicates(
         &mut self,
         params: &CheckPredicateParams,
+        memory: impl Memory,
     ) -> Result<(), CheckError>;
 
     /// Estimates predicates of the transaction in parallel.
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
         params: &CheckPredicateParams,
+        pool: &impl VmMemoryPool,
     ) -> Result<(), CheckError>;
 }
 
@@ -422,9 +452,10 @@ where
     fn check_predicates(
         mut self,
         params: &CheckPredicateParams,
+        memory: impl Memory,
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            Interpreter::<PredicateStorage, _>::check_predicates(&self, params)?;
+            Interpreter::check_predicates(&self, params, memory)?;
             self.checks_bitmask.insert(Checks::Predicates);
         }
         Ok(self)
@@ -433,15 +464,13 @@ where
     async fn check_predicates_async<E>(
         mut self,
         params: &CheckPredicateParams,
+        pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            Interpreter::<PredicateStorage, _>::check_predicates_async::<E>(
-                &self, params,
-            )
-            .await?;
+            Interpreter::check_predicates_async::<E>(&self, params, pool).await?;
 
             self.checks_bitmask.insert(Checks::Predicates);
 
@@ -457,20 +486,21 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     fn estimate_predicates(
         &mut self,
         params: &CheckPredicateParams,
+        memory: impl Memory,
     ) -> Result<(), CheckError> {
-        Interpreter::<PredicateStorage, _>::estimate_predicates(self, params)?;
+        Interpreter::estimate_predicates(self, params, memory)?;
         Ok(())
     }
 
     async fn estimate_predicates_async<E>(
         &mut self,
         params: &CheckPredicateParams,
+        pool: &impl VmMemoryPool,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
     {
-        Interpreter::<PredicateStorage, _>::estimate_predicates_async::<E>(self, params)
-            .await?;
+        Interpreter::estimate_predicates_async::<E>(self, params, pool).await?;
 
         Ok(())
     }
@@ -481,26 +511,28 @@ impl EstimatePredicates for Transaction {
     fn estimate_predicates(
         &mut self,
         params: &CheckPredicateParams,
+        memory: impl Memory,
     ) -> Result<(), CheckError> {
         match self {
-            Self::Script(tx) => tx.estimate_predicates(params),
-            Self::Create(tx) => tx.estimate_predicates(params),
+            Self::Script(tx) => tx.estimate_predicates(params, memory),
+            Self::Create(tx) => tx.estimate_predicates(params, memory),
             Self::Mint(_) => Ok(()),
-            Self::Upgrade(tx) => tx.estimate_predicates(params),
-            Self::Upload(tx) => tx.estimate_predicates(params),
+            Self::Upgrade(tx) => tx.estimate_predicates(params, memory),
+            Self::Upload(tx) => tx.estimate_predicates(params, memory),
         }
     }
 
     async fn estimate_predicates_async<E: ParallelExecutor>(
         &mut self,
         params: &CheckPredicateParams,
+        pool: &impl VmMemoryPool,
     ) -> Result<(), CheckError> {
         match self {
-            Self::Script(tx) => tx.estimate_predicates_async::<E>(params).await,
-            Self::Create(tx) => tx.estimate_predicates_async::<E>(params).await,
+            Self::Script(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Create(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
             Self::Mint(_) => Ok(()),
-            Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params).await,
-            Self::Upload(tx) => tx.estimate_predicates_async::<E>(params).await,
+            Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Upload(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
         }
     }
 }
@@ -510,6 +542,7 @@ impl CheckPredicates for Checked<Mint> {
     fn check_predicates(
         mut self,
         _params: &CheckPredicateParams,
+        _memory: impl Memory,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -518,6 +551,7 @@ impl CheckPredicates for Checked<Mint> {
     async fn check_predicates_async<E: ParallelExecutor>(
         mut self,
         _params: &CheckPredicateParams,
+        _pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -526,23 +560,27 @@ impl CheckPredicates for Checked<Mint> {
 
 #[async_trait::async_trait]
 impl CheckPredicates for Checked<Transaction> {
-    fn check_predicates(self, params: &CheckPredicateParams) -> Result<Self, CheckError> {
+    fn check_predicates(
+        self,
+        params: &CheckPredicateParams,
+        memory: impl Memory,
+    ) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, memory)?.into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, memory)?.into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, memory)?.into()
             }
             CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, memory)?.into()
             }
             CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates(tx, params)?.into()
+                CheckPredicates::check_predicates(tx, params, memory)?.into()
             }
         };
         Ok(checked_transaction.into())
@@ -551,6 +589,7 @@ impl CheckPredicates for Checked<Transaction> {
     async fn check_predicates_async<E>(
         mut self,
         params: &CheckPredicateParams,
+        pool: &impl VmMemoryPool,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -559,27 +598,27 @@ impl CheckPredicates for Checked<Transaction> {
 
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
             CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
                     .await?
                     .into()
             }
@@ -1860,7 +1899,7 @@ mod tests {
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(&check_predicate_params)
+            .check_predicates(&check_predicate_params, MemoryInstance::new())
             .unwrap();
         assert!(checked
             .checks()

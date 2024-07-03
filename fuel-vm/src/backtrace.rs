@@ -17,7 +17,10 @@ use crate::{
 };
 use derivative::Derivative;
 
-use crate::interpreter::Memory;
+use crate::interpreter::{
+    Memory,
+    MemoryInstance,
+};
 use fuel_tx::ScriptExecutionResult;
 use fuel_types::{
     ContractId,
@@ -31,7 +34,7 @@ pub struct Backtrace {
     call_stack: Vec<CallFrame>,
     contract: ContractId,
     registers: [Word; VM_REGISTER_COUNT],
-    memory: Memory,
+    memory: MemoryInstance,
     result: ScriptExecutionResult,
     initial_balances: InitialBalances,
 }
@@ -40,10 +43,13 @@ impl Backtrace {
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<S, Tx, Ecal>(
-        vm: &Interpreter<S, Tx, Ecal>,
+    pub fn from_vm_error<M, S, Tx, Ecal>(
+        vm: &Interpreter<M, S, Tx, Ecal>,
         result: ScriptExecutionResult,
-    ) -> Self {
+    ) -> Self
+    where
+        M: Memory,
+    {
         let call_stack = vm.call_stack().to_owned();
         let contract = vm.internal_contract().unwrap_or_default();
         let memory = vm.memory().clone();
@@ -78,7 +84,7 @@ impl Backtrace {
     }
 
     /// Memory of the VM when the error occurred.
-    pub fn memory(&self) -> &Memory {
+    pub fn memory(&self) -> &MemoryInstance {
         &self.memory
     }
 
@@ -99,7 +105,7 @@ impl Backtrace {
         Vec<CallFrame>,
         ContractId,
         [Word; VM_REGISTER_COUNT],
-        Memory,
+        MemoryInstance,
         ScriptExecutionResult,
         InitialBalances,
     ) {

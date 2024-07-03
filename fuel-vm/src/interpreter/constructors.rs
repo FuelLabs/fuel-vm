@@ -1,10 +1,13 @@
 //! Exposed constructors API for the [`Interpreter`]
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
+#[cfg(any(test, feature = "test-helpers"))]
 use super::{
     ExecutableTransaction,
+    MemoryInstance,
+};
+use super::{
     Interpreter,
-    Memory,
     RuntimeBalances,
 };
 use crate::{
@@ -30,7 +33,7 @@ use crate::{
     storage::MemoryStorage,
 };
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: Default,
     Ecal: Default,
@@ -40,12 +43,16 @@ where
     /// If the provided storage implements
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
-    pub fn with_storage(storage: S, interpreter_params: InterpreterParams) -> Self {
-        Self::with_storage_and_ecal(storage, interpreter_params, Ecal::default())
+    pub fn with_storage(
+        memory: M,
+        storage: S,
+        interpreter_params: InterpreterParams,
+    ) -> Self {
+        Self::with_storage_and_ecal(memory, storage, interpreter_params, Ecal::default())
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     Tx: Default,
 {
@@ -55,16 +62,19 @@ where
     /// [`crate::storage::InterpreterStorage`], the returned interpreter
     /// will provide full functionality.
     pub fn with_storage_and_ecal(
+        memory: M,
         storage: S,
         interpreter_params: InterpreterParams,
         ecal_state: Ecal,
     ) -> Self {
         Self {
             registers: [0; VM_REGISTER_COUNT],
-            memory: Memory::new(),
+            memory,
             frames: vec![],
             receipts: Default::default(),
             tx: Default::default(),
+            input_contracts: Default::default(),
+            input_contracts_index_to_output_index: Default::default(),
             initial_balances: Default::default(),
             storage,
             debugger: Debugger::default(),
@@ -78,7 +88,7 @@ where
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
@@ -90,35 +100,24 @@ impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal> {
     }
 }
 
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
-where
-    S: Clone,
-    Tx: ExecutableTransaction,
-    Ecal: Clone,
-{
-    /// Build the interpreter
-    pub fn build(&mut self) -> Self {
-        self.clone()
-    }
-}
-
-#[cfg(feature = "test-helpers")]
-impl<S, Tx, Ecal> Default for Interpreter<S, Tx, Ecal>
+#[cfg(any(test, feature = "test-helpers"))]
+impl<S, Tx, Ecal> Default for Interpreter<MemoryInstance, S, Tx, Ecal>
 where
     S: Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
 {
     fn default() -> Self {
-        Interpreter::<S, Tx, Ecal>::with_storage(
+        Interpreter::<_, S, Tx, Ecal>::with_storage(
+            MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),
         )
     }
 }
 
-#[cfg(test)]
-impl<Tx, Ecal> Interpreter<(), Tx, Ecal>
+#[cfg(any(test, feature = "test-helpers"))]
+impl<Tx, Ecal> Interpreter<MemoryInstance, (), Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -132,7 +131,7 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
@@ -146,7 +145,7 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
@@ -155,7 +154,8 @@ where
     ///
     /// It will have full capabilities.
     pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
-        Interpreter::<MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
+        Interpreter::<_, MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
+            MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),
             ecal,

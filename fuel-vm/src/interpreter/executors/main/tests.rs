@@ -5,6 +5,7 @@ use crate::{
         CheckPredicates,
         Checked,
     },
+    interpreter::MemoryInstance,
     prelude::*,
 };
 use alloc::{
@@ -57,7 +58,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params.into())
+        .check_predicates(&params.into(), MemoryInstance::new())
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -82,7 +83,7 @@ fn estimate_gas_gives_proper_gas_used() {
         coin_amount,
         AssetId::default(),
         rng.gen(),
-        rng.gen(),
+        0,
         predicate,
         vec![],
     );
@@ -97,9 +98,10 @@ fn estimate_gas_gives_proper_gas_used() {
         .into_checked(Default::default(), params)
         .is_err());
 
-    Interpreter::<PredicateStorage, _>::estimate_predicates(
+    Interpreter::estimate_predicates(
         &mut transaction,
         &params.into(),
+        MemoryInstance::new(),
     )
     .expect("Should successfully estimate predicates");
 
@@ -121,7 +123,7 @@ fn valid_script_tx() -> Checked<Script> {
 
 #[test]
 fn transact__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Script>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Script>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;
@@ -150,12 +152,13 @@ fn valid_create_tx() -> Checked<Create> {
     TransactionBuilder::create(witness, salt, vec![])
         .max_fee_limit(arb_max_fee)
         .add_random_fee_input()
+        .add_contract_created()
         .finalize_checked_basic(Default::default())
 }
 
 #[test]
 fn deploy__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Create>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Create>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;
@@ -196,7 +199,7 @@ fn valid_upgrade_tx() -> Checked<Upgrade> {
 
 #[test]
 fn upgrade__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Upgrade>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Upgrade>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;
@@ -237,7 +240,7 @@ fn valid_upload_tx() -> Checked<Upload> {
 
 #[test]
 fn upload__tx_with_wrong_gas_price_causes_error() {
-    let mut interpreter = Interpreter::<_, Upload>::with_memory_storage();
+    let mut interpreter = Interpreter::<_, _, Upload>::with_memory_storage();
 
     // Given
     let tx_gas_price = 1;

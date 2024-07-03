@@ -1,9 +1,6 @@
 use super::*;
 use crate::{
-    interpreter::{
-        memory::Memory,
-        PanicContext,
-    },
+    interpreter::PanicContext,
     storage::MemoryStorage,
 };
 use fuel_tx::{
@@ -39,9 +36,6 @@ fn initialize_ownership_registers() -> OwnershipRegisters {
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     }
 }
 
@@ -55,7 +49,7 @@ fn test_code_root() {
     let contract_id = new_contract_id();
 
     let mut storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
     let data = alloc::vec![0xffu8; CONTRACT_LEN];
@@ -85,7 +79,10 @@ fn test_code_root() {
         storage: &storage,
         gas_cost,
         profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(
+            &input_contracts.into_iter().collect(),
+            &mut panic_context,
+        ),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -115,7 +112,7 @@ fn test_code_root_contract_not_found() {
     let contract_id = new_contract_id();
 
     let storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
     let gas_cost = GasCosts::default().croo();
@@ -138,7 +135,10 @@ fn test_code_root_contract_not_found() {
         storage: &storage,
         gas_cost,
         profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(
+            &input_contracts.into_iter().collect(),
+            &mut panic_context,
+        ),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -162,7 +162,7 @@ fn test_code_root_contract_not_in_inputs() {
     let contract_id = new_contract_id();
 
     let storage = MemoryStorage::default();
-    let mut memory: Memory = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
 
     let gas_cost = GasCosts::default().croo();
@@ -185,7 +185,10 @@ fn test_code_root_contract_not_in_inputs() {
         storage: &storage,
         gas_cost,
         profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(
+            &input_contracts.into_iter().collect(),
+            &mut panic_context,
+        ),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),

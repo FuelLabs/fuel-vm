@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [#781](https://github.com/FuelLabs/fuel-vm/pull/781): Added `base_asset_id` to checked metadata.
 
+### Changed
+
+#### Breaking
+- [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Remove unnecessary look up for old values by adding new methods to the `StorageMutate` trait.  The old `insert` and `remove` are now `replace` and `take`. The new `insert` and `remove` don't return a value.
+- [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Renamed methods of `StorageWrite` trait from `write`, `replace`, `take` to `write_bytes`, `replace_bytes`, `take_bytes`.
+
 ### Fixed
 
 #### Breaking

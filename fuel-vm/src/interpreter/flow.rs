@@ -477,9 +477,9 @@ where
         let asset_id =
             AssetId::new(self.memory.read_bytes(self.params.asset_id_pointer)?);
 
-        let code_size = contract_size(&self.storage, call.to())?;
+        let code_size = contract_size(&self.storage, call.to())? as usize;
         let code_size_padded =
-            padded_len_usize(code_size).expect("code_size cannot overflow with padding");
+            padded_len_usize(code_size).ok_or(PanicReason::MemoryOverflow)?;
 
         let total_size_in_stack = CallFrame::serialized_size()
             .checked_add(code_size_padded)
@@ -561,7 +561,8 @@ where
             code_size_padded,
             call.a(),
             call.b(),
-        );
+        )
+        .ok_or(PanicReason::MemoryOverflow)?;
         *frame.context_gas_mut() = *self.registers.system_registers.cgas;
         *frame.global_gas_mut() = *self.registers.system_registers.ggas;
 

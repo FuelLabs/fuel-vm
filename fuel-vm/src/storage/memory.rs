@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_truncation)]
+
 use crate::storage::{
     ContractsAssetKey,
     ContractsAssets,
@@ -246,8 +248,12 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageSize<ContractsRawCode> for MemoryStorage {
-    fn size_of_value(&self, key: &ContractId) -> Result<Option<usize>, Infallible> {
-        Ok(self.memory.contracts.get(key).map(|c| c.as_ref().len()))
+    fn size_of_value(&self, key: &ContractId) -> Result<Option<u32>, Infallible> {
+        Ok(self
+            .memory
+            .contracts
+            .get(key)
+            .map(|c| c.as_ref().len() as u32))
     }
 }
 
@@ -425,12 +431,12 @@ impl StorageSize<ContractsState> for MemoryStorage {
     fn size_of_value(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<usize>, Infallible> {
+    ) -> Result<Option<u32>, Infallible> {
         Ok(self
             .memory
             .contract_state
             .get(key)
-            .map(|c| c.as_ref().len()))
+            .map(|c| c.as_ref().len() as u32))
     }
 }
 

@@ -96,7 +96,7 @@ impl StorageSize<ContractsRawCode> for PredicateStorage {
     fn size_of_value(
         &self,
         _key: &ContractId,
-    ) -> Result<Option<usize>, StorageUnavailable> {
+    ) -> Result<Option<u32>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 }
@@ -147,7 +147,7 @@ impl StorageSize<ContractsState> for PredicateStorage {
     fn size_of_value(
         &self,
         _key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<usize>, StorageUnavailable> {
+    ) -> Result<Option<u32>, StorageUnavailable> {
         Err(StorageUnavailable)
     }
 }

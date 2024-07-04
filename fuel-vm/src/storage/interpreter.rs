@@ -154,7 +154,7 @@ pub trait InterpreterStorage:
     fn storage_contract_size(
         &self,
         id: &ContractId,
-    ) -> Result<Option<usize>, Self::DataError> {
+    ) -> Result<Option<u32>, Self::DataError> {
         StorageSize::<ContractsRawCode>::size_of_value(self, id)
     }
 
@@ -358,7 +358,7 @@ where
     fn storage_contract_size(
         &self,
         id: &ContractId,
-    ) -> Result<Option<usize>, Self::DataError> {
+    ) -> Result<Option<u32>, Self::DataError> {
         <S as InterpreterStorage>::storage_contract_size(self.deref(), id)
     }
 

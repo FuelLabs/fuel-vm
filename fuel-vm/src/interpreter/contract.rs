@@ -385,7 +385,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> IoResult<usize, S::Error>
+) -> IoResult<u32, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {

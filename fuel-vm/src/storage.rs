@@ -10,6 +10,7 @@ use fuel_types::{
 mod contracts_assets;
 mod contracts_state;
 mod interpreter;
+#[cfg(feature = "test-helpers")]
 mod memory;
 pub(crate) mod predicate;
 
@@ -26,6 +27,7 @@ pub use interpreter::{
     ContractsAssetsStorage,
     InterpreterStorage,
 };
+#[cfg(feature = "test-helpers")]
 pub use memory::MemoryStorage;
 pub use predicate::PredicateStorage;
 

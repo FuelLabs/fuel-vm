@@ -72,12 +72,14 @@ impl Iterator for PositionPathIter {
         // Find the next set of path and side positions by iterating from the
         // given root position to the given leaf position and evaluating each
         // position against the tree described by the leaves count.
-        for (path, mut side) in self.path_iter.by_ref().map(|(path, side)| {
+        let iter = self.path_iter.by_ref().map(|(path, side)| {
             // SAFETY: Path iteration over positions is infallible. Path
             // positions and side positions are both guaranteed to be valid in
             // this context.
             (path.unwrap(), side.unwrap())
-        }) {
+        });
+        for (path, side) in iter {
+            let mut side = Position::from_in_order_index(side);
             // To determine if the position is in the tree, we observe that the
             // highest in-order index belongs to the tree's rightmost leaf
             // position (as defined by the `leaves_count` parameter) and that

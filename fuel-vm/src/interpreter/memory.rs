@@ -977,11 +977,10 @@ impl OwnershipRegisters {
 
     /// Empty range is owned iff the range.start is owned
     pub(crate) fn has_ownership_heap(&self, range: &Range<Word>) -> bool {
-        // TODO implement fp->hp and (addr, size) validations
-        // fp->hp
-        // it means $hp from the previous context, i.e. what's saved in the
-        // "Saved registers from previous context" of the call frame at
-        // $fp`
+        if range.is_empty() && range.start == self.hp {
+            return true
+        }
+
         if range.start < self.hp {
             return false
         }

@@ -587,9 +587,8 @@ where
         }
 
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
-        let contract_offset: u32 = contract_offset
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
+        let contract_offset =
+            u32::try_from(contract_offset).map_err(|_| PanicReason::MemoryOverflow)?;
 
         let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
@@ -784,9 +783,8 @@ where
         S: InterpreterStorage,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
-        let offset: u32 = contract_offset
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
+        let offset =
+            u32::try_from(contract_offset).map_err(|_| PanicReason::MemoryOverflow)?;
 
         self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;

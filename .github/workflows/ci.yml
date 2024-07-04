@@ -224,7 +224,7 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-opt
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8.6.9
 
@@ -296,7 +296,7 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-opt
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8.6.9
 

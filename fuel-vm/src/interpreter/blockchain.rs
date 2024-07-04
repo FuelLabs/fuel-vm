@@ -57,7 +57,6 @@ use fuel_tx::{
     Receipt,
 };
 use fuel_types::{
-    bytes,
     bytes::padded_len_word,
     Address,
     AssetId,
@@ -588,19 +587,13 @@ where
         }
 
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
-        let contract_offset: usize = contract_offset
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
+        let contract_offset =
+            u32::try_from(contract_offset).map_err(|_| PanicReason::MemoryOverflow)?;
 
         let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
-        let length = bytes::padded_len_usize(
-            length_unpadded
-                .try_into()
-                .map_err(|_| PanicReason::MemoryOverflow)?,
-        )
-        .map(|len| len as Word)
-        .unwrap_or(Word::MAX);
+        let length =
+            padded_len_word(length_unpadded).ok_or(PanicReason::MemoryOverflow)?;
 
         if length > self.contract_max_size {
             return Err(PanicReason::ContractMaxSize.into())
@@ -644,7 +637,7 @@ where
             owner,
             contract_bytes,
             region_start,
-            contract_offset,
+            contract_offset as usize,
             length,
         )?;
 
@@ -654,8 +647,8 @@ where
                 (*self.fp).saturating_add(CallFrame::code_size_offset() as Word);
             let old_code_size =
                 Word::from_be_bytes(self.memory.read_bytes(code_size_ptr)?);
-            let old_code_size = padded_len_word(old_code_size)
-                .expect("Code size cannot overflow with padding");
+            let old_code_size =
+                padded_len_word(old_code_size).ok_or(PanicReason::MemoryOverflow)?;
             let new_code_size = old_code_size
                 .checked_add(length as Word)
                 .ok_or(PanicReason::MemoryOverflow)?;
@@ -790,9 +783,8 @@ where
         S: InterpreterStorage,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
-        let offset: usize = contract_offset
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
+        let offset =
+            u32::try_from(contract_offset).map_err(|_| PanicReason::MemoryOverflow)?;
 
         self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
@@ -821,7 +813,7 @@ where
             self.owner,
             contract.as_ref().as_ref(),
             dst_addr,
-            offset,
+            offset as usize,
             length,
         )?;
 
@@ -901,7 +893,7 @@ impl<'vm, S> CodeRootCtx<'vm, S> {
 
         self.input_contracts.check(&contract_id)?;
 
-        let len = contract_size(self.storage, &contract_id)? as Word;
+        let len = contract_size(self.storage, &contract_id)?;
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
@@ -913,7 +905,7 @@ impl<'vm, S> CodeRootCtx<'vm, S> {
             self.ggas,
             profiler,
             self.gas_cost,
-            len,
+            len as u64,
         )?;
         let root = self
             .storage
@@ -955,7 +947,7 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
 
         self.input_contracts.check(&contract_id)?;
 
-        let len = contract_size(self.storage, &contract_id)? as Word;
+        let len = contract_size(self.storage, &contract_id)?;
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
             is: self.is,
@@ -967,9 +959,9 @@ impl<'vm, S> CodeSizeCtx<'vm, S> {
             self.ggas,
             profiler,
             self.gas_cost,
-            len,
+            len as u64,
         )?;
-        *result = len;
+        *result = len as u64;
 
         Ok(inc_pc(self.pc)?)
     }

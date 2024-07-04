@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_truncation)]
+
 use crate::storage::{
     ContractsAssetKey,
     ContractsAssets,

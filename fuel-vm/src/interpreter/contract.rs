@@ -385,14 +385,15 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> IoResult<usize, S::Error>
+) -> IoResult<u32, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
-    Ok(storage
+    let size = storage
         .size_of_value(contract)
         .map_err(RuntimeError::Storage)?
-        .ok_or(PanicReason::ContractNotFound)?)
+        .ok_or(PanicReason::ContractNotFound)?;
+    Ok(u32::try_from(size).map_err(|_| PanicReason::MemoryOverflow)?)
 }
 
 pub(crate) fn balance<S>(

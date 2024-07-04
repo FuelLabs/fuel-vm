@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 #### Breaking
+- [#789](https://github.com/FuelLabs/fuel-vm/pull/789): Avoid conversion into `usize` type and use `u32` or `u64` instead. The change is breaking since could return other errors for 32-bit systems.
 - [#786](https://github.com/FuelLabs/fuel-vm/pull/786): Fixed the CCP opcode to charge for the length from the input arguments.
 - [#785](https://github.com/FuelLabs/fuel-vm/pull/785): Require `ContractCreated` output in the `Create` transaction. The `TransactionBuilder<Create>` has a `add_contract_created` method to simplify the creation of the `ContractCreated` output for tests.
 

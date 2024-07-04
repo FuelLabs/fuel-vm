@@ -107,7 +107,8 @@ fn reset_vm_state_frame() {
         Default::default(),
         Default::default(),
         Default::default(),
-    );
+    )
+    .unwrap();
     b.frames.push(frame);
     assert_ne!(a.frames, b.frames);
     let diff: Diff<InitialVmState> = a.diff(&b).into();

@@ -32,6 +32,7 @@ mod convert;
 pub mod crypto;
 pub mod error;
 pub mod interpreter;
+#[cfg(feature = "test-helpers")]
 pub mod memory_client;
 pub mod pool;
 pub mod predicate;
@@ -146,7 +147,6 @@ pub mod prelude {
             MemoryInstance,
             MemoryRange,
         },
-        memory_client::MemoryClient,
         pool::VmMemoryPool,
         predicate::RuntimePredicate,
         state::{
@@ -157,7 +157,6 @@ pub mod prelude {
         },
         storage::{
             InterpreterStorage,
-            MemoryStorage,
             PredicateStorage,
         },
         transactor::Transactor,
@@ -169,12 +168,14 @@ pub mod prelude {
     };
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub use crate::util::test_helpers::TestBuilder;
-
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub use crate::checked_transaction::{
-        builder::TransactionBuilderExt,
-        IntoChecked,
+    pub use crate::{
+        checked_transaction::{
+            builder::TransactionBuilderExt,
+            IntoChecked,
+        },
+        memory_client::MemoryClient,
+        storage::MemoryStorage,
+        util::test_helpers::TestBuilder,
     };
 
     #[cfg(all(

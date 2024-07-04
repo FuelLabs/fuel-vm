@@ -19,7 +19,8 @@ fn test_return() {
         0,
         0,
         0,
-    );
+    )
+    .unwrap();
     let mut frames = vec![frame];
     let mut registers = [0; VM_REGISTER_COUNT];
     registers[RegId::CGAS] = 99;

@@ -146,7 +146,12 @@ impl MemoryInstance {
     /// Grows the stack to be at least `new_sp` bytes.
     pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
         #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
-        let new_sp = new_sp.min(MEM_SIZE as Word) as usize;
+        if new_sp > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow);
+        }
+        #[allow(clippy::cast_possible_truncation)] // Safety: VM_MAX_RAM is usize
+        let new_sp = new_sp as usize;
+
         if new_sp > self.stack.len() {
             if new_sp > self.hp {
                 return Err(PanicReason::MemoryGrowthOverlap)
@@ -972,11 +977,10 @@ impl OwnershipRegisters {
 
     /// Empty range is owned iff the range.start is owned
     pub(crate) fn has_ownership_heap(&self, range: &Range<Word>) -> bool {
-        // TODO implement fp->hp and (addr, size) validations
-        // fp->hp
-        // it means $hp from the previous context, i.e. what's saved in the
-        // "Saved registers from previous context" of the call frame at
-        // $fp`
+        if range.is_empty() && range.start == self.hp {
+            return true
+        }
+
         if range.start < self.hp {
             return false
         }

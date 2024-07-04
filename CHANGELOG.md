@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 - [#784](https://github.com/FuelLabs/fuel-vm/pull/784): Avoid storage lookups for side nodes in the SMT.
+- [#787](https://github.com/FuelLabs/fuel-vm/pull/787): Fixed charge functions to profile cost before charging.
 
 #### Breaking
 - [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Remove unnecessary look up for old values by adding new methods to the `StorageMutate` trait.  The old `insert` and `remove` are now `replace` and `take`. The new `insert` and `remove` don't return a value.
 - [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Renamed methods of `StorageWrite` trait from `write`, `replace`, `take` to `write_bytes`, `replace_bytes`, `take_bytes`.
+- [#788](https://github.com/FuelLabs/fuel-vm/pull/788): Fix truncating `sp` to `MEM_SIZE` in `grow_stack`, and allow empty writes to zero-length ranges at `$hp`.
 
 ### Fixed
 

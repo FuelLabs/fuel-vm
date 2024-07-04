@@ -248,12 +248,8 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageSize<ContractsRawCode> for MemoryStorage {
-    fn size_of_value(&self, key: &ContractId) -> Result<Option<u32>, Infallible> {
-        Ok(self
-            .memory
-            .contracts
-            .get(key)
-            .map(|c| c.as_ref().len() as u32))
+    fn size_of_value(&self, key: &ContractId) -> Result<Option<usize>, Infallible> {
+        Ok(self.memory.contracts.get(key).map(|c| c.as_ref().len()))
     }
 }
 
@@ -431,12 +427,12 @@ impl StorageSize<ContractsState> for MemoryStorage {
     fn size_of_value(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<u32>, Infallible> {
+    ) -> Result<Option<usize>, Infallible> {
         Ok(self
             .memory
             .contract_state
             .get(key)
-            .map(|c| c.as_ref().len() as u32))
+            .map(|c| c.as_ref().len()))
     }
 }
 

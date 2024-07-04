@@ -81,7 +81,7 @@ impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'
     fn size_of_value(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<u32>, Self::Error> {
+    ) -> Result<Option<usize>, Self::Error> {
         <T as StorageSize<Type>>::size_of_value(self, key)
     }
 }
@@ -90,7 +90,7 @@ impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'
     fn size_of_value(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<u32>, Self::Error> {
+    ) -> Result<Option<usize>, Self::Error> {
         <T as StorageSize<Type>>::size_of_value(self, key)
     }
 }

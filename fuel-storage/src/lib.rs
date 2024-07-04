@@ -110,7 +110,7 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
 /// copying the value into a buffer.
 pub trait StorageSize<Type: Mappable>: StorageInspect<Type> {
     /// Return the number of bytes stored at this key.
-    fn size_of_value(&self, key: &Type::Key) -> Result<Option<u32>, Self::Error>;
+    fn size_of_value(&self, key: &Type::Key) -> Result<Option<usize>, Self::Error>;
 }
 
 /// Base storage trait for Fuel infrastructure.

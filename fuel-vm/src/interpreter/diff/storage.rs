@@ -333,7 +333,7 @@ where
     fn size_of_value(
         &self,
         key: &<Type as Mappable>::Key,
-    ) -> Result<Option<u32>, Self::Error> {
+    ) -> Result<Option<usize>, Self::Error> {
         <S as StorageSize<Type>>::size_of_value(&self.0, key)
     }
 }

@@ -3,7 +3,7 @@
 # The script runs almost all CI checks locally.
 #
 # Requires installed:
-# - Rust `1.72.0`
+# - Rust `1.75.0`
 # - Nightly rust formatter
 # - `rustup target add thumbv6m-none-eabi`
 # - `rustup target add wasm32-unknown-unknown`

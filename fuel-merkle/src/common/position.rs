@@ -1,5 +1,6 @@
 use crate::common::{
     node::{
+        ChildKeyResult,
         Node,
         ParentNode,
     },
@@ -313,7 +314,12 @@ pub enum GetNodeError {
 }
 
 impl ParentNode for Position {
+    type ChildKey = u64;
     type Error = Infallible;
+
+    fn key(&self) -> Self::ChildKey {
+        self.in_order_index()
+    }
 
     fn left_child(&self) -> ChildResult<Self> {
         match self.child(Side::Left) {
@@ -323,12 +329,20 @@ impl ParentNode for Position {
         }
     }
 
+    fn left_child_key(&self) -> ChildKeyResult<Self> {
+        ParentNode::left_child(self).map(|child| child.in_order_index())
+    }
+
     fn right_child(&self) -> ChildResult<Self> {
         match self.child(Side::Right) {
             Ok(child) => Ok(child),
             Err(GetNodeError::IsLeaf) => Err(ChildError::NodeIsLeaf),
             Err(GetNodeError::CannotExist) => Err(ChildError::ChildCannotExist),
         }
+    }
+
+    fn right_child_key(&self) -> ChildKeyResult<Self> {
+        ParentNode::right_child(self).map(|child| child.in_order_index())
     }
 }
 

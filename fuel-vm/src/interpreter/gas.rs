@@ -1,10 +1,7 @@
 use super::Interpreter;
 use crate::{
     constraints::reg_key::*,
-    error::{
-        PanicOrBug,
-        SimpleResult,
-    },
+    error::SimpleResult,
     prelude::{
         Bug,
         BugVariant,
@@ -99,20 +96,9 @@ pub(crate) fn dependent_gas_charge_without_base(
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
-    let cost =
-        dependent_gas_charge_without_base_inner(cgas.as_mut(), ggas, gas_cost, arg)?;
-    profiler.profile(cgas.as_ref(), cost);
-    Ok(())
-}
-
-fn dependent_gas_charge_without_base_inner(
-    cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    gas_cost: DependentCost,
-    arg: Word,
-) -> Result<Word, PanicOrBug> {
     let cost = gas_cost.resolve_without_base(arg);
-    gas_charge_inner(cgas, ggas, cost).map(|_| cost)
+    profiler.profile(cgas.as_ref(), cost);
+    gas_charge_inner(cgas.as_mut(), ggas, cost)
 }
 
 pub(crate) fn dependent_gas_charge(
@@ -122,19 +108,9 @@ pub(crate) fn dependent_gas_charge(
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
-    let cost = dependent_gas_charge_inner(cgas.as_mut(), ggas, gas_cost, arg)?;
-    profiler.profile(cgas.as_ref(), cost);
-    Ok(())
-}
-
-fn dependent_gas_charge_inner(
-    cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    gas_cost: DependentCost,
-    arg: Word,
-) -> Result<Word, PanicOrBug> {
     let cost = gas_cost.resolve(arg);
-    gas_charge_inner(cgas, ggas, cost).map(|_| cost)
+    profiler.profile(cgas.as_ref(), cost);
+    gas_charge_inner(cgas.as_mut(), ggas, cost)
 }
 
 pub(crate) fn gas_charge(

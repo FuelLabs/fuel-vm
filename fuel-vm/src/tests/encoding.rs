@@ -95,6 +95,7 @@ fn call_frame() {
                     rng.gen(),
                     rng.gen(),
                 )
+                .unwrap()
             })
             .collect::<Vec<CallFrame>>()
             .as_slice(),

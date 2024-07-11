@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_truncation)]
+
 use crate::storage::{
     ContractsAssetKey,
     ContractsAssets,
@@ -211,7 +213,7 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsRawCode> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &ContractId,
         value: &[u8],
@@ -219,19 +221,19 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
         Ok(self.memory.contracts.insert(*key, value.into()))
     }
 
-    fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
+    fn take(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
         Ok(self.memory.contracts.remove(key))
     }
 }
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
-    fn write(&mut self, key: &ContractId, buf: &[u8]) -> Result<usize, Infallible> {
+    fn write_bytes(&mut self, key: &ContractId, buf: &[u8]) -> Result<usize, Infallible> {
         let size = buf.len();
         self.memory.contracts.insert(*key, Contract::from(buf));
         Ok(size)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         key: &ContractId,
         buf: &[u8],
@@ -245,7 +247,7 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
         Ok((size, prev))
     }
 
-    fn take(&mut self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
+    fn take_bytes(&mut self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
         let prev = self.memory.contracts.remove(key).map(Into::into);
         Ok(prev)
     }
@@ -298,7 +300,7 @@ impl StorageInspect<UploadedBytecodes> for MemoryStorage {
 }
 
 impl StorageMutate<UploadedBytecodes> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &<UploadedBytecodes as Mappable>::Key,
         value: &<UploadedBytecodes as Mappable>::Value,
@@ -309,7 +311,7 @@ impl StorageMutate<UploadedBytecodes> for MemoryStorage {
             .insert(*key, value.clone()))
     }
 
-    fn remove(
+    fn take(
         &mut self,
         key: &<UploadedBytecodes as Mappable>::Key,
     ) -> Result<Option<UploadedBytecode>, Infallible> {
@@ -336,7 +338,7 @@ impl StorageInspect<ContractsAssets> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsAssets> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &<ContractsAssets as Mappable>::Key,
         value: &Word,
@@ -344,7 +346,7 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
         Ok(self.memory.balances.insert(*key, *value))
     }
 
-    fn remove(
+    fn take(
         &mut self,
         key: &<ContractsAssets as Mappable>::Key,
     ) -> Result<Option<Word>, Infallible> {
@@ -372,7 +374,7 @@ impl StorageInspect<ContractsState> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsState> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         value: &<ContractsState as Mappable>::Value,
@@ -380,7 +382,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         Ok(self.memory.contract_state.insert(*key, value.into()))
     }
 
-    fn remove(
+    fn take(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
     ) -> Result<Option<ContractsStateData>, Infallible> {
@@ -389,7 +391,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
 }
 
 impl StorageWrite<ContractsState> for MemoryStorage {
-    fn write(
+    fn write_bytes(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
@@ -401,7 +403,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         Ok(size)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
@@ -418,7 +420,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         Ok((size, prev))
     }
 
-    fn take(
+    fn take_bytes(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -514,7 +516,7 @@ impl StorageInspect<BlobData> for MemoryStorage {
 }
 
 impl StorageMutate<BlobData> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &<BlobData as Mappable>::Key,
         value: &<BlobData as Mappable>::Value,
@@ -522,7 +524,7 @@ impl StorageMutate<BlobData> for MemoryStorage {
         Ok(self.memory.blobs.insert(*key, value.into()))
     }
 
-    fn remove(
+    fn take(
         &mut self,
         key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<BlobBytes>, Infallible> {
@@ -531,7 +533,7 @@ impl StorageMutate<BlobData> for MemoryStorage {
 }
 
 impl StorageWrite<BlobData> for MemoryStorage {
-    fn write(
+    fn write_bytes(
         &mut self,
         key: &<BlobData as Mappable>::Key,
         buf: &[u8],
@@ -541,7 +543,7 @@ impl StorageWrite<BlobData> for MemoryStorage {
         Ok(size)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         key: &<BlobData as Mappable>::Key,
         buf: &[u8],
@@ -558,7 +560,7 @@ impl StorageWrite<BlobData> for MemoryStorage {
         Ok((size, prev))
     }
 
-    fn take(
+    fn take_bytes(
         &mut self,
         key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -687,7 +689,7 @@ impl InterpreterStorage for MemoryStorage {
             if !storage.contains_key(&key)? {
                 unset_count += 1;
             }
-            storage.write(&key, value)?;
+            storage.write_bytes(&key, value)?;
             Ok::<_, Self::DataError>(())
         })?;
         Ok(unset_count)

@@ -79,7 +79,7 @@ impl<Type: Mappable> StorageInspect<Type> for PredicateStorage {
 }
 
 impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
-    fn insert(
+    fn replace(
         &mut self,
         _key: &Type::Key,
         _value: &Type::Value,
@@ -87,7 +87,7 @@ impl<Type: Mappable> StorageMutate<Type> for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn remove(
+    fn take(
         &mut self,
         _key: &Type::Key,
     ) -> Result<Option<Type::OwnedValue>, StorageUnavailable> {
@@ -122,7 +122,7 @@ impl StorageRead<ContractsRawCode> for PredicateStorage {
 }
 
 impl StorageWrite<ContractsRawCode> for PredicateStorage {
-    fn write(
+    fn write_bytes(
         &mut self,
         _key: &<ContractsRawCode as Mappable>::Key,
         _buf: &[u8],
@@ -130,7 +130,7 @@ impl StorageWrite<ContractsRawCode> for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         _key: &<ContractsRawCode as Mappable>::Key,
         _buf: &[u8],
@@ -138,7 +138,7 @@ impl StorageWrite<ContractsRawCode> for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn take(
+    fn take_bytes(
         &mut self,
         _key: &<ContractsRawCode as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -173,7 +173,7 @@ impl StorageRead<ContractsState> for PredicateStorage {
 }
 
 impl StorageWrite<ContractsState> for PredicateStorage {
-    fn write(
+    fn write_bytes(
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
         _buf: &[u8],
@@ -181,7 +181,7 @@ impl StorageWrite<ContractsState> for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
         _buf: &[u8],
@@ -189,7 +189,7 @@ impl StorageWrite<ContractsState> for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn take(
+    fn take_bytes(
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -224,7 +224,7 @@ impl StorageRead<BlobData> for PredicateStorage {
 }
 
 impl StorageWrite<BlobData> for PredicateStorage {
-    fn write(
+    fn write_bytes(
         &mut self,
         _key: &<BlobData as Mappable>::Key,
         _buf: &[u8],
@@ -232,7 +232,7 @@ impl StorageWrite<BlobData> for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         _key: &<BlobData as Mappable>::Key,
         _buf: &[u8],
@@ -240,7 +240,7 @@ impl StorageWrite<BlobData> for PredicateStorage {
         Err(StorageUnavailable)
     }
 
-    fn take(
+    fn take_bytes(
         &mut self,
         _key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {

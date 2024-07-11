@@ -164,6 +164,14 @@ fn stack_alloc_ownership() {
     OwnershipRegisters::test(0..20, 40..50),
     20..41 => false; "start exclusive and end inclusive"
 )]
+#[test_case(
+    OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM),
+    MEM_SIZE..MEM_SIZE => true; "empty range at $hp (VM_MAX_RAM) should be allowed"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..0, 100..VM_MAX_RAM),
+    100..100 => true; "empty range at $hp (not VM_MAX_RAM) should be allowed"
+)]
 fn test_ownership(reg: OwnershipRegisters, range: Range<usize>) -> bool {
     reg.verify_ownership(&MemoryRange::new(range.start, range.len()))
         .is_ok()

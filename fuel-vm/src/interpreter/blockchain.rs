@@ -65,7 +65,10 @@ use fuel_tx::{
     Receipt,
 };
 use fuel_types::{
-    bytes::{self, padded_len_word},
+    bytes::{
+        self,
+        padded_len_word,
+    },
     Address,
     AssetId,
     BlockHeight,

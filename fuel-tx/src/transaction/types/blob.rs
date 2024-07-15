@@ -54,7 +54,7 @@ pub struct BlobBody {
     /// Hash of the bytecode. Used both as a unique identifier and to verify the
     /// bytecode.
     pub id: BlobId,
-    /// The witness index of the subsection of the bytecode.
+    /// The witness index of the payload.
     pub witness_index: u16,
 }
 

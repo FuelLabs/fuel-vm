@@ -72,7 +72,7 @@ impl<'a, R: RegistryDb> CompactionContext<'a, R> {
     /// If necessary, store the value in the changeset and allocate a new key.
     pub fn to_key<T: Table>(&mut self, value: T::Type) -> anyhow::Result<Key<T>>
     where
-        KeyPerTable: access::AccessCopy<T, Key<T>> + access::AccessMut<T, Key<T>>
+        KeyPerTable: access::AccessCopy<T, Key<T>> + access::AccessMut<T, Key<T>>,
         ChangesPerTable:
             access::AccessRef<T, WriteTo<T>> + access::AccessMut<T, WriteTo<T>>,
     {
@@ -262,16 +262,14 @@ impl<T> Compactable for PhantomData<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        registry::{
-            in_memory::InMemoryRegistry,
-            tables,
-            CountPerTable,
-        },
+    use fuel_compression::{
+        tables,
+        Compactable,
+        CompactionContext,
+        CountPerTable,
         Key,
         RegistryDb,
     };
-    use fuel_compression::Compactable as _; // Hack for derive
     use fuel_derive::Compact;
     use fuel_types::{
         Address,
@@ -280,11 +278,6 @@ mod tests {
     use serde::{
         Deserialize,
         Serialize,
-    };
-
-    use super::{
-        Compactable,
-        CompactionContext,
     };
 
     #[derive(Debug, Clone, PartialEq)]
@@ -304,26 +297,26 @@ mod tests {
     impl Compactable for ManualExample {
         type Compact = ManualExampleCompact;
 
-        fn count(&self) -> crate::registry::CountPerTable {
-            CountPerTable {
-                Address: 2,
-                ..Default::default()
-            }
+        fn count(&self) -> CountPerTable {
+            CountPerTable::Address(2)
         }
 
         fn compact<R: RegistryDb>(
             &self,
             ctx: &mut CompactionContext<R>,
-        ) -> Self::Compact {
-            let a = ctx.to_key::<tables::Address>(*self.a);
-            let b = ctx.to_key::<tables::Address>(*self.b);
-            ManualExampleCompact { a, b, c: self.c }
+        ) -> anyhow::Result<Self::Compact> {
+            let a = ctx.to_key::<tables::Address>(*self.a)?;
+            let b = ctx.to_key::<tables::Address>(*self.b)?;
+            Ok(ManualExampleCompact { a, b, c: self.c })
         }
 
-        fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> Self {
-            let a = Address::from(reg.read::<tables::Address>(compact.a));
-            let b = Address::from(reg.read::<tables::Address>(compact.b));
-            Self { a, b, c: compact.c }
+        fn decompact<R: RegistryDb>(
+            compact: Self::Compact,
+            reg: &R,
+        ) -> anyhow::Result<Self> {
+            let a = Address::from(reg.read::<tables::Address>(compact.a)?);
+            let b = Address::from(reg.read::<tables::Address>(compact.b)?);
+            Ok(Self { a, b, c: compact.c })
         }
     }
 
@@ -362,9 +355,10 @@ mod tests {
             b: Address::from([2u8; 32]),
             c: 3,
         };
-        let mut registry = InMemoryRegistry::default();
-        let (compacted, _) = CompactionContext::run(&mut registry, target.clone());
-        let decompacted = ManualExample::decompact(compacted, &registry);
+        let mut registry = fuel_compression::InMemoryRegistry::default();
+        let (compacted, _) =
+            CompactionContext::run(&mut registry, target.clone()).unwrap();
+        let decompacted = ManualExample::decompact(compacted, &registry).unwrap();
         assert_eq!(target, decompacted);
 
         let target = AutomaticExample {
@@ -374,8 +368,9 @@ mod tests {
         };
         let mut registry = fuel_compression::InMemoryRegistry::default();
         let (compacted, _) =
-            fuel_compression::CompactionContext::run(&mut registry, target.clone());
-        let decompacted = AutomaticExample::decompact(compacted, &registry);
+            fuel_compression::CompactionContext::run(&mut registry, target.clone())
+                .unwrap();
+        let decompacted = AutomaticExample::decompact(compacted, &registry).unwrap();
         assert_eq!(target, decompacted);
     }
 }

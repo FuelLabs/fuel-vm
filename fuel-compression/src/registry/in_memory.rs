@@ -100,7 +100,8 @@ mod tests {
 
         // Empty
         assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(100).unwrap()),
+            reg.read(Key::<tables::AssetId>::try_from(100).unwrap())
+                .unwrap(),
             [0; 32]
         );
 
@@ -108,17 +109,19 @@ mod tests {
         reg.batch_write(
             Key::<tables::AssetId>::from_raw(RawKey::try_from(100u32).unwrap()),
             vec![[1; 32], [2; 32]],
-        );
+        )
+        .unwrap();
 
         // Read
         assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(100).unwrap()),
+            reg.read(Key::<tables::AssetId>::try_from(100).unwrap())
+                .unwrap(),
             [1; 32]
         );
 
         // Index
         assert_eq!(
-            reg.index_lookup(&[1; 32]),
+            reg.index_lookup(&[1; 32]).unwrap(),
             Some(Key::<tables::AssetId>::try_from(100).unwrap())
         );
     }

@@ -8,17 +8,24 @@ use crate::{
             ParentNode as ParentNodeTrait,
         },
         path::{
-            ComparablePath,
-            Instruction,
             Path,
+            Side,
         },
+        sum,
         Bytes32,
         Prefix,
     },
     sparse::{
-        hash::sum,
+        hash::{
+            calculate_hash,
+            calculate_leaf_hash,
+            calculate_node_hash,
+        },
+        primitive::{
+            Primitive,
+            PrimitiveView,
+        },
         zero_sum,
-        Primitive,
     },
     storage::{
         Mappable,
@@ -26,14 +33,14 @@ use crate::{
     },
 };
 
+use crate::common::node::ChildKeyResult;
 use core::{
-    cmp,
     fmt,
     marker::PhantomData,
 };
 
 #[derive(Clone, PartialEq, Eq)]
-pub(crate) enum Node {
+pub(super) enum Node {
     Node {
         hash: Bytes32,
         height: u32,
@@ -45,21 +52,8 @@ pub(crate) enum Node {
 }
 
 impl Node {
-    fn calculate_hash(
-        prefix: &Prefix,
-        bytes_lo: &Bytes32,
-        bytes_hi: &Bytes32,
-    ) -> Bytes32 {
-        use digest::Digest;
-        let mut hash = sha2::Sha256::new();
-        hash.update(prefix);
-        hash.update(bytes_lo);
-        hash.update(bytes_hi);
-        hash.finalize().into()
-    }
-
     pub fn max_height() -> u32 {
-        Node::key_size_in_bits()
+        Node::key_size_bits()
     }
 
     pub fn new(
@@ -69,7 +63,7 @@ impl Node {
         bytes_hi: Bytes32,
     ) -> Self {
         Self::Node {
-            hash: Self::calculate_hash(&prefix, &bytes_lo, &bytes_hi),
+            hash: calculate_hash(&prefix, &bytes_lo, &bytes_hi),
             height,
             prefix,
             bytes_lo,
@@ -80,7 +74,7 @@ impl Node {
     pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes32, data: D) -> Self {
         let bytes_hi = sum(data);
         Self::Node {
-            hash: Self::calculate_hash(&Prefix::Leaf, key, &bytes_hi),
+            hash: calculate_leaf_hash(key, &bytes_hi),
             height: 0u32,
             prefix: Prefix::Leaf,
             bytes_lo: *key,
@@ -92,7 +86,21 @@ impl Node {
         let bytes_lo = *left_child.hash();
         let bytes_hi = *right_child.hash();
         Self::Node {
-            hash: Self::calculate_hash(&Prefix::Node, &bytes_lo, &bytes_hi),
+            hash: calculate_node_hash(&bytes_lo, &bytes_hi),
+            height,
+            prefix: Prefix::Node,
+            bytes_lo,
+            bytes_hi,
+        }
+    }
+
+    pub fn create_node_from_hashes(
+        bytes_lo: Bytes32,
+        bytes_hi: Bytes32,
+        height: u32,
+    ) -> Self {
+        Self::Node {
+            hash: calculate_node_hash(&bytes_lo, &bytes_hi),
             height,
             prefix: Prefix::Node,
             bytes_lo,
@@ -110,31 +118,26 @@ impl Node {
             // of the two leaves diverge. The joined node may be a direct parent
             // of the leaves or an ancestor multiple generations above the
             // leaves.
-            // N.B.: A leaf can be a placeholder.
-            let parent_depth = path_node.common_path_length(side_node);
+            #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+            let parent_depth = path_node.common_path_length(side_node) as u32;
+            #[allow(clippy::arithmetic_side_effects)] // parent_depth <= max_height
             let parent_height = Node::max_height() - parent_depth;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         } else {
             // When joining two nodes, or a node and a leaf, the joined node is
             // the direct parent of the node with the greater height and an
             // ancestor of the node with the lesser height.
             // N.B.: A leaf can be a placeholder.
-            let parent_height = cmp::max(path_node.height(), side_node.height()) + 1;
+            #[allow(clippy::arithmetic_side_effects)] // Neither node cannot be root
+            let parent_height = path_node.height().max(side_node.height()) + 1;
+            #[allow(clippy::arithmetic_side_effects)] // parent_height <= max_height
             let parent_depth = Node::max_height() - parent_height;
             match path.get_instruction(parent_depth).unwrap() {
-                Instruction::Left => {
-                    Node::create_node(path_node, side_node, parent_height)
-                }
-                Instruction::Right => {
-                    Node::create_node(side_node, path_node, parent_height)
-                }
+                Side::Left => Node::create_node(path_node, side_node, parent_height),
+                Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
         }
     }
@@ -143,7 +146,7 @@ impl Node {
         Self::Placeholder
     }
 
-    pub fn common_path_length(&self, other: &Node) -> u32 {
+    pub fn common_path_length(&self, other: &Node) -> u64 {
         debug_assert!(self.is_leaf());
         debug_assert!(other.is_leaf());
 
@@ -165,7 +168,26 @@ impl Node {
         }
     }
 
-    pub fn prefix(&self) -> Prefix {
+    pub fn is_leaf(&self) -> bool {
+        self.prefix() == Prefix::Leaf || self.is_placeholder()
+    }
+
+    pub fn is_node(&self) -> bool {
+        self.prefix() == Prefix::Node
+    }
+
+    pub fn is_placeholder(&self) -> bool {
+        &Self::Placeholder == self
+    }
+
+    pub fn hash(&self) -> &Bytes32 {
+        match self {
+            Node::Node { hash, .. } => hash,
+            Node::Placeholder => zero_sum(),
+        }
+    }
+
+    fn prefix(&self) -> Prefix {
         match self {
             Node::Node { prefix, .. } => *prefix,
             Node::Placeholder => Prefix::Leaf,
@@ -186,43 +208,68 @@ impl Node {
         }
     }
 
-    pub fn is_leaf(&self) -> bool {
-        self.prefix() == Prefix::Leaf || self.is_placeholder()
-    }
-
-    pub fn is_node(&self) -> bool {
-        self.prefix() == Prefix::Node
-    }
-
-    pub fn leaf_key(&self) -> &Bytes32 {
-        assert!(self.is_leaf());
+    /// Get the leaf key of a leaf node.
+    ///
+    /// The leaf key is the lower 32 bytes stored in a leaf node.
+    /// This method expects the node to be a leaf node, and this precondition
+    /// must be guaranteed at the call site for correctness. This method should
+    /// only be used within contexts where this precondition can be guaranteed,
+    /// such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not a leaf node to
+    /// indicate to the developer that there is a potential problem in the
+    /// tree's implementation.  
+    pub(super) fn leaf_key(&self) -> &Bytes32 {
+        debug_assert!(self.is_leaf());
         self.bytes_lo()
     }
 
-    pub fn leaf_data(&self) -> &Bytes32 {
-        assert!(self.is_leaf());
+    /// Get the leaf data of a leaf node.
+    ///
+    /// The leaf key is the upper 32 bytes stored in a leaf node.
+    /// This method expects the node to be a leaf node, and this precondition
+    /// must be guaranteed at the call site for correctness. This method should
+    /// only be used within contexts where this precondition can be guaranteed,
+    /// such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not a leaf node to
+    /// indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn leaf_data(&self) -> &Bytes32 {
+        debug_assert!(self.is_leaf());
         self.bytes_hi()
     }
 
-    pub fn left_child_key(&self) -> &Bytes32 {
-        assert!(self.is_node());
+    /// Get the left child key of an internal node.
+    ///
+    /// The left child key is the lower 32 bytes stored in an internal node.
+    /// This method expects the node to be an internal node, and this
+    /// precondition must be guaranteed at the call site for correctness. This
+    /// method should only be used within contexts where this precondition can
+    /// be guaranteed, such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not an internal node
+    /// to indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn left_child_key(&self) -> &Bytes32 {
+        debug_assert!(self.is_node());
         self.bytes_lo()
     }
 
-    pub fn right_child_key(&self) -> &Bytes32 {
-        assert!(self.is_node());
+    /// Get the right child key of an internal node.
+    ///
+    /// The right child key is the upper 32 bytes stored in an internal node.
+    /// This method expects the node to be an internal node, and this
+    /// precondition must be guaranteed at the call site for correctness. This
+    /// method should only be used within contexts where this precondition can
+    /// be guaranteed, such as the [MerkleTree](super::MerkleTree).
+    ///
+    /// In `debug`, this method will panic if the node is not an internal node
+    /// to indicate to the developer that there is a potential problem in the
+    /// tree's implementation.
+    pub(super) fn right_child_key(&self) -> &Bytes32 {
+        debug_assert!(self.is_node());
         self.bytes_hi()
-    }
-
-    pub fn is_placeholder(&self) -> bool {
-        &Self::Placeholder == self
-    }
-
-    pub fn hash(&self) -> &Bytes32 {
-        match self {
-            Node::Node { hash, .. } => hash,
-            Node::Placeholder => zero_sum(),
-        }
     }
 }
 
@@ -239,6 +286,11 @@ impl NodeTrait for Node {
         Node::height(self)
     }
 
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
+    }
+
     fn leaf_key(&self) -> Self::Key {
         *Node::leaf_key(self)
     }
@@ -249,6 +301,30 @@ impl NodeTrait for Node {
 
     fn is_node(&self) -> bool {
         Node::is_node(self)
+    }
+}
+
+impl From<&Node> for Primitive {
+    fn from(node: &Node) -> Self {
+        (
+            node.height(),
+            node.prefix() as u8,
+            *node.bytes_lo(),
+            *node.bytes_hi(),
+        )
+    }
+}
+
+impl TryFrom<Primitive> for Node {
+    type Error = DeserializeError;
+
+    fn try_from(primitive: Primitive) -> Result<Self, Self::Error> {
+        let height = primitive.height();
+        let prefix = primitive.prefix()?;
+        let bytes_lo = *primitive.bytes_lo();
+        let bytes_hi = *primitive.bytes_hi();
+        let node = Self::new(height, prefix, bytes_lo, bytes_hi);
+        Ok(node)
     }
 }
 
@@ -272,7 +348,7 @@ impl fmt::Debug for Node {
     }
 }
 
-pub(crate) struct StorageNode<'storage, TableType, StorageType> {
+pub(super) struct StorageNode<'storage, TableType, StorageType> {
     storage: &'storage StorageType,
     node: Node,
     phantom_table: PhantomData<TableType>,
@@ -315,6 +391,11 @@ impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageTyp
         self.node.height()
     }
 
+    #[allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)] // const
+    fn key_size_bits() -> u32 {
+        core::mem::size_of::<Self::Key>() as u32 * 8
+    }
+
     fn leaf_key(&self) -> Self::Key {
         *self.node.leaf_key()
     }
@@ -341,7 +422,12 @@ where
     StorageType: StorageInspect<TableType>,
     TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
 {
+    type ChildKey = Bytes32;
     type Error = StorageNodeError<StorageType::Error>;
+
+    fn key(&self) -> Self::ChildKey {
+        *self.hash()
+    }
 
     fn left_child(&self) -> ChildResult<Self> {
         if self.is_leaf() {
@@ -363,6 +449,13 @@ where
             .map_err(StorageNodeError::DeserializeError)?)
     }
 
+    fn left_child_key(&self) -> ChildKeyResult<Self> {
+        if self.is_leaf() {
+            return Err(ChildError::NodeIsLeaf)
+        }
+        Ok(*self.node.left_child_key())
+    }
+
     fn right_child(&self) -> ChildResult<Self> {
         if self.is_leaf() {
             return Err(ChildError::NodeIsLeaf)
@@ -381,6 +474,13 @@ where
             .try_into()
             .map(|node| Self::new(self.storage, node))
             .map_err(StorageNodeError::DeserializeError)?)
+    }
+
+    fn right_child_key(&self) -> ChildKeyResult<Self> {
+        if self.is_leaf() {
+            return Err(ChildError::NodeIsLeaf)
+        }
+        Ok(*self.node.right_child_key())
     }
 }
 
@@ -410,17 +510,17 @@ where
 
 #[cfg(test)]
 mod test_node {
+    use super::Node;
     use crate::{
         common::{
             error::DeserializeError,
+            sum,
             Bytes32,
             Prefix,
             PrefixError,
         },
         sparse::{
-            hash::sum,
             zero_sum,
-            Node,
             Primitive,
         },
     };
@@ -580,6 +680,11 @@ mod test_node {
 
 #[cfg(test)]
 mod test_storage_node {
+    use super::{
+        Node,
+        StorageNode,
+        StorageNodeError,
+    };
     use crate::{
         common::{
             error::DeserializeError,
@@ -587,17 +692,12 @@ mod test_storage_node {
                 ChildError,
                 ParentNode,
             },
+            sum,
             Bytes32,
             PrefixError,
             StorageMap,
         },
-        sparse::{
-            hash::sum,
-            node::StorageNodeError,
-            Node,
-            Primitive,
-            StorageNode,
-        },
+        sparse::Primitive,
         storage::{
             Mappable,
             StorageMutate,

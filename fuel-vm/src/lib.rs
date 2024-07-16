@@ -5,14 +5,22 @@
 #![deny(unsafe_code)]
 #![deny(unused_must_use)]
 #![deny(unused_crate_dependencies)]
-#![deny(clippy::cast_possible_truncation)]
-#![deny(clippy::string_slice)]
+#![deny(
+    clippy::arithmetic_side_effects,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::string_slice
+)]
 
 #[doc(hidden)] // Needed by some of the exported macros
 pub extern crate alloc;
 
+extern crate core;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
+#[cfg(test)]
+use criterion as _;
 
 pub mod backtrace;
 pub mod call;
@@ -24,7 +32,9 @@ mod convert;
 pub mod crypto;
 pub mod error;
 pub mod interpreter;
+#[cfg(feature = "test-helpers")]
 pub mod memory_client;
+pub mod pool;
 pub mod predicate;
 pub mod state;
 pub mod storage;
@@ -81,6 +91,7 @@ pub mod prelude {
         Instruction,
         Opcode,
         PanicReason,
+        RegId,
     };
     #[doc(no_inline)]
     pub use fuel_crypto::{
@@ -135,9 +146,11 @@ pub mod prelude {
         interpreter::{
             ExecutableTransaction,
             Interpreter,
+            Memory,
+            MemoryInstance,
             MemoryRange,
         },
-        memory_client::MemoryClient,
+        pool::VmMemoryPool,
         predicate::RuntimePredicate,
         state::{
             Debugger,
@@ -147,7 +160,6 @@ pub mod prelude {
         },
         storage::{
             InterpreterStorage,
-            MemoryStorage,
             PredicateStorage,
         },
         transactor::Transactor,
@@ -159,12 +171,14 @@ pub mod prelude {
     };
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub use crate::util::test_helpers::TestBuilder;
-
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub use crate::checked_transaction::{
-        builder::TransactionBuilderExt,
-        IntoChecked,
+    pub use crate::{
+        checked_transaction::{
+            builder::TransactionBuilderExt,
+            IntoChecked,
+        },
+        memory_client::MemoryClient,
+        storage::MemoryStorage,
+        util::test_helpers::TestBuilder,
     };
 
     #[cfg(all(

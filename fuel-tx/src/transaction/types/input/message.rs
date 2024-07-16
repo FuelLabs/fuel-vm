@@ -67,7 +67,7 @@ pub trait MessageSpecification: private::Seal {
     type Predicate: AsField<Vec<u8>>;
     type PredicateData: AsField<Vec<u8>>;
     type PredicateGasUsed: AsField<Word>;
-    type Witness: AsField<u8>;
+    type Witness: AsField<u16>;
 }
 
 pub mod specifications {
@@ -106,7 +106,7 @@ pub mod specifications {
         type Predicate = Empty<Vec<u8>>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
-        type Witness = u8;
+        type Witness = u16;
     }
 
     impl MessageSpecification for MessageData<Predicate> {
@@ -114,7 +114,7 @@ pub mod specifications {
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
-        type Witness = Empty<u8>;
+        type Witness = Empty<u16>;
     }
 
     /// The spendable message acts as a standard coin.
@@ -127,7 +127,7 @@ pub mod specifications {
         type Predicate = Empty<Vec<u8>>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
-        type Witness = u8;
+        type Witness = u16;
     }
 
     impl MessageSpecification for MessageCoin<Predicate> {
@@ -135,7 +135,7 @@ pub mod specifications {
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
-        type Witness = Empty<u8>;
+        type Witness = Empty<u16>;
     }
 
     /// The type is used to represent the full message. It is used during the
@@ -153,7 +153,7 @@ pub mod specifications {
         type Predicate = Vec<u8>;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
-        type Witness = u8;
+        type Witness = u16;
     }
 }
 

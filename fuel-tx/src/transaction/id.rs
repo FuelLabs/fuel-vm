@@ -21,6 +21,12 @@ use fuel_types::{
     ChainId,
 };
 
+/// Prepares transaction for signing.
+pub trait PrepareSign {
+    /// Prepares transaction for signing zeroing required fields.
+    fn prepare_sign(&mut self);
+}
+
 /// Means that transaction has a unique identifier.
 pub trait UniqueIdentifier {
     /// The unique identifier of the transaction is based on its content.
@@ -34,17 +40,21 @@ pub trait UniqueIdentifier {
 impl UniqueIdentifier for Transaction {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         match self {
-            Transaction::Script(script) => script.id(chain_id),
-            Transaction::Create(create) => create.id(chain_id),
-            Self::Mint(mint) => mint.id(chain_id),
+            Self::Script(tx) => tx.id(chain_id),
+            Self::Create(tx) => tx.id(chain_id),
+            Self::Mint(tx) => tx.id(chain_id),
+            Self::Upgrade(tx) => tx.id(chain_id),
+            Self::Upload(tx) => tx.id(chain_id),
         }
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
         match self {
-            Transaction::Script(script) => script.cached_id(),
-            Transaction::Create(create) => create.cached_id(),
-            Self::Mint(mint) => mint.cached_id(),
+            Self::Script(tx) => tx.cached_id(),
+            Self::Create(tx) => tx.cached_id(),
+            Self::Mint(tx) => tx.cached_id(),
+            Self::Upgrade(tx) => tx.cached_id(),
+            Self::Upload(tx) => tx.cached_id(),
         }
     }
 }
@@ -109,16 +119,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use core::{
-        mem,
-        ops::Not,
-    };
-    use fuel_types::canonical::{
-        Deserialize,
-        Serialize,
-    };
-
-    use fuel_tx::{
+    use crate::{
         field::*,
         input,
         input::{
@@ -134,18 +135,30 @@ mod tests {
             },
         },
         output,
+        test_helper::{
+            generate_bytes,
+            generate_nonempty_padded_bytes,
+        },
         Buildable,
         Input,
         Output,
         StorageSlot,
         Transaction,
+        UpgradePurpose as UpgradePurposeType,
+        UploadBody,
         UtxoId,
     };
-    use fuel_tx_test_helpers::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
+    use core::{
+        mem,
+        ops::Not,
     };
-    use fuel_types::ChainId;
+    use fuel_types::{
+        canonical::{
+            Deserialize,
+            Serialize,
+        },
+        ChainId,
+    };
     use rand::{
         rngs::StdRng,
         Rng,
@@ -162,19 +175,14 @@ mod tests {
 
     fn invert_utxo_id(utxo_id: &mut UtxoId) {
         let mut tx_id = *utxo_id.tx_id();
-        let mut out_idx = [utxo_id.output_index()];
-
         invert(&mut tx_id);
-        invert(&mut out_idx);
+        let out_idx = utxo_id.output_index().not();
 
-        *utxo_id = UtxoId::new(tx_id, out_idx[0])
+        *utxo_id = UtxoId::new(tx_id, out_idx)
     }
 
     fn invert_storage_slot(storage_slot: &mut StorageSlot) {
-        let mut data = [0u8; 64];
-        storage_slot
-            .encode(&mut &mut data[..])
-            .expect("Failed to encode storage slot");
+        let mut data = storage_slot.to_bytes();
         invert(&mut data);
         *storage_slot =
             StorageSlot::from_bytes(&data).expect("Failed to decode storage slot");
@@ -193,15 +201,6 @@ mod tests {
         T: Copy + Not<Output = T>,
     {
         let mut t_p = t.not();
-        mem::swap(t, &mut t_p);
-    }
-
-    fn not_u32<T>(t: &mut T)
-    where
-        T: Copy + Into<u32> + From<u32>,
-    {
-        let u_32: u32 = (*t).into();
-        let mut t_p = u_32.not().into();
         mem::swap(t, &mut t_p);
     }
 
@@ -277,7 +276,7 @@ mod tests {
 
     fn assert_id_common_attrs<Tx: Buildable>(tx: &Tx) {
         use core::ops::Deref;
-        assert_id_ne(tx, |t| t.set_gas_price(t.gas_price().not()));
+        assert_id_ne(tx, |t| t.set_tip(t.tip().not()));
         assert_id_ne(tx, |t| t.set_maturity((t.maturity().deref().not()).into()));
 
         if !tx.inputs().is_empty() {
@@ -303,13 +302,6 @@ mod tests {
                 Input::CoinSigned[CoinSigned],
                 witness_index,
                 not
-            );
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::CoinSigned[CoinSigned],
-                maturity,
-                not_u32
             );
 
             assert_io_ne!(
@@ -339,13 +331,6 @@ mod tests {
                 Input::CoinPredicate[CoinPredicate],
                 asset_id,
                 invert
-            );
-            assert_io_ne!(
-                tx,
-                inputs_mut,
-                Input::CoinPredicate[CoinPredicate],
-                maturity,
-                not_u32
             );
             assert_io_ne!(
                 tx,
@@ -635,14 +620,12 @@ mod tests {
                     rng.next_u64(),
                     rng.gen(),
                     rng.gen(),
-                    rng.next_u32().to_be_bytes()[0],
                     rng.gen(),
                 ),
                 Input::coin_predicate(
                     rng.gen(),
                     rng.gen(),
                     rng.next_u64(),
-                    rng.gen(),
                     rng.gen(),
                     rng.gen(),
                     rng.gen(),
@@ -655,7 +638,7 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
-                    rng.next_u32().to_be_bytes()[0],
+                    rng.gen(),
                 ),
                 Input::message_coin_predicate(
                     rng.gen(),
@@ -671,7 +654,7 @@ mod tests {
                     rng.gen(),
                     rng.next_u64(),
                     rng.gen(),
-                    rng.next_u32().to_be_bytes()[0],
+                    rng.gen(),
                     generate_nonempty_padded_bytes(rng),
                 ),
                 Input::message_data_predicate(
@@ -691,7 +674,7 @@ mod tests {
             vec![],
             vec![
                 Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
-                Output::contract(rng.next_u32().to_be_bytes()[0], rng.gen(), rng.gen()),
+                Output::contract(rng.gen(), rng.gen(), rng.gen()),
                 Output::change(rng.gen(), rng.next_u64(), rng.gen()),
                 Output::variable(rng.gen(), rng.next_u64(), rng.gen()),
                 Output::contract_created(rng.gen(), rng.gen()),
@@ -706,6 +689,13 @@ mod tests {
         let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
         let storage_slots = vec![vec![], vec![rng.gen(), rng.gen()]];
+        let purposes = [
+            UpgradePurposeType::ConsensusParameters {
+                witness_index: rng.gen(),
+                checksum: rng.gen(),
+            },
+            UpgradePurposeType::StateTransition { root: rng.gen() },
+        ];
 
         for inputs in inputs.iter() {
             for outputs in outputs.iter() {
@@ -733,7 +723,7 @@ mod tests {
 
                     for storage_slots in storage_slots.iter() {
                         let tx = Transaction::create(
-                            rng.next_u32().to_be_bytes()[0],
+                            rng.gen(),
                             rng.gen(),
                             rng.gen(),
                             storage_slots.clone(),
@@ -755,6 +745,56 @@ mod tests {
                         }
 
                         assert_id_common_attrs(&tx);
+                    }
+
+                    for purpose in purposes.iter() {
+                        let tx = Transaction::upgrade(
+                            *purpose,
+                            rng.gen(),
+                            inputs.clone(),
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
+
+                        assert_id_common_attrs(&tx);
+                        assert_id_ne(&tx, |t| match t.upgrade_purpose_mut() {
+                            UpgradePurposeType::ConsensusParameters {
+                                witness_index,
+                                checksum,
+                            } => {
+                                *witness_index = witness_index.not();
+                                invert(checksum);
+                            }
+                            UpgradePurposeType::StateTransition { root } => {
+                                invert(root);
+                            }
+                        });
+                    }
+
+                    // Upload
+                    {
+                        let tx = Transaction::upload(
+                            UploadBody {
+                                root: rng.gen(),
+                                witness_index: rng.gen(),
+                                subsection_index: rng.gen(),
+                                subsections_number: rng.gen(),
+                                proof_set: vec![rng.gen(), rng.gen(), rng.gen()],
+                            },
+                            rng.gen(),
+                            inputs.clone(),
+                            outputs.clone(),
+                            witnesses.clone(),
+                        );
+
+                        assert_id_common_attrs(&tx);
+                        assert_id_ne(&tx, |t| invert(t.bytecode_root_mut()));
+                        assert_id_ne(&tx, |t| not(t.bytecode_witness_index_mut()));
+                        assert_id_ne(&tx, |t| not(t.subsection_index_mut()));
+                        assert_id_ne(&tx, |t| not(t.subsections_number_mut()));
+                        assert_id_ne(&tx, |t| {
+                            t.proof_set_mut().iter_mut().for_each(invert)
+                        });
                     }
                 }
             }

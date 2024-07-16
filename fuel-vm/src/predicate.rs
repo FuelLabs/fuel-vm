@@ -1,21 +1,30 @@
 //! Predicate representations with required data to be executed during VM runtime
 
-use crate::interpreter::MemoryRange;
-
 use fuel_tx::field;
 
+use crate::interpreter::MemoryRange;
+
 /// Runtime representation of a predicate
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RuntimePredicate {
-    program: MemoryRange,
+    range: MemoryRange,
     idx: usize,
 }
 
 impl RuntimePredicate {
+    /// Empty predicate for testing
+    #[cfg(test)]
+    pub const fn empty() -> Self {
+        Self {
+            range: MemoryRange::new(0, 0),
+            idx: 0,
+        }
+    }
+
     /// Memory slice with the program representation of the predicate
     pub const fn program(&self) -> &MemoryRange {
-        &self.program
+        &self.range
     }
 
     /// Index of the transaction input that maps to this predicate
@@ -32,9 +41,8 @@ impl RuntimePredicate {
     {
         let (ofs, len) = tx.inputs_predicate_offset_at(idx)?;
         let addr = ofs.saturating_add(tx_offset);
-        let range = MemoryRange::new(addr, len).expect("Invalid memory range");
         Some(Self {
-            program: range,
+            range: MemoryRange::new(addr, len),
             idx,
         })
     }
@@ -89,7 +97,6 @@ mod tests {
             rng.gen(),
             rng.gen(),
             rng.gen(),
-            rng.gen(),
             0,
             predicate.clone(),
             predicate_data.clone(),
@@ -138,7 +145,8 @@ mod tests {
 
             assert_eq!(idx, runtime.idx());
 
-            let mut interpreter = Interpreter::<_, _>::with_storage(
+            let mut interpreter = Interpreter::<_, _, _>::with_storage(
+                MemoryInstance::new(),
                 PredicateStorage,
                 InterpreterParams::default(),
             );
@@ -146,14 +154,14 @@ mod tests {
             assert!(interpreter
                 .init_predicate(
                     Context::PredicateVerification {
-                        program: Default::default()
+                        program: RuntimePredicate::empty(),
                     },
                     tx.transaction().clone(),
-                    *tx.transaction().script_gas_limit()
+                    *tx.transaction().script_gas_limit(),
                 )
                 .is_ok());
 
-            let pad = bytes::padded_len(&predicate) - predicate.len();
+            let pad = bytes::padded_len(&predicate).unwrap() - predicate.len();
 
             // assert we are testing an edge case
             assert_ne!(0, pad);
@@ -191,7 +199,6 @@ mod tests {
                     Input::coin_predicate(
                         rng.gen(),
                         owner,
-                        rng.gen(),
                         rng.gen(),
                         rng.gen(),
                         rng.gen(),
@@ -270,13 +277,13 @@ mod tests {
                     vec![],
                 )
                 .add_input(input)
-                .gas_price(0)
                 .add_random_fee_input()
                 .finalize_checked_basic(height);
 
-                let result = Interpreter::<PredicateStorage, Script>::check_predicates(
+                let result = Interpreter::check_predicates(
                     &tx,
                     &CheckPredicateParams::default(),
+                    MemoryInstance::new(),
                 );
 
                 assert_eq!(result.map(|_| ()), expected);

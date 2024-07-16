@@ -5,6 +5,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
+    bytes::padded_len_usize,
     canonical::{
         Deserialize,
         Serialize,
@@ -70,7 +71,7 @@ pub struct CallFrame {
     to: ContractId,
     asset_id: AssetId,
     registers: [Word; VM_REGISTER_COUNT],
-    code_size: usize,
+    code_size_padded: usize,
     a: Word,
     b: Word,
 }
@@ -82,7 +83,7 @@ impl Default for CallFrame {
             to: ContractId::default(),
             asset_id: AssetId::default(),
             registers: [0; VM_REGISTER_COUNT],
-            code_size: 0,
+            code_size_padded: 0,
             a: 0,
             b: 0,
         }
@@ -91,22 +92,22 @@ impl Default for CallFrame {
 
 impl CallFrame {
     /// Create a new call frame.
-    pub const fn new(
+    pub fn new(
         to: ContractId,
         asset_id: AssetId,
         registers: [Word; VM_REGISTER_COUNT],
         code_size: usize,
         a: Word,
         b: Word,
-    ) -> Self {
-        Self {
+    ) -> Option<Self> {
+        Some(Self {
             to,
             asset_id,
             registers,
-            code_size,
+            code_size_padded: padded_len_usize(code_size)?,
             a,
             b,
-        }
+        })
     }
 
     /// Start of the contract id offset from the beginning of the call frame.
@@ -116,32 +117,32 @@ impl CallFrame {
 
     /// Start of the asset id offset from the beginning of the call frame.
     pub const fn asset_id_offset() -> usize {
-        Self::contract_id_offset() + ContractId::LEN
+        Self::contract_id_offset().saturating_add(ContractId::LEN)
     }
 
     /// Start of the registers offset from the beginning of the call frame.
     pub const fn registers_offset() -> usize {
-        Self::asset_id_offset() + AssetId::LEN
+        Self::asset_id_offset().saturating_add(AssetId::LEN)
     }
 
     /// Start of the code size offset from the beginning of the call frame.
     pub const fn code_size_offset() -> usize {
-        Self::registers_offset() + WORD_SIZE * (VM_REGISTER_COUNT)
+        Self::registers_offset().saturating_add(WORD_SIZE * VM_REGISTER_COUNT)
     }
 
     /// Start of the `a` argument offset from the beginning of the call frame.
     pub const fn a_offset() -> usize {
-        Self::code_size_offset() + WORD_SIZE
+        Self::code_size_offset().saturating_add(WORD_SIZE)
     }
 
     /// Start of the `b` argument offset from the beginning of the call frame.
     pub const fn b_offset() -> usize {
-        Self::a_offset() + WORD_SIZE
+        Self::a_offset().saturating_add(WORD_SIZE)
     }
 
     /// Size of the call frame in bytes.
     pub const fn serialized_size() -> usize {
-        Self::b_offset() + WORD_SIZE
+        Self::b_offset().saturating_add(WORD_SIZE)
     }
 
     /// Registers prior to the called execution.
@@ -154,19 +155,10 @@ impl CallFrame {
         &self.to
     }
 
+    #[cfg(feature = "test-helpers")]
     /// Contract code length in bytes.
-    pub fn code_size(&self) -> usize {
-        self.code_size
-    }
-
-    /// Padding to the next word boundary.
-    pub fn code_size_padding(&self) -> usize {
-        (WORD_SIZE - self.code_size() % WORD_SIZE) % WORD_SIZE
-    }
-
-    /// Total code size including padding.
-    pub fn total_code_size(&self) -> usize {
-        self.code_size() + self.code_size_padding()
+    pub fn code_size_padded(&self) -> usize {
+        self.code_size_padded
     }
 
     /// `a` argument.

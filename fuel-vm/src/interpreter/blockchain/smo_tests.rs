@@ -1,3 +1,5 @@
+#![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use core::convert::Infallible;
 
 use alloc::{
@@ -6,10 +8,7 @@ use alloc::{
 };
 
 use crate::{
-    interpreter::{
-        contract::balance as contract_balance,
-        memory::Memory,
-    },
+    interpreter::contract::balance as contract_balance,
     storage::MemoryStorage,
 };
 
@@ -20,7 +19,6 @@ use rand::{
     SeedableRng,
 };
 
-use fuel_tx::Create;
 use test_case::test_case;
 
 struct Input {
@@ -212,15 +210,14 @@ fn test_smo(
     let mut rng = StdRng::seed_from_u64(100);
     let base_asset_id = rng.gen();
 
-    let mut memory: Memory<MEM_SIZE> = vec![0; MEM_SIZE].try_into().unwrap();
+    let mut memory: MemoryInstance = vec![0; MEM_SIZE].try_into().unwrap();
     for (offset, bytes) in mem {
         memory[offset..offset + bytes.len()].copy_from_slice(bytes.as_slice());
     }
     let mut receipts = Default::default();
-    let mut tx = Create::default();
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
+    let mut storage = MemoryStorage::default();
     let old_balance = storage
-        .merkle_contract_asset_id_balance_insert(
+        .contract_asset_id_balance_replace(
             &ContractId::default(),
             &base_asset_id,
             initial_balance,
@@ -236,9 +233,7 @@ fn test_smo(
         base_asset_id,
         max_message_data_length,
         memory: &mut memory,
-        tx_offset: 0,
         receipts: &mut receipts,
-        tx: &mut tx,
         balances: &mut balances,
         storage: &mut storage,
         current_contract: if internal {

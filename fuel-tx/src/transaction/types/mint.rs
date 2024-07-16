@@ -52,7 +52,6 @@ impl MintMetadata {
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.
@@ -67,6 +66,8 @@ pub struct Mint {
     /// The asset IDs corresponding to the minted amount.
     #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
     pub(crate) mint_asset_id: AssetId,
+    /// Gas Price used for current block
+    pub(crate) gas_price: Word,
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
@@ -77,7 +78,7 @@ pub struct Mint {
 impl crate::UniqueIdentifier for Mint {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
-            return id
+            return id;
         }
 
         let mut clone = self.clone();
@@ -105,16 +106,16 @@ impl FormatValidityChecks for Mint {
         check_size(self, consensus_params.tx_params())?;
 
         if self.tx_pointer().block_height() != block_height {
-            return Err(ValidityError::TransactionMintIncorrectBlockHeight)
+            return Err(ValidityError::TransactionMintIncorrectBlockHeight);
         }
 
         if self.output_contract.input_index != 0 {
-            return Err(ValidityError::TransactionMintIncorrectOutputIndex)
+            return Err(ValidityError::TransactionMintIncorrectOutputIndex);
         }
 
         // It is temporary check until https://github.com/FuelLabs/fuel-core/issues/1205
-        if self.mint_asset_id != consensus_params.base_asset_id {
-            return Err(ValidityError::TransactionMintNonBaseAsset)
+        if &self.mint_asset_id != consensus_params.base_asset_id() {
+            return Err(ValidityError::TransactionMintNonBaseAsset);
         }
 
         Ok(())
@@ -139,6 +140,7 @@ mod field {
         InputContract,
         MintAmount,
         MintAssetId,
+        MintGasPrice,
         OutputContract,
     };
 
@@ -172,7 +174,7 @@ mod field {
 
         #[inline(always)]
         fn input_contract_offset(&self) -> usize {
-            Self::tx_pointer_static() + TxPointer::LEN
+            Self::tx_pointer_static().saturating_add(TxPointer::LEN)
         }
     }
 
@@ -189,7 +191,8 @@ mod field {
 
         #[inline(always)]
         fn output_contract_offset(&self) -> usize {
-            self.input_contract_offset() + self.input_contract.size()
+            self.input_contract_offset()
+                .saturating_add(self.input_contract.size())
         }
     }
 
@@ -206,7 +209,8 @@ mod field {
 
         #[inline(always)]
         fn mint_amount_offset(&self) -> usize {
-            self.output_contract_offset() + self.output_contract.size()
+            self.output_contract_offset()
+                .saturating_add(self.output_contract.size())
         }
     }
 
@@ -223,7 +227,24 @@ mod field {
 
         #[inline(always)]
         fn mint_asset_id_offset(&self) -> usize {
-            self.mint_amount_offset() + WORD_SIZE
+            self.mint_amount_offset().saturating_add(WORD_SIZE)
+        }
+    }
+
+    impl MintGasPrice for Mint {
+        #[inline(always)]
+        fn gas_price(&self) -> &Word {
+            &self.gas_price
+        }
+
+        #[inline(always)]
+        fn gas_price_mut(&mut self) -> &mut Word {
+            &mut self.gas_price
+        }
+
+        #[inline(always)]
+        fn gas_price_offset(&self) -> usize {
+            self.mint_asset_id_offset().saturating_add(AssetId::LEN)
         }
     }
 }

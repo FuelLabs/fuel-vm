@@ -12,7 +12,7 @@ use fuel_types::Bytes32;
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = OutputContract))]
 pub struct Contract {
     /// Index of input contract.
-    pub input_index: u8,
+    pub input_index: u16,
     /// Root of amount of coins owned by contract after transaction execution.
     #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub balance_root: Bytes32,
@@ -62,7 +62,7 @@ pub mod typescript {
     impl Contract {
         #[wasm_bindgen(constructor)]
         pub fn typescript_new(
-            input_index: u8,
+            input_index: u16,
             balance_root: Bytes32,
             state_root: Bytes32,
         ) -> Self {

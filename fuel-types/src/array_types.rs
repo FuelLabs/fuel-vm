@@ -27,8 +27,6 @@ use rand::{
 #[cfg(all(feature = "alloc", feature = "typescript"))]
 use alloc::format;
 
-use crate::hex_val;
-
 macro_rules! key {
     ($i:ident, $s:expr) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -152,7 +150,8 @@ macro_rules! key_methods {
             ///
             /// This function will panic if the length of `buf` is smaller than
             /// `Self::LEN`.
-            pub fn from_bytes(bytes: &[u8]) -> Self {
+            #[wasm_bindgen(js_name = from_bytes)]
+            pub fn from_bytes_typescript(bytes: &[u8]) -> Self {
                 Self(bytes.try_into().expect(
                     format!("The size of the arrays it not {} size", $s).as_str(),
                 ))
@@ -247,14 +246,15 @@ macro_rules! key_methods {
                     write!(f, "0x")?
                 }
 
-                match f.width() {
-                    Some(w) if w > 0 => {
-                        self.0.chunks(2 * Self::LEN / w).try_for_each(|c| {
-                            write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))
-                        })
-                    }
-
-                    _ => self.0.iter().try_for_each(|b| write!(f, "{:02x}", &b)),
+                if let Some(w) = f
+                    .width()
+                    .and_then(|w| Self::LEN.saturating_mul(2).checked_div(w))
+                {
+                    self.0.chunks(w).try_for_each(|c| {
+                        write!(f, "{:02x}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                    })
+                } else {
+                    self.0.iter().try_for_each(|b| write!(f, "{:02x}", &b))
                 }
             }
         }
@@ -265,14 +265,15 @@ macro_rules! key_methods {
                     write!(f, "0x")?
                 }
 
-                match f.width() {
-                    Some(w) if w > 0 => {
-                        self.0.chunks(2 * Self::LEN / w).try_for_each(|c| {
-                            write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))
-                        })
-                    }
-
-                    _ => self.0.iter().try_for_each(|b| write!(f, "{:02X}", &b)),
+                if let Some(w) = f
+                    .width()
+                    .and_then(|w| Self::LEN.saturating_mul(2).checked_div(w))
+                {
+                    self.0.chunks(w).try_for_each(|c| {
+                        write!(f, "{:02X}", c.iter().fold(0u8, |acc, x| acc ^ x))
+                    })
+                } else {
+                    self.0.iter().try_for_each(|b| write!(f, "{:02X}", &b))
                 }
             }
         }
@@ -293,25 +294,10 @@ macro_rules! key_methods {
             type Err = &'static str;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                const ERR: &str = "Invalid encoded byte";
-
-                let alternate = s.starts_with("0x");
-
-                let mut b = s.bytes();
+                const ERR: &str = concat!("Invalid encoded byte in ", stringify!($i));
                 let mut ret = $i::zeroed();
-
-                if alternate {
-                    b.next();
-                    b.next();
-                }
-
-                for r in ret.as_mut() {
-                    let h = b.next().and_then(hex_val).ok_or(ERR)?;
-                    let l = b.next().and_then(hex_val).ok_or(ERR)?;
-
-                    *r = h << 4 | l;
-                }
-
+                let s = s.strip_prefix("0x").unwrap_or(s);
+                hex::decode_to_slice(&s, &mut ret.0).map_err(|_| ERR)?;
                 Ok(ret)
             }
         }

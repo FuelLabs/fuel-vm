@@ -6,23 +6,19 @@ use super::{
         ProfileGas,
     },
     internal::{
-        append_receipt,
         external_asset_id_balance_sub,
         inc_pc,
         internal_contract,
         set_variable_output,
-        AppendReceipt,
     },
-    memory::read_bytes,
     ExecutableTransaction,
     Interpreter,
+    Memory,
+    MemoryInstance,
     RuntimeBalances,
 };
 use crate::{
-    constraints::{
-        reg_key::*,
-        CheckedMemConstLen,
-    },
+    constraints::reg_key::*,
     consts::*,
     context::Context,
     convert,
@@ -33,7 +29,6 @@ use crate::{
     interpreter::{
         receipts::ReceiptsCtx,
         InputContracts,
-        PanicContext,
     },
     prelude::Profiler,
     storage::{
@@ -62,11 +57,9 @@ use fuel_types::{
 
 use alloc::borrow::Cow;
 
-#[cfg(test)]
-mod tests;
-
-impl<S, Tx, Ecal> Interpreter<S, Tx, Ecal>
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
 {
@@ -80,10 +73,10 @@ where
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = ContractBalanceCtx {
             storage: &self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             pc,
             input_contracts: InputContracts::new(
-                self.tx.input_contracts(),
+                &self.input_contracts,
                 &mut self.panic_context,
             ),
         };
@@ -97,7 +90,7 @@ where
         b: Word,
         c: Word,
     ) -> IoResult<(), S::DataError> {
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         let tx_offset = self.tx_offset();
         let (
             SystemRegisters {
@@ -112,13 +105,17 @@ where
         ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
             profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
+            input_contracts: InputContracts::new(
+                &self.input_contracts,
+                &mut self.panic_context,
+            ),
             tx_offset,
             cgas,
             ggas,
@@ -126,7 +123,7 @@ where
             is: is.as_ref(),
             pc,
         };
-        input.transfer(&mut self.panic_context, a, b, c)
+        input.transfer(a, b, c)
     }
 
     pub(crate) fn transfer_output(
@@ -137,7 +134,7 @@ where
         d: Word,
     ) -> IoResult<(), S::DataError> {
         let tx_offset = self.tx_offset();
-        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte;
+        let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         let (
             SystemRegisters {
                 cgas,
@@ -151,13 +148,17 @@ where
         ) = split_registers(&mut self.registers);
         let input = TransferCtx {
             storage: &mut self.storage,
-            memory: &mut self.memory,
+            memory: self.memory.as_mut(),
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
             profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
+            input_contracts: InputContracts::new(
+                &self.input_contracts,
+                &mut self.panic_context,
+            ),
             tx_offset,
             cgas,
             ggas,
@@ -191,14 +192,14 @@ where
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
-struct ContractBalanceCtx<'vm, S, I> {
+struct ContractBalanceCtx<'vm, S> {
     storage: &'vm S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
-    input_contracts: InputContracts<'vm, I>,
+    input_contracts: InputContracts<'vm>,
 }
 
-impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
+impl<'vm, S> ContractBalanceCtx<'vm, S> {
     pub(crate) fn contract_balance(
         mut self,
         result: &mut Word,
@@ -206,18 +207,14 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
         c: Word,
     ) -> IoResult<(), S::Error>
     where
-        I: Iterator<Item = &'vm ContractId>,
         S: ContractsAssetsStorage,
     {
-        let asset_id = CheckedMemConstLen::<{ AssetId::LEN }>::new(b)?;
-        let contract = CheckedMemConstLen::<{ ContractId::LEN }>::new(c)?;
+        let asset_id = AssetId::new(self.memory.read_bytes(b)?);
+        let contract = ContractId::new(self.memory.read_bytes(c)?);
 
-        let asset_id = AssetId::from_bytes_ref(asset_id.read(self.memory));
-        let contract = ContractId::from_bytes_ref(contract.read(self.memory));
+        self.input_contracts.check(&contract)?;
 
-        self.input_contracts.check(contract)?;
-
-        let balance = balance(self.storage, contract, asset_id)?;
+        let balance = balance(self.storage, &contract, &asset_id)?;
 
         *result = balance;
 
@@ -226,13 +223,14 @@ impl<'vm, S, I> ContractBalanceCtx<'vm, S, I> {
 }
 struct TransferCtx<'vm, S, Tx> {
     storage: &'vm mut S,
-    memory: &'vm mut [u8; MEM_SIZE],
+    memory: &'vm mut MemoryInstance,
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
     profiler: &'vm mut Profiler,
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
+    input_contracts: InputContracts<'vm>,
     tx_offset: usize,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -248,8 +246,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     /// $rB -> transfer_amount
     /// $rC -> asset_id_offset
     pub(crate) fn transfer(
-        self,
-        panic_context: &mut PanicContext,
+        mut self,
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
@@ -260,11 +257,10 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     {
         let amount = transfer_amount;
         let destination =
-            ContractId::from(read_bytes(self.memory, recipient_contract_id_offset)?);
-        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
+            ContractId::from(self.memory.read_bytes(recipient_contract_id_offset)?);
+        let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
 
-        InputContracts::new(self.tx.input_contracts(), panic_context)
-            .check(&destination)?;
+        self.input_contracts.check(&destination)?;
 
         if amount == 0 {
             return Err(PanicReason::TransferZeroCoins.into())
@@ -273,7 +269,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {
             // optimistically attempt to load the internal contract id
-            Ok(source_contract) => Some(*source_contract),
+            Ok(source_contract) => Some(source_contract),
             // revert to external context if no internal contract is set
             Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
@@ -302,8 +298,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
                 self.cgas,
                 self.ggas,
                 profiler,
-                // Overflow safety: unset_count * 32 can be at most VM_MAX_RAM
-                ((Bytes32::LEN + WORD_SIZE) as u64) * self.new_storage_gas_per_byte,
+                ((Bytes32::LEN + WORD_SIZE) as u64)
+                    .saturating_mul(self.new_storage_gas_per_byte),
             )?;
         }
 
@@ -316,15 +312,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             *self.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -348,8 +336,8 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;
-        let to = Address::from(read_bytes(self.memory, recipient_offset)?);
-        let asset_id = AssetId::from(read_bytes(self.memory, asset_id_offset)?);
+        let to = Address::from(self.memory.read_bytes(recipient_offset)?);
+        let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
         let amount = transfer_amount;
 
         if amount == 0 {
@@ -359,7 +347,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
         let internal_context = match internal_contract(self.context, self.fp, self.memory)
         {
             // optimistically attempt to load the internal contract id
-            Ok(source_contract) => Some(*source_contract),
+            Ok(source_contract) => Some(source_contract),
             // revert to external context if no internal contract is set
             Err(PanicReason::ExpectedInternalContext) => None,
             // bubble up any other kind of errors
@@ -388,15 +376,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             *self.is,
         );
 
-        append_receipt(
-            AppendReceipt {
-                receipts: self.receipts,
-                script: self.tx.as_script_mut(),
-                tx_offset: self.tx_offset,
-                memory: self.memory,
-            },
-            receipt,
-        )?;
+        self.receipts.push(receipt)?;
 
         Ok(inc_pc(self.pc)?)
     }
@@ -405,14 +385,15 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> IoResult<usize, S::Error>
+) -> IoResult<u32, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
-    Ok(storage
+    let size = storage
         .size_of_value(contract)
         .map_err(RuntimeError::Storage)?
-        .ok_or(PanicReason::ContractNotFound)?)
+        .ok_or(PanicReason::ContractNotFound)?;
+    Ok(u32::try_from(size).map_err(|_| PanicReason::MemoryOverflow)?)
 }
 
 pub(crate) fn balance<S>(
@@ -424,7 +405,7 @@ where
     S: ContractsAssetsStorage + ?Sized,
 {
     Ok(storage
-        .merkle_contract_asset_id_balance(contract, asset_id)
+        .contract_asset_id_balance(contract, asset_id)
         .map_err(RuntimeError::Storage)?
         .unwrap_or_default())
 }
@@ -446,7 +427,7 @@ where
         .ok_or(PanicReason::BalanceOverflow)?;
 
     let old_value = storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+        .contract_asset_id_balance_replace(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
 
     Ok((balance, old_value.is_none()))
@@ -466,8 +447,8 @@ where
     let balance = balance
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;
-    let _ = storage
-        .merkle_contract_asset_id_balance_insert(contract, asset_id, balance)
+    storage
+        .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
     Ok(balance)
 }

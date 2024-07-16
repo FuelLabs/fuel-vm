@@ -11,8 +11,10 @@ use core::{
 
 use crate::{
     context::Context,
-    interpreter::memory::Memory,
-    storage::MemoryStorage,
+    storage::{
+        ContractsStateData,
+        MemoryStorage,
+    },
 };
 use test_case::test_case;
 
@@ -22,10 +24,10 @@ mod scwq;
 mod srwq;
 mod swwq;
 
-fn mem(chains: &[&[u8]]) -> Memory<MEM_SIZE> {
+fn mem(chains: &[&[u8]]) -> MemoryInstance {
     let mut vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();
     vec.resize(MEM_SIZE, 0);
-    vec.try_into().unwrap()
+    vec.into()
 }
 const fn key(k: u8) -> [u8; 32] {
     [
@@ -34,14 +36,17 @@ const fn key(k: u8) -> [u8; 32] {
     ]
 }
 
+fn data(value: &[u8]) -> ContractsStateData {
+    ContractsStateData::from(value)
+}
+
 impl OwnershipRegisters {
-    pub fn test(stack: Range<u64>, heap: Range<u64>, context: Context) -> Self {
+    pub fn test(stack: Range<u64>, heap: Range<u64>) -> Self {
         Self {
             sp: stack.end,
             ssp: stack.start,
             hp: heap.start,
             prev_hp: heap.end,
-            context,
         }
     }
 }
@@ -60,8 +65,8 @@ fn test_state_read_word(
     insert: impl Into<Option<Word>>,
     key: Word,
 ) -> Result<(Word, Word), RuntimeError<Infallible>> {
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut storage = MemoryStorage::default();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let is = 4;
@@ -130,8 +135,8 @@ fn test_state_write_word(
     insert: bool,
     key: Word,
 ) -> Result<Word, RuntimeError<Infallible>> {
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut storage = MemoryStorage::default();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
     let mut pc = 4;

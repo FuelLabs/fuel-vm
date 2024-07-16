@@ -18,7 +18,7 @@ where
     R: Rng + CryptoRng,
 {
     let len = rng.gen_range(1..512);
-    let len = bytes::padded_len_usize(len);
+    let len = bytes::padded_len_usize(len).unwrap();
 
     let mut data = alloc::vec![0u8; len];
     rng.fill_bytes(data.as_mut_slice());
@@ -40,11 +40,14 @@ where
 
 #[cfg(feature = "std")]
 mod use_std {
-    use core::marker::PhantomData;
-    use fuel_crypto::SecretKey;
-    use fuel_tx::{
+    use super::{
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    };
+    use crate::{
         field,
         Buildable,
+        ConsensusParameters,
         Contract,
         Create,
         Finalizable,
@@ -54,6 +57,16 @@ mod use_std {
         Script,
         Transaction,
         TransactionBuilder,
+        Upgrade,
+        UpgradePurpose,
+        Upload,
+        UploadBody,
+        UploadSubsection,
+    };
+    use core::marker::PhantomData;
+    use fuel_crypto::{
+        Hasher,
+        SecretKey,
     };
     use fuel_types::canonical::Deserialize;
     use rand::{
@@ -66,11 +79,7 @@ mod use_std {
         Rng,
         SeedableRng,
     };
-
-    use crate::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
-    };
+    use strum::EnumCount;
 
     pub struct TransactionFactory<R, Tx>
     where
@@ -87,7 +96,6 @@ mod use_std {
         R: Rng + CryptoRng,
     {
         fn from(rng: R) -> Self {
-            use strum::EnumCount;
             let input_sampler = Uniform::from(0..Input::COUNT);
             let output_sampler = Uniform::from(0..Output::COUNT);
 
@@ -124,6 +132,8 @@ mod use_std {
                         Transaction::Script(_) => (),
                         Transaction::Create(_) => (),
                         Transaction::Mint(_) => (),
+                        Transaction::Upgrade(_) => (),
+                        Transaction::Upload(_) => (),
                     })
                     .unwrap_or(());
 
@@ -209,7 +219,6 @@ mod use_std {
                             self.rng.gen(),
                             self.rng.gen(),
                             self.rng.gen(),
-                            self.rng.gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -283,7 +292,6 @@ mod use_std {
             input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_coin_input(
                     *k,
-                    self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
                     self.rng.gen(),
@@ -367,12 +375,81 @@ mod use_std {
         }
     }
 
+    impl<R> TransactionFactory<R, Upgrade>
+    where
+        R: Rng + CryptoRng,
+    {
+        pub fn transaction(&mut self) -> Upgrade {
+            self.transaction_with_keys().0
+        }
+
+        pub fn transaction_with_keys(&mut self) -> (Upgrade, Vec<SecretKey>) {
+            let variant = self.rng.gen_range(0..UpgradePurpose::COUNT);
+            let consensus_params =
+                postcard::to_allocvec(&ConsensusParameters::default()).unwrap();
+            let checksum = Hasher::hash(consensus_params.as_slice());
+
+            let purpose = match variant {
+                0 => UpgradePurpose::StateTransition {
+                    root: self.rng.gen(),
+                },
+                1 => UpgradePurpose::ConsensusParameters {
+                    witness_index: 0,
+                    checksum,
+                },
+                _ => {
+                    panic!("Not supported")
+                }
+            };
+
+            let mut builder = TransactionBuilder::<Upgrade>::upgrade(purpose);
+            builder.add_witness(consensus_params.into());
+
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
+        }
+    }
+
+    impl<R> TransactionFactory<R, Upload>
+    where
+        R: Rng + CryptoRng,
+    {
+        pub fn transaction(&mut self) -> Upload {
+            self.transaction_with_keys().0
+        }
+
+        pub fn transaction_with_keys(&mut self) -> (Upload, Vec<SecretKey>) {
+            let len = self.rng.gen_range(1..1024 * 1024);
+
+            let mut bytecode = alloc::vec![0u8; len];
+            self.rng.fill_bytes(bytecode.as_mut_slice());
+
+            let subsection = UploadSubsection::split_bytecode(&bytecode, len / 10)
+                .expect("Should split the bytecode")[0]
+                .clone();
+
+            let mut builder = TransactionBuilder::<Upload>::upload(UploadBody {
+                root: subsection.root,
+                witness_index: 0,
+                subsection_index: subsection.subsection_index,
+                subsections_number: subsection.subsections_number,
+                proof_set: subsection.proof_set,
+            });
+            debug_assert_eq!(builder.witnesses().len(), 0);
+            builder.add_witness(subsection.subsection.into());
+
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
+        }
+    }
+
     impl<R> TransactionFactory<R, Mint>
     where
         R: Rng + CryptoRng,
     {
         pub fn transaction(&mut self) -> Mint {
-            let mut builder = TransactionBuilder::<Mint>::mint(
+            let builder = TransactionBuilder::<Mint>::mint(
+                self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
                 self.rng.gen(),
@@ -403,6 +480,28 @@ mod use_std {
         type Item = (Script, Vec<SecretKey>);
 
         fn next(&mut self) -> Option<(Script, Vec<SecretKey>)> {
+            Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Upgrade>
+    where
+        R: Rng + CryptoRng,
+    {
+        type Item = (Upgrade, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Upgrade, Vec<SecretKey>)> {
+            Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Upload>
+    where
+        R: Rng + CryptoRng,
+    {
+        type Item = (Upload, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Upload, Vec<SecretKey>)> {
             Some(self.transaction_with_keys())
         }
     }

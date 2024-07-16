@@ -3,10 +3,9 @@ use super::*;
 /// hash
 pub const GIT: &str = "98341e564b75d1157e61d7d5f38612f6224a5b30";
 pub fn default_gas_costs() -> GasCostsValues {
-    GasCostsValues {
+    GasCostsValuesV3 {
         add: 1,
         addi: 1,
-        aloc: 1,
         and: 1,
         andi: 1,
         bal: 13,
@@ -14,9 +13,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         bhsh: 1,
         burn: 132,
         cb: 1,
-        cfei: 1,
         cfsi: 1,
-        croo: 16,
         div: 1,
         divi: 1,
         eck1: 951,
@@ -92,6 +89,18 @@ pub fn default_gas_costs() -> GasCostsValues {
         wqmm: 3,
         xor: 1,
         xori: 1,
+        aloc: DependentCost::LightOperation {
+            base: 2,
+            units_per_gas: 214,
+        },
+        cfe: DependentCost::LightOperation {
+            base: 2,
+            units_per_gas: 214,
+        },
+        cfei: DependentCost::LightOperation {
+            base: 2,
+            units_per_gas: 214,
+        },
         k256: DependentCost::LightOperation {
             base: 11,
             units_per_gas: 214,
@@ -107,6 +116,10 @@ pub fn default_gas_costs() -> GasCostsValues {
         ccp: DependentCost::LightOperation {
             base: 15,
             units_per_gas: 103,
+        },
+        croo: DependentCost::LightOperation {
+            base: 1,
+            units_per_gas: 1,
         },
         csiz: DependentCost::LightOperation {
             base: 17,
@@ -177,4 +190,5 @@ pub fn default_gas_costs() -> GasCostsValues {
             gas_per_unit: 0,
         },
     }
+    .into()
 }

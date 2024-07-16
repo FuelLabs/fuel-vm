@@ -86,7 +86,7 @@ impl str::FromStr for TxPointer {
     /// - 8 characters for block height
     /// - 4 characters for tx index
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        const ERR: &str = "Invalid encoded byte";
+        const ERR: &str = "Invalid encoded byte in TxPointer";
 
         if s.len() != 12 || !s.is_char_boundary(8) {
             return Err(ERR)

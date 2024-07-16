@@ -1,18 +1,13 @@
+#![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+
 use alloc::vec;
 
-use crate::{
-    interpreter::memory::Memory,
-    storage::MemoryStorage,
-};
-use core::{
-    convert::Infallible,
-    iter,
-};
+use crate::storage::MemoryStorage;
+use core::convert::Infallible;
 
 use super::*;
 use crate::interpreter::PanicContext;
 use fuel_storage::StorageAsMut;
-use fuel_types::Salt;
 use test_case::test_case;
 
 #[test_case(false, 0, None, 0, [0; 32] => Ok(()); "Burn nothing")]
@@ -31,8 +26,8 @@ fn test_burn(
     amount: Word,
     sub_id: [u8; 32],
 ) -> IoResult<(), Infallible> {
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut storage = MemoryStorage::default();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
@@ -42,7 +37,7 @@ fn test_burn(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -56,7 +51,6 @@ fn test_burn(
         }
     };
     let mut receipts = Default::default();
-    let mut script = Some(fuel_tx::Script::default());
 
     let is = 0;
     const ORIGINAL_PC: Word = 4;
@@ -64,12 +58,8 @@ fn test_burn(
     BurnCtx {
         storage: &mut storage,
         context: &context,
-        append: AppendReceipt {
-            receipts: &mut receipts,
-            script: script.as_mut(),
-            tx_offset: 0,
-            memory: &mut memory,
-        },
+        receipts: &mut receipts,
+        memory: &mut memory,
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         is: Reg::new(&is),
@@ -77,7 +67,7 @@ fn test_burn(
     .burn(amount, ContractId::LEN as Word)?;
     assert_eq!(pc, 8);
     let result = storage
-        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
+        .contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
     assert_eq!(result, initialize.unwrap_or(0) - amount);
@@ -114,8 +104,8 @@ fn test_mint(
     amount: Word,
     sub_id: [u8; 32],
 ) -> IoResult<(), Infallible> {
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut storage = MemoryStorage::default();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
@@ -125,7 +115,7 @@ fn test_mint(
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
         let old_balance = storage
-            .merkle_contract_asset_id_balance_insert(&contract_id, &asset_id, initialize)
+            .contract_asset_id_balance_replace(&contract_id, &asset_id, initialize)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -140,7 +130,6 @@ fn test_mint(
     };
 
     let mut receipts = Default::default();
-    let mut script = Some(fuel_tx::Script::default());
 
     let is = 0;
     const ORIGINAL_PC: Word = 4;
@@ -150,12 +139,8 @@ fn test_mint(
     MintCtx {
         storage: &mut storage,
         context: &context,
-        append: AppendReceipt {
-            receipts: &mut receipts,
-            script: script.as_mut(),
-            tx_offset: 0,
-            memory: &mut memory,
-        },
+        receipts: &mut receipts,
+        memory: &mut memory,
         profiler: &mut Profiler::default(),
         new_storage_gas_per_byte: 1,
         cgas: RegMut::new(&mut cgas),
@@ -167,7 +152,7 @@ fn test_mint(
     .mint(amount, ContractId::LEN as Word)?;
     assert_eq!(pc, 8);
     let result = storage
-        .merkle_contract_asset_id_balance(&contract_id, &asset_id)
+        .contract_asset_id_balance(&contract_id, &asset_id)
         .unwrap()
         .unwrap();
     assert_eq!(result, initialize.unwrap_or(0) + amount);
@@ -187,16 +172,13 @@ fn test_mint(
 
 #[test]
 fn test_block_hash() {
-    let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let storage = MemoryStorage::default();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     let mut pc = 4;
     block_hash(&storage, &mut memory, owner, RegMut::new(&mut pc), 20, 40).unwrap();
@@ -218,16 +200,13 @@ fn test_block_height() {
 
 #[test]
 fn test_coinbase() {
-    let storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let storage = MemoryStorage::new(Default::default(), ContractId::zeroed());
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
         sp: 1000,
         ssp: 1,
         hp: 2000,
         prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
     };
     let mut pc = 4;
     coinbase(&storage, &mut memory, owner, RegMut::new(&mut pc), 20).unwrap();
@@ -236,103 +215,27 @@ fn test_coinbase() {
 }
 
 #[test]
-fn test_code_root() {
-    let contract_id = ContractId::new([3u8; ContractId::LEN]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
-    memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    let mut pc = 4;
-    let input_contracts = [contract_id];
-    let mut panic_context = PanicContext::None;
-    let _ = CodeRootCtx {
-        memory: &mut memory,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
-        storage: &storage,
-        owner,
-        pc: RegMut::new(&mut pc),
-    }
-    .code_root(20, 0)
-    .expect_err("Contract is not found");
-    assert_eq!(pc, 4);
-
-    storage
-        .storage_contract_root_insert(
-            &ContractId::from([3u8; 32]),
-            &Salt::from([5u8; 32]),
-            &Bytes32::from([6u8; 32]),
-        )
-        .unwrap();
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    CodeRootCtx {
-        memory: &mut memory,
-        input_contracts: InputContracts::new(input_contracts.iter(), &mut panic_context),
-        storage: &storage,
-        owner,
-        pc: RegMut::new(&mut pc),
-    }
-    .code_root(20, 0)
-    .unwrap();
-    assert_eq!(pc, 8);
-    assert_eq!(memory[20..20 + 32], [6u8; 32]);
-
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1,
-        hp: 2000,
-        prev_hp: 3000,
-        context: Context::Script {
-            block_height: Default::default(),
-        },
-    };
-    let _ = CodeRootCtx {
-        memory: &mut memory,
-        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
-        storage: &storage,
-        owner,
-        pc: RegMut::new(&mut pc),
-    }
-    .code_root(20, 0)
-    .expect_err("Contract is not in inputs");
-}
-
-#[test]
 fn test_code_size() {
     let contract_id = ContractId::new([3u8; ContractId::LEN]);
-    let mut storage = MemoryStorage::new(Default::default(), Default::default());
-    let mut memory: Memory<MEM_SIZE> = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut storage = MemoryStorage::default();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-        .write(&ContractId::from([3u8; 32]), vec![1u8; 100])
+        .write_bytes(&ContractId::from([3u8; 32]), &[1u8; 100])
         .unwrap();
     let mut pc = 4;
     let is = 0;
     let mut cgas = 0;
     let mut ggas = 0;
-    let input_contract = [contract_id];
+    let input_contracts = [contract_id];
+    let input_contracts = input_contracts.into_iter().collect();
     let mut panic_context = PanicContext::None;
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
         profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -349,7 +252,7 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(input_contract.iter(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
@@ -362,11 +265,12 @@ fn test_code_size() {
     assert_eq!(pc, 8);
     assert_eq!(result, 100);
 
+    let input_contracts = Default::default();
     let input = CodeSizeCtx {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(iter::empty(), &mut panic_context),
+        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         profiler: &mut Profiler::default(),
         current_contract: None,
         cgas: RegMut::new(&mut cgas),
@@ -382,7 +286,7 @@ fn test_code_size() {
 
 #[test]
 fn test_timestamp() {
-    let storage = MemoryStorage::new(Default::default(), Default::default());
+    let storage = MemoryStorage::default();
     let mut pc = 4;
     let mut result = 0;
     let _ = timestamp(

@@ -5,10 +5,10 @@ on:
     branches:
       - master
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [ opened, synchronize, reopened, labeled, unlabeled ]
   merge_group:
   release:
-    types: [published]
+    types: [ published ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -16,8 +16,10 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.73.0
-  NIGHTLY_RUST_VERSION: nightly-2023-10-29
+  RUST_VERSION: 1.75.0
+  RUST_VERSION_FMT: nightly-2024-02-07
+  RUST_VERSION_COV: nightly-2024-06-05
+  GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
   check-changelog:
@@ -105,6 +107,48 @@ jobs:
           version: "0.36.4"
       - run: cargo ${{ matrix.command }} ${{ matrix.args }}
 
+  publish-codecov:
+    name: Publish code coverage report on GitHub pages branch
+    runs-on: buildjet-4vcpu-ubuntu-2204
+    needs:
+      - cargo
+    permissions: # Write access to push changes to pages
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION_COV }}
+
+      - name: Install cargo-llvm-codecov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Code coverage report
+        run: cargo  +${{ env.RUST_VERSION_COV }} llvm-cov --all-features --html --branch
+
+      - name: Checkout the repo again for pushing pages revision
+        uses: actions/checkout@v3
+        with:
+          ref: 'codecov-pages'
+          path: 'pages-branch'
+
+      - name: Push codecov report to pages branch
+        working-directory: ./pages-branch
+        run: |
+          export BRANCH_B64=$(echo -n "${{ env.GIT_BRANCH }}" | basenc --base64url)
+          git config user.email "2204863+Dentosal@users.noreply.github.com"
+          git config user.name "Dentosal"
+          cp -r ../target/llvm-cov/html "$BRANCH_B64"
+          python3 ../.github/workflows/scripts/generate_pages_index.py > index.html
+          git add .
+          git commit -m "Update codecov for ${{ env.GIT_BRANCH }}"
+          git push
+          export PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_B64/index.html"
+          echo "$PAGES_URL"
+          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY          
+  
+
   rustfmt:
     runs-on: buildjet-4vcpu-ubuntu-2204
     steps:
@@ -112,11 +156,11 @@ jobs:
       - name: Install latest nightly
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.NIGHTLY_RUST_VERSION }}
+          toolchain: ${{ env.RUST_VERSION_FMT }}
           components: rustfmt
 
       - name: Rustfmt check
-        run: cargo +${{ env.NIGHTLY_RUST_VERSION }} fmt --all -- --check
+        run: cargo +${{ env.RUST_VERSION_FMT }} fmt --all -- --check
 
   cargo-toml-fmt-check:
     runs-on: ubuntu-latest
@@ -138,6 +182,7 @@ jobs:
       - cargo
       - cargo-toml-fmt-check
       - publish-check
+      - publish-wasm-packages-check
     runs-on: ubuntu-latest
     steps:
       - run: true
@@ -153,11 +198,49 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
 
       - name: Publish crate check
-        uses: xgreenx/publish-crates@v1
+        uses: FuelLabs/publish-crates@v1
         with:
           dry-run: true
           check-repo: false
           ignore-unpublished-changes: true
+
+  publish-wasm-packages-check:
+    needs:
+      - publish-check
+    runs-on: buildjet-4vcpu-ubuntu-2204
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "wasm32-unknown-unknown"
+
+      - name: Installing required crates
+        run: cargo install wasm-bindgen-cli wasm-opt
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.6.9
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          cache: "pnpm"
+          node-version: 18.14.1
+          node-version-file: ".npm/package.json"
+          cache-dependency-path: ".npm/pnpm-lock.yaml"
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Build and Test packages
+        run: |
+          pnpm -C .npm install
+          pnpm -C .npm pack:all
 
   publish:
     # Only do this job if publishing a release and all checks pass.
@@ -179,7 +262,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
 
       - name: Publish crate
-        uses: xgreenx/publish-crates@v1
+        uses: FuelLabs/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -201,8 +284,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-            fetch-depth: 0
-            ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -213,7 +296,7 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-opt
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 8.6.9
 

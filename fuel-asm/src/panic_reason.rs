@@ -129,6 +129,24 @@ enum_from! {
         /// Attempt to use sequential memory instructions with too large slot count,
         /// typically because it cannot fit into usize
         TooManySlots = 0x2d,
+        /// Caller of this internal context is also expected to be internal,
+        /// i.e. $fp->$fp must be non-zero.
+        ExpectedNestedCaller = 0x2e,
+        /// During memory growth, the stack overlapped with the heap
+        MemoryGrowthOverlap = 0x2f,
+        /// Attempting to read or write uninitialized memory.
+        /// Also occurs when boundary crosses from stack to heap.
+        UninitalizedMemoryAccess = 0x30,
+        /// Overriding consensus parameters is not allowed.
+        OverridingConsensusParameters = 0x31,
+        /// The storage doesn't know about the hash of the state transition bytecode.
+        UnknownStateTransactionBytecodeRoot = 0x32,
+        /// Overriding the state transition bytecode is not allowed.
+        OverridingStateTransactionBytecode = 0x33,
+        /// The bytecode is already uploaded and cannot be uploaded again.
+        BytecodeAlreadyUploaded = 0x34,
+        /// The part of the bytecode is not sequentially connected to the previous parts.
+        ThePartIsNotSequentiallyConnected = 0x35,
     }
 }
 

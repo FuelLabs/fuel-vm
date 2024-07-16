@@ -1,3 +1,16 @@
+mod branch;
+mod node;
+
+use branch::{
+    merge_branches,
+    Branch,
+};
+use node::{
+    Node,
+    StorageNode,
+    StorageNodeError,
+};
+
 use crate::{
     common::{
         error::DeserializeError,
@@ -7,10 +20,14 @@ use crate::{
     },
     sparse::{
         empty_sum,
-        primitive::Primitive,
-        Node,
-        StorageNode,
-        StorageNodeError,
+        proof::{
+            ExclusionLeaf,
+            ExclusionLeafData,
+            ExclusionProof,
+            InclusionProof,
+            Proof,
+        },
+        Primitive,
     },
     storage::{
         Mappable,
@@ -18,16 +35,18 @@ use crate::{
         StorageMutate,
     },
 };
-
-use crate::sparse::branch::{
-    merge_branches,
-    Branch,
+use alloc::{
+    format,
+    vec::Vec,
 };
-use alloc::vec::Vec;
 use core::{
-    cmp,
+    fmt::{
+        Debug,
+        Formatter,
+    },
     iter,
     marker::PhantomData,
+    ops::Deref,
 };
 
 #[derive(Debug, Clone, derive_more::Display)]
@@ -56,7 +75,8 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 
 /// The safe Merkle tree storage key prevents Merkle tree structure manipulations.
 /// The type contains only one constructor that hashes the storage key.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct MerkleTreeKey(Bytes32);
 
 impl MerkleTreeKey {
@@ -97,9 +117,42 @@ impl MerkleTreeKey {
     }
 }
 
+impl Debug for MerkleTreeKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&format!("MerkleTreeKey({})", hex::encode(self.0)))
+    }
+}
+
 impl From<MerkleTreeKey> for Bytes32 {
     fn from(value: MerkleTreeKey) -> Self {
         value.0
+    }
+}
+
+impl AsRef<[u8]> for MerkleTreeKey {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl AsRef<Bytes32> for MerkleTreeKey {
+    fn as_ref(&self) -> &Bytes32 {
+        &self.0
+    }
+}
+
+impl Deref for MerkleTreeKey {
+    type Target = Bytes32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl From<Bytes32> for MerkleTreeKey {
+    fn from(value: Bytes32) -> Self {
+        Self::new_without_hash(value)
     }
 }
 
@@ -126,8 +179,6 @@ impl<TableType, StorageType> MerkleTree<TableType, StorageType> {
     pub fn storage(&self) -> &StorageType {
         &self.storage
     }
-
-    // PRIVATE
 
     fn root_node(&self) -> &Node {
         &self.root_node
@@ -175,25 +226,24 @@ where
         }
     }
 
-    // PRIVATE
-
     fn path_set(
         &self,
-        leaf_key: Bytes32,
-    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+        leaf_key: &Bytes32,
+    ) -> Result<(Vec<Node>, Vec<Bytes32>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
-        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
-            .as_path_iter(leaf_key)
-            .map(|(path_node, side_node)| {
-                Ok((
-                    path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                    side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                ))
-            })
-            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
-            .into_iter()
-            .unzip();
+        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Bytes32>) =
+            root_storage_node
+                .as_path_iter(leaf_key)
+                .map(|(path_node, side_node)| {
+                    Ok((
+                        path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                        side_node.map_err(MerkleTreeError::ChildError)?,
+                    ))
+                })
+                .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
+                .into_iter()
+                .unzip();
         path_nodes.reverse();
         side_nodes.reverse();
         side_nodes.pop(); // The last element in the side nodes list is the
@@ -277,7 +327,8 @@ where
         // possible.
         while let Some(left) = branches.pop() {
             if let Some(current) = nodes.last() {
-                let left_proximity = current.node.common_path_length(&left.node);
+                #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+                let left_proximity = current.node.common_path_length(&left.node) as u32;
                 while {
                     // The current node's proximity to its right neighbor was
                     // stored previously. We now compare the distances between
@@ -338,6 +389,7 @@ where
         let mut node = top.node;
         let path = top.bits;
         let height = node.height();
+        #[allow(clippy::arithmetic_side_effects)] // height <= max_height
         let depth = Node::max_height() - height;
         let placeholders = iter::repeat(Node::create_placeholder()).take(depth as usize);
         for placeholder in placeholders {
@@ -365,15 +417,14 @@ where
             return Ok(())
         }
 
-        let key = key.into();
-        let leaf_node = Node::create_leaf(&key, data);
+        let leaf_node = Node::create_leaf(key.as_ref(), data);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
 
         if self.root_node().is_placeholder() {
             self.set_root_node(leaf_node);
         } else {
-            let (path_nodes, side_nodes) = self.path_set(key)?;
+            let (path_nodes, side_nodes) = self.path_set(key.as_ref())?;
             self.update_with_path_set(
                 &leaf_node,
                 path_nodes.as_slice(),
@@ -394,16 +445,12 @@ where
             return Ok(())
         }
 
-        let key = key.into();
-        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) = self.path_set(key)?;
+        let (path_nodes, side_nodes): (Vec<Node>, Vec<_>) =
+            self.path_set(key.as_ref())?;
 
         match path_nodes.first() {
-            Some(node) if node.leaf_key() == &key => {
-                self.delete_with_path_set(
-                    &key,
-                    path_nodes.as_slice(),
-                    side_nodes.as_slice(),
-                )?;
+            Some(node) if *node.leaf_key() == key.as_ref() => {
+                self.delete_with_path_set(path_nodes.as_slice(), side_nodes.as_slice())?;
             }
             _ => {}
         };
@@ -411,13 +458,11 @@ where
         Ok(())
     }
 
-    // PRIVATE
-
     fn update_with_path_set(
         &mut self,
         requested_leaf_node: &Node,
         path_nodes: &[Node],
-        side_nodes: &[Node],
+        side_nodes: &[Bytes32],
     ) -> Result<(), StorageError> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
@@ -460,8 +505,9 @@ where
 
             // Merge placeholders
             let ancestor_depth = requested_leaf_node.common_path_length(actual_leaf_node);
-            let stale_depth = cmp::max(side_nodes.len(), ancestor_depth as usize);
-            let placeholders_count = stale_depth - side_nodes.len();
+            #[allow(clippy::cast_possible_truncation)] // Key is 32 bytes
+            let placeholders_count =
+                (ancestor_depth as usize).saturating_sub(side_nodes.len());
             let placeholders =
                 iter::repeat(Node::create_placeholder()).take(placeholders_count);
             for placeholder in placeholders {
@@ -475,14 +521,27 @@ where
         }
 
         // Merge side nodes
-        for side_node in side_nodes {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+        for (side_node, old_parent) in
+            side_nodes.iter().zip(path_nodes.iter().skip(1 /* leaf */))
+        {
+            let new_parent = if old_parent.bytes_lo() == side_node {
+                Node::create_node_from_hashes(
+                    *side_node,
+                    *current_node.hash(),
+                    old_parent.height(),
+                )
+            } else {
+                Node::create_node_from_hashes(
+                    *current_node.hash(),
+                    *side_node,
+                    old_parent.height(),
+                )
+            };
+
+            current_node = new_parent;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
-        }
-
-        for node in path_nodes.iter().skip(1 /* leaf */) {
-            self.storage.remove(node.hash())?;
+            self.storage.remove(old_parent.hash())?;
         }
 
         self.set_root_node(current_node);
@@ -492,16 +551,16 @@ where
 
     fn delete_with_path_set(
         &mut self,
-        requested_leaf_key: &Bytes32,
         path_nodes: &[Node],
-        side_nodes: &[Node],
-    ) -> Result<(), StorageError> {
+        side_nodes: &[Bytes32],
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         for node in path_nodes {
             self.storage.remove(node.hash())?;
         }
 
-        let path = requested_leaf_key;
         let mut side_nodes_iter = side_nodes.iter();
+        let mut path_nodes_iter = path_nodes.iter();
+        path_nodes_iter.next(); // Skip the requested leaf node
 
         // The deleted leaf is replaced by a placeholder. Build the tree upwards
         // starting with the placeholder.
@@ -516,6 +575,14 @@ where
         // calculation. We then create a valid ancestor node for the orphaned
         // leaf node by joining it with the earliest non-placeholder side node.
         if let Some(first_side_node) = side_nodes.first() {
+            let first_side_node: Node = self
+                .storage
+                .get(first_side_node)?
+                .ok_or(MerkleTreeError::LoadError(*first_side_node))?
+                .into_owned()
+                .try_into()
+                .map_err(MerkleTreeError::DeserializeError)?;
+
             if first_side_node.is_leaf() {
                 side_nodes_iter.next();
                 current_node = first_side_node.clone();
@@ -533,20 +600,51 @@ where
                 // node will be an internal node, and not a leaf, by the time we
                 // start merging the remaining side nodes.
                 // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
-                if let Some(side_node) =
-                    side_nodes_iter.find(|side_node| !side_node.is_placeholder())
+                if let Some(side_node) = side_nodes_iter
+                    .find(|side_node| *side_node != Node::Placeholder.hash())
                 {
-                    current_node =
-                        Node::create_node_on_path(path, &current_node, side_node);
-                    self.storage
-                        .insert(current_node.hash(), &current_node.as_ref().into())?;
+                    // Skip parents until the parent of the first side node is found
+                    if let Some(old_parent) = path_nodes_iter.find(|parent| {
+                        parent.bytes_lo() == side_node || parent.bytes_hi() == side_node
+                    }) {
+                        let new_parent = if old_parent.bytes_lo() == side_node {
+                            Node::create_node_from_hashes(
+                                *side_node,
+                                *current_node.hash(),
+                                old_parent.height(),
+                            )
+                        } else {
+                            Node::create_node_from_hashes(
+                                *current_node.hash(),
+                                *side_node,
+                                old_parent.height(),
+                            )
+                        };
+                        current_node = new_parent;
+                        self.storage
+                            .insert(current_node.hash(), &current_node.as_ref().into())?;
+                    }
                 }
             }
         }
 
         // Merge side nodes
-        for side_node in side_nodes_iter {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+        for (side_node, old_parent) in side_nodes_iter.zip(path_nodes_iter) {
+            let new_parent = if old_parent.bytes_lo() == side_node {
+                Node::create_node_from_hashes(
+                    *side_node,
+                    *current_node.hash(),
+                    old_parent.height(),
+                )
+            } else {
+                Node::create_node_from_hashes(
+                    *current_node.hash(),
+                    *side_node,
+                    old_parent.height(),
+                )
+            };
+
+            current_node = new_parent;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
@@ -557,20 +655,89 @@ where
     }
 }
 
+impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
+where
+    TableType: Mappable<Key = Bytes32, Value = Primitive, OwnedValue = Primitive>,
+    StorageType: StorageInspect<TableType, Error = StorageError>,
+{
+    pub fn generate_proof(
+        &self,
+        key: &MerkleTreeKey,
+    ) -> Result<Proof, MerkleTreeError<StorageError>> {
+        let path = key.as_ref();
+        let (path_nodes, side_nodes) = self.path_set(path)?;
+        // Identify the closest leaf that is included in the tree to the
+        // requested leaf. The closest leaf, as returned by the path set
+        // corresponding to the requested leaf, will be the requested leaf
+        // itself, a different leaf than requested, or a placeholder.
+        //
+        // If the closest leaf is the requested leaf, then the requested leaf is
+        // included in the tree, and we are requesting an inclusion proof.
+        // Otherwise (i.e, the closest leaf is either another leaf or a
+        // placeholder), the requested leaf is not in the tree, and we are
+        // requesting an exclusion proof.
+        //
+        let actual_leaf = &path_nodes[0];
+        let proof_set = side_nodes;
+        let proof = if !actual_leaf.is_placeholder() && actual_leaf.leaf_key() == path {
+            // If the requested key is part of the tree, build an inclusion
+            // proof.
+            let inclusion_proof = InclusionProof { proof_set };
+            Proof::Inclusion(inclusion_proof)
+        } else {
+            // If the requested key is not part of the tree, we are verifying
+            // that the given key is a placeholder, and we must build an
+            // exclusion proof. When building an exclusion proof, the requested
+            // leaf is unset and is currently a placeholder. The path to this
+            // placeholder is designated by the requested leaf's key.
+            //
+            // If the closest leaf is a real leaf, and not a placeholder, we can
+            // build the root upwards using this leaf's key and value. If the
+            // closest leaf is a placeholder, it has a leaf key and a
+            // placeholder value (the zero sum). The leaf key of this
+            // placeholder leaf is unknown (since placeholders do not store
+            // their leaf key), and by extension, the path from the root to the
+            // placeholder is also unknown.
+            //
+            // However, in both cases, the path defined by the requested
+            // placeholder is sufficiently close: All branches stemming from the
+            // point where the paths of the requested placeholder and closest
+            // leaf diverge are saturated with the closest leaf's hash. In the
+            // case where the closest leaf is a placeholder, this hash is simply
+            // the zero sum. The hash of any placeholder under this point of
+            // divergence equates to this hash.
+            //
+            let leaf = if actual_leaf.is_placeholder() {
+                ExclusionLeaf::Placeholder
+            } else {
+                ExclusionLeaf::Leaf(ExclusionLeafData {
+                    leaf_key: *actual_leaf.leaf_key(),
+                    leaf_value: *actual_leaf.leaf_data(),
+                })
+            };
+
+            let exclusion_proof = ExclusionProof { proof_set, leaf };
+            Proof::Exclusion(exclusion_proof)
+        };
+        Ok(proof)
+    }
+}
+
 #[cfg(test)]
+#[allow(non_snake_case)]
 mod test {
+    use super::Node;
     use crate::{
         common::{
+            sum,
             Bytes32,
             StorageMap,
         },
         sparse::{
             empty_sum,
-            hash::sum,
             MerkleTree,
             MerkleTreeError,
             MerkleTreeKey,
-            Node,
             Primitive,
         },
     };
@@ -597,7 +764,7 @@ mod test {
     }
 
     fn key<B: AsRef<[u8]>>(data: B) -> MerkleTreeKey {
-        MerkleTreeKey::new_without_hash(sum(data.as_ref()))
+        MerkleTreeKey::new(data.as_ref())
     }
 
     #[test]
@@ -1334,5 +1501,218 @@ mod test {
         };
 
         assert_eq!(root, expected_root);
+    }
+
+    #[test]
+    fn merkle_tree__generate_proof__returns_proof_with_proof_set_for_given_key() {
+        // Given
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        // 256:           N4
+        //               /  \
+        // 255:         N3   \
+        //             /  \   \
+        // 254:       /   N2   \
+        //           /   /  \   \
+        // 253:     /   N1   \   \
+        //         /   /  \   \   \
+        // 252:   /   N0   \   \   \
+        // ...   /   /  \   \   \   \
+        //   0: L0  L1  L3  P1  L2  P0
+        //      K0  K1  K3      K2
+
+        let k0 = [0u8; 32];
+        let v0 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+            .expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01000000;
+        let v1 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+            .expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01100000;
+        let v2 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+            .expect("Expected successful update");
+
+        let mut k3 = [0u8; 32];
+        k3[0] = 0b01001000;
+        let v3 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+            .expect("Expected successful update");
+
+        let l0 = Node::create_leaf(&k0, v0);
+        let l1 = Node::create_leaf(&k1, v1);
+        let l2 = Node::create_leaf(&k2, v2);
+        let l3 = Node::create_leaf(&k3, v3);
+        let n0 = Node::create_node(&l1, &l3, 252);
+        let n1 = Node::create_node(&n0, &Node::create_placeholder(), 253);
+        let n2 = Node::create_node(&n1, &l2, 254);
+        let n3 = Node::create_node(&l0, &n2, 255);
+
+        {
+            // When
+            let proof = tree.generate_proof(&k0.into()).expect("Expected proof");
+            let expected_proof_set = [*n2.hash(), *Node::create_placeholder().hash()];
+
+            // Then
+            assert_eq!(*proof.proof_set(), expected_proof_set);
+        }
+
+        {
+            // When
+            let proof = tree.generate_proof(&k1.into()).expect("Expected proof");
+            let expected_proof_set = [
+                *l3.hash(),
+                *Node::create_placeholder().hash(),
+                *l2.hash(),
+                *l0.hash(),
+                *Node::create_placeholder().hash(),
+            ];
+
+            // Then
+            assert_eq!(*proof.proof_set(), expected_proof_set);
+        }
+
+        {
+            // When
+            let proof = tree.generate_proof(&k2.into()).expect("Expected proof");
+            let expected_proof_set =
+                [*n1.hash(), *l0.hash(), *Node::create_placeholder().hash()];
+
+            // Then
+            assert_eq!(*proof.proof_set(), expected_proof_set);
+        }
+
+        {
+            // When
+            let proof = tree.generate_proof(&k3.into()).expect("Expected proof");
+            let expected_proof_set = [
+                *l1.hash(),
+                *Node::create_placeholder().hash(),
+                *l2.hash(),
+                *l0.hash(),
+                *Node::create_placeholder().hash(),
+            ];
+
+            // Then
+            assert_eq!(*proof.proof_set(), expected_proof_set);
+        }
+
+        {
+            // Test that supplying an arbitrary leaf "outside" the range of
+            // leaves produces a valid proof set
+
+            // When
+            let key = [255u8; 32];
+            let proof = tree.generate_proof(&key.into()).expect("Expected proof");
+            let expected_proof_set = [*n3.hash()];
+
+            // Then
+            assert_eq!(*proof.proof_set(), expected_proof_set);
+        }
+    }
+
+    #[test]
+    fn merkle_tree__generate_proof__returns_inclusion_proof_for_included_key() {
+        // Given
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        // 256:           N4
+        //               /  \
+        // 255:         N3   \
+        //             /  \   \
+        // 254:       /   N2   \
+        //           /   /  \   \
+        // 253:     /   N1   \   \
+        //         /   /  \   \   \
+        // 252:   /   N0   \   \   \
+        // ...   /   /  \   \   \   \
+        //   0: L0  L1  L3  P1  L2  P0
+        //      K0  K1  K3      K2
+
+        let k0 = [0u8; 32];
+        let v0 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+            .expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01000000;
+        let v1 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+            .expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01100000;
+        let v2 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+            .expect("Expected successful update");
+
+        let mut k3 = [0u8; 32];
+        k3[0] = 0b01001000;
+        let v3 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+            .expect("Expected successful update");
+
+        // When
+        let proof = tree.generate_proof(&k1.into()).expect("Expected proof");
+
+        // Then
+        assert!(proof.is_inclusion());
+    }
+
+    #[test]
+    fn merkle_tree__generate_proof__returns_exclusion_proof_for_excluded_key() {
+        // Given
+        let mut storage = StorageMap::<TestTable>::new();
+        let mut tree = MerkleTree::new(&mut storage);
+
+        // 256:           N4
+        //               /  \
+        // 255:         N3   \
+        //             /  \   \
+        // 254:       /   N2   \
+        //           /   /  \   \
+        // 253:     /   N1   \   \
+        //         /   /  \   \   \
+        // 252:   /   N0   \   \   \
+        // ...   /   /  \   \   \   \
+        //   0: L0  L1  L3  P1  L2  P0
+        //      K0  K1  K3      K2
+
+        let k0 = [0u8; 32];
+        let v0 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+            .expect("Expected successful update");
+
+        let mut k1 = [0u8; 32];
+        k1[0] = 0b01000000;
+        let v1 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+            .expect("Expected successful update");
+
+        let mut k2 = [0u8; 32];
+        k2[0] = 0b01100000;
+        let v2 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+            .expect("Expected successful update");
+
+        let mut k3 = [0u8; 32];
+        k3[0] = 0b01001000;
+        let v3 = sum(b"DATA");
+        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+            .expect("Expected successful update");
+
+        // When
+        let key = [255u8; 32];
+        let proof = tree.generate_proof(&key.into()).expect("Expected proof");
+
+        // Then
+        assert!(proof.is_exclusion());
     }
 }

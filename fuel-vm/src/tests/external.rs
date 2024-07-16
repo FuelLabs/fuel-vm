@@ -8,30 +8,46 @@ use fuel_asm::{
 use fuel_tx::{
     ConsensusParameters,
     Finalizable,
+    PanicReason,
     Receipt,
     Script,
     ScriptExecutionResult,
     TransactionBuilder,
 };
-use fuel_vm::prelude::{
-    Interpreter,
-    IntoChecked,
-    MemoryClient,
-};
+use fuel_vm::prelude::*;
 use itertools::Itertools;
+use test_case::test_case;
+
+use crate::tests::test_helpers::{
+    assert_panics,
+    run_script,
+};
+
+#[test]
+fn attempt_ecal_without_handler() {
+    let receipts = run_script(vec![op::ecal(
+        RegId::ZERO,
+        RegId::ZERO,
+        RegId::ZERO,
+        RegId::ZERO,
+    )]);
+
+    assert_panics(&receipts, PanicReason::EcalError);
+}
 
 /// An ECAL opcode handler function, which charges for `noop` and does nothing.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct NoopEcal;
+
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
-    fn ecal<S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
         _: RegId,
         _: RegId,
         _: RegId,
         _: RegId,
     ) -> ::fuel_vm::error::SimpleResult<()> {
-        vm.gas_charge(vm.gas_costs().noop)
+        vm.gas_charge(vm.gas_costs().noop())
     }
 }
 
@@ -44,13 +60,13 @@ fn noop_ecal() {
     .into_iter()
     .collect();
 
-    let mut client = MemoryClient::<NoopEcal>::new(
+    let mut client = MemoryClient::<_, NoopEcal>::new(
+        MemoryInstance::new(),
         fuel_vm::prelude::MemoryStorage::default(),
         Default::default(),
     );
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, vec![])
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -68,11 +84,12 @@ fn noop_ecal() {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SumProdEcal;
+
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
-    fn ecal<S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<S, Tx, Self>,
+    fn ecal<M, S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -99,7 +116,7 @@ impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
 
 #[test]
 fn provide_ecal_fn() {
-    let vm: Interpreter<_, Script, SumProdEcal> = Interpreter::with_memory_storage();
+    let vm: Interpreter<_, _, Script, SumProdEcal> = Interpreter::with_memory_storage();
 
     let script_data = [
         2u64.to_be_bytes(),
@@ -126,7 +143,6 @@ fn provide_ecal_fn() {
     let mut client = MemoryClient::from_txtor(vm.into());
     let consensus_params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, script_data)
-        .gas_price(0)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
         .add_random_fee_input()
@@ -142,4 +158,70 @@ fn provide_ecal_fn() {
 
     assert_eq!(*ra, 2 + 3 + 4 + 5);
     assert_eq!(*rb, 2 * 3 * 4 * 5);
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct ComplexEcal {
+    state: u64,
+}
+
+impl ::fuel_vm::interpreter::EcalHandler for ComplexEcal {
+    const INC_PC: bool = false;
+
+    /// Ecal meant for testing cornercase behavior of the handler.
+    fn ecal<M, S, Tx>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+        a: RegId,
+        _b: RegId,
+        _c: RegId,
+        _d: RegId,
+    ) -> ::fuel_vm::error::SimpleResult<()> {
+        vm.gas_charge(1)?;
+
+        if vm.ecal_state().state > 10 {
+            // Just some nonsensical error
+            return Err(PanicReason::NotEnoughBalance.into());
+        }
+
+        let a = vm.registers()[a];
+
+        vm.registers_mut()[RegId::PC] = if a == 0 {
+            return Err(PanicReason::EcalError.into());
+        } else {
+            vm.registers_mut()[RegId::PC].wrapping_sub(4 * a)
+        };
+
+        vm.ecal_state_mut().state += 1;
+
+        Ok(())
+    }
+}
+
+#[test_case(0, PanicReason::EcalError; "ecal itself errors")]
+#[test_case(1, PanicReason::NotEnoughBalance; "ecal hits loop limit")]
+#[test_case(10, PanicReason::MemoryNotExecutable; "ecal jumps out of bounds")]
+fn complex_ecal_fn(val: u32, result: PanicReason) {
+    let vm: Interpreter<_, _, Script, ComplexEcal> = Interpreter::with_memory_storage();
+
+    let script = vec![
+        op::movi(0x20, val),
+        op::ecal(0x20, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]
+    .into_iter()
+    .collect();
+
+    let mut client = MemoryClient::from_txtor(vm.into());
+    let consensus_params = ConsensusParameters::standard();
+    let tx = TransactionBuilder::script(script, vec![])
+        .script_gas_limit(1_000_000)
+        .maturity(Default::default())
+        .add_random_fee_input()
+        .finalize()
+        .into_checked(Default::default(), &consensus_params)
+        .expect("failed to generate a checked tx");
+    client.transact(tx);
+    let receipts = client.receipts().expect("Expected receipts");
+
+    assert_panics(receipts, result);
 }

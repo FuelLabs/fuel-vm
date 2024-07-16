@@ -1,4 +1,9 @@
-use fuel_tx::{
+//! This module tests the offset calculation for each field of each transaction type in
+//! canonical representation. Since each transaction can be executed inside FuelVM
+//! it lives inside VM's memory. The predicate or script may want to have access to
+//! different fields of transactions. An offset is used to access it.
+
+use crate::{
     field::{
         InputContract,
         Inputs,
@@ -10,12 +15,14 @@ use fuel_tx::{
         Salt as SaltField,
         StorageSlots,
         TxPointer as TxPointerField,
+        UpgradePurpose as UpgradePurposeField,
         Witnesses,
     },
     input,
+    test_helper::TransactionFactory,
+    Upgrade,
     *,
 };
-use fuel_tx_test_helpers::TransactionFactory;
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -36,6 +43,7 @@ use rand::{
 struct TestedFields {
     salt: bool,
     slots: bool,
+    upgrade_purpose: bool,
     utxo_id: bool,
     owner: bool,
     asset_id: bool,
@@ -59,11 +67,10 @@ struct TestedFields {
     output_contract_created_id: bool,
 }
 
-fn common_parts_create_and_script<Tx: Buildable>(
-    tx: &Tx,
-    bytes: &[u8],
-    cases: &mut TestedFields,
-) {
+fn chargeable_transaction_parts<Tx>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
+where
+    Tx: Buildable,
+{
     tx.inputs().iter().enumerate().for_each(|(idx, i)| {
         let input_ofs = tx
             .inputs_offset_at(idx)
@@ -365,7 +372,7 @@ fn tx_offset_create() {
                     assert_eq!(slot, &slot_p);
                 });
 
-            common_parts_create_and_script(&tx, &bytes, &mut cases);
+            chargeable_transaction_parts(&tx, &bytes, &mut cases);
         });
 
     assert!(cases.salt);
@@ -406,9 +413,100 @@ fn tx_offset_script() {
         .take(number_cases)
         .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
-            common_parts_create_and_script(&tx, &bytes, &mut cases);
+            chargeable_transaction_parts(&tx, &bytes, &mut cases);
         });
 
+    assert!(cases.utxo_id);
+    assert!(cases.owner);
+    assert!(cases.asset_id);
+    assert!(cases.predicate_coin);
+    assert!(cases.predicate_message);
+    assert!(cases.predicate_data_coin);
+    assert!(cases.predicate_data_message);
+    assert!(cases.contract_balance_root);
+    assert!(cases.contract_state_root);
+    assert!(cases.contract_id);
+    assert!(cases.sender);
+    assert!(cases.recipient);
+    assert!(cases.message_data);
+    assert!(cases.message_predicate);
+    assert!(cases.message_predicate_data);
+    assert!(cases.output_to);
+    assert!(cases.output_asset_id);
+    assert!(cases.output_balance_root);
+    assert!(cases.output_contract_state_root);
+    assert!(cases.output_contract_created_state_root);
+    assert!(cases.output_contract_created_id);
+}
+
+#[test]
+fn tx_offset_upgrade() {
+    let mut cases = TestedFields::default();
+    let number_cases = 100;
+
+    // The seed will define how the transaction factory will generate a new transaction.
+    // Different seeds might implicate on how many of the cases we cover - since we
+    // assert coverage for all scenarios with the boolean variables above, we need to
+    // pick a seed that, with low number of cases, will cover everything.
+    TransactionFactory::<_, Upgrade>::from_seed(1295)
+        .take(number_cases)
+        .for_each(|(tx, _)| {
+            let bytes = tx.to_bytes();
+            chargeable_transaction_parts(&tx, &bytes, &mut cases);
+            cases.upgrade_purpose = true;
+
+            let ofs = tx.upgrade_purpose_offset();
+            let size = tx.upgrade_purpose().size();
+
+            let purpose_p = UpgradePurpose::from_bytes(&bytes[ofs..ofs + size]).unwrap();
+
+            assert_eq!(tx.upgrade_purpose(), &purpose_p);
+        });
+
+    // Upgrade parts
+    assert!(cases.upgrade_purpose);
+
+    // Chargeable parts
+    assert!(cases.utxo_id);
+    assert!(cases.owner);
+    assert!(cases.asset_id);
+    assert!(cases.predicate_coin);
+    assert!(cases.predicate_message);
+    assert!(cases.predicate_data_coin);
+    assert!(cases.predicate_data_message);
+    assert!(cases.contract_balance_root);
+    assert!(cases.contract_state_root);
+    assert!(cases.contract_id);
+    assert!(cases.sender);
+    assert!(cases.recipient);
+    assert!(cases.message_data);
+    assert!(cases.message_predicate);
+    assert!(cases.message_predicate_data);
+    assert!(cases.output_to);
+    assert!(cases.output_asset_id);
+    assert!(cases.output_balance_root);
+    assert!(cases.output_contract_state_root);
+    assert!(cases.output_contract_created_state_root);
+    assert!(cases.output_contract_created_id);
+}
+
+#[test]
+fn tx_offset_upload() {
+    let mut cases = TestedFields::default();
+    let number_cases = 100;
+
+    // The seed will define how the transaction factory will generate a new transaction.
+    // Different seeds might implicate on how many of the cases we cover - since we
+    // assert coverage for all scenarios with the boolean variables above, we need to
+    // pick a seed that, with low number of cases, will cover everything.
+    TransactionFactory::<_, Upload>::from_seed(1295)
+        .take(number_cases)
+        .for_each(|(tx, _)| {
+            let bytes = tx.to_bytes();
+            chargeable_transaction_parts(&tx, &bytes, &mut cases);
+        });
+
+    // Chargeable parts
     assert!(cases.utxo_id);
     assert!(cases.owner);
     assert!(cases.asset_id);

@@ -25,8 +25,6 @@ use rand::{
 #[cfg(all(feature = "alloc", feature = "typescript"))]
 use alloc::vec::Vec;
 
-use crate::hex_val;
-
 macro_rules! key {
     ($i:ident, $t:ty) => {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -87,7 +85,7 @@ macro_rules! key_methods {
                 /// Convert to usize.
                 #[wasm_bindgen(js_name = as_usize)]
                 pub fn as_usize_typescript(&self) -> usize {
-                    self.0 as usize
+                    usize::try_from(self.0).expect("Cannot convert to usize")
                 }
             }
 
@@ -216,25 +214,10 @@ macro_rules! key_methods {
                 type Err = &'static str;
 
                 fn from_str(s: &str) -> Result<Self, Self::Err> {
-                    const ERR: &str = "Invalid encoded byte";
-
-                    let alternate = s.starts_with("0x");
-
-                    let mut b = s.bytes();
+                    const ERR: &str = concat!("Invalid encoded byte in ", stringify!($i));
                     let mut ret = <[u8; SIZE]>::default();
-
-                    if alternate {
-                        b.next();
-                        b.next();
-                    }
-
-                    for r in ret.as_mut() {
-                        let h = b.next().and_then(hex_val).ok_or(ERR)?;
-                        let l = b.next().and_then(hex_val).ok_or(ERR)?;
-
-                        *r = h << 4 | l;
-                    }
-
+                    let s = s.strip_prefix("0x").unwrap_or(s);
+                    hex::decode_to_slice(&s, &mut ret).map_err(|_| ERR)?;
                     Ok(ret.into())
                 }
             }

@@ -10,6 +10,8 @@ use fuel_types::{
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum ValidityError {
+    /// The actual and calculated metadata of the transaction mismatch.
+    TransactionMetadataMismatch,
     /// Transaction doesn't have spendable input message or coin.
     NoSpendableInput,
     InputWitnessIndexBounds {
@@ -48,20 +50,28 @@ pub enum ValidityError {
     OutputContractInputIndex {
         index: usize,
     },
-    TransactionCreateInputContract {
+    /// One of inputs' `AssetId` is not base asset id.
+    TransactionInputContainsNonBaseAssetId {
         index: usize,
     },
-    /// The `Create` transaction contains (retryable) message input.
-    TransactionCreateMessageData {
+    /// One of inputs is a `Input::Contract` when it is not allowed.
+    TransactionInputContainsContract {
         index: usize,
     },
-    TransactionCreateOutputContract {
+    /// One of inputs contains retryable message when it is not allowed.
+    TransactionInputContainsMessageData {
         index: usize,
     },
-    TransactionCreateOutputVariable {
+    /// One of outputs is a `Output::Contract` when it is not allowed.
+    TransactionOutputContainsContract {
         index: usize,
     },
-    TransactionCreateOutputChangeNotBaseAsset {
+    /// One of outputs is a `Output::Variable` when it is not allowed.
+    TransactionOutputContainsVariable {
+        index: usize,
+    },
+    /// One of `Output::Change` outputs uses a non-base asset id.
+    TransactionChangeChangeUsesNotBaseAsset {
         index: usize,
     },
     TransactionCreateOutputContractCreatedDoesntMatch {
@@ -76,7 +86,8 @@ pub enum ValidityError {
     TransactionCreateStorageSlotOrder,
     TransactionScriptLength,
     TransactionScriptDataLength,
-    TransactionScriptOutputContractCreated {
+    /// The output contains a `Output::ContractCreated` which is not allowed.
+    TransactionOutputContainsContractCreated {
         index: usize,
     },
     /// The block height of the checking doesn't match the transaction's block height.
@@ -86,15 +97,30 @@ pub enum ValidityError {
     TransactionMintIncorrectOutputIndex,
     /// The `Output.mint_base_asset` is not base asset.
     TransactionMintNonBaseAsset,
+    /// The `Upgrade` transaction doesn't have the privileged address as the input
+    /// owner.
+    TransactionUpgradeNoPrivilegedAddress,
+    /// The `Upgrade` transaction's checksum doesn't match the consensus parameters from
+    /// witness.
+    TransactionUpgradeConsensusParametersChecksumMismatch,
+    /// The `Upgrade` transaction's consensus parameters serialization failed.
+    TransactionUpgradeConsensusParametersSerialization,
+    /// The `Upgrade` transaction's consensus parameters deserialization failed.
+    TransactionUpgradeConsensusParametersDeserialization,
+    /// The verification of the bytecode root of the `Upload` transaction failed.
+    TransactionUploadRootVerificationFailed,
+    /// The total number of bytecode subsections in the `Upload` transaction exceeds the
+    /// limit.
+    TransactionUploadTooManyBytecodeSubsections,
     /// The transaction exceeded the size limit.
     TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded
     TransactionMaxGasExceeded,
-    TransactionMaxFeeLimitExceeded,
     TransactionWitnessLimitExceeded,
     TransactionPoliciesAreInvalid,
     TransactionNoGasPricePolicy,
     TransactionMaturity,
+    TransactionMaxFeeNotSet,
     TransactionInputsMax,
     TransactionOutputsMax,
     TransactionWitnessesMax,
@@ -136,4 +162,18 @@ pub enum ValidityError {
     BalanceOverflow,
     /// The given gas costs is are too large
     GasCostsCoinsOverflow,
+    /// Serialized input length is too large.
+    SerializedInputTooLarge {
+        index: usize,
+    },
+    /// Serialized output length is too large.
+    SerializedOutputTooLarge {
+        index: usize,
+    },
+    /// Serialized witness length is too large.
+    SerializedWitnessTooLarge {
+        index: usize,
+    },
+    /// The `Create` transaction doesn't contain `Output::ContractCreated`.
+    TransactionOutputDoesntContainContractCreated,
 }

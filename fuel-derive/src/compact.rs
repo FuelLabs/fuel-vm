@@ -1,12 +1,96 @@
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{
+    Span,
+    TokenStream as TokenStream2,
+    TokenTree as TokenTree2,
+};
 use quote::{
     format_ident,
     quote,
 };
 
 use regex::Regex;
+use syn::parse::{
+    Parse,
+    ParseStream,
+};
 
 const ATTR: &str = "da_compress";
+
+/// Structure (struct or enum) attributes
+#[derive(Debug)]
+pub enum StructureAttrs {
+    /// Insert bounds for a generic type
+    Bound(Vec<String>),
+    /// Discard generic parameter
+    Discard(Vec<String>),
+}
+impl Parse for StructureAttrs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if let Ok(ml) = input.parse::<syn::MetaList>() {
+            if ml.path.segments.len() == 1 {
+                match ml.path.segments[0].ident.to_string().as_str() {
+                    "bound" => {
+                        let mut bound = Vec::new();
+                        for item in ml.tokens {
+                            match item {
+                                TokenTree2::Ident(ident) => {
+                                    bound.push(ident.to_string());
+                                }
+                                other => {
+                                    return Err(syn::Error::new_spanned(
+                                        other,
+                                        "Expected generic (type) name",
+                                    ))
+                                }
+                            }
+                        }
+                        return Ok(Self::Bound(bound));
+                    }
+                    "discard" => {
+                        let mut discard = Vec::new();
+                        for item in ml.tokens {
+                            match item {
+                                TokenTree2::Ident(ident) => {
+                                    discard.push(ident.to_string());
+                                }
+                                other => {
+                                    return Err(syn::Error::new_spanned(
+                                        other,
+                                        "Expected generic (type) name",
+                                    ))
+                                }
+                            }
+                        }
+                        return Ok(Self::Discard(discard));
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Err(syn::Error::new_spanned(
+            input.parse::<syn::Ident>()?,
+            "Expected `bound` or `discard`",
+        ))
+    }
+}
+impl StructureAttrs {
+    pub fn parse(attrs: &[syn::Attribute]) -> syn::Result<Vec<Self>> {
+        let mut result = Vec::new();
+        for attr in attrs {
+            if attr.style != syn::AttrStyle::Outer {
+                continue;
+            }
+
+            if let syn::Meta::List(ml) = &attr.meta {
+                if ml.path.segments.len() == 1 && ml.path.segments[0].ident == ATTR {
+                    result.push(syn::parse2::<StructureAttrs>(ml.tokens.clone())?);
+                }
+            }
+        }
+
+        Ok(result)
+    }
+}
 
 /// Field attributes
 pub enum FieldAttrs {
@@ -280,15 +364,61 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::None)
         .underscore_const(true);
 
+    let s_attrs = match StructureAttrs::parse(&s.ast().attrs) {
+        Ok(v) => v,
+        Err(e) => return e.to_compile_error(),
+    };
+
     let name = &s.ast().ident;
     let compact_name = format_ident!("Compact{}", name);
 
-    let g = s.ast().generics.clone();
-    let w = g.where_clause.clone();
+    let mut g = s.ast().generics.clone();
+    let mut w_structure = g.where_clause.take();
+    let mut w_impl = w_structure.clone();
+    for item in &s_attrs {
+        match item {
+            StructureAttrs::Bound(bound) => {
+                if w_structure.is_none() {
+                    w_structure = Some(syn::WhereClause {
+                        where_token: syn::Token![where](proc_macro2::Span::call_site()),
+                        predicates: Default::default(),
+                    });
+                    w_impl = Some(syn::WhereClause {
+                        where_token: syn::Token![where](proc_macro2::Span::call_site()),
+                        predicates: Default::default(),
+                    });
+                }
+                for p in bound {
+                    let id = syn::Ident::new(p, Span::call_site());
+                    w_structure
+                        .as_mut()
+                        .unwrap()
+                        .predicates
+                        .push(syn::parse_quote! { #id: ::fuel_compression::Compactable });
+                    w_impl.as_mut().unwrap().predicates.push(
+                        syn::parse_quote! { for<'de>  #id: ::fuel_compression::Compactable + serde::Serialize + serde::Deserialize<'de> + Clone },
+                    );
+                }
+            }
+            StructureAttrs::Discard(discard) => {
+                g.params = g
+                    .params
+                    .into_pairs()
+                    .filter(|pair| match pair.value() {
+                        syn::GenericParam::Type(t) => {
+                            !discard.contains(&t.ident.to_string())
+                        }
+                        _ => true,
+                    })
+                    .collect();
+            }
+        }
+    }
+
     let def = match &s.ast().data {
         syn::Data::Struct(v) => {
             let variant: &synstructure::VariantInfo = &s.variants()[0];
-            let defs = field_defs(&variant.ast().fields);
+            let defs = field_defs(variant.ast().fields);
             let semi = match v.fields {
                 syn::Fields::Named(_) => quote! {},
                 syn::Fields::Unnamed(_) => quote! {;},
@@ -297,7 +427,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
                 #[doc = concat!("Compacted version of `", stringify!(#name), "`.")]
-                pub struct #compact_name #g #w #defs #semi
+                pub struct #compact_name #g #w_structure #defs #semi
             }
         }
         syn::Data::Enum(_) => {
@@ -306,7 +436,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
                 .iter()
                 .map(|variant| {
                     let vname = variant.ast().ident.clone();
-                    let defs = field_defs(&variant.ast().fields);
+                    let defs = field_defs(variant.ast().fields);
                     quote! {
                         #vname #defs,
                     }
@@ -316,13 +446,13 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
                 #[doc = concat!("Compacted version of `", stringify!(#name), "`.")]
-                pub enum #compact_name #g #w { #variant_defs }
+                pub enum #compact_name #g #w_structure { #variant_defs }
             }
         }
         syn::Data::Union(_) => panic!("unions are not supported"),
     };
 
-    let count_per_variant = s.each_variant(|variant| sum_counts(variant));
+    let count_per_variant = s.each_variant(sum_counts);
     let construct_per_variant = s.each_variant(|variant| {
         let vname = variant.ast().ident.clone();
         let construct = match &s.ast().data {
@@ -347,7 +477,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     let impls = s.gen_impl(quote! {
         use ::fuel_compression::{RegistryDb, tables, Table, Key, Compactable, CountPerTable, CompactionContext};
 
-        gen impl Compactable for @Self {
+        gen impl Compactable for @Self #w_impl {
             type Compact = #compact_name #g;
 
             fn count(&self) -> CountPerTable {
@@ -368,7 +498,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
         #impls
     };
 
-    let _ = std::fs::write(format!("/tmp/derive/{}.rs", name), &rs.to_string());
+    let _ = std::fs::write(format!("/tmp/derive/{}.rs", name), rs.to_string());
 
     rs
 }

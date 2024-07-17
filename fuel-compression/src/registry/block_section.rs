@@ -110,7 +110,7 @@ impl<'de, T: Table + Deserialize<'de>> serde::de::Visitor<'de> for WriteTo<T> {
         )?;
 
         if values.is_empty() {
-            let _: () = seq.next_element()?.ok_or(serde::de::Error::invalid_length(
+            seq.next_element()?.ok_or(serde::de::Error::invalid_length(
                 1,
                 &"WriteTo<_> with 2 elements",
             ))?;

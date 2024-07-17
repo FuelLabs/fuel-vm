@@ -55,7 +55,7 @@ pub trait MessageSpecification: private::Seal {
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>
         + Default;
-    type Witness: AsField<u8>
+    type Witness: AsField<u16>
         + Compactable
         + Clone
         + serde::Serialize

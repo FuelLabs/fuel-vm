@@ -34,7 +34,7 @@ mod private {
 /// Specifies the coin based on the usage context. See [`Coin`].
 #[cfg(feature = "da-compression")]
 pub trait CoinSpecification: private::Seal {
-    type Witness: AsField<u8> + Compactable + Clone;
+    type Witness: AsField<u16> + Compactable + Clone;
     type Predicate: AsField<Vec<u8>> + Compactable + Clone;
     type PredicateData: AsField<Vec<u8>> + Compactable + Clone;
     type PredicateGasUsed: AsField<Word> + Compactable + Clone;

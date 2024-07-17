@@ -43,9 +43,12 @@ pub struct ChargeableMetadata<Body> {
 }
 
 #[derive(Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", da_compress(bound(Body)))]
+#[cfg_attr(feature = "da-compression", da_compress(discard(MetadataBody)))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct ChargeableTransaction<Body, MetadataBody> {
     pub(crate) body: Body,
     pub(crate) policies: Policies,

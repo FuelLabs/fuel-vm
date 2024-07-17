@@ -203,9 +203,7 @@ where
     }
 
     fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self> {
-        Ok(try_map_array(compact.0, |v: T::Compact| {
-            T::decompact(v, reg)
-        })?)
+        try_map_array(compact.0, |v: T::Compact| T::decompact(v, reg))
     }
 }
 

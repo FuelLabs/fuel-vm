@@ -24,6 +24,7 @@ impl RawKey {
     }
 
     /// Wraps around just below max/default value.
+    #[allow(clippy::cast_possible_truncation)]
     pub fn add_u32(self, rhs: u32) -> Self {
         let lhs = self.as_u32() as u64;
         let rhs = rhs as u64;
@@ -87,12 +88,13 @@ impl TryFrom<u32> for RawKey {
 /// Typed key to a registry table entry.
 /// The last key (all bits set) is reserved for the default value and cannot be written
 /// to.
+#[allow(clippy::derived_hash_with_manual_eq)] // PhantomData requires this
 #[derive(Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Key<T: Table>(RawKey, PhantomData<T>);
 impl<T: Table> Clone for Key<T> {
     fn clone(&self) -> Self {
-        Self(self.0, PhantomData)
+        *self
     }
 }
 impl<T: Table> Copy for Key<T> {}

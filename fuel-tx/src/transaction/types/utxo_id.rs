@@ -29,29 +29,6 @@ pub struct UtxoId {
     output_index: u16,
 }
 
-// const _: () = {
-//     impl fuel_compression::Compactable for UtxoId {
-//         type Compact = ();
-
-//         fn count(&self) -> fuel_compression::CountPerTable {
-//             todo!()
-//         }
-
-//         fn compact<R>(&self, ctx: &mut fuel_compression::CompactionContext<R>) ->
-// Self::Compact         where
-//             R: fuel_compression::db::RegistryRead +
-// fuel_compression::db::RegistryWrite + fuel_compression::db::RegistryIndex {
-//             todo!()
-//         }
-
-//         fn decompact<R>(compact: Self::Compact, reg: &R) -> Self
-//         where
-//             R: fuel_compression::db::RegistryRead {
-//             todo!()
-//         }
-//     }
-// };
-
 impl UtxoId {
     pub const LEN: usize = TxId::LEN + 8;
 

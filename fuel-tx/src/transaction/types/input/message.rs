@@ -194,7 +194,6 @@ where
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     #[derivative(Debug(format_with = "fmt_as_field"))]
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,

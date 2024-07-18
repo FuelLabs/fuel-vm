@@ -320,9 +320,9 @@ mod tests {
 
     #[derive(Debug, Clone, PartialEq, Compact)]
     struct AutomaticExample {
-        #[da_compress(registry = "AssetId")]
+        #[da_compress(registry = ::fuel_compression::tables::AssetId)]
         a: AssetId,
-        #[da_compress(registry = "AssetId")]
+        #[da_compress(registry = ::fuel_compression::tables::AssetId)]
         b: AssetId,
         c: u32,
     }

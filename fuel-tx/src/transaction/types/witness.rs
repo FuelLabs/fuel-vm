@@ -30,7 +30,7 @@ use rand::{
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Witness {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    #[cfg_attr(feature = "da-compression", da_compress(registry = "Witness"))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Witness))]
     data: Vec<u8>,
 }
 

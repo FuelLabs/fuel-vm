@@ -8,7 +8,6 @@ use quote::{
     quote,
 };
 
-use regex::Regex;
 use syn::parse::{
     Parse,
     ParseStream,
@@ -99,11 +98,11 @@ pub enum FieldAttrs {
     /// Compacted recursively.
     Normal,
     /// This value is compacted into a registry lookup.
-    Registry(String),
+    Registry(syn::Path),
 }
 impl FieldAttrs {
     pub fn parse(attrs: &[syn::Attribute]) -> Self {
-        let re_registry = Regex::new(r#"^registry\s*=\s*"([a-zA-Z_]+)"$"#).unwrap();
+        let registry_path = syn::parse2::<syn::Path>(quote! {registry}).unwrap();
 
         let mut result = Self::Normal;
         for attr in attrs {
@@ -117,14 +116,22 @@ impl FieldAttrs {
                         panic!("Duplicate attribute: {}", ml.tokens);
                     }
 
-                    let attr_contents = ml.tokens.to_string();
-                    if attr_contents == "skip" {
-                        result = Self::Skip;
-                    } else if let Some(m) = re_registry.captures(&attr_contents) {
-                        result = Self::Registry(m.get(1).unwrap().as_str().to_owned());
-                    } else {
-                        panic!("Invalid attribute: {}", ml.tokens);
+                    if let Ok(ident) = syn::parse2::<syn::Ident>(ml.tokens.clone()) {
+                        if ident.to_string() == "skip" {
+                            result = Self::Skip;
+                            continue;
+                        }
+                    } else if let Ok(kv) =
+                        syn::parse2::<syn::MetaNameValue>(ml.tokens.clone())
+                    {
+                        if kv.path == registry_path {
+                            if let syn::Expr::Path(p) = kv.value {
+                                result = Self::Registry(p.path);
+                                continue;
+                            }
+                        }
                     }
+                    panic!("Invalid attribute: {}", ml.tokens);
                 }
             }
         }
@@ -153,9 +160,8 @@ fn field_defs(fields: &syn::Fields) -> TokenStream2 {
                 }
             }
             FieldAttrs::Registry(registry) => {
-                let reg_ident = format_ident!("{}", registry);
                 let cty = quote! {
-                    ::fuel_compression::Key<::fuel_compression::tables::#reg_ident>
+                    ::fuel_compression::Key<#registry>
                 };
                 if let Some(fname) = field.ident.as_ref() {
                     quote! { #fname: #cty, }
@@ -195,15 +201,14 @@ fn construct_compact(
                     }
                 }
                 FieldAttrs::Registry(registry) => {
-                    let reg_ident = format_ident!("{}", registry);
                     let cty = quote! {
                         Key<
-                            tables::#reg_ident
+                            #registry
                         >
                     };
                     quote! {
                         let #cname: #cty = ctx.to_key(
-                            <tables::#reg_ident as Table>::Type::from(#binding.clone())
+                            <#registry as Table>::Type::from(#binding.clone())
                         )?;
                     }
                 }
@@ -263,9 +268,8 @@ fn construct_decompact(
                     }
                 }
                 FieldAttrs::Registry(registry) => {
-                    let reg_ident = format_ident!("{}", registry);
                     quote! {
-                        let raw: <tables::#reg_ident as Table>::Type = reg.read(
+                        let raw: <#registry as Table>::Type = reg.read(
                             #binding
                         )?;
                         let #cname = raw.into();
@@ -315,9 +319,8 @@ fn sum_counts(variant: &synstructure::VariantInfo<'_>) -> TokenStream2 {
                     quote! { <#ty as Compactable>::count(&#binding) }
                 }
                 FieldAttrs::Registry(registry) => {
-                    let reg_ident = format_ident!("{}", registry);
                     quote! {
-                        CountPerTable::#reg_ident(1)
+                        #registry::count(1)
                     }
                 }
             }

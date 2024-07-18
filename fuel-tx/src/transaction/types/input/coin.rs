@@ -114,10 +114,10 @@ where
     Specification: CoinSpecification + Clone,
 {
     pub utxo_id: UtxoId,
-    #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Address))]
     pub owner: Address,
     pub amount: Word,
-    #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::AssetId))]
     pub asset_id: AssetId,
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]

@@ -23,6 +23,9 @@ pub trait Table: _private::Seal {
     /// Unique name of the table
     const NAME: &'static str;
 
+    /// A `CountPerTable` for this table
+    fn count(n: usize) -> CountPerTable;
+
     /// The type stored in the table
     type Type: PartialEq + Default + Serialize + for<'de> Deserialize<'de>;
 }
@@ -55,6 +58,9 @@ macro_rules! tables {
                 impl super::_private::Seal for $name {}
                 impl super::Table for $name {
                     const NAME: &'static str = stringify!($name);
+                    fn count(n: usize) -> super::CountPerTable {
+                        super::CountPerTable::$name(n)
+                    }
                     type Type = $ty;
                 }
             )*

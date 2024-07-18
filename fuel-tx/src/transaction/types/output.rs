@@ -25,21 +25,21 @@ pub use repr::OutputRepr;
 #[derive(canonical::Deserialize, canonical::Serialize)]
 pub enum Output {
     Coin {
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Address))]
         to: Address,
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::AssetId))]
         asset_id: AssetId,
     },
 
     Contract(Contract),
 
     Change {
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "Address"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Address))]
         to: Address,
         #[cfg_attr(feature = "da-compression", da_compress(skip))]
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "AssetId"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::AssetId))]
         asset_id: AssetId,
     },
 
@@ -53,7 +53,7 @@ pub enum Output {
     },
 
     ContractCreated {
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "ContractId"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::ContractId))]
         contract_id: ContractId,
         state_root: Bytes32,
     },

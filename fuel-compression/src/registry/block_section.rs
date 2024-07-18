@@ -141,7 +141,10 @@ mod tests {
     use super::*;
     use bincode::Options;
     use fuel_asm::op;
-    use fuel_tx::AssetId;
+    use fuel_tx::{
+        AssetId,
+        ContractId,
+    };
     use fuel_types::Address;
 
     #[test]
@@ -155,7 +158,11 @@ mod tests {
                 },
                 Address: WriteTo {
                     start_key: Key::ZERO,
-                    values: vec![*Address::from([0xc0; 32])],
+                    values: vec![*Address::from([0xb0; 32])],
+                },
+                ContractId: WriteTo {
+                    start_key: Key::ZERO,
+                    values: vec![*ContractId::from([0xc0; 32])],
                 },
                 ScriptCode: WriteTo {
                     start_key: Key::ZERO,

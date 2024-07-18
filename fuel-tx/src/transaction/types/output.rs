@@ -53,6 +53,7 @@ pub enum Output {
     },
 
     ContractCreated {
+        #[cfg_attr(feature = "da-compression", da_compress(registry = "ContractId"))]
         contract_id: ContractId,
         state_root: Bytes32,
     },

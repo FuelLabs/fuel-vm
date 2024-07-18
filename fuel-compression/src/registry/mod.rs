@@ -208,6 +208,7 @@ macro_rules! tables {
 tables!(
     AssetId: [u8; 32],
     Address: [u8; 32],
+    ContractId: [u8; 32],
     ScriptCode: Vec<u8>,
     Witness: Vec<u8>,
 );

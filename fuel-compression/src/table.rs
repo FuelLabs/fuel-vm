@@ -72,10 +72,16 @@ macro_rules! tables {
             )*
         }
 
-        /// Context for compaction, i.e. converting data to reference-based format
+        /// Context for compaction, i.e. converting data to reference-based format.
+        /// The context is used to aggreage changes to the registry.
+        /// A new context should be created for each compaction "session",
+        /// typically a blockchain block.
         #[allow(non_snake_case)] // The field names match table type names eactly
         #[allow(missing_docs)] // TODO
         pub trait CompactionContext {
+            /// Ends session, returning the changeset.
+            fn finalize(self) -> ChangesPerTable;
+
             /// Store a value to the changeset and return a short reference key to it.
             /// If the value already exists in the registry and will not be overwritten,
             /// the existing key can be returned instead.
@@ -231,95 +237,3 @@ tables!(
     ScriptCode: Vec<u8>,
     Witness: Vec<u8>,
 );
-
-#[cfg(test)]
-mod tests {
-    use fuel_types::AssetId;
-    use tests::key::RawKey;
-
-    use super::*;
-
-    #[test]
-    fn test_in_memory_db() {
-        let mut reg = in_memory::InMemoryRegistry::default();
-
-        // Empty
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(100).unwrap())
-                .unwrap(),
-            [0; 32]
-        );
-        assert_eq!(
-            reg.index_lookup(&*AssetId::from([1; 32])).unwrap(),
-            None::<Key<tables::AssetId>>
-        );
-
-        // Write
-        reg.batch_write(
-            Key::<tables::AssetId>::from_raw(RawKey::try_from(100u32).unwrap()),
-            vec![[1; 32], [2; 32]],
-        )
-        .unwrap();
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(100).unwrap())
-                .unwrap(),
-            [1; 32]
-        );
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(101).unwrap())
-                .unwrap(),
-            [2; 32]
-        );
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(102).unwrap())
-                .unwrap(),
-            [0; 32]
-        );
-
-        // Overwrite
-        reg.batch_write(
-            Key::<tables::AssetId>::from_raw(RawKey::try_from(99u32).unwrap()),
-            vec![[10; 32], [11; 32]],
-        )
-        .unwrap();
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(99).unwrap())
-                .unwrap(),
-            [10; 32]
-        );
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::try_from(100).unwrap())
-                .unwrap(),
-            [11; 32]
-        );
-
-        // Wrapping
-        reg.batch_write(
-            Key::<tables::AssetId>::from_raw(RawKey::MAX_WRITABLE),
-            vec![[3; 32], [4; 32]],
-        )
-        .unwrap();
-
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::from_raw(RawKey::MAX_WRITABLE))
-                .unwrap(),
-            [3; 32]
-        );
-
-        assert_eq!(
-            reg.read(Key::<tables::AssetId>::from_raw(RawKey::ZERO))
-                .unwrap(),
-            [4; 32]
-        );
-
-        assert_eq!(
-            reg.index_lookup(&*AssetId::from([3; 32])).unwrap(),
-            Some(Key::<tables::AssetId>::from_raw(RawKey::MAX_WRITABLE))
-        );
-
-        assert_eq!(
-            reg.index_lookup(&*AssetId::from([4; 32])).unwrap(),
-            Some(Key::<tables::AssetId>::from_raw(RawKey::ZERO))
-        );
-    }
-}

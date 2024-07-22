@@ -12,7 +12,6 @@ use crate::{
     CompactionContext,
     CountPerTable,
     DecompactionContext,
-    Key,
 };
 
 /// Convert data to reference-based format
@@ -170,10 +169,12 @@ impl<T> Compactable for PhantomData<T> {
 #[cfg(test)]
 mod tests {
     use fuel_compression::{
+        dummy_registry::DummyRegistry,
         tables,
         Compactable,
         CompactionContext,
         CountPerTable,
+        DecompactionContext,
         Key,
     };
     use fuel_derive::Compact;
@@ -185,8 +186,6 @@ mod tests {
         Deserialize,
         Serialize,
     };
-
-    use crate::DecompactionContext;
 
     #[derive(Debug, Clone, PartialEq)]
     struct ManualExample {
@@ -257,27 +256,27 @@ mod tests {
     }
 
     #[test]
-    fn test_compaction_roundtrip() {
+    fn test_compaction_roundtrip_manual() {
         let target = ManualExample {
             a: Address::from([1u8; 32]),
             b: Address::from([2u8; 32]),
             c: 3,
         };
-        let mut registry = fuel_compression::InMemoryRegistry::default();
-        let (compacted, _) =
-            CompactionContext::run(&mut registry, target.clone()).unwrap();
+        let mut registry = DummyRegistry::default();
+        let (compacted, _) = registry.compact(target.clone()).unwrap();
         let decompacted = ManualExample::decompact(compacted, &registry).unwrap();
         assert_eq!(target, decompacted);
+    }
 
+    #[test]
+    fn test_compaction_roundtrip_derive() {
         let target = AutomaticExample {
             a: AssetId::from([1u8; 32]),
             b: AssetId::from([2u8; 32]),
             c: 3,
         };
-        let mut registry = fuel_compression::InMemoryRegistry::default();
-        let (compacted, _) =
-            fuel_compression::CompactionContext::run(&mut registry, target.clone())
-                .unwrap();
+        let mut registry = DummyRegistry::default();
+        let (compacted, _) = registry.compact(target.clone()).unwrap();
         let decompacted = AutomaticExample::decompact(compacted, &registry).unwrap();
         assert_eq!(target, decompacted);
     }

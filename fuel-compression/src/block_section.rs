@@ -17,7 +17,7 @@ use super::{
 pub struct WriteTo<T: Table> {
     /// The values are inserted starting from this key
     pub start_key: Key<T>,
-    /// Values. inserted using incrementing ids starting from `start_key`
+    /// Values, inserted using incrementing ids starting from `start_key`
     pub values: Vec<T::Type>,
 }
 

@@ -11,6 +11,9 @@ mod compaction;
 mod key;
 mod table;
 
+#[cfg(any(test, feature = "test-helpers"))]
+pub mod dummy_registry;
+
 pub use compaction::Compactable;
 pub use table::{
     tables,
@@ -21,6 +24,9 @@ pub use table::{
     Table,
 };
 
-pub use key::Key;
+pub use key::{
+    Key,
+    RawKey,
+};
 
 pub use fuel_derive::Compact;

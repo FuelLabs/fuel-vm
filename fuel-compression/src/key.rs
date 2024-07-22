@@ -14,11 +14,16 @@ use super::Table;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RawKey([u8; Self::SIZE]);
 impl RawKey {
+    /// Key mapping to default value for the table type.
     pub const DEFAULT_VALUE: Self = Self([u8::MAX; Self::SIZE]);
+    /// Maximum writable key.
     pub const MAX_WRITABLE: Self = Self([u8::MAX, u8::MAX, u8::MAX - 1]);
+    /// Size of the key, in bytes.
     pub const SIZE: usize = 3;
+    /// Zero key.
     pub const ZERO: Self = Self([0; Self::SIZE]);
 
+    /// Convert to u32, big-endian.
     pub fn as_u32(self) -> u32 {
         u32::from_be_bytes([0, self.0[0], self.0[1], self.0[2]])
     }

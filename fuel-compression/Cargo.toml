@@ -16,12 +16,14 @@ fuel-derive = { workspace = true }
 paste = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde-big-array = "0.5"
+postcard = { version = "1.0", features = ["use-std"], optional = true}
 
 [dev-dependencies]
+bincode = { workspace = true }
 fuel-asm = { workspace = true }
-fuel-compression = { path = ".", features = ["test-helpers"] } # Self-dependency needed by test for macros
 fuel-tx = { workspace = true }
+fuel-compression = { workspace = true, features = ["test-helpers"]}
 fuel-types = { workspace = true, features = ["serde"] }
 
 [features]
-test-helpers = []
+test-helpers = ["dep:postcard"]

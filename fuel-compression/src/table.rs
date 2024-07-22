@@ -77,24 +77,23 @@ macro_rules! tables {
         /// A new context should be created for each compaction "session",
         /// typically a blockchain block.
         #[allow(non_snake_case)] // The field names match table type names eactly
-        #[allow(missing_docs)] // TODO
         pub trait CompactionContext {
             /// Ends session, returning the changeset.
             fn finalize(self) -> ChangesPerTable;
 
-            /// Store a value to the changeset and return a short reference key to it.
-            /// If the value already exists in the registry and will not be overwritten,
-            /// the existing key can be returned instead.
             $(
+                /// Store a value to the changeset and return a short reference key to it.
+                /// If the value already exists in the registry and will not be overwritten,
+                /// the existing key can be returned instead.
                 fn [<to_key_  $name>](&mut self, value: $ty) -> anyhow::Result<Key<tables::$name>>;
             )*
         }
 
         /// Context for compaction, i.e. converting data to reference-based format
         #[allow(non_snake_case)] // The field names match table type names eactly
-        #[allow(missing_docs)] // TODO
         pub trait DecompactionContext {
             $(
+                /// Read a value from the registry based on the key.
                 fn [<read_  $name>](&self, key: Key<tables::$name>) -> anyhow::Result<<tables::$name as Table>::Type>;
             )*
         }

@@ -6,7 +6,6 @@ use crate::{
     key::RawKey,
     table::{
         access::*,
-        add_keys,
         KeyPerTable,
     },
     tables,
@@ -15,9 +14,8 @@ use crate::{
     DecompactionContext,
     Key,
     Table,
+    TableName,
 };
-
-type TableName = &'static str;
 
 /// Temporal registry implementation used for tests.
 #[derive(Default)]
@@ -34,7 +32,7 @@ impl DummyRegistry {
         target: C,
     ) -> anyhow::Result<(C::Compact, Changes)> {
         let key_limits = target.count();
-        let safe_keys_start = add_keys(self.next_keys, key_limits);
+        let safe_keys_start = self.next_keys.offset_by(key_limits);
 
         let mut ctx = DummyCompactionCtx {
             start_keys: self.next_keys,

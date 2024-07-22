@@ -3,16 +3,22 @@ use serde::{
     Serialize,
 };
 
-use crate::Key;
+use crate::{
+    Key,
+    RawKey,
+};
 
 mod _private {
     pub trait Seal {}
 }
 
+/// Static name of a table
+pub type TableName = &'static str;
+
 /// Table in the registry
 pub trait Table: _private::Seal {
     /// Unique name of the table
-    const NAME: &'static str;
+    const NAME: TableName;
 
     /// A `CountPerTable` for this table
     fn count(n: usize) -> CountPerTable;
@@ -21,22 +27,28 @@ pub trait Table: _private::Seal {
     type Type: PartialEq + Default + Serialize + for<'de> Deserialize<'de>;
 }
 
+/// Traits for accessing `*PerTable` using the table type
 pub mod access {
+    /// Copy value for the give table
     pub trait AccessCopy<T, V: Copy> {
+        /// Copy value for the give table
         fn value(&self) -> V;
     }
 
+    /// Get reference to the value for the given table
     pub trait AccessRef<T, V> {
+        /// Get reference to the value for the given table
         fn get(&self) -> &V;
     }
 
+    /// Get mutable reference to the value for the given table
     pub trait AccessMut<T, V> {
+        /// Get mutable reference to the value for the given table
         fn get_mut(&mut self) -> &mut V;
     }
 }
 
 macro_rules! tables {
-    // $index muse use increasing numbers starting from zero
     ($($name:ident: $ty:ty),*$(,)?) => { paste::paste! {
         /// Marker struct for each table type
         pub mod tables {
@@ -153,6 +165,16 @@ macro_rules! tables {
             }
         }
 
+        impl KeyPerTable {
+            /// Generate keys for each table using a function that's called for each table.
+            /// Since type erasure is required, the function takes `TableName` adn returns `RawKey`.
+            pub fn from_fn<F: Fn(TableName) -> RawKey>(f: F) -> Self {
+                Self {
+                    $($name: Key::from_raw(f(<tables::$name as Table>::NAME)),)*
+                }
+            }
+        }
+
         $(
             impl access::AccessCopy<tables::$name, Key<tables::$name>> for KeyPerTable {
                 fn value(&self) -> Key<tables::$name> {
@@ -171,14 +193,17 @@ macro_rules! tables {
             }
         )*
 
-        /// Used to add together keys and counts to deterimine possible overwrite range
-        pub fn add_keys(keys: KeyPerTable, counts: CountPerTable) -> KeyPerTable {
-            KeyPerTable {
-                $(
-                    $name: keys.$name.add_u32(counts.$name.try_into()
-                        .expect("Count too large. Shoudn't happen as we control inputs here.")
-                    ),
-                )*
+        impl KeyPerTable {
+            /// Used to add together keys and counts to deterimine possible overwrite range.
+            /// Panics if the keys count cannot fit into `u32`.
+            pub fn offset_by(&self, counts: CountPerTable) -> KeyPerTable {
+                KeyPerTable {
+                    $(
+                        $name: self.$name.add_u32(counts.$name.try_into()
+                            .expect("Count too large. Shouldn't happen as we control inputs here.")
+                        ),
+                    )*
+                }
             }
         }
     }};

@@ -15,11 +15,14 @@ pub mod dummy_registry;
 
 pub use compaction::Compactable;
 pub use table::{
+    access,
     tables,
     CompactionContext,
     CountPerTable,
     DecompactionContext,
+    KeyPerTable,
     Table,
+    TableName,
 };
 
 pub use key::{

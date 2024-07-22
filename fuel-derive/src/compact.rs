@@ -117,7 +117,7 @@ impl FieldAttrs {
                     }
 
                     if let Ok(ident) = syn::parse2::<syn::Ident>(ml.tokens.clone()) {
-                        if ident.to_string() == "skip" {
+                        if ident == "skip" {
                             result = Self::Skip;
                             continue;
                         }
@@ -207,8 +207,9 @@ fn construct_compact(
                         >
                     };
                     quote! {
-                        let #cname: #cty = ctx.to_key(
-                            <#registry as Table>::Type::from(#binding.clone())
+                        let #cname: #cty = #registry::to_key(
+                            <#registry as Table>::Type::from(#binding.clone()),
+                            ctx,
                         )?;
                     }
                 }
@@ -264,13 +265,14 @@ fn construct_decompact(
                 },
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as Compactable>::decompact(#binding, reg)?;
+                        let #cname = <#ty as Compactable>::decompact(#binding, ctx)?;
                     }
                 }
                 FieldAttrs::Registry(registry) => {
                     quote! {
-                        let raw: <#registry as Table>::Type = reg.read(
-                            #binding
+                        let raw: <#registry as Table>::Type = #registry::read(
+                            #binding,
+                            ctx,
                         )?;
                         let #cname = raw.into();
                     }
@@ -478,7 +480,10 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
         });
 
     let impls = s.gen_impl(quote! {
-        use ::fuel_compression::{RegistryDb, tables, Table, Key, Compactable, CountPerTable, CompactionContext};
+        use ::fuel_compression::{
+            tables, Table, Key, Compactable, CountPerTable,
+            CompactionContext, DecompactionContext
+        };
 
         gen impl Compactable for @Self #w_impl {
             type Compact = #compact_name #g;
@@ -487,11 +492,11 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
                 match self { #count_per_variant }
             }
 
-            fn compact<R: RegistryDb>(&self, ctx: &mut CompactionContext<R>) -> anyhow::Result<Self::Compact> {
+            fn compact(&self, ctx: &mut dyn CompactionContext) -> anyhow::Result<Self::Compact> {
                 Ok(match self { #construct_per_variant })
             }
 
-            fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self> {
+            fn decompact(compact: Self::Compact, ctx: &dyn DecompactionContext) -> anyhow::Result<Self> {
                 Ok(match compact { #decompact_per_variant })
             }
         }

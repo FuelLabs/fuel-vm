@@ -112,16 +112,16 @@ where
         Default::default()
     }
 
-    fn compact<R: fuel_compression::RegistryDb>(
+    fn compact(
         &self,
-        _: &mut fuel_compression::CompactionContext<R>,
+        _: &mut dyn fuel_compression::CompactionContext,
     ) -> anyhow::Result<Self::Compact> {
         Ok(())
     }
 
-    fn decompact<R: fuel_compression::RegistryDb>(
+    fn decompact(
         _: Self::Compact,
-        _: &R,
+        _: &dyn fuel_compression::DecompactionContext,
     ) -> anyhow::Result<Self> {
         Ok(Self(Default::default()))
     }

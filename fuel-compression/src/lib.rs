@@ -6,23 +6,21 @@
 #![deny(unused_crate_dependencies)]
 #![deny(clippy::cast_possible_truncation)]
 
+mod block_section;
 mod compaction;
-mod registry;
+mod key;
+mod table;
 
-pub use compaction::{
-    Compactable,
-    CompactionContext,
-};
-pub use registry::{
+pub use compaction::Compactable;
+pub use table::{
     tables,
     ChangesPerTable,
+    CompactionContext,
     CountPerTable,
-    Key,
-    RegistryDb,
+    DecompactionContext,
     Table,
 };
 
-#[cfg(feature = "test-helpers")]
-pub use registry::in_memory::InMemoryRegistry;
+pub use key::Key;
 
 pub use fuel_derive::Compact;

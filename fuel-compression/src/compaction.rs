@@ -9,99 +9,11 @@ use serde::{
 };
 
 use crate::{
-    registry::{
-        access::{
-            self,
-            *,
-        },
-        add_keys,
-        block_section::WriteTo,
-        next_keys,
-        ChangesPerTable,
-        CountPerTable,
-        KeyPerTable,
-        RegistryDb,
-        Table,
-    },
+    CompactionContext,
+    CountPerTable,
+    DecompactionContext,
     Key,
 };
-
-/// Context for compaction, i.e. converting data to reference-based format
-#[must_use]
-pub struct CompactionContext<'a, R> {
-    /// The registry
-    reg: &'a mut R,
-    /// These are the keys where writing started
-    start_keys: KeyPerTable,
-    /// The next keys to use for each table
-    next_keys: KeyPerTable,
-    /// Keys in range next_keys..safe_keys_start
-    /// could be overwritten by the compaction,
-    /// and cannot be used for new values.
-    safe_keys_start: KeyPerTable,
-    changes: ChangesPerTable,
-}
-impl<'a, R: RegistryDb> CompactionContext<'a, R> {
-    /// Run the compaction for the given target, returning the compacted data.
-    /// Changes are applied to the registry, and then returned as well.
-    pub fn run<C: Compactable>(
-        reg: &'a mut R,
-        target: C,
-    ) -> anyhow::Result<(C::Compact, ChangesPerTable)> {
-        let start_keys = next_keys(reg)?;
-        let next_keys = start_keys;
-        let key_limits = target.count();
-        let safe_keys_start = add_keys(next_keys, key_limits);
-
-        let mut ctx = Self {
-            reg,
-            start_keys,
-            next_keys,
-            safe_keys_start,
-            changes: ChangesPerTable::from_start_keys(start_keys),
-        };
-
-        let compacted = target.compact(&mut ctx)?;
-        ctx.changes.apply_to_registry(ctx.reg)?;
-        Ok((compacted, ctx.changes))
-    }
-}
-
-impl<'a, R: RegistryDb> CompactionContext<'a, R> {
-    /// Convert a value to a key
-    /// If necessary, store the value in the changeset and allocate a new key.
-    pub fn to_key<T: Table>(&mut self, value: T::Type) -> anyhow::Result<Key<T>>
-    where
-        KeyPerTable: access::AccessCopy<T, Key<T>> + access::AccessMut<T, Key<T>>,
-        ChangesPerTable:
-            access::AccessRef<T, WriteTo<T>> + access::AccessMut<T, WriteTo<T>>,
-    {
-        // Check if the value is within the current changeset
-        if let Some(key) =
-            <ChangesPerTable as AccessRef<T, WriteTo<T>>>::get(&self.changes)
-                .lookup_value(&value)
-        {
-            return Ok(key);
-        }
-
-        // Check if the registry contains this value already
-        if let Some(key) = self.reg.index_lookup::<T>(&value)? {
-            let start: Key<T> = self.start_keys.value();
-            let end: Key<T> = self.safe_keys_start.value();
-            // Check if the value is in the possibly-overwritable range
-            if !key.is_between(start, end) {
-                return Ok(key);
-            }
-        }
-        // Allocate a new key for this
-        let key = <KeyPerTable as AccessMut<T, Key<T>>>::get_mut(&mut self.next_keys)
-            .take_next();
-        <ChangesPerTable as access::AccessMut<T, WriteTo<T>>>::get_mut(&mut self.changes)
-            .values
-            .push(value);
-        Ok(key)
-    }
-}
 
 /// Convert data to reference-based format
 pub trait Compactable {
@@ -112,13 +24,13 @@ pub trait Compactable {
     fn count(&self) -> CountPerTable;
 
     /// Convert to compacted format
-    fn compact<R: RegistryDb>(
-        &self,
-        ctx: &mut CompactionContext<R>,
-    ) -> anyhow::Result<Self::Compact>;
+    fn compact(&self, ctx: &mut dyn CompactionContext) -> anyhow::Result<Self::Compact>;
 
     /// Convert from compacted format
-    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self>
+    fn decompact(
+        compact: Self::Compact,
+        ctx: &dyn DecompactionContext,
+    ) -> anyhow::Result<Self>
     where
         Self: Sized;
 }
@@ -132,16 +44,16 @@ macro_rules! identity_compaction {
                 CountPerTable::default()
             }
 
-            fn compact<R: RegistryDb>(
+            fn compact(
                 &self,
-                _ctx: &mut CompactionContext<R>,
+                _ctx: &mut dyn CompactionContext,
             ) -> anyhow::Result<Self::Compact> {
                 Ok(*self)
             }
 
-            fn decompact<R: RegistryDb>(
+            fn decompact(
                 compact: Self::Compact,
-                _reg: &R,
+                _ctx: &dyn DecompactionContext,
             ) -> anyhow::Result<Self> {
                 Ok(compact)
             }
@@ -193,17 +105,17 @@ where
         count
     }
 
-    fn compact<R: RegistryDb>(
-        &self,
-        ctx: &mut CompactionContext<R>,
-    ) -> anyhow::Result<Self::Compact> {
+    fn compact(&self, ctx: &mut dyn CompactionContext) -> anyhow::Result<Self::Compact> {
         Ok(ArrayWrapper(try_map_array(self.clone(), |v: T| {
             v.compact(ctx)
         })?))
     }
 
-    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self> {
-        try_map_array(compact.0, |v: T::Compact| T::decompact(v, reg))
+    fn decompact(
+        compact: Self::Compact,
+        ctx: &dyn DecompactionContext,
+    ) -> anyhow::Result<Self> {
+        try_map_array(compact.0, |v: T::Compact| T::decompact(v, ctx))
     }
 }
 
@@ -221,17 +133,17 @@ where
         count
     }
 
-    fn compact<R: RegistryDb>(
-        &self,
-        ctx: &mut CompactionContext<R>,
-    ) -> anyhow::Result<Self::Compact> {
+    fn compact(&self, ctx: &mut dyn CompactionContext) -> anyhow::Result<Self::Compact> {
         self.iter().map(|item| item.compact(ctx)).collect()
     }
 
-    fn decompact<R: RegistryDb>(compact: Self::Compact, reg: &R) -> anyhow::Result<Self> {
+    fn decompact(
+        compact: Self::Compact,
+        ctx: &dyn DecompactionContext,
+    ) -> anyhow::Result<Self> {
         compact
             .into_iter()
-            .map(|item| T::decompact(item, reg))
+            .map(|item| T::decompact(item, ctx))
             .collect()
     }
 }
@@ -243,16 +155,13 @@ impl<T> Compactable for PhantomData<T> {
         CountPerTable::default()
     }
 
-    fn compact<R: RegistryDb>(
-        &self,
-        _ctx: &mut CompactionContext<R>,
-    ) -> anyhow::Result<Self::Compact> {
+    fn compact(&self, _ctx: &mut dyn CompactionContext) -> anyhow::Result<Self::Compact> {
         Ok(())
     }
 
-    fn decompact<R: RegistryDb>(
+    fn decompact(
         _compact: Self::Compact,
-        _reg: &R,
+        _ctx: &dyn DecompactionContext,
     ) -> anyhow::Result<Self> {
         Ok(Self)
     }
@@ -266,7 +175,6 @@ mod tests {
         CompactionContext,
         CountPerTable,
         Key,
-        RegistryDb,
     };
     use fuel_derive::Compact;
     use fuel_types::{
@@ -277,6 +185,8 @@ mod tests {
         Deserialize,
         Serialize,
     };
+
+    use crate::DecompactionContext;
 
     #[derive(Debug, Clone, PartialEq)]
     struct ManualExample {
@@ -299,21 +209,21 @@ mod tests {
             CountPerTable::Address(2)
         }
 
-        fn compact<R: RegistryDb>(
+        fn compact(
             &self,
-            ctx: &mut CompactionContext<R>,
+            ctx: &mut dyn CompactionContext,
         ) -> anyhow::Result<Self::Compact> {
-            let a = ctx.to_key::<tables::Address>(*self.a)?;
-            let b = ctx.to_key::<tables::Address>(*self.b)?;
+            let a = ctx.to_key_Address(*self.a)?;
+            let b = ctx.to_key_Address(*self.b)?;
             Ok(ManualExampleCompact { a, b, c: self.c })
         }
 
-        fn decompact<R: RegistryDb>(
+        fn decompact(
             compact: Self::Compact,
-            reg: &R,
+            ctx: &dyn DecompactionContext,
         ) -> anyhow::Result<Self> {
-            let a = Address::from(reg.read::<tables::Address>(compact.a)?);
-            let b = Address::from(reg.read::<tables::Address>(compact.b)?);
+            let a = Address::from(ctx.read_Address(compact.a)?);
+            let b = Address::from(ctx.read_Address(compact.b)?);
             Ok(Self { a, b, c: compact.c })
         }
     }

@@ -3,15 +3,9 @@ use serde::{
     Serialize,
 };
 
-pub(crate) mod block_section;
-pub mod db;
-pub(crate) mod in_memory;
-mod key;
-
-use self::block_section::WriteTo;
-pub use self::{
-    db::RegistryDb,
-    key::Key,
+use crate::{
+    block_section::WriteTo,
+    Key,
 };
 
 mod _private {
@@ -46,7 +40,7 @@ pub mod access {
 
 macro_rules! tables {
     // $index muse use increasing numbers starting from zero
-    ($($name:ident: $ty:ty),*$(,)?) => {
+    ($($name:ident: $ty:ty),*$(,)?) => { paste::paste! {
         /// Marker struct for each table type
         pub mod tables {
             $(
@@ -63,6 +57,39 @@ macro_rules! tables {
                     }
                     type Type = $ty;
                 }
+
+                impl $name {
+                    /// Calls the `to_key_*` method for this table on the context
+                    pub fn to_key(value: $ty, ctx: &mut dyn super::CompactionContext) -> anyhow::Result<super::Key<$name>> {
+                        ctx.[<to_key_ $name>](value)
+                    }
+
+                    /// Calls the `read_*` method for this table on the context
+                    pub fn read(key: super::Key<$name>, ctx: &dyn super::DecompactionContext) -> anyhow::Result<$ty> {
+                        ctx.[<read_ $name>](key)
+                    }
+                }
+            )*
+        }
+
+        /// Context for compaction, i.e. converting data to reference-based format
+        #[allow(non_snake_case)] // The field names match table type names eactly
+        #[allow(missing_docs)] // TODO
+        pub trait CompactionContext {
+            /// Store a value to the changeset and return a short reference key to it.
+            /// If the value already exists in the registry and will not be overwritten,
+            /// the existing key can be returned instead.
+            $(
+                fn [<to_key_  $name>](&mut self, value: $ty) -> anyhow::Result<Key<tables::$name>>;
+            )*
+        }
+
+        /// Context for compaction, i.e. converting data to reference-based format
+        #[allow(non_snake_case)] // The field names match table type names eactly
+        #[allow(missing_docs)] // TODO
+        pub trait DecompactionContext {
+            $(
+                fn [<read_  $name>](&self, key: Key<tables::$name>) -> anyhow::Result<<tables::$name as Table>::Type>;
             )*
         }
 
@@ -145,12 +172,6 @@ macro_rules! tables {
             }
         )*
 
-        pub fn next_keys<R: RegistryDb>(reg: &mut R) -> anyhow::Result<KeyPerTable> {
-            Ok(KeyPerTable {
-                $( $name: reg.next_key()?, )*
-            })
-        }
-
         /// Used to add together keys and counts to deterimine possible overwrite range
         pub fn add_keys(keys: KeyPerTable, counts: CountPerTable) -> KeyPerTable {
             KeyPerTable {
@@ -186,14 +207,6 @@ macro_rules! tables {
                     }),*
                 }
             }
-
-            /// Apply changes to the registry db
-            pub fn apply_to_registry<R: RegistryDb>(&self, reg: &mut R) -> anyhow::Result<()> {
-                $(
-                    reg.batch_write(self.$name.start_key, self.$name.values.clone())?;
-                )*
-                Ok(())
-            }
         }
 
         $(
@@ -208,7 +221,7 @@ macro_rules! tables {
                 }
             }
         )*
-    };
+    }};
 }
 
 tables!(

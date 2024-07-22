@@ -13,12 +13,11 @@ description = "Compression and decompression of Fuel blocks for DA storage."
 [dependencies]
 anyhow = { workspace = true }
 fuel-derive = { workspace = true }
-postcard = { version = "1.0", features = ["use-std"] }
+paste = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde-big-array = "0.5"
 
 [dev-dependencies]
-bincode = "1.3"
 fuel-asm = { workspace = true }
 fuel-compression = { path = ".", features = ["test-helpers"] } # Self-dependency needed by test for macros
 fuel-tx = { workspace = true }

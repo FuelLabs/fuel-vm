@@ -465,7 +465,7 @@ fn state_write_charges_for_new_storage() {
 }
 
 #[test]
-fn ldc__offset_affects_read_code() {
+fn ldc__offset_changes_cost() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
@@ -783,7 +783,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 }
 
 #[test]
-fn ldc_ssp_not_sp() {
+fn ldc__fails_with_nonempty_stack() {
     let (load_contract, _) = script_with_data_offset!(
         data_offset,
         vec![
@@ -798,7 +798,7 @@ fn ldc_ssp_not_sp() {
 }
 
 #[test]
-fn ldc_mem_offset_above_reg_hp() {
+fn ldc__fails_when_mem_offset_is_above_reg_hp() {
     // Then deploy another contract that attempts to read the first one
 
     let (load_contract, _) = script_with_data_offset!(
@@ -2265,7 +2265,7 @@ fn various_ldc_issues_poc() {
 // === Begin temporary tests for ldcv2 ===
 
 #[test]
-fn ldcv2__offset_affects_read_code() {
+fn ldcv2__loading_less_bytes_due_to_offset_reduces_cost() {
     let mut client = MemoryClient::default();
 
     let gas_costs = client.gas_costs();
@@ -2525,7 +2525,7 @@ fn ldcv2_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 }
 
 #[test]
-fn ldcv2_ssp_not_sp() {
+fn ldcv2__fails_with_nonempty_stack() {
     let (load_blob, _) = script_with_data_offset!(
         data_offset,
         vec![
@@ -2540,7 +2540,7 @@ fn ldcv2_ssp_not_sp() {
 }
 
 #[test]
-fn ldcv2_mem_offset_above_reg_hp() {
+fn ldcv2__fails_when_mem_offset_is_above_reg_hp() {
     // Then deploy another contract that attempts to read the first one
 
     let (load_blob, _) = script_with_data_offset!(
@@ -2556,7 +2556,7 @@ fn ldcv2_mem_offset_above_reg_hp() {
 }
 
 #[test]
-fn ldcv2_blob_size_overflow() {
+fn ldcv2__fails_when_blob_size_overflows() {
     ldcv2_reason_helper(
         vec![
             op::not(0x20, RegId::ZERO),
@@ -2567,7 +2567,7 @@ fn ldcv2_blob_size_overflow() {
 }
 
 #[test]
-fn ldcv2_blob_id_end_beyond_max_ram() {
+fn ldcv2__fails_wehn_blob_id_ends_beyond_max_ram() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
     let reg_b = 0x21;
@@ -2584,7 +2584,7 @@ fn ldcv2_blob_id_end_beyond_max_ram() {
 }
 
 #[test]
-fn ldcv2_blob_not_in_inputs() {
+fn ldcv2_fails_when_blob_not_in_inputs() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
     let reg_b = 0x21;
@@ -2598,7 +2598,7 @@ fn ldcv2_blob_not_in_inputs() {
 }
 
 #[test]
-fn load_blob_code_v2_copies_expected_bytes() {
+fn load_blob_code__copies_expected_bytes() {
     let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
 
@@ -2649,7 +2649,7 @@ fn load_blob_code_v2_copies_expected_bytes() {
 }
 
 #[test]
-fn load_blob_code_v2_out_of_blob_offset_over_length() {
+fn load_blob_code__fails_when_blob_offset_is_over_length() {
     // This test like a `load_blob_code_v2_copies_expected_bytes`, but the offset
     // is set to be beyond the length of the contract code. The `meq` should fail.
     let mut test_context = TestBuilder::new(2322u64);

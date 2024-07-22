@@ -6,7 +6,6 @@
 #![deny(unused_crate_dependencies)]
 #![deny(clippy::cast_possible_truncation)]
 
-mod block_section;
 mod compaction;
 mod key;
 mod table;
@@ -17,7 +16,6 @@ pub mod dummy_registry;
 pub use compaction::Compactable;
 pub use table::{
     tables,
-    ChangesPerTable,
     CompactionContext,
     CountPerTable,
     DecompactionContext,

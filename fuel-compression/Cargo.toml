@@ -19,9 +19,7 @@ serde-big-array = "0.5"
 postcard = { version = "1.0", features = ["use-std"], optional = true}
 
 [dev-dependencies]
-bincode = { workspace = true }
-fuel-asm = { workspace = true }
-fuel-tx = { workspace = true }
+# bincode = { workspace = true }
 fuel-compression = { workspace = true, features = ["test-helpers"]}
 fuel-types = { workspace = true, features = ["serde"] }
 

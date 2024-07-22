@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 
 use crate::{
-    block_section::WriteTo,
     key::RawKey,
     table::{
         access::*,
@@ -11,7 +10,6 @@ use crate::{
         KeyPerTable,
     },
     tables,
-    ChangesPerTable,
     Compactable,
     CompactionContext,
     DecompactionContext,
@@ -34,7 +32,7 @@ impl DummyRegistry {
     pub fn compact<C: Compactable>(
         &mut self,
         target: C,
-    ) -> anyhow::Result<(C::Compact, ChangesPerTable)> {
+    ) -> anyhow::Result<(C::Compact, Changes)> {
         let key_limits = target.count();
         let safe_keys_start = add_keys(self.next_keys, key_limits);
 
@@ -42,35 +40,16 @@ impl DummyRegistry {
             start_keys: self.next_keys,
             next_keys: self.next_keys,
             safe_keys_start,
-            changes: ChangesPerTable::from_start_keys(self.next_keys),
+            changes: Changes::default(),
             reg: self,
         };
 
         let compacted = target.compact(&mut ctx)?;
-        let changes = ctx.finalize();
-        self.apply_changes(&changes);
-        Ok((compacted, changes))
-    }
-
-    fn apply_changes(&mut self, changes: &ChangesPerTable) {
-        macro_rules! for_tables {
-            ($($name:ident),*$(,)?) => { paste::paste! {{
-                #[allow(non_snake_case)]
-                let ChangesPerTable {
-                    $($name: [<$name _changes>],)*
-                } = changes;
-
-                $(
-                    let mut key = [< $name _changes >].start_key.raw();
-                    for value in [< $name _changes >].values.iter() {
-                        self.values.insert((tables::$name::NAME, key), postcard::to_stdvec(&value).unwrap());
-                        key = key.next();
-                    }
-                )*
-            } }};
+        let changes = ctx.changes;
+        for change in changes.changes.iter() {
+            self.values.insert((change.0, change.1), change.2.clone());
         }
-
-        for_tables!(AssetId, Address, ContractId, ScriptCode, Witness)
+        Ok((compacted, changes))
     }
 
     fn resolve_key<T: Table>(&self, key: Key<T>) -> anyhow::Result<T::Type> {
@@ -78,6 +57,25 @@ impl DummyRegistry {
             .get(&(<T as Table>::NAME, key.raw()))
             .ok_or_else(|| anyhow::anyhow!("Key not found: {:?}", key))
             .and_then(|bytes| postcard::from_bytes(bytes).map_err(|e| e.into()))
+    }
+}
+
+/// Changeset for the registry
+#[derive(Default)]
+pub struct Changes {
+    changes: Vec<(TableName, RawKey, Vec<u8>)>,
+}
+impl Changes {
+    fn lookup_value<T: Table>(&self, value: &<T as Table>::Type) -> Option<Key<T>> {
+        // Slow linear search. This is test-only code, so it's ok.
+        for change in self.changes.iter() {
+            if change.0 == <T as Table>::NAME
+                && change.2 == postcard::to_stdvec(value).unwrap()
+            {
+                return Some(Key::<T>::from_raw(change.1));
+            }
+        }
+        None
     }
 }
 
@@ -93,7 +91,7 @@ pub struct DummyCompactionCtx<'a> {
     /// could be overwritten by the compaction,
     /// and cannot be used for new values.
     safe_keys_start: KeyPerTable,
-    changes: ChangesPerTable,
+    changes: Changes,
 }
 
 impl<'a> DummyCompactionCtx<'a> {
@@ -102,13 +100,9 @@ impl<'a> DummyCompactionCtx<'a> {
     fn value_to_key<T: Table>(&mut self, value: T::Type) -> anyhow::Result<Key<T>>
     where
         KeyPerTable: AccessCopy<T, Key<T>> + AccessMut<T, Key<T>>,
-        ChangesPerTable: AccessRef<T, WriteTo<T>> + AccessMut<T, WriteTo<T>>,
     {
         // Check if the value is within the current changeset
-        if let Some(key) =
-            <ChangesPerTable as AccessRef<T, WriteTo<T>>>::get(&self.changes)
-                .lookup_value(&value)
-        {
+        if let Some(key) = self.changes.lookup_value(&value) {
             return Ok(key);
         }
 
@@ -130,18 +124,16 @@ impl<'a> DummyCompactionCtx<'a> {
         // Allocate a new key for this
         let key = <KeyPerTable as AccessMut<T, Key<T>>>::get_mut(&mut self.next_keys)
             .take_next();
-        <ChangesPerTable as AccessMut<T, WriteTo<T>>>::get_mut(&mut self.changes)
-            .values
-            .push(value);
+        self.changes.changes.push((
+            <T as Table>::NAME,
+            key.raw(),
+            postcard::to_stdvec(&value).unwrap(),
+        ));
         Ok(key)
     }
 }
 
 impl<'a> CompactionContext for DummyCompactionCtx<'a> {
-    fn finalize(self) -> ChangesPerTable {
-        self.changes
-    }
-
     fn to_key_AssetId(
         &mut self,
         value: [u8; 32],

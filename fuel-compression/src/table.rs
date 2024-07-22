@@ -3,10 +3,7 @@ use serde::{
     Serialize,
 };
 
-use crate::{
-    block_section::WriteTo,
-    Key,
-};
+use crate::Key;
 
 mod _private {
     pub trait Seal {}
@@ -78,9 +75,6 @@ macro_rules! tables {
         /// typically a blockchain block.
         #[allow(non_snake_case)] // The field names match table type names eactly
         pub trait CompactionContext {
-            /// Ends session, returning the changeset.
-            fn finalize(self) -> ChangesPerTable;
-
             $(
                 /// Store a value to the changeset and return a short reference key to it.
                 /// If the value already exists in the registry and will not be overwritten,
@@ -187,45 +181,6 @@ macro_rules! tables {
                 )*
             }
         }
-
-        /// Registeration changes per table
-        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-        #[allow(non_snake_case)] // The field names match table type names eactly
-        #[allow(missing_docs)] // Makes no sense to document the fields
-        #[non_exhaustive]
-        pub struct ChangesPerTable {
-            $(pub $name: WriteTo<tables::$name>),*
-        }
-
-        impl ChangesPerTable {
-            /// Is the changeset empty for all tables?
-            pub fn is_empty(&self) -> bool {
-                true $(&& self.$name.values.is_empty())*
-            }
-
-            /// Create a new changeset with the given start keys
-            pub fn from_start_keys(start_keys: KeyPerTable) -> Self {
-                Self {
-                    $($name: WriteTo {
-                        start_key: start_keys.$name,
-                        values: Vec::new(),
-                    }),*
-                }
-            }
-        }
-
-        $(
-            impl access::AccessRef<tables::$name, WriteTo<tables::$name>> for ChangesPerTable {
-                fn get(&self) -> &WriteTo<tables::$name> {
-                    &self.$name
-                }
-            }
-            impl access::AccessMut<tables::$name, WriteTo<tables::$name>> for ChangesPerTable {
-                fn get_mut(&mut self) -> &mut WriteTo<tables::$name> {
-                    &mut self.$name
-                }
-            }
-        )*
     }};
 }
 

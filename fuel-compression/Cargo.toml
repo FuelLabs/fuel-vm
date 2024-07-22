@@ -14,13 +14,13 @@ description = "Compression and decompression of Fuel blocks for DA storage."
 anyhow = { workspace = true }
 fuel-derive = { workspace = true }
 paste = "1.0"
+postcard = { version = "1.0", features = ["use-std"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde-big-array = "0.5"
-postcard = { version = "1.0", features = ["use-std"], optional = true}
 
 [dev-dependencies]
 # bincode = { workspace = true }
-fuel-compression = { workspace = true, features = ["test-helpers"]}
+fuel-compression = { workspace = true, features = ["test-helpers"] }
 fuel-types = { workspace = true, features = ["serde"] }
 
 [features]

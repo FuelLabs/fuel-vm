@@ -719,12 +719,10 @@ where
         .map(|len| len as Word)
         .unwrap_or(Word::MAX);
 
-        let Some(blob_len) =
+        let blob_len =
             <S as StorageSize<BlobData>>::size_of_value(self.storage, &blob_id)
                 .map_err(RuntimeError::Storage)?
-        else {
-            return Err(PanicReason::BlobNotFound.into());
-        };
+                .ok_or(PanicReason::BlobNotFound)?;
 
         // Fetch the storage blob
         let profiler = ProfileGas {

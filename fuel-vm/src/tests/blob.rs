@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use crate::{
     consts::VM_MAX_RAM,
     prelude::*,
@@ -26,11 +28,7 @@ use super::test_helpers::{
 };
 use crate::tests::test_helpers::set_full_word;
 
-#[rstest::rstest]
-fn blob_size_and_load_whole(
-    #[values(0, 1, 2, 7, 8, 9, 1024, 1234, 9876)] size: usize,
-    #[values(true, false)] external: bool,
-) {
+fn test_ctx_with_random_blob(size: usize) -> (TestBuilder, BlobId) {
     let mut test_context = TestBuilder::new(1234u64);
 
     let mut blob_data = vec![0; size];
@@ -39,48 +37,34 @@ fn blob_size_and_load_whole(
 
     test_context.setup_blob(blob_data.clone());
 
-    let mut ops = set_full_word(0x12, size as u64);
-    ops.extend([
-        op::gtf_args(0x11, RegId::ZERO, GTFArgs::ScriptData),
-        op::bsiz(0x10, 0x11),
-        op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-        op::aloc(0x10),
-        op::bldd(RegId::HP, 0x11, RegId::ZERO, 0x10),
-        op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x12),
-        op::ret(RegId::ONE),
-    ]);
+    (test_context, blob_id)
+}
 
-    let mut script_data = blob_id.to_bytes();
-    let state = if external {
-        test_context
-            .start_script(ops, script_data)
-            .script_gas_limit(1_000_000)
-            .fee_input()
-            .execute()
-    } else {
-        let contract_to_call = test_context.setup_contract(ops, None, None).contract_id;
+#[rstest::rstest]
+fn blob_size__works_with_different_sizes_in_external_context(
+    #[values(0, 1, 2, 7, 8, 9, 1024, 1234, 9876)] size: usize,
+) {
+    // Given
+    let (mut test_context, blob_id) = test_ctx_with_random_blob(size);
 
-        script_data.extend(Call::new(contract_to_call, 0, 0).to_bytes());
-        test_context
-            .start_script(
-                vec![
-                    op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-                    op::addi(0x10, 0x10, BlobId::LEN.try_into().unwrap()),
-                    op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-                    op::ret(RegId::ONE),
-                ],
-                script_data,
-            )
-            .script_gas_limit(1_000_000)
-            .contract_input(contract_to_call)
-            .contract_output(&contract_to_call)
-            .fee_input()
-            .execute()
-    };
+    // When
+    let state = test_context
+        .start_script(
+            vec![
+                op::gtf_args(0x11, RegId::ZERO, GTFArgs::ScriptData),
+                op::bsiz(0x10, 0x11),
+                op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+                op::ret(RegId::ONE),
+            ],
+            blob_id.to_bytes(),
+        )
+        .script_gas_limit(1_000_000)
+        .fee_input()
+        .execute();
 
+    // Then
     let receipts = state.receipts();
     assert_success(receipts);
-
     let bsiz = receipts
         .iter()
         .filter_map(|receipt| match receipt {
@@ -90,6 +74,87 @@ fn blob_size_and_load_whole(
         .next()
         .expect("Missing log receipt");
     assert_eq!(bsiz, size as u64);
+}
+
+#[rstest::rstest]
+fn blob_size__works_with_different_sizes_in_internal_context(
+    #[values(0, 1, 2, 7, 8, 9, 1024, 1234, 9876)] size: usize,
+) {
+    // Given
+    let (mut test_context, blob_id) = test_ctx_with_random_blob(size);
+
+    let contract_to_call = test_context
+        .setup_contract(
+            vec![
+                op::gtf_args(0x11, RegId::ZERO, GTFArgs::ScriptData),
+                op::bsiz(0x10, 0x11),
+                op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+                op::ret(RegId::ONE),
+            ],
+            None,
+            None,
+        )
+        .contract_id;
+
+    // When
+    let mut script_data = blob_id.to_bytes();
+    script_data.extend(Call::new(contract_to_call, 0, 0).to_bytes());
+    let state = test_context
+        .start_script(
+            vec![
+                op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+                op::addi(0x10, 0x10, BlobId::LEN.try_into().unwrap()),
+                op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+                op::ret(RegId::ONE),
+            ],
+            script_data,
+        )
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_to_call)
+        .contract_output(&contract_to_call)
+        .fee_input()
+        .execute();
+
+    // Then
+    let receipts = state.receipts();
+    assert_success(receipts);
+    let bsiz = receipts
+        .iter()
+        .filter_map(|receipt| match receipt {
+            Receipt::Log { ra, .. } => Some(*ra),
+            _ => None,
+        })
+        .next()
+        .expect("Missing log receipt");
+    assert_eq!(bsiz, size as u64);
+}
+
+#[rstest::rstest]
+fn load_blob__loading_whole_blob_works_with_different_sizes_in_external_context(
+    #[values(0, 1, 2, 7, 8, 9, 1024, 1234, 9876)] size: usize,
+) {
+    // Given
+    let (mut test_context, blob_id) = test_ctx_with_random_blob(size);
+
+    // When
+    let mut ops = set_full_word(0x12, size as u64);
+    ops.extend([
+        op::gtf_args(0x11, RegId::ZERO, GTFArgs::ScriptData),
+        op::aloc(0x12),
+        op::bldd(RegId::HP, 0x11, RegId::ZERO, 0x12),
+        op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x12),
+        op::ret(RegId::ONE),
+    ]);
+
+    let state = test_context
+        .start_script(ops, blob_id.to_bytes())
+        .script_gas_limit(1_000_000)
+        .fee_input()
+        .execute();
+
+    // Then
+    let receipts = state.receipts();
+    assert_success(receipts);
 
     let bldd = receipts
         .iter()
@@ -99,7 +164,58 @@ fn blob_size_and_load_whole(
         })
         .next()
         .expect("Missing logdata receipt");
-    assert_eq!(bldd, blob_data);
+    assert_eq!(BlobId::compute(&bldd), blob_id);
+}
+
+#[rstest::rstest]
+fn load_blob__loading_whole_blob_works_with_different_sizes_in_internal_context(
+    #[values(0, 1, 2, 7, 8, 9, 1024, 1234, 9876)] size: usize,
+) {
+    // Given
+    let (mut test_context, blob_id) = test_ctx_with_random_blob(size);
+
+    let mut ops = set_full_word(0x12, size as u64);
+    ops.extend([
+        op::gtf_args(0x11, RegId::ZERO, GTFArgs::ScriptData),
+        op::aloc(0x12),
+        op::bldd(RegId::HP, 0x11, RegId::ZERO, 0x12),
+        op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, 0x12),
+        op::ret(RegId::ONE),
+    ]);
+
+    let contract_to_call = test_context.setup_contract(ops, None, None).contract_id;
+
+    // When
+    let mut script_data = blob_id.to_bytes();
+    script_data.extend(Call::new(contract_to_call, 0, 0).to_bytes());
+    let state = test_context
+        .start_script(
+            vec![
+                op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+                op::addi(0x10, 0x10, BlobId::LEN.try_into().unwrap()),
+                op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+                op::ret(RegId::ONE),
+            ],
+            script_data,
+        )
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_to_call)
+        .contract_output(&contract_to_call)
+        .fee_input()
+        .execute();
+
+    let receipts = state.receipts();
+    assert_success(receipts);
+
+    let bldd = receipts
+        .iter()
+        .filter_map(|receipt| match receipt {
+            Receipt::LogData { data, .. } => Some(data.clone().unwrap()),
+            _ => None,
+        })
+        .next()
+        .expect("Missing logdata receipt");
+    assert_eq!(BlobId::compute(&bldd), blob_id);
 }
 
 #[test_case(0, 0 => RunResult::Panic(PanicReason::BlobNotFound) ; "0 blob not found")]
@@ -122,7 +238,7 @@ fn blob_size_and_load_whole(
 #[test_case(1, Word::MAX - 31 => RunResult::Panic(PanicReason::MemoryOverflow) ; "1 byte blob, id ends just past Word::MAX")]
 #[test_case(0, Word::MAX => RunResult::Panic(PanicReason::MemoryOverflow) ; "0 byte blob, id starts at Word::MAX")]
 #[test_case(1, Word::MAX => RunResult::Panic(PanicReason::MemoryOverflow) ; "1 byte blob, id starts at Word::MAX")]
-fn blob_size_bounds(size: usize, blob_id_ptr: Word) -> RunResult<()> {
+fn blob_size__bounds(size: usize, blob_id_ptr: Word) -> RunResult<()> {
     let mut test_context = TestBuilder::new(1234u64);
 
     let mut ops = set_full_word(0x10, size as u64);
@@ -169,7 +285,7 @@ fn blob_size_bounds(size: usize, blob_id_ptr: Word) -> RunResult<()> {
 #[test_case(1, vec![op::not(0x13, RegId::ZERO)] => RunResult::Panic(PanicReason::MemoryOverflow); "blob read_len Word::MAX")]
 #[test_case(1, vec![op::not(0x12, RegId::ZERO), op::not(0x13, RegId::ZERO)] => RunResult::Panic(PanicReason::MemoryOverflow); "both offset and len Word::MAX")]
 #[test_case(1, vec![op::movi(0x10, 0), op::not(0x13, RegId::ZERO)] => RunResult::Panic(PanicReason::MemoryOverflow); "spans whole VM memory")]
-fn blob_load_data_bounds(
+fn blob_load_data__bounds(
     size: usize,
     modifications: Vec<Instruction>,
 ) -> RunResult<Vec<u8>> {
@@ -212,27 +328,16 @@ fn blob_load_data_bounds(
     })
 }
 
-#[test_case(true; "script")]
-#[test_case(false; "contract")]
-fn blob_load_and_jump_happypath(external: bool) {
-    let mut test_context = TestBuilder::new(1234u64);
+#[test]
+fn blob_load__can_jump_to_loaded_code_in_external_context() {
+    let mut test_context: TestBuilder = TestBuilder::new(1234u64);
 
+    // Given
     let canary = test_context.rng.gen();
-    let asset_id = test_context.rng.gen();
-    let initial_internal_balance = canary;
 
-    let mut blob_code = if external {
-        // In scripts, just log the canary and return
-        set_full_word(0x10, canary)
-    } else {
-        // In contract contexts, log the balance (=canary) to make sure the blob shares
-        // contract context
-        vec![
-            op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-            op::addi(0x10, 0x10, (BlobId::LEN + Call::LEN).try_into().unwrap()),
-            op::bal(0x10, 0x10, RegId::FP),
-        ]
-    };
+    // When
+    // log the canary and return
+    let mut blob_code = set_full_word(0x10, canary);
     blob_code.extend([
         op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
         op::ret(RegId::ONE),
@@ -254,37 +359,14 @@ fn blob_load_and_jump_happypath(external: bool) {
         op::jmp(0x10),                  // Jump to loaded code
     ]);
 
-    let mut script_data = blob_id.to_bytes();
-    let state = if external {
-        test_context
-            .start_script(ops, script_data)
-            .script_gas_limit(1_000_000)
-            .fee_input()
-            .execute()
-    } else {
-        let contract_to_call = test_context
-            .setup_contract(ops, Some((asset_id, initial_internal_balance)), None)
-            .contract_id;
+    let script_data = blob_id.to_bytes();
+    let state = test_context
+        .start_script(ops, script_data)
+        .script_gas_limit(1_000_000)
+        .fee_input()
+        .execute();
 
-        script_data.extend(Call::new(contract_to_call, 0, 0).to_bytes());
-        script_data.extend(asset_id.to_bytes());
-        test_context
-            .start_script(
-                vec![
-                    op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-                    op::addi(0x10, 0x10, BlobId::LEN.try_into().unwrap()),
-                    op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-                    op::ret(RegId::ONE),
-                ],
-                script_data,
-            )
-            .script_gas_limit(1_000_000)
-            .contract_input(contract_to_call)
-            .contract_output(&contract_to_call)
-            .fee_input()
-            .execute()
-    };
-
+    // Then
     assert_success(state.receipts());
     let extracted = state
         .receipts()
@@ -298,13 +380,87 @@ fn blob_load_and_jump_happypath(external: bool) {
     assert_eq!(extracted, canary);
 }
 
-/// Sequentially load multiple blobs.
 #[test]
-fn blob_load_multiple() {
+fn blob_load__can_jump_to_loaded_code_in_internal_context() {
+    let mut test_context: TestBuilder = TestBuilder::new(1234u64);
+
+    // Given
+    let canary = test_context.rng.gen();
+    let asset_id = test_context.rng.gen();
+    let initial_internal_balance = canary;
+
+    // When
+    // log the balance (=canary) to make sure the blob shares contract context
+    let blob_code = vec![
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::addi(0x10, 0x10, (BlobId::LEN + Call::LEN).try_into().unwrap()),
+        op::bal(0x10, 0x10, RegId::FP),
+        op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ];
+    let blob_data: Vec<u8> = blob_code.into_iter().collect();
+
+    let blob_id = BlobId::compute(&blob_data);
+    test_context.setup_blob(blob_data.clone());
+
+    let mut ops = set_full_word(0x12, blob_data.len() as u64);
+    ops.extend([
+        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+        op::move_(0x13, RegId::SSP), // Store jump target
+        op::move_(0x14, RegId::SP),  // Store load target
+        op::cfe(0x12),
+        op::bldd(0x14, 0x10, RegId::ZERO, 0x12),
+        op::sub(0x10, 0x13, RegId::IS), // Compute offset
+        op::divi(0x10, 0x10, 4),        // Div for jmp instruction
+        op::jmp(0x10),                  // Jump to loaded code
+    ]);
+
+    let mut script_data = blob_id.to_bytes();
+
+    let contract_to_call = test_context
+        .setup_contract(ops, Some((asset_id, initial_internal_balance)), None)
+        .contract_id;
+
+    script_data.extend(Call::new(contract_to_call, 0, 0).to_bytes());
+    script_data.extend(asset_id.to_bytes());
+    let state = test_context
+        .start_script(
+            vec![
+                op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
+                op::addi(0x10, 0x10, BlobId::LEN.try_into().unwrap()),
+                op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
+                op::ret(RegId::ONE),
+            ],
+            script_data,
+        )
+        .script_gas_limit(1_000_000)
+        .contract_input(contract_to_call)
+        .contract_output(&contract_to_call)
+        .fee_input()
+        .execute();
+
+    // Then
+    assert_success(state.receipts());
+    let extracted = state
+        .receipts()
+        .iter()
+        .filter_map(|receipt| match receipt {
+            Receipt::Log { ra, .. } => Some(*ra),
+            _ => None,
+        })
+        .next()
+        .expect("Missing log receipt");
+    assert_eq!(extracted, canary);
+}
+
+#[test]
+fn blob_load__can_load_multiple_blobs_sequentially() {
     let mut test_context = TestBuilder::new(1234u64);
 
+    // Given
     let num_blobs = 10;
 
+    // When
     let blob_ids: Vec<BlobId> = (0..num_blobs)
         .map(|i| {
             let mut blob_code = vec![
@@ -347,6 +503,7 @@ fn blob_load_multiple() {
         .fee_input()
         .execute();
 
+    // Then
     assert_success(state.receipts());
     let extracted: Vec<Word> = state
         .receipts()

@@ -5,6 +5,8 @@ use criterion::{
     Criterion,
 };
 use fuel_merkle::{
+    avl,
+    btree,
     common::Bytes32,
     sparse::{
         in_memory,
@@ -33,6 +35,28 @@ where
     let mut tree = in_memory::MerkleTree::new();
     for (key, data) in set {
         tree.update(key, data.as_ref());
+    }
+    tree.root()
+}
+
+pub fn baseline_avl_root<I>(set: I) -> Bytes32
+where
+    I: Iterator<Item = (MerkleTreeKey, Bytes32)>,
+{
+    let mut tree = avl::AVLMerkleTree::<avl::tests::Storage, ()>::default();
+    for (key, data) in set {
+        tree.insert(key.into(), data).unwrap();
+    }
+    tree.root()
+}
+
+pub fn baseline_btree_root<const N: u8, I>(set: I) -> Bytes32
+where
+    I: Iterator<Item = (MerkleTreeKey, Bytes32)>,
+{
+    let mut tree = btree::BTreeMerkleTree::<N, btree::tests::Storage, ()>::default();
+    for (key, data) in set {
+        tree.insert_test(key.into(), data).unwrap();
     }
     tree.root()
 }
@@ -70,7 +94,7 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((MerkleTreeKey::new(random_bytes32(rng)), random_bytes32(rng)));
-    let data = core::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
+    let data = core::iter::from_fn(gen).take(100_000).collect::<Vec<_>>();
 
     let expected_root = baseline_root(data.clone().into_iter());
     let root = subject_root(data.clone().into_iter());
@@ -83,6 +107,57 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let mut group_update = c.benchmark_group("from-set");
 
+    group_update.bench_with_input("from-set-baseline-btree-2", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<2, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-4", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<4, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-6", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<6, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-8", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<8, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-10", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<10, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-12", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<12, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-14", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<14, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-16", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<16, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-32", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<32, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-64", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<64, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-btree-128", &data, |b, data| {
+        b.iter(|| baseline_btree_root::<128, _>(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline-avl", &data, |b, data| {
+        b.iter(|| baseline_avl_root(black_box(data.clone().into_iter())));
+    });
+
+    group_update.bench_with_input("from-set-baseline", &data, |b, data| {
+        b.iter(|| baseline_root(black_box(data.clone().into_iter())));
+    });
     group_update.bench_with_input("root-from-set", &data, |b, data| {
         b.iter(|| subject_only_root(black_box(data.clone().into_iter())));
     });
@@ -93,10 +168,6 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     group_update.bench_with_input("from-set", &data, |b, data| {
         b.iter(|| subject_root(black_box(data.clone().into_iter())));
-    });
-
-    group_update.bench_with_input("from-set-baseline", &data, |b, data| {
-        b.iter(|| baseline_root(black_box(data.clone().into_iter())));
     });
 
     group_update.finish();

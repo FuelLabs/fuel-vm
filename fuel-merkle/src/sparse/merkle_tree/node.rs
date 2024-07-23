@@ -40,7 +40,7 @@ use core::{
 };
 
 #[derive(Clone, PartialEq, Eq)]
-pub(super) enum Node {
+pub enum Node {
     Node {
         hash: Bytes32,
         height: u32,
@@ -251,7 +251,7 @@ impl Node {
     /// In `debug`, this method will panic if the node is not an internal node
     /// to indicate to the developer that there is a potential problem in the
     /// tree's implementation.
-    pub(super) fn left_child_key(&self) -> &Bytes32 {
+    pub fn left_child_key(&self) -> &Bytes32 {
         debug_assert!(self.is_node());
         self.bytes_lo()
     }
@@ -267,7 +267,7 @@ impl Node {
     /// In `debug`, this method will panic if the node is not an internal node
     /// to indicate to the developer that there is a potential problem in the
     /// tree's implementation.
-    pub(super) fn right_child_key(&self) -> &Bytes32 {
+    pub fn right_child_key(&self) -> &Bytes32 {
         debug_assert!(self.is_node());
         self.bytes_hi()
     }

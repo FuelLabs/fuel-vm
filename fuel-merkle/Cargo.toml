@@ -24,6 +24,7 @@ criterion = { workspace = true }
 datatest-stable = "0.1"
 fuel-merkle-test-helpers = { path = "test-helpers" }
 hex = "0.4"
+pretty_assertions = "1"
 proptest = "1.4"
 proptest-derive = "0.4"
 rand = "0.8"

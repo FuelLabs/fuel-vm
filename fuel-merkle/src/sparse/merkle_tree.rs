@@ -1,5 +1,5 @@
 mod branch;
-mod node;
+pub mod node;
 
 use branch::{
     merge_branches,

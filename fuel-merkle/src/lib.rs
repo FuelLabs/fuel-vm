@@ -12,7 +12,9 @@
 #[cfg_attr(test, macro_use)]
 extern crate alloc;
 
+pub mod avl;
 pub mod binary;
+pub mod btree;
 pub mod common;
 pub mod sparse;
 pub mod storage;

@@ -448,6 +448,20 @@ impl Transaction {
             _ => None,
         }
     }
+
+    pub const fn as_blob(&self) -> Option<&Blob> {
+        match self {
+            Self::Blob(tx) => Some(tx),
+            _ => None,
+        }
+    }
+
+    pub fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        match self {
+            Self::Blob(tx) => Some(tx),
+            _ => None,
+        }
+    }
 }
 
 pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {

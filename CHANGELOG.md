@@ -7,17 +7,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.55.0]
+
 ### Added
 - [#781](https://github.com/FuelLabs/fuel-vm/pull/781): Added `base_asset_id` to checked metadata.
 
-#### Breaking
+### Changed
+- [#784](https://github.com/FuelLabs/fuel-vm/pull/784): Avoid storage lookups for side nodes in the SMT.
+- [#787](https://github.com/FuelLabs/fuel-vm/pull/787): Fixed charge functions to profile cost before charging.
 
+#### Breaking
+- [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Remove unnecessary look up for old values by adding new methods to the `StorageMutate` trait.  The old `insert` and `remove` are now `replace` and `take`. The new `insert` and `remove` don't return a value.
+- [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Renamed methods of `StorageWrite` trait from `write`, `replace`, `take` to `write_bytes`, `replace_bytes`, `take_bytes`.
+- [#788](https://github.com/FuelLabs/fuel-vm/pull/788): Fix truncating `sp` to `MEM_SIZE` in `grow_stack`, and allow empty writes to zero-length ranges at `$hp`.
 - [#780](https://github.com/FuelLabs/fuel-vm/pull/780): Added `Blob` transaction, and `BSIZ` and `BLDD` instructions. Also allows `LDC` to load blobs.
 
 ### Fixed
 
 #### Breaking
+- [#789](https://github.com/FuelLabs/fuel-vm/pull/789): Avoid conversion into `usize` type and use `u32` or `u64` instead. The change is breaking since could return other errors for 32-bit systems.
+- [#786](https://github.com/FuelLabs/fuel-vm/pull/786): Fixed the CCP opcode to charge for the length from the input arguments.
 - [#785](https://github.com/FuelLabs/fuel-vm/pull/785): Require `ContractCreated` output in the `Create` transaction. The `TransactionBuilder<Create>` has a `add_contract_created` method to simplify the creation of the `ContractCreated` output for tests.
+
 
 ## [Version 0.54.1]
 

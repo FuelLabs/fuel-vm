@@ -75,6 +75,7 @@ pub fn assert_success(receipts: &[Receipt]) {
 }
 
 /// Assert that transaction receipts end in a panic with the given reason
+#[track_caller]
 pub fn assert_panics(receipts: &[Receipt], reason: PanicReason) {
     if let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() {
         if *result != ScriptExecutionResult::Panic {

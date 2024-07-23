@@ -41,20 +41,23 @@ fn valid_blob_transaction() -> TransactionBuilder<Blob> {
 }
 
 #[test]
-fn valid_blob_transaction_can_pass_check() {
+fn check__valid_blob_transaction_passes_check() {
+    // Given
     let block_height: BlockHeight = 1000.into();
-    let tx = valid_blob_transaction()
-        .finalize()
-        .check(block_height, &test_params());
+    let tx = valid_blob_transaction().finalize();
+
+    // When
+    let tx = tx.check(block_height, &test_params());
+
+    // Then
     assert_eq!(tx, Ok(()));
 }
 
 #[test]
-fn maturity() {
+fn check__fails_if_maturity_not_met() {
+    // Given
     let block_height: BlockHeight = 1000.into();
     let failing_block_height = block_height.succ().unwrap();
-
-    // Given
     let tx = valid_blob_transaction()
         .maturity(failing_block_height)
         .finalize_as_transaction();
@@ -68,8 +71,9 @@ fn maturity() {
 
 #[test]
 fn check__not_set_witness_limit_success() {
-    // Given
     let block_height = 1000.into();
+
+    // Given
     let tx = valid_blob_transaction().finalize_as_transaction();
 
     // When
@@ -249,7 +253,7 @@ fn check__reached_max_witnesses() {
 }
 
 #[test]
-fn output_change_asset_id_duplicated_output() {
+fn check__fail_if_output_change_asset_id_is_duplicated() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
     let secret = SecretKey::random(rng);
@@ -273,7 +277,7 @@ fn output_change_asset_id_duplicated_output() {
 }
 
 #[test]
-fn output_change_asset_id_foreign_asset() {
+fn check__fail_if_output_asset_id_not_in_inputs() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let block_height = 1000.into();
 
@@ -514,7 +518,7 @@ mod inputs {
     use itertools::Itertools;
 
     #[test]
-    fn coin_predicate_check_owner_works() {
+    fn check__succeeds_with_correct_coin_predicate_owner() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
         let predicate = (0..100).map(|_| rng.gen()).collect_vec();
@@ -542,7 +546,7 @@ mod inputs {
     }
 
     #[test]
-    fn coin_predicate_check_owners_fails_incorrect_owner() {
+    fn check__fails_with_incorrect_coin_predicate_owner() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
         let predicate = (0..100).map(|_| rng.gen()).collect_vec();
@@ -570,7 +574,7 @@ mod inputs {
     }
 
     #[test]
-    fn message_predicate_check_owners_works() {
+    fn check__succeeds_with_correct_coin_predicate_input_owner() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
         let predicate = (0..100).map(|_| rng.gen()).collect_vec();
@@ -597,7 +601,7 @@ mod inputs {
     }
 
     #[test]
-    fn message_predicate_check_owners_fails_incorrect_owner() {
+    fn check__fails_with_incorrect_message_predicate_owner() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
         let predicate = (0..100).map(|_| rng.gen()).collect_vec();

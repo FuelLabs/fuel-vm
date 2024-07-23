@@ -208,8 +208,9 @@ fn call_frame_code_offset() {
         contract.as_ref().len(),
         0,
         0,
-    );
-    let stack = (frame.to_bytes().len() + frame.total_code_size()) as Word;
+    )
+    .unwrap();
+    let stack = (frame.to_bytes().len() + frame.code_size_padded()) as Word;
 
     let receipts = result.receipts();
 

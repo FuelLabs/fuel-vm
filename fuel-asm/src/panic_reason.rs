@@ -147,8 +147,10 @@ enum_from! {
         BytecodeAlreadyUploaded = 0x34,
         /// The part of the bytecode is not sequentially connected to the previous parts.
         ThePartIsNotSequentiallyConnected = 0x35,
-        /// The requested blob is not found
+        /// The requested blob is not found.
         BlobNotFound = 0x36,
+        /// Active gas costs do not define the cost for this instruction.
+        GasCostNotDefined = 0x37,
     }
 }
 

@@ -36,20 +36,20 @@ where
         dst: RegisterId,
         blob_id_ptr: Word,
     ) -> IoResult<(), S::DataError> {
-        self.gas_charge(self.interpreter_params.gas_costs.bsiz().base())?;
+        let gas_cost = self
+            .interpreter_params
+            .gas_costs
+            .bsiz()
+            .map_err(PanicReason::from)?;
+        self.gas_charge(gas_cost.base())?;
 
         let blob_id = BlobId::from(self.memory.as_ref().read_bytes(blob_id_ptr)?);
 
-        let Some(size) =
-            <S as StorageSize<BlobData>>::size_of_value(&self.storage, &blob_id)
-                .map_err(RuntimeError::Storage)?
-        else {
-            return Err(PanicReason::BlobNotFound.into());
-        };
-        self.dependent_gas_charge_without_base(
-            self.interpreter_params.gas_costs.bsiz(),
-            size as Word,
-        )?;
+        let size = <S as StorageSize<BlobData>>::size_of_value(&self.storage, &blob_id)
+            .map_err(RuntimeError::Storage)?
+            .ok_or(PanicReason::BlobNotFound)?;
+
+        self.dependent_gas_charge_without_base(gas_cost, size as Word)?;
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(dst)?];
         *result = size as Word;
@@ -63,7 +63,12 @@ where
         blob_offset: Word,
         len: Word,
     ) -> IoResult<(), S::DataError> {
-        self.dependent_gas_charge(self.interpreter_params.gas_costs.bldd(), len)?;
+        let gas_cost = self
+            .interpreter_params
+            .gas_costs
+            .bldd()
+            .map_err(PanicReason::from)?;
+        self.dependent_gas_charge(gas_cost, len)?;
 
         let blob_offset: usize = blob_offset
             .try_into()

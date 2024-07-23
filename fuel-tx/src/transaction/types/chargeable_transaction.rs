@@ -268,11 +268,7 @@ mod field {
                         self.inputs_offset_at(idx)
                             .map(|inputs| inputs.saturating_add(predicate))
                     })
-                    .zip(
-                        input
-                            .predicate_len()
-                            .map(|l| bytes::padded_len_usize(l).unwrap_or(usize::MAX)),
-                    )
+                    .zip(input.predicate_len().and_then(bytes::padded_len_usize))
             })
         }
     }

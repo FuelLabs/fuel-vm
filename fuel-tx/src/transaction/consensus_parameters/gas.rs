@@ -5,6 +5,7 @@ use core::ops::Deref;
 #[cfg(feature = "alloc")]
 use alloc::sync::Arc;
 
+use fuel_asm::PanicReason;
 use fuel_types::Word;
 
 /// Default gas costs are generated from the
@@ -79,6 +80,15 @@ pub enum GasCostsValues {
     V3(GasCostsValuesV3),
     /// Version 4 of the gas costs.
     V4(GasCostsValuesV4),
+}
+
+/// Gas cost for this instruction is not defined for this version.
+pub struct GasCostNotDefined;
+
+impl From<GasCostNotDefined> for PanicReason {
+    fn from(_: GasCostNotDefined) -> PanicReason {
+        PanicReason::GasCostNotDefined
+    }
 }
 
 #[allow(missing_docs)]
@@ -1061,21 +1071,21 @@ impl GasCostsValues {
         }
     }
 
-    pub fn bsiz(&self) -> DependentCost {
+    pub fn bsiz(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(_v1) => todo!(), // TODO
-            GasCostsValues::V2(_v2) => todo!(), // TODO
-            GasCostsValues::V3(_v3) => todo!(), // TODO
-            GasCostsValues::V4(v4) => v4.bsiz,
+            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
+            GasCostsValues::V4(v4) => Ok(v4.bsiz),
         }
     }
 
-    pub fn bldd(&self) -> DependentCost {
+    pub fn bldd(&self) -> Result<DependentCost, GasCostNotDefined> {
         match self {
-            GasCostsValues::V1(_v1) => todo!(), // TODO
-            GasCostsValues::V2(_v2) => todo!(), // TODO
-            GasCostsValues::V3(_v3) => todo!(), // TODO
-            GasCostsValues::V4(v4) => v4.bldd,
+            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
+            GasCostsValues::V4(v4) => Ok(v4.bldd),
         }
     }
 

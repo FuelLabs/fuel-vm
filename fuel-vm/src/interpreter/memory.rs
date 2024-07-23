@@ -150,6 +150,7 @@ impl MemoryInstance {
         }
         #[allow(clippy::cast_possible_truncation)] // Safety: VM_MAX_RAM is usize
         let new_sp = new_sp as usize;
+
         if new_sp > self.stack.len() {
             if new_sp > self.hp {
                 return Err(PanicReason::MemoryGrowthOverlap)

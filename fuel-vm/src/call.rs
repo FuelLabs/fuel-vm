@@ -71,7 +71,7 @@ pub struct CallFrame {
     to: ContractId,
     asset_id: AssetId,
     registers: [Word; VM_REGISTER_COUNT],
-    code_size: usize,
+    code_size_padded: usize,
     a: Word,
     b: Word,
 }
@@ -83,7 +83,7 @@ impl Default for CallFrame {
             to: ContractId::default(),
             asset_id: AssetId::default(),
             registers: [0; VM_REGISTER_COUNT],
-            code_size: 0,
+            code_size_padded: 0,
             a: 0,
             b: 0,
         }
@@ -92,22 +92,22 @@ impl Default for CallFrame {
 
 impl CallFrame {
     /// Create a new call frame.
-    pub const fn new(
+    pub fn new(
         to: ContractId,
         asset_id: AssetId,
         registers: [Word; VM_REGISTER_COUNT],
         code_size: usize,
         a: Word,
         b: Word,
-    ) -> Self {
-        Self {
+    ) -> Option<Self> {
+        Some(Self {
             to,
             asset_id,
             registers,
-            code_size,
+            code_size_padded: padded_len_usize(code_size)?,
             a,
             b,
-        }
+        })
     }
 
     /// Start of the contract id offset from the beginning of the call frame.
@@ -155,21 +155,10 @@ impl CallFrame {
         &self.to
     }
 
+    #[cfg(feature = "test-helpers")]
     /// Contract code length in bytes.
-    pub fn code_size(&self) -> usize {
-        self.code_size
-    }
-
-    /// Padding to the next word boundary.
-    pub fn code_size_padding(&self) -> usize {
-        self.total_code_size()
-            .checked_sub(self.code_size)
-            .expect("Padding is always less than size + padding")
-    }
-
-    /// Total code size including padding.
-    pub fn total_code_size(&self) -> usize {
-        padded_len_usize(self.code_size).expect("Code size cannot overflow with padding")
+    pub fn code_size_padded(&self) -> usize {
+        self.code_size_padded
     }
 
     /// `a` argument.

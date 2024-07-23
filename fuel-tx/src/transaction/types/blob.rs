@@ -174,22 +174,9 @@ mod field {
     use super::*;
     use crate::field::{
         self,
-        BlobId as _,
+        BlobId as BlobIdField,
+        BytecodeWitnessIndex,
     };
-
-    impl field::ChargeableBody<BlobBody> for Blob {
-        fn body(&self) -> &BlobBody {
-            &self.body
-        }
-
-        fn body_mut(&mut self) -> &mut BlobBody {
-            &mut self.body
-        }
-
-        fn body_offset_end(&self) -> usize {
-            WORD_SIZE // `Transaction` enum discriminant
-        }
-    }
 
     impl field::BlobId for Blob {
         #[inline(always)]
@@ -222,6 +209,20 @@ mod field {
         #[inline(always)]
         fn bytecode_witness_index_offset_static() -> usize {
             Self::blob_id_offset_static().saturating_add(BlobId::LEN)
+        }
+    }
+
+    impl field::ChargeableBody<BlobBody> for Blob {
+        fn body(&self) -> &BlobBody {
+            &self.body
+        }
+
+        fn body_mut(&mut self) -> &mut BlobBody {
+            &mut self.body
+        }
+
+        fn body_offset_end(&self) -> usize {
+            Self::bytecode_witness_index_offset_static() + WORD_SIZE
         }
     }
 }

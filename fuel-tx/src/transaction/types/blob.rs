@@ -221,6 +221,7 @@ mod field {
             &mut self.body
         }
 
+        #[allow(clippy::arithmetic_side_effects)] // Statically known to be ok
         fn body_offset_end(&self) -> usize {
             Self::bytecode_witness_index_offset_static().saturating_add(
                 WORD_SIZE // witness_index

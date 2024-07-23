@@ -222,7 +222,12 @@ mod field {
         }
 
         fn body_offset_end(&self) -> usize {
-            Self::bytecode_witness_index_offset_static() + WORD_SIZE
+            Self::bytecode_witness_index_offset_static()
+                + WORD_SIZE // witness_index
+                + WORD_SIZE // Policies size
+                + WORD_SIZE // Inputs size
+                + WORD_SIZE // Outputs size
+                + WORD_SIZE // Witnesses size
         }
     }
 }

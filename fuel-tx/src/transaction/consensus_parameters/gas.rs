@@ -1522,6 +1522,7 @@ pub struct GasCostsValuesV3 {
 /// Gas costs for every op.
 /// The difference with [`GasCostsValuesV3`]:
 /// - Added `bsiz`, `bldd` instructions
+/// - Changed `ed19` to be `DependentCost`
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(default = "GasCostsValuesV4::unit")]

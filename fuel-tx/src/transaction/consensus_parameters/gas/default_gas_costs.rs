@@ -18,7 +18,6 @@ pub fn default_gas_costs() -> GasCostsValues {
         divi: 1,
         eck1: 951,
         ecr1: 3000,
-        ed19: 3000,
         eq: 1,
         exp: 1,
         expi: 1,
@@ -100,6 +99,10 @@ pub fn default_gas_costs() -> GasCostsValues {
         cfei: DependentCost::LightOperation {
             base: 2,
             units_per_gas: 214,
+        },
+        ed19: DependentCost::HeavyOperation {
+            base: 3000,
+            gas_per_unit: 0,
         },
         k256: DependentCost::LightOperation {
             base: 11,

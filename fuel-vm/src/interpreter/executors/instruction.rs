@@ -845,8 +845,11 @@ where
             }
 
             Instruction::ED19(ed19) => {
-                self.gas_charge(self.gas_costs().ed19())?;
                 let (a, b, c) = ed19.unpack();
+                // TODO: Add support for a new register `d` as part of the
+                //  https://github.com/FuelLabs/fuel-vm/issues/793
+                let len = 0/* r!(d) */;
+                self.dependent_gas_charge(self.gas_costs().ed19(), len)?;
                 self.ed25519_verify(r!(a), r!(b), r!(c))?;
             }
 

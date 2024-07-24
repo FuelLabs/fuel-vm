@@ -219,15 +219,6 @@ impl GasCostsValues {
         }
     }
 
-    pub fn ed19(&self) -> Word {
-        match self {
-            GasCostsValues::V1(v1) => v1.ed19,
-            GasCostsValues::V2(v2) => v2.ed19,
-            GasCostsValues::V3(v3) => v3.ed19,
-            GasCostsValues::V4(v4) => v4.ed19,
-        }
-    }
-
     pub fn eq_(&self) -> Word {
         match self {
             GasCostsValues::V1(v1) => v1.eq,
@@ -945,6 +936,24 @@ impl GasCostsValues {
         }
     }
 
+    pub fn ed19(&self) -> DependentCost {
+        match self {
+            GasCostsValues::V1(v1) => DependentCost::HeavyOperation {
+                base: v1.ed19,
+                gas_per_unit: 0,
+            },
+            GasCostsValues::V2(v2) => DependentCost::HeavyOperation {
+                base: v2.ed19,
+                gas_per_unit: 0,
+            },
+            GasCostsValues::V3(v3) => DependentCost::HeavyOperation {
+                base: v3.ed19,
+                gas_per_unit: 0,
+            },
+            GasCostsValues::V4(v4) => v4.ed19,
+        }
+    }
+
     pub fn k256(&self) -> DependentCost {
         match self {
             GasCostsValues::V1(v1) => v1.k256,
@@ -1531,7 +1540,6 @@ pub struct GasCostsValuesV4 {
     pub divi: Word,
     pub eck1: Word,
     pub ecr1: Word,
-    pub ed19: Word,
     pub eq: Word,
     pub exp: Word,
     pub expi: Word,
@@ -1618,6 +1626,7 @@ pub struct GasCostsValuesV4 {
     pub ccp: DependentCost,
     pub croo: DependentCost,
     pub csiz: DependentCost,
+    pub ed19: DependentCost,
     pub k256: DependentCost,
     pub ldc: DependentCost,
     pub logd: DependentCost,
@@ -2428,7 +2437,6 @@ impl GasCostsValuesV4 {
             divi: 0,
             eck1: 0,
             ecr1: 0,
-            ed19: 0,
             eq: 0,
             exp: 0,
             expi: 0,
@@ -2509,6 +2517,7 @@ impl GasCostsValuesV4 {
             ccp: DependentCost::free(),
             croo: DependentCost::free(),
             csiz: DependentCost::free(),
+            ed19: DependentCost::free(),
             k256: DependentCost::free(),
             ldc: DependentCost::free(),
             logd: DependentCost::free(),
@@ -2549,7 +2558,6 @@ impl GasCostsValuesV4 {
             divi: 1,
             eck1: 1,
             ecr1: 1,
-            ed19: 1,
             eq: 1,
             exp: 1,
             expi: 1,
@@ -2630,6 +2638,7 @@ impl GasCostsValuesV4 {
             ccp: DependentCost::unit(),
             croo: DependentCost::unit(),
             csiz: DependentCost::unit(),
+            ed19: DependentCost::unit(),
             k256: DependentCost::unit(),
             ldc: DependentCost::unit(),
             logd: DependentCost::unit(),

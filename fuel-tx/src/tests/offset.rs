@@ -555,7 +555,7 @@ fn tx_offset_blob() {
 
             let i = *tx.bytecode_witness_index();
             assert_eq!(
-                BlobId::compute(&tx.witnesses()[i as usize].as_ref()),
+                BlobId::compute(tx.witnesses()[i as usize].as_ref()),
                 *tx.blob_id()
             );
 

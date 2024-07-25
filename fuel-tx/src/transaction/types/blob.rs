@@ -30,7 +30,7 @@ use fuel_types::{
 /// Adds method to `BlobId` to compute the it from blob data.
 pub trait BlobIdExt {
     /// Computes the `BlobId` from by hashing the given data.
-    fn compute(data: &[u8]) -> Self;
+    fn compute(data: &[u8]) -> BlobId;
 }
 
 impl BlobIdExt for BlobId {

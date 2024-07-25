@@ -59,7 +59,7 @@ where
                 ))
             })?,
         );
-        if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SP] {
+        if pc < self.registers[RegId::IS] || pc >= self.registers[RegId::SSP] {
             return Err(InterpreterError::PanicInstruction(PanicInstruction::error(
                 PanicReason::MemoryNotExecutable,
                 instruction,

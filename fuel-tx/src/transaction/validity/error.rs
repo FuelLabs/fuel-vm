@@ -116,8 +116,6 @@ pub enum ValidityError {
     /// The total number of bytecode subsections in the `Upload` transaction exceeds the
     /// limit.
     TransactionUploadTooManyBytecodeSubsections,
-    /// Blob id of the transaction differs from the data.
-    TransactionBlobIdVerificationFailed,
     /// The transaction exceeded the size limit.
     TransactionSizeLimitExceeded,
     /// Max gas per tx exceeded
@@ -182,4 +180,6 @@ pub enum ValidityError {
     },
     /// The `Create` transaction doesn't contain `Output::ContractCreated`.
     TransactionOutputDoesntContainContractCreated,
+    /// Blob id of the transaction differs from the data.
+    TransactionBlobIdVerificationFailed,
 }

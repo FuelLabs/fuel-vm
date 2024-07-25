@@ -84,7 +84,7 @@ where
         let blob = blob.as_ref().as_ref();
 
         let end = blob_offset.saturating_add(dst.len()).min(blob.len());
-        let data = blob.get(blob_offset..end).unwrap_or_default();
+        let data = blob.get(blob_offset..end).unwrap_or(&[]);
 
         dst[..data.len()].copy_from_slice(data);
         dst[data.len()..].fill(0);

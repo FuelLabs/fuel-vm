@@ -5,6 +5,8 @@
 
 use crate::{
     field::{
+        BlobId as BlobIdField,
+        BytecodeWitnessIndex,
         InputContract,
         Inputs,
         MintAmount,
@@ -20,6 +22,7 @@ use crate::{
     },
     input,
     test_helper::TransactionFactory,
+    BlobIdExt,
     Upgrade,
     *,
 };
@@ -68,6 +71,14 @@ struct TestedFields {
 }
 
 fn chargeable_transaction_parts<Tx>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
+where
+    Tx: Buildable,
+{
+    inputs_assert(tx, bytes, cases);
+    outputs_assert(tx, bytes, cases);
+}
+
+fn inputs_assert<Tx: Inputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
 where
     Tx: Buildable,
 {
@@ -247,8 +258,6 @@ where
             }
         }
     });
-
-    outputs_assert(tx, bytes, cases);
 }
 
 fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
@@ -543,6 +552,13 @@ fn tx_offset_blob() {
         .take(number_cases)
         .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
+
+            let i = *tx.bytecode_witness_index();
+            assert_eq!(
+                BlobId::compute(&tx.witnesses()[i as usize].as_ref()),
+                *tx.blob_id()
+            );
+
             chargeable_transaction_parts(&tx, &bytes, &mut cases);
         });
 

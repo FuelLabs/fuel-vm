@@ -69,10 +69,15 @@ where
             .gas_costs
             .bldd()
             .map_err(PanicReason::from)?;
-        self.dependent_gas_charge(gas_cost, len)?;
+        self.gas_charge(gas_cost.base())?;
 
         let blob_id = BlobId::from(self.memory.as_ref().read_bytes(blob_id_ptr)?);
         let owner = self.ownership_registers();
+
+        let size = <S as StorageSize<BlobData>>::size_of_value(&self.storage, &blob_id)
+            .map_err(RuntimeError::Storage)?
+            .ok_or(PanicReason::BlobNotFound)?;
+        self.dependent_gas_charge_without_base(gas_cost, len.max(size as Word))?;
 
         let blob = <S as StorageInspect<BlobData>>::get(&self.storage, &blob_id)
             .map_err(RuntimeError::Storage)?

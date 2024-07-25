@@ -766,10 +766,14 @@ where
             "Tx has invalid BlobId",
         );
 
-        storage
+        let old = storage
             .storage_as_mut::<BlobData>()
-            .insert(blob_id, blob_data.as_ref())
+            .replace(blob_id, blob_data.as_ref())
             .map_err(RuntimeError::Storage)?;
+
+        if old.is_some() {
+            return Err(InterpreterError::Panic(PanicReason::BlobIdAlreadyUploaded));
+        }
 
         Self::finalize_outputs(
             blob,

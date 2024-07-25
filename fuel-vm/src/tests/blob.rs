@@ -16,9 +16,12 @@ use fuel_types::{
     canonical::Serialize,
     BlobId,
 };
+use policies::Policies;
 use rand::{
+    rngs::StdRng,
     Rng,
     RngCore,
+    SeedableRng,
 };
 use test_case::test_case;
 
@@ -27,6 +30,63 @@ use super::test_helpers::{
     RunResult,
 };
 use crate::tests::test_helpers::set_full_word;
+
+#[test]
+fn blob_cannot_be_reuploaded() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let mut client = MemoryClient::default();
+
+    let input_amount = 1000;
+    let spend_amount = 600;
+    let asset_id = AssetId::BASE;
+
+    let program: Witness = vec![op::ret(RegId::ONE)]
+        .into_iter()
+        .collect::<Vec<u8>>()
+        .into();
+
+    let policies = Policies::new().with_max_fee(0);
+
+    let mut blob = Transaction::blob(
+        BlobBody {
+            id: BlobId::compute(program.as_ref()),
+            witness_index: 0,
+        },
+        policies,
+        vec![],
+        vec![
+            Output::change(rng.gen(), 0, asset_id),
+            Output::coin(rng.gen(), spend_amount, asset_id),
+        ],
+        vec![program, Witness::default()],
+    );
+    blob.add_unsigned_coin_input(
+        rng.gen(),
+        &Default::default(),
+        input_amount,
+        asset_id,
+        rng.gen(),
+        Default::default(),
+    );
+
+    let consensus_params = ConsensusParameters::standard();
+
+    let blob = blob
+        .into_checked_basic(1.into(), &consensus_params)
+        .expect("failed to generate checked tx");
+
+    // upload the first time
+    client
+        .blob(blob.clone())
+        .expect("First blob should be executed");
+    let mut txtor: Transactor<_, _, _> = client.into();
+    // reupload should fail
+    let result = txtor.blob(blob).unwrap_err();
+    assert_eq!(
+        result,
+        InterpreterError::Panic(PanicReason::BlobIdAlreadyUploaded)
+    );
+}
 
 fn test_ctx_with_random_blob(size: usize) -> (TestBuilder, BlobId) {
     let mut test_context = TestBuilder::new(1234u64);

@@ -271,7 +271,7 @@ fn test_mem_write(
 fn test_copy_from_slice_zero_fill(
     addr: usize,
     len: usize,
-    src_offset: usize,
+    src_offset: Word,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
     let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();

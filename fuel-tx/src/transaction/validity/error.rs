@@ -90,10 +90,6 @@ pub enum ValidityError {
     TransactionOutputContainsContractCreated {
         index: usize,
     },
-    /// The output contains a `Output::Coin` which is not allowed.
-    TransactionOutputContainsCoin {
-        index: usize,
-    },
     /// The block height of the checking doesn't match the transaction's block height.
     /// `Mint` transaction only exists in the scope of the block.
     TransactionMintIncorrectBlockHeight,

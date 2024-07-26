@@ -662,9 +662,11 @@ fn ed25519_verify_b_gt_vmaxram_sub_64() {
     check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
-#[test_case(31, 32 => (); "Just over the end")]
+#[test_case(31, 32 => (); "Just over the end with 32 bits")]
+#[test_case(63, 64 => (); "Just over the end with 64 bits")]
 #[test_case(31, 0 => (); "Zero defaults to 32")]
 #[test_case(31, 100 => (); "Way over the end")]
+#[test_case(0, 32 => (); "Empty range, goes over it")]
 fn ed25519_verify_c_plus_d_gt_vmaxram(offset: u16, len: u32) {
     let reg_a = 0x20;
     let reg_b = 0x21;

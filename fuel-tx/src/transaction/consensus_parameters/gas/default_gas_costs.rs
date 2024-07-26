@@ -100,9 +100,9 @@ pub fn default_gas_costs() -> GasCostsValues {
             base: 2,
             units_per_gas: 214,
         },
-        ed19: DependentCost::HeavyOperation {
+        ed19: DependentCost::LightOperation {
             base: 3000,
-            gas_per_unit: 0,
+            units_per_gas: 214,
         },
         k256: DependentCost::LightOperation {
             base: 11,

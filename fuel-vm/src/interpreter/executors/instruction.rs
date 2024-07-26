@@ -845,12 +845,16 @@ where
             }
 
             Instruction::ED19(ed19) => {
-                let (a, b, c) = ed19.unpack();
-                // TODO: Add support for a new register `d` as part of the
-                //  https://github.com/FuelLabs/fuel-vm/issues/793
-                let len = 0/* r!(d) */;
+                let (a, b, c, len) = ed19.unpack();
+                let mut len = r!(len);
+
+                // Backwards compatibility with old contracts
+                if len == 0 {
+                    len = 32;
+                }
+
                 self.dependent_gas_charge(self.gas_costs().ed19(), len)?;
-                self.ed25519_verify(r!(a), r!(b), r!(c))?;
+                self.ed25519_verify(r!(a), r!(b), r!(c), len)?;
             }
 
             Instruction::K256(k256) => {

@@ -29,6 +29,7 @@ use sha3::{
 
 use crate::{
     prelude::*,
+    tests::test_helpers::set_full_word,
     util::test_helpers::check_expected_reason_for_instructions,
 };
 
@@ -470,7 +471,7 @@ fn secp256r1_recover_c_gt_vmaxram_sub_32() {
 }
 
 #[test]
-fn ed25519_verify() {
+fn ed25519_verifies_message() {
     use ed25519_dalek::Signer;
 
     let mut client = MemoryClient::default();
@@ -483,23 +484,73 @@ fn ed25519_verify() {
     let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
 
     let message = b"The gift of words is the gift of deception and illusion.";
-    let message = Message::new(message);
+    let signature = signing_key.sign(&message[..]);
 
-    let signature = signing_key.sign(&*message);
-
-    #[rustfmt::skip]
-    let script = vec![
+    let mut script = set_full_word(0x23, message.len() as Word);
+    script.extend([
         op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
         op::addi(0x21, 0x20, signature.to_bytes().len() as Immediate12),
         op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
         op::movi(0x10, PublicKey::LEN as Immediate18),
         op::aloc(0x10),
-        op::ed19(0x22, 0x20, 0x21),
+        op::ed19(0x22, 0x20, 0x21, 0x23),
         op::log(RegId::ERR, 0x00, 0x00, 0x00),
         op::ret(RegId::ONE),
-    ].into_iter().collect();
+    ]);
+
+    let script: Vec<u8> = script.into_iter().collect();
+
+    // Success case
+    let script_data = signature
+        .to_bytes()
+        .iter()
+        .copied()
+        .chain(message.as_ref().iter().copied())
+        .chain(signing_key.verifying_key().as_ref().iter().copied())
+        .collect();
+
+    let tx = TransactionBuilder::script(script.clone(), script_data)
+        .script_gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize_checked(height);
+
+    let receipts = client.transact(tx);
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 0));
+
+    assert!(success);
+
+    // If we alter the message, the verification should fail
+    let altered_message = b"The gift of words is the gift of deception and illusion!";
+    assert_eq!(message.len(), altered_message.len());
 
     let script_data = signature
+        .to_bytes()
+        .iter()
+        .copied()
+        .chain(altered_message.as_ref().iter().copied())
+        .chain(signing_key.verifying_key().as_ref().iter().copied())
+        .collect();
+
+    let tx = TransactionBuilder::script(script.clone(), script_data)
+        .script_gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize_checked(height);
+
+    let receipts = client.transact(tx);
+    let errors = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
+
+    assert!(errors);
+
+    // And if we alter the signature, the verification should also fail
+    let altered_signature = signing_key.sign(&altered_message[..]);
+
+    let script_data = altered_signature
         .to_bytes()
         .iter()
         .copied()
@@ -514,47 +565,11 @@ fn ed25519_verify() {
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
-    let success = receipts
+    let errors = receipts
         .iter()
-        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 0));
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 1));
 
-    assert!(success);
-}
-
-#[test]
-fn ed25519_verify_error() {
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-
-    let secret = SecretKey::random(rng);
-
-    let message = b"The gift of words is the gift of deception and illusion.";
-    let message = Message::new(message);
-    let signature = Signature::sign(&secret, &message);
-
-    let altered_message = b"The gift of words is the gift of deception and illusion!";
-    let altered_message = Message::new(altered_message);
-
-    #[rustfmt::skip]
-    let script = vec![
-        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
-        op::addi(0x21, 0x20, signature.as_ref().len() as Immediate12),
-        op::addi(0x22, 0x21, altered_message.as_ref().len() as Immediate12),
-        op::movi(0x10, PublicKey::LEN as Immediate18),
-        op::aloc(0x10),
-        op::move_(0x11, RegId::HP),
-        op::ed19(0x11, 0x20, 0x21),
-        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-        op::ret(RegId::ONE),
-    ];
-
-    let receipts = run_script(script);
-    assert_success(&receipts);
-
-    let Some(Receipt::Log { ra, .. }) = receipts.first() else {
-        panic!("Expected log receipt");
-    };
-
-    assert_eq!(*ra, 1, "Verification should have failed");
+    assert!(errors);
 }
 
 #[test]
@@ -567,7 +582,7 @@ fn ed25519_verify_a_gt_vmaxram_sub_64() {
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
-        op::ed19(reg_a, reg_b, reg_b),
+        op::ed19(reg_a, reg_b, reg_b, 32),
         op::ret(RegId::ONE),
     ];
 
@@ -584,7 +599,7 @@ fn ed25519_verify_b_gt_vmaxram_sub_64() {
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
-        op::ed19(reg_b, reg_a, reg_b),
+        op::ed19(reg_b, reg_a, reg_b, 32),
         op::ret(RegId::ONE),
     ];
 
@@ -592,7 +607,7 @@ fn ed25519_verify_b_gt_vmaxram_sub_64() {
 }
 
 #[test]
-fn ed25519_verify_c_gt_vmaxram_sub_32() {
+fn ed25519_verify_c_plus_d_gt_vmaxram() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
@@ -601,7 +616,7 @@ fn ed25519_verify_c_gt_vmaxram_sub_32() {
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31),
-        op::ed19(reg_b, reg_b, reg_a),
+        op::ed19(reg_b, reg_b, reg_a, 32),
         op::ret(RegId::ONE),
     ];
 

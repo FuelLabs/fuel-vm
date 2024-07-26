@@ -2584,7 +2584,7 @@ fn ldcv2__fails_wehn_blob_id_ends_beyond_max_ram() {
 }
 
 #[test]
-fn ldcv2_fails_when_blob_not_in_inputs() {
+fn ldcv2__fails_when_blob_doesnt_exist() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
     let reg_b = 0x21;

@@ -990,21 +990,32 @@ impl OwnershipRegisters {
 
 /// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
 /// Performs overflow and memory range checks, but no ownership checks.
+/// Note that if `src_offset` is larger than `src.len()`, the whole range will be
+/// zero-filled.
 pub(crate) fn copy_from_slice_zero_fill<A: ToAddr, B: ToAddr>(
     memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     src: &[u8],
     dst_addr: A,
-    src_offset: usize,
+    src_offset: Word,
     len: B,
 ) -> SimpleResult<()> {
     let range = memory.write(owner, dst_addr, len)?;
 
-    let src_end = src_offset.saturating_add(range.len()).min(src.len());
-    let data = src.get(src_offset..src_end).unwrap_or_default();
+    // Special-case the ranges that are completely out of bounds,
+    // to avoid platform-dependenct usize conversion.
+    if src_offset >= src.len() as Word {
+        range[..].fill(0);
+    } else {
+        // Safety: since we check above that this is not larger than `src.len()`,
+        // which is `usize`, the cast never truncates.
+        #[allow(clippy::cast_possible_truncation)]
+        let src_offset = src_offset as usize;
+        let src_end = src_offset.saturating_add(range.len()).min(src.len());
+        let data = src.get(src_offset..src_end).unwrap_or(&[]);
 
-    range[..data.len()].copy_from_slice(data);
-    range[data.len()..].fill(0);
-
+        range[..data.len()].copy_from_slice(data);
+        range[data.len()..].fill(0);
+    }
     Ok(())
 }

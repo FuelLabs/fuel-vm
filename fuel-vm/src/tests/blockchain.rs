@@ -2584,7 +2584,7 @@ fn ldcv2__fails_wehn_blob_id_ends_beyond_max_ram() {
 }
 
 #[test]
-fn ldcv2_fails_when_blob_not_in_inputs() {
+fn ldcv2__fails_when_blob_doesnt_exist() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
     let reg_b = 0x21;
@@ -2649,8 +2649,8 @@ fn load_blob_code__copies_expected_bytes() {
 }
 
 #[test]
-fn load_blob_code__fails_when_blob_offset_is_over_length() {
-    // This test like a `load_blob_code_v2_copies_expected_bytes`, but the offset
+fn load_blob_code__doesnt_load_above_offset() {
+    // This test like a `load_blob_code__copies_expected_bytes`, but the offset
     // is set to be beyond the length of the contract code. The `meq` should fail.
     let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;

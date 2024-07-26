@@ -604,9 +604,6 @@ where
         }
 
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
-        let contract_offset =
-            u32::try_from(contract_offset).map_err(|_| PanicReason::MemoryOverflow)?;
-
         let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
         let length =
@@ -654,7 +651,7 @@ where
             owner,
             contract_bytes,
             region_start,
-            contract_offset as usize,
+            contract_offset,
             length,
         )?;
 
@@ -705,19 +702,10 @@ where
         }
 
         let blob_id = BlobId::from(self.memory.read_bytes(blob_id_addr)?);
-        let blob_offset: usize = blob_offset
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
 
         let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
-        let length = bytes::padded_len_usize(
-            length_unpadded
-                .try_into()
-                .map_err(|_| PanicReason::MemoryOverflow)?,
-        )
-        .map(|len| len as Word)
-        .unwrap_or(Word::MAX);
+        let length = bytes::padded_len_word(length_unpadded).unwrap_or(Word::MAX);
 
         let blob_len =
             <S as StorageSize<BlobData>>::size_of_value(self.storage, &blob_id)
@@ -907,8 +895,6 @@ where
         S: InterpreterStorage,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
-        let offset =
-            u32::try_from(contract_offset).map_err(|_| PanicReason::MemoryOverflow)?;
 
         self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
@@ -937,7 +923,7 @@ where
             self.owner,
             contract.as_ref().as_ref(),
             dst_addr,
-            offset as usize,
+            contract_offset,
             length,
         )?;
 

@@ -17,6 +17,7 @@ use crate::{
 
 use super::{
     internal::inc_pc,
+    memory::copy_from_slice_zero_fill,
     split_registers,
     GetRegMut,
     Interpreter,
@@ -68,26 +69,29 @@ where
             .gas_costs
             .bldd()
             .map_err(PanicReason::from)?;
-        self.dependent_gas_charge(gas_cost, len)?;
-
-        let blob_offset: usize = blob_offset
-            .try_into()
-            .map_err(|_| PanicReason::MemoryOverflow)?;
+        self.gas_charge(gas_cost.base())?;
 
         let blob_id = BlobId::from(self.memory.as_ref().read_bytes(blob_id_ptr)?);
         let owner = self.ownership_registers();
-        let dst = self.memory.as_mut().write(owner, dst_ptr, len)?;
+
+        let size = <S as StorageSize<BlobData>>::size_of_value(&self.storage, &blob_id)
+            .map_err(RuntimeError::Storage)?
+            .ok_or(PanicReason::BlobNotFound)?;
+        self.dependent_gas_charge_without_base(gas_cost, len.max(size as Word))?;
 
         let blob = <S as StorageInspect<BlobData>>::get(&self.storage, &blob_id)
             .map_err(RuntimeError::Storage)?
             .ok_or(PanicReason::BlobNotFound)?;
         let blob = blob.as_ref().as_ref();
 
-        let end = blob_offset.saturating_add(dst.len()).min(blob.len());
-        let data = blob.get(blob_offset..end).unwrap_or_default();
-
-        dst[..data.len()].copy_from_slice(data);
-        dst[data.len()..].fill(0);
+        copy_from_slice_zero_fill(
+            self.memory.as_mut(),
+            owner,
+            blob,
+            dst_ptr,
+            blob_offset,
+            len,
+        )?;
 
         Ok(inc_pc(self.registers.pc_mut())?)
     }

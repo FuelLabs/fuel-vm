@@ -70,6 +70,40 @@ fn check__fails_if_maturity_not_met() {
 }
 
 #[test]
+fn check__fails_if_blob_id_doesnt_match_payload() {
+    // Given
+    let blob_data = vec![1; 100];
+    let mut builder = TransactionBuilder::blob(BlobBody {
+        id: BlobId::from_bytes(&[0xf0; 32]).unwrap(),
+        witness_index: 0,
+    });
+    builder.add_witness(blob_data.into());
+    builder.max_fee_limit(0);
+    builder.add_input(Input::coin_predicate(
+        Default::default(),
+        Input::predicate_owner(predicate()),
+        Default::default(),
+        AssetId::BASE,
+        Default::default(),
+        Default::default(),
+        predicate(),
+        vec![],
+    ));
+
+    let block_height: BlockHeight = 1000.into();
+    let tx = builder.maturity(block_height).finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(
+        Err(ValidityError::TransactionBlobIdVerificationFailed),
+        result
+    );
+}
+
+#[test]
 fn check__not_set_witness_limit_success() {
     let block_height = 1000.into();
 

@@ -16,9 +16,12 @@ use fuel_types::{
     canonical::Serialize,
     BlobId,
 };
+use policies::Policies;
 use rand::{
+    rngs::StdRng,
     Rng,
     RngCore,
+    SeedableRng,
 };
 use test_case::test_case;
 
@@ -27,6 +30,63 @@ use super::test_helpers::{
     RunResult,
 };
 use crate::tests::test_helpers::set_full_word;
+
+#[test]
+fn blob_cannot_be_reuploaded() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let mut client = MemoryClient::default();
+
+    let input_amount = 1000;
+    let spend_amount = 600;
+    let asset_id = AssetId::BASE;
+
+    let program: Witness = vec![op::ret(RegId::ONE)]
+        .into_iter()
+        .collect::<Vec<u8>>()
+        .into();
+
+    let policies = Policies::new().with_max_fee(0);
+
+    let mut blob = Transaction::blob(
+        BlobBody {
+            id: BlobId::compute(program.as_ref()),
+            witness_index: 0,
+        },
+        policies,
+        vec![],
+        vec![
+            Output::change(rng.gen(), 0, asset_id),
+            Output::coin(rng.gen(), spend_amount, asset_id),
+        ],
+        vec![program, Witness::default()],
+    );
+    blob.add_unsigned_coin_input(
+        rng.gen(),
+        &Default::default(),
+        input_amount,
+        asset_id,
+        rng.gen(),
+        Default::default(),
+    );
+
+    let consensus_params = ConsensusParameters::standard();
+
+    let blob = blob
+        .into_checked_basic(1.into(), &consensus_params)
+        .expect("failed to generate checked tx");
+
+    // upload the first time
+    client
+        .blob(blob.clone())
+        .expect("First blob should be executed");
+    let mut txtor: Transactor<_, _, _> = client.into();
+    // reupload should fail
+    let result = txtor.blob(blob).unwrap_err();
+    assert_eq!(
+        result,
+        InterpreterError::Panic(PanicReason::BlobIdAlreadyUploaded)
+    );
+}
 
 fn test_ctx_with_random_blob(size: usize) -> (TestBuilder, BlobId) {
     let mut test_context = TestBuilder::new(1234u64);
@@ -326,192 +386,4 @@ fn blob_load_data__bounds(
             })
             .next()
     })
-}
-
-#[test]
-fn blob_load__can_jump_to_loaded_code_in_external_context() {
-    let mut test_context: TestBuilder = TestBuilder::new(1234u64);
-
-    // Given
-    let canary = test_context.rng.gen();
-
-    // When
-    // log the canary and return
-    let mut blob_code = set_full_word(0x10, canary);
-    blob_code.extend([
-        op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-        op::ret(RegId::ONE),
-    ]);
-    let blob_data: Vec<u8> = blob_code.into_iter().collect();
-
-    let blob_id = BlobId::compute(&blob_data);
-    test_context.setup_blob(blob_data.clone());
-
-    let mut ops = set_full_word(0x12, blob_data.len() as u64);
-    ops.extend([
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::move_(0x13, RegId::SSP), // Store jump target
-        op::move_(0x14, RegId::SP),  // Store load target
-        op::cfe(0x12),
-        op::bldd(0x14, 0x10, RegId::ZERO, 0x12),
-        op::sub(0x10, 0x13, RegId::IS), // Compute offset
-        op::divi(0x10, 0x10, 4),        // Div for jmp instruction
-        op::jmp(0x10),                  // Jump to loaded code
-    ]);
-
-    let script_data = blob_id.to_bytes();
-    let state = test_context
-        .start_script(ops, script_data)
-        .script_gas_limit(1_000_000)
-        .fee_input()
-        .execute();
-
-    // Then
-    assert_success(state.receipts());
-    let extracted = state
-        .receipts()
-        .iter()
-        .filter_map(|receipt| match receipt {
-            Receipt::Log { ra, .. } => Some(*ra),
-            _ => None,
-        })
-        .next()
-        .expect("Missing log receipt");
-    assert_eq!(extracted, canary);
-}
-
-#[test]
-fn blob_load__can_jump_to_loaded_code_in_internal_context() {
-    let mut test_context: TestBuilder = TestBuilder::new(1234u64);
-
-    // Given
-    let canary = test_context.rng.gen();
-    let asset_id = test_context.rng.gen();
-    let initial_internal_balance = canary;
-
-    // When
-    // log the balance (=canary) to make sure the blob shares contract context
-    let blob_code = vec![
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::addi(0x10, 0x10, (BlobId::LEN + Call::LEN).try_into().unwrap()),
-        op::bal(0x10, 0x10, RegId::FP),
-        op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-        op::ret(RegId::ONE),
-    ];
-    let blob_data: Vec<u8> = blob_code.into_iter().collect();
-
-    let blob_id = BlobId::compute(&blob_data);
-    test_context.setup_blob(blob_data.clone());
-
-    let mut ops = set_full_word(0x12, blob_data.len() as u64);
-    ops.extend([
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::move_(0x13, RegId::SSP), // Store jump target
-        op::move_(0x14, RegId::SP),  // Store load target
-        op::cfe(0x12),
-        op::bldd(0x14, 0x10, RegId::ZERO, 0x12),
-        op::sub(0x10, 0x13, RegId::IS), // Compute offset
-        op::divi(0x10, 0x10, 4),        // Div for jmp instruction
-        op::jmp(0x10),                  // Jump to loaded code
-    ]);
-
-    let mut script_data = blob_id.to_bytes();
-
-    let contract_to_call = test_context
-        .setup_contract(ops, Some((asset_id, initial_internal_balance)), None)
-        .contract_id;
-
-    script_data.extend(Call::new(contract_to_call, 0, 0).to_bytes());
-    script_data.extend(asset_id.to_bytes());
-    let state = test_context
-        .start_script(
-            vec![
-                op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-                op::addi(0x10, 0x10, BlobId::LEN.try_into().unwrap()),
-                op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),
-                op::ret(RegId::ONE),
-            ],
-            script_data,
-        )
-        .script_gas_limit(1_000_000)
-        .contract_input(contract_to_call)
-        .contract_output(&contract_to_call)
-        .fee_input()
-        .execute();
-
-    // Then
-    assert_success(state.receipts());
-    let extracted = state
-        .receipts()
-        .iter()
-        .filter_map(|receipt| match receipt {
-            Receipt::Log { ra, .. } => Some(*ra),
-            _ => None,
-        })
-        .next()
-        .expect("Missing log receipt");
-    assert_eq!(extracted, canary);
-}
-
-#[test]
-fn blob_load__can_load_multiple_blobs_sequentially() {
-    let mut test_context = TestBuilder::new(1234u64);
-
-    // Given
-    let num_blobs = 10;
-
-    // When
-    let blob_ids: Vec<BlobId> = (0..num_blobs)
-        .map(|i| {
-            let mut blob_code = vec![
-                op::movi(0x10, i),
-                op::log(0x10, RegId::ZERO, RegId::ZERO, RegId::ZERO),
-            ];
-            if i == 9 {
-                blob_code.push(op::ret(RegId::ONE));
-            }
-            let blob_data: Vec<u8> = blob_code.into_iter().collect();
-            let blob_id = BlobId::compute(&blob_data);
-            test_context.setup_blob(blob_data.clone());
-            blob_id
-        })
-        .collect();
-
-    let ops = vec![
-        op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
-        op::move_(0x13, RegId::SSP), // Store jump target
-        op::movi(0x14, num_blobs),   // Loop counter
-        // jnzb loop start
-        op::bsiz(0x12, 0x10),                    // Get size
-        op::move_(0x15, RegId::SP),              // Store $sp to target to
-        op::cfe(0x12),                           // Extend stack
-        op::bldd(0x15, 0x10, RegId::ZERO, 0x12), // Load full blob code
-        op::addi(0x10, 0x10, 32),                // Next blob id pointer
-        op::subi(0x14, 0x14, 1),                 // Decrement loop counter
-        op::jnzb(0x14, RegId::ZERO, 5),          // Loop
-        op::sub(0x10, 0x13, RegId::IS),          // Compute offset
-        op::divi(0x10, 0x10, 4),                 // Div for jmp instruction
-        op::jmp(0x10),                           // Jump to loaded code
-    ];
-
-    let state = test_context
-        .start_script(
-            ops,
-            blob_ids.into_iter().flat_map(|b| b.to_bytes()).collect(),
-        )
-        .script_gas_limit(1_000_000)
-        .fee_input()
-        .execute();
-
-    // Then
-    assert_success(state.receipts());
-    let extracted: Vec<Word> = state
-        .receipts()
-        .iter()
-        .filter_map(|receipt| match receipt {
-            Receipt::Log { ra, .. } => Some(*ra),
-            _ => None,
-        })
-        .collect();
-    assert_eq!(extracted, (0..num_blobs as Word).collect::<Vec<Word>>());
 }

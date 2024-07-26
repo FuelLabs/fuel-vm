@@ -149,8 +149,10 @@ enum_from! {
         ThePartIsNotSequentiallyConnected = 0x35,
         /// The requested blob is not found.
         BlobNotFound = 0x36,
+        /// The blob was already
+        BlobIdAlreadyUploaded = 0x37,
         /// Active gas costs do not define the cost for this instruction.
-        GasCostNotDefined = 0x37,
+        GasCostNotDefined = 0x38,
     }
 }
 

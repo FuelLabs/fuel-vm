@@ -30,7 +30,7 @@ use fuel_types::{
 /// Adds method to `BlobId` to compute the it from blob data.
 pub trait BlobIdExt {
     /// Computes the `BlobId` from by hashing the given data.
-    fn compute(data: &[u8]) -> Self;
+    fn compute(data: &[u8]) -> BlobId;
 }
 
 impl BlobIdExt for BlobId {
@@ -75,8 +75,17 @@ impl Chargeable for Blob {
     #[inline(always)]
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
         let bytes = Serialize::size(self);
-        // Gas required to calculate the `tx_id`.
-        gas_cost.s256().resolve(bytes as u64)
+        let blob_len = self
+            .witnesses
+            .get(self.body.witness_index as usize)
+            .map(|c| c.as_ref().len())
+            .unwrap_or(0);
+
+        // Gas required to calculate the `tx_id` and `blob_id`.
+        gas_cost
+            .s256()
+            .resolve(bytes as u64)
+            .saturating_add(gas_cost.s256().resolve(blob_len as u64))
     }
 }
 
@@ -146,9 +155,8 @@ impl UniqueFormatValidityChecks for Blob {
                 Output::ContractCreated { .. } => {
                     Err(ValidityError::TransactionOutputContainsContractCreated { index })
                 }
-                Output::Coin { .. } => {
-                    Err(ValidityError::TransactionOutputContainsCoin { index })
-                }
+
+                Output::Coin { .. } => Ok(()),
             })?;
 
         Ok(())

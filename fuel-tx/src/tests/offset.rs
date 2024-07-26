@@ -5,6 +5,7 @@
 
 use crate::{
     field::{
+        BlobId as BlobIdField,
         InputContract,
         Inputs,
         MintAmount,
@@ -68,6 +69,14 @@ struct TestedFields {
 }
 
 fn chargeable_transaction_parts<Tx>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
+where
+    Tx: Buildable,
+{
+    inputs_assert(tx, bytes, cases);
+    outputs_assert(tx, bytes, cases);
+}
+
+fn inputs_assert<Tx: Inputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
 where
     Tx: Buildable,
 {
@@ -247,8 +256,6 @@ where
             }
         }
     });
-
-    outputs_assert(tx, bytes, cases);
 }
 
 fn outputs_assert<Tx: Outputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields) {
@@ -539,10 +546,15 @@ fn tx_offset_blob() {
     // Different seeds might implicate on how many of the cases we cover - since we
     // assert coverage for all scenarios with the boolean variables above, we need to
     // pick a seed that, with low number of cases, will cover everything.
-    TransactionFactory::<_, Upload>::from_seed(1295)
+    TransactionFactory::<_, Blob>::from_seed(1295)
         .take(number_cases)
         .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
+
+            // Blob id
+            let offs = tx.blob_id_offset();
+            assert_eq!(bytes[offs..offs + BlobId::LEN], **tx.blob_id());
+
             chargeable_transaction_parts(&tx, &bytes, &mut cases);
         });
 

@@ -182,4 +182,6 @@ pub enum ValidityError {
     },
     /// The `Create` transaction doesn't contain `Output::ContractCreated`.
     TransactionOutputDoesntContainContractCreated,
+    /// Blob id of the transaction differs from the data.
+    TransactionBlobIdVerificationFailed,
 }

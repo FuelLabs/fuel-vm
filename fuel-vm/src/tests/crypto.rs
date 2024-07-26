@@ -574,6 +574,57 @@ fn ed25519_verifies_message() {
 }
 
 #[test]
+fn ed25519_zero_length_is_treated_as_32() {
+    use ed25519_dalek::Signer;
+
+    let mut client = MemoryClient::default();
+
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let height = Default::default();
+
+    let mut rng = rand::rngs::OsRng;
+    let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
+
+    let message = [1u8; 32];
+    let signature = signing_key.sign(&message[..]);
+
+    let script = vec![
+        op::gtf_args(0x20, 0x00, GTFArgs::ScriptData),
+        op::addi(0x21, 0x20, signature.to_bytes().len() as Immediate12),
+        op::addi(0x22, 0x21, message.as_ref().len() as Immediate12),
+        op::movi(0x10, PublicKey::LEN as Immediate18),
+        op::aloc(0x10),
+        op::ed19(0x22, 0x20, 0x21, 0),
+        op::log(RegId::ERR, 0x00, 0x00, 0x00),
+        op::ret(RegId::ONE),
+    ];
+
+    let script: Vec<u8> = script.into_iter().collect();
+
+    let script_data = signature
+        .to_bytes()
+        .iter()
+        .copied()
+        .chain(message.as_ref().iter().copied())
+        .chain(signing_key.verifying_key().as_ref().iter().copied())
+        .collect();
+
+    let tx = TransactionBuilder::script(script.clone(), script_data)
+        .script_gas_limit(gas_limit)
+        .maturity(maturity)
+        .add_random_fee_input()
+        .finalize_checked(height);
+
+    let receipts = client.transact(tx);
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if *ra == 0));
+
+    assert!(success);
+}
+
+#[test]
 fn ed25519_verify_a_gt_vmaxram_sub_64() {
     let reg_a = 0x20;
     let reg_b = 0x21;

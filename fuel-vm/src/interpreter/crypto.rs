@@ -162,7 +162,7 @@ pub(crate) fn ed25519_verify(
     let sig = Bytes64::from(memory.read_bytes(b)?);
     let msg = memory.read(c, len)?;
 
-    if fuel_crypto::ed25519::verify(&pub_key, &sig, &msg).is_ok() {
+    if fuel_crypto::ed25519::verify(&pub_key, &sig, msg).is_ok() {
         clear_err(err);
     } else {
         set_err(err);

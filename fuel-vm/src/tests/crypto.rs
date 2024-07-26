@@ -1,4 +1,5 @@
 use alloc::vec;
+use test_case::test_case;
 
 use fuel_asm::{
     op,
@@ -576,13 +577,15 @@ fn ed25519_verifies_message() {
 fn ed25519_verify_a_gt_vmaxram_sub_64() {
     let reg_a = 0x20;
     let reg_b = 0x21;
+    let reg_c = 0x22;
 
     #[rustfmt::skip]
     let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
-        op::ed19(reg_a, reg_b, reg_b, 32),
+        op::movi(reg_c, 32),
+        op::ed19(reg_a, reg_b, reg_b, reg_c),
         op::ret(RegId::ONE),
     ];
 
@@ -593,30 +596,36 @@ fn ed25519_verify_a_gt_vmaxram_sub_64() {
 fn ed25519_verify_b_gt_vmaxram_sub_64() {
     let reg_a = 0x20;
     let reg_b = 0x21;
+    let reg_c = 0x22;
 
     #[rustfmt::skip]
     let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
-        op::ed19(reg_b, reg_a, reg_b, 32),
+        op::movi(reg_c, 32),
+        op::ed19(reg_b, reg_a, reg_b, reg_c),
         op::ret(RegId::ONE),
     ];
 
     check_expected_reason_for_instructions(script, MemoryOverflow);
 }
 
-#[test]
-fn ed25519_verify_c_plus_d_gt_vmaxram() {
+#[test_case(31, 32 => (); "Just over the end")]
+#[test_case(31, 0 => (); "Zero defaults to 32")]
+#[test_case(31, 100 => (); "Way over the end")]
+fn ed25519_verify_c_plus_d_gt_vmaxram(offset: u16, len: u32) {
     let reg_a = 0x20;
     let reg_b = 0x21;
+    let reg_c = 0x22;
 
     #[rustfmt::skip]
     let script = vec![
         op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
-        op::subi(reg_a, reg_a, 31),
-        op::ed19(reg_b, reg_b, reg_a, 32),
+        op::subi(reg_a, reg_a, offset),
+        op::movi(reg_c, len),
+        op::ed19(reg_b, reg_b, reg_a, reg_c),
         op::ret(RegId::ONE),
     ];
 

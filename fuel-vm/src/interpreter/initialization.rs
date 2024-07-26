@@ -83,7 +83,6 @@ where
         self.registers.iter_mut().for_each(|r| *r = 0);
 
         self.registers[RegId::ONE] = 1;
-        self.registers[RegId::SSP] = 0;
 
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;

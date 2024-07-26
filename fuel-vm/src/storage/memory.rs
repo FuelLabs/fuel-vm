@@ -27,6 +27,7 @@ use fuel_tx::{
     Contract,
 };
 use fuel_types::{
+    BlobId,
     BlockHeight,
     Bytes32,
     ContractId,
@@ -41,13 +42,18 @@ use alloc::{
 };
 use core::convert::Infallible;
 
-use super::interpreter::ContractsAssetsStorage;
+use super::{
+    interpreter::ContractsAssetsStorage,
+    BlobBytes,
+    BlobData,
+};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
     contract_state: BTreeMap<ContractsStateKey, ContractsStateData>,
+    blobs: BTreeMap<BlobId, BlobBytes>,
     /// Mapping from consensus parameters version to consensus parameters.
     consensus_parameters_versions: BTreeMap<u32, ConsensusParameters>,
     /// Mapping from state transition bytecode root to bytecode.
@@ -458,6 +464,108 @@ impl StorageRead<ContractsState> for MemoryStorage {
             .contract_state
             .get(key)
             .map(|c| c.as_ref().to_vec()))
+    }
+}
+
+impl StorageSize<BlobData> for MemoryStorage {
+    fn size_of_value(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<usize>, Infallible> {
+        Ok(self.memory.blobs.get(key).map(|c| c.as_ref().len()))
+    }
+}
+
+impl StorageRead<BlobData> for MemoryStorage {
+    fn read(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+        buf: &mut [u8],
+    ) -> Result<Option<usize>, Self::Error> {
+        Ok(self.memory.blobs.get(key).map(|data| {
+            let len = buf.len().min(data.as_ref().len());
+            buf.copy_from_slice(&data.as_ref()[..len]);
+            len
+        }))
+    }
+
+    fn read_alloc(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self.memory.blobs.get(key).map(|c| c.as_ref().to_vec()))
+    }
+}
+
+impl StorageInspect<BlobData> for MemoryStorage {
+    type Error = Infallible;
+
+    fn get(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<Cow<'_, <BlobData as Mappable>::OwnedValue>>, Infallible> {
+        Ok(self.memory.blobs.get(key).map(Cow::Borrowed))
+    }
+
+    fn contains_key(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<bool, Infallible> {
+        Ok(self.memory.blobs.contains_key(key))
+    }
+}
+
+impl StorageMutate<BlobData> for MemoryStorage {
+    fn replace(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+        value: &<BlobData as Mappable>::Value,
+    ) -> Result<Option<<BlobData as Mappable>::OwnedValue>, Infallible> {
+        Ok(self.memory.blobs.insert(*key, value.into()))
+    }
+
+    fn take(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<BlobBytes>, Infallible> {
+        Ok(self.memory.blobs.remove(key))
+    }
+}
+
+impl StorageWrite<BlobData> for MemoryStorage {
+    fn write_bytes(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+        buf: &[u8],
+    ) -> Result<usize, Infallible> {
+        let size = buf.len();
+        self.memory.blobs.insert(*key, BlobBytes::from(buf));
+        Ok(size)
+    }
+
+    fn replace_bytes(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+        buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    where
+        Self: StorageSize<BlobData>,
+    {
+        let size = buf.len();
+        let prev = self
+            .memory
+            .blobs
+            .insert(*key, BlobBytes::from(buf))
+            .map(Into::into);
+        Ok((size, prev))
+    }
+
+    fn take_bytes(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        let prev = self.memory.blobs.remove(key).map(Into::into);
+        Ok(prev)
     }
 }
 

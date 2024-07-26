@@ -10,6 +10,7 @@ pub mod gas;
 
 pub use gas::{
     DependentCost,
+    GasCostNotDefined,
     GasCosts,
     GasCostsValues,
 };

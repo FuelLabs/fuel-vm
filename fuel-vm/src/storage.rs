@@ -7,6 +7,7 @@ use fuel_types::{
     ContractId,
 };
 
+mod blob_data;
 mod contracts_assets;
 mod contracts_state;
 mod interpreter;
@@ -14,6 +15,10 @@ mod interpreter;
 mod memory;
 pub(crate) mod predicate;
 
+pub use blob_data::{
+    BlobBytes,
+    BlobData,
+};
 pub use contracts_assets::{
     ContractsAssetKey,
     ContractsAssets,

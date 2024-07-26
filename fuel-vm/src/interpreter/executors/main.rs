@@ -39,6 +39,7 @@ use crate::{
         StateTransitionRef,
     },
     storage::{
+        BlobData,
         InterpreterStorage,
         PredicateStorage,
     },
@@ -64,6 +65,7 @@ use fuel_storage::{
 };
 use fuel_tx::{
     field::{
+        BlobId as _,
         BytecodeRoot,
         BytecodeWitnessIndex,
         ReceiptsRoot,
@@ -83,6 +85,8 @@ use fuel_tx::{
             MessageDataPredicate,
         },
     },
+    Blob,
+    BlobIdExt,
     ConsensusParameters,
     Contract,
     Create,
@@ -99,6 +103,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     AssetId,
+    BlobId,
     Word,
 };
 
@@ -733,6 +738,61 @@ where
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
+    S: InterpreterStorage,
+{
+    fn blob_inner(
+        blob: &mut Blob,
+        storage: &mut S,
+        initial_balances: InitialBalances,
+        gas_costs: &GasCosts,
+        fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
+        gas_price: Word,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        let blob_data = blob
+            .witnesses()
+            .get(*blob.bytecode_witness_index() as usize)
+            .ok_or(InterpreterError::Bug(Bug::new(
+                // It shouldn't be possible since `Checked<Blob>` guarantees
+                // the existence of the witness.
+                BugVariant::WitnessIndexOutOfBounds,
+            )))?;
+
+        let blob_id = blob.blob_id();
+
+        debug_assert_eq!(
+            BlobId::compute(blob_data.as_ref()),
+            *blob_id,
+            "Tx has invalid BlobId",
+        );
+
+        let old = storage
+            .storage_as_mut::<BlobData>()
+            .replace(blob_id, blob_data.as_ref())
+            .map_err(RuntimeError::Storage)?;
+
+        if old.is_some() {
+            return Err(InterpreterError::Panic(PanicReason::BlobIdAlreadyUploaded));
+        }
+
+        Self::finalize_outputs(
+            blob,
+            gas_costs,
+            fee_params,
+            base_asset_id,
+            false,
+            0,
+            &initial_balances,
+            &RuntimeBalances::try_from(initial_balances.clone())?,
+            gas_price,
+        )?;
+
+        Ok(())
+    }
+}
+
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
     M: Memory,
 
     S: InterpreterStorage,
@@ -779,6 +839,17 @@ where
         } else if let Some(upload) = self.tx.as_upload_mut() {
             Self::upload_inner(
                 upload,
+                &mut self.storage,
+                self.initial_balances.clone(),
+                &gas_costs,
+                &fee_params,
+                &base_asset_id,
+                gas_price,
+            )?;
+            ProgramState::Return(1)
+        } else if let Some(blob) = self.tx.as_blob_mut() {
+            Self::blob_inner(
+                blob,
                 &mut self.storage,
                 self.initial_balances.clone(),
                 &gas_costs,
@@ -1050,6 +1121,38 @@ where
             gas_price,
         )?;
         Ok(upload)
+    }
+}
+
+impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+where
+    S: InterpreterStorage,
+{
+    /// Executes `Blob` transaction without initialization VM and without invalidation
+    /// of the last state of execution of the `Script` transaction.
+    ///
+    /// Returns `Blob` transaction with all modifications after execution.
+    pub fn blob(
+        &mut self,
+        tx: Ready<Blob>,
+    ) -> Result<Blob, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut blob, metadata): (Blob, <Blob as IntoChecked>::Metadata) =
+            checked.into();
+        let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
+        Self::blob_inner(
+            &mut blob,
+            &mut self.storage,
+            metadata.balances(),
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
+            &base_asset_id,
+            gas_price,
+        )?;
+        Ok(blob)
     }
 }
 

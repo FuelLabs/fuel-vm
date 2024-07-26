@@ -129,6 +129,8 @@ pub mod test_helpers {
             Outputs,
             ReceiptsRoot,
         },
+        BlobBody,
+        BlobIdExt,
         ConsensusParameters,
         Contract,
         ContractParameters,
@@ -155,6 +157,7 @@ pub mod test_helpers {
         },
         Address,
         AssetId,
+        BlobId,
         BlockHeight,
         ChainId,
         ContractId,
@@ -322,6 +325,12 @@ pub mod test_helpers {
             self
         }
 
+        pub fn with_free_gas_costs(&mut self) -> &mut TestBuilder {
+            let gas_costs = GasCosts::free();
+            self.consensus_params.set_gas_costs(gas_costs);
+            self
+        }
+
         pub fn base_asset_id(&mut self, base_asset_id: AssetId) -> &mut TestBuilder {
             self.consensus_params.set_base_asset_id(base_asset_id);
             self
@@ -467,6 +476,33 @@ pub mod test_helpers {
                 contract_id,
                 salt,
             }
+        }
+
+        pub fn setup_blob(&mut self, data: Vec<u8>) {
+            let id = BlobId::compute(data.as_slice());
+
+            let tx = TransactionBuilder::blob(BlobBody {
+                id,
+                witness_index: 0,
+            })
+            .add_witness(data.into())
+            .max_fee_limit(self.max_fee_limit)
+            .maturity(Default::default())
+            .add_random_fee_input()
+            .finalize()
+            .into_checked(self.block_height, &self.consensus_params)
+            .expect("failed to check tx");
+
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
+            let mut transactor = Transactor::<_, _, _>::new(
+                MemoryInstance::new(),
+                self.storage.clone(),
+                interpreter_params,
+            );
+
+            self.execute_tx_inner(&mut transactor, tx)
+                .expect("Expected vm execution to be successful");
         }
 
         fn execute_tx_inner<M, Tx, Ecal>(

@@ -113,6 +113,7 @@ pub mod prelude {
     pub use fuel_types::{
         Address,
         AssetId,
+        BlobId,
         Bytes32,
         Bytes4,
         Bytes64,

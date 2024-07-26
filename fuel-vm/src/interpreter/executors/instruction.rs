@@ -774,8 +774,8 @@ where
 
             Instruction::LDC(ldc) => {
                 // We charge for the gas inside of the `load_contract_code` function.
-                let (a, b, c) = ldc.unpack();
-                self.load_contract_code(r!(a), r!(b), r!(c))?;
+                let (a, b, c, mode) = ldc.unpack();
+                self.load_contract_code(r!(a), r!(b), r!(c), mode)?;
             }
 
             Instruction::LOG(log) => {
@@ -897,6 +897,18 @@ where
             Instruction::ECAL(ecal) => {
                 let (a, b, c, d) = ecal.unpack();
                 self.external_call(a, b, c, d)?;
+            }
+
+            Instruction::BSIZ(bsiz) => {
+                // We charge for this inside the function.
+                let (a, b) = bsiz.unpack();
+                self.blob_size(a.into(), r!(b))?;
+            }
+
+            Instruction::BLDD(bldd) => {
+                // We charge for this inside the function.
+                let (a, b, c, d) = bldd.unpack();
+                self.blob_load_data(r!(a), r!(b), r!(c), r!(d))?;
             }
         }
 

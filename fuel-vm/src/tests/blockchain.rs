@@ -2649,8 +2649,8 @@ fn load_blob_code__copies_expected_bytes() {
 }
 
 #[test]
-fn load_blob_code__fails_when_blob_offset_is_over_length() {
-    // This test like a `load_blob_code_v2_copies_expected_bytes`, but the offset
+fn load_blob_code__doesnt_load_above_offset() {
+    // This test like a `load_blob_code__copies_expected_bytes`, but the offset
     // is set to be beyond the length of the contract code. The `meq` should fail.
     let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;

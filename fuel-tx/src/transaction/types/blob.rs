@@ -155,6 +155,7 @@ impl UniqueFormatValidityChecks for Blob {
                 Output::ContractCreated { .. } => {
                     Err(ValidityError::TransactionOutputContainsContractCreated { index })
                 }
+
                 Output::Coin { asset_id, .. } => {
                     if asset_id != consensus_params.base_asset_id() {
                         Err(ValidityError::TransactionInputContainsNonBaseAssetId {

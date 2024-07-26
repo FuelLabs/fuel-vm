@@ -6,7 +6,6 @@
 use crate::{
     field::{
         BlobId as BlobIdField,
-        BytecodeWitnessIndex,
         InputContract,
         Inputs,
         MintAmount,
@@ -22,7 +21,6 @@ use crate::{
     },
     input,
     test_helper::TransactionFactory,
-    BlobIdExt,
     Upgrade,
     *,
 };
@@ -553,11 +551,9 @@ fn tx_offset_blob() {
         .for_each(|(tx, _)| {
             let bytes = tx.to_bytes();
 
-            let i = *tx.bytecode_witness_index();
-            assert_eq!(
-                BlobId::compute(tx.witnesses()[i as usize].as_ref()),
-                *tx.blob_id()
-            );
+            // Blob id
+            let offs = tx.blob_id_offset();
+            assert_eq!(bytes[offs..offs + BlobId::LEN], **tx.blob_id());
 
             chargeable_transaction_parts(&tx, &bytes, &mut cases);
         });

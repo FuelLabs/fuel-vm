@@ -1,4 +1,4 @@
-#![allo(non_snake_case)]
+#![allow(non_snake_case)]
 
 use alloc::{
     vec,

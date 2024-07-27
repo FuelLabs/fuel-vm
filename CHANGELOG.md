@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Version 0.56.0]
 
-### Changed
+### Added
+- [#796](https://github.com/FuelLabs/fuel-vm/pull/796): Added implementation of the `MerkleRootStorage` for references.
 
 #### Breaking
 - [#780](https://github.com/FuelLabs/fuel-vm/pull/780): Added `Blob` transaction, and `BSIZ` and `BLDD` instructions. Also allows `LDC` to load blobs.
@@ -19,7 +20,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - [#781](https://github.com/FuelLabs/fuel-vm/pull/781): Added `base_asset_id` to checked metadata.
-- [#796](https://github.com/FuelLabs/fuel-vm/pull/796): Added implementation of the `MerkleRootStorage` for references.
 
 ### Changed
 - [#784](https://github.com/FuelLabs/fuel-vm/pull/784): Avoid storage lookups for side nodes in the SMT.

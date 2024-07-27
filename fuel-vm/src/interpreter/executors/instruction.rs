@@ -845,9 +845,16 @@ where
             }
 
             Instruction::ED19(ed19) => {
-                self.gas_charge(self.gas_costs().ed19())?;
-                let (a, b, c) = ed19.unpack();
-                self.ed25519_verify(r!(a), r!(b), r!(c))?;
+                let (a, b, c, len) = ed19.unpack();
+                let mut len = r!(len);
+
+                // Backwards compatibility with old contracts
+                if len == 0 {
+                    len = 32;
+                }
+
+                self.dependent_gas_charge(self.gas_costs().ed19(), len)?;
+                self.ed25519_verify(r!(a), r!(b), r!(c), len)?;
             }
 
             Instruction::K256(k256) => {

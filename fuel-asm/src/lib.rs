@@ -206,12 +206,12 @@ impl_instructions! {
     0x3C TR tr [contract_id_addr: RegId amount: RegId asset_id_addr: RegId]
     "Transfer coins to a variable output."
     0x3D TRO tro [contract_id_addr: RegId output_index: RegId amount: RegId asset_id_addr: RegId]
-    "The 64-byte public key (x, y) recovered from 64-byte signature on 32-byte message."
+    "The 64-byte public key (x, y) recovered from 64-byte signature on 32-byte message hash."
     0x3E ECK1 eck1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
-    "The 64-byte Secp256r1 public key (x, y) recovered from 64-byte signature on 32-byte message."
+    "The 64-byte Secp256r1 public key (x, y) recovered from 64-byte signature on 32-byte message hash."
     0x3F ECR1 ecr1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
-    "Verify ED25519 public key and signature match a 32-byte message."
-    0x40 ED19 ed19 [pub_key_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
+    "Verify ED25519 public key and signature match a message."
+    0x40 ED19 ed19 [pub_key_addr: RegId sig_addr: RegId msg_addr: RegId msg_len: RegId]
     "The keccak-256 hash of a slice."
     0x41 K256 k256 [dst_addr: RegId src_addr: RegId len: RegId]
     "The SHA-2-256 hash of a slice."

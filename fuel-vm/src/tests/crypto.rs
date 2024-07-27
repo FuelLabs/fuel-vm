@@ -1,3 +1,5 @@
+#![allo(non_snake_case)]
+
 use alloc::{
     vec,
     vec::Vec,
@@ -283,13 +285,12 @@ fn secp256k1_recover_error() {
 }
 
 #[test]
-fn secp256k1_recover_a_gt_vmaxram_sub_64() {
+fn secp256k1_recover__register_a_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
         op::eck1(reg_a, reg_b, reg_b),
@@ -300,13 +301,12 @@ fn secp256k1_recover_a_gt_vmaxram_sub_64() {
 }
 
 #[test]
-fn secp256k1_recover_b_gt_vmaxram_sub_64() {
+fn secp256k1_recover__register_b_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
         op::eck1(reg_b, reg_a, reg_b),
@@ -317,13 +317,12 @@ fn secp256k1_recover_b_gt_vmaxram_sub_64() {
 }
 
 #[test]
-fn secp256k1_recover_c_gt_vmaxram_sub_32() {
+fn secp256k1_recover__register_c_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31),
         op::eck1(reg_b, reg_b, reg_a),
@@ -424,13 +423,12 @@ fn secp256r1_recover_error() {
 }
 
 #[test]
-fn secp256r1_recover_a_gt_vmaxram_sub_64() {
+fn secp256r1_recover__register_a_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
         op::ecr1(reg_a, reg_b, reg_b),
@@ -441,13 +439,12 @@ fn secp256r1_recover_a_gt_vmaxram_sub_64() {
 }
 
 #[test]
-fn secp256r1_recover_b_gt_vmaxram_sub_64() {
+fn secp256r1_recover__register_b_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
         op::ecr1(reg_b, reg_a, reg_b),
@@ -458,13 +455,12 @@ fn secp256r1_recover_b_gt_vmaxram_sub_64() {
 }
 
 #[test]
-fn secp256r1_recover_c_gt_vmaxram_sub_32() {
+fn secp256r1_recover__register_c_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 31),
         op::ecr1(reg_b, reg_b, reg_a),
@@ -628,14 +624,13 @@ fn ed25519_zero_length_is_treated_as_32() {
 }
 
 #[test]
-fn ed25519_verify_a_gt_vmaxram_sub_64() {
+fn ed25519_verify__register_a_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
     let reg_c = 0x22;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
         op::movi(reg_c, 32),
@@ -647,14 +642,13 @@ fn ed25519_verify_a_gt_vmaxram_sub_64() {
 }
 
 #[test]
-fn ed25519_verify_b_gt_vmaxram_sub_64() {
+fn ed25519_verify__register_b_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
     let reg_c = 0x22;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, 63),
         op::movi(reg_c, 32),
@@ -670,14 +664,13 @@ fn ed25519_verify_b_gt_vmaxram_sub_64() {
 #[test_case(31, 0 => (); "Zero defaults to 32")]
 #[test_case(31, 100 => (); "Way over the end")]
 #[test_case(0, 32 => (); "Empty range, goes over it")]
-fn ed25519_verify_c_plus_d_gt_vmaxram(offset: u16, len: u32) {
+fn ed25519_verify__message_overflows_ram(offset: u16, len: u32) {
     let reg_a = 0x20;
     let reg_b = 0x21;
     let reg_c = 0x22;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::subi(reg_a, reg_a, offset),
         op::movi(reg_c, len),
@@ -734,13 +727,12 @@ fn sha256() {
 }
 
 #[test]
-fn s256_a_gt_vmaxram_sub_32() {
+fn s256__register_a_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_a, reg_b, reg_b),
     ];
@@ -749,7 +741,7 @@ fn s256_a_gt_vmaxram_sub_32() {
 }
 
 #[test]
-fn s256_c_gt_mem_max() {
+fn s256__register_c_overflows() {
     let reg_a = 0x20;
 
     #[rustfmt::skip]
@@ -762,13 +754,12 @@ fn s256_c_gt_mem_max() {
 }
 
 #[test]
-fn s256_b_gt_vmaxram_sub_c() {
+fn s256___register_b_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::s256(reg_b, reg_a, reg_b),
     ];
@@ -825,13 +816,12 @@ fn keccak256() {
 }
 
 #[test]
-fn k256_a_gt_vmaxram_sub_32() {
+fn k256__register_a_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_a, reg_b, reg_b),
     ];
@@ -846,7 +836,6 @@ fn k256_c_gt_mem_max() {
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_b, reg_b, reg_a),
     ];
@@ -855,13 +844,12 @@ fn k256_c_gt_mem_max() {
 }
 
 #[test]
-fn k256_b_gt_vmaxram_sub_c() {
+fn k256__register_b_overflows() {
     let reg_a = 0x20;
     let reg_b = 0x21;
 
     #[rustfmt::skip]
     let script = vec![
-        op::xor(reg_b, reg_b, reg_b),
         op::not(reg_a, RegId::ZERO),
         op::k256(reg_b, reg_a, reg_b),
     ];

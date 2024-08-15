@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Breaking
+
+- [#802](https://github.com/FuelLabs/fuel-vm/pull/802): Feature-gated `*_mut` methods of transaction fields behind `test-helpers` flag.
+
 ## [Version 0.56.0]
 
 ### Added

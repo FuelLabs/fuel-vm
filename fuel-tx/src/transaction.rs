@@ -791,7 +791,10 @@ pub mod field {
 
     pub trait ScriptGasLimit {
         fn script_gas_limit(&self) -> &Word;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn script_gas_limit_mut(&mut self) -> &mut Word;
+
         fn script_gas_limit_offset(&self) -> usize {
             Self::script_gas_limit_offset_static()
         }
@@ -839,7 +842,10 @@ pub mod field {
 
     pub trait TxPointer {
         fn tx_pointer(&self) -> &crate::TxPointer;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn tx_pointer_mut(&mut self) -> &mut crate::TxPointer;
+
         fn tx_pointer_offset(&self) -> usize {
             Self::tx_pointer_static()
         }
@@ -849,37 +855,55 @@ pub mod field {
 
     pub trait InputContract {
         fn input_contract(&self) -> &input::contract::Contract;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn input_contract_mut(&mut self) -> &mut input::contract::Contract;
+
         fn input_contract_offset(&self) -> usize;
     }
 
     pub trait OutputContract {
         fn output_contract(&self) -> &output::contract::Contract;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn output_contract_mut(&mut self) -> &mut output::contract::Contract;
+
         fn output_contract_offset(&self) -> usize;
     }
 
     pub trait MintAmount {
         fn mint_amount(&self) -> &Word;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn mint_amount_mut(&mut self) -> &mut Word;
+
         fn mint_amount_offset(&self) -> usize;
     }
 
     pub trait MintAssetId {
         fn mint_asset_id(&self) -> &AssetId;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn mint_asset_id_mut(&mut self) -> &mut AssetId;
+
         fn mint_asset_id_offset(&self) -> usize;
     }
 
     pub trait MintGasPrice {
         fn gas_price(&self) -> &Word;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn gas_price_mut(&mut self) -> &mut Word;
+
         fn gas_price_offset(&self) -> usize;
     }
 
     pub trait ReceiptsRoot {
         fn receipts_root(&self) -> &Bytes32;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn receipts_root_mut(&mut self) -> &mut Bytes32;
+
         fn receipts_root_offset(&self) -> usize {
             Self::receipts_root_offset_static()
         }
@@ -889,7 +913,10 @@ pub mod field {
 
     pub trait Script {
         fn script(&self) -> &Vec<u8>;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn script_mut(&mut self) -> &mut Vec<u8>;
+
         fn script_offset(&self) -> usize {
             Self::script_offset_static()
         }
@@ -899,25 +926,37 @@ pub mod field {
 
     pub trait ScriptData {
         fn script_data(&self) -> &Vec<u8>;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn script_data_mut(&mut self) -> &mut Vec<u8>;
+
         fn script_data_offset(&self) -> usize;
     }
 
     pub trait ChargeableBody<Body> {
         fn body(&self) -> &Body;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn body_mut(&mut self) -> &mut Body;
+
         fn body_offset_end(&self) -> usize;
     }
 
     pub trait Policies {
         fn policies(&self) -> &policies::Policies;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn policies_mut(&mut self) -> &mut policies::Policies;
+
         fn policies_offset(&self) -> usize;
     }
 
     pub trait BytecodeWitnessIndex {
         fn bytecode_witness_index(&self) -> &u16;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn bytecode_witness_index_mut(&mut self) -> &mut u16;
+
         fn bytecode_witness_index_offset(&self) -> usize {
             Self::bytecode_witness_index_offset_static()
         }
@@ -927,7 +966,10 @@ pub mod field {
 
     pub trait Salt {
         fn salt(&self) -> &fuel_types::Salt;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn salt_mut(&mut self) -> &mut fuel_types::Salt;
+
         fn salt_offset(&self) -> usize {
             Self::salt_offset_static()
         }
@@ -937,7 +979,10 @@ pub mod field {
 
     pub trait StorageSlots {
         fn storage_slots(&self) -> &Vec<StorageSlot>;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn storage_slots_mut(&mut self) -> StorageSlotRef;
+
         fn storage_slots_offset_static() -> usize;
 
         /// Returns the offset to the `StorageSlot` at `idx` index, if any.
@@ -979,7 +1024,10 @@ pub mod field {
 
     pub trait Inputs {
         fn inputs(&self) -> &Vec<Input>;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn inputs_mut(&mut self) -> &mut Vec<Input>;
+
         fn inputs_offset(&self) -> usize;
 
         /// Returns the offset to the `Input` at `idx` index, if any.
@@ -991,7 +1039,10 @@ pub mod field {
 
     pub trait Outputs {
         fn outputs(&self) -> &Vec<Output>;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn outputs_mut(&mut self) -> &mut Vec<Output>;
+
         fn outputs_offset(&self) -> usize;
 
         /// Returns the offset to the `Output` at `idx` index, if any.
@@ -1000,7 +1051,10 @@ pub mod field {
 
     pub trait Witnesses {
         fn witnesses(&self) -> &Vec<Witness>;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn witnesses_mut(&mut self) -> &mut Vec<Witness>;
+
         fn witnesses_offset(&self) -> usize;
 
         /// Returns the offset to the `Witness` at `idx` index, if any.
@@ -1009,7 +1063,10 @@ pub mod field {
 
     pub trait UpgradePurpose {
         fn upgrade_purpose(&self) -> &UpgradePurposeType;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn upgrade_purpose_mut(&mut self) -> &mut UpgradePurposeType;
+
         fn upgrade_purpose_offset(&self) -> usize {
             Self::upgrade_purpose_offset_static()
         }
@@ -1019,7 +1076,10 @@ pub mod field {
 
     pub trait BytecodeRoot {
         fn bytecode_root(&self) -> &Bytes32;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn bytecode_root_mut(&mut self) -> &mut Bytes32;
+
         fn bytecode_root_offset(&self) -> usize {
             Self::bytecode_root_offset_static()
         }
@@ -1029,7 +1089,10 @@ pub mod field {
 
     pub trait BlobId {
         fn blob_id(&self) -> &fuel_types::BlobId;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn blob_id_mut(&mut self) -> &mut fuel_types::BlobId;
+
         fn blob_id_offset(&self) -> usize {
             Self::blob_id_offset_static()
         }
@@ -1039,7 +1102,10 @@ pub mod field {
 
     pub trait SubsectionIndex {
         fn subsection_index(&self) -> &u16;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn subsection_index_mut(&mut self) -> &mut u16;
+
         fn subsection_index_offset(&self) -> usize {
             Self::subsection_index_offset_static()
         }
@@ -1049,7 +1115,10 @@ pub mod field {
 
     pub trait SubsectionsNumber {
         fn subsections_number(&self) -> &u16;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn subsections_number_mut(&mut self) -> &mut u16;
+
         fn subsections_number_offset(&self) -> usize {
             Self::subsections_number_offset_static()
         }
@@ -1059,7 +1128,10 @@ pub mod field {
 
     pub trait ProofSet {
         fn proof_set(&self) -> &Vec<Bytes32>;
+
+        #[cfg(any(test, feature = "test-helpers"))]
         fn proof_set_mut(&mut self) -> &mut Vec<Bytes32>;
+
         fn proof_set_offset(&self) -> usize {
             Self::proof_set_offset_static()
         }

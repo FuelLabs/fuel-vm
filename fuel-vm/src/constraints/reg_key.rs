@@ -10,14 +10,16 @@ use core::ops::{
 use fuel_asm::{
     PanicReason,
     RegId,
-    RegisterId,
     Word,
 };
 
-use crate::consts::{
-    VM_REGISTER_COUNT,
-    VM_REGISTER_PROGRAM_COUNT,
-    VM_REGISTER_SYSTEM_COUNT,
+use crate::{
+    consts::{
+        VM_REGISTER_COUNT,
+        VM_REGISTER_PROGRAM_COUNT,
+        VM_REGISTER_SYSTEM_COUNT,
+    },
+    interpreter::register::verify_register_user_writable,
 };
 
 #[cfg(test)]
@@ -37,14 +39,6 @@ pub struct Reg<'r, const INDEX: u8>(&'r Word);
 pub struct WriteRegKey(usize);
 
 impl WriteRegKey {
-    /// Create a new writable register key if the index is within the bounds
-    /// of the writable registers.
-    pub fn new(k: impl Into<usize>) -> Result<Self, PanicReason> {
-        let k = k.into();
-        is_register_writable(&k)?;
-        Ok(Self(k))
-    }
-
     /// Translate this key from an absolute register index
     /// to a program register index.
     ///
@@ -52,18 +46,6 @@ impl WriteRegKey {
     #[allow(clippy::arithmetic_side_effects)] // Safety: checked in constructor
     fn translate(self) -> usize {
         self.0 - VM_REGISTER_SYSTEM_COUNT
-    }
-}
-
-/// Check that the register is above the system registers and below the total
-/// number of registers.
-pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), PanicReason> {
-    const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
-    const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
-    if RANGE.contains(r) {
-        Ok(())
-    } else {
-        Err(PanicReason::ReservedRegisterNotWritable)
     }
 }
 
@@ -368,11 +350,12 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
     }
 }
 
-impl TryFrom<RegisterId> for WriteRegKey {
+impl TryFrom<RegId> for WriteRegKey {
     type Error = PanicReason;
 
-    fn try_from(r: RegisterId) -> Result<Self, Self::Error> {
-        Self::new(r)
+    fn try_from(r: RegId) -> Result<Self, Self::Error> {
+        verify_register_user_writable(r)?;
+        Ok(Self(r.to_u8() as usize))
     }
 }
 

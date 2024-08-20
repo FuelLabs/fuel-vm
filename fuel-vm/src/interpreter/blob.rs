@@ -1,5 +1,5 @@
 use fuel_asm::{
-    RegisterId,
+    RegId,
     Word,
 };
 use fuel_storage::StorageSize;
@@ -18,12 +18,9 @@ use crate::{
 use super::{
     internal::inc_pc,
     memory::copy_from_slice_zero_fill,
-    split_registers,
     GetRegMut,
     Interpreter,
     Memory,
-    SystemRegisters,
-    WriteRegKey,
 };
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
@@ -34,7 +31,7 @@ where
 {
     pub(crate) fn blob_size(
         &mut self,
-        dst: RegisterId,
+        dst: RegId,
         blob_id_ptr: Word,
     ) -> IoResult<(), S::DataError> {
         let gas_cost = self
@@ -51,10 +48,8 @@ where
             .ok_or(PanicReason::BlobNotFound)?;
 
         self.dependent_gas_charge_without_base(gas_cost, size as Word)?;
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(dst)?];
-        *result = size as Word;
-        Ok(inc_pc(pc)?)
+        *self.write_user_register(dst)? = size as Word;
+        Ok(self.inc_pc()?)
     }
 
     pub(crate) fn blob_load_data(

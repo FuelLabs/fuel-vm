@@ -70,6 +70,7 @@ mod receipts;
 
 mod debug;
 mod ecal;
+pub(crate) mod register;
 
 use crate::profiler::Profiler;
 
@@ -224,16 +225,6 @@ impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
 }
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
-    /// Returns the current state of the registers
-    pub const fn registers(&self) -> &[Word] {
-        &self.registers
-    }
-
-    /// Returns mutable access to the registers
-    pub fn registers_mut(&mut self) -> &mut [Word] {
-        &mut self.registers
-    }
-
     pub(crate) fn call_stack(&self) -> &[CallFrame] {
         self.frames.as_slice()
     }

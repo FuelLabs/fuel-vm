@@ -187,18 +187,6 @@ fn test_block_hash() {
 }
 
 #[test]
-fn test_block_height() {
-    let context = Context::Script {
-        block_height: 20.into(),
-    };
-    let mut pc = 4;
-    let mut result = 0;
-    block_height(&context, RegMut::new(&mut pc), &mut result).unwrap();
-    assert_eq!(pc, 8);
-    assert_eq!(result, 20);
-}
-
-#[test]
 fn test_coinbase() {
     let storage = MemoryStorage::new(Default::default(), ContractId::zeroed());
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
@@ -282,41 +270,4 @@ fn test_code_size() {
     let _ = input
         .code_size(&mut result, 0)
         .expect_err("The contract is not in the input");
-}
-
-#[test]
-fn test_timestamp() {
-    let storage = MemoryStorage::default();
-    let mut pc = 4;
-    let mut result = 0;
-    let _ = timestamp(
-        &storage,
-        Default::default(),
-        RegMut::new(&mut pc),
-        &mut result,
-        1,
-    )
-    .expect_err("Height is greater then current block height");
-    let _ = timestamp(
-        &storage,
-        u32::MAX.into(),
-        RegMut::new(&mut pc),
-        &mut result,
-        u32::MAX as Word + 1,
-    )
-    .expect_err("Height doesn't fit into a u32");
-    assert_eq!(pc, 4);
-
-    timestamp(
-        &storage,
-        Default::default(),
-        RegMut::new(&mut pc),
-        &mut result,
-        0,
-    )
-    .unwrap();
-    assert_eq!(pc, 8);
-
-    timestamp(&storage, 20.into(), RegMut::new(&mut pc), &mut result, 19).unwrap();
-    assert_eq!(pc, 12);
 }

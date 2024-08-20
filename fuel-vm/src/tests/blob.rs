@@ -26,6 +26,7 @@ use rand::{
 use test_case::test_case;
 
 use super::test_helpers::{
+    assert_panics,
     assert_success,
     RunResult,
 };
@@ -386,4 +387,23 @@ fn blob_load_data__bounds(
             })
             .next()
     })
+}
+
+#[test]
+fn blob_size__write_to_reserved_register_fails() {
+    let (mut test_context, blob_id) = test_ctx_with_random_blob(16);
+
+    let state = test_context
+        .start_script(
+            vec![
+                op::gtf_args(0x11, RegId::ZERO, GTFArgs::ScriptData),
+                op::bsiz(RegId::HP, 0x11),
+                op::ret(RegId::ONE),
+            ],
+            blob_id.to_bytes(),
+        )
+        .script_gas_limit(1_000_000)
+        .fee_input()
+        .execute();
+    assert_panics(state.receipts(), PanicReason::ReservedRegisterNotWritable);
 }

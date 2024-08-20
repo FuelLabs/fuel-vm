@@ -19,6 +19,8 @@ use fuel_vm::{
     prelude::*,
 };
 
+use crate::prelude::TestBuilder;
+
 use super::test_helpers::{
     assert_panics,
     assert_success,
@@ -87,6 +89,19 @@ fn test_lw_unaglined() {
 }
 
 #[test]
+fn test_lw_write_to_reserved_register_fails() {
+    let receipts = run_script(vec![
+        op::movi(0x10, 8),
+        op::aloc(0x10),
+        op::move_(0x10, RegId::HP),
+        op::sw(0x10, RegId::ONE, 0),
+        op::lw(RegId::HP, 0x10, 0), // This should fail
+        op::ret(RegId::ONE),
+    ]);
+    assert_panics(&receipts, PanicReason::ReservedRegisterNotWritable);
+}
+
+#[test]
 fn test_lb() {
     let ops = vec![
         op::movi(0x10, 8),
@@ -100,6 +115,23 @@ fn test_lb() {
     let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize] as u8;
     assert_eq!(1, result);
+}
+
+#[test]
+fn test_aloc_input_too_large() {
+    let result = TestBuilder::new(1234)
+        .with_free_gas_costs()
+        .start_script(
+            vec![
+                op::not(0x20, RegId::ZERO),
+                op::aloc(0x20),
+                op::ret(RegId::ONE),
+            ],
+            vec![],
+        )
+        .fee_input()
+        .execute();
+    assert_panics(result.receipts(), PanicReason::MemoryOverflow);
 }
 
 #[test]

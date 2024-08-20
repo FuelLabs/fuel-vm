@@ -11,6 +11,7 @@ use super::{
         internal_contract,
         set_variable_output,
     },
+    register::verify_register_user_writable,
     ExecutableTransaction,
     Interpreter,
     Memory,
@@ -69,19 +70,18 @@ where
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        let input = ContractBalanceCtx {
-            storage: &self.storage,
-            memory: self.memory.as_mut(),
-            pc,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
-        };
-        input.contract_balance(result, b, c)?;
-        Ok(())
+        verify_register_user_writable(ra)?;
+        let asset_id = AssetId::new(self.memory.as_ref().read_bytes(b)?);
+        let contract = ContractId::new(self.memory.as_ref().read_bytes(c)?);
+
+        let mut input_contracts =
+            InputContracts::new(&self.input_contracts, &mut self.panic_context);
+        input_contracts.check(&contract)?;
+
+        let balance = balance(&self.storage, &contract, &asset_id)?;
+        *self.write_user_register(ra)? = balance;
+
+        Ok(self.inc_pc()?)
     }
 
     pub(crate) fn transfer(
@@ -192,35 +192,6 @@ where
         .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
-struct ContractBalanceCtx<'vm, S> {
-    storage: &'vm S,
-    memory: &'vm mut MemoryInstance,
-    pc: RegMut<'vm, PC>,
-    input_contracts: InputContracts<'vm>,
-}
-
-impl<'vm, S> ContractBalanceCtx<'vm, S> {
-    pub(crate) fn contract_balance(
-        mut self,
-        result: &mut Word,
-        b: Word,
-        c: Word,
-    ) -> IoResult<(), S::Error>
-    where
-        S: ContractsAssetsStorage,
-    {
-        let asset_id = AssetId::new(self.memory.read_bytes(b)?);
-        let contract = ContractId::new(self.memory.read_bytes(c)?);
-
-        self.input_contracts.check(&contract)?;
-
-        let balance = balance(self.storage, &contract, &asset_id)?;
-
-        *result = balance;
-
-        Ok(inc_pc(self.pc)?)
-    }
-}
 struct TransferCtx<'vm, S, Tx> {
     storage: &'vm mut S,
     memory: &'vm mut MemoryInstance,

@@ -1,12 +1,11 @@
 use super::{
-    internal::inc_pc,
+    register::verify_register_user_writable,
     ExecutableTransaction,
     Interpreter,
     Memory,
 };
 use crate::{
     call::CallFrame,
-    constraints::reg_key::*,
     consts::*,
     context::Context,
     convert,
@@ -36,14 +35,10 @@ use fuel_tx::{
     UtxoId,
 };
 use fuel_types::{
-    ChainId,
     Immediate12,
     Immediate18,
     Word,
 };
-
-#[cfg(test)]
-mod tests;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
@@ -53,17 +48,36 @@ where
     pub(crate) fn metadata(&mut self, ra: RegId, imm: Immediate18) -> SimpleResult<()> {
         let tx_offset = self.tx_offset() as Word;
         let chain_id = self.chain_id();
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        metadata(
-            &self.context,
-            &self.frames,
-            pc,
-            result,
-            imm,
-            chain_id,
-            tx_offset,
-        )
+        verify_register_user_writable(ra)?;
+
+        let context: &Context = &self.context;
+        let frames: &[CallFrame] = &self.frames;
+        let parent = context
+            .is_internal()
+            .then(|| frames.last().map(|f| f.registers()[RegId::FP]))
+            .flatten();
+
+        let result = match GMArgs::try_from(imm)? {
+            GMArgs::GetVerifyingPredicate => context
+                .predicate()
+                .map(|p| p.idx() as Word)
+                .ok_or(PanicReason::TransactionValidity)?,
+            GMArgs::GetChainId => chain_id.into(),
+            GMArgs::BaseAssetId => VM_MEMORY_BASE_ASSET_ID_OFFSET as Word,
+            GMArgs::TxStart => tx_offset,
+            GMArgs::GetCaller => match parent {
+                Some(0) => return Err(PanicReason::ExpectedNestedCaller.into()),
+                Some(parent) => parent,
+                None => return Err(PanicReason::ExpectedInternalContext.into()),
+            },
+            GMArgs::IsCallerExternal => match parent {
+                Some(p) => (p == 0) as Word,
+                None => return Err(PanicReason::ExpectedInternalContext.into()),
+            },
+        };
+        *self.write_user_register(ra)? = result;
+
+        self.inc_pc()
     }
 
     pub(crate) fn get_transaction_field(
@@ -80,80 +94,12 @@ where
                 .read_bytes(tx_size_ptr)
                 .expect("Tx length not in memory"),
         );
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        let input = GTFInput {
-            tx: &self.tx,
-            input_contracts_index_to_output_index: &self
-                .input_contracts_index_to_output_index,
-            tx_offset,
-            tx_size,
-            pc,
-        };
-        input.get_transaction_field(result, b, imm)
-    }
-}
-
-pub(crate) fn metadata(
-    context: &Context,
-    frames: &[CallFrame],
-    pc: RegMut<PC>,
-    result: &mut Word,
-    imm: Immediate18,
-    chain_id: ChainId,
-    tx_offset: Word,
-) -> SimpleResult<()> {
-    let parent = context
-        .is_internal()
-        .then(|| frames.last().map(|f| f.registers()[RegId::FP]))
-        .flatten();
-
-    *result = match GMArgs::try_from(imm)? {
-        GMArgs::GetVerifyingPredicate => context
-            .predicate()
-            .map(|p| p.idx() as Word)
-            .ok_or(PanicReason::TransactionValidity)?,
-        GMArgs::GetChainId => chain_id.into(),
-        GMArgs::BaseAssetId => VM_MEMORY_BASE_ASSET_ID_OFFSET as Word,
-        GMArgs::TxStart => tx_offset,
-        GMArgs::GetCaller => match parent {
-            Some(0) => return Err(PanicReason::ExpectedNestedCaller.into()),
-            Some(parent) => parent,
-            None => return Err(PanicReason::ExpectedInternalContext.into()),
-        },
-        GMArgs::IsCallerExternal => match parent {
-            Some(p) => (p == 0) as Word,
-            None => return Err(PanicReason::ExpectedInternalContext.into()),
-        },
-    };
-
-    inc_pc(pc)?;
-    Ok(())
-}
-
-struct GTFInput<'vm, Tx> {
-    tx: &'vm Tx,
-    input_contracts_index_to_output_index: &'vm alloc::collections::BTreeMap<u16, u16>,
-    tx_offset: usize,
-    tx_size: Word,
-    pc: RegMut<'vm, PC>,
-}
-
-impl<Tx> GTFInput<'_, Tx> {
-    pub(crate) fn get_transaction_field(
-        self,
-        result: &mut Word,
-        b: Word,
-        imm: Immediate12,
-    ) -> SimpleResult<()>
-    where
-        Tx: ExecutableTransaction,
-    {
+        verify_register_user_writable(ra)?;
         let b = convert::to_usize(b).ok_or(PanicReason::InvalidMetadataIdentifier)?;
         let args = GTFArgs::try_from(imm)?;
-        let tx = self.tx;
-        let input_contract_to_output_index = self.input_contracts_index_to_output_index;
-        let ofs = self.tx_offset;
+        let input_contract_to_output_index = &self.input_contracts_index_to_output_index;
+        let tx = &self.tx;
+        let ofs = self.tx_offset();
 
         // We use saturating_add with tx offset below.
         // In case any addition overflows, this function returns value
@@ -207,7 +153,7 @@ impl<Tx> GTFInput<'_, Tx> {
                         .ok_or(PanicReason::WitnessNotFound)?,
                 ) as Word
             }
-            GTFArgs::TxLength => self.tx_size,
+            GTFArgs::TxLength => tx_size,
 
             // Input
             GTFArgs::InputType => {
@@ -550,9 +496,7 @@ impl<Tx> GTFInput<'_, Tx> {
             }
         };
 
-        *result = a;
-
-        inc_pc(self.pc)?;
-        Ok(())
+        *self.write_user_register(ra)? = a;
+        self.inc_pc()
     }
 }

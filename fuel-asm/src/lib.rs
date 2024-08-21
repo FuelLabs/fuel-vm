@@ -18,15 +18,10 @@
 extern crate alloc;
 
 mod args;
-mod panic_instruction;
-// This is `pub` to make documentation for the private `impl_instructions!` macro more
-// accessible.
-#[macro_use]
-pub mod macros;
+mod macros;
 pub mod op;
-mod pack;
+mod panic_instruction;
 mod panic_reason;
-mod unpack;
 
 #[cfg(test)]
 mod encoding_tests;
@@ -93,6 +88,7 @@ bitflags::bitflags! {
         const WRAPPING = 0x02;
     }
 }
+
 /// Type is convertible to a [`RegId`]
 pub trait CheckRegId {
     /// Convert to a [`RegId`], or panic
@@ -114,7 +110,7 @@ impl CheckRegId for u8 {
 // Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a
 // unique type for each opcode's instruction variant. For a detailed explanation of how
 // this works, see the `fuel_asm::macros` module level documentation.
-impl_instructions! {
+fuel_derive::impl_instructions! {
     "Adds two registers."
     0x10 ADD add [dst: RegId lhs: RegId rhs: RegId]
     "Bitwise ANDs two registers."
@@ -608,6 +604,10 @@ impl Imm06 {
     pub const fn to_u8(self) -> u8 {
         self.0
     }
+
+    pub(crate) fn to_smallest_int(self) -> u8 {
+        self.to_u8()
+    }
 }
 
 impl Imm12 {
@@ -632,6 +632,10 @@ impl Imm12 {
     /// A const alternative to the `Into<u16>` implementation.
     pub const fn to_u16(self) -> u16 {
         self.0
+    }
+
+    pub(crate) fn to_smallest_int(self) -> u16 {
+        self.to_u16()
     }
 }
 
@@ -658,6 +662,10 @@ impl Imm18 {
     pub const fn to_u32(self) -> u32 {
         self.0
     }
+
+    pub(crate) fn to_smallest_int(self) -> u32 {
+        self.to_u32()
+    }
 }
 
 impl Imm24 {
@@ -682,6 +690,10 @@ impl Imm24 {
     /// A const alternative to the `Into<u32>` implementation.
     pub const fn to_u32(self) -> u32 {
         self.0
+    }
+
+    pub(crate) fn to_smallest_int(self) -> u32 {
+        self.to_u32()
     }
 }
 
@@ -932,29 +944,6 @@ where
     I: IntoIterator<Item = u32>,
 {
     us.into_iter().map(Instruction::try_from)
-}
-
-// Short-hand, `panic!`ing constructors for the short-hand instruction construtors (e.g
-// op::add).
-
-fn check_imm06(u: u8) -> Imm06 {
-    Imm06::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{u}` out of range for 6-bit immediate"))
-}
-
-fn check_imm12(u: u16) -> Imm12 {
-    Imm12::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{u}` out of range for 12-bit immediate"))
-}
-
-fn check_imm18(u: u32) -> Imm18 {
-    Imm18::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{u}` out of range for 18-bit immediate"))
-}
-
-fn check_imm24(u: u32) -> Imm24 {
-    Imm24::new_checked(u)
-        .unwrap_or_else(|| panic!("Value `{u}` out of range for 24-bit immediate"))
 }
 
 // --------------------------------------------------------

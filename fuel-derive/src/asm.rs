@@ -267,6 +267,7 @@ fn make_constructors(instructions: &InstructionList) -> TokenStream {
                         }
 
                         #[doc = "Construct the instruction from all possible raw fields, ignoring inapplicable ones."]
+                        #[cfg(test)]
                         pub fn test_construct(
                             reg0: RegId,
                             reg1: RegId,
@@ -530,7 +531,7 @@ fn make_opcode_enum(instructions: &InstructionList) -> TokenStream {
         }
 
         impl Opcode {
-            /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
+            #[doc = "Construct the instruction from all possible raw fields, ignoring inapplicable ones."]
             #[cfg(test)]
             pub fn test_construct(self, ra: RegId, rb: RegId, rc: RegId, rd: RegId, imm: u32) -> Instruction {
                 match self {

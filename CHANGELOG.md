@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- [#804](https://github.com/FuelLabs/fuel-vm/pull/804): Refactor `impl_instructions!` macro. No externally visible changes.
+
 ## [Version 0.56.0]
 
 ### Added

@@ -613,7 +613,7 @@ mod tests {
     fn id() {
         let rng = &mut StdRng::seed_from_u64(8586);
 
-        let inputs = vec![
+        let inputs = [
             vec![],
             vec![
                 Input::coin_signed(
@@ -672,7 +672,7 @@ mod tests {
             ],
         ];
 
-        let outputs = vec![
+        let outputs = [
             vec![],
             vec![
                 Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
@@ -683,14 +683,14 @@ mod tests {
             ],
         ];
 
-        let witnesses = vec![
+        let witnesses = [
             vec![],
             vec![generate_bytes(rng).into(), generate_bytes(rng).into()],
         ];
 
-        let scripts = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
-        let script_data = vec![vec![], generate_bytes(rng), generate_bytes(rng)];
-        let storage_slots = vec![vec![], vec![rng.gen(), rng.gen()]];
+        let scripts = [vec![], generate_bytes(rng), generate_bytes(rng)];
+        let script_data = [vec![], generate_bytes(rng), generate_bytes(rng)];
+        let storage_slots = [vec![], vec![rng.gen(), rng.gen()]];
         let purposes = [
             UpgradePurposeType::ConsensusParameters {
                 witness_index: rng.gen(),

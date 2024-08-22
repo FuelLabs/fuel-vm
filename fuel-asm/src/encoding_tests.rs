@@ -9,6 +9,8 @@ use strum::IntoEnumIterator;
 fn opcode() {
     // values picked to test edge cases
     let r = RegId::new_checked(0x2d).unwrap();
+    let ro = RegR::new_unchecked(r.to_u8());
+    let rw = RegW::new_unchecked(r.to_u8());
     let imm12 = 0x0bfd;
     let imm18 = 0x02fffd;
     let imm24 = 0xbffffd;
@@ -26,11 +28,11 @@ fn opcode() {
     }
 
     for gm_arg in GMArgs::iter() {
-        instructions.push(op::gm_args(r, gm_arg));
+        instructions.push(op::gm_args(rw, gm_arg));
     }
 
     for gtf_arg in GTFArgs::iter() {
-        instructions.push(op::gtf_args(r, r, gtf_arg));
+        instructions.push(op::gtf_args(rw, ro, gtf_arg));
     }
 
     // Pad to even length

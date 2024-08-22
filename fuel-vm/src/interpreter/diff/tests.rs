@@ -16,7 +16,7 @@ use fuel_types::{
 use test_case::test_case;
 
 use crate::{
-    consts::*,
+    interpreter::Registers,
     storage::MemoryStorage,
 };
 
@@ -103,7 +103,7 @@ fn reset_vm_state_frame() {
     let frame = CallFrame::new(
         Default::default(),
         Default::default(),
-        [0; VM_REGISTER_COUNT],
+        Registers::ALL_ZERO,
         Default::default(),
         Default::default(),
         Default::default(),

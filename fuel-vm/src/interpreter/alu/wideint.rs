@@ -3,11 +3,9 @@ use ethnum::U256;
 use fuel_asm::{
     wideint::*,
     PanicReason,
+    RegW,
 };
-use fuel_types::{
-    RegisterId,
-    Word,
-};
+use fuel_types::Word;
 
 use super::super::{
     internal::inc_pc,
@@ -70,13 +68,13 @@ macro_rules! wideint_ops {
             {
                 pub(crate) fn [<alu_wideint_cmp_ $t:lower>](
                     &mut self,
-                    ra: RegisterId,
+                    ra: RegW,
                     b: Word,
                     c: Word,
                     args: CompareArgs,
                 ) -> SimpleResult<()> {
                     let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-                    let dest: &mut Word = &mut w[ra.try_into()?];
+                    let dest: &mut Word = &mut w[ra];
 
                     // LHS argument is always indirect, load it
                     let lhs: $t = $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?);

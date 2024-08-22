@@ -331,8 +331,8 @@ where
             changes: Vec::new(),
         };
         let registers = capture_buffer_state(
-            self.registers.iter(),
-            other.registers.iter(),
+            self.registers.0.iter(),
+            other.registers.0.iter(),
             Change::Register,
         );
         diff.changes.extend(registers);
@@ -409,7 +409,7 @@ where
     {
         match change {
             Change::Register(Previous(VecState { index, value })) => {
-                self.registers[*index] = *value
+                self.registers.0[*index] = *value
             }
             Change::Frame(Previous(value)) => invert_vec(&mut self.frames, value),
             Change::Receipt(Previous(value)) => {

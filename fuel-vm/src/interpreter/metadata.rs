@@ -18,6 +18,7 @@ use fuel_asm::{
     GTFArgs,
     PanicReason,
     RegId,
+    RegW,
 };
 use fuel_tx::{
     field::{
@@ -39,7 +40,6 @@ use fuel_types::{
     ChainId,
     Immediate12,
     Immediate18,
-    RegisterId,
     Word,
 };
 
@@ -51,15 +51,11 @@ where
     M: Memory,
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn metadata(
-        &mut self,
-        ra: RegisterId,
-        imm: Immediate18,
-    ) -> SimpleResult<()> {
+    pub(crate) fn metadata(&mut self, ra: RegW, imm: Immediate18) -> SimpleResult<()> {
         let tx_offset = self.tx_offset() as Word;
         let chain_id = self.chain_id();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
+        let result = &mut w[ra];
         metadata(
             &self.context,
             &self.frames,
@@ -73,7 +69,7 @@ where
 
     pub(crate) fn get_transaction_field(
         &mut self,
-        ra: RegisterId,
+        ra: RegW,
         b: Word,
         imm: Immediate12,
     ) -> SimpleResult<()> {
@@ -86,7 +82,7 @@ where
                 .expect("Tx length not in memory"),
         );
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
+        let result = &mut w[ra];
         let input = GTFInput {
             tx: &self.tx,
             input_contracts_index_to_output_index: &self

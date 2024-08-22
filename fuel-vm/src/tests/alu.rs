@@ -23,7 +23,7 @@ use super::test_helpers::{
     RunResult,
 };
 
-fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {
+fn alu_reserved(registers_init: &[(usize, Word)], ins: Instruction) {
     let mut test_context = TestBuilder::new(2322u64);
     let gas_limit = 1_000_000;
 

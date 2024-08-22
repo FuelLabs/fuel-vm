@@ -2,17 +2,19 @@
 
 use alloc::vec::Vec;
 
+use crate::consts::VM_REGISTER_COUNT;
+
 use super::*;
 use test_case::test_case;
 
 #[test]
 fn can_split() {
-    let mut reg: [Word; VM_REGISTER_COUNT] =
-        core::iter::successors(Some(0), |x| Some(x + 1))
-            .take(VM_REGISTER_COUNT)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
+    let reg: [Word; VM_REGISTER_COUNT] = core::iter::successors(Some(0), |x| Some(x + 1))
+        .take(VM_REGISTER_COUNT)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap();
+    let mut reg = Registers(reg);
     let expect = reg;
 
     let (r, w) = split_registers(&mut reg);
@@ -73,15 +75,15 @@ fn can_split() {
 #[test_case(2, 0 => Some((2, 0)))]
 #[test_case(3, 1 => Some((3, 1)))]
 #[test_case(4, 2 => Some((4, 2)))]
-fn can_split_writes(a: usize, b: usize) -> Option<(Word, Word)> {
+fn can_split_writes(a: u8, b: u8) -> Option<(Word, Word)> {
     let mut reg: [Word; VM_REGISTER_PROGRAM_COUNT] =
         core::iter::successors(Some(0), |x| Some(x + 1))
             .take(VM_REGISTER_PROGRAM_COUNT)
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-    let s = VM_REGISTER_SYSTEM_COUNT;
+    let s = VM_REGISTER_SYSTEM_COUNT as u8;
     let mut reg = ProgramRegisters(&mut reg);
-    reg.get_mut_two(WriteRegKey(s + a), WriteRegKey(s + b))
+    reg.get_mut_two(RegW::new_unchecked(s + a), RegW::new_unchecked(s + b))
         .map(|(a, b)| (*a, *b))
 }

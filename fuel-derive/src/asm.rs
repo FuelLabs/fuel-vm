@@ -9,22 +9,29 @@ use quote::quote;
 use syn::parse::Parse;
 
 const IMM_TYPES: &[&str] = &["Imm06", "Imm12", "Imm18", "Imm24"];
+const REG_TYPES: &[&str] = &["RegR", "RegW", "RegAnyAccess"];
+
+enum RegPerms {
+    R,
+    W,
+    AnyAccess,
+}
 
 enum ArgType {
-    Reg,
+    Reg(RegPerms),
     Imm(usize),
 }
 impl ArgType {
     fn size_bits(&self) -> usize {
         match self {
-            ArgType::Reg => 6,
+            ArgType::Reg(_) => 6,
             ArgType::Imm(bits) => *bits,
         }
     }
 
     fn smallest_containing_integer_type(&self) -> syn::Ident {
         match self {
-            Self::Reg => syn::Ident::new("u8", Span::call_site()),
+            Self::Reg(_) => syn::Ident::new("u8", Span::call_site()),
             Self::Imm(6) => syn::Ident::new("u8", Span::call_site()),
             Self::Imm(12) => syn::Ident::new("u16", Span::call_site()),
             Self::Imm(18) => syn::Ident::new("u32", Span::call_site()),
@@ -45,7 +52,7 @@ impl Parse for InstructionArgument {
         let type_: syn::Ident = input.parse()?;
 
         let tn = type_.to_string();
-        if !(tn == "RegId" || IMM_TYPES.contains(&tn.as_str())) {
+        if !(REG_TYPES.contains(&tn.as_str()) || IMM_TYPES.contains(&tn.as_str())) {
             return Err(syn::Error::new_spanned(
                 &type_,
                 format!("Invalid argument type: {}", tn),
@@ -57,20 +64,19 @@ impl Parse for InstructionArgument {
 }
 impl InstructionArgument {
     fn is_imm(&self) -> bool {
-        self.type_.to_string().starts_with("Imm")
+        matches!(self.typeinfo(), ArgType::Imm(_))
     }
 
     fn typeinfo(&self) -> ArgType {
-        if self.is_imm() {
-            let imm_size = self
-                .type_
-                .to_string()
-                .trim_start_matches("Imm")
-                .parse()
-                .unwrap();
-            ArgType::Imm(imm_size)
-        } else {
-            ArgType::Reg
+        match self.type_.to_string().as_str() {
+            "Imm06" => ArgType::Imm(6),
+            "Imm12" => ArgType::Imm(12),
+            "Imm18" => ArgType::Imm(18),
+            "Imm24" => ArgType::Imm(24),
+            "RegR" => ArgType::Reg(RegPerms::R),
+            "RegW" => ArgType::Reg(RegPerms::W),
+            "RegAnyAccess" => ArgType::Reg(RegPerms::AnyAccess),
+            _ => unreachable!("Type checked on parse"),
         }
     }
 }
@@ -209,7 +215,7 @@ fn make_constructors(instructions: &InstructionList) -> TokenStream {
                                     packed_integer |= imm & ((#bits << 1u32) -1);
                                 }
                             },
-                            ArgType::Reg => quote! {
+                            ArgType::Reg(_) => quote! {
                                 packed_integer |= (#reg_name.to_u8() as u32) << (6 * (3 - #i));
                             }
                         }
@@ -315,12 +321,12 @@ fn make_op_unpacks(instructions: &InstructionList) -> TokenStream {
                     .enumerate()
                     .filter_map(
                         |(i, arg)| {
-                            let type_ = &arg.type_;
+                            let type_: &Ident = &arg.type_;
                             if arg.is_imm() {
                                 None
                             } else {
                                 Some(quote! {
-                                    #type_::new((integer >> (6 * (3 - #i))) as u8)
+                                    #type_::new_unchecked((integer >> (6 * (3 - #i))) as u8)
                                 })
                             }
                         },
@@ -359,10 +365,10 @@ fn make_op_unpacks(instructions: &InstructionList) -> TokenStream {
                     quote! { (#ats) }
                 };
 
-                // Like above but always tuple-wraps
+                // Like above but always tuple-wraps and typecasts to RegId
                 let raw_regs = {
                     let ra: TokenStream =
-                    ret_args.iter().map(|a| quote! {#a,})
+                    ret_args.iter().map(|a| quote! {#a.0,})
                     .collect();
                     quote! { ( #ra ) }
                 };
@@ -379,8 +385,9 @@ fn make_op_unpacks(instructions: &InstructionList) -> TokenStream {
 
                 quote! {
                     impl #opcode_name {
-                        #[doc = "Convert the instruction into its parts, without checking for correctness."]
+                        #[doc = "Convert the instruction into its parts."]
                         pub fn unpack(self) -> #arg_types {
+                            // The parts are correct by construction
                             let integer = u32::from_be_bytes([0, self.0[0], self.0[1], self.0[2]]);
                             #retval
                         }

@@ -80,7 +80,7 @@ where
         self.memory_mut().reset();
 
         // Optimized for memset
-        self.registers.iter_mut().for_each(|r| *r = 0);
+        self.registers.0.iter_mut().for_each(|r| *r = 0);
 
         self.registers[RegId::ONE] = 1;
 

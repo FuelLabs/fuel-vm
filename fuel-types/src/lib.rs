@@ -38,9 +38,6 @@ pub mod bytes;
 #[cfg(test)]
 mod tests;
 
-/// Register ID type
-pub type RegisterId = usize;
-
 /// Register value type
 pub type Word = u64;
 

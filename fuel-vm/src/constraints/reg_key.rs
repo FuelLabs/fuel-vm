@@ -8,16 +8,17 @@ use core::ops::{
 };
 
 use fuel_asm::{
-    PanicReason,
     RegId,
-    RegisterId,
+    RegW,
     Word,
 };
 
-use crate::consts::{
-    VM_REGISTER_COUNT,
-    VM_REGISTER_PROGRAM_COUNT,
-    VM_REGISTER_SYSTEM_COUNT,
+use crate::{
+    consts::{
+        VM_REGISTER_PROGRAM_COUNT,
+        VM_REGISTER_SYSTEM_COUNT,
+    },
+    interpreter::Registers,
 };
 
 #[cfg(test)]
@@ -31,40 +32,9 @@ pub struct RegMut<'r, const INDEX: u8>(&'r mut Word);
 /// Immutable reference to a register value at a given index.
 pub struct Reg<'r, const INDEX: u8>(&'r Word);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-/// A key to a writable register that is within
-/// the bounds of the writable registers.
-pub struct WriteRegKey(usize);
-
-impl WriteRegKey {
-    /// Create a new writable register key if the index is within the bounds
-    /// of the writable registers.
-    pub fn new(k: impl Into<usize>) -> Result<Self, PanicReason> {
-        let k = k.into();
-        is_register_writable(&k)?;
-        Ok(Self(k))
-    }
-
-    /// Translate this key from an absolute register index
-    /// to a program register index.
-    ///
-    /// This subtracts the number of system registers from the key.
-    #[allow(clippy::arithmetic_side_effects)] // Safety: checked in constructor
-    fn translate(self) -> usize {
-        self.0 - VM_REGISTER_SYSTEM_COUNT
-    }
-}
-
-/// Check that the register is above the system registers and below the total
-/// number of registers.
-pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), PanicReason> {
-    const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
-    const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
-    if RANGE.contains(r) {
-        Ok(())
-    } else {
-        Err(PanicReason::ReservedRegisterNotWritable)
-    }
+#[allow(clippy::arithmetic_side_effects)] // Checked on RegW parse
+fn translate(r: RegW) -> usize {
+    (r.to_u8() - RegId::WRITABLE.to_u8()) as usize
 }
 
 impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
@@ -145,18 +115,18 @@ macro_rules! impl_keys {
             )?
         )*
         }
-        impl GetReg for [Word; VM_REGISTER_COUNT] {
+        impl GetReg for Registers {
         $(
             fn $f(&self) -> Reg<'_, $i> {
-                Reg(&self[$i as usize])
+                Reg(&self.0[$i as usize])
             }
         )*
         }
-        impl GetRegMut for [Word; VM_REGISTER_COUNT] {
+        impl GetRegMut for Registers {
         $(
             $(
             fn $f_mut(&mut self) -> RegMut<'_, $i> {
-                RegMut(&mut self[$i as usize])
+                RegMut(&mut self.0[$i as usize])
             }
             )?
         )*
@@ -234,10 +204,10 @@ pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_PROGRAM_COU
 ///
 /// This allows multiple mutable references to registers.
 pub(crate) fn split_registers(
-    registers: &mut [Word; VM_REGISTER_COUNT],
+    registers: &mut Registers,
 ) -> (SystemRegisters<'_>, ProgramRegisters<'_>) {
     let [zero, one, of, pc, ssp, sp, fp, hp, err, ggas, cgas, bal, is, ret, retl, flag, rest @ ..] =
-        registers;
+        &mut registers.0;
     let r = SystemRegisters {
         zero: RegMut(zero),
         one: RegMut(one),
@@ -263,22 +233,18 @@ pub(crate) fn split_registers(
 pub(crate) fn copy_registers(
     system_registers: &SystemRegistersRef<'_>,
     program_registers: &ProgramRegistersRef<'_>,
-) -> [Word; VM_REGISTER_COUNT] {
-    let mut out = [0u64; VM_REGISTER_COUNT];
-    out[..VM_REGISTER_SYSTEM_COUNT]
+) -> Registers {
+    let mut out = Registers::ALL_ZERO;
+    out.0[..VM_REGISTER_SYSTEM_COUNT]
         .copy_from_slice(&<[Word; VM_REGISTER_SYSTEM_COUNT]>::from(system_registers));
-    out[VM_REGISTER_SYSTEM_COUNT..].copy_from_slice(program_registers.0);
+    out.0[VM_REGISTER_SYSTEM_COUNT..].copy_from_slice(program_registers.0);
     out
 }
 
 impl<'r> ProgramRegisters<'r> {
     /// Get two mutable references to program registers.
     /// Note they cannot be the same register.
-    pub fn get_mut_two(
-        &mut self,
-        a: WriteRegKey,
-        b: WriteRegKey,
-    ) -> Option<(&mut Word, &mut Word)> {
+    pub fn get_mut_two(&mut self, a: RegW, b: RegW) -> Option<(&mut Word, &mut Word)> {
         if a == b {
             // Cannot mutably borrow the same register twice.
             return None
@@ -289,11 +255,10 @@ impl<'r> ProgramRegisters<'r> {
         let (a, b) = if swap { (b, a) } else { (a, b) };
 
         // Translate the absolute register indices to a program register indeces.
-        let a = a.translate();
+        let a = translate(a);
 
         // Subtract a + 1 because because we split the array at `a`.
-        let b = b
-            .translate()
+        let b = translate(b)
             .checked_sub(a.saturating_add(1))
             .expect("Cannot underflow as the values are ordered");
 
@@ -368,25 +333,17 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
     }
 }
 
-impl TryFrom<RegisterId> for WriteRegKey {
-    type Error = PanicReason;
-
-    fn try_from(r: RegisterId) -> Result<Self, Self::Error> {
-        Self::new(r)
-    }
-}
-
-impl core::ops::Index<WriteRegKey> for ProgramRegisters<'_> {
+impl core::ops::Index<RegW> for ProgramRegisters<'_> {
     type Output = Word;
 
-    fn index(&self, index: WriteRegKey) -> &Self::Output {
-        &self.0[index.translate()]
+    fn index(&self, index: RegW) -> &Self::Output {
+        &self.0[translate(index)]
     }
 }
 
-impl core::ops::IndexMut<WriteRegKey> for ProgramRegisters<'_> {
-    fn index_mut(&mut self, index: WriteRegKey) -> &mut Self::Output {
-        &mut self.0[index.translate()]
+impl core::ops::IndexMut<RegW> for ProgramRegisters<'_> {
+    fn index_mut(&mut self, index: RegW) -> &mut Self::Output {
+        &mut self.0[translate(index)]
     }
 }
 

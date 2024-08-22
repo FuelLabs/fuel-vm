@@ -123,7 +123,7 @@ pub mod prelude {
         Immediate12,
         Immediate18,
         Immediate24,
-        RegisterId,
+
         Salt,
         Word,
     };

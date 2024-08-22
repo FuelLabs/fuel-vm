@@ -33,9 +33,6 @@ pub use args::{
     GTFArgs,
 };
 
-/// Register ID type
-pub type RegisterId = usize;
-
 /// Register value type
 pub type Word = u64;
 
@@ -46,6 +43,21 @@ pub use panic_reason::PanicReason;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct RegId(u8);
+
+/// A writable and readable register reference.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+pub struct RegAnyAccess(pub RegId);
+
+/// A read-only register reference.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+pub struct RegR(pub RegId);
+
+/// An user-writable write-only register reference.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+pub struct RegW(pub RegId);
 
 /// Represents a 6-bit immediate value, guaranteed to be masked by construction.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -89,21 +101,75 @@ bitflags::bitflags! {
     }
 }
 
-/// Type is convertible to a [`RegId`]
-pub trait CheckRegId {
-    /// Convert to a [`RegId`], or panic
-    fn check(self) -> RegId;
+/// Type is convertible to a [`RegAnyAccess`]
+pub trait CheckRegAnyAccess {
+    /// Convert to a [`RegAnyAccess`], or panic
+    fn check(self) -> RegAnyAccess;
 }
 
-impl CheckRegId for RegId {
-    fn check(self) -> RegId {
+impl CheckRegAnyAccess for RegAnyAccess {
+    fn check(self) -> RegAnyAccess {
+        self
+    }
+}
+impl CheckRegAnyAccess for RegId {
+    fn check(self) -> RegAnyAccess {
+        RegAnyAccess(self)
+    }
+}
+
+impl CheckRegAnyAccess for u8 {
+    fn check(self) -> RegAnyAccess {
+        RegAnyAccess::new_checked(self).expect("CheckRegRW was given invalid RegId")
+    }
+}
+
+/// Type is convertible to a [`RegR`]
+pub trait CheckRegR {
+    /// Convert to a [`RegR`], or panic
+    fn check(self) -> RegR;
+}
+
+impl CheckRegR for RegR {
+    fn check(self) -> RegR {
         self
     }
 }
 
-impl CheckRegId for u8 {
-    fn check(self) -> RegId {
-        RegId::new_checked(self).expect("CheckRegId was given invalid RegId")
+impl CheckRegR for RegId {
+    fn check(self) -> RegR {
+        RegR(self)
+    }
+}
+
+impl CheckRegR for u8 {
+    fn check(self) -> RegR {
+        RegR::new_checked(self).expect("CheckRegR was given invalid RegId")
+    }
+}
+
+/// Type is convertible to a [`RegW`]
+pub trait CheckRegW {
+    /// Convert to a [`RegW`], or panic
+    fn check(self) -> RegW;
+}
+
+impl CheckRegW for RegW {
+    fn check(self) -> RegW {
+        self
+    }
+}
+
+impl CheckRegW for RegId {
+    fn check(self) -> RegW {
+        <u8 as CheckRegW>::check(self.to_u8())
+    }
+}
+
+impl CheckRegW for u8 {
+    #[track_caller]
+    fn check(self) -> RegW {
+        RegW::new_checked(self).expect("CheckRegW was given invalid RegId")
     }
 }
 
@@ -112,179 +178,179 @@ impl CheckRegId for u8 {
 // this works, see the `fuel_asm::macros` module level documentation.
 fuel_derive::impl_instructions! {
     "Adds two registers."
-    0x10 ADD add [dst: RegId lhs: RegId rhs: RegId]
+    0x10 ADD add [dst: RegW lhs: RegR rhs: RegR]
     "Bitwise ANDs two registers."
-    0x11 AND and [dst: RegId lhs: RegId rhs: RegId]
+    0x11 AND and [dst: RegW lhs: RegR rhs: RegR]
     "Divides two registers."
-    0x12 DIV div [dst: RegId lhs: RegId rhs: RegId]
+    0x12 DIV div [dst: RegW lhs: RegR rhs: RegR]
     "Compares two registers for equality."
-    0x13 EQ eq [dst: RegId lhs: RegId rhs: RegId]
+    0x13 EQ eq [dst: RegW lhs: RegR rhs: RegR]
     "Raises one register to the power of another."
-    0x14 EXP exp [dst: RegId lhs: RegId rhs: RegId]
+    0x14 EXP exp [dst: RegW lhs: RegR rhs: RegR]
     "Compares two registers for greater-than."
-    0x15 GT gt [dst: RegId lhs: RegId rhs: RegId]
+    0x15 GT gt [dst: RegW lhs: RegR rhs: RegR]
     "Compares two registers for less-than."
-    0x16 LT lt [dst: RegId lhs: RegId rhs: RegId]
+    0x16 LT lt [dst: RegW lhs: RegR rhs: RegR]
     "The integer logarithm of a register."
-    0x17 MLOG mlog [dst: RegId lhs: RegId rhs: RegId]
+    0x17 MLOG mlog [dst: RegW lhs: RegR rhs: RegR]
     "The integer root of a register."
-    0x18 MROO mroo [dst: RegId lhs: RegId rhs: RegId]
+    0x18 MROO mroo [dst: RegW lhs: RegR rhs: RegR]
     "Modulo remainder of two registers."
-    0x19 MOD mod_ [dst: RegId lhs: RegId rhs: RegId]
+    0x19 MOD mod_ [dst: RegW lhs: RegR rhs: RegR]
     "Copy from one register to another."
-    0x1A MOVE move_ [dst: RegId src: RegId]
+    0x1A MOVE move_ [dst: RegW src: RegR]
     "Multiplies two registers."
-    0x1B MUL mul [dst: RegId lhs: RegId rhs: RegId]
+    0x1B MUL mul [dst: RegW lhs: RegR rhs: RegR]
     "Bitwise NOT a register."
-    0x1C NOT not [dst: RegId arg: RegId]
+    0x1C NOT not [dst: RegW arg: RegR]
     "Bitwise ORs two registers."
-    0x1D OR or [dst: RegId lhs: RegId rhs: RegId]
+    0x1D OR or [dst: RegW lhs: RegR rhs: RegR]
     "Left shifts a register by a register."
-    0x1E SLL sll [dst: RegId lhs: RegId rhs: RegId]
+    0x1E SLL sll [dst: RegW lhs: RegR rhs: RegR]
     "Right shifts a register by a register."
-    0x1F SRL srl [dst: RegId lhs: RegId rhs: RegId]
+    0x1F SRL srl [dst: RegW lhs: RegR rhs: RegR]
     "Subtracts two registers."
-    0x20 SUB sub [dst: RegId lhs: RegId rhs: RegId]
+    0x20 SUB sub [dst: RegW lhs: RegR rhs: RegR]
     "Bitwise XORs two registers."
-    0x21 XOR xor [dst: RegId lhs: RegId rhs: RegId]
+    0x21 XOR xor [dst: RegW lhs: RegR rhs: RegR]
     "Fused multiply-divide with arbitrary precision intermediate step."
-    0x22 MLDV mldv [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
+    0x22 MLDV mldv [dst: RegW mul_lhs: RegR mul_rhs: RegR divisor: RegR]
 
     "Return from context."
-    0x24 RET ret [value: RegId]
+    0x24 RET ret [value: RegR]
     "Return from context with data."
-    0x25 RETD retd [addr: RegId len: RegId]
+    0x25 RETD retd [addr: RegR len: RegR]
     "Allocate a number of bytes from the heap."
-    0x26 ALOC aloc [bytes: RegId]
+    0x26 ALOC aloc [bytes: RegR]
     "Clear a variable number of bytes in memory."
-    0x27 MCL mcl [dst_addr: RegId len: RegId]
+    0x27 MCL mcl [dst_addr: RegR len: RegR]
     "Copy a variable number of bytes in memory."
-    0x28 MCP mcp [dst_addr: RegId src_addr: RegId len: RegId]
+    0x28 MCP mcp [dst_addr: RegR src_addr: RegR len: RegR]
     "Compare bytes in memory."
-    0x29 MEQ meq [result: RegId lhs_addr: RegId rhs_addr: RegId len: RegId]
+    0x29 MEQ meq [result: RegW lhs_addr: RegR rhs_addr: RegR len: RegR]
     "Get block header hash for height."
-    0x2A BHSH bhsh [dst: RegId heigth: RegId]
+    0x2A BHSH bhsh [dst_addr: RegR heigth: RegR]
     "Get current block height."
-    0x2B BHEI bhei [dst: RegId]
+    0x2B BHEI bhei [dst: RegW]
     "Burns `amount` coins of the asset ID created from `sub_id` for the current contract."
-    0x2C BURN burn [amount: RegId sub_id_addr: RegId]
+    0x2C BURN burn [amount: RegR sub_id_addr: RegR]
     "Call a contract."
-    0x2D CALL call [target_struct: RegId fwd_coins: RegId asset_id_addr: RegId fwd_gas: RegId]
+    0x2D CALL call [target_struct: RegR fwd_coins: RegR asset_id_addr: RegR fwd_gas: RegR]
     "Copy contract code for a contract."
-    0x2E CCP ccp [dst_addr: RegId contract_id_addr: RegId offset: RegId len: RegId]
+    0x2E CCP ccp [dst_addr: RegR contract_id_addr: RegR offset: RegR len: RegR]
     "Get code root of a contract."
-    0x2F CROO croo [dst_addr: RegId contract_id_addr: RegId]
+    0x2F CROO croo [dst_addr: RegR contract_id_addr: RegR]
     "Get code size of a contract."
-    0x30 CSIZ csiz [dst: RegId contract_id_addr: RegId]
+    0x30 CSIZ csiz [dst: RegW contract_id_addr: RegR]
     "Get current block proposer's address."
-    0x31 CB cb [dst: RegId]
+    0x31 CB cb [dst: RegW]
     "Load a contract's code as executable."
-    0x32 LDC ldc [contract_id_addr: RegId offset: RegId len: RegId mode: Imm06]
+    0x32 LDC ldc [contract_id_addr: RegR offset: RegR len: RegR mode: Imm06]
     "Log an event."
-    0x33 LOG log [a: RegId b: RegId c: RegId d: RegId]
+    0x33 LOG log [a: RegR b: RegR c: RegR d: RegR]
     "Log data."
-    0x34 LOGD logd [a: RegId b: RegId addr: RegId len: RegId]
+    0x34 LOGD logd [a: RegR b: RegR addr: RegR len: RegR]
     "Mints `amount` coins of the asset ID created from `sub_id` for the current contract."
-    0x35 MINT mint [amount: RegId sub_id_addr: RegId]
+    0x35 MINT mint [amount: RegR sub_id_addr: RegR]
     "Halt execution, reverting state changes and returning a value."
-    0x36 RVRT rvrt [value: RegId]
+    0x36 RVRT rvrt [value: RegR]
     "Clear a series of slots from contract storage."
-    0x37 SCWQ scwq [key_addr: RegId status: RegId lenq: RegId]
+    0x37 SCWQ scwq [key_addr: RegR status: RegW lenq: RegR]
     "Load a word from contract storage."
-    0x38 SRW srw [dst: RegId status: RegId key_addr: RegId]
+    0x38 SRW srw [dst: RegW status: RegW key_addr: RegR]
     "Load a series of 32 byte slots from contract storage."
-    0x39 SRWQ srwq [dst_addr: RegId status: RegId key_addr:RegId lenq: RegId]
+    0x39 SRWQ srwq [dst_addr: RegR status: RegW key_addr: RegR lenq: RegR]
     "Store a word in contract storage."
-    0x3A SWW sww [key_addr: RegId status: RegId value: RegId]
+    0x3A SWW sww [key_addr: RegR status: RegW value: RegR]
     "Store a series of 32 byte slots in contract storage."
-    0x3B SWWQ swwq [key_addr: RegId status: RegId src_addr: RegId lenq: RegId]
+    0x3B SWWQ swwq [key_addr: RegR status: RegW src_addr: RegR lenq: RegR]
     "Transfer coins to a contract unconditionally."
-    0x3C TR tr [contract_id_addr: RegId amount: RegId asset_id_addr: RegId]
+    0x3C TR tr [contract_id_addr: RegR amount: RegR asset_id_addr: RegR]
     "Transfer coins to a variable output."
-    0x3D TRO tro [contract_id_addr: RegId output_index: RegId amount: RegId asset_id_addr: RegId]
+    0x3D TRO tro [contract_id_addr: RegR output_index: RegR amount: RegR asset_id_addr: RegR]
     "The 64-byte public key (x, y) recovered from 64-byte signature on 32-byte message hash."
-    0x3E ECK1 eck1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
+    0x3E ECK1 eck1 [dst_addr: RegR sig_addr: RegR msg_hash_addr: RegR]
     "The 64-byte Secp256r1 public key (x, y) recovered from 64-byte signature on 32-byte message hash."
-    0x3F ECR1 ecr1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
+    0x3F ECR1 ecr1 [dst_addr: RegR sig_addr: RegR msg_hash_addr: RegR]
     "Verify ED25519 public key and signature match a message."
-    0x40 ED19 ed19 [pub_key_addr: RegId sig_addr: RegId msg_addr: RegId msg_len: RegId]
+    0x40 ED19 ed19 [pub_key_addr: RegR sig_addr: RegR msg_addr: RegR msg_len: RegR]
     "The keccak-256 hash of a slice."
-    0x41 K256 k256 [dst_addr: RegId src_addr: RegId len: RegId]
+    0x41 K256 k256 [dst_addr: RegR src_addr: RegR len: RegR]
     "The SHA-2-256 hash of a slice."
-    0x42 S256 s256 [dst_addr: RegId src_addr: RegId len: RegId]
+    0x42 S256 s256 [dst_addr: RegR src_addr: RegR len: RegR]
     "Get timestamp of block at given height."
-    0x43 TIME time [dst: RegId heigth: RegId]
+    0x43 TIME time [dst: RegW heigth: RegR]
 
     "Performs no operation."
     0x47 NOOP noop []
     "Set flag register to a register."
-    0x48 FLAG flag [value: RegId]
+    0x48 FLAG flag [value: RegR]
     "Get the balance of contract of an asset ID."
-    0x49 BAL bal [dst: RegId asset_id_addr: RegId contract_id_addr: RegId]
+    0x49 BAL bal [dst: RegW asset_id_addr: RegR contract_id_addr: RegR]
     "Dynamic jump."
-    0x4A JMP jmp [abs_target: RegId]
+    0x4A JMP jmp [abs_target: RegR]
     "Conditional dynamic jump."
-    0x4B JNE jne [abs_target: RegId lhs: RegId rhs: RegId]
+    0x4B JNE jne [abs_target: RegR lhs: RegR rhs: RegR]
     "Send a message to recipient address with call abi, coins, and output."
-    0x4C SMO smo [recipient_addr: RegId data_addr: RegId data_len: RegId coins: RegId]
+    0x4C SMO smo [recipient_addr: RegR data_addr: RegR data_len: RegR coins: RegR]
 
     "Adds a register and an immediate value."
-    0x50 ADDI addi [dst: RegId lhs: RegId rhs: Imm12]
+    0x50 ADDI addi [dst: RegW lhs: RegR rhs: Imm12]
     "Bitwise ANDs a register and an immediate value."
-    0x51 ANDI andi [dst: RegId lhs: RegId rhs: Imm12]
+    0x51 ANDI andi [dst: RegW lhs: RegR rhs: Imm12]
     "Divides a register and an immediate value."
-    0x52 DIVI divi [dst: RegId lhs: RegId rhs: Imm12]
+    0x52 DIVI divi [dst: RegW lhs: RegR rhs: Imm12]
     "Raises one register to the power of an immediate value."
-    0x53 EXPI expi [dst: RegId lhs: RegId rhs: Imm12]
+    0x53 EXPI expi [dst: RegW lhs: RegR rhs: Imm12]
     "Modulo remainder of a register and an immediate value."
-    0x54 MODI modi [dst: RegId lhs: RegId rhs: Imm12]
+    0x54 MODI modi [dst: RegW lhs: RegR rhs: Imm12]
     "Multiplies a register and an immediate value."
-    0x55 MULI muli [dst: RegId lhs: RegId rhs: Imm12]
+    0x55 MULI muli [dst: RegW lhs: RegR rhs: Imm12]
     "Bitwise ORs a register and an immediate value."
-    0x56 ORI ori [dst: RegId lhs: RegId rhs: Imm12]
+    0x56 ORI ori [dst: RegW lhs: RegR rhs: Imm12]
     "Left shifts a register by an immediate value."
-    0x57 SLLI slli [dst: RegId lhs: RegId rhs: Imm12]
+    0x57 SLLI slli [dst: RegW lhs: RegR rhs: Imm12]
     "Right shifts a register by an immediate value."
-    0x58 SRLI srli [dst: RegId lhs: RegId rhs: Imm12]
+    0x58 SRLI srli [dst: RegW lhs: RegR rhs: Imm12]
     "Subtracts a register and an immediate value."
-    0x59 SUBI subi [dst: RegId lhs: RegId rhs: Imm12]
+    0x59 SUBI subi [dst: RegW lhs: RegR rhs: Imm12]
     "Bitwise XORs a register and an immediate value."
-    0x5A XORI xori [dst: RegId lhs: RegId rhs: Imm12]
+    0x5A XORI xori [dst: RegW lhs: RegR rhs: Imm12]
     "Conditional jump."
-    0x5B JNEI jnei [cond_lhs: RegId cond_rhs: RegId abs_target: Imm12]
+    0x5B JNEI jnei [cond_lhs: RegR cond_rhs: RegR abs_target: Imm12]
     "A byte is loaded from the specified address offset by an immediate value."
-    0x5C LB lb [dst: RegId addr: RegId offset: Imm12]
+    0x5C LB lb [dst: RegW addr: RegR offset: Imm12]
     "A word is loaded from the specified address offset by an immediate value."
-    0x5D LW lw [dst: RegId addr: RegId offset: Imm12]
+    0x5D LW lw [dst: RegW addr: RegR offset: Imm12]
     "Write the least significant byte of a register to memory."
-    0x5E SB sb [addr: RegId value: RegId offset: Imm12]
+    0x5E SB sb [addr: RegR value: RegR offset: Imm12]
     "Write a register to memory."
-    0x5F SW sw [addr: RegId value: RegId offset: Imm12]
+    0x5F SW sw [addr: RegR value: RegR offset: Imm12]
     "Copy an immediate number of bytes in memory."
-    0x60 MCPI mcpi [dst_addr: RegId src_addr: RegId len: Imm12]
+    0x60 MCPI mcpi [dst_addr: RegR src_addr: RegR len: Imm12]
     "Get transaction fields."
-    0x61 GTF gtf [dst: RegId arg: RegId selector: Imm12]
+    0x61 GTF gtf [dst: RegW arg: RegR selector: Imm12]
 
     "Clear an immediate number of bytes in memory."
-    0x70 MCLI mcli [addr: RegId count: Imm18]
+    0x70 MCLI mcli [addr: RegR count: Imm18]
     "Get metadata from memory."
-    0x71 GM gm [dst: RegId selector: Imm18]
+    0x71 GM gm [dst: RegW selector: Imm18]
     "Copy immediate value into a register"
-    0x72 MOVI movi [dst: RegId val: Imm18]
+    0x72 MOVI movi [dst: RegW val: Imm18]
     "Conditional jump against zero."
-    0x73 JNZI jnzi [cond_nz: RegId abs_target: Imm18]
+    0x73 JNZI jnzi [cond_nz: RegR abs_target: Imm18]
     "Unconditional dynamic relative jump forwards, with a constant offset."
-    0x74 JMPF jmpf [dynamic: RegId fixed: Imm18]
+    0x74 JMPF jmpf [dynamic: RegR fixed: Imm18]
     "Unconditional dynamic relative jump backwards, with a constant offset."
-    0x75 JMPB jmpb [dynamic: RegId fixed: Imm18]
+    0x75 JMPB jmpb [dynamic: RegR fixed: Imm18]
     "Dynamic relative jump forwards, conditional against zero, with a constant offset."
-    0x76 JNZF jnzf [cond_nz: RegId dynamic: RegId fixed: Imm12]
+    0x76 JNZF jnzf [cond_nz: RegR dynamic: RegR fixed: Imm12]
     "Dynamic relative jump backwards, conditional against zero, with a constant offset."
-    0x77 JNZB jnzb [cond_nz: RegId dynamic: RegId fixed: Imm12]
+    0x77 JNZB jnzb [cond_nz: RegR dynamic: RegR fixed: Imm12]
     "Dynamic relative jump forwards, conditional on comparsion, with a constant offset."
-    0x78 JNEF jnef [cond_lhs: RegId cond_rhs: RegId dynamic: RegId fixed: Imm06]
+    0x78 JNEF jnef [cond_lhs: RegR cond_rhs: RegR dynamic: RegR fixed: Imm06]
     "Dynamic relative jump backwards, conditional on comparsion, with a constant offset."
-    0x79 JNEB jneb [cond_lhs: RegId cond_rhs: RegId dynamic: RegId fixed: Imm06]
+    0x79 JNEB jneb [cond_lhs: RegR cond_rhs: RegR dynamic: RegR fixed: Imm06]
 
     "Jump."
     0x90 JI ji [abs_target: Imm24]
@@ -293,9 +359,9 @@ fuel_derive::impl_instructions! {
     "Shrink the current call frame's stack by an immediate value."
     0x92 CFSI cfsi [amount: Imm24]
     "Extend the current call frame's stack"
-    0x93 CFE cfe [amount: RegId]
+    0x93 CFE cfe [amount: RegR]
     "Shrink the current call frame's stack"
-    0x94 CFS cfs [amount: RegId]
+    0x94 CFS cfs [amount: RegR]
     "Push a bitmask-selected set of registers in range 16..40 to the stack."
     0x95 PSHL pshl [bitmask: Imm24]
     "Push a bitmask-selected set of registers in range 40..64 to the stack."
@@ -306,41 +372,41 @@ fuel_derive::impl_instructions! {
     0x98 POPH poph [bitmask: Imm24]
 
     "Compare 128bit integers"
-    0xa0 WDCM wdcm [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa0 WDCM wdcm [dst: RegW lhs: RegR rhs: RegR flags: Imm06]
     "Compare 256bit integers"
-    0xa1 WQCM wqcm [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa1 WQCM wqcm [dst: RegW lhs: RegR rhs: RegR flags: Imm06]
     "Simple 128bit operations"
-    0xa2 WDOP wdop [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa2 WDOP wdop [dst_addr: RegR lhs_addr: RegR rhs_addr: RegR flags_addr: Imm06]
     "Simple 256bit operations"
-    0xa3 WQOP wqop [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa3 WQOP wqop [dst_addr: RegR lhs_addr: RegR rhs_addr: RegR flags_addr: Imm06]
     "Multiply 128bit"
-    0xa4 WDML wdml [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa4 WDML wdml [dst_addr: RegR lhs_addr: RegR rhs_addr: RegR flags_addr: Imm06]
     "Multiply 256bit"
-    0xa5 WQML wqml [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa5 WQML wqml [dst_addr: RegR lhs_addr: RegR rhs_addr: RegR flags_addr: Imm06]
     "Divide 128bit"
-    0xa6 WDDV wddv [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa6 WDDV wddv [dst_addr: RegR lhs_addr: RegR rhs_addr: RegR flags_addr: Imm06]
     "Divide 256bit"
-    0xa7 WQDV wqdv [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
+    0xa7 WQDV wqdv [dst_addr: RegR lhs_addr: RegR rhs_addr: RegR flags_addr: Imm06]
     "Fused multiply-divide 128bit"
-    0xa8 WDMD wdmd [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
+    0xa8 WDMD wdmd [dst_addr: RegR mul_lhs_addr: RegR mul_rhs_addr: RegR divisor_addr: RegR]
     "Fused multiply-divide 256bit"
-    0xa9 WQMD wqmd [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
+    0xa9 WQMD wqmd [dst_addr: RegR mul_lhs_addr: RegR mul_rhs_addr: RegR divisor_addr: RegR]
     "AddMod 128bit"
-    0xaa WDAM wdam [dst: RegId add_lhs: RegId add_rhs: RegId modulo: RegId]
+    0xaa WDAM wdam [dst_addr: RegR add_lhs_addr: RegR add_rhs_addr: RegR modulo_addr: RegR]
     "AddMod 256bit"
-    0xab WQAM wqam [dst: RegId add_lhs: RegId add_rhs: RegId modulo: RegId]
+    0xab WQAM wqam [dst_addr: RegR add_lhs_addr: RegR add_rhs_addr: RegR modulo_addr: RegR]
     "MulMod 128bit"
-    0xac WDMM wdmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
+    0xac WDMM wdmm [dst_addr: RegR mul_lhs_addr: RegR mul_rhs_addr: RegR modulo_addr: RegR]
     "MulMod 256bit"
-    0xad WQMM wqmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
+    0xad WQMM wqmm [dst_addr: RegR mul_lhs_addr: RegR mul_rhs_addr: RegR modulo_addr: RegR]
 
     "Call external function"
-    0xb0 ECAL ecal [a: RegId b: RegId c: RegId d: RegId]
+    0xb0 ECAL ecal [a: RegAnyAccess b: RegAnyAccess c: RegAnyAccess d: RegAnyAccess]
 
     "Get blob size"
-    0xba BSIZ bsiz [dst: RegId blob_id_ptr: RegId]
+    0xba BSIZ bsiz [dst: RegW blob_id_ptr: RegR]
     "Load blob as data"
-    0xbb BLDD bldd [dst_ptr: RegId blob_id_ptr: RegId offset: RegId len: RegId]
+    0xbb BLDD bldd [dst_ptr: RegR blob_id_ptr: RegR offset: RegR len: RegR]
 }
 
 impl Instruction {
@@ -470,9 +536,76 @@ impl RegId {
     /// Construct a register ID from the given value.
     ///
     /// Returns `None` if the value is outside the 6-bit value range.
-    pub fn new_checked(u: u8) -> Option<RegId> {
+    pub fn new_checked(u: u8) -> Option<Self> {
         let r = Self::new(u);
         (r.0 == u).then_some(r)
+    }
+}
+
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+impl RegAnyAccess {
+    /// Construct a register ID from the given value.
+    ///
+    /// Returns `None` if the value is outside the 6-bit value range.
+    pub fn new_checked(u: u8) -> Option<Self> {
+        Some(Self(RegId::new_checked(u)?))
+    }
+
+    /// Constructs assuming the input is correct.
+    pub fn new_unchecked(u: u8) -> Self {
+        Self(RegId::new(u))
+    }
+
+    /// Gets the underlying register id as a raw value.
+    pub const fn to_u8(self) -> u8 {
+        self.0.to_u8()
+    }
+}
+
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+impl RegR {
+    /// Construct a register ID from the given value.
+    ///
+    /// Returns `None` if the value is outside the 6-bit value range.
+    /// All valid register IDs are also valid read-only register IDs.
+    pub fn new_checked(u: u8) -> Option<Self> {
+        Some(Self(RegId::new_checked(u)?))
+    }
+
+    /// Constructs assuming the input is correct.
+    pub fn new_unchecked(u: u8) -> Self {
+        Self(RegId::new(u))
+    }
+
+    /// Gets the underlying register id as a raw value.
+    pub const fn to_u8(self) -> u8 {
+        self.0.to_u8()
+    }
+}
+
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+impl RegW {
+    /// Construct a register ID from the given value.
+    ///
+    /// Returns `None` if the value is outside the 6-bit value range,
+    /// or if it's not user-writable.
+    pub fn new_checked(u: u8) -> Option<Self> {
+        let r = RegId::new_checked(u)?;
+        if r >= RegId::WRITABLE {
+            Some(Self(r))
+        } else {
+            None
+        }
+    }
+
+    /// Constructs assuming the input is correct.
+    pub fn new_unchecked(u: u8) -> Self {
+        Self(RegId::new(u))
+    }
+
+    /// Gets the underlying register id as a raw value.
+    pub const fn to_u8(self) -> u8 {
+        self.0.to_u8()
     }
 }
 
@@ -757,6 +890,24 @@ impl From<RegId> for u8 {
     }
 }
 
+impl From<RegW> for u8 {
+    fn from(RegW(RegId(u)): RegW) -> Self {
+        u
+    }
+}
+
+impl From<RegR> for u8 {
+    fn from(RegR(RegId(u)): RegR) -> Self {
+        u
+    }
+}
+
+impl From<RegAnyAccess> for u8 {
+    fn from(RegAnyAccess(RegId(u)): RegAnyAccess) -> Self {
+        u
+    }
+}
+
 impl From<Imm06> for u8 {
     fn from(Imm06(u): Imm06) -> Self {
         u
@@ -872,28 +1023,6 @@ impl core::convert::TryFrom<RawInstruction> for Instruction {
 
     fn try_from(u: RawInstruction) -> Result<Self, Self::Error> {
         Self::try_from(u.to_be_bytes())
-    }
-}
-
-// Index slices with `RegId`
-
-impl<T> core::ops::Index<RegId> for [T]
-where
-    [T]: core::ops::Index<usize, Output = T>,
-{
-    type Output = T;
-
-    fn index(&self, ix: RegId) -> &Self::Output {
-        &self[usize::from(ix)]
-    }
-}
-
-impl<T> core::ops::IndexMut<RegId> for [T]
-where
-    [T]: core::ops::IndexMut<usize, Output = T>,
-{
-    fn index_mut(&mut self, ix: RegId) -> &mut Self::Output {
-        &mut self[usize::from(ix)]
     }
 }
 

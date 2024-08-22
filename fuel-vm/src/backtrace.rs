@@ -9,10 +9,10 @@ use alloc::{
 
 use crate::{
     call::CallFrame,
-    consts::*,
     interpreter::{
         InitialBalances,
         Interpreter,
+        Registers,
     },
 };
 use derivative::Derivative;
@@ -33,7 +33,7 @@ use fuel_types::{
 pub struct Backtrace {
     call_stack: Vec<CallFrame>,
     contract: ContractId,
-    registers: [Word; VM_REGISTER_COUNT],
+    registers: Registers,
     memory: MemoryInstance,
     result: ScriptExecutionResult,
     initial_balances: InitialBalances,
@@ -54,9 +54,9 @@ impl Backtrace {
         let contract = vm.internal_contract().unwrap_or_default();
         let memory = vm.memory().clone();
         let initial_balances = vm.initial_balances().clone();
-        let mut registers = [0; VM_REGISTER_COUNT];
+        let mut registers = Registers::ALL_ZERO;
 
-        registers.copy_from_slice(vm.registers());
+        registers.0.copy_from_slice(&vm.registers().0);
 
         Self {
             call_stack,
@@ -80,7 +80,7 @@ impl Backtrace {
 
     /// Register set when the error occurred.
     pub const fn registers(&self) -> &[Word] {
-        &self.registers
+        &self.registers.0
     }
 
     /// Memory of the VM when the error occurred.
@@ -104,7 +104,7 @@ impl Backtrace {
     ) -> (
         Vec<CallFrame>,
         ContractId,
-        [Word; VM_REGISTER_COUNT],
+        Registers,
         MemoryInstance,
         ScriptExecutionResult,
         InitialBalances,

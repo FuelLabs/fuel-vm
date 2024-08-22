@@ -1,5 +1,5 @@
 use fuel_asm::{
-    RegisterId,
+    RegW,
     Word,
 };
 use fuel_storage::StorageSize;
@@ -23,7 +23,6 @@ use super::{
     Interpreter,
     Memory,
     SystemRegisters,
-    WriteRegKey,
 };
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
@@ -34,7 +33,7 @@ where
 {
     pub(crate) fn blob_size(
         &mut self,
-        dst: RegisterId,
+        dst: RegW,
         blob_id_ptr: Word,
     ) -> IoResult<(), S::DataError> {
         let gas_cost = self
@@ -52,7 +51,7 @@ where
 
         self.dependent_gas_charge_without_base(gas_cost, size as Word)?;
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(dst)?];
+        let result = &mut w[dst];
         *result = size as Word;
         Ok(inc_pc(pc)?)
     }

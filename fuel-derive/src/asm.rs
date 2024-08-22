@@ -751,7 +751,7 @@ fn make_bytes_from_instruction(instructions: &InstructionList) -> TokenStream {
     }
 }
 
-/// TODO: docs
+/// Generates implementations for the FuelVM instruction types.
 pub fn impl_instructions(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let instructions: InstructionList = syn::parse_macro_input!(input as InstructionList);
 

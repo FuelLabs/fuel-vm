@@ -30,7 +30,7 @@ synstructure::decl_derive!(
     serialize_derive
 );
 
-/// TODO: docs
+/// Generates implementations for the FuelVM instruction types.
 #[proc_macro]
 pub fn impl_instructions(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     asm::impl_instructions(input)

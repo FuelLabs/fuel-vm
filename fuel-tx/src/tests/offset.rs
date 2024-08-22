@@ -76,9 +76,9 @@ where
     outputs_assert(tx, bytes, cases);
 }
 
-fn inputs_assert<Tx: Inputs>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
+fn inputs_assert<Tx>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
 where
-    Tx: Buildable,
+    Tx: Inputs + Buildable,
 {
     tx.inputs().iter().enumerate().for_each(|(idx, i)| {
         let input_ofs = tx

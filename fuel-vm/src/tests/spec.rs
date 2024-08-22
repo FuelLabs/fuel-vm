@@ -217,44 +217,51 @@ fn spec_logic_ops_clear_err(
     }
 }
 
-#[rstest]
-fn spec_reserved_reg_write(
-    #[values(
-        op::add(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::addi(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::and(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::andi(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::div(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::divi(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::eq(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::exp(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::expi(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::gt(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::lt(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::mlog(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::mod_(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::modi(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::move_(RegId::WRITABLE, RegId::WRITABLE),
-        op::movi(RegId::WRITABLE, 0),
-        op::mroo(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::mul(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::muli(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::not(RegId::WRITABLE, RegId::WRITABLE),
-        op::or(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::ori(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::sll(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::slli(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::srl(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::srli(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::sub(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::subi(RegId::WRITABLE, RegId::WRITABLE, 0),
-        op::xor(RegId::WRITABLE, RegId::WRITABLE, RegId::WRITABLE),
-        op::xori(RegId::WRITABLE, RegId::WRITABLE, 0)
-    )]
-    case: Instruction,
-) {
+#[test]
+fn spec_reserved_reg_write() {
+    let opcodes = [
+        Opcode::ADD,
+        Opcode::ADDI,
+        Opcode::AND,
+        Opcode::ANDI,
+        Opcode::DIV,
+        Opcode::DIVI,
+        Opcode::EQ,
+        Opcode::EXP,
+        Opcode::EXPI,
+        Opcode::GT,
+        Opcode::LT,
+        Opcode::MLOG,
+        Opcode::MOD,
+        Opcode::MODI,
+        Opcode::MOVE,
+        Opcode::MOVI,
+        Opcode::MROO,
+        Opcode::MUL,
+        Opcode::MULI,
+        Opcode::NOT,
+        Opcode::OR,
+        Opcode::ORI,
+        Opcode::SLL,
+        Opcode::SLLI,
+        Opcode::SRL,
+        Opcode::SRLI,
+        Opcode::SUB,
+        Opcode::SUBI,
+        Opcode::XOR,
+        Opcode::XORI,
+    ];
+
+    let registers: Vec<_> = (0..RegId::WRITABLE.to_u8()).map(RegId::new).collect();
+
     let mut script = common_setup();
-    script.push(case);
+
+    for op in opcodes {
+        for reg in registers.iter().copied() {
+            let instr = op.test_construct(reg, reg, reg, reg, 0);
+            script.push(instr);
+        }
+    }
     script.push(op::ret(RegId::ONE));
 
     let receipts = run_script(script.into_iter().collect());

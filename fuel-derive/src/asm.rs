@@ -273,6 +273,7 @@ fn make_constructors(instructions: &InstructionList) -> TokenStream {
                         }
 
                         #[doc = "Construct the instruction from all possible raw fields, ignoring inapplicable ones."]
+                        #[cfg(any(test, feature = "test-helpers"))]
                         pub fn test_construct(
                             reg0: RegId,
                             reg1: RegId,
@@ -537,8 +538,8 @@ fn make_opcode_enum(instructions: &InstructionList) -> TokenStream {
         }
 
         impl Opcode {
-            /// Construct the instruction from all possible raw fields, ignoring inapplicable ones.
-            #[cfg(test)]
+            #[doc = "Construct the instruction from all possible raw fields, ignoring inapplicable ones."]
+            #[cfg(any(test, feature = "test-helpers"))]
             pub fn test_construct(self, ra: RegId, rb: RegId, rc: RegId, rd: RegId, imm: u32) -> Instruction {
                 match self {
                     #variants_test_construct
@@ -775,7 +776,7 @@ pub fn impl_instructions(input: proc_macro::TokenStream) -> proc_macro::TokenStr
     (quote! {
         /// Opcode-specific definitions and implementations.
         #[allow(clippy::unused_unit)] // Simplify codegen
-        pub mod _op {
+        pub(crate) mod _op {
             use super::*;
             #op_structs
             #op_debug_impl

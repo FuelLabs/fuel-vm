@@ -30,6 +30,7 @@ typescript = ["wasm-bindgen"]
 std = ["alloc", "serde?/default", "fuel-types/std"]
 alloc = []
 serde = ["dep:serde"]
+test-helpers = []
 
 # docs.rs-specific configuration
 # preview with `RUSTDOCFLAGS="--cfg docsrs" cargo +nightly doc --all-features --open`

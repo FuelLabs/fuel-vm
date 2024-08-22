@@ -243,7 +243,7 @@ fuel_derive::impl_instructions! {
     "Get code size of a contract."
     0x30 CSIZ csiz [dst: RegW contract_id_addr: RegR]
     "Get current block proposer's address."
-    0x31 CB cb [dst: RegW]
+    0x31 CB cb [dst_addr: RegR]
     "Load a contract's code as executable."
     0x32 LDC ldc [contract_id_addr: RegR offset: RegR len: RegR mode: Imm06]
     "Log an event."

@@ -52,6 +52,7 @@ tai64 = { version = "4.0", default-features = false, optional = true }
 criterion = "0.4"
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 fuel-crypto = { workspace = true, features = ["test-helpers"] }
+fuel-asm = { workspace = true, features = ["test-helpers"] }
 fuel-tx = { workspace = true, features = ["test-helpers"] }
 fuel-vm = { path = ".", default-features = false, features = [
     "test-helpers",
@@ -100,10 +101,11 @@ serde = [
     "backtrace?/serde",
 ]
 test-helpers = [
+    "fuel-asm/test-helpers",
     "fuel-tx/test-helpers",
+    "fuel-crypto/test-helpers",
     "alloc",
     "random",
     "dep:anyhow",
     "tai64",
-    "fuel-crypto/test-helpers",
 ]

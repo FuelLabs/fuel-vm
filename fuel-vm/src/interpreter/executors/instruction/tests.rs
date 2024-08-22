@@ -2,4 +2,3 @@
 use super::*;
 
 mod math_operations;
-mod reserved_registers;

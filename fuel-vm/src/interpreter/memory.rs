@@ -15,10 +15,10 @@ use fuel_asm::{
     Imm24,
     PanicReason,
     RegId,
+    RegW,
 };
 use fuel_types::{
     fmt_truncated_hex,
-    RegisterId,
     Word,
 };
 
@@ -569,26 +569,14 @@ where
         )
     }
 
-    pub(crate) fn load_byte(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Word,
-    ) -> SimpleResult<()> {
+    pub(crate) fn load_byte(&mut self, ra: RegW, b: Word, c: Word) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_byte(self.memory.as_ref(), pc, result, b, c)
+        load_byte(self.memory.as_ref(), pc, &mut w[ra], b, c)
     }
 
-    pub(crate) fn load_word(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Imm12,
-    ) -> SimpleResult<()> {
+    pub(crate) fn load_word(&mut self, ra: RegW, b: Word, c: Imm12) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_word(self.memory.as_ref(), pc, result, b, c)
+        load_word(self.memory.as_ref(), pc, &mut w[ra], b, c)
     }
 
     pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
@@ -647,14 +635,13 @@ where
 
     pub(crate) fn memeq(
         &mut self,
-        ra: RegisterId,
+        ra: RegW,
         b: Word,
         c: Word,
         d: Word,
     ) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        memeq(self.memory.as_mut(), result, pc, b, c, d)
+        memeq(self.memory.as_mut(), &mut w[ra], pc, b, c, d)
     }
 }
 

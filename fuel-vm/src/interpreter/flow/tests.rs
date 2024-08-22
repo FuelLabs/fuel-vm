@@ -99,12 +99,12 @@ impl core::fmt::Debug for Output {
     }
 }
 
-fn make_reg(changes: &[(u8, u64)]) -> [Word; VM_REGISTER_COUNT] {
+fn make_reg(changes: &[(u8, u64)]) -> Registers {
     let mut registers = [0u64; VM_REGISTER_COUNT];
     for (reg, val) in changes {
         registers[*reg as usize] = *val;
     }
-    registers
+    Registers(registers)
 }
 
 impl Default for Output {
@@ -338,7 +338,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
         storage_contract,
         script,
     } = input;
-    let mut registers = [0; VM_REGISTER_COUNT];
+    let mut registers = Registers::ALL_ZERO;
     let mut registers: PrepareCallRegisters = (&mut registers).into();
     registers.system_registers.hp = Reg::new(&reg.hp);
     registers.system_registers.sp = RegMut::new(&mut reg.sp);

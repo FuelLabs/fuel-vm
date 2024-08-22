@@ -10,6 +10,7 @@
 )]
 
 extern crate proc_macro;
+mod asm;
 mod attribute;
 mod deserialize;
 mod serialize;
@@ -28,3 +29,9 @@ synstructure::decl_derive!(
     /// Derives `Serialize` trait for the given `struct` or `enum`.
     serialize_derive
 );
+
+/// TODO: docs
+#[proc_macro]
+pub fn impl_instructions(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    asm::impl_instructions(input)
+}

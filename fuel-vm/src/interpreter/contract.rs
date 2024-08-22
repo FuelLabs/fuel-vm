@@ -39,7 +39,7 @@ use crate::{
 };
 use fuel_asm::{
     PanicReason,
-    RegisterId,
+    RegW,
     Word,
 };
 use fuel_storage::StorageSize;
@@ -65,12 +65,12 @@ where
 {
     pub(crate) fn contract_balance(
         &mut self,
-        ra: RegisterId,
+        ra: RegW,
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
+        let result = &mut w[ra];
         let input = ContractBalanceCtx {
             storage: &self.storage,
             memory: self.memory.as_mut(),

@@ -8,10 +8,10 @@ use super::{
 };
 use super::{
     Interpreter,
+    Registers,
     RuntimeBalances,
 };
 use crate::{
-    consts::*,
     context::Context,
     interpreter::{
         InterpreterParams,
@@ -68,7 +68,7 @@ where
         ecal_state: Ecal,
     ) -> Self {
         Self {
-            registers: [0; VM_REGISTER_COUNT],
+            registers: Registers::ALL_ZERO,
             memory,
             frames: vec![],
             receipts: Default::default(),

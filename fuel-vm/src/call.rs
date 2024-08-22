@@ -15,9 +15,12 @@ use fuel_types::{
     Word,
 };
 
-use crate::consts::{
-    WORD_SIZE,
-    *,
+use crate::{
+    consts::{
+        WORD_SIZE,
+        *,
+    },
+    interpreter::Registers,
 };
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -70,7 +73,7 @@ impl Call {
 pub struct CallFrame {
     to: ContractId,
     asset_id: AssetId,
-    registers: [Word; VM_REGISTER_COUNT],
+    registers: Registers,
     code_size_padded: usize,
     a: Word,
     b: Word,
@@ -82,7 +85,7 @@ impl Default for CallFrame {
         Self {
             to: ContractId::default(),
             asset_id: AssetId::default(),
-            registers: [0; VM_REGISTER_COUNT],
+            registers: Registers::ALL_ZERO,
             code_size_padded: 0,
             a: 0,
             b: 0,
@@ -95,7 +98,7 @@ impl CallFrame {
     pub fn new(
         to: ContractId,
         asset_id: AssetId,
-        registers: [Word; VM_REGISTER_COUNT],
+        registers: Registers,
         code_size: usize,
         a: Word,
         b: Word,
@@ -146,7 +149,7 @@ impl CallFrame {
     }
 
     /// Registers prior to the called execution.
-    pub const fn registers(&self) -> &[Word] {
+    pub const fn registers(&self) -> &Registers {
         &self.registers
     }
 

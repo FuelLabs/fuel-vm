@@ -10,11 +10,11 @@ use crate::{
     error::SimpleResult,
 };
 
-use fuel_asm::PanicReason;
-use fuel_types::{
-    RegisterId,
-    Word,
+use fuel_asm::{
+    PanicReason,
+    RegW,
 };
+use fuel_types::Word;
 
 mod muldiv;
 mod wideint;
@@ -26,7 +26,7 @@ where
     /// Stores the overflowed wrapped value into RegId::OF
     pub(crate) fn alu_capture_overflow<F, B, C>(
         &mut self,
-        ra: RegisterId,
+        ra: RegW,
         f: F,
         b: B,
         c: C,
@@ -40,7 +40,7 @@ where
             },
             mut w,
         ) = split_registers(&mut self.registers);
-        let dest = &mut w[ra.try_into()?];
+        let dest = &mut w[ra];
         let common = AluCommonReg { of, err, pc };
         alu_capture_overflow(dest, flag.as_ref(), common, f, b, c)
     }
@@ -48,7 +48,7 @@ where
     /// Set RegId::OF to true and zero the result register if overflow occurred.
     pub(crate) fn alu_boolean_overflow<F, B, C>(
         &mut self,
-        ra: RegisterId,
+        ra: RegW,
         f: F,
         b: B,
         c: C,
@@ -62,14 +62,14 @@ where
             },
             mut w,
         ) = split_registers(&mut self.registers);
-        let dest = &mut w[ra.try_into()?];
+        let dest = &mut w[ra];
         let common = AluCommonReg { of, err, pc };
         alu_boolean_overflow(dest, flag.as_ref(), common, f, b, c)
     }
 
     pub(crate) fn alu_error<F, B, C>(
         &mut self,
-        ra: RegisterId,
+        ra: RegW,
         f: F,
         b: B,
         c: C,
@@ -84,15 +84,15 @@ where
             },
             mut w,
         ) = split_registers(&mut self.registers);
-        let dest = &mut w[ra.try_into()?];
+        let dest = &mut w[ra];
         let common = AluCommonReg { of, err, pc };
         alu_error(dest, flag.as_ref(), common, f, b, c, err_bool)
     }
 
-    pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> SimpleResult<()> {
+    pub(crate) fn alu_set(&mut self, ra: RegW, b: Word) -> SimpleResult<()> {
         let (SystemRegisters { of, err, pc, .. }, mut w) =
             split_registers(&mut self.registers);
-        let dest = &mut w[ra.try_into()?];
+        let dest = &mut w[ra];
         let common = AluCommonReg { of, err, pc };
         alu_set(dest, common, b)
     }

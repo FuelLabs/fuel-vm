@@ -6,6 +6,7 @@ use alloc::{
 
 use crate::{
     consts::*,
+    interpreter::Registers,
     prelude::*,
     script_with_data_offset,
     tests::test_helpers::assert_success,
@@ -204,7 +205,7 @@ fn call_frame_code_offset() {
     let frame = CallFrame::new(
         contract_id,
         asset_id,
-        [0; VM_REGISTER_COUNT],
+        Registers::ALL_ZERO,
         contract.as_ref().len(),
         0,
         0,

@@ -5,6 +5,7 @@ use alloc::{
 
 use crate::{
     consts::*,
+    interpreter::Registers,
     prelude::*,
 };
 use rand::{
@@ -90,7 +91,7 @@ fn call_frame() {
                 CallFrame::new(
                     rng.gen(),
                     rng.gen(),
-                    [rng.gen(); VM_REGISTER_COUNT],
+                    Registers([rng.gen(); VM_REGISTER_COUNT]),
                     200,
                     rng.gen(),
                     rng.gen(),

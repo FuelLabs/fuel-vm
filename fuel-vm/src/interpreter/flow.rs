@@ -55,6 +55,7 @@ use fuel_asm::{
     Instruction,
     PanicInstruction,
     RegId,
+    RegR,
 };
 use fuel_storage::{
     StorageAsRef,
@@ -74,6 +75,8 @@ use fuel_types::{
     ContractId,
     Word,
 };
+
+use super::Registers;
 
 #[cfg(test)]
 mod jump_tests;
@@ -156,7 +159,7 @@ where
 
 struct RetCtx<'vm> {
     frames: &'vm mut Vec<CallFrame>,
-    registers: &'vm mut [Word; VM_REGISTER_COUNT],
+    registers: &'vm mut Registers,
     memory: &'vm MemoryInstance,
     receipts: &'vm mut ReceiptsCtx,
     context: &'vm mut Context,
@@ -194,7 +197,7 @@ impl RetCtx<'_> {
             let retl = registers[RegId::RETL];
             let hp = registers[RegId::HP];
 
-            registers.copy_from_slice(frame.registers());
+            registers.0.copy_from_slice(&frame.registers().0);
 
             registers[RegId::CGAS] = cgas;
             registers[RegId::GGAS] = ggas;
@@ -340,10 +343,10 @@ where
     /// Prepare a call instruction for execution
     pub fn prepare_call(
         &mut self,
-        ra: RegId,
-        rb: RegId,
-        rc: RegId,
-        rd: RegId,
+        ra: RegR,
+        rb: RegR,
+        rc: RegR,
+        rd: RegR,
     ) -> IoResult<(), S::DataError> {
         self.prepare_call_inner(
             self.registers[ra],
@@ -438,7 +441,7 @@ struct PrepareCallUnusedRegisters<'a> {
 }
 
 impl<'a> PrepareCallRegisters<'a> {
-    fn copy_registers(&self) -> [Word; VM_REGISTER_COUNT] {
+    fn copy_registers(&self) -> Registers {
         copy_registers(&self.into(), &self.program_registers)
     }
 }
@@ -670,8 +673,8 @@ impl<'a> From<&'a PrepareCallRegisters<'_>> for SystemRegistersRef<'a> {
     }
 }
 
-impl<'reg> From<&'reg mut [Word; VM_REGISTER_COUNT]> for PrepareCallRegisters<'reg> {
-    fn from(registers: &'reg mut [Word; VM_REGISTER_COUNT]) -> Self {
+impl<'reg> From<&'reg mut Registers> for PrepareCallRegisters<'reg> {
+    fn from(registers: &'reg mut Registers) -> Self {
         let (r, w) = split_registers(registers);
         let (r, u) = r.into();
         Self {

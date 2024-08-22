@@ -67,6 +67,7 @@ mod memory;
 mod metadata;
 mod post_execution;
 mod receipts;
+mod register;
 
 mod debug;
 mod ecal;
@@ -86,6 +87,7 @@ pub use memory::{
     MemoryInstance,
     MemoryRange,
 };
+pub use register::Registers;
 
 use crate::checked_transaction::{
     CreateCheckedMetadata,
@@ -118,7 +120,7 @@ pub struct NotSupportedEcal;
 /// or a client implementation.
 #[derive(Debug, Clone)]
 pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
-    registers: [Word; VM_REGISTER_COUNT],
+    registers: Registers,
     memory: M,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
@@ -225,12 +227,12 @@ impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     /// Returns the current state of the registers
-    pub const fn registers(&self) -> &[Word] {
+    pub const fn registers(&self) -> &Registers {
         &self.registers
     }
 
     /// Returns mutable access to the registers
-    pub fn registers_mut(&mut self) -> &mut [Word] {
+    pub fn registers_mut(&mut self) -> &mut Registers {
         &mut self.registers
     }
 

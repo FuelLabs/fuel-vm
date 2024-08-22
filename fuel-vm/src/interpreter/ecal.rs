@@ -2,6 +2,7 @@
 
 use fuel_asm::{
     PanicReason,
+    RegAnyAccess,
     RegId,
 };
 
@@ -79,12 +80,12 @@ where
     /// Executes ECAL opcode handler function and increments PC
     pub(crate) fn external_call(
         &mut self,
-        a: RegId,
-        b: RegId,
-        c: RegId,
-        d: RegId,
+        a: RegAnyAccess,
+        b: RegAnyAccess,
+        c: RegAnyAccess,
+        d: RegAnyAccess,
     ) -> SimpleResult<()> {
-        Ecal::ecal(self, a, b, c, d)?;
+        Ecal::ecal(self, a.0, b.0, c.0, d.0)?;
         let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
         if Ecal::INC_PC {
             Ok(inc_pc(pc)?)

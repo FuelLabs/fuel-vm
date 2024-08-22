@@ -9,7 +9,7 @@ use super::*;
 
 #[test]
 fn test_return() {
-    let mut frame_reg: [Word; VM_REGISTER_COUNT] = core::array::from_fn(|i| i as Word);
+    let mut frame_reg = Registers(core::array::from_fn(|i| i as Word));
     frame_reg[RegId::CGAS] = 100;
     let mut expected = frame_reg;
     let frame = CallFrame::new(
@@ -22,7 +22,7 @@ fn test_return() {
     )
     .unwrap();
     let mut frames = vec![frame];
-    let mut registers = [0; VM_REGISTER_COUNT];
+    let mut registers = Registers::ALL_ZERO;
     registers[RegId::CGAS] = 99;
     registers[RegId::GGAS] = 100;
     registers[RegId::RET] = 101;
@@ -146,7 +146,7 @@ fn test_return() {
 
 fn input<'a>(
     frames: &'a mut Vec<CallFrame>,
-    registers: &'a mut [Word; VM_REGISTER_COUNT],
+    registers: &'a mut Registers,
     receipts: &'a mut ReceiptsCtx,
     memory: &'a mut MemoryInstance,
     context: &'a mut Context,

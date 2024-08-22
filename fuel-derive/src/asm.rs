@@ -443,11 +443,30 @@ fn make_constructors(instructions: &InstructionList) -> TokenStream {
                     .map(|InstructionArgument { name, .. }| quote! { #name, })
                     .collect();
 
+                let typescript_arguments: TokenStream = args
+                    .iter()
+                    .map(|arg| {
+                        let name = &arg.name;
+                        let inttype = arg.typeinfo().smallest_containing_integer_type();
+                        quote! { #name: #inttype, }
+                    })
+                    .collect();
+
                 quote! {
                     #[doc = #description]
                     pub fn #opcode_fn_name(#flexible_arguments) -> Instruction {
                         #opcode_name::new(#check_flexible_arguments).into()
                     }
+
+                    #[cfg(feature = "typescript")]
+                    const _: () = {
+                        use super::*;
+                        #[wasm_bindgen::prelude::wasm_bindgen]
+                        #[doc = #description]
+                        pub fn #opcode_fn_name(#typescript_arguments) -> typescript::Instruction {
+                            crate::op::#opcode_fn_name(#pass_arguments).into()
+                        }
+                    };
 
                     impl #opcode_name {
                         #[doc = "Construct the instruction from its parts."]

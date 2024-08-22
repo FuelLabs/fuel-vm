@@ -110,7 +110,7 @@ impl CheckRegId for u8 {
 // Defines the `Instruction` and `Opcode` types, along with an `op` module declaring a
 // unique type for each opcode's instruction variant. For a detailed explanation of how
 // this works, see the `fuel_asm::macros` module level documentation.
-fuel_derive::impl_instructions! {
+fuel_asm_derive::impl_instructions! {
     "Adds two registers."
     0x10 ADD add [dst: RegId lhs: RegId rhs: RegId]
     "Bitwise ANDs two registers."

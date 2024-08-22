@@ -558,7 +558,7 @@ fn make_opcode_try_from(instructions: &InstructionList) -> TokenStream {
         )
         .collect();
     quote! {
-        impl std::convert::TryFrom<u8> for Opcode {
+        impl core::convert::TryFrom<u8> for Opcode {
             type Error = InvalidOpcode;
 
             fn try_from(value: u8) -> Result<Self, Self::Error> {
@@ -717,7 +717,7 @@ fn make_instruction_try_from_bytes(instructions: &InstructionList) -> TokenStrea
         })
         .collect();
     quote! {
-        impl std::convert::TryFrom<[u8; 4]> for Instruction {
+        impl core::convert::TryFrom<[u8; 4]> for Instruction {
             type Error = InvalidOpcode;
 
             fn try_from([op, a, b, c]: [u8; 4]) -> Result<Self, Self::Error> {
@@ -741,7 +741,7 @@ fn make_bytes_from_instruction(instructions: &InstructionList) -> TokenStream {
         })
         .collect();
     quote! {
-        impl std::convert::From<Instruction> for [u8; 4] {
+        impl core::convert::From<Instruction> for [u8; 4] {
             fn from(instruction: Instruction) -> [u8; 4] {
                 match instruction {
                     #arms

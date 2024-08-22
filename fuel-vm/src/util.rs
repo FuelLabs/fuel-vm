@@ -65,11 +65,14 @@ macro_rules! script_with_data_offset {
                     fuel_types::bytes::padded_len,
                     prelude::Immediate18,
                 };
-                ($tx_offset
+                let value: Immediate18 = $tx_offset
                     .saturating_add(Script::script_offset_static())
                     .saturating_add(
                         padded_len(script_bytes.as_slice()).unwrap_or(usize::MAX),
-                    ) as Immediate18)
+                    )
+                    .try_into()
+                    .expect("script data offset is too large");
+                value
             }
         };
         // re-evaluate and return the finalized script with the correct data offset length
@@ -433,11 +436,7 @@ pub mod test_helpers {
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
         ) -> CreatedContract {
-            let storage_slots = if let Some(slots) = initial_state {
-                slots
-            } else {
-                Default::default()
-            };
+            let storage_slots = initial_state.unwrap_or_default();
 
             let salt: Salt = self.rng.gen();
             let program: Witness = contract

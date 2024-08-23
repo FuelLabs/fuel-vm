@@ -41,8 +41,8 @@ fn validate_all_opcodes() {
                 for has_imm in [false, true] {
                     // Construct the instruction
                     let mut raw: RawInstruction = (op as u32) << 24u32;
-                    for i in 0..regs_in_use {
-                        raw |= mask_pattern & (0b11_1111) << arg_offsets[i];
+                    for offset in arg_offsets.iter().take(regs_in_use) {
+                        raw |= (mask_pattern & 0b11_1111) << offset;
                     }
 
                     if has_imm {

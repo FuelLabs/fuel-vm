@@ -22,8 +22,8 @@ wasm-bindgen = { version = "0.2.88", optional = true }
 [dev-dependencies]
 bincode = { workspace = true }
 fuel-asm = { path = ".", features = ["serde"] }
-rstest = "0.16"
 proptest = "1.5"
+rstest = "0.16"
 
 [features]
 default = ["std"]

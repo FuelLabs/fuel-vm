@@ -14,11 +14,11 @@ description = "FuelVM asm instruction helper macros."
 proc-macro = true
 
 [dependencies]
+itertools = "0.13"
+proc-macro2 = "1"
 quote = "1"
 syn = { version = "2", features = ["full"] }
-proc-macro2 = "1"
 synstructure = "0.13"
-itertools = "0.13"
 
 [dev-dependencies]
 fuel-asm = { workspace = true }

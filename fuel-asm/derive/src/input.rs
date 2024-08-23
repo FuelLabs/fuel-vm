@@ -161,10 +161,12 @@ impl Parse for InstructionArguments {
 }
 
 impl InstructionArguments {
+    /// Returns true if the instruction has an immediate argument
     pub fn has_imm(&self) -> bool {
         self.0.last().map(|arg| arg.is_imm()).unwrap_or(false)
     }
 
+    /// Returns the number (unused) reserved bits at the end of the instruction
     #[allow(clippy::arithmetic_side_effects)] // Checked in opcode construction
     pub fn reserved_bits(&self) -> usize {
         if self.has_imm() {
@@ -174,6 +176,7 @@ impl InstructionArguments {
         }
     }
 
+    /// Returns true if the instruction has no arguments
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -212,6 +215,7 @@ impl InstructionArguments {
         self.0.iter().map(f)
     }
 
+    /// Shortcut for `map` that collects the results into a `TokenStream`
     pub fn map_to_tokens<F: FnMut(&InstructionArgument) -> TokenStream>(
         &self,
         f: F,

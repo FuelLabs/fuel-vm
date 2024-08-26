@@ -1,0 +1,24 @@
+[package]
+name = "fuel-asm-derive"
+version = { workspace = true }
+authors = { workspace = true }
+categories = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
+license = { workspace = true }
+repository = { workspace = true }
+description = "FuelVM asm instruction helper macros."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+itertools = "0.13"
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+synstructure = "0.13"
+
+[dev-dependencies]
+fuel-asm = { workspace = true }

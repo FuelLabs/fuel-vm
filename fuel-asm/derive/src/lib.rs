@@ -217,7 +217,7 @@ pub fn impl_instructions(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 
     let op_structs = codegen::op_structs(&instructions);
     let op_debug_impl = codegen::op_debug_impl(&instructions);
-    let from_op = codegen::from_op(&instructions);
+    let op_conversions = codegen::op_conversions(&instructions);
     let op_constructor_shorthand = codegen::op_constructor_shorthand(&instructions);
     let op_fn_new = codegen::op_fn_new(&instructions);
     let op_constructors_typescript = codegen::op_constructors_typescript(&instructions);
@@ -241,7 +241,7 @@ pub fn impl_instructions(input: proc_macro::TokenStream) -> proc_macro::TokenStr
             use super::*;
             #op_structs
             #op_debug_impl
-            #from_op
+            #op_conversions
             #op_constructor_shorthand
             #op_fn_new
             #op_constructors_typescript

@@ -338,7 +338,7 @@ pub fn opcode_try_from(instructions: &InstructionList) -> TokenStream {
     }
 }
 
-pub fn from_op(instructions: &InstructionList) -> TokenStream {
+pub fn op_conversions(instructions: &InstructionList) -> TokenStream {
     instructions.map_to_tokens(|Instruction { opcode_name, .. }| {
         quote! {
             impl From<#opcode_name> for [u8; 3] {

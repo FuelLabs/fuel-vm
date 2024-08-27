@@ -30,6 +30,7 @@ pub use fuel_asm::{
 pub use fuel_types::{
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     Bytes4,
     Bytes64,
@@ -83,6 +84,10 @@ pub use transaction::{
     output::Output,
     output::OutputRepr,
     policies,
+    Blob,
+    BlobBody,
+    BlobIdExt,
+    BlobMetadata,
     Cacheable,
     Chargeable,
     ChargeableMetadata,

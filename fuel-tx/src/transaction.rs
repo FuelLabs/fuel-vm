@@ -24,6 +24,7 @@ use fuel_types::{
     },
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     Nonce,
     Salt,
@@ -101,6 +102,7 @@ pub enum Transaction {
     Mint(Mint),
     Upgrade(Upgrade),
     Upload(Upload),
+    Blob(Blob),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -288,6 +290,45 @@ impl Transaction {
         }
     }
 
+    pub fn blob(
+        body: BlobBody,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        witnesses: Vec<Witness>,
+    ) -> Blob {
+        Blob {
+            body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
+    }
+
+    pub fn blob_from_bytes(
+        bytes: Vec<u8>,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        mut witnesses: Vec<Witness>,
+    ) -> Blob {
+        let body = BlobBody {
+            id: BlobId::compute(&bytes),
+            witness_index: u16::try_from(witnesses.len()).unwrap_or(u16::MAX),
+        };
+        witnesses.push(bytes.into());
+        Blob {
+            body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
+    }
+
     /// Convert the type into a JSON string
     ///
     /// This is implemented as infallible because serde_json will fail only if the type
@@ -333,6 +374,10 @@ impl Transaction {
 
     pub const fn is_upload(&self) -> bool {
         matches!(self, Self::Upload { .. })
+    }
+
+    pub const fn is_blob(&self) -> bool {
+        matches!(self, Self::Blob { .. })
     }
 
     pub const fn as_script(&self) -> Option<&Script> {
@@ -401,6 +446,20 @@ impl Transaction {
     pub fn as_upload_mut(&mut self) -> Option<&mut Upload> {
         match self {
             Self::Upload(tx) => Some(tx),
+            _ => None,
+        }
+    }
+
+    pub const fn as_blob(&self) -> Option<&Blob> {
+        match self {
+            Self::Blob(tx) => Some(tx),
+            _ => None,
+        }
+    }
+
+    pub fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        match self {
+            Self::Blob(tx) => Some(tx),
             _ => None,
         }
     }
@@ -564,6 +623,12 @@ impl From<Upload> for Transaction {
     }
 }
 
+impl From<Blob> for Transaction {
+    fn from(tx: Blob) -> Self {
+        Self::Blob(tx)
+    }
+}
+
 impl Serialize for Transaction {
     fn size_static(&self) -> usize {
         match self {
@@ -572,6 +637,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.size_static(),
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
+            Self::Blob(tx) => tx.size_static(),
         }
     }
 
@@ -582,6 +648,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.size_dynamic(),
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
+            Self::Blob(tx) => tx.size_dynamic(),
         }
     }
 
@@ -595,6 +662,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.encode_static(buffer),
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
+            Self::Blob(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -608,6 +676,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.encode_dynamic(buffer),
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
+            Self::Blob(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -638,6 +707,9 @@ impl Deserialize for Transaction {
             TransactionRepr::Upload => {
                 Ok(<Upload as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::Blob => {
+                Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
+            }
         }
     }
 
@@ -651,6 +723,7 @@ impl Deserialize for Transaction {
             Self::Mint(tx) => tx.decode_dynamic(buffer),
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
+            Self::Blob(tx) => tx.decode_dynamic(buffer),
         }
     }
 }
@@ -953,6 +1026,16 @@ pub mod field {
         }
 
         fn bytecode_root_offset_static() -> usize;
+    }
+
+    pub trait BlobId {
+        fn blob_id(&self) -> &fuel_types::BlobId;
+        fn blob_id_mut(&mut self) -> &mut fuel_types::BlobId;
+        fn blob_id_offset(&self) -> usize {
+            Self::blob_id_offset_static()
+        }
+
+        fn blob_id_offset_static() -> usize;
     }
 
     pub trait SubsectionIndex {

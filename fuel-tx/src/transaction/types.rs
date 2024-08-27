@@ -1,3 +1,4 @@
+mod blob;
 mod chargeable_transaction;
 mod create;
 pub mod input;
@@ -10,6 +11,12 @@ mod upload;
 mod utxo_id;
 mod witness;
 
+pub use blob::{
+    Blob,
+    BlobBody,
+    BlobIdExt,
+    BlobMetadata,
+};
 pub use chargeable_transaction::{
     ChargeableMetadata,
     ChargeableTransaction,

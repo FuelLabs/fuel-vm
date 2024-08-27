@@ -154,6 +154,14 @@ impl<'a, T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type>
 }
 
 impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable>
+    MerkleRootStorage<Key, Type> for &'a T
+{
+    fn root(&self, key: &Key) -> Result<MerkleRoot, Self::Error> {
+        <T as MerkleRootStorage<Key, Type>>::root(self, key)
+    }
+}
+
+impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable>
     MerkleRootStorage<Key, Type> for &'a mut T
 {
     fn root(&self, key: &Key) -> Result<MerkleRoot, Self::Error> {

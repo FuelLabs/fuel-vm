@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): Add DA compression functionality to `Transaction` and any types within
 
+## [Version 0.56.0]
+
+### Added
+- [#796](https://github.com/FuelLabs/fuel-vm/pull/796): Added implementation of the `MerkleRootStorage` for references.
+
+### Changed
+- [#806](https://github.com/FuelLabs/fuel-vm/pull/806): Update MSRV to 1.79.0.
+
+#### Breaking
+- [#780](https://github.com/FuelLabs/fuel-vm/pull/780): Added `Blob` transaction, and `BSIZ` and `BLDD` instructions. Also allows `LDC` to load blobs.
+- [#795](https://github.com/FuelLabs/fuel-vm/pull/795): Fixed `ed19` instruction to take variable length message instead of a fixed-length one. Changed the gas cost to be `DependentCost`.
+
 ## [Version 0.55.0]
 
 ### Added

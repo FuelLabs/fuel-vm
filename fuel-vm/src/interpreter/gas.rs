@@ -54,6 +54,24 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         dependent_gas_charge(cgas, ggas, profiler, gas_cost, arg)
     }
 
+    pub(crate) fn dependent_gas_charge_without_base(
+        &mut self,
+        gas_cost: DependentCost,
+        arg: Word,
+    ) -> SimpleResult<()> {
+        let current_contract = self.contract_id();
+        let SystemRegisters {
+            pc, ggas, cgas, is, ..
+        } = split_registers(&mut self.registers).0;
+        let profiler = ProfileGas {
+            pc: pc.as_ref(),
+            is: is.as_ref(),
+            current_contract,
+            profiler: &mut self.profiler,
+        };
+        dependent_gas_charge_without_base(cgas, ggas, profiler, gas_cost, arg)
+    }
+
     /// Do a gas charge with the given amount, panicing when running out of gas.
     pub fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
         let current_contract = self.contract_id();

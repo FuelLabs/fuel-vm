@@ -46,6 +46,9 @@ mod use_std {
     };
     use crate::{
         field,
+        Blob,
+        BlobBody,
+        BlobIdExt,
         Buildable,
         ConsensusParameters,
         Contract,
@@ -68,7 +71,10 @@ mod use_std {
         Hasher,
         SecretKey,
     };
-    use fuel_types::canonical::Deserialize;
+    use fuel_types::{
+        canonical::Deserialize,
+        BlobId,
+    };
     use rand::{
         distributions::{
             Distribution,
@@ -134,6 +140,7 @@ mod use_std {
                         Transaction::Mint(_) => (),
                         Transaction::Upgrade(_) => (),
                         Transaction::Upload(_) => (),
+                        Transaction::Blob(_) => (),
                     })
                     .unwrap_or(());
 
@@ -443,6 +450,32 @@ mod use_std {
         }
     }
 
+    impl<R> TransactionFactory<R, Blob>
+    where
+        R: Rng + CryptoRng,
+    {
+        pub fn transaction(&mut self) -> Blob {
+            self.transaction_with_keys().0
+        }
+
+        pub fn transaction_with_keys(&mut self) -> (Blob, Vec<SecretKey>) {
+            let len = self.rng.gen_range(1..1024 * 1024);
+
+            let mut bytecode = alloc::vec![0u8; len];
+            self.rng.fill_bytes(bytecode.as_mut_slice());
+
+            let mut builder = TransactionBuilder::<Blob>::blob(BlobBody {
+                id: BlobId::compute(&bytecode),
+                witness_index: 0,
+            });
+            debug_assert_eq!(builder.witnesses().len(), 0);
+            builder.add_witness(bytecode.into());
+
+            let keys = self.fill_transaction(&mut builder);
+            (builder.finalize(), keys)
+        }
+    }
+
     impl<R> TransactionFactory<R, Mint>
     where
         R: Rng + CryptoRng,
@@ -502,6 +535,17 @@ mod use_std {
         type Item = (Upload, Vec<SecretKey>);
 
         fn next(&mut self) -> Option<(Upload, Vec<SecretKey>)> {
+            Some(self.transaction_with_keys())
+        }
+    }
+
+    impl<R> Iterator for TransactionFactory<R, Blob>
+    where
+        R: Rng + CryptoRng,
+    {
+        type Item = (Blob, Vec<SecretKey>);
+
+        fn next(&mut self) -> Option<(Blob, Vec<SecretKey>)> {
             Some(self.transaction_with_keys())
         }
     }

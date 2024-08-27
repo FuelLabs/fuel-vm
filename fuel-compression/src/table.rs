@@ -85,7 +85,7 @@ macro_rules! tables {
         /// The context is used to aggreage changes to the registry.
         /// A new context should be created for each compaction "session",
         /// typically a blockchain block.
-        #[allow(non_snake_case)] // The field names match table type names eactly
+        #[allow(non_snake_case)] // The `to_key_*` names match table type names eactly
         pub trait CompactionContext {
             $(
                 /// Store a value to the changeset and return a short reference key to it.
@@ -93,15 +93,21 @@ macro_rules! tables {
                 /// the existing key can be returned instead.
                 fn [<to_key_  $name>](&mut self, value: $ty) -> anyhow::Result<Key<tables::$name>>;
             )*
+
+            /// Convert transaction id to a transaction pointer.
+            fn to_tx_pointer(&mut self, tx_id: [u8; 32]) -> anyhow::Result<[u8; 6]>;
         }
 
         /// Context for compaction, i.e. converting data to reference-based format
-        #[allow(non_snake_case)] // The field names match table type names eactly
+        #[allow(non_snake_case)] // The `to_key_*` names match table type names eactly
         pub trait DecompactionContext {
             $(
                 /// Read a value from the registry based on the key.
                 fn [<read_  $name>](&self, key: Key<tables::$name>) -> anyhow::Result<<tables::$name as Table>::Type>;
             )*
+
+            /// Lookup transaction id to a transaction pointer.
+            fn lookup_tx_pointer(&self, tx_pointer: [u8; 6]) -> anyhow::Result<[u8; 32]>;
         }
 
         /// One counter per table

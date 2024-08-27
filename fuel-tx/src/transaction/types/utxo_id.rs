@@ -24,6 +24,7 @@ use rand::{
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct UtxoId {
     /// transaction id
+    #[cfg_attr(feature = "da-compression", da_compress(txpointer))]
     tx_id: TxId,
     /// output index
     output_index: u16,

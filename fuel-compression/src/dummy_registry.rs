@@ -77,7 +77,7 @@ impl Changes {
     }
 }
 
-/// Compaction session for
+/// Compaction session for testing
 pub struct DummyCompactionCtx<'a> {
     /// The registry
     reg: &'a DummyRegistry,
@@ -163,6 +163,10 @@ impl<'a> CompactionContext for DummyCompactionCtx<'a> {
     fn to_key_Witness(&mut self, value: Vec<u8>) -> anyhow::Result<Key<tables::Witness>> {
         self.value_to_key(value)
     }
+
+    fn to_tx_pointer(&mut self, _tx_id: [u8; 32]) -> anyhow::Result<[u8; 6]> {
+        todo!("TxPointer references not supported by DummyRegistry");
+    }
 }
 
 impl DecompactionContext for DummyRegistry {
@@ -199,5 +203,9 @@ impl DecompactionContext for DummyRegistry {
         key: Key<tables::Witness>,
     ) -> anyhow::Result<<tables::Witness as Table>::Type> {
         self.resolve_key(key)
+    }
+
+    fn lookup_tx_pointer(&self, _tx_pointer: [u8; 6]) -> anyhow::Result<[u8; 32]> {
+        todo!("TxPointer references not supported by DummyRegistry");
     }
 }

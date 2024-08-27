@@ -97,6 +97,8 @@ pub enum FieldAttrs {
     Skip,
     /// Compacted recursively.
     Normal,
+    /// This value is compacted into a TxPointer
+    ToTxPointer,
     /// This value is compacted into a registry lookup.
     Registry(syn::Path),
 }
@@ -119,6 +121,9 @@ impl FieldAttrs {
                     if let Ok(ident) = syn::parse2::<syn::Ident>(ml.tokens.clone()) {
                         if ident == "skip" {
                             result = Self::Skip;
+                            continue;
+                        } else if ident == "txpointer" {
+                            result = Self::ToTxPointer;
                             continue;
                         }
                     } else if let Ok(kv) =
@@ -146,29 +151,27 @@ fn field_defs(fields: &syn::Fields) -> TokenStream2 {
 
     for field in fields {
         let attrs = FieldAttrs::parse(&field.attrs);
-        defs.extend(match &attrs {
-            FieldAttrs::Skip => quote! {},
+        let field_content = match &attrs {
+            FieldAttrs::Skip => continue,
             FieldAttrs::Normal => {
                 let ty = &field.ty;
-                let cty = quote! {
+                quote! {
                     <#ty as ::fuel_compression::Compactable>::Compact
-                };
-                if let Some(fname) = field.ident.as_ref() {
-                    quote! { #fname: #cty, }
-                } else {
-                    quote! { #cty, }
                 }
+            }
+            FieldAttrs::ToTxPointer => {
+                quote! { [u8; 6] }
             }
             FieldAttrs::Registry(registry) => {
-                let cty = quote! {
+                quote! {
                     ::fuel_compression::Key<#registry>
-                };
-                if let Some(fname) = field.ident.as_ref() {
-                    quote! { #fname: #cty, }
-                } else {
-                    quote! { #cty, }
                 }
             }
+        };
+        defs.extend(if let Some(fname) = field.ident.as_ref() {
+            quote! { #fname: #field_content, }
+        } else {
+            quote! { #field_content, }
         });
     }
 
@@ -198,6 +201,11 @@ fn construct_compact(
                 FieldAttrs::Normal => {
                     quote! {
                         let #cname = <#ty as Compactable>::compact(&#binding, ctx)?;
+                    }
+                }
+                FieldAttrs::ToTxPointer => {
+                    quote! {
+                        let #cname = ctx.to_tx_pointer(**#binding)?;
                     }
                 }
                 FieldAttrs::Registry(registry) => {
@@ -268,6 +276,11 @@ fn construct_decompact(
                         let #cname = <#ty as Compactable>::decompact(#binding, ctx)?;
                     }
                 }
+                FieldAttrs::ToTxPointer => {
+                    quote! {
+                        let #cname = ctx.lookup_tx_pointer(#binding)?.into();
+                    }
+                }
                 FieldAttrs::Registry(registry) => {
                     quote! {
                         let raw: <#registry as Table>::Type = #registry::read(
@@ -316,7 +329,9 @@ fn sum_counts(variant: &synstructure::VariantInfo<'_>) -> TokenStream2 {
             let ty = &binding.ast().ty;
 
             match attrs {
-                FieldAttrs::Skip => quote! { CountPerTable::default() },
+                FieldAttrs::Skip | FieldAttrs::ToTxPointer => {
+                    quote! { CountPerTable::default() }
+                }
                 FieldAttrs::Normal => {
                     quote! { <#ty as Compactable>::count(&#binding) }
                 }

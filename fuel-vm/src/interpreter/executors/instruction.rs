@@ -281,6 +281,24 @@ where
                 let (a, b, c, d) = wqmm.unpack();
                 self.alu_wideint_mulmod_u256(r!(a), r!(b), r!(c), r!(d))?;
             }
+            Instruction::WDEX(wdex) => {
+                let (a, b, c, imm) = wdex.unpack();
+                let args = wideint::ExpArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
+                // Gas charge done in the inner function, as it's dependent on a loaded
+                // value
+                let gas_cost = self.gas_costs().wdex().map_err(PanicReason::from)?;
+                self.alu_wideint_exp_u128(gas_cost, r!(a), r!(b), r!(c), args)?;
+            }
+            Instruction::WQEX(wqex) => {
+                let (a, b, c, imm) = wqex.unpack();
+                let args = wideint::ExpArgs::from_imm(imm)
+                    .ok_or(PanicReason::InvalidImmediateValue)?;
+                // Gas charge done in the inner function, as it's dependent on a loaded
+                // value
+                let gas_cost = self.gas_costs().wdex().map_err(PanicReason::from)?;
+                self.alu_wideint_exp_u256(gas_cost, r!(a), r!(b), r!(c), args)?;
+            }
 
             Instruction::MLOG(mlog) => {
                 self.gas_charge(self.gas_costs().mlog())?;

@@ -337,6 +337,10 @@ impl_instructions! {
     0xac WDMM wdmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
     "MulMod 256bit"
     0xad WQMM wqmm [dst: RegId mul_lhs: RegId mul_rhs: RegId modulo: RegId]
+    "Exponentiate 128bit"
+    0xae WDEX wdex [dst: RegId base: RegId exp: RegId flags: Imm06]
+    "Exponentiate 256bit"
+    0xaf WQEX wqex [dst: RegId base: RegId exp: RegId flags: Imm06]
 
     "Call external function"
     0xb0 ECAL ecal [a: RegId b: RegId c: RegId d: RegId]
@@ -696,12 +700,12 @@ impl Opcode {
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
             | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP | WDML
-            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | PSHH
-            | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19
-            | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
-            | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
-            | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
-            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
+            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | WDEX
+            | WQEX | PSHH | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1
+            | ECR1 | ED19 | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI
+            | MODI | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW
+            | SB | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB
+            | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
             _ => false,
         }
     }

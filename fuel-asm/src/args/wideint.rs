@@ -140,6 +140,40 @@ impl MulArgs {
     }
 }
 
+/// Additional arguments for WDEX and WQEX instructions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+#[must_use]
+pub struct ExpArgs {
+    /// Load LHSS from register if true, otherwise zero-extend register value
+    pub indirect_lhs: bool,
+    /// Load RHS from register if true, otherwise zero-extend register value
+    pub indirect_rhs: bool,
+}
+
+impl ExpArgs {
+    /// Convert to immediate value.
+    pub fn to_imm(self) -> Imm06 {
+        let mut bits = 0u8;
+        bits |= (self.indirect_lhs as u8) << 4;
+        bits |= (self.indirect_rhs as u8) << 5;
+        Imm06(bits)
+    }
+
+    /// Construct from `Imm06`. Returns `None` if the value has reserved flags set.
+    pub fn from_imm(bits: Imm06) -> Option<Self> {
+        let indirect_lhs = ((bits.0 >> 4) & 1) == 1;
+        let indirect_rhs = ((bits.0 >> 5) & 1) == 1;
+        if (bits.0 & 0b1111) != 0 {
+            return None;
+        }
+        Some(Self {
+            indirect_lhs,
+            indirect_rhs,
+        })
+    }
+}
+
 /// Additional arguments for WMDV and WDDV instructions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
@@ -229,6 +263,29 @@ mod tests {
         for imm in 0..Imm06::MAX.0 {
             let bits = Imm06::from(imm);
             if let Some(decoded) = MulArgs::from_imm(bits) {
+                assert_eq!(decoded.to_imm().0, imm);
+            }
+        }
+    }
+
+    #[rstest::rstest]
+    fn encode_decode_exp(
+        #[values(true, false)] indirect_lhs: bool,
+        #[values(true, false)] indirect_rhs: bool,
+    ) {
+        let orig = ExpArgs {
+            indirect_lhs,
+            indirect_rhs,
+        };
+        let decoded = ExpArgs::from_imm(orig.to_imm()).expect("decode error");
+        assert_eq!(orig, decoded);
+    }
+
+    #[test]
+    fn decode_encode_exp() {
+        for imm in 0..Imm06::MAX.0 {
+            let bits = Imm06::from(imm);
+            if let Some(decoded) = ExpArgs::from_imm(bits) {
                 assert_eq!(decoded.to_imm().0, imm);
             }
         }

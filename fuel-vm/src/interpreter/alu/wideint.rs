@@ -165,6 +165,54 @@ macro_rules! wideint_ops {
                     Ok(inc_pc(pc)?)
                 }
 
+                pub(crate) fn [<alu_wideint_exp_ $t:lower>](
+                    &mut self,
+                    gas_cost: fuel_tx::DependentCost,
+                    dest_addr: Word,
+                    b: Word,
+                    c: Word,
+                    args: ExpArgs,
+                ) -> SimpleResult<()> {
+                    // LHS is only indirect if the flag is set
+                    let lhs: $t = if args.indirect_lhs {
+                        $t::from_be_bytes(self.memory.as_ref().read_bytes(b)?)
+                    } else {
+                        b.into()
+                    };
+                    // RHS is only indirect if the flag is set
+                    let rhs: $t = if args.indirect_rhs {
+                        $t::from_be_bytes(self.memory.as_ref().read_bytes(c)?)
+                    } else {
+                        c.into()
+                    };
+
+                    // Handle exponents >u32::MAX separately
+                    let (wrapped, overflow) = if let Ok(rhs) = u32::try_from(rhs) {
+                        self.dependent_gas_charge(gas_cost, rhs as Word)?;
+                        $t::overflowing_pow(lhs, rhs)
+                    } else if lhs < 2 {
+                        self.dependent_gas_charge(gas_cost, 0)?;
+                        (lhs, false)
+                    } else {
+                        self.dependent_gas_charge(gas_cost, 0)?;
+                        ($t::MIN, true)
+                    };
+
+                    let owner_regs = self.ownership_registers();
+                    let (SystemRegisters { flag, mut of, mut err, pc, .. }, _) = split_registers(&mut self.registers);
+
+                    if overflow && !is_wrapping(flag.into()) {
+                        return Err(PanicReason::ArithmeticOverflow.into());
+                    }
+
+                    *of = overflow as Word;
+                    *err = 0;
+
+                    self.memory.as_mut().write_bytes(owner_regs, dest_addr, wrapped.to_be_bytes())?;
+
+                    Ok(inc_pc(pc)?)
+                }
+
                 pub(crate) fn [<alu_wideint_div_ $t:lower>](
                     &mut self,
                     dest_addr: Word,

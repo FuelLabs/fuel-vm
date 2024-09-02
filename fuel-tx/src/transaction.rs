@@ -94,7 +94,7 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[allow(clippy::large_enum_variant)]
 pub enum Transaction {
     Script(Script),

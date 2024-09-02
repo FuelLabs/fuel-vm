@@ -32,7 +32,7 @@ synstructure::decl_derive!(
     serialize_derive
 );
 synstructure::decl_derive!(
-    [Compact, attributes(da_compress)] =>
-    /// Derives `Compact` trait for the given `struct` or `enum`.
+    [Compressed, attributes(da_compress)] =>
+    /// Derives `Compressed` trait for the given `struct` or `enum`.
     compact_derive
 );

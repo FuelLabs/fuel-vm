@@ -1,12 +1,7 @@
-use core::fmt;
-use std::marker::PhantomData;
-
 use serde::{
     Deserialize,
     Serialize,
 };
-
-use super::Table;
 
 /// Untyped key pointing to a registry table entry.
 /// The last key (all bits set) is reserved for the default value and cannot be written
@@ -87,85 +82,6 @@ impl TryFrom<u32> for RawKey {
         let mut bytes = [0u8; 3];
         bytes.copy_from_slice(&v[1..]);
         Ok(Self(bytes))
-    }
-}
-
-/// Typed key to a registry table entry.
-/// The last key (all bits set) is reserved for the default value and cannot be written
-/// to.
-#[allow(clippy::derived_hash_with_manual_eq)] // PhantomData requires this
-#[derive(Eq, Hash, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct Key<T: Table>(RawKey, PhantomData<T>);
-impl<T: Table> Clone for Key<T> {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-impl<T: Table> Copy for Key<T> {}
-
-impl<T: Table> PartialEq<Key<T>> for Key<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<T: Table> Key<T> {
-    /// This key is reserved for the default value and cannot be written to.
-    pub const DEFAULT_VALUE: Self = Self(RawKey::DEFAULT_VALUE, PhantomData);
-    /// This is the first writable key.
-    pub const ZERO: Self = Self(RawKey::ZERO, PhantomData);
-
-    /// Obtain untyped key.
-    pub fn raw(&self) -> RawKey {
-        self.0
-    }
-
-    /// Construct from untyped key.
-    pub fn from_raw(raw: RawKey) -> Self {
-        Self(raw, PhantomData)
-    }
-
-    /// Wraps around at limit, i.e. one below the max/default value
-    pub fn add_u32(self, rhs: u32) -> Self {
-        Self(self.0.add_u32(rhs), PhantomData)
-    }
-
-    /// Wraps around at limit, i.e. one below the max/default value
-    pub fn next(self) -> Self {
-        Self(self.0.next(), PhantomData)
-    }
-
-    /// Is `self` between `start` and `end`? i.e. in the half-open logical range
-    /// `start`..`end`, so that wrap-around cases are handled correctly.
-    pub fn is_between(self, start: Self, end: Self) -> bool {
-        self.0.is_between(start.0, end.0)
-    }
-
-    /// Increments the key by one, and returns the previous value.
-    /// Skips the max/default value.
-    pub fn take_next(&mut self) -> Self {
-        let result = *self;
-        self.0 = self.0.next();
-        result
-    }
-}
-
-impl<T: Table> TryFrom<u32> for Key<T> {
-    type Error = &'static str;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Ok(Self(RawKey::try_from(value)?, PhantomData))
-    }
-}
-
-impl<T: Table> fmt::Debug for Key<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if *self == Self::DEFAULT_VALUE {
-            write!(f, "Key<{}>::DEFAULT_VALUE", T::NAME)
-        } else {
-            write!(f, "Key<{}>({})", T::NAME, self.0.as_u32())
-        }
     }
 }
 

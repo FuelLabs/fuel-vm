@@ -48,14 +48,14 @@ pub struct ScriptMetadata {
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
     pub(crate) receipts_root: Bytes32,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::ScriptCode))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry))]
     pub(crate) script: Vec<u8>,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,

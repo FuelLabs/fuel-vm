@@ -8,26 +8,14 @@
 
 mod compaction;
 mod key;
-mod table;
 
-#[cfg(any(test, feature = "test-helpers"))]
-pub mod dummy_registry;
-
-pub use compaction::Compactable;
-pub use table::{
-    access,
-    tables,
-    CompactionContext,
-    CountPerTable,
-    DecompactionContext,
-    KeyPerTable,
-    Table,
-    TableName,
+pub use compaction::{
+    Compressible,
+    CompressibleBy,
+    CompressionContext,
+    DecompressibleBy,
+    DecompressionContext,
 };
+pub use key::RawKey;
 
-pub use key::{
-    Key,
-    RawKey,
-};
-
-pub use fuel_derive::Compact;
+pub use fuel_derive::Compressed;

@@ -95,15 +95,13 @@ impl StructureAttrs {
 pub enum FieldAttrs {
     /// Skipped when compacting, and must be reconstructed when decompacting.
     Skip,
-    /// Compacted recursively.
+    /// Compresseded recursively.
     Normal,
     /// This value is compacted into a registry lookup.
-    Registry(syn::Path),
+    Registry,
 }
 impl FieldAttrs {
     pub fn parse(attrs: &[syn::Attribute]) -> Self {
-        let registry_path = syn::parse2::<syn::Path>(quote! {registry}).unwrap();
-
         let mut result = Self::Normal;
         for attr in attrs {
             if attr.style != syn::AttrStyle::Outer {
@@ -120,15 +118,9 @@ impl FieldAttrs {
                         if ident == "skip" {
                             result = Self::Skip;
                             continue;
-                        }
-                    } else if let Ok(kv) =
-                        syn::parse2::<syn::MetaNameValue>(ml.tokens.clone())
-                    {
-                        if kv.path == registry_path {
-                            if let syn::Expr::Path(p) = kv.value {
-                                result = Self::Registry(p.path);
-                                continue;
-                            }
+                        } else if ident == "registry" {
+                            result = Self::Registry;
+                            continue;
                         }
                     }
                     panic!("Invalid attribute: {}", ml.tokens);
@@ -151,7 +143,7 @@ fn field_defs(fields: &syn::Fields) -> TokenStream2 {
             FieldAttrs::Normal => {
                 let ty = &field.ty;
                 let cty = quote! {
-                    <#ty as ::fuel_compression::Compactable>::Compact
+                    <#ty as ::fuel_compression::Compressible>::Compressed
                 };
                 if let Some(fname) = field.ident.as_ref() {
                     quote! { #fname: #cty, }
@@ -159,14 +151,11 @@ fn field_defs(fields: &syn::Fields) -> TokenStream2 {
                     quote! { #cty, }
                 }
             }
-            FieldAttrs::Registry(registry) => {
-                let cty = quote! {
-                    ::fuel_compression::Key<#registry>
-                };
+            FieldAttrs::Registry => {
                 if let Some(fname) = field.ident.as_ref() {
-                    quote! { #fname: #cty, }
+                    quote! { #fname: ::fuel_compression::RawKey, }
                 } else {
-                    quote! { #cty, }
+                    quote! { ::fuel_compression::RawKey, }
                 }
             }
         });
@@ -197,20 +186,12 @@ fn construct_compact(
                 FieldAttrs::Skip => quote! {},
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as Compactable>::compact(&#binding, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_>>::compress(&#binding, ctx)?;
                     }
                 }
-                FieldAttrs::Registry(registry) => {
-                    let cty = quote! {
-                        Key<
-                            #registry
-                        >
-                    };
+                FieldAttrs::Registry => {
                     quote! {
-                        let #cname: #cty = #registry::to_key(
-                            <#registry as Table>::Type::from(#binding.clone()),
-                            ctx,
-                        )?;
+                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_>>::compress(&#binding, ctx)?;
                     }
                 }
             }
@@ -265,16 +246,12 @@ fn construct_decompact(
                 },
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as Compactable>::decompact(#binding, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::DecompressibleBy<_>>::decompress(#binding, ctx)?;
                     }
                 }
-                FieldAttrs::Registry(registry) => {
+                FieldAttrs::Registry => {
                     quote! {
-                        let raw: <#registry as Table>::Type = #registry::read(
-                            #binding,
-                            ctx,
-                        )?;
-                        let #cname = raw.into();
+                        let #cname = <#ty as ::fuel_compression::DecompressibleBy<_>>::decompress(#binding, ctx)?;
                     }
                 }
             }
@@ -304,33 +281,6 @@ fn construct_decompact(
         #bound_fields
         #original #construct_fields
     }
-}
-
-// Sum of Compactable::count() of all fields.
-fn sum_counts(variant: &synstructure::VariantInfo<'_>) -> TokenStream2 {
-    variant
-        .bindings()
-        .iter()
-        .map(|binding| {
-            let attrs = FieldAttrs::parse(&binding.ast().attrs);
-            let ty = &binding.ast().ty;
-
-            match attrs {
-                FieldAttrs::Skip => quote! { CountPerTable::default() },
-                FieldAttrs::Normal => {
-                    quote! { <#ty as Compactable>::count(&#binding) }
-                }
-                FieldAttrs::Registry(registry) => {
-                    quote! {
-                        #registry::count(1)
-                    }
-                }
-            }
-        })
-        .fold(
-            quote! { CountPerTable::default() },
-            |acc, x| quote! { #acc + #x },
-        )
 }
 
 /// Generate a match arm for each variant of the compacted structure
@@ -364,7 +314,7 @@ fn each_variant_compact<F: FnMut(&synstructure::VariantInfo<'_>) -> TokenStream2
         .collect()
 }
 
-/// Derives `Compact` trait for the given `struct` or `enum`.
+/// Derives `Compressed` trait for the given `struct` or `enum`.
 pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::None)
         .underscore_const(true);
@@ -375,7 +325,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     };
 
     let name = &s.ast().ident;
-    let compact_name = format_ident!("Compact{}", name);
+    let compact_name = format_ident!("Compressed{}", name);
 
     let mut g = s.ast().generics.clone();
     let mut w_structure = g.where_clause.take();
@@ -395,13 +345,11 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
                 }
                 for p in bound {
                     let id = syn::Ident::new(p, Span::call_site());
-                    w_structure
-                        .as_mut()
-                        .unwrap()
-                        .predicates
-                        .push(syn::parse_quote! { #id: ::fuel_compression::Compactable });
+                    w_structure.as_mut().unwrap().predicates.push(
+                        syn::parse_quote! { #id: ::fuel_compression::Compressible },
+                    );
                     w_impl.as_mut().unwrap().predicates.push(
-                        syn::parse_quote! { for<'de>  #id: ::fuel_compression::Compactable + serde::Serialize + serde::Deserialize<'de> + Clone },
+                        syn::parse_quote! { for<'de>  #id: ::fuel_compression::Compressible + serde::Serialize + serde::Deserialize<'de> + Clone },
                     );
                 }
             }
@@ -420,6 +368,56 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
         }
     }
 
+    let mut w_impl_field_bounds_compress = w_impl.clone();
+    for variant in s.variants() {
+        for field in variant.ast().fields.iter() {
+            let ty = &field.ty;
+            let attrs = FieldAttrs::parse(&field.attrs);
+            if matches!(attrs, FieldAttrs::Skip) {
+                continue;
+            }
+
+            if w_impl_field_bounds_compress.is_none() {
+                w_impl_field_bounds_compress = Some(syn::WhereClause {
+                    where_token: syn::Token![where](proc_macro2::Span::call_site()),
+                    predicates: Default::default(),
+                });
+            }
+
+            w_impl_field_bounds_compress
+                .as_mut()
+                .unwrap()
+                .predicates
+                .push(syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx> });
+        }
+    }
+
+    let mut w_impl_field_bounds_decompress = w_impl.clone();
+    for variant in s.variants() {
+        for field in variant.ast().fields.iter() {
+            let ty = &field.ty;
+            let attrs = FieldAttrs::parse(&field.attrs);
+            if matches!(attrs, FieldAttrs::Skip) {
+                continue;
+            }
+
+            if w_impl_field_bounds_decompress.is_none() {
+                w_impl_field_bounds_decompress = Some(syn::WhereClause {
+                    where_token: syn::Token![where](proc_macro2::Span::call_site()),
+                    predicates: Default::default(),
+                });
+            }
+
+            w_impl_field_bounds_decompress
+                .as_mut()
+                .unwrap()
+                .predicates
+                .push(
+                    syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx> },
+                );
+        }
+    }
+
     let def = match &s.ast().data {
         syn::Data::Struct(v) => {
             let variant: &synstructure::VariantInfo = &s.variants()[0];
@@ -431,7 +429,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
             };
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-                #[doc = concat!("Compacted version of `", stringify!(#name), "`.")]
+                #[doc = concat!("Compresseded version of `", stringify!(#name), "`.")]
                 pub struct #compact_name #g #w_structure #defs #semi
             }
         }
@@ -450,14 +448,13 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
 
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-                #[doc = concat!("Compacted version of `", stringify!(#name), "`.")]
+                #[doc = concat!("Compresseded version of `", stringify!(#name), "`.")]
                 pub enum #compact_name #g #w_structure { #variant_defs }
             }
         }
         syn::Data::Union(_) => panic!("unions are not supported"),
     };
 
-    let count_per_variant = s.each_variant(sum_counts);
     let construct_per_variant = s.each_variant(|variant| {
         let vname = variant.ast().ident.clone();
         let construct = match &s.ast().data {
@@ -480,24 +477,18 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
         });
 
     let impls = s.gen_impl(quote! {
-        use ::fuel_compression::{
-            tables, Table, Key, Compactable, CountPerTable,
-            CompactionContext, DecompactionContext
-        };
+        gen impl ::fuel_compression::Compressible for @Self #w_impl {
+            type Compressed = #compact_name #g;
+        }
 
-        gen impl Compactable for @Self #w_impl {
-            type Compact = #compact_name #g;
-
-            fn count(&self) -> CountPerTable {
-                match self { #count_per_variant }
-            }
-
-            fn compact(&self, ctx: &mut dyn CompactionContext) -> anyhow::Result<Self::Compact> {
+        gen impl<Ctx> ::fuel_compression::CompressibleBy<Ctx> for @Self #w_impl_field_bounds_compress {
+            fn compress(&self, ctx: &mut Ctx) -> anyhow::Result<Self::Compressed> {
                 Ok(match self { #construct_per_variant })
             }
-
-            fn decompact(compact: Self::Compact, ctx: &dyn DecompactionContext) -> anyhow::Result<Self> {
-                Ok(match compact { #decompact_per_variant })
+        }
+        gen impl<Ctx> ::fuel_compression::DecompressibleBy<Ctx> for @Self #w_impl_field_bounds_decompress {
+            fn decompress(compressed: &Self::Compressed, ctx: &Ctx) -> anyhow::Result<Self> {
+                Ok(match compressed { #decompact_per_variant })
             }
         }
     });

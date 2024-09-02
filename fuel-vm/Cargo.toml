@@ -108,5 +108,4 @@ test-helpers = [
     "dep:anyhow",
     "tai64",
     "fuel-crypto/test-helpers",
-    "fuel-compression?/test-helpers",
 ]

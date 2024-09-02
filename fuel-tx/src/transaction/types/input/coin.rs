@@ -12,7 +12,7 @@ use crate::{
 use alloc::vec::Vec;
 use derivative::Derivative;
 #[cfg(feature = "da-compression")]
-use fuel_compression::Compactable;
+use fuel_compression::Compressible;
 use fuel_types::{
     Address,
     AssetId,
@@ -34,10 +34,10 @@ mod private {
 /// Specifies the coin based on the usage context. See [`Coin`].
 #[cfg(feature = "da-compression")]
 pub trait CoinSpecification: private::Seal {
-    type Witness: AsField<u16> + Compactable + Clone;
-    type Predicate: AsField<Vec<u8>> + Compactable + Clone;
-    type PredicateData: AsField<Vec<u8>> + Compactable + Clone;
-    type PredicateGasUsed: AsField<Word> + Compactable + Clone;
+    type Witness: AsField<u16> + Compressible + Clone;
+    type Predicate: AsField<Vec<u8>> + Compressible + Clone;
+    type PredicateData: AsField<Vec<u8>> + Compressible + Clone;
+    type PredicateGasUsed: AsField<Word> + Compressible + Clone;
 }
 #[cfg(not(feature = "da-compression"))]
 pub trait CoinSpecification: private::Seal {
@@ -49,7 +49,7 @@ pub trait CoinSpecification: private::Seal {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 pub struct Signed;
 
 impl CoinSpecification for Signed {
@@ -61,7 +61,7 @@ impl CoinSpecification for Signed {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 pub struct Predicate;
 
 impl CoinSpecification for Predicate {
@@ -107,17 +107,17 @@ impl CoinSpecification for Full {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Coin<Specification>
 where
     Specification: CoinSpecification + Clone,
 {
     pub utxo_id: UtxoId,
-    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Address))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry))]
     pub owner: Address,
     pub amount: Word,
-    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::AssetId))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry))]
     pub asset_id: AssetId,
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]

@@ -5,7 +5,7 @@ use crate::{
 use alloc::vec::Vec;
 use derivative::Derivative;
 #[cfg(feature = "da-compression")]
-use fuel_compression::Compactable;
+use fuel_compression::Compressible;
 use fuel_types::{
     Address,
     MessageId,
@@ -35,28 +35,28 @@ mod private {
 #[cfg(feature = "da-compression")]
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>
-        + Compactable
+        + Compressible
         + Clone
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>;
     type Predicate: AsField<Vec<u8>>
-        + Compactable
+        + Compressible
         + Clone
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>;
     type PredicateData: AsField<Vec<u8>>
-        + Compactable
+        + Compressible
         + Clone
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>;
     type PredicateGasUsed: AsField<Word>
-        + Compactable
+        + Compressible
         + Clone
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>
         + Default;
     type Witness: AsField<u16>
-        + Compactable
+        + Compressible
         + Clone
         + serde::Serialize
         + for<'a> serde::Deserialize<'a>;
@@ -82,14 +82,14 @@ pub mod specifications {
     /// `witnesses` vector of the [`crate::Transaction`].
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
     pub struct Signed;
 
     /// The type means that the message is not signed, and the `owner` is a `predicate`
     /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
     pub struct Predicate;
 
     /// The retrayable message metadata. It is a message that can't be used as a coin to
@@ -177,17 +177,17 @@ pub mod specifications {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>
 where
     Specification: MessageSpecification + Clone,
 {
     /// The sender from the L1 chain.
-    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Address))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry))]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
-    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Address))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry))]
     pub recipient: Address,
     pub amount: Word,
     pub nonce: Nonce,

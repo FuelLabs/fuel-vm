@@ -11,16 +11,13 @@ repository = { workspace = true }
 description = "Compression and decompression of Fuel blocks for DA storage."
 
 [dependencies]
-anyhow = { version = "1.0" }
+anyhow = "1.0"
 fuel-derive = { workspace = true }
-paste = "1.0"
-postcard = { version = "1.0", features = ["use-std"], optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde-big-array = "0.5"
 
 [dev-dependencies]
-fuel-compression = { workspace = true, features = ["test-helpers"] }
+bimap = "0.6"
+# postcard = { version = "1.0", features = ["use-std"] }
 fuel-types = { workspace = true, features = ["serde"] }
-
-[features]
-test-helpers = ["dep:postcard"]
+# fuel-compression = { path = "." }

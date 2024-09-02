@@ -26,11 +26,11 @@ use rand::{
 #[derivative(Debug)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Witness {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::Witness))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry))]
     data: Vec<u8>,
 }
 

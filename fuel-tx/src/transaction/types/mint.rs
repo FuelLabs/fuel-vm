@@ -49,7 +49,7 @@ impl MintMetadata {
 /// by it.
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
 #[derivative(Eq, PartialEq, Hash)]
@@ -64,7 +64,7 @@ pub struct Mint {
     /// The amount of funds minted.
     pub(crate) mint_amount: Word,
     /// The asset IDs corresponding to the minted amount.
-    #[cfg_attr(feature = "da-compression", da_compress(registry = ::fuel_compression::tables::AssetId))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry))]
     pub(crate) mint_asset_id: AssetId,
     /// Gas Price used for current block
     pub(crate) gas_price: Word,

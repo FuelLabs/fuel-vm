@@ -178,4 +178,6 @@ pub enum ValidityError {
     TransactionOutputDoesntContainContractCreated,
     /// Blob id of the transaction differs from the data.
     TransactionBlobIdVerificationFailed,
+    /// Can not validate `Unknown` transaction
+    TransactionUnknown,
 }

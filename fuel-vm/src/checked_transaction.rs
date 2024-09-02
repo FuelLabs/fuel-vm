@@ -285,6 +285,8 @@ pub enum CheckError {
         /// The max fee calculated from the gas price and gas used by the transaction.
         max_fee_from_gas_price: Word,
     },
+    /// `Unknown` transaction can not be checked
+    TransactionUnknown,
 }
 
 /// Performs checks for a transaction
@@ -520,6 +522,7 @@ impl EstimatePredicates for Transaction {
             Self::Upgrade(tx) => tx.estimate_predicates(params, memory),
             Self::Upload(tx) => tx.estimate_predicates(params, memory),
             Self::Blob(tx) => tx.estimate_predicates(params, memory),
+            Self::Unknown => Ok(()),
         }
     }
 
@@ -535,6 +538,7 @@ impl EstimatePredicates for Transaction {
             Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
             Self::Upload(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
             Self::Blob(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Unknown => Ok(()),
         }
     }
 }
@@ -692,6 +696,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Upgrade(_), _) => unreachable!(),
             (Transaction::Upload(_), _) => unreachable!(),
             (Transaction::Blob(_), _) => unreachable!(),
+            (Transaction::Unknown, _) => unreachable!(),
         }
     }
 }
@@ -861,6 +866,7 @@ impl IntoChecked for Transaction {
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
+            Self::Unknown => Err(CheckError::TransactionUnknown),
         }
         .map(|(transaction, metadata)| Checked::basic(transaction, metadata))
     }

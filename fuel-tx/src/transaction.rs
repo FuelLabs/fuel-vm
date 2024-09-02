@@ -94,6 +94,7 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(untagged))]
 #[allow(clippy::large_enum_variant)]
 pub enum Transaction {
     Script(Script),
@@ -102,6 +103,7 @@ pub enum Transaction {
     Upgrade(Upgrade),
     Upload(Upload),
     Blob(Blob),
+    Unknown,
 }
 
 #[cfg(feature = "test-helpers")]
@@ -637,6 +639,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
             Self::Blob(tx) => tx.size_static(),
+            Self::Unknown => 0,
         }
     }
 
@@ -648,6 +651,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
             Self::Blob(tx) => tx.size_dynamic(),
+            Self::Unknown => 0,
         }
     }
 
@@ -662,6 +666,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
             Self::Blob(tx) => tx.encode_static(buffer),
+            Self::Unknown => Ok(()),
         }
     }
 
@@ -676,6 +681,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
             Self::Blob(tx) => tx.encode_dynamic(buffer),
+            Self::Unknown => Ok(()),
         }
     }
 }
@@ -709,6 +715,7 @@ impl Deserialize for Transaction {
             TransactionRepr::Blob => {
                 Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::Unknown => Ok(Transaction::Unknown),
         }
     }
 
@@ -723,6 +730,7 @@ impl Deserialize for Transaction {
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
             Self::Blob(tx) => tx.decode_dynamic(buffer),
+            Self::Unknown => Ok(()),
         }
     }
 }

@@ -31,6 +31,7 @@ impl Cacheable for super::Transaction {
             Self::Upgrade(tx) => tx.is_computed(),
             Self::Upload(tx) => tx.is_computed(),
             Self::Blob(tx) => tx.is_computed(),
+            Self::Unknown => false,
         }
     }
 
@@ -42,6 +43,7 @@ impl Cacheable for super::Transaction {
             Self::Upgrade(tx) => tx.precompute(chain_id),
             Self::Upload(tx) => tx.precompute(chain_id),
             Self::Blob(tx) => tx.precompute(chain_id),
+            Self::Unknown => Err(ValidityError::TransactionUnknown),
         }
     }
 }

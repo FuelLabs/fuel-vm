@@ -275,6 +275,7 @@ impl FormatValidityChecks for Transaction {
             Self::Upgrade(tx) => tx.check_signatures(chain_id),
             Self::Upload(tx) => tx.check_signatures(chain_id),
             Self::Blob(tx) => tx.check_signatures(chain_id),
+            Self::Unknown => Err(ValidityError::TransactionUnknown),
         }
     }
 
@@ -298,6 +299,7 @@ impl FormatValidityChecks for Transaction {
                 tx.check_without_signatures(block_height, consensus_params)
             }
             Self::Blob(tx) => tx.check_without_signatures(block_height, consensus_params),
+            Self::Unknown => Err(ValidityError::TransactionUnknown),
         }
     }
 }

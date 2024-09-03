@@ -79,7 +79,7 @@ where
     label = "When trying to compress this parent type",
     note = "#[da_compress(substitute = Type)] was likely used on field with type {Self}"
 )]
-pub trait RegistrySubstitutableBy<Substitute, Ctx, E>: Compressible
+pub trait RegistrySubstitutableBy<Substitute, Ctx, E>
 where
     Ctx: ?Sized,
 {
@@ -97,7 +97,7 @@ where
     label = "When trying to decompress this parent type",
     note = "#[da_compress(substitute = Type)] was likely used on field with type {Self}"
 )]
-pub trait RegistryDesubstitutableBy<Substitute, Ctx, E>: Compressible
+pub trait RegistryDesubstitutableBy<Substitute, Ctx, E>
 where
     Ctx: ?Sized,
     Self: Sized,

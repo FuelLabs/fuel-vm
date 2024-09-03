@@ -74,12 +74,12 @@ where
 
 /// Uses a compression context to substitute a type with a reference.
 /// This is used instead of `CompressibleBy` when the type is substitutable by
-/// a reference. Used with `da_compress(registry = "keyspace")` attribute from
+/// a reference. Used with `da_compress(registry)` attribute from
 /// `fuel-derive::Compressed`.
 #[diagnostic::on_unimplemented(
-    message = "fuel_compression::RegistrySubstitutableBy is not implemented for `{Self}`",
+    message = "`fuel_compression::RegistrySubstitutableBy<_,_>` is not implemented for `{Self}`",
     label = "When trying to compress this parent type",
-    note = "#[da_compress(registry = \"...\")] was likely used on field with type {Self}"
+    note = "#[da_compress(registry)] was likely used on field with type {Self}"
 )]
 pub trait RegistrySubstitutableBy<Ctx, E>: Compressible
 where
@@ -87,17 +87,17 @@ where
 {
     /// Perform substitution, returning the reference and possibly modifying the context.
     /// Typically the original value is stored into the context.
-    fn substitute(&self, keyspace: &str, ctx: &mut Ctx) -> Result<RawKey, E>;
+    fn substitute(&self, ctx: &mut Ctx) -> Result<RawKey, E>;
 }
 
-/// Uses a decompression context
+/// Uses a decompression context to desubstitute a type from a reference.
 /// This is used instead of `DecompressibleBy` when the type is desubstitutable from
-/// a reference. Used with `da_compress(registry = "keyspace")` attribute from
+/// a reference. Used with `da_compress(registry)` attribute from
 /// `fuel-derive::Compressed`.
 #[diagnostic::on_unimplemented(
-    message = "fuel_compression::RegistryDesubstitutableBy is not implemented for `{Self}`",
+    message = "`fuel_compression::RegistrySubstitutableBy<_,_>` is not implemented for `{Self}`",
     label = "When trying to decompress this parent type",
-    note = "#[da_compress(registry = \"...\")] was likely used on field with type {Self}"
+    note = "#[da_compress(registry)] was likely used on field with type {Self}"
 )]
 pub trait RegistryDesubstitutableBy<Ctx, E>: Compressible
 where
@@ -106,5 +106,5 @@ where
 {
     /// Perform desubstitution, returning the original value.
     /// The context is typically used to resolve the reference.
-    fn desubstitute(c: &RawKey, keyspace: &str, ctx: &Ctx) -> Result<Self, E>;
+    fn desubstitute(c: &RawKey, ctx: &Ctx) -> Result<Self, E>;
 }

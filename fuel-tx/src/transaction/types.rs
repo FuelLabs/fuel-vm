@@ -30,6 +30,7 @@ pub use mint::Mint;
 pub use script::{
     Script,
     ScriptBody,
+    ScriptCode,
 };
 pub use storage::StorageSlot;
 pub use upgrade::{

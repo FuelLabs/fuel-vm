@@ -140,7 +140,7 @@ impl Transaction {
             body: ScriptBody {
                 script_gas_limit: gas_limit,
                 receipts_root,
-                script,
+                script: ScriptCode { bytes: script },
                 script_data,
             },
             policies,

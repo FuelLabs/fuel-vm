@@ -25,21 +25,21 @@ pub use repr::OutputRepr;
 #[derive(canonical::Deserialize, canonical::Serialize)]
 pub enum Output {
     Coin {
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "address"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry))]
         to: Address,
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "asset_id"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry))]
         asset_id: AssetId,
     },
 
     Contract(Contract),
 
     Change {
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "address"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry))]
         to: Address,
         #[cfg_attr(feature = "da-compression", da_compress(skip))]
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "asset_id"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry))]
         asset_id: AssetId,
     },
 
@@ -53,7 +53,7 @@ pub enum Output {
     },
 
     ContractCreated {
-        #[cfg_attr(feature = "da-compression", da_compress(registry = "contract_id"))]
+        #[cfg_attr(feature = "da-compression", da_compress(registry))]
         contract_id: ContractId,
         state_root: Bytes32,
     },

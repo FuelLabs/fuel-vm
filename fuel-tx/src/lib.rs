@@ -105,6 +105,7 @@ pub use transaction::{
     Mint,
     PredicateParameters,
     Script,
+    ScriptCode,
     ScriptParameters,
     StorageSlot,
     Transaction,

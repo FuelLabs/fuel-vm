@@ -6,6 +6,7 @@ use crate::{
     ConsensusParameters,
     Input,
     Output,
+    ScriptCode,
     Transaction,
     TransactionBuilder,
     UpgradePurpose,
@@ -38,7 +39,7 @@ use std::{
 /// A simple and inefficient registry for testing purposes
 #[derive(Default)]
 struct TestCompressionCtx {
-    registry: HashMap<(String, RawKey), Vec<u8>>,
+    registry: HashMap<(&'static str, RawKey), Vec<u8>>,
 }
 
 macro_rules! impl_substitutable {
@@ -46,11 +47,11 @@ macro_rules! impl_substitutable {
         impl RegistrySubstitutableBy<TestCompressionCtx, Infallible> for $t {
             fn substitute(
                 &self,
-                keyspace: &str,
                 ctx: &mut TestCompressionCtx,
             ) -> Result<RawKey, Infallible> {
+                let keyspace = stringify!($t);
                 for ((ks, rk), v) in ctx.registry.iter() {
-                    if ks != keyspace {
+                    if *ks != keyspace {
                         continue;
                     }
                     let d: $t = postcard::from_bytes(v).expect("failed to deserialize");
@@ -62,7 +63,7 @@ macro_rules! impl_substitutable {
                 let key = ctx.registry.len(); // Just get an unique integer key
                 let key = RawKey::try_from(key as u32).expect("key too large");
                 let value = postcard::to_stdvec(self).expect("failed to serialize");
-                ctx.registry.insert((keyspace.to_owned(), key), value);
+                ctx.registry.insert((keyspace, key), value);
                 Ok(key)
             }
         }
@@ -70,13 +71,10 @@ macro_rules! impl_substitutable {
         impl RegistryDesubstitutableBy<TestCompressionCtx, Infallible> for $t {
             fn desubstitute(
                 key: &RawKey,
-                keyspace: &str,
                 ctx: &TestCompressionCtx,
             ) -> Result<$t, Infallible> {
-                let value = ctx
-                    .registry
-                    .get(&(keyspace.to_owned(), *key))
-                    .expect("key not found");
+                let keyspace = stringify!($t);
+                let value = ctx.registry.get(&(keyspace, *key)).expect("key not found");
                 Ok(postcard::from_bytes(value).expect("failed to deserialize"))
             }
         }
@@ -86,12 +84,12 @@ macro_rules! impl_substitutable {
 impl_substitutable!(Address);
 impl_substitutable!(AssetId);
 impl_substitutable!(ContractId);
-impl_substitutable!(Vec<u8>);
+impl_substitutable!(ScriptCode);
 
 #[derive(Debug, PartialEq, Default, Compressed)]
 pub struct ExampleStruct {
     pub asset_id_bare: AssetId,
-    #[da_compress(registry = "assets")]
+    #[da_compress(registry)]
     pub asset_id_ref: AssetId,
     pub array: [u8; 32],
     pub vec: Vec<u8>,
@@ -100,7 +98,7 @@ pub struct ExampleStruct {
 
 #[derive(Debug, PartialEq, Compressed)]
 pub struct InnerStruct {
-    #[da_compress(registry = "assets")]
+    #[da_compress(registry)]
     pub asset_id: AssetId,
     pub count: u64,
     #[da_compress(skip)]

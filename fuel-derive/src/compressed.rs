@@ -101,16 +101,11 @@ pub enum FieldAttrs {
     /// Compresseded recursively.
     Normal,
     /// This value is compressed into a registry lookup.
-    /// `#[da_compress(registry = "keyspace")]`
-    Registry {
-        /// This is required to distinguish between values of the same type
-        keyspace: String,
-    },
+    /// `#[da_compress(registry)]`
+    Registry,
 }
 impl FieldAttrs {
     pub fn parse(attrs: &[syn::Attribute]) -> Self {
-        let registry_path = syn::parse2::<syn::Path>(quote! {registry}).unwrap();
-
         let mut result = Self::Normal;
         for attr in attrs {
             if attr.style != syn::AttrStyle::Outer {
@@ -127,19 +122,9 @@ impl FieldAttrs {
                         if ident == "skip" {
                             result = Self::Skip;
                             continue;
-                        }
-                    } else if let Ok(kv) =
-                        syn::parse2::<syn::MetaNameValue>(ml.tokens.clone())
-                    {
-                        if kv.path == registry_path {
-                            if let syn::Expr::Lit(lit) = kv.value {
-                                if let syn::Lit::Str(keyspace) = lit.lit {
-                                    result = Self::Registry {
-                                        keyspace: keyspace.value(),
-                                    };
-                                    continue;
-                                }
-                            }
+                        } else if ident == "registry" {
+                            result = Self::Registry;
+                            continue;
                         }
                     }
                     panic!("Invalid attribute: {}", ml.tokens);
@@ -170,7 +155,7 @@ fn field_defs(fields: &syn::Fields) -> TokenStream2 {
                     quote! { #cty, }
                 }
             }
-            FieldAttrs::Registry { .. } => {
+            FieldAttrs::Registry => {
                 if let Some(fname) = field.ident.as_ref() {
                     quote! { #fname: ::fuel_compression::RawKey, }
                 } else {
@@ -208,9 +193,9 @@ fn construct_compressed(
                         let #cname = <#ty as ::fuel_compression::CompressibleBy<_, _>>::compress(&#binding, ctx)?;
                     }
                 }
-                FieldAttrs::Registry {keyspace} => {
+                FieldAttrs::Registry => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::RegistrySubstitutableBy<_, _>>::substitute(&#binding, #keyspace, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::RegistrySubstitutableBy<_, _>>::substitute(&#binding, ctx)?;
                     }
                 }
             }
@@ -268,9 +253,9 @@ fn construct_decompress(
                         let #cname = <#ty as ::fuel_compression::DecompressibleBy<_, _>>::decompress(#binding, ctx)?;
                     }
                 }
-                FieldAttrs::Registry { keyspace } => {
+                FieldAttrs::Registry => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::RegistryDesubstitutableBy<_, _>>::desubstitute(#binding, #keyspace, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::RegistryDesubstitutableBy<_, _>>::desubstitute(#binding, ctx)?;
                     }
                 }
             }
@@ -404,7 +389,7 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
                         syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx, E> },
                     );
                 }
-                FieldAttrs::Registry { .. } => {
+                FieldAttrs::Registry => {
                     where_clause_push(
                         &mut w_impl_field_bounds_compress,
                         syn::parse_quote! { #ty: ::fuel_compression::RegistrySubstitutableBy<Ctx, E> },
@@ -426,7 +411,7 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
                         syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx, E> },
                     );
                 }
-                FieldAttrs::Registry { .. } => {
+                FieldAttrs::Registry => {
                     where_clause_push(
                         &mut w_impl_field_bounds_decompress,
                         syn::parse_quote! { #ty: ::fuel_compression::RegistryDesubstitutableBy<Ctx, E> },

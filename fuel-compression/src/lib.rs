@@ -6,18 +6,11 @@
 #![deny(unused_crate_dependencies)]
 #![deny(clippy::cast_possible_truncation)]
 
-mod compaction;
+mod impls;
 mod key;
+mod traits;
 
-pub use compaction::{
-    Compressible,
-    CompressibleBy,
-    CompressionContext,
-    DecompressibleBy,
-    DecompressionContext,
-    RegistryDesubstitutableBy,
-    RegistrySubstitutableBy,
-};
 pub use key::RawKey;
+pub use traits::*;
 
 pub use fuel_derive::Compressed;

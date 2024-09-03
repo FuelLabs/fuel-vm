@@ -1,6 +1,7 @@
 //! Derive macros for canonical type serialization and deserialization.
 
-#![deny(unused_must_use, missing_docs)]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![deny(unused_must_use, unsafe_code, unused_crate_dependencies, missing_docs)]
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::cast_sign_loss,
@@ -11,12 +12,12 @@
 
 extern crate proc_macro;
 mod canonical_attribute;
-mod compact;
+mod compressed;
 mod deserialize;
 mod serialize;
 
 use self::{
-    compact::compact_derive,
+    compressed::compressed_derive,
     deserialize::deserialize_derive,
     serialize::serialize_derive,
 };
@@ -32,7 +33,7 @@ synstructure::decl_derive!(
     serialize_derive
 );
 synstructure::decl_derive!(
-    [Compact, attributes(da_compress)] =>
-    /// Derives `Compact` trait for the given `struct` or `enum`.
-    compact_derive
+    [Compressed, attributes(da_compress)] =>
+    /// Derives `Compressed` trait for the given `struct` or `enum`.
+    compressed_derive
 );

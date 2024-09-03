@@ -9,12 +9,10 @@ use alloc::{
 use coin::*;
 use consts::*;
 use contract::*;
-use core::{
-    fmt,
-    fmt::Formatter,
+use core::fmt::{
+    self,
+    Formatter,
 };
-#[cfg(feature = "da-compression")]
-use fuel_compression::Compactable;
 use fuel_crypto::{
     Hasher,
     PublicKey,
@@ -59,7 +57,12 @@ pub trait AsField<Type>: AsFieldFmt {
 /// The empty field used by sub-types of the specification.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Empty<Type>(::core::marker::PhantomData<Type>);
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", da_compress(discard(Type)))]
+pub struct Empty<Type>(
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    ::core::marker::PhantomData<Type>,
+);
 
 impl<Type> Empty<Type> {
     /// Creates `Self`.
@@ -98,32 +101,6 @@ impl<Type: Deserialize> Deserialize for Empty<Type> {
     ) -> Result<Self, Error> {
         Type::decode_static(buffer)?;
         Ok(Default::default())
-    }
-}
-
-#[cfg(feature = "da-compression")]
-impl<T> Compactable for Empty<T>
-where
-    T: Compactable,
-{
-    type Compact = ();
-
-    fn count(&self) -> fuel_compression::CountPerTable {
-        Default::default()
-    }
-
-    fn compact(
-        &self,
-        _: &mut dyn fuel_compression::CompactionContext,
-    ) -> anyhow::Result<Self::Compact> {
-        Ok(())
-    }
-
-    fn decompact(
-        _: Self::Compact,
-        _: &dyn fuel_compression::DecompactionContext,
-    ) -> anyhow::Result<Self> {
-        Ok(Self(Default::default()))
     }
 }
 
@@ -225,7 +202,7 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),

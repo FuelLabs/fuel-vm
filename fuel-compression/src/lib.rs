@@ -6,28 +6,11 @@
 #![deny(unused_crate_dependencies)]
 #![deny(clippy::cast_possible_truncation)]
 
-mod compaction;
+mod impls;
 mod key;
-mod table;
+mod traits;
 
-#[cfg(any(test, feature = "test-helpers"))]
-pub mod dummy_registry;
+pub use key::RawKey;
+pub use traits::*;
 
-pub use compaction::Compactable;
-pub use table::{
-    access,
-    tables,
-    CompactionContext,
-    CountPerTable,
-    DecompactionContext,
-    KeyPerTable,
-    Table,
-    TableName,
-};
-
-pub use key::{
-    Key,
-    RawKey,
-};
-
-pub use fuel_derive::Compact;
+pub use fuel_derive::Compressed;

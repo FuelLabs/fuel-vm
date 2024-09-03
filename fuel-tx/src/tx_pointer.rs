@@ -26,7 +26,7 @@ use rand::{
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(Deserialize, Serialize)]
 pub struct TxPointer {
     /// Block height

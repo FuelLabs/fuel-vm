@@ -47,7 +47,7 @@ pub struct BlobMetadata;
 /// The body of the [`Blob`] transaction.
 #[derive(Clone, Default, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compact))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Blob)]
 #[derivative(Eq, PartialEq, Hash, Debug)]

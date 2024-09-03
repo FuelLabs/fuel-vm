@@ -105,6 +105,7 @@ pub use transaction::{
     Mint,
     PredicateParameters,
     Script,
+    ScriptCode,
     ScriptParameters,
     StorageSlot,
     Transaction,
@@ -126,7 +127,7 @@ pub use transaction::{
 };
 
 #[cfg(feature = "da-compression")]
-pub use transaction::CompactTransaction;
+pub use transaction::CompressedTransaction;
 
 pub use transaction::{
     PrepareSign,

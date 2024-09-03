@@ -1,6 +1,7 @@
 //! Derive macros for canonical type serialization and deserialization.
 
-#![deny(unused_must_use, missing_docs)]
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![deny(unused_must_use, unsafe_code, unused_crate_dependencies, missing_docs)]
 #![deny(
     clippy::arithmetic_side_effects,
     clippy::cast_sign_loss,

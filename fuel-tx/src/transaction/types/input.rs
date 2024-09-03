@@ -57,7 +57,12 @@ pub trait AsField<Type>: AsFieldFmt {
 /// The empty field used by sub-types of the specification.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Empty<Type>(::core::marker::PhantomData<Type>);
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", da_compress(discard(Type)))]
+pub struct Empty<Type>(
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    ::core::marker::PhantomData<Type>,
+);
 
 impl<Type> Empty<Type> {
     /// Creates `Self`.
@@ -96,34 +101,6 @@ impl<Type: Deserialize> Deserialize for Empty<Type> {
     ) -> Result<Self, Error> {
         Type::decode_static(buffer)?;
         Ok(Default::default())
-    }
-}
-
-#[cfg(feature = "da-compression")]
-impl<T> fuel_compression::Compressible for Empty<T>
-where
-    T: fuel_compression::Compressible,
-{
-    type Compressed = ();
-}
-
-#[cfg(feature = "da-compression")]
-impl<T, Ctx> fuel_compression::CompressibleBy<Ctx> for Empty<T>
-where
-    T: fuel_compression::Compressible,
-{
-    fn compress(&self, _: &mut Ctx) -> anyhow::Result<Self::Compressed> {
-        Ok(())
-    }
-}
-
-#[cfg(feature = "da-compression")]
-impl<T, Ctx> fuel_compression::DecompressibleBy<Ctx> for Empty<T>
-where
-    T: fuel_compression::Compressible,
-{
-    fn decompress(_: &Self::Compressed, _: &Ctx) -> anyhow::Result<Self> {
-        Ok(Empty(::core::marker::PhantomData))
     }
 }
 

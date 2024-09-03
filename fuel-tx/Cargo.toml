@@ -32,6 +32,7 @@ strum_macros = { version = "0.24", optional = true }
 wasm-bindgen = { version = "0.2.88", optional = true }
 
 [dev-dependencies]
+bimap = "0.6"
 bincode = { workspace = true }
 fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["random", "serde", "test-helpers"] }

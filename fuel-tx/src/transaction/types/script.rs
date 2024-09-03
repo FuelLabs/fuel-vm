@@ -87,7 +87,7 @@ impl DerefMut for ScriptCode {
 pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
     pub(crate) receipts_root: Bytes32,
-    #[cfg_attr(feature = "da-compression", da_compress(registry))]
+    #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
     pub(crate) script: ScriptCode,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,

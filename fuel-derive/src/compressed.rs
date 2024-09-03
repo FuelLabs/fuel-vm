@@ -94,10 +94,12 @@ impl StructureAttrs {
 /// Field attributes
 pub enum FieldAttrs {
     /// Skipped when compressing, and must be reconstructed when decompressing.
+    /// `#[da_compress(skip)]`
     Skip,
     /// Compresseded recursively.
     Normal,
     /// This value is compressed into a registry lookup.
+    /// `#[da_compress(registry = "keyspace")]`
     Registry {
         /// This is required to distinguish between values of the same type
         keyspace: String,
@@ -361,22 +363,14 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
     for item in &s_attrs {
         match item {
             StructureAttrs::Bound(bound) => {
-                if w_structure.is_none() {
-                    w_structure = Some(syn::WhereClause {
-                        where_token: syn::Token![where](proc_macro2::Span::call_site()),
-                        predicates: Default::default(),
-                    });
-                    w_impl = Some(syn::WhereClause {
-                        where_token: syn::Token![where](proc_macro2::Span::call_site()),
-                        predicates: Default::default(),
-                    });
-                }
                 for p in bound {
                     let id = syn::Ident::new(p, Span::call_site());
-                    w_structure.as_mut().unwrap().predicates.push(
+                    where_clause_push(
+                        &mut w_structure,
                         syn::parse_quote! { #id: ::fuel_compression::Compressible },
                     );
-                    w_impl.as_mut().unwrap().predicates.push(
+                    where_clause_push(
+                        &mut w_impl,
                         syn::parse_quote! { for<'de>  #id: ::fuel_compression::Compressible + serde::Serialize + serde::Deserialize<'de> + Clone },
                     );
                 }

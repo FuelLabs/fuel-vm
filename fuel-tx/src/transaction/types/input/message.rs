@@ -189,6 +189,7 @@ where
     /// The receiver on the `Fuel` chain.
     #[cfg_attr(feature = "da-compression", da_compress(registry))]
     pub recipient: Address,
+    #[cfg_attr(feature = "da-compression", da_compress(skip))] // Stored on L1
     pub amount: Word,
     pub nonce: Nonce,
     #[derivative(Debug(format_with = "fmt_as_field"))]

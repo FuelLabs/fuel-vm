@@ -24,49 +24,17 @@ impl RawKey {
     }
 
     /// Wraps around just below max/default value.
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn add_u32(self, rhs: u32) -> Self {
-        let lhs = self.as_u32() as u64;
-        let rhs = rhs as u64;
-        // Safety: cannot overflow as both operands are limited to 32 bits
-        let result = (lhs + rhs) % (Self::DEFAULT_VALUE.as_u32() as u64);
-        // Safety: cannot truncate as we are already limited to 24 bits by modulo
-        let v = result as u32;
-        let v = v.to_be_bytes();
-        Self([v[1], v[2], v[3]])
-    }
-
-    /// Wraps around just below max/default value.
+    /// Panics for max/default value.
     pub fn next(self) -> Self {
-        self.add_u32(1)
-    }
-
-    /// Is `self` between `start` and `end`? i.e. in the half-open logical range
-    /// `start`..`end`, so that wrap-around cases are handled correctly.
-    ///
-    /// Panics if max/default value is used.
-    pub fn is_between(self, start: Self, end: Self) -> bool {
-        assert!(
-            self != Self::DEFAULT_VALUE,
-            "Cannot use max/default value in is_between"
-        );
-        assert!(
-            start != Self::DEFAULT_VALUE,
-            "Cannot use max/default value in is_between"
-        );
-        assert!(
-            end != Self::DEFAULT_VALUE,
-            "Cannot use max/default value in is_between"
-        );
-
-        let low = start.as_u32();
-        let high = end.as_u32();
-        let v = self.as_u32();
-
-        if high >= low {
-            low <= v && v < high
+        if self == Self::DEFAULT_VALUE {
+            panic!("Max/default value has no next key");
+        }
+        let next_raw = self.as_u32() + 1u32;
+        if next_raw == Self::DEFAULT_VALUE.as_u32() {
+            Self::ZERO
         } else {
-            v < high || v >= low
+            Self::try_from(next_raw)
+                .expect("The producedure above always produces a valid key")
         }
     }
 }

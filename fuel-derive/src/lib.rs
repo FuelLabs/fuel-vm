@@ -11,12 +11,12 @@
 
 extern crate proc_macro;
 mod canonical_attribute;
-mod compact;
+mod compressed;
 mod deserialize;
 mod serialize;
 
 use self::{
-    compact::compact_derive,
+    compressed::compressed_derive,
     deserialize::deserialize_derive,
     serialize::serialize_derive,
 };
@@ -34,5 +34,5 @@ synstructure::decl_derive!(
 synstructure::decl_derive!(
     [Compressed, attributes(da_compress)] =>
     /// Derives `Compressed` trait for the given `struct` or `enum`.
-    compact_derive
+    compressed_derive
 );

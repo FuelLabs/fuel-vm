@@ -93,11 +93,11 @@ impl StructureAttrs {
 
 /// Field attributes
 pub enum FieldAttrs {
-    /// Skipped when compacting, and must be reconstructed when decompacting.
+    /// Skipped when compressing, and must be reconstructed when decompressing.
     Skip,
     /// Compresseded recursively.
     Normal,
-    /// This value is compacted into a registry lookup.
+    /// This value is compressed into a registry lookup.
     Registry {
         /// This is required to distinguish between values of the same type
         keyspace: String,
@@ -147,7 +147,7 @@ impl FieldAttrs {
     }
 }
 
-/// Map field definitions to compacted field definitions.
+/// Map field definitions to compressed field definitions.
 fn field_defs(fields: &syn::Fields) -> TokenStream2 {
     let mut defs = TokenStream2::new();
 
@@ -183,10 +183,10 @@ fn field_defs(fields: &syn::Fields) -> TokenStream2 {
     }
 }
 
-/// Construct compact version of the struct from the original one
-fn construct_compact(
+/// Construct compressed version of the struct from the original one
+fn construct_compressed(
     // The structure to construct, i.e. struct name or enum variant path
-    compact: &TokenStream2,
+    compressed: &TokenStream2,
     variant: &synstructure::VariantInfo<'_>,
 ) -> TokenStream2 {
     let bound_fields: TokenStream2 = variant
@@ -206,7 +206,7 @@ fn construct_compact(
                 }
                 FieldAttrs::Registry {keyspace} => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::RegistrySubstitutableBy<_>>::substitute(&#binding, ctx, #keyspace)?;
+                        let #cname = <#ty as ::fuel_compression::RegistrySubstitutableBy<_>>::substitute(&#binding, #keyspace, ctx)?;
                     }
                 }
             }
@@ -238,11 +238,11 @@ fn construct_compact(
 
     quote! {
         #bound_fields
-        #compact #construct_fields
+        #compressed #construct_fields
     }
 }
-/// Construct original version of the struct from the compacted one
-fn construct_decompact(
+/// Construct original version of the struct from the compressed one
+fn construct_decompress(
     // The original structure to construct, i.e. struct name or enum variant path
     original: &TokenStream2,
     variant: &synstructure::VariantInfo<'_>,
@@ -266,7 +266,7 @@ fn construct_decompact(
                 }
                 FieldAttrs::Registry { keyspace } => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::RegistryDesubstitutableBy<_>>::desubstitute(#binding, ctx, #keyspace)?;
+                        let #cname = <#ty as ::fuel_compression::RegistryDesubstitutableBy<_>>::desubstitute(#binding, #keyspace, ctx)?;
                     }
                 }
             }
@@ -298,17 +298,17 @@ fn construct_decompact(
     }
 }
 
-/// Generate a match arm for each variant of the compacted structure
+/// Generate a match arm for each variant of the compressed structure
 /// using the given function to generate the pattern body.
-fn each_variant_compact<F: FnMut(&synstructure::VariantInfo<'_>) -> TokenStream2>(
+fn each_variant_compressed<F: FnMut(&synstructure::VariantInfo<'_>) -> TokenStream2>(
     s: &synstructure::Structure,
-    compact_name: &TokenStream2,
+    compressed_name: &TokenStream2,
     mut f: F,
 ) -> TokenStream2 {
     s.variants()
         .iter()
         .map(|variant| {
-            // Modify the binding pattern to match the compact variant
+            // Modify the binding pattern to match the compressed variant
             let mut v2 = variant.clone();
             v2.filter(|field| {
                 let attrs = FieldAttrs::parse(&field.ast().attrs);
@@ -319,11 +319,11 @@ fn each_variant_compact<F: FnMut(&synstructure::VariantInfo<'_>) -> TokenStream2
             });
             let mut p = v2.pat().into_iter();
             let _ = p.next().expect("pattern always begins with an identifier");
-            let p = quote! { #compact_name #(#p)* };
+            let p = quote! { #compressed_name #(#p)* };
 
-            let decompacted = f(variant);
+            let decompressed = f(variant);
             quote! {
-                #p => { #decompacted }
+                #p => { #decompressed }
             }
         })
         .collect()
@@ -343,7 +343,7 @@ fn where_clause_push(w: &mut Option<syn::WhereClause>, p: TokenStream2) {
 }
 
 /// Derives `Compressed` trait for the given `struct` or `enum`.
-pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
+pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::None)
         .underscore_const(true);
 
@@ -353,7 +353,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     };
 
     let name = &s.ast().ident;
-    let compact_name = format_ident!("Compressed{}", name);
+    let compressed_name = format_ident!("Compressed{}", name);
 
     let mut g = s.ast().generics.clone();
     let mut w_structure = g.where_clause.take();
@@ -452,7 +452,7 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
                 #[doc = concat!("Compresseded version of `", stringify!(#name), "`.")]
-                pub struct #compact_name #g #w_structure #defs #semi
+                pub struct #compressed_name #g #w_structure #defs #semi
             }
         }
         syn::Data::Enum(_) => {
@@ -471,46 +471,46 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
                 #[doc = concat!("Compresseded version of `", stringify!(#name), "`.")]
-                pub enum #compact_name #g #w_structure { #variant_defs }
+                pub enum #compressed_name #g #w_structure { #variant_defs }
             }
         }
         syn::Data::Union(_) => panic!("unions are not supported"),
     };
 
-    let construct_per_variant = s.each_variant(|variant| {
+    let compress_per_variant = s.each_variant(|variant| {
         let vname = variant.ast().ident.clone();
         let construct = match &s.ast().data {
-            syn::Data::Struct(_) => quote! { #compact_name },
-            syn::Data::Enum(_) => quote! {#compact_name :: #vname },
+            syn::Data::Struct(_) => quote! { #compressed_name },
+            syn::Data::Enum(_) => quote! {#compressed_name :: #vname },
             syn::Data::Union(_) => unreachable!(),
         };
-        construct_compact(&construct, variant)
+        construct_compressed(&construct, variant)
     });
 
-    let decompact_per_variant =
-        each_variant_compact(&s, &quote! {#compact_name}, |variant| {
+    let decompress_per_variant =
+        each_variant_compressed(&s, &quote! {#compressed_name}, |variant| {
             let vname = variant.ast().ident.clone();
             let construct = match &s.ast().data {
                 syn::Data::Struct(_) => quote! { #name },
                 syn::Data::Enum(_) => quote! {#name :: #vname },
                 syn::Data::Union(_) => unreachable!(),
             };
-            construct_decompact(&construct, variant)
+            construct_decompress(&construct, variant)
         });
 
     let impls = s.gen_impl(quote! {
         gen impl ::fuel_compression::Compressible for @Self #w_impl {
-            type Compressed = #compact_name #g;
+            type Compressed = #compressed_name #g;
         }
 
         gen impl<Ctx> ::fuel_compression::CompressibleBy<Ctx> for @Self #w_impl_field_bounds_compress {
             fn compress(&self, ctx: &mut Ctx) -> anyhow::Result<Self::Compressed> {
-                Ok(match self { #construct_per_variant })
+                Ok(match self { #compress_per_variant })
             }
         }
         gen impl<Ctx> ::fuel_compression::DecompressibleBy<Ctx> for @Self #w_impl_field_bounds_decompress {
             fn decompress(compressed: &Self::Compressed, ctx: &Ctx) -> anyhow::Result<Self> {
-                Ok(match compressed { #decompact_per_variant })
+                Ok(match compressed { #decompress_per_variant })
             }
         }
     });

@@ -5,6 +5,8 @@ mod valid_cases;
 
 #[cfg(feature = "serde")]
 mod bytes;
+#[cfg(feature = "da-compression")]
+mod da_compression;
 #[cfg(feature = "serde")]
 mod display;
 

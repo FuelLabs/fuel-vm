@@ -19,8 +19,10 @@ const ATTR: &str = "da_compress";
 #[derive(Debug)]
 pub enum StructureAttrs {
     /// Insert bounds for a generic type
+    /// `#[da_compress(bound(Type))]`
     Bound(Vec<String>),
     /// Discard generic parameter
+    /// `#[da_compress(discard(Type))]`
     Discard(Vec<String>),
 }
 impl Parse for StructureAttrs {
@@ -508,12 +510,8 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
             }
         }
     });
-    let rs = quote! {
+    quote! {
         #def
         #impls
-    };
-
-    let _ = std::fs::write(format!("/tmp/derive/{}.rs", name), rs.to_string());
-
-    rs
+    }
 }

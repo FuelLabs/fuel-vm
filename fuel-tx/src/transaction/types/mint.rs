@@ -64,7 +64,7 @@ pub struct Mint {
     /// The amount of funds minted.
     pub(crate) mint_amount: Word,
     /// The asset IDs corresponding to the minted amount.
-    #[cfg_attr(feature = "da-compression", da_compress(registry))]
+    #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
     pub(crate) mint_asset_id: AssetId,
     /// Gas Price used for current block
     pub(crate) gas_price: Word,

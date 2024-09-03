@@ -9,9 +9,12 @@ use crate::{
     ScriptCode,
     Transaction,
     TransactionBuilder,
+    TxId,
+    TxPointer,
     UpgradePurpose,
     UploadBody,
 };
+use bimap::BiMap;
 use fuel_compression::{
     Compressed,
     CompressibleBy,
@@ -36,60 +39,82 @@ use std::{
     convert::Infallible,
 };
 
+type Keyspace = &'static str;
+
 /// A simple and inefficient registry for testing purposes
 #[derive(Default)]
 struct TestCompressionCtx {
-    registry: HashMap<(&'static str, RawKey), Vec<u8>>,
+    registry: HashMap<Keyspace, BiMap<RawKey, Vec<u8>>>,
+    tx_blocks: BiMap<TxPointer, TxId>,
 }
 
-macro_rules! impl_substitutable {
+macro_rules! impl_substitutable_key {
     ($t:ty) => {
-        impl RegistrySubstitutableBy<TestCompressionCtx, Infallible> for $t {
+        impl RegistrySubstitutableBy<RawKey, TestCompressionCtx, Infallible> for $t {
             fn substitute(
                 &self,
                 ctx: &mut TestCompressionCtx,
             ) -> Result<RawKey, Infallible> {
                 let keyspace = stringify!($t);
-                for ((ks, rk), v) in ctx.registry.iter() {
-                    if *ks != keyspace {
-                        continue;
-                    }
-                    let d: $t = postcard::from_bytes(v).expect("failed to deserialize");
-                    if d == *self {
-                        return Ok(*rk);
-                    }
+                let value = postcard::to_stdvec(self).expect("failed to serialize");
+                let key_seed = ctx.registry.len(); // Just get an unique integer key
+
+                let entry = ctx.registry.entry(keyspace).or_default();
+                if let Some(key) = entry.get_by_right(&value) {
+                    return Ok(*key);
                 }
 
-                let key = ctx.registry.len(); // Just get an unique integer key
-                let key = RawKey::try_from(key as u32).expect("key too large");
-                let value = postcard::to_stdvec(self).expect("failed to serialize");
-                ctx.registry.insert((keyspace, key), value);
+                let key = RawKey::try_from(key_seed as u32).expect("key too large");
+                entry.insert(key, value);
                 Ok(key)
             }
         }
 
-        impl RegistryDesubstitutableBy<TestCompressionCtx, Infallible> for $t {
+        impl RegistryDesubstitutableBy<RawKey, TestCompressionCtx, Infallible> for $t {
             fn desubstitute(
                 key: &RawKey,
                 ctx: &TestCompressionCtx,
             ) -> Result<$t, Infallible> {
                 let keyspace = stringify!($t);
-                let value = ctx.registry.get(&(keyspace, *key)).expect("key not found");
+                let values = ctx.registry.get(&keyspace).expect("key not found");
+                let value = values.get_by_left(key).expect("key not found");
                 Ok(postcard::from_bytes(value).expect("failed to deserialize"))
             }
         }
     };
 }
 
-impl_substitutable!(Address);
-impl_substitutable!(AssetId);
-impl_substitutable!(ContractId);
-impl_substitutable!(ScriptCode);
+impl_substitutable_key!(Address);
+impl_substitutable_key!(AssetId);
+impl_substitutable_key!(ContractId);
+impl_substitutable_key!(ScriptCode);
+
+impl RegistrySubstitutableBy<TxPointer, TestCompressionCtx, Infallible> for TxId {
+    fn substitute(&self, ctx: &mut TestCompressionCtx) -> Result<TxPointer, Infallible> {
+        if let Some(key) = ctx.tx_blocks.get_by_right(self) {
+            return Ok(*key);
+        }
+
+        let key_seed = ctx.tx_blocks.len(); // Just get an unique integer key
+        let key = TxPointer::new((key_seed as u32).into(), 0);
+        ctx.tx_blocks.insert(key, *self);
+        Ok(key)
+    }
+}
+
+impl RegistryDesubstitutableBy<TxPointer, TestCompressionCtx, Infallible> for TxId {
+    fn desubstitute(
+        key: &TxPointer,
+        ctx: &TestCompressionCtx,
+    ) -> Result<TxId, Infallible> {
+        Ok(*ctx.tx_blocks.get_by_left(key).expect("key not found"))
+    }
+}
 
 #[derive(Debug, PartialEq, Default, Compressed)]
 pub struct ExampleStruct {
     pub asset_id_bare: AssetId,
-    #[da_compress(registry)]
+    #[da_compress(substitute = RawKey)]
     pub asset_id_ref: AssetId,
     pub array: [u8; 32],
     pub vec: Vec<u8>,
@@ -98,7 +123,7 @@ pub struct ExampleStruct {
 
 #[derive(Debug, PartialEq, Compressed)]
 pub struct InnerStruct {
-    #[da_compress(registry)]
+    #[da_compress(substitute = RawKey)]
     pub asset_id: AssetId,
     pub count: u64,
     #[da_compress(skip)]

@@ -3,8 +3,6 @@ use serde::{
     Serialize,
 };
 
-use crate::RawKey;
-
 /// This type can be compressed to a more compact form and back using
 /// `CompressibleBy` and `DecompressibleBy` traits.
 pub trait Compressible {
@@ -74,37 +72,37 @@ where
 
 /// Uses a compression context to substitute a type with a reference.
 /// This is used instead of `CompressibleBy` when the type is substitutable by
-/// a reference. Used with `da_compress(registry)` attribute from
+/// a reference. Used with `da_compress(substitute = Type)` attribute from
 /// `fuel-derive::Compressed`.
 #[diagnostic::on_unimplemented(
     message = "`fuel_compression::RegistrySubstitutableBy<_,_>` is not implemented for `{Self}`",
     label = "When trying to compress this parent type",
-    note = "#[da_compress(registry)] was likely used on field with type {Self}"
+    note = "#[da_compress(substitute = Type)] was likely used on field with type {Self}"
 )]
-pub trait RegistrySubstitutableBy<Ctx, E>
+pub trait RegistrySubstitutableBy<Substitute, Ctx, E>
 where
     Ctx: ?Sized,
 {
     /// Perform substitution, returning the reference and possibly modifying the context.
     /// Typically the original value is stored into the context.
-    fn substitute(&self, ctx: &mut Ctx) -> Result<RawKey, E>;
+    fn substitute(&self, ctx: &mut Ctx) -> Result<Substitute, E>;
 }
 
 /// Uses a decompression context to desubstitute a type from a reference.
 /// This is used instead of `DecompressibleBy` when the type is desubstitutable from
-/// a reference. Used with `da_compress(registry)` attribute from
+/// a reference. Used with `da_compress(substitute = Type)` attribute from
 /// `fuel-derive::Compressed`.
 #[diagnostic::on_unimplemented(
     message = "`fuel_compression::RegistrySubstitutableBy<_,_>` is not implemented for `{Self}`",
     label = "When trying to decompress this parent type",
-    note = "#[da_compress(registry)] was likely used on field with type {Self}"
+    note = "#[da_compress(substitute = Type)] was likely used on field with type {Self}"
 )]
-pub trait RegistryDesubstitutableBy<Ctx, E>
+pub trait RegistryDesubstitutableBy<Substitute, Ctx, E>
 where
     Ctx: ?Sized,
     Self: Sized,
 {
     /// Perform desubstitution, returning the original value.
     /// The context is typically used to resolve the reference.
-    fn desubstitute(c: &RawKey, ctx: &Ctx) -> Result<Self, E>;
+    fn desubstitute(c: &Substitute, ctx: &Ctx) -> Result<Self, E>;
 }

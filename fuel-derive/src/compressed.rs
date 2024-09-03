@@ -205,12 +205,12 @@ fn construct_compressed(
                 FieldAttrs::Skip => quote! {},
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_>>::compress(&#binding, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_, _>>::compress(&#binding, ctx)?;
                     }
                 }
                 FieldAttrs::Registry {keyspace} => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::RegistrySubstitutableBy<_>>::substitute(&#binding, #keyspace, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::RegistrySubstitutableBy<_, _>>::substitute(&#binding, #keyspace, ctx)?;
                     }
                 }
             }
@@ -265,12 +265,12 @@ fn construct_decompress(
                 },
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::DecompressibleBy<_>>::decompress(#binding, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::DecompressibleBy<_, _>>::decompress(#binding, ctx)?;
                     }
                 }
                 FieldAttrs::Registry { keyspace } => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::RegistryDesubstitutableBy<_>>::desubstitute(#binding, #keyspace, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::RegistryDesubstitutableBy<_, _>>::desubstitute(#binding, #keyspace, ctx)?;
                     }
                 }
             }
@@ -401,13 +401,13 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
                 FieldAttrs::Normal => {
                     where_clause_push(
                         &mut w_impl_field_bounds_compress,
-                        syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx> },
+                        syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx, E> },
                     );
                 }
                 FieldAttrs::Registry { .. } => {
                     where_clause_push(
                         &mut w_impl_field_bounds_compress,
-                        syn::parse_quote! { #ty: ::fuel_compression::RegistrySubstitutableBy<Ctx> },
+                        syn::parse_quote! { #ty: ::fuel_compression::RegistrySubstitutableBy<Ctx, E> },
                     );
                 }
             }
@@ -423,13 +423,13 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
                 FieldAttrs::Normal => {
                     where_clause_push(
                         &mut w_impl_field_bounds_decompress,
-                        syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx> },
+                        syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx, E> },
                     );
                 }
                 FieldAttrs::Registry { .. } => {
                     where_clause_push(
                         &mut w_impl_field_bounds_decompress,
-                        syn::parse_quote! { #ty: ::fuel_compression::RegistryDesubstitutableBy<Ctx> },
+                        syn::parse_quote! { #ty: ::fuel_compression::RegistryDesubstitutableBy<Ctx, E> },
                     );
                 }
             }
@@ -499,13 +499,13 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
             type Compressed = #compressed_name #g;
         }
 
-        gen impl<Ctx> ::fuel_compression::CompressibleBy<Ctx> for @Self #w_impl_field_bounds_compress {
-            fn compress(&self, ctx: &mut Ctx) -> anyhow::Result<Self::Compressed> {
+        gen impl<Ctx, E> ::fuel_compression::CompressibleBy<Ctx, E> for @Self #w_impl_field_bounds_compress {
+            fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
                 Ok(match self { #compress_per_variant })
             }
         }
-        gen impl<Ctx> ::fuel_compression::DecompressibleBy<Ctx> for @Self #w_impl_field_bounds_decompress {
-            fn decompress(compressed: &Self::Compressed, ctx: &Ctx) -> anyhow::Result<Self> {
+        gen impl<Ctx, E> ::fuel_compression::DecompressibleBy<Ctx, E> for @Self #w_impl_field_bounds_decompress {
+            fn decompress(compressed: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
                 Ok(match compressed { #decompress_per_variant })
             }
         }

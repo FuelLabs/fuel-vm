@@ -1,13 +1,13 @@
 //! Trait impls for Rust types
 
 use crate::traits::*;
+use core::{
+    marker::PhantomData,
+    mem::MaybeUninit,
+};
 use serde::{
     Deserialize,
     Serialize,
-};
-use std::{
-    marker::PhantomData,
-    mem::MaybeUninit,
 };
 
 macro_rules! identity_compaction {
@@ -16,20 +16,20 @@ macro_rules! identity_compaction {
             type Compressed = Self;
         }
 
-        impl<Ctx> CompressibleBy<Ctx> for $t
+        impl<Ctx, E> CompressibleBy<Ctx, E> for $t
         where
             Ctx: ?Sized,
         {
-            fn compress(&self, _: &mut Ctx) -> anyhow::Result<Self> {
+            fn compress(&self, _: &mut Ctx) -> Result<Self, E> {
                 Ok(*self)
             }
         }
 
-        impl<Ctx> DecompressibleBy<Ctx> for $t
+        impl<Ctx, E> DecompressibleBy<Ctx, E> for $t
         where
             Ctx: ?Sized,
         {
-            fn decompress(c: &Self::Compressed, _: &Ctx) -> anyhow::Result<Self> {
+            fn decompress(c: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
                 Ok(*c)
             }
         }
@@ -49,20 +49,20 @@ where
     type Compressed = Option<T::Compressed>;
 }
 
-impl<T, Ctx> CompressibleBy<Ctx> for Option<T>
+impl<T, Ctx, E> CompressibleBy<Ctx, E> for Option<T>
 where
-    T: CompressibleBy<Ctx> + Clone,
+    T: CompressibleBy<Ctx, E> + Clone,
 {
-    fn compress(&self, ctx: &mut Ctx) -> anyhow::Result<Self::Compressed> {
+    fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
         self.as_ref().map(|item| item.compress(ctx)).transpose()
     }
 }
 
-impl<T, Ctx> DecompressibleBy<Ctx> for Option<T>
+impl<T, Ctx, E> DecompressibleBy<Ctx, E> for Option<T>
 where
-    T: DecompressibleBy<Ctx> + Clone,
+    T: DecompressibleBy<Ctx, E> + Clone,
 {
-    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> anyhow::Result<Self> {
+    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
         c.as_ref().map(|item| T::decompress(item, ctx)).transpose()
     }
 }
@@ -98,22 +98,22 @@ where
     type Compressed = ArrayWrapper<S, T::Compressed>;
 }
 
-impl<const S: usize, T, Ctx> CompressibleBy<Ctx> for [T; S]
+impl<const S: usize, T, Ctx, E> CompressibleBy<Ctx, E> for [T; S]
 where
-    T: CompressibleBy<Ctx> + Clone,
+    T: CompressibleBy<Ctx, E> + Clone,
 {
-    fn compress(&self, ctx: &mut Ctx) -> anyhow::Result<Self::Compressed> {
+    fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
         Ok(ArrayWrapper(try_map_array(self.clone(), |v: T| {
             v.compress(ctx)
         })?))
     }
 }
 
-impl<const S: usize, T, Ctx> DecompressibleBy<Ctx> for [T; S]
+impl<const S: usize, T, Ctx, E> DecompressibleBy<Ctx, E> for [T; S]
 where
-    T: DecompressibleBy<Ctx> + Clone,
+    T: DecompressibleBy<Ctx, E> + Clone,
 {
-    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> anyhow::Result<Self> {
+    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
         try_map_array(c.0.clone(), |v: T::Compressed| T::decompress(&v, ctx))
     }
 }
@@ -125,20 +125,20 @@ where
     type Compressed = Vec<T::Compressed>;
 }
 
-impl<T, Ctx> CompressibleBy<Ctx> for Vec<T>
+impl<T, Ctx, E> CompressibleBy<Ctx, E> for Vec<T>
 where
-    T: CompressibleBy<Ctx> + Clone,
+    T: CompressibleBy<Ctx, E> + Clone,
 {
-    fn compress(&self, ctx: &mut Ctx) -> anyhow::Result<Self::Compressed> {
+    fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
         self.iter().map(|item| item.compress(ctx)).collect()
     }
 }
 
-impl<T, Ctx> DecompressibleBy<Ctx> for Vec<T>
+impl<T, Ctx, E> DecompressibleBy<Ctx, E> for Vec<T>
 where
-    T: DecompressibleBy<Ctx> + Clone,
+    T: DecompressibleBy<Ctx, E> + Clone,
 {
-    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> anyhow::Result<Self> {
+    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
         c.iter().map(|item| T::decompress(item, ctx)).collect()
     }
 }
@@ -147,14 +147,14 @@ impl<T> Compressible for PhantomData<T> {
     type Compressed = ();
 }
 
-impl<T, Ctx> CompressibleBy<Ctx> for PhantomData<T> {
-    fn compress(&self, _: &mut Ctx) -> anyhow::Result<Self::Compressed> {
+impl<T, Ctx, E> CompressibleBy<Ctx, E> for PhantomData<T> {
+    fn compress(&self, _: &mut Ctx) -> Result<Self::Compressed, E> {
         Ok(())
     }
 }
 
-impl<T, Ctx> DecompressibleBy<Ctx> for PhantomData<T> {
-    fn decompress(_: &Self::Compressed, _: &Ctx) -> anyhow::Result<Self> {
+impl<T, Ctx, E> DecompressibleBy<Ctx, E> for PhantomData<T> {
+    fn decompress(_: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
         Ok(PhantomData)
     }
 }

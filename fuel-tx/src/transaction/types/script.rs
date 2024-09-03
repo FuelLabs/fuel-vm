@@ -55,7 +55,7 @@ pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
     pub(crate) receipts_root: Bytes32,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    #[cfg_attr(feature = "da-compression", da_compress(registry))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "script_code"))]
     pub(crate) script: Vec<u8>,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,

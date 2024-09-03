@@ -9,12 +9,10 @@ use alloc::{
 use coin::*;
 use consts::*;
 use contract::*;
-use core::{
-    fmt,
-    fmt::Formatter,
+use core::fmt::{
+    self,
+    Formatter,
 };
-#[cfg(feature = "da-compression")]
-use fuel_compression::Compressible;
 use fuel_crypto::{
     Hasher,
     PublicKey,
@@ -102,25 +100,31 @@ impl<Type: Deserialize> Deserialize for Empty<Type> {
 }
 
 #[cfg(feature = "da-compression")]
-impl<T> Compressible for Empty<T>
+impl<T> fuel_compression::Compressible for Empty<T>
 where
-    T: Compressible,
+    T: fuel_compression::Compressible,
 {
     type Compressed = ();
+}
 
-    // fn compact(
-    //     &self,
-    //     _: &mut dyn fuel_compression::CompressionContext,
-    // ) -> anyhow::Result<Self::Compressed> {
-    //     Ok(())
-    // }
+#[cfg(feature = "da-compression")]
+impl<T, Ctx> fuel_compression::CompressibleBy<Ctx> for Empty<T>
+where
+    T: fuel_compression::Compressible,
+{
+    fn compress(&self, _: &mut Ctx) -> anyhow::Result<Self::Compressed> {
+        Ok(())
+    }
+}
 
-    // fn decompact(
-    //     _: Self::Compressed,
-    //     _: &dyn fuel_compression::DecompactionContext,
-    // ) -> anyhow::Result<Self> {
-    //     Ok(Self(Default::default()))
-    // }
+#[cfg(feature = "da-compression")]
+impl<T, Ctx> fuel_compression::DecompressibleBy<Ctx> for Empty<T>
+where
+    T: fuel_compression::Compressible,
+{
+    fn decompress(_: &Self::Compressed, _: &Ctx) -> anyhow::Result<Self> {
+        Ok(Empty(::core::marker::PhantomData))
+    }
 }
 
 impl<Type> AsFieldFmt for Empty<Type> {

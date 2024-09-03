@@ -15,6 +15,8 @@ pub use compaction::{
     CompressionContext,
     DecompressibleBy,
     DecompressionContext,
+    RegistryDesubstitutableBy,
+    RegistrySubstitutableBy,
 };
 pub use key::RawKey;
 

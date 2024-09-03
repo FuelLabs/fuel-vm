@@ -184,10 +184,10 @@ where
     Specification: MessageSpecification + Clone,
 {
     /// The sender from the L1 chain.
-    #[cfg_attr(feature = "da-compression", da_compress(registry))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "address"))]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
-    #[cfg_attr(feature = "da-compression", da_compress(registry))]
+    #[cfg_attr(feature = "da-compression", da_compress(registry = "address"))]
     pub recipient: Address,
     pub amount: Word,
     pub nonce: Nonce,

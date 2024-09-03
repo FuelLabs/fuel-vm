@@ -98,10 +98,15 @@ pub enum FieldAttrs {
     /// Compresseded recursively.
     Normal,
     /// This value is compacted into a registry lookup.
-    Registry,
+    Registry {
+        /// This is required to distinguish between values of the same type
+        keyspace: String,
+    },
 }
 impl FieldAttrs {
     pub fn parse(attrs: &[syn::Attribute]) -> Self {
+        let registry_path = syn::parse2::<syn::Path>(quote! {registry}).unwrap();
+
         let mut result = Self::Normal;
         for attr in attrs {
             if attr.style != syn::AttrStyle::Outer {
@@ -118,9 +123,19 @@ impl FieldAttrs {
                         if ident == "skip" {
                             result = Self::Skip;
                             continue;
-                        } else if ident == "registry" {
-                            result = Self::Registry;
-                            continue;
+                        }
+                    } else if let Ok(kv) =
+                        syn::parse2::<syn::MetaNameValue>(ml.tokens.clone())
+                    {
+                        if kv.path == registry_path {
+                            if let syn::Expr::Lit(lit) = kv.value {
+                                if let syn::Lit::Str(keyspace) = lit.lit {
+                                    result = Self::Registry {
+                                        keyspace: keyspace.value(),
+                                    };
+                                    continue;
+                                }
+                            }
                         }
                     }
                     panic!("Invalid attribute: {}", ml.tokens);
@@ -151,7 +166,7 @@ fn field_defs(fields: &syn::Fields) -> TokenStream2 {
                     quote! { #cty, }
                 }
             }
-            FieldAttrs::Registry => {
+            FieldAttrs::Registry { .. } => {
                 if let Some(fname) = field.ident.as_ref() {
                     quote! { #fname: ::fuel_compression::RawKey, }
                 } else {
@@ -189,9 +204,9 @@ fn construct_compact(
                         let #cname = <#ty as ::fuel_compression::CompressibleBy<_>>::compress(&#binding, ctx)?;
                     }
                 }
-                FieldAttrs::Registry => {
+                FieldAttrs::Registry {keyspace} => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_>>::compress(&#binding, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::RegistrySubstitutableBy<_>>::substitute(&#binding, ctx, #keyspace)?;
                     }
                 }
             }
@@ -249,9 +264,9 @@ fn construct_decompact(
                         let #cname = <#ty as ::fuel_compression::DecompressibleBy<_>>::decompress(#binding, ctx)?;
                     }
                 }
-                FieldAttrs::Registry => {
+                FieldAttrs::Registry { keyspace } => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::DecompressibleBy<_>>::decompress(#binding, ctx)?;
+                        let #cname = <#ty as ::fuel_compression::RegistryDesubstitutableBy<_>>::desubstitute(#binding, ctx, #keyspace)?;
                     }
                 }
             }
@@ -314,6 +329,19 @@ fn each_variant_compact<F: FnMut(&synstructure::VariantInfo<'_>) -> TokenStream2
         .collect()
 }
 
+fn where_clause_push(w: &mut Option<syn::WhereClause>, p: TokenStream2) {
+    if w.is_none() {
+        *w = Some(syn::WhereClause {
+            where_token: syn::Token![where](proc_macro2::Span::call_site()),
+            predicates: Default::default(),
+        });
+    }
+    w.as_mut()
+        .unwrap()
+        .predicates
+        .push(syn::parse_quote! { #p });
+}
+
 /// Derives `Compressed` trait for the given `struct` or `enum`.
 pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::None)
@@ -372,23 +400,21 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     for variant in s.variants() {
         for field in variant.ast().fields.iter() {
             let ty = &field.ty;
-            let attrs = FieldAttrs::parse(&field.attrs);
-            if matches!(attrs, FieldAttrs::Skip) {
-                continue;
+            match FieldAttrs::parse(&field.attrs) {
+                FieldAttrs::Skip => {}
+                FieldAttrs::Normal => {
+                    where_clause_push(
+                        &mut w_impl_field_bounds_compress,
+                        syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx> },
+                    );
+                }
+                FieldAttrs::Registry { .. } => {
+                    where_clause_push(
+                        &mut w_impl_field_bounds_compress,
+                        syn::parse_quote! { #ty: ::fuel_compression::RegistrySubstitutableBy<Ctx> },
+                    );
+                }
             }
-
-            if w_impl_field_bounds_compress.is_none() {
-                w_impl_field_bounds_compress = Some(syn::WhereClause {
-                    where_token: syn::Token![where](proc_macro2::Span::call_site()),
-                    predicates: Default::default(),
-                });
-            }
-
-            w_impl_field_bounds_compress
-                .as_mut()
-                .unwrap()
-                .predicates
-                .push(syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx> });
         }
     }
 
@@ -396,25 +422,21 @@ pub fn compact_derive(mut s: synstructure::Structure) -> TokenStream2 {
     for variant in s.variants() {
         for field in variant.ast().fields.iter() {
             let ty = &field.ty;
-            let attrs = FieldAttrs::parse(&field.attrs);
-            if matches!(attrs, FieldAttrs::Skip) {
-                continue;
+            match FieldAttrs::parse(&field.attrs) {
+                FieldAttrs::Skip => {}
+                FieldAttrs::Normal => {
+                    where_clause_push(
+                        &mut w_impl_field_bounds_decompress,
+                        syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx> },
+                    );
+                }
+                FieldAttrs::Registry { .. } => {
+                    where_clause_push(
+                        &mut w_impl_field_bounds_decompress,
+                        syn::parse_quote! { #ty: ::fuel_compression::RegistryDesubstitutableBy<Ctx> },
+                    );
+                }
             }
-
-            if w_impl_field_bounds_decompress.is_none() {
-                w_impl_field_bounds_decompress = Some(syn::WhereClause {
-                    where_token: syn::Token![where](proc_macro2::Span::call_site()),
-                    predicates: Default::default(),
-                });
-            }
-
-            w_impl_field_bounds_decompress
-                .as_mut()
-                .unwrap()
-                .predicates
-                .push(
-                    syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx> },
-                );
         }
     }
 

@@ -10,6 +10,8 @@ use serde::{
     Serialize,
 };
 
+use crate::RawKey;
+
 /// Convert data to reference-based format
 pub trait Compressible {
     /// The compacted type with references
@@ -48,6 +50,21 @@ where
     Type: Compressible,
 {
     fn decompress(&self, value: &Type::Compressed) -> anyhow::Result<Type>;
+}
+
+pub trait RegistrySubstitutableBy<Ctx>: Compressible
+where
+    Ctx: ?Sized,
+{
+    fn substitute(&self, ctx: &mut Ctx, keyspace: &str) -> anyhow::Result<RawKey>;
+}
+
+pub trait RegistryDesubstitutableBy<Ctx>: Compressible
+where
+    Ctx: ?Sized,
+    Self: Sized,
+{
+    fn desubstitute(c: &RawKey, ctx: &Ctx, keyspace: &str) -> anyhow::Result<Self>;
 }
 
 macro_rules! identity_compaction {
@@ -94,7 +111,7 @@ where
     T: CompressibleBy<Ctx> + Clone,
 {
     fn compress(&self, ctx: &mut Ctx) -> anyhow::Result<Self::Compressed> {
-        Ok(self.as_ref().map(|item| item.compress(ctx)).transpose()?)
+        self.as_ref().map(|item| item.compress(ctx)).transpose()
     }
 }
 
@@ -179,7 +196,7 @@ where
     T: DecompressibleBy<Ctx> + Clone,
 {
     fn decompress(c: &Self::Compressed, ctx: &Ctx) -> anyhow::Result<Self> {
-        c.into_iter().map(|item| T::decompress(item, ctx)).collect()
+        c.iter().map(|item| T::decompress(item, ctx)).collect()
     }
 }
 
@@ -187,19 +204,13 @@ impl<T> Compressible for PhantomData<T> {
     type Compressed = ();
 }
 
-impl<T, Ctx> CompressibleBy<Ctx> for PhantomData<T>
-where
-    T: CompressibleBy<Ctx> + Clone,
-{
+impl<T, Ctx> CompressibleBy<Ctx> for PhantomData<T> {
     fn compress(&self, _: &mut Ctx) -> anyhow::Result<Self::Compressed> {
         Ok(())
     }
 }
 
-impl<T, Ctx> DecompressibleBy<Ctx> for PhantomData<T>
-where
-    T: DecompressibleBy<Ctx> + Clone,
-{
+impl<T, Ctx> DecompressibleBy<Ctx> for PhantomData<T> {
     fn decompress(_: &Self::Compressed, _: &Ctx) -> anyhow::Result<Self> {
         Ok(PhantomData)
     }

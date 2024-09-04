@@ -37,7 +37,6 @@ bincode = { workspace = true }
 fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
 fuel-tx = { path = ".", features = ["random", "serde", "test-helpers"] }
 fuel-types = { workspace = true, default-features = false, features = ["random"] }
-tokio = { version = "1.27", features = ["full"] }
 hex = { version = "0.4", default-features = false }
 insta = "1.0"
 postcard = { version = "1.0", features = ["use-std"] }
@@ -46,6 +45,7 @@ quickcheck_macros = "1.0"
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }
 rstest = "0.15"
 serde_json = { version = "1.0" }
+tokio = { version = "1.27", features = ["full"] }
 
 [features]
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]

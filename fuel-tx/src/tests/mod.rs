@@ -12,3 +12,6 @@ mod display;
 
 #[cfg(not(feature = "serde"))]
 use bincode as _;
+
+#[cfg(not(feature = "da-compression"))]
+use bimap as _;

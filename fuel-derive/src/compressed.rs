@@ -1,5 +1,4 @@
 use proc_macro2::{
-    Span,
     TokenStream as TokenStream2,
     TokenTree as TokenTree2,
 };
@@ -13,59 +12,36 @@ use syn::parse::{
     ParseStream,
 };
 
-const ATTR: &str = "da_compress";
+const ATTR: &str = "compressible_by";
 
 /// Structure (struct or enum) attributes
 #[derive(Debug)]
 pub enum StructureAttrs {
-    /// Insert bounds for a generic type
-    /// `#[da_compress(bound(Type))]`
-    Bound(Vec<String>),
     /// Discard generic parameter
-    /// `#[da_compress(discard(Type))]`
+    /// `#[compressible_by(discard(Type))]`
     Discard(Vec<String>),
 }
 impl Parse for StructureAttrs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if let Ok(ml) = input.parse::<syn::MetaList>() {
-            if ml.path.segments.len() == 1 {
-                match ml.path.segments[0].ident.to_string().as_str() {
-                    "bound" => {
-                        let mut bound = Vec::new();
-                        for item in ml.tokens {
-                            match item {
-                                TokenTree2::Ident(ident) => {
-                                    bound.push(ident.to_string());
-                                }
-                                other => {
-                                    return Err(syn::Error::new_spanned(
-                                        other,
-                                        "Expected generic (type) name",
-                                    ))
-                                }
-                            }
+            if ml.path.segments.len() == 1
+                && ml.path.segments[0].ident.to_string().as_str() == "discard"
+            {
+                let mut discard = Vec::new();
+                for item in ml.tokens {
+                    match item {
+                        TokenTree2::Ident(ident) => {
+                            discard.push(ident.to_string());
                         }
-                        return Ok(Self::Bound(bound));
-                    }
-                    "discard" => {
-                        let mut discard = Vec::new();
-                        for item in ml.tokens {
-                            match item {
-                                TokenTree2::Ident(ident) => {
-                                    discard.push(ident.to_string());
-                                }
-                                other => {
-                                    return Err(syn::Error::new_spanned(
-                                        other,
-                                        "Expected generic (type) name",
-                                    ))
-                                }
-                            }
+                        other => {
+                            return Err(syn::Error::new_spanned(
+                                other,
+                                "Expected generic (type) name",
+                            ))
                         }
-                        return Ok(Self::Discard(discard));
                     }
-                    _ => {}
                 }
+                return Ok(Self::Discard(discard));
             }
         }
         Err(syn::Error::new_spanned(
@@ -96,9 +72,9 @@ impl StructureAttrs {
 /// Field attributes
 pub enum FieldAttrs {
     /// Skipped when compressing, and must be reconstructed when decompressing.
-    /// `#[da_compress(skip)]`
+    /// `#[compressible_by(skip)]`
     Skip,
-    /// Compresseded recursively.
+    /// Compressed recursively.
     Normal,
 }
 impl FieldAttrs {
@@ -308,8 +284,8 @@ fn where_clause_push(w: &mut Option<syn::WhereClause>, p: TokenStream2) {
         .push(syn::parse_quote! { #p });
 }
 
-/// Derives `Compressed` trait for the given `struct` or `enum`.
-pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
+/// Derives `Compressible` trait for the given `struct` or `enum`.
+pub fn compressible_by(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::None)
         .underscore_const(true);
 
@@ -322,23 +298,10 @@ pub fn compressed_derive(mut s: synstructure::Structure) -> TokenStream2 {
     let compressed_name = format_ident!("Compressed{}", name);
 
     let mut g = s.ast().generics.clone();
-    let mut w_structure = g.where_clause.take();
-    let mut w_impl = w_structure.clone();
+    let w_structure = g.where_clause.take();
+    let w_impl = w_structure.clone();
     for item in &s_attrs {
         match item {
-            StructureAttrs::Bound(bound) => {
-                for p in bound {
-                    let id = syn::Ident::new(p, Span::call_site());
-                    where_clause_push(
-                        &mut w_structure,
-                        syn::parse_quote! { #id: ::fuel_compression::Compressible },
-                    );
-                    where_clause_push(
-                        &mut w_impl,
-                        syn::parse_quote! { for<'de>  #id: ::fuel_compression::Compressible + serde::Serialize + serde::Deserialize<'de> + Clone },
-                    );
-                }
-            }
             StructureAttrs::Discard(discard) => {
                 g.params = g
                     .params

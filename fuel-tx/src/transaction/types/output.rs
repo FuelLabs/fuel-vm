@@ -21,7 +21,7 @@ pub use repr::OutputRepr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
 #[derive(canonical::Deserialize, canonical::Serialize)]
 pub enum Output {
     Coin {
@@ -34,17 +34,17 @@ pub enum Output {
 
     Change {
         to: Address,
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compressible_by(skip))]
         amount: Word,
         asset_id: AssetId,
     },
 
     Variable {
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compressible_by(skip))]
         to: Address,
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compressible_by(skip))]
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compressible_by(skip))]
         asset_id: AssetId,
     },
 

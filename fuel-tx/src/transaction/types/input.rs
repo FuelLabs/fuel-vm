@@ -57,10 +57,10 @@ pub trait AsField<Type>: AsFieldFmt {
 /// The empty field used by sub-types of the specification.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
-#[cfg_attr(feature = "da-compression", da_compress(discard(Type)))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
+#[cfg_attr(feature = "da-compression", compressible_by(discard(Type)))]
 pub struct Empty<Type>(
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compressible_by(skip))]
     ::core::marker::PhantomData<Type>,
 );
 
@@ -202,7 +202,7 @@ where
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),

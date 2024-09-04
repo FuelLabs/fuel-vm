@@ -39,7 +39,7 @@ pub struct UploadMetadata;
 /// The body of the [`Upload`] transaction.
 #[derive(Clone, Default, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Upload)]
 #[derivative(Eq, PartialEq, Hash, Debug)]

@@ -96,7 +96,7 @@ impl UpgradeMetadata {
 /// transaction.
 #[derive(Copy, Clone, Derivative, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum UpgradePurpose {
@@ -123,7 +123,7 @@ pub enum UpgradePurpose {
 /// The body of the [`Upgrade`] transaction.
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Upgrade)]
 #[derivative(Eq, PartialEq, Hash, Debug)]

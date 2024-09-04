@@ -434,6 +434,8 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
             // The following line coerces the pointer to the array to a pointer
             // to the first array element which is equivalent.
             let mut ptr = uninit.as_mut_ptr() as *mut T;
+            // TODO: Handle the case of the error. Currently it will cause a memory leak.
+            //  https://github.com/FuelLabs/fuel-vm/issues/811
             for _ in 0..N {
                 let decoded = T::decode_static(buffer)?;
                 // SAFETY: We do not read uninitialized array contents

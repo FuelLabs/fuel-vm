@@ -29,44 +29,17 @@ use alloc::format;
 
 macro_rules! key {
     ($i:ident, $s:expr) => {
-        /// FuelVM atomic array type.
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        /// FuelVM atomic array type.
         #[repr(transparent)]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+        #[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]
         pub struct $i([u8; $s]);
 
         key_methods!($i, $s);
-
-        #[cfg(feature = "random")]
-        impl Distribution<$i> for Standard {
-            fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $i {
-                $i(rng.gen())
-            }
-        }
-    };
-}
-
-macro_rules! key_da_compress_substitute {
-    ($i:ident, $s:expr) => {
-        /// FuelVM atomic array type.
-        #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        #[repr(transparent)]
-        #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        #[derive(
-            fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
-        )]
-        pub struct $i([u8; $s]);
-
-        key_methods!($i, $s);
-
-        #[cfg(feature = "da-compression")]
-        impl fuel_compression::Compressible for $i {
-            type Compressed = fuel_compression::RegistryKey;
-        }
 
         #[cfg(feature = "random")]
         impl Distribution<$i> for Standard {
@@ -83,7 +56,7 @@ macro_rules! key_with_big_array {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[repr(transparent)]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+        #[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]
@@ -371,7 +344,11 @@ macro_rules! key_methods {
     };
 }
 
+key!(Address, 32);
+key!(AssetId, 32);
 key!(BlobId, 32);
+key!(ContractId, 32);
+key!(TxId, 32);
 key!(Bytes4, 4);
 key!(Bytes8, 8);
 key!(Bytes20, 20);
@@ -379,10 +356,6 @@ key!(Bytes32, 32);
 key!(Nonce, 32);
 key!(MessageId, 32);
 key!(Salt, 32);
-
-key_da_compress_substitute!(Address, 32);
-key_da_compress_substitute!(AssetId, 32);
-key_da_compress_substitute!(ContractId, 32);
 
 key_with_big_array!(Bytes64, 64);
 

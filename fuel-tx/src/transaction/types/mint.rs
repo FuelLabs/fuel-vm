@@ -49,13 +49,13 @@ impl MintMetadata {
 /// by it.
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compressible_by(skip))]
     pub(crate) tx_pointer: TxPointer,
     /// The `Input::Contract` that assets are minted to.
     pub(crate) input_contract: input::contract::Contract,
@@ -70,7 +70,7 @@ pub struct Mint {
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compressible_by(skip))]
     pub(crate) metadata: Option<MintMetadata>,
 }
 

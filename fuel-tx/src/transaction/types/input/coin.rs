@@ -121,7 +121,7 @@ impl CoinSpecification for Full {
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Coin<Specification>
 where
-    Specification: CoinSpecification + Clone,
+    Specification: CoinSpecification,
 {
     pub utxo_id: UtxoId,
     pub owner: Address,
@@ -140,7 +140,7 @@ where
 
 impl<Specification> Coin<Specification>
 where
-    Specification: CoinSpecification + Clone,
+    Specification: CoinSpecification,
 {
     /// The "Note" section from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.

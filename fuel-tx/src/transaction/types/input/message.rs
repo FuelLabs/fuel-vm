@@ -171,7 +171,7 @@ pub mod specifications {
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>
 where
-    Specification: MessageSpecification + Clone,
+    Specification: MessageSpecification,
 {
     /// The sender from the L1 chain.
     pub sender: Address,
@@ -194,7 +194,7 @@ where
 
 impl<Specification> Message<Specification>
 where
-    Specification: MessageSpecification + Clone,
+    Specification: MessageSpecification,
 {
     pub fn prepare_sign(&mut self) {
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {

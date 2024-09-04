@@ -92,6 +92,7 @@ pub use transaction::{
     Chargeable,
     ChargeableMetadata,
     ChargeableTransaction,
+    CompressibleTxId,
     ConsensusParameters,
     ContractParameters,
     Create,

@@ -54,7 +54,6 @@ pub struct ScriptMetadata {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(transparent))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptCode {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
@@ -78,6 +77,11 @@ impl DerefMut for ScriptCode {
     }
 }
 
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for ScriptCode {
+    type Compressed = fuel_compression::RegistryKey;
+}
+
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
@@ -87,7 +91,6 @@ impl DerefMut for ScriptCode {
 pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
     pub(crate) receipts_root: Bytes32,
-    #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
     pub(crate) script: ScriptCode,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,

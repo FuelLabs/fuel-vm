@@ -1,6 +1,6 @@
 //! Trait impls for Rust types
 
-use crate::traits::*;
+use super::traits::*;
 use core::{
     marker::PhantomData,
     mem::MaybeUninit,

@@ -25,21 +25,17 @@ pub use repr::OutputRepr;
 #[derive(canonical::Deserialize, canonical::Serialize)]
 pub enum Output {
     Coin {
-        #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
         to: Address,
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
         asset_id: AssetId,
     },
 
     Contract(Contract),
 
     Change {
-        #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
         to: Address,
         #[cfg_attr(feature = "da-compression", da_compress(skip))]
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
         asset_id: AssetId,
     },
 
@@ -53,7 +49,6 @@ pub enum Output {
     },
 
     ContractCreated {
-        #[cfg_attr(feature = "da-compression", da_compress(substitute = fuel_compression::RawKey))]
         contract_id: ContractId,
         state_root: Bytes32,
     },

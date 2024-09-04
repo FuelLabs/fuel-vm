@@ -10,7 +10,7 @@ mod impls;
 mod key;
 mod traits;
 
-pub use key::RawKey;
+pub use key::RegistryKey;
 pub use traits::*;
 
 pub use fuel_derive::Compressed;

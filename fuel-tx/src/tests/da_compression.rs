@@ -3,13 +3,13 @@ use crate::{
     test_helper::generate_bytes,
     BlobBody,
     BlobId,
+    CompressibleTxId,
     ConsensusParameters,
     Input,
     Output,
     ScriptCode,
     Transaction,
     TransactionBuilder,
-    TxId,
     TxPointer,
     UpgradePurpose,
     UploadBody,
@@ -19,9 +19,7 @@ use fuel_compression::{
     Compressed,
     CompressibleBy,
     DecompressibleBy,
-    RawKey,
-    RegistryDesubstitutableBy,
-    RegistrySubstitutableBy,
+    RegistryKey,
 };
 use fuel_crypto::SecretKey;
 use fuel_types::{
@@ -44,17 +42,17 @@ type Keyspace = &'static str;
 /// A simple and inefficient registry for testing purposes
 #[derive(Default)]
 struct TestCompressionCtx {
-    registry: HashMap<Keyspace, BiMap<RawKey, Vec<u8>>>,
-    tx_blocks: BiMap<TxPointer, TxId>,
+    registry: HashMap<Keyspace, BiMap<RegistryKey, Vec<u8>>>,
+    tx_blocks: BiMap<TxPointer, CompressibleTxId>,
 }
 
 macro_rules! impl_substitutable_key {
     ($t:ty) => {
-        impl RegistrySubstitutableBy<RawKey, TestCompressionCtx, Infallible> for $t {
-            fn substitute(
+        impl CompressibleBy<TestCompressionCtx, Infallible> for $t {
+            fn compress(
                 &self,
                 ctx: &mut TestCompressionCtx,
-            ) -> Result<RawKey, Infallible> {
+            ) -> Result<RegistryKey, Infallible> {
                 let keyspace = stringify!($t);
                 let value = postcard::to_stdvec(self).expect("failed to serialize");
                 let key_seed = ctx.registry.len(); // Just get an unique integer key
@@ -64,15 +62,15 @@ macro_rules! impl_substitutable_key {
                     return Ok(*key);
                 }
 
-                let key = RawKey::try_from(key_seed as u32).expect("key too large");
+                let key = RegistryKey::try_from(key_seed as u32).expect("key too large");
                 entry.insert(key, value);
                 Ok(key)
             }
         }
 
-        impl RegistryDesubstitutableBy<RawKey, TestCompressionCtx, Infallible> for $t {
-            fn desubstitute(
-                key: &RawKey,
+        impl DecompressibleBy<TestCompressionCtx, Infallible> for $t {
+            fn decompress(
+                key: &RegistryKey,
                 ctx: &TestCompressionCtx,
             ) -> Result<$t, Infallible> {
                 let keyspace = stringify!($t);
@@ -89,8 +87,8 @@ impl_substitutable_key!(AssetId);
 impl_substitutable_key!(ContractId);
 impl_substitutable_key!(ScriptCode);
 
-impl RegistrySubstitutableBy<TxPointer, TestCompressionCtx, Infallible> for TxId {
-    fn substitute(&self, ctx: &mut TestCompressionCtx) -> Result<TxPointer, Infallible> {
+impl CompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
+    fn compress(&self, ctx: &mut TestCompressionCtx) -> Result<TxPointer, Infallible> {
         if let Some(key) = ctx.tx_blocks.get_by_right(self) {
             return Ok(*key);
         }
@@ -102,20 +100,18 @@ impl RegistrySubstitutableBy<TxPointer, TestCompressionCtx, Infallible> for TxId
     }
 }
 
-impl RegistryDesubstitutableBy<TxPointer, TestCompressionCtx, Infallible> for TxId {
-    fn desubstitute(
+impl DecompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
+    fn decompress(
         key: &TxPointer,
         ctx: &TestCompressionCtx,
-    ) -> Result<TxId, Infallible> {
+    ) -> Result<CompressibleTxId, Infallible> {
         Ok(*ctx.tx_blocks.get_by_left(key).expect("key not found"))
     }
 }
 
 #[derive(Debug, PartialEq, Default, Compressed)]
 pub struct ExampleStruct {
-    pub asset_id_bare: AssetId,
-    #[da_compress(substitute = RawKey)]
-    pub asset_id_ref: AssetId,
+    pub asset_id: AssetId,
     pub array: [u8; 32],
     pub vec: Vec<u8>,
     pub integer: u32,
@@ -123,7 +119,6 @@ pub struct ExampleStruct {
 
 #[derive(Debug, PartialEq, Compressed)]
 pub struct InnerStruct {
-    #[da_compress(substitute = RawKey)]
     pub asset_id: AssetId,
     pub count: u64,
     #[da_compress(skip)]
@@ -147,8 +142,7 @@ fn example_struct_postcard_roundtrip_multiple() {
     let mut ctx = TestCompressionCtx::default();
     for _ in 0..10 {
         let original = ExampleStruct {
-            asset_id_bare: AssetId::new(rng.gen()),
-            asset_id_ref: AssetId::new(rng.gen()),
+            asset_id: AssetId::new(rng.gen()),
             array: rng.gen(),
             vec: (0..rng.gen_range(0..32)).map(|_| rng.gen::<u8>()).collect(),
             integer: rng.gen(),

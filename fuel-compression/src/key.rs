@@ -7,8 +7,8 @@ use serde::{
 /// The last key (all bits set) is reserved for the default value and cannot be written
 /// to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct RawKey([u8; Self::SIZE]);
-impl RawKey {
+pub struct RegistryKey([u8; Self::SIZE]);
+impl RegistryKey {
     /// Key mapping to default value for the table type.
     pub const DEFAULT_VALUE: Self = Self([u8::MAX; Self::SIZE]);
     /// Maximum writable key.
@@ -38,13 +38,13 @@ impl RawKey {
         }
     }
 }
-impl TryFrom<u32> for RawKey {
+impl TryFrom<u32> for RegistryKey {
     type Error = &'static str;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let v = value.to_be_bytes();
         if v[0] != 0 {
-            return Err("RawKey must be less than 2^24");
+            return Err("RegistryKey must be less than 2^24");
         }
 
         let mut bytes = [0u8; 3];
@@ -55,15 +55,15 @@ impl TryFrom<u32> for RawKey {
 
 #[cfg(test)]
 mod tests {
-    use super::RawKey;
+    use super::RegistryKey;
 
     #[test]
     fn key_next() {
-        assert_eq!(RawKey::ZERO.next(), RawKey([0, 0, 1]));
-        assert_eq!(RawKey::ZERO.next().next(), RawKey([0, 0, 2]));
-        assert_eq!(RawKey([0, 0, 255]).next(), RawKey([0, 1, 0]));
-        assert_eq!(RawKey([0, 1, 255]).next(), RawKey([0, 2, 0]));
-        assert_eq!(RawKey([0, 255, 255]).next(), RawKey([1, 0, 0]));
-        assert_eq!(RawKey::MAX_WRITABLE.next(), RawKey::ZERO);
+        assert_eq!(RegistryKey::ZERO.next(), RegistryKey([0, 0, 1]));
+        assert_eq!(RegistryKey::ZERO.next().next(), RegistryKey([0, 0, 2]));
+        assert_eq!(RegistryKey([0, 0, 255]).next(), RegistryKey([0, 1, 0]));
+        assert_eq!(RegistryKey([0, 1, 255]).next(), RegistryKey([0, 2, 0]));
+        assert_eq!(RegistryKey([0, 255, 255]).next(), RegistryKey([1, 0, 0]));
+        assert_eq!(RegistryKey::MAX_WRITABLE.next(), RegistryKey::ZERO);
     }
 }

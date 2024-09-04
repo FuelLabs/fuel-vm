@@ -49,7 +49,7 @@ struct TestCompressionCtx {
 macro_rules! impl_substitutable_key {
     ($t:ty) => {
         impl CompressibleBy<TestCompressionCtx, Infallible> for $t {
-            fn compress(
+            async fn compress(
                 &self,
                 ctx: &mut TestCompressionCtx,
             ) -> Result<RegistryKey, Infallible> {
@@ -69,7 +69,7 @@ macro_rules! impl_substitutable_key {
         }
 
         impl DecompressibleBy<TestCompressionCtx, Infallible> for $t {
-            fn decompress(
+            async fn decompress(
                 key: &RegistryKey,
                 ctx: &TestCompressionCtx,
             ) -> Result<$t, Infallible> {
@@ -88,7 +88,10 @@ impl_substitutable_key!(ContractId);
 impl_substitutable_key!(ScriptCode);
 
 impl CompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
-    fn compress(&self, ctx: &mut TestCompressionCtx) -> Result<TxPointer, Infallible> {
+    async fn compress(
+        &self,
+        ctx: &mut TestCompressionCtx,
+    ) -> Result<TxPointer, Infallible> {
         if let Some(key) = ctx.tx_blocks.get_by_right(self) {
             return Ok(*key);
         }
@@ -101,7 +104,7 @@ impl CompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
 }
 
 impl DecompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
-    fn decompress(
+    async fn decompress(
         key: &TxPointer,
         ctx: &TestCompressionCtx,
     ) -> Result<CompressibleTxId, Infallible> {
@@ -125,18 +128,22 @@ pub struct InnerStruct {
     pub cached: [u8; 32],
 }
 
-#[test]
-fn example_struct_roundtrip_simple() {
+#[tokio::test]
+async fn example_struct_roundtrip_simple() {
     let mut ctx = TestCompressionCtx::default();
     let original = ExampleStruct::default();
-    let compressed = original.compress(&mut ctx).expect("compression failed");
-    let decompressed =
-        ExampleStruct::decompress(&compressed, &ctx).expect("decompression failed");
+    let compressed = original
+        .compress(&mut ctx)
+        .await
+        .expect("compression failed");
+    let decompressed = ExampleStruct::decompress(&compressed, &ctx)
+        .await
+        .expect("decompression failed");
     assert_eq!(original, decompressed);
 }
 
-#[test]
-fn example_struct_postcard_roundtrip_multiple() {
+#[tokio::test]
+async fn example_struct_postcard_roundtrip_multiple() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let mut ctx = TestCompressionCtx::default();
@@ -147,19 +154,23 @@ fn example_struct_postcard_roundtrip_multiple() {
             vec: (0..rng.gen_range(0..32)).map(|_| rng.gen::<u8>()).collect(),
             integer: rng.gen(),
         };
-        let compressed = original.compress(&mut ctx).expect("compression failed");
+        let compressed = original
+            .compress(&mut ctx)
+            .await
+            .expect("compression failed");
         let postcard_compressed =
             postcard::to_stdvec(&compressed).expect("failed to serialize");
         let postcard_decompressed =
             postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
         let decompressed = ExampleStruct::decompress(&postcard_decompressed, &ctx)
+            .await
             .expect("decompression failed");
         assert_eq!(original, decompressed);
     }
 }
 
-#[test]
-fn transaction_postcard_roundtrip() {
+#[tokio::test]
+async fn transaction_postcard_roundtrip() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     // Malleable fields zero, others randomized.
@@ -219,12 +230,13 @@ fn transaction_postcard_roundtrip() {
 
     let mut ctx = TestCompressionCtx::default();
     for tx in txs {
-        let compressed = tx.compress(&mut ctx).expect("compression failed");
+        let compressed = tx.compress(&mut ctx).await.expect("compression failed");
         let postcard_compressed =
             postcard::to_stdvec(&compressed).expect("failed to serialize");
         let postcard_decompressed =
             postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
         let decompressed = Transaction::decompress(&postcard_decompressed, &ctx)
+            .await
             .expect("decompression failed");
         assert_eq!(tx, decompressed);
     }

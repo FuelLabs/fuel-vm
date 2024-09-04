@@ -20,7 +20,7 @@ macro_rules! identity_compaction {
         where
             Ctx: ?Sized,
         {
-            fn compress(&self, _: &mut Ctx) -> Result<Self, E> {
+            async fn compress(&self, _: &mut Ctx) -> Result<Self, E> {
                 Ok(*self)
             }
         }
@@ -29,7 +29,7 @@ macro_rules! identity_compaction {
         where
             Ctx: ?Sized,
         {
-            fn decompress(c: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
+            async fn decompress(c: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
                 Ok(*c)
             }
         }
@@ -53,8 +53,12 @@ impl<T, Ctx, E> CompressibleBy<Ctx, E> for Option<T>
 where
     T: CompressibleBy<Ctx, E> + Clone,
 {
-    fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
-        self.as_ref().map(|item| item.compress(ctx)).transpose()
+    async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+        if let Some(item) = self {
+            Ok(Some(item.compress(ctx).await?))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -62,8 +66,12 @@ impl<T, Ctx, E> DecompressibleBy<Ctx, E> for Option<T>
 where
     T: DecompressibleBy<Ctx, E> + Clone,
 {
-    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
-        c.as_ref().map(|item| T::decompress(item, ctx)).transpose()
+    async fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+        if let Some(item) = c {
+            Ok(Some(T::decompress(item, ctx).await?))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -71,25 +79,6 @@ where
 pub struct ArrayWrapper<const S: usize, T: Serialize + for<'a> Deserialize<'a>>(
     #[serde(with = "serde_big_array::BigArray")] pub [T; S],
 );
-
-// TODO: use try_map when stabilized: https://github.com/rust-lang/rust/issues/79711
-#[allow(unsafe_code)]
-fn try_map_array<const S: usize, T, R, E, F: FnMut(T) -> Result<R, E>>(
-    arr: [T; S],
-    mut f: F,
-) -> Result<[R; S], E> {
-    // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
-    // which do not require initialization.
-    let mut tmp: [MaybeUninit<R>; S] = unsafe { MaybeUninit::uninit().assume_init() };
-
-    // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
-    for (i, v) in arr.into_iter().enumerate() {
-        tmp[i] = MaybeUninit::new(f(v)?);
-    }
-
-    // SAFETY: Every element is initialized.
-    Ok(tmp.map(|v| unsafe { v.assume_init() }))
-}
 
 impl<const S: usize, T> Compressible for [T; S]
 where
@@ -102,10 +91,21 @@ impl<const S: usize, T, Ctx, E> CompressibleBy<Ctx, E> for [T; S]
 where
     T: CompressibleBy<Ctx, E> + Clone,
 {
-    fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
-        Ok(ArrayWrapper(try_map_array(self.clone(), |v: T| {
-            v.compress(ctx)
-        })?))
+    #[allow(unsafe_code)]
+    async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+        // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
+        // which do not require initialization.
+        let mut tmp: [MaybeUninit<T::Compressed>; S] =
+            unsafe { MaybeUninit::uninit().assume_init() };
+
+        // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
+        for (i, v) in self.iter().enumerate() {
+            tmp[i] = MaybeUninit::new(v.compress(ctx).await?);
+        }
+
+        // SAFETY: Every element is initialized.
+        let result = tmp.map(|v| unsafe { v.assume_init() });
+        Ok(ArrayWrapper(result))
     }
 }
 
@@ -113,8 +113,20 @@ impl<const S: usize, T, Ctx, E> DecompressibleBy<Ctx, E> for [T; S]
 where
     T: DecompressibleBy<Ctx, E> + Clone,
 {
-    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
-        try_map_array(c.0.clone(), |v: T::Compressed| T::decompress(&v, ctx))
+    #[allow(unsafe_code)]
+    async fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+        // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
+        // which do not require initialization.
+        let mut tmp: [MaybeUninit<T>; S] = unsafe { MaybeUninit::uninit().assume_init() };
+
+        // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
+        for (i, v) in c.0.iter().enumerate() {
+            tmp[i] = MaybeUninit::new(T::decompress(v, ctx).await?);
+        }
+
+        // SAFETY: Every element is initialized.
+        let result: [T; S] = tmp.map(|v| unsafe { v.assume_init() });
+        Ok(result)
     }
 }
 
@@ -129,8 +141,12 @@ impl<T, Ctx, E> CompressibleBy<Ctx, E> for Vec<T>
 where
     T: CompressibleBy<Ctx, E> + Clone,
 {
-    fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
-        self.iter().map(|item| item.compress(ctx)).collect()
+    async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+        let mut result = Vec::with_capacity(self.len());
+        for item in self {
+            result.push(item.compress(ctx).await?);
+        }
+        Ok(result)
     }
 }
 
@@ -138,8 +154,12 @@ impl<T, Ctx, E> DecompressibleBy<Ctx, E> for Vec<T>
 where
     T: DecompressibleBy<Ctx, E> + Clone,
 {
-    fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
-        c.iter().map(|item| T::decompress(item, ctx)).collect()
+    async fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+        let mut result = Vec::with_capacity(c.len());
+        for item in c {
+            result.push(T::decompress(item, ctx).await?);
+        }
+        Ok(result)
     }
 }
 
@@ -148,13 +168,13 @@ impl<T> Compressible for PhantomData<T> {
 }
 
 impl<T, Ctx, E> CompressibleBy<Ctx, E> for PhantomData<T> {
-    fn compress(&self, _: &mut Ctx) -> Result<Self::Compressed, E> {
+    async fn compress(&self, _: &mut Ctx) -> Result<Self::Compressed, E> {
         Ok(())
     }
 }
 
 impl<T, Ctx, E> DecompressibleBy<Ctx, E> for PhantomData<T> {
-    fn decompress(_: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
+    async fn decompress(_: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
         Ok(PhantomData)
     }
 }

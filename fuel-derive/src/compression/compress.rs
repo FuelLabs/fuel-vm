@@ -1,38 +1,47 @@
+use crate::helpers::where_clause_push;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::{
     format_ident,
     quote,
 };
 
-use crate::helpers::where_clause_push;
-
 use super::attribute::{
     FieldAttrs,
     StructureAttrs,
 };
 
-/// Map field definitions to compressed field definitions.
-fn field_defs(fields: &syn::Fields) -> TokenStream2 {
-    let mut defs = TokenStream2::new();
-
-    for field in fields {
+/// Iterator of field items for the compressed structure.
+/// Gives either named or unnamed fields.
+fn field_items(fields: &syn::Fields) -> impl Iterator<Item = TokenStream2> + '_ {
+    fields.iter().filter_map(|field| {
         let attrs = FieldAttrs::parse(&field.attrs);
-        let field_content = match &attrs {
-            FieldAttrs::Skip => continue,
+        match &attrs {
+            FieldAttrs::Skip => None,
             FieldAttrs::Normal => {
                 let ty = &field.ty;
-                quote! {
+                let ftype = quote! {
                     <#ty as ::fuel_compression::Compressible>::Compressed
-                }
+                };
+                Some(if let Some(fname) = field.ident.as_ref() {
+                    quote! { #fname: #ftype }
+                } else {
+                    quote! { #ftype }
+                })
             }
-        };
-        defs.extend(if let Some(fname) = field.ident.as_ref() {
-            quote! { #fname: #field_content, }
-        } else {
-            quote! { #field_content, }
-        });
-    }
+        }
+    })
+}
 
+/// Map field definitions to compressed field definitions.
+fn field_defs(fields: &syn::Fields, include_vis: bool) -> TokenStream2 {
+    let mut defs = TokenStream2::new();
+    for item in field_items(fields) {
+        if include_vis {
+            defs.extend(quote! { #item, });
+        } else {
+            defs.extend(quote! { pub #item, });
+        }
+    }
     match fields {
         syn::Fields::Named(_) => quote! {{ #defs }},
         syn::Fields::Unnamed(_) => quote! {(#defs)},
@@ -195,7 +204,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
     let def = match &s.ast().data {
         syn::Data::Struct(v) => {
             let variant: &synstructure::VariantInfo = &s.variants()[0];
-            let defs = field_defs(variant.ast().fields);
+            let defs = field_defs(variant.ast().fields, false);
             let semi = match v.fields {
                 syn::Fields::Named(_) => quote! {},
                 syn::Fields::Unnamed(_) => quote! {;},
@@ -213,7 +222,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
                 .iter()
                 .map(|variant| {
                     let vname = variant.ast().ident.clone();
-                    let defs = field_defs(variant.ast().fields);
+                    let defs = field_defs(variant.ast().fields, true);
                     quote! {
                         #vname #defs,
                     }

@@ -14,18 +14,18 @@ use fuel_types::{
 /// the `fuel-vm`.
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = InputContract))]
 pub struct Contract {
     pub utxo_id: UtxoId,
-    #[cfg_attr(feature = "da-compression", compressible_by(skip))]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub balance_root: Bytes32,
-    #[cfg_attr(feature = "da-compression", compressible_by(skip))]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub state_root: Bytes32,
-    #[cfg_attr(feature = "da-compression", compressible_by(skip))]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub tx_pointer: TxPointer,
-    #[cfg_attr(feature = "da-compression", compressible_by(skip))]
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub contract_id: ContractId,
 }
 

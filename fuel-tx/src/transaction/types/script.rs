@@ -85,7 +85,7 @@ impl fuel_compression::Compressible for ScriptCode {
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptBody {

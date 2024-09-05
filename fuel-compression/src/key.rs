@@ -8,7 +8,6 @@ use serde::{
 /// to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RegistryKey([u8; Self::SIZE]);
-
 impl RegistryKey {
     /// Key mapping to default value for the table type.
     pub const DEFAULT_VALUE: Self = Self([u8::MAX; Self::SIZE]);
@@ -35,7 +34,7 @@ impl RegistryKey {
             Self::ZERO
         } else {
             Self::try_from(next_raw)
-                .expect("The procedure above always produces a valid key")
+                .expect("The producedure above always produces a valid key")
         }
     }
 }

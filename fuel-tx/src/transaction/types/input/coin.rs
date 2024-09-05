@@ -18,11 +18,6 @@ use fuel_types::{
     AssetId,
     Word,
 };
-#[cfg(feature = "da-compression")]
-use serde::{
-    Deserialize,
-    Serialize,
-};
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -39,15 +34,10 @@ mod private {
 /// Specifies the coin based on the usage context. See [`Coin`].
 #[cfg(feature = "da-compression")]
 pub trait CoinSpecification: private::Seal {
-    type Witness: AsField<u16>
-        + for<'a> Compressible<Compressed: Clone + Serialize + Deserialize<'a>>;
-    // TODO: We need to compress the predicate as well
-    type Predicate: AsField<Vec<u8>>
-        + for<'a> Compressible<Compressed: Clone + Serialize + Deserialize<'a>>;
-    type PredicateData: AsField<Vec<u8>>
-        + for<'a> Compressible<Compressed: Clone + Serialize + Deserialize<'a>>;
-    type PredicateGasUsed: AsField<Word>
-        + for<'a> Compressible<Compressed: Clone + Serialize + Deserialize<'a>>;
+    type Witness: AsField<u16> + Compressible + Clone;
+    type Predicate: AsField<Vec<u8>> + Compressible + Clone;
+    type PredicateData: AsField<Vec<u8>> + Compressible + Clone;
+    type PredicateGasUsed: AsField<Word> + Compressible + Clone;
 }
 #[cfg(not(feature = "da-compression"))]
 pub trait CoinSpecification: private::Seal {
@@ -59,7 +49,7 @@ pub trait CoinSpecification: private::Seal {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 pub struct Signed;
 
 impl CoinSpecification for Signed {
@@ -71,7 +61,7 @@ impl CoinSpecification for Signed {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 pub struct Predicate;
 
 impl CoinSpecification for Predicate {
@@ -117,11 +107,11 @@ impl CoinSpecification for Full {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::CompressibleBy))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Coin<Specification>
 where
-    Specification: CoinSpecification,
+    Specification: CoinSpecification + Clone,
 {
     pub utxo_id: UtxoId,
     pub owner: Address,
@@ -140,7 +130,7 @@ where
 
 impl<Specification> Coin<Specification>
 where
-    Specification: CoinSpecification,
+    Specification: CoinSpecification + Clone,
 {
     /// The "Note" section from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.

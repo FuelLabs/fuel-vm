@@ -1,10 +1,15 @@
 #![allow(async_fn_in_trait)] // We control the implementation so this is fine
 
+use serde::{
+    Deserialize,
+    Serialize,
+};
+
 /// This type can be compressed to a more compact form and back using
 /// `CompressibleBy` and `DecompressibleBy` traits.
 pub trait Compressible {
     /// The compressed type.
-    type Compressed: Sized;
+    type Compressed: Clone + Serialize + for<'a> Deserialize<'a>;
 }
 
 /// A context that can be used to compress a type.
@@ -35,6 +40,12 @@ where
     /// Perform decompression, returning the original data.
     /// The context can be used to resolve references.
     async fn decompress(&self, value: &Type::Compressed) -> Result<Type, Self::Error>;
+}
+
+/// Error type for context errors.
+pub trait CtxError {
+    /// Context error type
+    type Error;
 }
 
 /// This type can be compressed to a more compact form and back using

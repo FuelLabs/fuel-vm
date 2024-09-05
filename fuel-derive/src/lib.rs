@@ -17,7 +17,7 @@ mod deserialize;
 mod serialize;
 
 use self::{
-    compressed::compressible_by,
+    compressed::compressed_derive,
     deserialize::deserialize_derive,
     serialize::serialize_derive,
 };
@@ -33,7 +33,7 @@ synstructure::decl_derive!(
     serialize_derive
 );
 synstructure::decl_derive!(
-    [CompressibleBy, attributes(compressible_by)] =>
-    /// Derives `Compressible` and `CompressibleBy` trait for the given `struct` or `enum`.
-    compressible_by
+    [Compressed, attributes(da_compress)] =>
+    /// Derives `Compressed` trait for the given `struct` or `enum`.
+    compressed_derive
 );

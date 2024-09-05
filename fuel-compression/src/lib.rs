@@ -13,4 +13,4 @@ mod traits;
 pub use key::RegistryKey;
 pub use traits::*;
 
-pub use fuel_derive::CompressibleBy;
+pub use fuel_derive::Compressed;

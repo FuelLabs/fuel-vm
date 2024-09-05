@@ -1,3 +1,5 @@
+//! See README.md for usage example
+
 use fuel_vm::consts::WORD_SIZE;
 use fuel_vm::fuel_asm::{Instruction, RawInstruction};
 use fuel_vm::fuel_crypto::rand::Rng;

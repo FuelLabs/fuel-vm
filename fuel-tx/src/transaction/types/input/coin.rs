@@ -131,19 +131,20 @@ impl CoinSpecification for Full {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "da-compression",
-    derive(fuel_compression::Compress, fuel_compression::Decompress)
-)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Coin<Specification>
 where
     Specification: CoinSpecification,
 {
     pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub owner: Address,
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub amount: Word,
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub asset_id: AssetId,
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,

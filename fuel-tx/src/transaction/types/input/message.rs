@@ -183,26 +183,26 @@ pub mod specifications {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "da-compression",
-    derive(fuel_compression::Compress, fuel_compression::Decompress)
-)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>
 where
-    Specification: MessageSpecification + Clone,
+    Specification: MessageSpecification,
 {
     /// The sender from the L1 chain.
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub recipient: Address,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))] // Stored on L1
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     pub amount: Word,
     pub nonce: Nonce,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
+    #[cfg_attr(feature = "da-compression", da_compress(skip))]
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,
     #[derivative(Debug(format_with = "fmt_as_field"))]
@@ -213,7 +213,7 @@ where
 
 impl<Specification> Message<Specification>
 where
-    Specification: MessageSpecification + Clone,
+    Specification: MessageSpecification,
 {
     pub fn prepare_sign(&mut self) {
         if let Some(predicate_gas_used_field) = self.predicate_gas_used.as_mut_field() {

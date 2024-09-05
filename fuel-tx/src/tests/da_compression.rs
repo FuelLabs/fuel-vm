@@ -1,6 +1,19 @@
 use crate::{
     builder::Finalizable,
-    input::PredicateCode,
+    input::{
+        coin::{
+            self,
+            Coin,
+            CompressedCoin,
+        },
+        message::{
+            self,
+            CompressedMessage,
+            Message,
+        },
+        Empty,
+        PredicateCode,
+    },
     test_helper::generate_bytes,
     BlobBody,
     BlobId,
@@ -28,6 +41,7 @@ use fuel_types::{
     Address,
     AssetId,
     ContractId,
+    Word,
 };
 use rand::{
     rngs::StdRng,
@@ -41,17 +55,35 @@ use std::{
 
 type Keyspace = &'static str;
 
+/// When a coin is created, this data is stored
+struct CoinInfo {
+    owner: Address,
+    amount: u64,
+    asset_id: AssetId,
+    tx_pointer: TxPointer,
+}
+
+/// When a message is created, this data is stored
+struct MessageInfo {
+    pub _sender: Address,
+    pub _recipient: Address,
+    pub _amount: Word,
+    pub _data: Vec<u8>,
+}
+
 /// A simple and inefficient registry for testing purposes
 #[derive(Default)]
 struct TestCompressionCtx {
     registry: HashMap<Keyspace, BiMap<RegistryKey, Vec<u8>>>,
     tx_blocks: BiMap<(TxPointer, u16), UtxoId>,
+    coins: HashMap<UtxoId, CoinInfo>,
+    _messages: HashMap<usize, MessageInfo>,
 }
 
 macro_rules! impl_substitutable_key {
     ($t:ty) => {
         impl CompressibleBy<TestCompressionCtx, Infallible> for $t {
-            async fn compress(
+            async fn compress_with(
                 &self,
                 ctx: &mut TestCompressionCtx,
             ) -> Result<RegistryKey, Infallible> {
@@ -71,7 +103,7 @@ macro_rules! impl_substitutable_key {
         }
 
         impl DecompressibleBy<TestCompressionCtx, Infallible> for $t {
-            async fn decompress(
+            async fn decompress_with(
                 key: &RegistryKey,
                 ctx: &TestCompressionCtx,
             ) -> Result<$t, Infallible> {
@@ -91,7 +123,7 @@ impl_substitutable_key!(ScriptCode);
 impl_substitutable_key!(PredicateCode);
 
 impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
-    async fn compress(
+    async fn compress_with(
         &self,
         ctx: &mut TestCompressionCtx,
     ) -> Result<(TxPointer, u16), Infallible> {
@@ -107,13 +139,122 @@ impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
 }
 
 impl DecompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
-    async fn decompress(
+    async fn decompress_with(
         key: &(TxPointer, u16),
         ctx: &TestCompressionCtx,
     ) -> Result<UtxoId, Infallible> {
         Ok(*ctx.tx_blocks.get_by_left(key).expect("key not found"))
     }
 }
+
+impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Full> {
+    async fn decompress_with(
+        c: &CompressedCoin<coin::Full>,
+        ctx: &TestCompressionCtx,
+    ) -> Result<Coin<coin::Full>, Infallible> {
+        let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
+        let coin_info = ctx.coins.get(&utxo_id).expect("coin not found");
+        Ok(Coin {
+            utxo_id,
+            owner: coin_info.owner,
+            amount: coin_info.amount,
+            asset_id: coin_info.asset_id,
+            tx_pointer: coin_info.tx_pointer,
+            witness_index: c.witness_index,
+            predicate_gas_used: c.predicate_gas_used,
+            predicate:
+                <coin::Full as coin::CoinSpecification>::Predicate::decompress_with(
+                    &c.predicate,
+                    ctx,
+                )
+                .await?,
+            predicate_data: c.predicate_data.clone(),
+        })
+    }
+}
+
+impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Signed> {
+    async fn decompress_with(
+        c: &CompressedCoin<coin::Signed>,
+        ctx: &TestCompressionCtx,
+    ) -> Result<Coin<coin::Signed>, Infallible> {
+        let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
+        let coin_info = ctx.coins.get(&utxo_id).expect("coin not found");
+        Ok(Coin {
+            utxo_id,
+            owner: coin_info.owner,
+            amount: coin_info.amount,
+            asset_id: coin_info.asset_id,
+            tx_pointer: coin_info.tx_pointer,
+            witness_index: c.witness_index,
+            predicate_gas_used: Empty::default(),
+            predicate: Empty::default(),
+            predicate_data: Empty::default(),
+        })
+    }
+}
+
+impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Predicate> {
+    async fn decompress_with(
+        c: &CompressedCoin<coin::Predicate>,
+        ctx: &TestCompressionCtx,
+    ) -> Result<Coin<coin::Predicate>, Infallible> {
+        let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
+        let coin_info = ctx.coins.get(&utxo_id).expect("coin not found");
+        Ok(Coin {
+            utxo_id,
+            owner: coin_info.owner,
+            amount: coin_info.amount,
+            asset_id: coin_info.asset_id,
+            tx_pointer: coin_info.tx_pointer,
+            witness_index: Empty::default(),
+            predicate_gas_used: c.predicate_gas_used,
+            predicate:
+                <coin::Full as coin::CoinSpecification>::Predicate::decompress_with(
+                    &c.predicate,
+                    ctx,
+                )
+                .await?,
+            predicate_data: c.predicate_data.clone(),
+        })
+    }
+}
+
+macro_rules! impl_for_message {
+    ($spec:ty) => {
+        impl DecompressibleBy<TestCompressionCtx, Infallible> for Message<$spec> {
+            async fn decompress_with(
+                _c: &CompressedMessage<$spec>,
+                _ctx: &TestCompressionCtx,
+            ) -> Result<Message<$spec>, Infallible> {
+                // let msg_info = ctx.messages.get(&utxo_id).expect("message not found");
+                // let msg_info = todo!();
+                // Ok(Message {
+                //     sender: msg_info.sender,
+                //     recipient: msg_info.sender,
+                //     amount: msg_info.sender,
+                //     nonce: msg_info.sender,
+                //     witness_index: msg_info.sender,
+                //     predicate_gas_used: msg_info.sender,
+                //     data: msg_info.sender,
+                //     predicate: msg_info.sender,
+                //     predicate_data: msg_info.sender,
+                // })
+                todo!();
+            }
+        }
+    };
+}
+
+impl_for_message!(message::specifications::Full);
+impl_for_message!(message::specifications::MessageData<message::specifications::Signed>);
+impl_for_message!(
+    message::specifications::MessageData<message::specifications::Predicate>
+);
+impl_for_message!(message::specifications::MessageCoin<message::specifications::Signed>);
+impl_for_message!(
+    message::specifications::MessageCoin<message::specifications::Predicate>
+);
 
 #[derive(Debug, PartialEq, Default, Compress, Decompress)]
 pub struct ExampleStruct {
@@ -136,10 +277,10 @@ async fn example_struct_roundtrip_simple() {
     let mut ctx = TestCompressionCtx::default();
     let original = ExampleStruct::default();
     let compressed = original
-        .compress(&mut ctx)
+        .compress_with(&mut ctx)
         .await
         .expect("compression failed");
-    let decompressed = ExampleStruct::decompress(&compressed, &ctx)
+    let decompressed = ExampleStruct::decompress_with(&compressed, &ctx)
         .await
         .expect("decompression failed");
     assert_eq!(original, decompressed);
@@ -158,14 +299,14 @@ async fn example_struct_postcard_roundtrip_multiple() {
             integer: rng.gen(),
         };
         let compressed = original
-            .compress(&mut ctx)
+            .compress_with(&mut ctx)
             .await
             .expect("compression failed");
         let postcard_compressed =
             postcard::to_stdvec(&compressed).expect("failed to serialize");
         let postcard_decompressed =
             postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
-        let decompressed = ExampleStruct::decompress(&postcard_decompressed, &ctx)
+        let decompressed = ExampleStruct::decompress_with(&postcard_decompressed, &ctx)
             .await
             .expect("decompression failed");
         assert_eq!(original, decompressed);
@@ -233,14 +374,20 @@ async fn transaction_postcard_roundtrip() {
 
     let mut ctx = TestCompressionCtx::default();
     for tx in txs {
-        let compressed = tx.compress(&mut ctx).await.expect("compression failed");
+        let compressed = tx
+            .compress_with(&mut ctx)
+            .await
+            .expect("compression failed");
         let postcard_compressed =
             postcard::to_stdvec(&compressed).expect("failed to serialize");
         let postcard_decompressed =
             postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
-        let decompressed = Transaction::decompress(&postcard_decompressed, &ctx)
-            .await
-            .expect("decompression failed");
+        let decompressed = <Transaction as DecompressibleBy<_, _>>::decompress_with(
+            &postcard_decompressed,
+            &ctx,
+        )
+        .await
+        .expect("decompression failed");
         assert_eq!(tx, decompressed);
     }
 }

@@ -24,7 +24,7 @@ macro_rules! identity_compaction {
         where
             Ctx: ?Sized,
         {
-            async fn compress(&self, _: &mut Ctx) -> Result<Self, E> {
+            async fn compress_with(&self, _: &mut Ctx) -> Result<Self, E> {
                 Ok(*self)
             }
         }
@@ -33,7 +33,7 @@ macro_rules! identity_compaction {
         where
             Ctx: ?Sized,
         {
-            async fn decompress(c: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
+            async fn decompress_with(c: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
                 Ok(*c)
             }
         }
@@ -63,7 +63,7 @@ macro_rules! array_types_compaction {
             Ctx: CompressionContext<$t, Error = E>,
             Ctx: ?Sized,
         {
-            async fn compress(&self, ctx: &mut Ctx) -> Result<$compressed_t, E> {
+            async fn compress_with(&self, ctx: &mut Ctx) -> Result<$compressed_t, E> {
                 ctx.compress(self).await
             }
         }
@@ -73,7 +73,10 @@ macro_rules! array_types_compaction {
             Ctx: DecompressionContext<$t, Error = E>,
             Ctx: ?Sized,
         {
-            async fn decompress(value: &Self::Compressed, ctx: &Ctx) -> Result<$t, E> {
+            async fn decompress_with(
+                value: &Self::Compressed,
+                ctx: &Ctx,
+            ) -> Result<$t, E> {
                 ctx.decompress(value).await
             }
         }
@@ -96,7 +99,7 @@ where
     T: CompressibleBy<Ctx, E>,
 {
     #[allow(unsafe_code)]
-    async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
         // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
         // which do not require initialization.
         let mut tmp: [MaybeUninit<T::Compressed>; S] =
@@ -107,7 +110,7 @@ where
         //  https://github.com/FuelLabs/fuel-vm/issues/811
         for (v, empty) in self.iter().zip(tmp.iter_mut()) {
             unsafe {
-                core::ptr::write(empty.as_mut_ptr(), v.compress(ctx).await?);
+                core::ptr::write(empty.as_mut_ptr(), v.compress_with(ctx).await?);
             }
         }
 
@@ -122,7 +125,7 @@ where
     T: DecompressibleBy<Ctx, E> + Clone,
 {
     #[allow(unsafe_code)]
-    async fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+    async fn decompress_with(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
         // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
         // which do not require initialization.
         let mut tmp: [MaybeUninit<T>; S] = unsafe { MaybeUninit::uninit().assume_init() };
@@ -132,7 +135,7 @@ where
         //  https://github.com/FuelLabs/fuel-vm/issues/811
         for (v, empty) in c.iter().zip(tmp.iter_mut()) {
             unsafe {
-                core::ptr::write(empty.as_mut_ptr(), T::decompress(v, ctx).await?);
+                core::ptr::write(empty.as_mut_ptr(), T::decompress_with(v, ctx).await?);
             }
         }
 
@@ -153,10 +156,10 @@ impl<T, Ctx, E> CompressibleBy<Ctx, E> for Vec<T>
 where
     T: CompressibleBy<Ctx, E> + Clone,
 {
-    async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
         let mut result = Vec::with_capacity(self.len());
         for item in self {
-            result.push(item.compress(ctx).await?);
+            result.push(item.compress_with(ctx).await?);
         }
         Ok(result)
     }
@@ -166,10 +169,10 @@ impl<T, Ctx, E> DecompressibleBy<Ctx, E> for Vec<T>
 where
     T: DecompressibleBy<Ctx, E> + Clone,
 {
-    async fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+    async fn decompress_with(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
         let mut result = Vec::with_capacity(c.len());
         for item in c {
-            result.push(T::decompress(item, ctx).await?);
+            result.push(T::decompress_with(item, ctx).await?);
         }
         Ok(result)
     }

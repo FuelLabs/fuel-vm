@@ -47,7 +47,7 @@ where
     /// context. The context is mutable to allow for stateful compression.
     /// For instance, it can be used to extract original data when replacing it with
     /// references.
-    async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E>;
+    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E>;
 }
 
 /// This type can be decompressed using `CompressionContext`.
@@ -58,5 +58,5 @@ where
 {
     /// Perform decompression, returning the original data.
     /// The context can be used to resolve references.
-    async fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E>;
+    async fn decompress_with(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E>;
 }

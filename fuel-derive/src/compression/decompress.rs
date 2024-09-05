@@ -33,7 +33,7 @@ fn construct_decompress(
                 },
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::DecompressibleBy<_, _>>::decompress(#binding, ctx).await?;
+                        let #cname = <#ty as ::fuel_compression::DecompressibleBy<_, _>>::decompress_with(#binding, ctx).await?;
                     }
                 }
             }
@@ -126,7 +126,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
 
     let impls = s.gen_impl(quote! {
         gen impl<Ctx, E> ::fuel_compression::DecompressibleBy<Ctx, E> for @Self #w_impl_field_bounds_decompress {
-            async fn decompress(compressed: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+            async fn decompress_with(compressed: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
                 Ok(match compressed { #decompress_per_variant })
             }
         }

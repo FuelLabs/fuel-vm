@@ -67,7 +67,7 @@ fn construct_compressed(
                 FieldAttrs::Skip => quote! {},
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_, _>>::compress(&#binding, ctx).await?;
+                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_, _>>::compress_with(&#binding, ctx).await?;
                     }
                 }
             }
@@ -254,7 +254,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
         }
 
         gen impl<Ctx, E> ::fuel_compression::CompressibleBy<Ctx, E> for @Self #w_impl_field_bounds_compress {
-            async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+            async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
                 Ok(match self { #compress_per_variant })
             }
         }

@@ -14,7 +14,7 @@ use fuel_types::{
     Salt,
 };
 
-macro_rules! identity_compaction {
+macro_rules! identity_compression {
     ($t:ty) => {
         impl Compressible for $t {
             type Compressed = Self;
@@ -40,19 +40,19 @@ macro_rules! identity_compaction {
     };
 }
 
-identity_compaction!(u8);
-identity_compaction!(u16);
-identity_compaction!(u32);
-identity_compaction!(u64);
-identity_compaction!(u128);
+identity_compression!(u8);
+identity_compression!(u16);
+identity_compression!(u32);
+identity_compression!(u64);
+identity_compression!(u128);
 
-identity_compaction!(BlockHeight);
-identity_compaction!(BlobId);
-identity_compaction!(Bytes32);
-identity_compaction!(Salt);
-identity_compaction!(Nonce);
+identity_compression!(BlockHeight);
+identity_compression!(BlobId);
+identity_compression!(Bytes32);
+identity_compression!(Salt);
+identity_compression!(Nonce);
 
-macro_rules! array_types_compaction {
+macro_rules! array_types_compression {
     ($t:ty, $compressed_t:ty) => {
         impl Compressible for $t {
             type Compressed = $compressed_t;
@@ -83,9 +83,9 @@ macro_rules! array_types_compaction {
     };
 }
 
-array_types_compaction!(Address, RegistryKey);
-array_types_compaction!(ContractId, RegistryKey);
-array_types_compaction!(AssetId, RegistryKey);
+array_types_compression!(Address, RegistryKey);
+array_types_compression!(ContractId, RegistryKey);
+array_types_compression!(AssetId, RegistryKey);
 
 impl<const S: usize, T> Compressible for [T; S]
 where

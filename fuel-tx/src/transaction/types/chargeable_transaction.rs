@@ -71,7 +71,7 @@ impl<T> BodyConstraints for T {}
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
-#[cfg_attr(feature = "da-compression", da_compress(discard(MetadataBody)))]
+#[cfg_attr(feature = "da-compression", compress(discard(MetadataBody)))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct ChargeableTransaction<Body, MetadataBody>
 where
@@ -83,7 +83,7 @@ where
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
     #[cfg_attr(feature = "serde", serde(skip))]
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
     pub(crate) metadata: Option<ChargeableMetadata<MetadataBody>>,

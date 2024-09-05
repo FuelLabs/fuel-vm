@@ -22,13 +22,13 @@ use fuel_types::{
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = InputContract))]
 pub struct Contract {
     pub utxo_id: UtxoId,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub balance_root: Bytes32,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub state_root: Bytes32,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub contract_id: ContractId,
 }
 

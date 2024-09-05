@@ -5,13 +5,13 @@ use syn::parse::{
     ParseStream,
 };
 
-const ATTR: &str = "da_compress";
+const ATTR: &str = "compress";
 
 /// Structure (struct or enum) attributes
 #[derive(Debug)]
 pub enum StructureAttrs {
     /// Discard generic parameter
-    /// `#[da_compress(discard(Type))]`
+    /// `#[compress(discard(Type))]`
     Discard(Vec<String>),
 }
 impl Parse for StructureAttrs {
@@ -65,7 +65,7 @@ impl StructureAttrs {
 /// Field attributes
 pub enum FieldAttrs {
     /// Skipped when compressing, and must be reconstructed when decompressing.
-    /// `#[da_compress(skip)]`
+    /// `#[compress(skip)]`
     Skip,
     /// Compressed recursively.
     Normal,

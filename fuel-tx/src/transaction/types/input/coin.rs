@@ -138,13 +138,13 @@ where
     Specification: CoinSpecification,
 {
     pub utxo_id: UtxoId,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub owner: Address,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub amount: Word,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub asset_id: AssetId,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,

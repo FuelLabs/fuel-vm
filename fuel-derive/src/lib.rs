@@ -38,12 +38,12 @@ mod compression {
 }
 
 synstructure::decl_derive!(
-    [Compress, attributes(da_compress)] =>
+    [Compress, attributes(compress)] =>
     /// Derives `Compressed` trait for the given `struct` or `enum`.
     compression::compress::derive
 );
 synstructure::decl_derive!(
-    [Decompress, attributes(da_compress)] =>
+    [Decompress, attributes(compress)] =>
     /// Derives `Compressed` trait for the given `struct` or `enum`.
     compression::decompress::derive
 );

@@ -74,9 +74,9 @@ where
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
-#[cfg_attr(feature = "da-compression", da_compress(discard(Type)))]
+#[cfg_attr(feature = "da-compression", compress(discard(Type)))]
 pub struct Empty<Type>(
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     ::core::marker::PhantomData<Type>,
 );
 

@@ -17,10 +17,10 @@ pub struct Contract {
     /// Index of input contract.
     pub input_index: u16,
     /// Root of amount of coins owned by contract after transaction execution.
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub balance_root: Bytes32,
     /// State root of contract after transaction execution.
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub state_root: Bytes32,
 }
 

@@ -190,19 +190,19 @@ where
     Specification: MessageSpecification,
 {
     /// The sender from the L1 chain.
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub recipient: Address,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub amount: Word,
     pub nonce: Nonce,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,
     #[derivative(Debug(format_with = "fmt_as_field"))]

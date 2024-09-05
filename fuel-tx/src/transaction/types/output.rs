@@ -37,17 +37,17 @@ pub enum Output {
 
     Change {
         to: Address,
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compress(skip))]
         amount: Word,
         asset_id: AssetId,
     },
 
     Variable {
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compress(skip))]
         to: Address,
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compress(skip))]
         amount: Word,
-        #[cfg_attr(feature = "da-compression", da_compress(skip))]
+        #[cfg_attr(feature = "da-compression", compress(skip))]
         asset_id: AssetId,
     },
 

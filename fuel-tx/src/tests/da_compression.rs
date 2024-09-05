@@ -268,7 +268,7 @@ pub struct ExampleStruct {
 pub struct InnerStruct {
     pub asset_id: AssetId,
     pub count: u64,
-    #[da_compress(skip)]
+    #[compress(skip)]
     pub cached: [u8; 32],
 }
 

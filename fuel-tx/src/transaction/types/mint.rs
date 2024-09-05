@@ -58,7 +58,7 @@ impl MintMetadata {
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) tx_pointer: TxPointer,
     /// The `Input::Contract` that assets are minted to.
     pub(crate) input_contract: input::contract::Contract,
@@ -73,7 +73,7 @@ pub struct Mint {
     #[cfg_attr(feature = "serde", serde(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
-    #[cfg_attr(feature = "da-compression", da_compress(skip))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) metadata: Option<MintMetadata>,
 }
 

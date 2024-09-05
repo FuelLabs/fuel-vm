@@ -35,32 +35,27 @@ mod private {
 #[cfg(feature = "da-compression")]
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>
-        + Compressible
-        + Clone
-        + serde::Serialize
-        + for<'a> serde::Deserialize<'a>;
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
     type Predicate: AsField<Vec<u8>>
-        + Compressible
-        + Clone
-        + serde::Serialize
-        + for<'a> serde::Deserialize<'a>;
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
     type PredicateData: AsField<Vec<u8>>
-        + Compressible
-        + Clone
-        + serde::Serialize
-        + for<'a> serde::Deserialize<'a>;
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
     type PredicateGasUsed: AsField<Word>
-        + Compressible
-        + Clone
-        + serde::Serialize
-        + for<'a> serde::Deserialize<'a>
-        + Default;
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        > + Default;
     type Witness: AsField<u16>
-        + Compressible
-        + Clone
-        + serde::Serialize
-        + for<'a> serde::Deserialize<'a>;
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
 }
+
 #[cfg(not(feature = "da-compression"))]
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>;

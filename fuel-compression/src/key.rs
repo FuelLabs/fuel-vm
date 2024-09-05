@@ -34,7 +34,7 @@ impl RegistryKey {
             Self::ZERO
         } else {
             Self::try_from(next_raw)
-                .expect("The producedure above always produces a valid key")
+                .expect("The procedure above always produces a valid key")
         }
     }
 }

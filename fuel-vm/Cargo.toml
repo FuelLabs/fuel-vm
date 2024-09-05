@@ -90,7 +90,7 @@ profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
 random = ["fuel-crypto/random", "fuel-types/random", "fuel-tx/random", "rand"]
-da-compression = ["fuel-compression", "fuel-tx/da-compression", "fuel-types/da-compression"]
+da-compression = ["fuel-compression", "fuel-tx/da-compression"]
 serde = [
     "dep:serde",
     "dep:serde_with",

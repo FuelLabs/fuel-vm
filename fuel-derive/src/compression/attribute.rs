@@ -10,9 +10,6 @@ const ATTR: &str = "da_compress";
 /// Structure (struct or enum) attributes
 #[derive(Debug)]
 pub enum StructureAttrs {
-    /// Insert bounds for a generic type
-    /// `#[da_compress(bound(Type))]`
-    Bound(Vec<String>),
     /// Discard generic parameter
     /// `#[da_compress(discard(Type))]`
     Discard(Vec<String>),
@@ -20,49 +17,29 @@ pub enum StructureAttrs {
 impl Parse for StructureAttrs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if let Ok(ml) = input.parse::<syn::MetaList>() {
-            if ml.path.segments.len() == 1 {
-                match ml.path.segments[0].ident.to_string().as_str() {
-                    "bound" => {
-                        let mut bound = Vec::new();
-                        for item in ml.tokens {
-                            match item {
-                                TokenTree2::Ident(ident) => {
-                                    bound.push(ident.to_string());
-                                }
-                                other => {
-                                    return Err(syn::Error::new_spanned(
-                                        other,
-                                        "Expected generic (type) name",
-                                    ))
-                                }
-                            }
+            if ml.path.segments.len() == 1
+                && ml.path.segments[0].ident.to_string().as_str() == "discard"
+            {
+                let mut discard = Vec::new();
+                for item in ml.tokens {
+                    match item {
+                        TokenTree2::Ident(ident) => {
+                            discard.push(ident.to_string());
                         }
-                        return Ok(Self::Bound(bound));
-                    }
-                    "discard" => {
-                        let mut discard = Vec::new();
-                        for item in ml.tokens {
-                            match item {
-                                TokenTree2::Ident(ident) => {
-                                    discard.push(ident.to_string());
-                                }
-                                other => {
-                                    return Err(syn::Error::new_spanned(
-                                        other,
-                                        "Expected generic (type) name",
-                                    ))
-                                }
-                            }
+                        other => {
+                            return Err(syn::Error::new_spanned(
+                                other,
+                                "Expected generic (type) name",
+                            ))
                         }
-                        return Ok(Self::Discard(discard));
                     }
-                    _ => {}
                 }
+                return Ok(Self::Discard(discard));
             }
         }
         Err(syn::Error::new_spanned(
             input.parse::<syn::Ident>()?,
-            "Expected `bound` or `discard`",
+            "Expected `discard`",
         ))
     }
 }
@@ -90,7 +67,7 @@ pub enum FieldAttrs {
     /// Skipped when compressing, and must be reconstructed when decompressing.
     /// `#[da_compress(skip)]`
     Skip,
-    /// Compresseded recursively.
+    /// Compressed recursively.
     Normal,
 }
 impl FieldAttrs {

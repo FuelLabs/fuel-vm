@@ -1,7 +1,4 @@
-use proc_macro2::{
-    Span,
-    TokenStream as TokenStream2,
-};
+use proc_macro2::TokenStream as TokenStream2;
 use quote::{
     format_ident,
     quote,
@@ -81,23 +78,10 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
     let compressed_name = format_ident!("Compressed{}", name);
 
     let mut g = s.ast().generics.clone();
-    let mut w_structure = g.where_clause.take();
-    let mut w_impl = w_structure.clone();
+    let w_structure = g.where_clause.take();
+    let w_impl = w_structure.clone();
     for item in &s_attrs {
         match item {
-            StructureAttrs::Bound(bound) => {
-                for p in bound {
-                    let id = syn::Ident::new(p, Span::call_site());
-                    where_clause_push(
-                        &mut w_structure,
-                        syn::parse_quote! { #id: ::fuel_compression::Compressible },
-                    );
-                    where_clause_push(
-                        &mut w_impl,
-                        syn::parse_quote! { for<'de>  #id: ::fuel_compression::Compressible + serde::Serialize + serde::Deserialize<'de> + Clone },
-                    );
-                }
-            }
             StructureAttrs::Discard(discard) => {
                 g.params = g
                     .params
@@ -109,22 +93,6 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
                         _ => true,
                     })
                     .collect();
-            }
-        }
-    }
-
-    let mut w_impl_field_bounds_compress = w_impl.clone();
-    for variant in s.variants() {
-        for field in variant.ast().fields.iter() {
-            let ty = &field.ty;
-            match FieldAttrs::parse(&field.attrs) {
-                FieldAttrs::Skip => {}
-                FieldAttrs::Normal => {
-                    where_clause_push(
-                        &mut w_impl_field_bounds_compress,
-                        syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx, E> },
-                    );
-                }
             }
         }
     }

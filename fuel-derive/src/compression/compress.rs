@@ -1,7 +1,4 @@
-use proc_macro2::{
-    Span,
-    TokenStream as TokenStream2,
-};
+use proc_macro2::TokenStream as TokenStream2;
 use quote::{
     format_ident,
     quote,
@@ -144,23 +141,10 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
     let compressed_name = format_ident!("Compressed{}", name);
 
     let mut g = s.ast().generics.clone();
-    let mut w_structure = g.where_clause.take();
-    let mut w_impl = w_structure.clone();
+    let w_structure = g.where_clause.take();
+    let w_impl = w_structure.clone();
     for item in &s_attrs {
         match item {
-            StructureAttrs::Bound(bound) => {
-                for p in bound {
-                    let id = syn::Ident::new(p, Span::call_site());
-                    where_clause_push(
-                        &mut w_structure,
-                        syn::parse_quote! { #id: ::fuel_compression::Compressible },
-                    );
-                    where_clause_push(
-                        &mut w_impl,
-                        syn::parse_quote! { for<'de>  #id: ::fuel_compression::Compressible + serde::Serialize + serde::Deserialize<'de> + Clone },
-                    );
-                }
-            }
             StructureAttrs::Discard(discard) => {
                 g.params = g
                     .params
@@ -219,7 +203,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
             };
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-                #[doc = concat!("Compresseded version of `", stringify!(#name), "`.")]
+                #[doc = concat!("Compressed version of `", stringify!(#name), "`.")]
                 pub struct #compressed_name #g #w_structure #defs #semi
             }
         }
@@ -238,7 +222,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
 
             quote! {
                 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-                #[doc = concat!("Compresseded version of `", stringify!(#name), "`.")]
+                #[doc = concat!("Compressed version of `", stringify!(#name), "`.")]
                 pub enum #compressed_name #g #w_structure { #variant_defs }
             }
         }

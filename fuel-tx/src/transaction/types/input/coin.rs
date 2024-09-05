@@ -34,10 +34,26 @@ mod private {
 /// Specifies the coin based on the usage context. See [`Coin`].
 #[cfg(feature = "da-compression")]
 pub trait CoinSpecification: private::Seal {
-    type Witness: AsField<u16> + Compressible + Clone;
-    type Predicate: AsField<Vec<u8>> + Compressible + Clone;
-    type PredicateData: AsField<Vec<u8>> + Compressible + Clone;
-    type PredicateGasUsed: AsField<Word> + Compressible + Clone;
+    type Witness: AsField<u16>
+        + Clone
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
+    type Predicate: AsField<Vec<u8>>
+        + Clone
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
+    type PredicateData: AsField<Vec<u8>>
+        + Clone
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
+    type PredicateGasUsed: AsField<Word>
+        + Clone
+        + for<'a> Compressible<
+            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        >;
 }
 #[cfg(not(feature = "da-compression"))]
 pub trait CoinSpecification: private::Seal {

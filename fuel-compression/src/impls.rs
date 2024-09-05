@@ -1,13 +1,17 @@
 //! Trait impls for Rust types
 
 use super::traits::*;
-use core::{
-    marker::PhantomData,
-    mem::MaybeUninit,
-};
-use serde::{
-    Deserialize,
-    Serialize,
+use crate::RegistryKey;
+use core::mem::MaybeUninit;
+use fuel_types::{
+    Address,
+    AssetId,
+    BlobId,
+    BlockHeight,
+    Bytes32,
+    ContractId,
+    Nonce,
+    Salt,
 };
 
 macro_rules! identity_compaction {
@@ -42,54 +46,54 @@ identity_compaction!(u32);
 identity_compaction!(u64);
 identity_compaction!(u128);
 
-impl<T> Compressible for Option<T>
-where
-    T: Compressible + Clone,
-{
-    type Compressed = Option<T::Compressed>;
-}
+identity_compaction!(BlockHeight);
+identity_compaction!(BlobId);
+identity_compaction!(Bytes32);
+identity_compaction!(Salt);
+identity_compaction!(Nonce);
 
-impl<T, Ctx, E> CompressibleBy<Ctx, E> for Option<T>
-where
-    T: CompressibleBy<Ctx, E> + Clone,
-{
-    async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
-        if let Some(item) = self {
-            Ok(Some(item.compress(ctx).await?))
-        } else {
-            Ok(None)
+macro_rules! array_types_compaction {
+    ($t:ty, $compressed_t:ty) => {
+        impl Compressible for $t {
+            type Compressed = $compressed_t;
         }
-    }
-}
 
-impl<T, Ctx, E> DecompressibleBy<Ctx, E> for Option<T>
-where
-    T: DecompressibleBy<Ctx, E> + Clone,
-{
-    async fn decompress(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
-        if let Some(item) = c {
-            Ok(Some(T::decompress(item, ctx).await?))
-        } else {
-            Ok(None)
+        impl<Ctx, E> CompressibleBy<Ctx, E> for $t
+        where
+            Ctx: CompressionContext<$t, Error = E>,
+            Ctx: ?Sized,
+        {
+            async fn compress(&self, ctx: &mut Ctx) -> Result<$compressed_t, E> {
+                ctx.compress(self).await
+            }
         }
-    }
+
+        impl<Ctx, E> DecompressibleBy<Ctx, E> for $t
+        where
+            Ctx: DecompressionContext<$t, Error = E>,
+            Ctx: ?Sized,
+        {
+            async fn decompress(value: &Self::Compressed, ctx: &Ctx) -> Result<$t, E> {
+                ctx.decompress(value).await
+            }
+        }
+    };
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ArrayWrapper<const S: usize, T: Serialize + for<'a> Deserialize<'a>>(
-    #[serde(with = "serde_big_array::BigArray")] pub [T; S],
-);
+array_types_compaction!(Address, RegistryKey);
+array_types_compaction!(ContractId, RegistryKey);
+array_types_compaction!(AssetId, RegistryKey);
 
 impl<const S: usize, T> Compressible for [T; S]
 where
-    T: Compressible + Clone,
+    T: Compressible,
 {
-    type Compressed = ArrayWrapper<S, T::Compressed>;
+    type Compressed = [T::Compressed; S];
 }
 
 impl<const S: usize, T, Ctx, E> CompressibleBy<Ctx, E> for [T; S]
 where
-    T: CompressibleBy<Ctx, E> + Clone,
+    T: CompressibleBy<Ctx, E>,
 {
     #[allow(unsafe_code)]
     async fn compress(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
@@ -99,13 +103,17 @@ where
             unsafe { MaybeUninit::uninit().assume_init() };
 
         // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
-        for (i, v) in self.iter().enumerate() {
-            tmp[i] = MaybeUninit::new(v.compress(ctx).await?);
+        // TODO: Handle the case of the error. Currently it will cause a memory leak.
+        //  https://github.com/FuelLabs/fuel-vm/issues/811
+        for (v, empty) in self.iter().zip(tmp.iter_mut()) {
+            unsafe {
+                core::ptr::write(empty.as_mut_ptr(), v.compress(ctx).await?);
+            }
         }
 
         // SAFETY: Every element is initialized.
         let result = tmp.map(|v| unsafe { v.assume_init() });
-        Ok(ArrayWrapper(result))
+        Ok(result)
     }
 }
 
@@ -120,12 +128,16 @@ where
         let mut tmp: [MaybeUninit<T>; S] = unsafe { MaybeUninit::uninit().assume_init() };
 
         // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
-        for (i, v) in c.0.iter().enumerate() {
-            tmp[i] = MaybeUninit::new(T::decompress(v, ctx).await?);
+        // TODO: Handle the case of the error. Currently it will cause a memory leak.
+        //  https://github.com/FuelLabs/fuel-vm/issues/811
+        for (v, empty) in c.iter().zip(tmp.iter_mut()) {
+            unsafe {
+                core::ptr::write(empty.as_mut_ptr(), T::decompress(v, ctx).await?);
+            }
         }
 
         // SAFETY: Every element is initialized.
-        let result: [T; S] = tmp.map(|v| unsafe { v.assume_init() });
+        let result = tmp.map(|v| unsafe { v.assume_init() });
         Ok(result)
     }
 }
@@ -160,21 +172,5 @@ where
             result.push(T::decompress(item, ctx).await?);
         }
         Ok(result)
-    }
-}
-
-impl<T> Compressible for PhantomData<T> {
-    type Compressed = ();
-}
-
-impl<T, Ctx, E> CompressibleBy<Ctx, E> for PhantomData<T> {
-    async fn compress(&self, _: &mut Ctx) -> Result<Self::Compressed, E> {
-        Ok(())
-    }
-}
-
-impl<T, Ctx, E> DecompressibleBy<Ctx, E> for PhantomData<T> {
-    async fn decompress(_: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
-        Ok(PhantomData)
     }
 }

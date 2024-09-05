@@ -32,10 +32,6 @@ macro_rules! key {
         #[repr(transparent)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         #[cfg_attr(feature = "serde", serde(transparent))]
-        #[cfg_attr(
-            feature = "da-compression",
-            derive(fuel_compression::Compress, fuel_compression::Decompress)
-        )]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,

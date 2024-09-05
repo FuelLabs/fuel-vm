@@ -3,7 +3,6 @@ use crate::{
     test_helper::generate_bytes,
     BlobBody,
     BlobId,
-    CompressibleTxId,
     ConsensusParameters,
     Input,
     Output,
@@ -13,6 +12,7 @@ use crate::{
     TxPointer,
     UpgradePurpose,
     UploadBody,
+    UtxoId,
 };
 use bimap::BiMap;
 use fuel_compression::{
@@ -44,7 +44,7 @@ type Keyspace = &'static str;
 #[derive(Default)]
 struct TestCompressionCtx {
     registry: HashMap<Keyspace, BiMap<RegistryKey, Vec<u8>>>,
-    tx_blocks: BiMap<TxPointer, CompressibleTxId>,
+    tx_blocks: BiMap<(TxPointer, u16), UtxoId>,
 }
 
 macro_rules! impl_substitutable_key {
@@ -88,27 +88,27 @@ impl_substitutable_key!(AssetId);
 impl_substitutable_key!(ContractId);
 impl_substitutable_key!(ScriptCode);
 
-impl CompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
+impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
     async fn compress(
         &self,
         ctx: &mut TestCompressionCtx,
-    ) -> Result<TxPointer, Infallible> {
+    ) -> Result<(TxPointer, u16), Infallible> {
         if let Some(key) = ctx.tx_blocks.get_by_right(self) {
             return Ok(*key);
         }
 
         let key_seed = ctx.tx_blocks.len(); // Just get an unique integer key
-        let key = TxPointer::new((key_seed as u32).into(), 0);
+        let key = (TxPointer::new((key_seed as u32).into(), 0), 0);
         ctx.tx_blocks.insert(key, *self);
         Ok(key)
     }
 }
 
-impl DecompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
+impl DecompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
     async fn decompress(
-        key: &TxPointer,
+        key: &(TxPointer, u16),
         ctx: &TestCompressionCtx,
-    ) -> Result<CompressibleTxId, Infallible> {
+    ) -> Result<UtxoId, Infallible> {
         Ok(*ctx.tx_blocks.get_by_left(key).expect("key not found"))
     }
 }

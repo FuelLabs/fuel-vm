@@ -183,7 +183,7 @@ mod tests {
         *tx_id.get_mut(31).unwrap() = 11;
 
         let utxo_id = UtxoId {
-            tx_id: tx_id.into(),
+            tx_id,
             output_index: 0xab,
         };
         assert_eq!(
@@ -203,7 +203,7 @@ mod tests {
         *tx_id.get_mut(31).unwrap() = 11;
 
         let utxo_id = UtxoId {
-            tx_id: tx_id.into(),
+            tx_id,
             output_index: 0xabcd,
         };
         assert_eq!(

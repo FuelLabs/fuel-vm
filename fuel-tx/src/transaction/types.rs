@@ -45,10 +45,7 @@ pub use upload::{
     UploadMetadata,
     UploadSubsection,
 };
-pub use utxo_id::{
-    CompressibleTxId,
-    UtxoId,
-};
+pub use utxo_id::UtxoId;
 pub use witness::Witness;
 
 pub fn compute_transaction_id<T: fuel_types::canonical::Serialize>(

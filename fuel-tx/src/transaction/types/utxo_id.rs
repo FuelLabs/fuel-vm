@@ -4,10 +4,6 @@ use fuel_types::Bytes32;
 
 use core::{
     fmt,
-    ops::{
-        Deref,
-        DerefMut,
-    },
     str,
 };
 
@@ -24,47 +20,17 @@ use rand::{
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-pub struct CompressibleTxId(TxId);
-
-impl From<TxId> for CompressibleTxId {
-    fn from(bytes: TxId) -> Self {
-        Self(bytes)
-    }
-}
-impl Deref for CompressibleTxId {
-    type Target = TxId;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-impl DerefMut for CompressibleTxId {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-#[cfg(feature = "da-compression")]
-impl fuel_compression::Compressible for CompressibleTxId {
-    type Compressed = crate::TxPointer;
-}
-
-/// Identification of unspend transaction output.
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "da-compression",
-    derive(fuel_compression::Compress, fuel_compression::Decompress)
-)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct UtxoId {
     /// transaction id
-    tx_id: CompressibleTxId,
+    tx_id: TxId,
     /// output index
     output_index: u16,
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for UtxoId {
+    type Compressed = (crate::TxPointer, u16);
 }
 
 impl UtxoId {
@@ -72,13 +38,13 @@ impl UtxoId {
 
     pub const fn new(tx_id: TxId, output_index: u16) -> Self {
         Self {
-            tx_id: CompressibleTxId(tx_id),
+            tx_id,
             output_index,
         }
     }
 
     pub const fn tx_id(&self) -> &TxId {
-        &self.tx_id.0
+        &self.tx_id
     }
 
     pub const fn output_index(&self) -> u16 {
@@ -86,7 +52,7 @@ impl UtxoId {
     }
 
     pub fn replace_tx_id(&mut self, tx_id: TxId) {
-        self.tx_id = CompressibleTxId(tx_id);
+        self.tx_id = tx_id;
     }
 }
 
@@ -102,9 +68,9 @@ impl Distribution<UtxoId> for Standard {
 impl fmt::LowerHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#x}{:04x}", *self.tx_id, self.output_index)
+            write!(f, "{:#x}{:04x}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:x}{:04x}", *self.tx_id, self.output_index)
+            write!(f, "{:x}{:04x}", self.tx_id, self.output_index)
         }
     }
 }
@@ -112,9 +78,9 @@ impl fmt::LowerHex for UtxoId {
 impl fmt::UpperHex for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#X}{:04X}", *self.tx_id, self.output_index)
+            write!(f, "{:#X}{:04X}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:X}{:04X}", *self.tx_id, self.output_index)
+            write!(f, "{:X}{:04X}", self.tx_id, self.output_index)
         }
     }
 }
@@ -122,9 +88,9 @@ impl fmt::UpperHex for UtxoId {
 impl core::fmt::Display for UtxoId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         if f.alternate() {
-            write!(f, "{:#x}{:04x}", *self.tx_id, self.output_index)
+            write!(f, "{:#x}{:04x}", self.tx_id, self.output_index)
         } else {
-            write!(f, "{:x}{:04x}", *self.tx_id, self.output_index)
+            write!(f, "{:x}{:04x}", self.tx_id, self.output_index)
         }
     }
 }

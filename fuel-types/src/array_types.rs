@@ -33,7 +33,10 @@ macro_rules! key {
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[repr(transparent)]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+        #[cfg_attr(
+            feature = "da-compression",
+            derive(fuel_compression::Compress, fuel_compression::Decompress)
+        )]
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]
@@ -83,7 +86,10 @@ macro_rules! key_with_big_array {
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[repr(transparent)]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-        #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+        #[cfg_attr(
+            feature = "da-compression",
+            derive(fuel_compression::Compress, fuel_compression::Decompress)
+        )]
         #[derive(
             fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize,
         )]

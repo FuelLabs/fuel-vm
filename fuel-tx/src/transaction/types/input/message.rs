@@ -82,14 +82,20 @@ pub mod specifications {
     /// `witnesses` vector of the [`crate::Transaction`].
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+    #[cfg_attr(
+        feature = "da-compression",
+        derive(fuel_compression::Compress, fuel_compression::Decompress)
+    )]
     pub struct Signed;
 
     /// The type means that the message is not signed, and the `owner` is a `predicate`
     /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+    #[cfg_attr(
+        feature = "da-compression",
+        derive(fuel_compression::Compress, fuel_compression::Decompress)
+    )]
     pub struct Predicate;
 
     /// The retrayable message metadata. It is a message that can't be used as a coin to
@@ -177,7 +183,10 @@ pub mod specifications {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>
 where

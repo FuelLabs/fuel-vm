@@ -10,30 +10,40 @@
     clippy::string_slice
 )]
 
+mod helpers;
+
 extern crate proc_macro;
-mod canonical_attribute;
-mod compressed;
-mod deserialize;
-mod serialize;
 
-use self::{
-    compressed::compressed_derive,
-    deserialize::deserialize_derive,
-    serialize::serialize_derive,
-};
+mod canonical {
+    mod attribute;
+    pub mod deserialize;
+    pub mod serialize;
+}
 
-synstructure::decl_derive!(
-    [Deserialize, attributes(canonical)] =>
-    /// Derives `Deserialize` trait for the given `struct` or `enum`.
-    deserialize_derive
-);
 synstructure::decl_derive!(
     [Serialize, attributes(canonical)] =>
     /// Derives `Serialize` trait for the given `struct` or `enum`.
-    serialize_derive
+    canonical::serialize::derive
 );
 synstructure::decl_derive!(
-    [Compressed, attributes(da_compress)] =>
+    [Deserialize, attributes(canonical)] =>
+    /// Derives `Deserialize` trait for the given `struct` or `enum`.
+    canonical::deserialize::derive
+);
+
+mod compression {
+    mod attribute;
+    pub mod compress;
+    pub mod decompress;
+}
+
+synstructure::decl_derive!(
+    [Compress, attributes(da_compress)] =>
     /// Derives `Compressed` trait for the given `struct` or `enum`.
-    compressed_derive
+    compression::compress::derive
+);
+synstructure::decl_derive!(
+    [Decompress, attributes(da_compress)] =>
+    /// Derives `Compressed` trait for the given `struct` or `enum`.
+    compression::decompress::derive
 );

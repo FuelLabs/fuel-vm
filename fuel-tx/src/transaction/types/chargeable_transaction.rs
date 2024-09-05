@@ -45,7 +45,10 @@ pub struct ChargeableMetadata<Body> {
 #[derive(Clone, Derivative)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compressed))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[cfg_attr(feature = "da-compression", da_compress(bound(Body)))]
 #[cfg_attr(feature = "da-compression", da_compress(discard(MetadataBody)))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]

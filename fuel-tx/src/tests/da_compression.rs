@@ -16,8 +16,9 @@ use crate::{
 };
 use bimap::BiMap;
 use fuel_compression::{
-    Compressed,
+    Compress,
     CompressibleBy,
+    Decompress,
     DecompressibleBy,
     RegistryKey,
 };
@@ -112,7 +113,7 @@ impl DecompressibleBy<TestCompressionCtx, Infallible> for CompressibleTxId {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Compressed)]
+#[derive(Debug, PartialEq, Default, Compress, Decompress)]
 pub struct ExampleStruct {
     pub asset_id: AssetId,
     pub array: [u8; 32],
@@ -120,7 +121,7 @@ pub struct ExampleStruct {
     pub integer: u32,
 }
 
-#[derive(Debug, PartialEq, Compressed)]
+#[derive(Debug, PartialEq, Compress, Decompress)]
 pub struct InnerStruct {
     pub asset_id: AssetId,
     pub count: u64,

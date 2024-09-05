@@ -10,7 +10,8 @@ use fuel_vm::fuel_types::canonical::Serialize;
 use std::io::Read;
 use std::ops::Range;
 
-const SEP: [u8; 8] = [0x00u8, 0xAD, 0xBE, 0xEF, 0x55, 0x66, 0xCE, 0xAA];
+/// Magic value used as separator between fuzz data components in corpus files.
+const MAGIC_VALUE_SEPARATOR: [u8; 8] = [0x00u8, 0xAD, 0xBE, 0xEF, 0x55, 0x66, 0xCE, 0xAA];
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FuzzData {
@@ -20,7 +21,7 @@ pub struct FuzzData {
 }
 
 pub fn encode(data: &FuzzData) -> Vec<u8> {
-    let seperator: Vec<_> = SEP.into();
+    let seperator: Vec<_> = MAGIC_VALUE_SEPARATOR.into();
     let parts: [Vec<u8>; 5] = [
         data.program.iter().copied().collect(),
         seperator.clone(),
@@ -58,7 +59,7 @@ fn split_by_separator(data: &[u8], separator: &[u8]) -> Vec<Range<usize>> {
 }
 
 pub fn decode(data: &[u8]) -> Option<FuzzData> {
-    let x = split_by_separator(data, &SEP);
+    let x = split_by_separator(data, &MAGIC_VALUE_SEPARATOR);
 
     if x.len() != 3 {
         return None;

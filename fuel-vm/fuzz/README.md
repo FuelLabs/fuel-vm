@@ -1,6 +1,10 @@
+# Fuzz test for the Fuel VM
+This crate provides the `grammar_aware_advanced` fuzz target which can be run with `cargo fuzz` to fuzz test the Fuel VM.
 
-## Manual for grammar_aware_advanced fuzzer
+General information about fuzzing Rust can be found on [appsec.guide](https://appsec.guide/docs/fuzzing/rust/cargo-fuzz/).
 
+### Installation
+To be able to run the fuzzer, the following tools must be installed.
 
 Install:
 ```
@@ -9,40 +13,71 @@ apt install clang pkg-config libssl-dev # for LibAFL
 rustup component add llvm-tools-preview --toolchain nightly
 ```
 
-General information about fuzzing Rust might be found on [appsec.guide](https://appsec.guide/docs/fuzzing/rust/cargo-fuzz/).
+### Seeds
 
+The input to the fuzzer is a byte vector that contains script assembly, script data, and the assembly of a contract to be called. Each of these is separated by a 64-bit magic value `0x00ADBEEF5566CEAA`.
 
-### Generate Seeds
+An initial input is provided in the `example_corpus` directory, and can be loaded by copying it over to the `corpus/grammar_aware_advanced` folder:
 
-It is necessary to first convert Sway programs into a suitable format for use as seed input to the fuzzer. This can be done with the following command:
+```
+mkdir -p corpus/grammar_aware_advanced
+cp example_corpus/ corpus/grammar_aware_advanced
+```
+
+This corpus is generated from the [sway examples](https://github.com/FuelLabs/sway/tree/master/examples), according to the procedure described below.
+
+#### Generate your own seeds
+
+If you want to run the fuzzer with custom input, you can run the `seed` binary against a directory of compiled sway programs.
+
 ```
 cargo run --bin seed <input dir> <output dir>
 ```
 
-### Running the Fuzzer
-The Rust nightly version is required for executing cargo-fuzz. We also disable AddressSanitizer for a significant speed improvement, as we do not expect memory issues in a Rust program that does not use a significant amount of unsafe code, which our [cargo-geiger](https://github.com/rust-secure-code/cargo-geiger) analysis showed. It makes sense to leave AddressSanitizer turned on if the Fuel project uses more unsafe Rust in the future (either directly or through dependencies). The remaining flags are either required for LibAFL or are useful to make it use seven cores.
+#### Example: Regenerate the `example_corpus`
+The `example_corpus` can be recreated by doing the following:
+
+1. Compile the sway examples with `forc`.
 ```
-cargo +nightly fuzz run --sanitizer none grammar_aware -- \
-	-ignore_crashes=1 -ignore_timeouts=1 -ignore_ooms=1 -fork=7
+# In sway/examples
+forc build
+```
+
+2. Gather all the resulting binaries in a temporary directory (for example `/tmp/corpus`).
+```
+# In sway/examples
+for file in $(find . -name "*.bin" | rg debug); do cp $file /tmp/corpus; done
+```
+
+3. Run the `seed binary` against the generated binaries
+```
+# In fuel-vm/fuel-vm/fuzz
+mkdir generated_seeds
+cargo run --bin seed /tmp/corpus ./generated_seeds
+```
+
+### Running the Fuzzer
+The Rust nightly version is required for executing cargo-fuzz. We also disable AddressSanitizer for a significant speed improvement, as we do not expect memory issues in a Rust program that does not use a significant amount of unsafe code, which the ToB [cargo-geiger](https://github.com/rust-secure-code/cargo-geiger) analysis showed. It makes sense to leave AddressSanitizer turned on if we use more unsafe Rust in the future (either directly or through dependencies). The remaining flags are either required for LibAFL or are useful to make it use seven cores.
+```
+cargo +nightly fuzz run --sanitizer none grammar_aware_advanced -- -ignore_crashes=1 -ignore_timeouts=1 -ignore_ooms=1 -fork=7
 ```
 
 If you use libfuzzer (default) then the following command is enough:
 
 ```
-cargo fuzz run --sanitizer none grammar_aware
+cargo +nightly fuzz run --sanitizer none grammar_aware_advanced
 ```
 
 ### Execute a Test Case
 Test cases can be executed using the following command. This is useful for triaging issues.
 ```
-cd fuzz/
 cargo run --bin execute <file/dir>
 ```
 
 ### Collect Statistics
-We created a tool that writes gas statistics to a file called gas_statistics.csv. This can be used to analyze the execution time versus gas usage on a test corpus.
+ToB created a tool that writes gas statistics to a file called gas_statistics.csv. This can be used to analyze the execution time versus gas usage on a test corpus.
 ```
-cargo run --bin collect <file/dir>
+cargo run --bin collect
 ```
 
 ### Generate Coverage

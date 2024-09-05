@@ -37,16 +37,3 @@ name = "grammar_aware_advanced"
 path = "fuzz_targets/grammar_aware_advanced.rs"
 test = false
 doc = false
-
-[[bin]]
-name = "seed"
-path = "src/seed.rs"
-
-[[bin]]
-name = "execute"
-path = "src/execute.rs"
-
-[[bin]]
-name = "collect"
-path = "src/collect.rs"
-

@@ -1,15 +1,7 @@
 //! See README.md for usage example
 
-use fuel_vm::consts::WORD_SIZE;
-use fuel_vm::fuel_asm::{Instruction, RawInstruction};
-use fuel_vm::fuel_crypto::rand::Rng;
-use fuel_vm::fuel_crypto::rand::SeedableRng;
-use fuel_vm::fuel_types::Word;
-use fuel_vm::prelude::SecretKey;
 use fuel_vm_fuzz::FuzzData;
-use fuel_vm_fuzz::{decode, decode_instructions, encode};
-use std::convert::TryFrom;
-use std::convert::TryInto;
+use fuel_vm_fuzz::{decode, encode};
 use std::fs;
 use std::path::PathBuf;
 

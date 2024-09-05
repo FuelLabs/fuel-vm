@@ -1,18 +1,6 @@
-use fuel_vm::consts::WORD_SIZE;
-use fuel_vm::fuel_asm::op;
-use fuel_vm::fuel_asm::RegId;
-use fuel_vm::fuel_asm::{Instruction, RawInstruction};
-use fuel_vm::fuel_crypto::rand::Rng;
-use fuel_vm::fuel_crypto::rand::SeedableRng;
-use fuel_vm::fuel_types::Word;
-use fuel_vm::prelude::SecretKey;
 use fuel_vm_fuzz::execute;
-use fuel_vm_fuzz::FuzzData;
-use fuel_vm_fuzz::{decode, decode_instructions, encode};
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::fs;
-use std::path::{Path, PathBuf};
+use fuel_vm_fuzz::decode;
+use std::path::Path;
 
 fn main() {
     let path = std::env::args().nth(1).expect("no path given");
@@ -27,7 +15,7 @@ fn main() {
             println!("{:?}:{}", path, result.success);
         }
     } else {
-        let paths = fs::read_dir(path).unwrap();
+        let paths = std::fs::read_dir(path).unwrap();
 
         for path in paths {
             let entry = path.unwrap();

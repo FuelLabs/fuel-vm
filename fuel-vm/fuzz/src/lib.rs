@@ -7,7 +7,6 @@ use fuel_vm::prelude::*;
 use fuel_vm::util::test_helpers::TestBuilder;
 use fuel_vm::{fuel_asm, script_with_data_offset};
 use fuel_vm::fuel_types::canonical::Serialize;
-use std::io::Read;
 use std::ops::Range;
 
 /// Magic value used as separator between fuzz data components in corpus files.

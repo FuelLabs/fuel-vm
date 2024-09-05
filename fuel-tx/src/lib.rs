@@ -127,7 +127,10 @@ pub use transaction::{
 };
 
 #[cfg(feature = "da-compression")]
-pub use transaction::CompressedTransaction;
+pub use transaction::{
+    CompressedTransaction,
+    CompressedUtxoId,
+};
 
 pub use transaction::{
     PrepareSign,

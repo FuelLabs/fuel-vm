@@ -17,6 +17,7 @@ use crate::{
     test_helper::generate_bytes,
     BlobBody,
     BlobId,
+    CompressedUtxoId,
     ConsensusParameters,
     Input,
     Output,
@@ -75,7 +76,7 @@ struct MessageInfo {
 #[derive(Default)]
 struct TestCompressionCtx {
     registry: HashMap<Keyspace, BiMap<RegistryKey, Vec<u8>>>,
-    tx_blocks: BiMap<(TxPointer, u16), UtxoId>,
+    tx_blocks: BiMap<CompressedUtxoId, UtxoId>,
     coins: HashMap<UtxoId, CoinInfo>,
     _messages: HashMap<usize, MessageInfo>,
 }
@@ -126,13 +127,16 @@ impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
     async fn compress_with(
         &self,
         ctx: &mut TestCompressionCtx,
-    ) -> Result<(TxPointer, u16), Infallible> {
+    ) -> Result<CompressedUtxoId, Infallible> {
         if let Some(key) = ctx.tx_blocks.get_by_right(self) {
             return Ok(*key);
         }
 
         let key_seed = ctx.tx_blocks.len(); // Just get an unique integer key
-        let key = (TxPointer::new((key_seed as u32).into(), 0), 0);
+        let key = CompressedUtxoId {
+            tx_pointer: TxPointer::new((key_seed as u32).into(), 0),
+            output_index: 0,
+        };
         ctx.tx_blocks.insert(key, *self);
         Ok(key)
     }
@@ -140,7 +144,7 @@ impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
 
 impl DecompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
     async fn decompress_with(
-        key: &(TxPointer, u16),
+        key: &CompressedUtxoId,
         ctx: &TestCompressionCtx,
     ) -> Result<UtxoId, Infallible> {
         Ok(*ctx.tx_blocks.get_by_left(key).expect("key not found"))
@@ -334,6 +338,16 @@ async fn transaction_postcard_roundtrip() {
                 rng.gen(),
             )
             .add_contract_created()
+            .add_input(Input::coin_predicate(
+                Default::default(),
+                rng.gen(),
+                rng.gen(),
+                AssetId::default(),
+                Default::default(),
+                0,
+                Default::default(),
+                Default::default(),
+            ))
             .add_output(Output::change(rng.gen(), 0, AssetId::default()))
             .finalize()
             .into(),

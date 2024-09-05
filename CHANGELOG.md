@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): Add DA compression functionality to `Transaction` and any types within
 
+### Changed
+
+#### Breaking
+
+- [#670](https://github.com/FuelLabs/fuel-vm/pull/670): The `predicate` field of `fuel_tx::input::Coin` is now a wrapper struct `PredicateCode`.
+
 ## [Version 0.56.0]
 
 ### Added

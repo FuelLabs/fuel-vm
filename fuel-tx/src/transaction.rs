@@ -526,7 +526,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate)
+                result && Input::is_predicate_owner_valid(owner, &**predicate)
             })
     }
 

@@ -1,5 +1,6 @@
 use crate::{
     builder::Finalizable,
+    input::PredicateCode,
     test_helper::generate_bytes,
     BlobBody,
     BlobId,
@@ -87,6 +88,7 @@ impl_substitutable_key!(Address);
 impl_substitutable_key!(AssetId);
 impl_substitutable_key!(ContractId);
 impl_substitutable_key!(ScriptCode);
+impl_substitutable_key!(PredicateCode);
 
 impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
     async fn compress(

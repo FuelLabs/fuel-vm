@@ -41,8 +41,10 @@ pub mod coin;
 mod consts;
 pub mod contract;
 pub mod message;
+mod predicate;
 mod repr;
 
+pub use predicate::PredicateCode;
 pub use repr::InputRepr;
 
 #[cfg(all(test, feature = "std"))]
@@ -52,6 +54,17 @@ pub trait AsField<Type>: AsFieldFmt {
     fn as_field(&self) -> Option<&Type>;
 
     fn as_mut_field(&mut self) -> Option<&mut Type>;
+}
+
+pub trait AsFieldFmt {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result;
+}
+
+pub fn fmt_as_field<T>(field: &T, f: &mut Formatter) -> fmt::Result
+where
+    T: AsFieldFmt,
+{
+    field.fmt_as_field(f)
 }
 
 /// The empty field used by sub-types of the specification.
@@ -192,15 +205,21 @@ impl AsFieldFmt for Vec<u8> {
     }
 }
 
-pub trait AsFieldFmt {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result;
+impl AsField<PredicateCode> for PredicateCode {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&PredicateCode> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut PredicateCode> {
+        Some(self)
+    }
 }
 
-pub fn fmt_as_field<T>(field: &T, f: &mut Formatter) -> fmt::Result
-where
-    T: AsFieldFmt,
-{
-    field.fmt_as_field(f)
+impl AsFieldFmt for PredicateCode {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        fmt_truncated_hex::<16>(self, f)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
@@ -260,7 +279,7 @@ impl Input {
             tx_pointer,
             witness_index: Empty::new(),
             predicate_gas_used,
-            predicate,
+            predicate: PredicateCode { bytes: predicate },
             predicate_data,
         })
     }
@@ -339,7 +358,7 @@ impl Input {
             witness_index: Empty::new(),
             predicate_gas_used,
             data: Empty::new(),
-            predicate,
+            predicate: PredicateCode { bytes: predicate },
             predicate_data,
         })
     }
@@ -383,7 +402,7 @@ impl Input {
             witness_index: Empty::new(),
             predicate_gas_used,
             data,
-            predicate,
+            predicate: PredicateCode { bytes: predicate },
             predicate_data,
         })
     }

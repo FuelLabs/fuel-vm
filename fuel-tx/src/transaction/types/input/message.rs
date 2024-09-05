@@ -13,6 +13,8 @@ use fuel_types::{
     Word,
 };
 
+use super::PredicateCode;
+
 pub type FullMessage = Message<specifications::Full>;
 pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
 pub type MessageDataPredicate =
@@ -38,7 +40,7 @@ pub trait MessageSpecification: private::Seal {
         + for<'a> Compressible<
             Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
         >;
-    type Predicate: AsField<Vec<u8>>
+    type Predicate: AsField<PredicateCode>
         + for<'a> Compressible<
             Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
         >;
@@ -59,7 +61,7 @@ pub trait MessageSpecification: private::Seal {
 #[cfg(not(feature = "da-compression"))]
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>;
-    type Predicate: AsField<Vec<u8>>;
+    type Predicate: AsField<PredicateCode>;
     type PredicateData: AsField<Vec<u8>>;
     type PredicateGasUsed: AsField<Word>;
     type Witness: AsField<u16>;
@@ -69,7 +71,10 @@ pub mod specifications {
     use alloc::vec::Vec;
 
     use super::MessageSpecification;
-    use crate::input::Empty;
+    use crate::input::{
+        Empty,
+        PredicateCode,
+    };
     use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
@@ -104,7 +109,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageData<Signed> {
         type Data = Vec<u8>;
-        type Predicate = Empty<Vec<u8>>;
+        type Predicate = Empty<PredicateCode>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
@@ -112,7 +117,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageData<Predicate> {
         type Data = Vec<u8>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
@@ -125,7 +130,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageCoin<Signed> {
         type Data = Empty<Vec<u8>>;
-        type Predicate = Empty<Vec<u8>>;
+        type Predicate = Empty<PredicateCode>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
@@ -133,7 +138,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageCoin<Predicate> {
         type Data = Empty<Vec<u8>>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
@@ -151,7 +156,7 @@ pub mod specifications {
 
     impl MessageSpecification for Full {
         type Data = Vec<u8>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = u16;

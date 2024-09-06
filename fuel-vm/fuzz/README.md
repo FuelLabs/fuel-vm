@@ -62,12 +62,6 @@ The Rust nightly version is required for executing cargo-fuzz. We also disable A
 cargo +nightly fuzz run --sanitizer none grammar_aware_advanced -- -ignore_crashes=1 -ignore_timeouts=1 -ignore_ooms=1 -fork=7
 ```
 
-If you use libfuzzer (default) then the following command is enough:
-
-```
-cargo +nightly fuzz run --sanitizer none grammar_aware_advanced
-```
-
 ### Execute a Test Case
 Test cases can be executed using the following command. This is useful for triaging issues.
 ```

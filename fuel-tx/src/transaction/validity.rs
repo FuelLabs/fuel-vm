@@ -114,7 +114,7 @@ impl Input {
 
                 // This error is reached during fuzzing often, verify it is safe to
                 // disable it
-                #[cfg(not(any(fuzzing, feature = "test-helpers")))]
+                #[cfg(not(fuzzing))]
                 if owner != &recovered_address {
                     return Err(ValidityError::InputInvalidSignature { index });
                 }

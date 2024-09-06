@@ -56,7 +56,7 @@ impl TryFrom<secp256k1::ecdsa::RecoveryId> for RecoveryId {
 /// signature. Panics if the recovery id is in reduced-x form.
 pub fn encode_signature(mut signature: [u8; 64], recovery_id: RecoveryId) -> [u8; 64] {
     // This assertion is hit during fuzzing. Verify it is safe to disable.
-    #[cfg(not(any(fuzzing, feature = "test-helpers")))]
+    #[cfg(not(fuzzing))]
     assert!(signature[32] >> 7 == 0, "Non-normalized signature");
     let v = recovery_id.is_y_odd as u8;
 

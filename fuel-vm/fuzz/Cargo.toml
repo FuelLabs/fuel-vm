@@ -9,8 +9,7 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = { version = "1.0", features = ["derive"] }
-fuel-vm = { path = "..", features = ["arbitrary", "test-helpers"] }
+fuel-vm = { path = "..", features = ["test-helpers"] }
 clap = { version = "4.0", features = ["derive"] }
 hex = "*"
 

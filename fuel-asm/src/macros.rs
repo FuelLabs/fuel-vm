@@ -1061,7 +1061,6 @@ macro_rules! impl_instructions {
         /// Solely the opcode portion of an instruction represented as a single byte.
         #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-        #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
         #[repr(u8)]
         pub enum Opcode {
             $(

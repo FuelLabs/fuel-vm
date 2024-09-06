@@ -60,6 +60,7 @@ impl ConsensusParameters {
         gas_costs: GasCosts,
         base_asset_id: AssetId,
         block_gas_limit: u64,
+        block_transaction_size_limit: u32,
         privileged_address: Address,
     ) -> Self {
         Self::V1(ConsensusParametersV1 {
@@ -72,6 +73,7 @@ impl ConsensusParameters {
             gas_costs,
             base_asset_id,
             block_gas_limit,
+            block_transaction_size_limit,
             privileged_address,
         })
     }
@@ -136,6 +138,13 @@ impl ConsensusParameters {
     pub const fn block_gas_limit(&self) -> u64 {
         match self {
             Self::V1(params) => params.block_gas_limit,
+        }
+    }
+
+    /// Get the block transaction size limit
+    pub const fn block_transaction_size_limit(&self) -> u32 {
+        match self {
+            Self::V1(params) => params.block_transaction_size_limit,
         }
     }
 
@@ -231,6 +240,7 @@ pub struct ConsensusParametersV1 {
     pub gas_costs: GasCosts,
     pub base_asset_id: AssetId,
     pub block_gas_limit: u64,
+    pub block_transaction_size_limit: u32,
     /// The privileged address(user or predicate) that can perform permissioned
     /// operations(like upgrading the network).
     pub privileged_address: Address,
@@ -255,6 +265,9 @@ impl ConsensusParametersV1 {
             gas_costs: GasCosts::default(),
             base_asset_id: Default::default(),
             block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx(),
+            // TODO[RC]: Should not be u64::default(), but some other "default" value,
+            // like 126kb?
+            block_transaction_size_limit: Default::default(),
             privileged_address: Default::default(),
         }
     }

@@ -52,40 +52,17 @@ identity_compression!(Bytes32);
 identity_compression!(Salt);
 identity_compression!(Nonce);
 
-macro_rules! array_types_compression {
-    ($t:ty, $compressed_t:ty) => {
-        impl Compressible for $t {
-            type Compressed = $compressed_t;
-        }
-
-        impl<Ctx, E> CompressibleBy<Ctx, E> for $t
-        where
-            Ctx: CompressionContext<$t, Error = E>,
-            Ctx: ?Sized,
-        {
-            async fn compress_with(&self, ctx: &mut Ctx) -> Result<$compressed_t, E> {
-                ctx.compress_to(self).await
-            }
-        }
-
-        impl<Ctx, E> DecompressibleBy<Ctx, E> for $t
-        where
-            Ctx: DecompressionContext<$t, Error = E>,
-            Ctx: ?Sized,
-        {
-            async fn decompress_with(
-                value: &Self::Compressed,
-                ctx: &Ctx,
-            ) -> Result<$t, E> {
-                ctx.decompress_from(value).await
-            }
-        }
-    };
+impl Compressible for Address {
+    type Compressed = RegistryKey;
 }
 
-array_types_compression!(Address, RegistryKey);
-array_types_compression!(ContractId, RegistryKey);
-array_types_compression!(AssetId, RegistryKey);
+impl Compressible for ContractId {
+    type Compressed = RegistryKey;
+}
+
+impl Compressible for AssetId {
+    type Compressed = RegistryKey;
+}
 
 impl<const S: usize, T> Compressible for [T; S]
 where

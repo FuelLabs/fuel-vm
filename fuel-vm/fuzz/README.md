@@ -70,15 +70,21 @@ cargo +nightly fuzz run --no-default-features --features libafl --sanitizer none
 ```
 
 ### Generate Coverage
-Regardless of how inputs are generated, it is important to measure a fuzzing campaign’s coverage after its run. To perform this measure, we used the support provided by cargo-fuzz and [rustc](https://doc.rust-lang.org/stable/rustc/instrument-coverage.html). First, install [cargo-binutils](https://github.com/rust-embedded/cargo-binutils#installation). After that, execute the following command:
+It is important to measure a fuzzing campaign’s coverage after its run. To perform this measurement, we can use tools provided by cargo-fuzz and [rustc](https://doc.rust-lang.org/stable/rustc/instrument-coverage.html). First, install [cargo-binutils](https://github.com/rust-embedded/cargo-binutils#installation). After that, execute the following command:
 ```
 cargo +nightly fuzz coverage grammar_aware_advanced corpus/grammar_aware_advanced
 ```
-Finally, generate an HTML file using LLVM:
+
+The code coverage report can now be displayed with the following command:
 
 ```
-cargo cov -- show
-target/x86_64-unknown-linux-gnu/coverage/x86_64-unknown-linux-gnu/release/grammar_aware --format=html -instr-profile=coverage/grammar_aware/coverage.profdata /root/audit/fuel-vm > index.html
+cargo cov -- report target/x86_64-unknown-linux-gnu/coverage/x86_64-unknown-linux-gnu/release/grammar_aware_advanced  -instr-profile=coverage/grammar_aware_advanced/coverage.profdata 
+```
+
+We can also generate a HTML visualization of the code coverage using the following command:
+
+```
+cargo cov -- show target/x86_64-unknown-linux-gnu/coverage/x86_64-unknown-linux-gnu/release/grammar_aware_advanced --format=html -instr-profile=coverage/grammar_aware_advanced/coverage.profdata $(pwd | sed "s/fuel-vm\/fuzz//") > index.html
 ```
 
 ### Execute a Test Case

@@ -27,12 +27,6 @@ panic = 'abort'
 panic = 'abort'
 
 [[bin]]
-name = "grammar_aware"
-path = "fuzz_targets/grammar_aware.rs"
-test = false
-doc = false
-
-[[bin]]
 name = "grammar_aware_advanced"
 path = "fuzz_targets/grammar_aware_advanced.rs"
 test = false

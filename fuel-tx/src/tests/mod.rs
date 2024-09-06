@@ -16,4 +16,6 @@ use bincode as _;
 #[cfg(not(feature = "da-compression"))]
 use bimap as _;
 #[cfg(not(feature = "da-compression"))]
+use pretty_assertions as _;
+#[cfg(not(feature = "da-compression"))]
 use tokio as _;

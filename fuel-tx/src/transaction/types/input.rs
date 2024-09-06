@@ -997,7 +997,7 @@ pub mod typescript {
                 tx_pointer,
                 witness_index: Empty::new(),
                 predicate_gas_used,
-                predicate,
+                predicate: PredicateCode { bytes: predicate },
                 predicate_data,
             })))
         }
@@ -1083,7 +1083,7 @@ pub mod typescript {
                     witness_index: Empty::new(),
                     predicate_gas_used,
                     data: Empty::new(),
-                    predicate,
+                    predicate: PredicateCode { bytes: predicate },
                     predicate_data,
                 },
             )))
@@ -1133,7 +1133,7 @@ pub mod typescript {
                     witness_index: Empty::new(),
                     predicate_gas_used,
                     data,
-                    predicate,
+                    predicate: PredicateCode { bytes: predicate },
                     predicate_data,
                 },
             )))

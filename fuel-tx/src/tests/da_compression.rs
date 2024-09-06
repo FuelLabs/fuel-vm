@@ -99,11 +99,11 @@ impl TestCompressionCtx {
             .filter(|input| input.is_coin())
             .map(|input| {
                 (
-                    input.utxo_id().unwrap().clone(),
+                    *input.utxo_id().unwrap(),
                     CoinInfo {
-                        owner: input.input_owner().unwrap().clone(),
-                        amount: input.amount().unwrap().clone(),
-                        asset_id: input.asset_id(&AssetId::default()).unwrap().clone(),
+                        owner: *input.input_owner().unwrap(),
+                        amount: input.amount().unwrap(),
+                        asset_id: *input.asset_id(&AssetId::default()).unwrap(),
                     },
                 )
             })
@@ -114,12 +114,12 @@ impl TestCompressionCtx {
             .filter(|input| input.is_message())
             .map(|input| {
                 (
-                    input.nonce().unwrap().clone(),
+                    *input.nonce().unwrap(),
                     MessageInfo {
-                        sender: input.sender().unwrap().clone(),
-                        recipient: input.recipient().unwrap().clone(),
-                        amount: input.amount().unwrap().clone(),
-                        data: input.input_data().clone().unwrap_or_default().to_vec(),
+                        sender: *input.sender().unwrap(),
+                        recipient: *input.recipient().unwrap(),
+                        amount: input.amount().unwrap(),
+                        data: input.input_data().unwrap_or_default().to_vec(),
                     },
                 )
             })
@@ -532,7 +532,7 @@ async fn verify_tx_roundtrip(tx: Transaction, ctx: &mut TestCompressionCtx) {
         postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
     let decompressed = <Transaction as DecompressibleBy<_, _>>::decompress_with(
         &postcard_decompressed,
-        &ctx,
+        ctx,
     )
     .await
     .expect("decompression failed");

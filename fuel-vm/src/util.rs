@@ -466,8 +466,7 @@ pub mod test_helpers {
             let contract = contract
                 .into_iter()
                 .flat_map(Instruction::to_bytes)
-                .collect::<Vec<u8>>()
-                .into();
+                .collect();
 
             self.setup_contract_inner(contract, initial_balance, initial_state)
         }

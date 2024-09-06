@@ -107,3 +107,6 @@ test-helpers = [
     "tai64",
     "fuel-crypto/test-helpers",
 ]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

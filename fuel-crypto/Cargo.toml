@@ -41,6 +41,9 @@ serde = ["dep:serde", "fuel-types/serde"]
 std = ["alloc", "coins-bip32", "secp256k1", "coins-bip39", "fuel-types/std", "lazy_static", "rand?/std_rng", "serde?/default"]
 test-helpers = []
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+
 [[bench]]
 name = "signature"
 harness = false

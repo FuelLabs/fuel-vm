@@ -88,12 +88,14 @@ cargo cov -- show target/x86_64-unknown-linux-gnu/coverage/x86_64-unknown-linux-
 ```
 
 ### Execute a Test Case
-Test cases can be executed using the following command. This is useful for triaging issues.
+The fuzzing campain will output any crashes to `artifacts/grammar_aware_advanced`. To further investigate these crashes, the `execute` binary can be used.
 ```
-cargo run --bin execute <file/dir>
+cargo run --bin execute artifacts/grammar_aware_advanced/<crash file>
 ```
 
-### Collect Statistics
+This is useful for triaging issues.
+
+### Collect Gas Statistics
 The `collect` binary writes gas statistics to a file called gas_statistics.csv. This can be used to analyze the execution time versus gas usage on a test corpus.
 ```
 cargo run --bin collect

@@ -1,5 +1,8 @@
 #![no_main]
 
+#[cfg(feature = "libafl")]
+extern crate libafl_libfuzzer as libfuzzer_sys;
+
 use fuel_vm_fuzz::{decode, execute};
 use libfuzzer_sys::fuzz_target;
 

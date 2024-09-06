@@ -57,9 +57,16 @@ cargo run --bin seed /tmp/corpus ./generated_seeds
 ```
 
 ### Running the Fuzzer
-The Rust nightly version is required for executing cargo-fuzz. We also disable AddressSanitizer for a significant speed improvement, as we do not expect memory issues in a Rust program that does not use a significant amount of unsafe code, which the ToB [cargo-geiger](https://github.com/rust-secure-code/cargo-geiger) analysis showed. It makes sense to leave AddressSanitizer turned on if we use more unsafe Rust in the future (either directly or through dependencies). The remaining flags are either required for LibAFL or are useful to make it use seven cores.
+The Rust nightly version is required for executing cargo-fuzz. The simplest way to run the fuzzer is to run the following command:
 ```
-cargo +nightly fuzz run --sanitizer none grammar_aware_advanced -- -ignore_crashes=1 -ignore_timeouts=1 -ignore_ooms=1 -fork=7
+cargo +nightly fuzz run grammar_aware_advanced
+```
+
+However, we reccomment adding a few flags to the command to improve fuzzing efficiency. First, we can add `--no-default-features --features libafl` to ensure we use the LibAFL fuzzer instead of the default libFuzzer. Secondly, we can set `--sanitizer none` to disable AddressSanitizer for a significant speed improvement, as we do not expect memory issues in a Rust program that does not use a significant amount of unsafe code. This has been confirmed by a ToB [cargo-geiger](https://github.com/rust-secure-code/cargo-geiger) analysis showed. It makes sense to leave AddressSanitizer turned on if we use more unsafe Rust in the future (either directly or through dependencies). Finally, the `-ignore_crashes=1 -ignore_timeouts=1 -ignore_ooms=1 -fork=7` flags are useful to ensure a smooth LibAFL experience utilizing 7 cores.
+
+Putting this together we arrive at the following command.
+```
+cargo +nightly fuzz run --no-default-features --features libafl --sanitizer none grammar_aware_advanced -- -ignore_crashes=1 -ignore_timeouts=1 -ignore_ooms=1 -fork=7
 ```
 
 ### Generate Coverage

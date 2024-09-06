@@ -11,9 +11,21 @@ cargo-fuzz = true
 [dependencies]
 arbitrary = { version = "1.0", features = ["derive"] }
 fuel-vm = { path = "..", features = ["arbitrary", "test-helpers"] }
-libfuzzer-sys = { version = "0.13", package = "libafl_libfuzzer" }
 clap = { version = "4.0", features = ["derive"] }
 hex = "*"
+
+[features]
+default = ["libfuzzer"] # Default feature is libfuzzer
+libfuzzer = ["libfuzzer-sys"] # Directly refer to the dependencies
+libafl = ["libafl_libfuzzer"]
+
+[dependencies.libfuzzer-sys]
+version = "0.4"
+optional = true
+
+[dependencies.libafl_libfuzzer]
+version = "0.13"
+optional = true
 
 # Prevent this from interfering with workspaces as this crate requires unstable features.
 [workspace]

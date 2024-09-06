@@ -8,15 +8,14 @@ use fuel_types::canonical::Serialize;
 fn tx_with_signed_coin_snapshot() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::CoinSigned(CoinSigned {
-            utxo_id: UtxoId::new([1u8; 32].into(), 2),
-            owner: [2u8; 32].into(),
-            amount: 11,
-            asset_id: [5u8; 32].into(),
-            tx_pointer: TxPointer::new(46.into(), 5),
+            common: CoinCommon {
+                utxo_id: UtxoId::new([1u8; 32].into(), 2),
+                owner: [2u8; 32].into(),
+                amount: 11,
+                asset_id: [5u8; 32].into(),
+                tx_pointer: TxPointer::new(46.into(), 5),
+            },
             witness_index: 4,
-            predicate_gas_used: Empty::new(),
-            predicate: Empty::new(),
-            predicate_data: Empty::new(),
         }))
         .tip(1)
         .maturity(123.into())
@@ -33,15 +32,18 @@ fn tx_with_signed_coin_snapshot() {
 fn tx_with_predicate_coin_snapshot() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::CoinPredicate(CoinPredicate {
-            utxo_id: UtxoId::new([1u8; 32].into(), 2),
-            owner: [2u8; 32].into(),
-            amount: 11,
-            asset_id: [5u8; 32].into(),
-            tx_pointer: TxPointer::new(46.into(), 5),
-            witness_index: Empty::new(),
-            predicate_gas_used: 100_000,
-            predicate: vec![3u8; 10],
-            predicate_data: vec![4u8; 12],
+            common: CoinCommon {
+                utxo_id: UtxoId::new([1u8; 32].into(), 2),
+                owner: [2u8; 32].into(),
+                amount: 11,
+                asset_id: [5u8; 32].into(),
+                tx_pointer: TxPointer::new(46.into(), 5),
+            },
+            predicate: Predicate {
+                gas_used: 100_000,
+                code: vec![3u8; 10],
+                data: vec![4u8; 12],
+            },
         }))
         .tip(1)
         .maturity(123.into())
@@ -77,15 +79,13 @@ fn tx_with_contract_snapshot() {
 fn tx_with_signed_message_coin() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinSigned(MessageCoinSigned {
-            sender: [2u8; 32].into(),
-            recipient: [3u8; 32].into(),
-            amount: 4,
-            nonce: [5u8; 32].into(),
+            common: MessageCommon {
+                sender: [2u8; 32].into(),
+                recipient: [3u8; 32].into(),
+                amount: 4,
+                nonce: [5u8; 32].into(),
+            },
             witness_index: 6,
-            predicate_gas_used: Empty::new(),
-            data: Empty::new(),
-            predicate: Empty::new(),
-            predicate_data: Empty::new(),
         }))
         .tip(1)
         .maturity(123.into())
@@ -102,15 +102,17 @@ fn tx_with_signed_message_coin() {
 fn tx_with_predicate_message_coin() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinPredicate(MessageCoinPredicate {
-            sender: [2u8; 32].into(),
-            recipient: [3u8; 32].into(),
-            amount: 4,
-            nonce: [5u8; 32].into(),
-            witness_index: Empty::new(),
-            predicate_gas_used: 100_000,
-            data: Empty::new(),
-            predicate: vec![7u8; 11],
-            predicate_data: vec![8u8; 12],
+            common: MessageCommon {
+                sender: [2u8; 32].into(),
+                recipient: [3u8; 32].into(),
+                amount: 4,
+                nonce: [5u8; 32].into(),
+            },
+            predicate: Predicate {
+                gas_used: 100_000,
+                code: vec![7u8; 11],
+                data: vec![8u8; 12],
+            },
         }))
         .tip(1)
         .maturity(123.into())
@@ -126,15 +128,14 @@ fn tx_with_predicate_message_coin() {
 fn tx_with_signed_message_data() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataSigned(MessageDataSigned {
-            sender: [2u8; 32].into(),
-            recipient: [3u8; 32].into(),
-            amount: 4,
-            nonce: [5u8; 32].into(),
+            common: MessageCommon {
+                sender: [2u8; 32].into(),
+                recipient: [3u8; 32].into(),
+                amount: 4,
+                nonce: [5u8; 32].into(),
+            },
             witness_index: 6,
-            predicate_gas_used: Empty::new(),
             data: vec![7u8; 10],
-            predicate: Empty::new(),
-            predicate_data: Empty::new(),
         }))
         .tip(1)
         .maturity(123.into())
@@ -151,15 +152,18 @@ fn tx_with_signed_message_data() {
 fn tx_with_predicate_message_data() {
     let tx = TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataPredicate(MessageDataPredicate {
-            sender: [2u8; 32].into(),
-            recipient: [3u8; 32].into(),
-            amount: 4,
-            nonce: [5u8; 32].into(),
-            witness_index: Empty::new(),
-            predicate_gas_used: 100_000,
+            common: MessageCommon {
+                sender: [2u8; 32].into(),
+                recipient: [3u8; 32].into(),
+                amount: 4,
+                nonce: [5u8; 32].into(),
+            },
             data: vec![6u8; 10],
-            predicate: vec![7u8; 11],
-            predicate_data: vec![8u8; 12],
+            predicate: Predicate {
+                gas_used: 100_000,
+                code: vec![7u8; 11],
+                data: vec![8u8; 12],
+            },
         }))
         .tip(1)
         .maturity(123.into())

@@ -2,12 +2,14 @@ use fuel_tx::{
     field,
     input::{
         coin::{
+            CoinCommon,
             CoinPredicate,
             CoinSigned,
         },
         message::{
             MessageCoinPredicate,
             MessageCoinSigned,
+            MessageCommon,
             MessageDataPredicate,
             MessageDataSigned,
         },
@@ -63,23 +65,43 @@ fn add_up_input_balances<T: field::Inputs>(
         match input {
             // Sum coin inputs
             Input::CoinPredicate(CoinPredicate {
-                asset_id, amount, ..
+                common:
+                    CoinCommon {
+                        asset_id, amount, ..
+                    },
+                ..
             })
             | Input::CoinSigned(CoinSigned {
-                asset_id, amount, ..
+                common:
+                    CoinCommon {
+                        asset_id, amount, ..
+                    },
+                ..
             }) => {
                 let balance = non_retryable_balances.entry(*asset_id).or_default();
                 *balance = (*balance).checked_add(*amount)?;
             }
             // Sum message coin inputs
-            Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
+            Input::MessageCoinSigned(MessageCoinSigned {
+                common: MessageCommon { amount, .. },
+                ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                common: MessageCommon { amount, .. },
+                ..
+            }) => {
                 let balance = non_retryable_balances.entry(*base_asset_id).or_default();
                 *balance = (*balance).checked_add(*amount)?;
             }
             // Sum data messages
-            Input::MessageDataSigned(MessageDataSigned { amount, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
+            Input::MessageDataSigned(MessageDataSigned {
+                common: MessageCommon { amount, .. },
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                common: MessageCommon { amount, .. },
+                ..
+            }) => {
                 retryable_balance = retryable_balance.checked_add(*amount)?;
             }
             Input::Contract(_) => {}

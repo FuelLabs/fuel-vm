@@ -79,9 +79,13 @@ use fuel_tx::{
         Witnesses,
     },
     input::{
-        coin::CoinPredicate,
+        coin::{
+            CoinCommon,
+            CoinPredicate,
+        },
         message::{
             MessageCoinPredicate,
+            MessageCommon,
             MessageDataPredicate,
         },
     },
@@ -332,21 +336,27 @@ where
     ) -> (Word, Result<(), PredicateVerificationFailed>) {
         match &tx.inputs()[index] {
             Input::CoinPredicate(CoinPredicate {
-                owner: address,
+                common: CoinCommon { owner: address, .. },
                 predicate,
                 ..
             })
             | Input::MessageDataPredicate(MessageDataPredicate {
-                recipient: address,
+                common:
+                    MessageCommon {
+                        recipient: address, ..
+                    },
                 predicate,
                 ..
             })
             | Input::MessageCoinPredicate(MessageCoinPredicate {
                 predicate,
-                recipient: address,
+                common:
+                    MessageCommon {
+                        recipient: address, ..
+                    },
                 ..
             }) => {
-                if !Input::is_predicate_owner_valid(address, predicate) {
+                if !Input::is_predicate_owner_valid(address, &predicate.code) {
                     return (0, Err(PredicateVerificationFailed::InvalidOwner));
                 }
             }
@@ -415,19 +425,16 @@ where
             checks.iter().for_each(|result| {
                 if let Ok((gas_used, index)) = result {
                     match &mut tx.inputs_mut()[*index] {
-                        Input::CoinPredicate(CoinPredicate {
-                            predicate_gas_used,
-                            ..
-                        })
+                        Input::CoinPredicate(CoinPredicate { predicate, .. })
                         | Input::MessageCoinPredicate(MessageCoinPredicate {
-                            predicate_gas_used,
+                            predicate,
                             ..
                         })
                         | Input::MessageDataPredicate(MessageDataPredicate {
-                            predicate_gas_used,
+                            predicate,
                             ..
                         }) => {
-                            *predicate_gas_used = *gas_used;
+                            predicate.gas_used = *gas_used;
                         }
                         _ => {
                             unreachable!(

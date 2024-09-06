@@ -36,11 +36,13 @@ use fuel_types::{
     Word,
 };
 use message::*;
+use predicate::Predicate;
 
 pub mod coin;
 mod consts;
 pub mod contract;
 pub mod message;
+pub mod predicate;
 mod repr;
 
 pub use repr::InputRepr;
@@ -241,15 +243,18 @@ impl Input {
         predicate_data: Vec<u8>,
     ) -> Self {
         Self::CoinPredicate(CoinPredicate {
-            utxo_id,
-            owner,
-            amount,
-            asset_id,
-            tx_pointer,
-            witness_index: Empty::new(),
-            predicate_gas_used,
-            predicate,
-            predicate_data,
+            common: CoinCommon {
+                utxo_id,
+                owner,
+                amount,
+                asset_id,
+                tx_pointer,
+            },
+            predicate: Predicate {
+                gas_used: predicate_gas_used,
+                code: predicate,
+                data: predicate_data,
+            },
         })
     }
 
@@ -262,15 +267,14 @@ impl Input {
         witness_index: u16,
     ) -> Self {
         Self::CoinSigned(CoinSigned {
-            utxo_id,
-            owner,
-            amount,
-            asset_id,
-            tx_pointer,
+            common: CoinCommon {
+                utxo_id,
+                owner,
+                amount,
+                asset_id,
+                tx_pointer,
+            },
             witness_index,
-            predicate_gas_used: Empty::new(),
-            predicate: Empty::new(),
-            predicate_data: Empty::new(),
         })
     }
 
@@ -298,15 +302,13 @@ impl Input {
         witness_index: u16,
     ) -> Self {
         Self::MessageCoinSigned(MessageCoinSigned {
-            sender,
-            recipient,
-            amount,
-            nonce,
+            common: MessageCommon {
+                sender,
+                recipient,
+                amount,
+                nonce,
+            },
             witness_index,
-            predicate_gas_used: Empty::new(),
-            data: Empty::new(),
-            predicate: Empty::new(),
-            predicate_data: Empty::new(),
         })
     }
 
@@ -320,15 +322,17 @@ impl Input {
         predicate_data: Vec<u8>,
     ) -> Self {
         Self::MessageCoinPredicate(MessageCoinPredicate {
-            sender,
-            recipient,
-            amount,
-            nonce,
-            witness_index: Empty::new(),
-            predicate_gas_used,
-            data: Empty::new(),
-            predicate,
-            predicate_data,
+            common: MessageCommon {
+                sender,
+                recipient,
+                amount,
+                nonce,
+            },
+            predicate: Predicate {
+                gas_used: predicate_gas_used,
+                code: predicate,
+                data: predicate_data,
+            },
         })
     }
 
@@ -341,15 +345,14 @@ impl Input {
         data: Vec<u8>,
     ) -> Self {
         Self::MessageDataSigned(MessageDataSigned {
-            sender,
-            recipient,
-            amount,
-            nonce,
+            common: MessageCommon {
+                sender,
+                recipient,
+                amount,
+                nonce,
+            },
             witness_index,
             data,
-            predicate: Empty::new(),
-            predicate_data: Empty::new(),
-            predicate_gas_used: Empty::new(),
         })
     }
 
@@ -364,22 +367,31 @@ impl Input {
         predicate_data: Vec<u8>,
     ) -> Self {
         Self::MessageDataPredicate(MessageDataPredicate {
-            sender,
-            recipient,
-            amount,
-            nonce,
-            witness_index: Empty::new(),
-            predicate_gas_used,
+            common: MessageCommon {
+                sender,
+                recipient,
+                amount,
+                nonce,
+            },
             data,
-            predicate,
-            predicate_data,
+            predicate: Predicate {
+                gas_used: predicate_gas_used,
+                code: predicate,
+                data: predicate_data,
+            },
         })
     }
 
     pub const fn utxo_id(&self) -> Option<&UtxoId> {
         match self {
-            Self::CoinSigned(CoinSigned { utxo_id, .. })
-            | Self::CoinPredicate(CoinPredicate { utxo_id, .. })
+            Self::CoinSigned(CoinSigned {
+                common: CoinCommon { utxo_id, .. },
+                ..
+            })
+            | Self::CoinPredicate(CoinPredicate {
+                common: CoinCommon { utxo_id, .. },
+                ..
+            })
             | Self::Contract(Contract { utxo_id, .. }) => Some(utxo_id),
             Self::MessageCoinSigned(_) => None,
             Self::MessageCoinPredicate(_) => None,
@@ -390,8 +402,14 @@ impl Input {
 
     pub const fn input_owner(&self) -> Option<&Address> {
         match self {
-            Self::CoinSigned(CoinSigned { owner, .. })
-            | Self::CoinPredicate(CoinPredicate { owner, .. }) => Some(owner),
+            Self::CoinSigned(CoinSigned {
+                common: CoinCommon { owner, .. },
+                ..
+            })
+            | Self::CoinPredicate(CoinPredicate {
+                common: CoinCommon { owner, .. },
+                ..
+            }) => Some(owner),
             Self::MessageCoinSigned(_)
             | Self::MessageCoinPredicate(_)
             | Self::MessageDataSigned(_)
@@ -405,8 +423,14 @@ impl Input {
         base_asset_id: &'a AssetId,
     ) -> Option<&'a AssetId> {
         match self {
-            Input::CoinSigned(CoinSigned { asset_id, .. })
-            | Input::CoinPredicate(CoinPredicate { asset_id, .. }) => Some(asset_id),
+            Input::CoinSigned(CoinSigned {
+                common: CoinCommon { asset_id, .. },
+                ..
+            })
+            | Input::CoinPredicate(CoinPredicate {
+                common: CoinCommon { asset_id, .. },
+                ..
+            }) => Some(asset_id),
             Input::MessageCoinSigned(_)
             | Input::MessageCoinPredicate(_)
             | Input::MessageDataSigned(_)
@@ -424,14 +448,30 @@ impl Input {
 
     pub const fn amount(&self) -> Option<Word> {
         match self {
-            Input::CoinSigned(CoinSigned { amount, .. })
-            | Input::CoinPredicate(CoinPredicate { amount, .. })
-            | Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. })
-            | Input::MessageDataSigned(MessageDataSigned { amount, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
-                Some(*amount)
-            }
+            Input::CoinSigned(CoinSigned {
+                common: CoinCommon { amount, .. },
+                ..
+            })
+            | Input::CoinPredicate(CoinPredicate {
+                common: CoinCommon { amount, .. },
+                ..
+            })
+            | Input::MessageCoinSigned(MessageCoinSigned {
+                common: MessageCommon { amount, .. },
+                ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                common: MessageCommon { amount, .. },
+                ..
+            })
+            | Input::MessageDataSigned(MessageDataSigned {
+                common: MessageCommon { amount, .. },
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                common: MessageCommon { amount, .. },
+                ..
+            }) => Some(*amount),
             Input::Contract(_) => None,
         }
     }
@@ -472,7 +512,9 @@ impl Input {
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
                 self.predicate_offset().map(|o| {
-                    o.saturating_add(bytes::padded_len(predicate).unwrap_or(usize::MAX))
+                    o.saturating_add(
+                        bytes::padded_len(&predicate.code).unwrap_or(usize::MAX),
+                    )
                 })
             }
             Input::CoinSigned(_)
@@ -487,7 +529,7 @@ impl Input {
             Input::CoinPredicate(CoinPredicate { predicate, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
-                Some(predicate.len())
+                Some(predicate.code.len())
             }
             Input::CoinSigned(_)
             | Input::MessageCoinSigned(_)
@@ -498,13 +540,11 @@ impl Input {
 
     pub fn predicate_data_len(&self) -> Option<usize> {
         match self {
-            Input::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate_data, ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                predicate_data, ..
-            }) => Some(predicate_data.len()),
+            Input::CoinPredicate(CoinPredicate { predicate, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
+                Some(predicate.data.len())
+            }
             Input::CoinSigned(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
@@ -514,17 +554,11 @@ impl Input {
 
     pub fn predicate_gas_used(&self) -> Option<Word> {
         match self {
-            Input::CoinPredicate(CoinPredicate {
-                predicate_gas_used, ..
-            })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate_gas_used,
-                ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                predicate_gas_used,
-                ..
-            }) => Some(*predicate_gas_used),
+            Input::CoinPredicate(CoinPredicate { predicate, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
+                Some(predicate.gas_used)
+            }
             Input::CoinSigned(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_)
@@ -544,8 +578,14 @@ impl Input {
 
     pub const fn tx_pointer(&self) -> Option<&TxPointer> {
         match self {
-            Input::CoinSigned(CoinSigned { tx_pointer, .. })
-            | Input::CoinPredicate(CoinPredicate { tx_pointer, .. })
+            Input::CoinSigned(CoinSigned {
+                common: CoinCommon { tx_pointer, .. },
+                ..
+            })
+            | Input::CoinPredicate(CoinPredicate {
+                common: CoinCommon { tx_pointer, .. },
+                ..
+            })
             | Input::Contract(Contract { tx_pointer, .. }) => Some(tx_pointer),
             _ => None,
         }
@@ -577,7 +617,7 @@ impl Input {
             Input::CoinPredicate(CoinPredicate { predicate, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
-                Some(predicate)
+                Some(&predicate.code)
             }
 
             _ => None,
@@ -586,13 +626,11 @@ impl Input {
 
     pub fn input_predicate_data(&self) -> Option<&[u8]> {
         match self {
-            Input::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate_data, ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                predicate_data, ..
-            }) => Some(predicate_data),
+            Input::CoinPredicate(CoinPredicate { predicate, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
+                Some(&predicate.data)
+            }
 
             _ => None,
         }
@@ -602,28 +640,15 @@ impl Input {
     /// type `CoinPredicate` or `MessageCoinPredicate` or `MessageDataPredicate`
     pub fn predicate(&self) -> Option<(&[u8], &[u8], &Word)> {
         match self {
-            Input::CoinPredicate(CoinPredicate {
-                predicate,
-                predicate_data,
-                predicate_gas_used,
-                ..
-            })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate,
-                predicate_data,
-                predicate_gas_used,
-                ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                predicate,
-                predicate_data,
-                predicate_gas_used,
-                ..
-            }) => Some((
-                predicate.as_slice(),
-                predicate_data.as_slice(),
-                predicate_gas_used,
-            )),
+            Input::CoinPredicate(CoinPredicate { predicate, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
+                Some((
+                    predicate.code.as_slice(),
+                    predicate.data.as_slice(),
+                    &predicate.gas_used,
+                ))
+            }
 
             _ => None,
         }
@@ -692,36 +717,66 @@ impl Input {
 
     pub const fn sender(&self) -> Option<&Address> {
         match self {
-            Input::MessageCoinSigned(MessageCoinSigned { sender, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate { sender, .. })
-            | Input::MessageDataSigned(MessageDataSigned { sender, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { sender, .. }) => {
-                Some(sender)
-            }
+            Input::MessageCoinSigned(MessageCoinSigned {
+                common: MessageCommon { sender, .. },
+                ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                common: MessageCommon { sender, .. },
+                ..
+            })
+            | Input::MessageDataSigned(MessageDataSigned {
+                common: MessageCommon { sender, .. },
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                common: MessageCommon { sender, .. },
+                ..
+            }) => Some(sender),
             _ => None,
         }
     }
 
     pub const fn recipient(&self) -> Option<&Address> {
         match self {
-            Input::MessageCoinSigned(MessageCoinSigned { recipient, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate { recipient, .. })
-            | Input::MessageDataSigned(MessageDataSigned { recipient, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { recipient, .. }) => {
-                Some(recipient)
-            }
+            Input::MessageCoinSigned(MessageCoinSigned {
+                common: MessageCommon { recipient, .. },
+                ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                common: MessageCommon { recipient, .. },
+                ..
+            })
+            | Input::MessageDataSigned(MessageDataSigned {
+                common: MessageCommon { recipient, .. },
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                common: MessageCommon { recipient, .. },
+                ..
+            }) => Some(recipient),
             _ => None,
         }
     }
 
     pub const fn nonce(&self) -> Option<&Nonce> {
         match self {
-            Input::MessageCoinSigned(MessageCoinSigned { nonce, .. })
-            | Input::MessageCoinPredicate(MessageCoinPredicate { nonce, .. })
-            | Input::MessageDataSigned(MessageDataSigned { nonce, .. })
-            | Input::MessageDataPredicate(MessageDataPredicate { nonce, .. }) => {
-                Some(nonce)
-            }
+            Input::MessageCoinSigned(MessageCoinSigned {
+                common: MessageCommon { nonce, .. },
+                ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                common: MessageCommon { nonce, .. },
+                ..
+            })
+            | Input::MessageDataSigned(MessageDataSigned {
+                common: MessageCommon { nonce, .. },
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                common: MessageCommon { nonce, .. },
+                ..
+            }) => Some(nonce),
             _ => None,
         }
     }
@@ -838,10 +893,16 @@ impl Deserialize for Input {
             {
                 InputRepr::Coin => {
                     let coin = CoinFull::decode_static(buffer)?;
-                    if coin.predicate.capacity() == 0 {
-                        Input::CoinSigned(coin.into_signed())
+                    if coin.predicate.code.capacity() == 0 {
+                        Input::CoinSigned(CoinSigned {
+                            common: coin.common,
+                            witness_index: coin.witness_index,
+                        })
                     } else {
-                        Input::CoinPredicate(coin.into_predicate())
+                        Input::CoinPredicate(CoinPredicate {
+                            common: coin.common,
+                            predicate: coin.predicate,
+                        })
                     }
                 }
                 InputRepr::Contract => {
@@ -849,23 +910,33 @@ impl Deserialize for Input {
                     Input::Contract(contract)
                 }
                 InputRepr::Message => {
-                    let message = FullMessage::decode_static(buffer)?;
+                    let message = MessageFull::decode_static(buffer)?;
                     match (
                         message.data.capacity() == 0,
-                        message.predicate.capacity() == 0,
+                        message.predicate.code.capacity() == 0,
                     ) {
-                        (true, true) => {
-                            Input::MessageCoinSigned(message.into_coin_signed())
-                        }
+                        (true, true) => Input::MessageCoinSigned(MessageCoinSigned {
+                            common: message.common,
+                            witness_index: message.witness_index,
+                        }),
                         (true, false) => {
-                            Input::MessageCoinPredicate(message.into_coin_predicate())
+                            Input::MessageCoinPredicate(MessageCoinPredicate {
+                                common: message.common,
+                                predicate: message.predicate,
+                            })
                         }
-                        (false, true) => {
-                            Input::MessageDataSigned(message.into_message_data_signed())
+                        (false, true) => Input::MessageDataSigned(MessageDataSigned {
+                            common: message.common,
+                            data: message.data,
+                            witness_index: message.witness_index,
+                        }),
+                        (false, false) => {
+                            Input::MessageDataPredicate(MessageDataPredicate {
+                                common: message.common,
+                                data: message.data,
+                                predicate: message.predicate,
+                            })
                         }
-                        (false, false) => Input::MessageDataPredicate(
-                            message.into_message_data_predicate(),
-                        ),
                     }
                 }
             },

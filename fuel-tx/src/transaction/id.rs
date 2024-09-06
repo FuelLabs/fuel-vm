@@ -1,9 +1,13 @@
 use crate::{
     field,
     input::{
-        coin::CoinSigned,
+        coin::{
+            CoinCommon,
+            CoinSigned,
+        },
         message::{
             MessageCoinSigned,
+            MessageCommon,
             MessageDataSigned,
         },
     },
@@ -92,17 +96,23 @@ where
             .iter()
             .filter_map(|input| match input {
                 Input::CoinSigned(CoinSigned {
-                    owner,
+                    common: CoinCommon { owner, .. },
                     witness_index,
                     ..
                 })
                 | Input::MessageCoinSigned(MessageCoinSigned {
-                    recipient: owner,
+                    common:
+                        MessageCommon {
+                            recipient: owner, ..
+                        },
                     witness_index,
                     ..
                 })
                 | Input::MessageDataSigned(MessageDataSigned {
-                    recipient: owner,
+                    common:
+                        MessageCommon {
+                            recipient: owner, ..
+                        },
                     witness_index,
                     ..
                 }) if owner == &pk => Some(*witness_index as usize),
@@ -239,18 +249,18 @@ mod tests {
     }
 
     macro_rules! assert_io_ne {
-        ($tx:expr, $t:ident, $i:path, $a:ident, $inv:expr) => {
+        ($tx:expr, $t:ident, $i:path, $p:ident, $a:expr, $inv:expr) => {
             assert_id_ne($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
-                    $i { $a, .. } => $inv($a),
+                    $i { $p, .. } => $inv($a),
                     _ => (),
                 })
             });
         };
-        ($tx:expr, $t:ident, $i:path[$it:path], $a:ident, $inv:expr) => {
+        ($tx:expr, $t:ident, $i:path[$it:path], $p:ident, $a:expr, $inv:expr) => {
             assert_id_ne($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
-                    $i($it { $a, .. }) => $inv($a),
+                    $i($it { $p, .. }) => $inv($a),
                     _ => (),
                 })
             });
@@ -258,18 +268,18 @@ mod tests {
     }
 
     macro_rules! assert_io_eq {
-        ($tx:expr, $t:ident, $i:path, $a:ident, $inv:expr) => {
+        ($tx:expr, $t:ident, $i:path, $p:ident, $a:expr, $inv:expr) => {
             assert_id_eq($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
-                    $i { $a, .. } => $inv($a),
+                    $i { $p, .. } => $inv($a),
                     _ => (),
                 })
             });
         };
-        ($tx:expr, $t:ident, $i:path[$it:path], $a:ident, $inv:expr) => {
+        ($tx:expr, $t:ident, $i:path[$it:path], $p:ident, $a:expr, $inv:expr) => {
             assert_id_eq($tx, |t| {
                 t.$t().iter_mut().for_each(|x| match x {
-                    $i($it { $a, .. }) => $inv($a),
+                    $i($it { $p, .. }) => $inv($a),
                     _ => (),
                 })
             });
@@ -286,22 +296,39 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::CoinSigned[CoinSigned],
-                utxo_id,
+                common,
+                &mut common.utxo_id,
                 invert_utxo_id
             );
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], owner, invert);
-            assert_io_ne!(tx, inputs_mut, Input::CoinSigned[CoinSigned], amount, not);
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::CoinSigned[CoinSigned],
-                asset_id,
+                common,
+                &mut common.owner,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::CoinSigned[CoinSigned],
+                common,
+                &mut common.amount,
+                not
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinSigned[CoinSigned],
+                common,
+                &mut common.asset_id,
+                invert
+            );
+            assert_io_ne!(
+                tx,
+                inputs_mut,
+                Input::CoinSigned[CoinSigned],
+                witness_index,
                 witness_index,
                 not
             );
@@ -310,28 +337,32 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::CoinPredicate[CoinPredicate],
-                utxo_id,
+                common,
+                &mut common.utxo_id,
                 invert_utxo_id
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::CoinPredicate[CoinPredicate],
-                owner,
+                common,
+                &mut common.owner,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::CoinPredicate[CoinPredicate],
-                amount,
+                common,
+                &mut common.amount,
                 not
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::CoinPredicate[CoinPredicate],
-                asset_id,
+                common,
+                &mut common.asset_id,
                 invert
             );
             assert_io_ne!(
@@ -339,13 +370,15 @@ mod tests {
                 inputs_mut,
                 Input::CoinPredicate[CoinPredicate],
                 predicate,
+                &mut predicate.code,
                 inv_v
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::CoinPredicate[CoinPredicate],
-                predicate_data,
+                predicate,
+                &mut predicate.data,
                 inv_v
             );
 
@@ -354,6 +387,7 @@ mod tests {
                 inputs_mut,
                 Input::Contract[input::contract::Contract],
                 utxo_id,
+                utxo_id,
                 invert_utxo_id
             );
             assert_io_eq!(
@@ -361,12 +395,14 @@ mod tests {
                 inputs_mut,
                 Input::Contract[input::contract::Contract],
                 balance_root,
+                balance_root,
                 invert
             );
             assert_io_eq!(
                 tx,
                 inputs_mut,
                 Input::Contract[input::contract::Contract],
+                state_root,
                 state_root,
                 invert
             );
@@ -375,6 +411,7 @@ mod tests {
                 inputs_mut,
                 Input::Contract[input::contract::Contract],
                 contract_id,
+                contract_id,
                 invert
             );
 
@@ -382,34 +419,39 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::MessageCoinSigned[MessageCoinSigned],
-                sender,
+                common,
+                &mut common.sender,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinSigned[MessageCoinSigned],
-                recipient,
+                common,
+                &mut common.recipient,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinSigned[MessageCoinSigned],
-                amount,
+                common,
+                &mut common.amount,
                 not
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinSigned[MessageCoinSigned],
-                nonce,
+                common,
+                &mut common.nonce,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinSigned[MessageCoinSigned],
+                witness_index,
                 witness_index,
                 not
             );
@@ -418,34 +460,39 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::MessageDataSigned[MessageDataSigned],
-                sender,
+                common,
+                &mut common.sender,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataSigned[MessageDataSigned],
-                recipient,
+                common,
+                &mut common.recipient,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataSigned[MessageDataSigned],
-                amount,
+                common,
+                &mut common.amount,
                 not
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataSigned[MessageDataSigned],
-                nonce,
+                common,
+                &mut common.nonce,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataSigned[MessageDataSigned],
+                witness_index,
                 witness_index,
                 not
             );
@@ -454,6 +501,7 @@ mod tests {
                 inputs_mut,
                 Input::MessageDataSigned[MessageDataSigned],
                 data,
+                data,
                 inv_v
             );
 
@@ -461,28 +509,32 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
-                sender,
+                common,
+                &mut common.sender,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinPredicate[MessageCoinPredicate],
-                recipient,
+                common,
+                &mut common.recipient,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinPredicate[MessageCoinPredicate],
-                amount,
+                common,
+                &mut common.amount,
                 not
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinPredicate[MessageCoinPredicate],
-                nonce,
+                common,
+                &mut common.nonce,
                 invert
             );
             assert_io_ne!(
@@ -490,13 +542,15 @@ mod tests {
                 inputs_mut,
                 Input::MessageCoinPredicate[MessageCoinPredicate],
                 predicate,
+                &mut predicate.code,
                 inv_v
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageCoinPredicate[MessageCoinPredicate],
-                predicate_data,
+                predicate,
+                &mut predicate.data,
                 inv_v
             );
 
@@ -504,21 +558,24 @@ mod tests {
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
-                sender,
+                common,
+                &mut common.sender,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
-                recipient,
+                common,
+                &mut common.recipient,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
-                amount,
+                common,
+                &mut common.amount,
                 not
             );
             assert_io_ne!(
@@ -526,19 +583,22 @@ mod tests {
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
                 data,
+                data,
                 inv_v
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
-                nonce,
+                common,
+                &mut common.nonce,
                 invert
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
+                data,
                 data,
                 inv_v
             );
@@ -547,26 +607,29 @@ mod tests {
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
                 predicate,
+                &mut predicate.code,
                 inv_v
             );
             assert_io_ne!(
                 tx,
                 inputs_mut,
                 Input::MessageDataPredicate[MessageDataPredicate],
-                predicate_data,
+                predicate,
+                &mut predicate.data,
                 inv_v
             );
         }
 
         if !tx.outputs().is_empty() {
-            assert_io_ne!(tx, outputs_mut, Output::Coin, to, invert);
-            assert_io_ne!(tx, outputs_mut, Output::Coin, amount, not);
-            assert_io_ne!(tx, outputs_mut, Output::Coin, asset_id, invert);
+            assert_io_ne!(tx, outputs_mut, Output::Coin, to, to, invert);
+            assert_io_ne!(tx, outputs_mut, Output::Coin, amount, amount, not);
+            assert_io_ne!(tx, outputs_mut, Output::Coin, asset_id, asset_id, invert);
 
             assert_io_ne!(
                 tx,
                 outputs_mut,
                 Output::Contract[output::contract::Contract],
+                input_index,
                 input_index,
                 not
             );
@@ -575,6 +638,7 @@ mod tests {
                 outputs_mut,
                 Output::Contract[output::contract::Contract],
                 balance_root,
+                balance_root,
                 invert
             );
             assert_io_eq!(
@@ -582,21 +646,30 @@ mod tests {
                 outputs_mut,
                 Output::Contract[output::contract::Contract],
                 state_root,
+                state_root,
                 invert
             );
 
-            assert_io_ne!(tx, outputs_mut, Output::Change, to, invert);
-            assert_io_eq!(tx, outputs_mut, Output::Change, amount, not);
-            assert_io_ne!(tx, outputs_mut, Output::Change, asset_id, invert);
+            assert_io_ne!(tx, outputs_mut, Output::Change, to, to, invert);
+            assert_io_eq!(tx, outputs_mut, Output::Change, amount, amount, not);
+            assert_io_ne!(tx, outputs_mut, Output::Change, asset_id, asset_id, invert);
 
-            assert_io_eq!(tx, outputs_mut, Output::Variable, to, invert);
-            assert_io_eq!(tx, outputs_mut, Output::Variable, amount, not);
-            assert_io_eq!(tx, outputs_mut, Output::Variable, asset_id, invert);
+            assert_io_eq!(tx, outputs_mut, Output::Variable, to, to, invert);
+            assert_io_eq!(tx, outputs_mut, Output::Variable, amount, amount, not);
+            assert_io_eq!(
+                tx,
+                outputs_mut,
+                Output::Variable,
+                asset_id,
+                asset_id,
+                invert
+            );
 
             assert_io_ne!(
                 tx,
                 outputs_mut,
                 Output::ContractCreated,
+                contract_id,
                 contract_id,
                 invert
             );

@@ -141,9 +141,9 @@ fn malleable_fields_do_not_affect_validity_of_create() {
         let mut tx = tx.clone();
 
         match tx.inputs_mut()[0] {
-            Input::CoinPredicate(CoinPredicate {
-                ref mut tx_pointer, ..
-            }) => *tx_pointer = TxPointer::from_str("123456780001").unwrap(),
+            Input::CoinPredicate(CoinPredicate { ref mut common, .. }) => {
+                common.tx_pointer = TxPointer::from_str("123456780001").unwrap()
+            }
             _ => unreachable!(),
         };
 
@@ -239,9 +239,9 @@ fn malleable_fields_do_not_affect_validity_of_script() {
         *tx.receipts_root_mut() = [1u8; 32].into();
 
         match tx.inputs_mut()[0] {
-            Input::CoinPredicate(CoinPredicate {
-                ref mut tx_pointer, ..
-            }) => *tx_pointer = TxPointer::from_str("123456780001").unwrap(),
+            Input::CoinPredicate(CoinPredicate { ref mut common, .. }) => {
+                common.tx_pointer = TxPointer::from_str("123456780001").unwrap()
+            }
             _ => unreachable!(),
         };
 

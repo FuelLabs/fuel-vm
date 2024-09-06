@@ -48,6 +48,11 @@ mod tests;
 
 pub use error::ValidityError;
 
+use super::{
+    coin::CoinCommon,
+    message::MessageCommon,
+};
+
 impl Input {
     pub fn check(
         &self,
@@ -74,17 +79,23 @@ impl Input {
         match self {
             Self::CoinSigned(CoinSigned {
                 witness_index,
-                owner,
+                common: CoinCommon { owner, .. },
                 ..
             })
             | Self::MessageCoinSigned(MessageCoinSigned {
                 witness_index,
-                recipient: owner,
+                common:
+                    MessageCommon {
+                        recipient: owner, ..
+                    },
                 ..
             })
             | Self::MessageDataSigned(MessageDataSigned {
                 witness_index,
-                recipient: owner,
+                common:
+                    MessageCommon {
+                        recipient: owner, ..
+                    },
                 ..
             }) => {
                 // Helper function for recovering the address from a witness
@@ -120,18 +131,26 @@ impl Input {
             }
 
             Self::CoinPredicate(CoinPredicate {
-                owner, predicate, ..
+                common: CoinCommon { owner, .. },
+                predicate,
+                ..
             })
             | Self::MessageCoinPredicate(MessageCoinPredicate {
-                recipient: owner,
+                common:
+                    MessageCommon {
+                        recipient: owner, ..
+                    },
                 predicate,
                 ..
             })
             | Self::MessageDataPredicate(MessageDataPredicate {
-                recipient: owner,
+                common:
+                    MessageCommon {
+                        recipient: owner, ..
+                    },
                 predicate,
                 ..
-            }) if !Input::is_predicate_owner_valid(owner, predicate) => {
+            }) if !Input::is_predicate_owner_valid(owner, &predicate.code) => {
                 Err(ValidityError::InputPredicateOwner { index })
             }
 
@@ -150,7 +169,7 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.is_empty() =>
+                if predicate.code.is_empty() =>
             {
                 Err(ValidityError::InputPredicateEmpty { index })
             }
@@ -158,19 +177,17 @@ impl Input {
             Self::CoinPredicate(CoinPredicate { predicate, .. })
             | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
-                if predicate.len() as u64 > predicate_params.max_predicate_length() =>
+                if predicate.code.len() as u64
+                    > predicate_params.max_predicate_length() =>
             {
                 Err(ValidityError::InputPredicateLength { index })
             }
 
-            Self::CoinPredicate(CoinPredicate { predicate_data, .. })
-            | Self::MessageCoinPredicate(MessageCoinPredicate {
-                predicate_data, ..
-            })
-            | Self::MessageDataPredicate(MessageDataPredicate {
-                predicate_data, ..
-            }) if predicate_data.len() as u64
-                > predicate_params.max_predicate_data_length() =>
+            Self::CoinPredicate(CoinPredicate { predicate, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { predicate, .. })
+                if predicate.data.len() as u64
+                    > predicate_params.max_predicate_data_length() =>
             {
                 Err(ValidityError::InputPredicateDataLength { index })
             }

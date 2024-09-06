@@ -248,28 +248,20 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 | Input::MessageCoinSigned(_)
                 | Input::MessageDataSigned(_) => gas_costs.ecr1(),
                 // Charge the cost of the contract root for predicate inputs
-                Input::CoinPredicate(CoinPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
-                })
+                Input::CoinPredicate(CoinPredicate { predicate, .. })
                 | Input::MessageCoinPredicate(MessageCoinPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
+                    predicate, ..
                 })
                 | Input::MessageDataPredicate(MessageDataPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
+                    predicate, ..
                 }) => {
                     let bytes_size = self.metered_bytes_size();
                     let vm_initialization_gas =
                         gas_costs.vm_initialization().resolve(bytes_size as Word);
                     gas_costs
                         .contract_root()
-                        .resolve(predicate.len() as u64)
-                        .saturating_add(*predicate_gas_used)
+                        .resolve(predicate.code.len() as u64)
+                        .saturating_add(predicate.gas_used)
                         .saturating_add(vm_initialization_gas)
                 }
                 // Charge nothing for all other inputs

@@ -12,6 +12,7 @@ use crate::{
     policies::Policies,
     TxPointer,
 };
+use coin::CoinCommon;
 use fuel_crypto::{
     Hasher,
     PublicKey,
@@ -32,6 +33,7 @@ use fuel_types::{
 };
 
 use input::*;
+use message::MessageCommon;
 use output::*;
 
 #[cfg(feature = "typescript")]
@@ -473,8 +475,14 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs()
             .iter()
             .filter_map(|input| match input {
-                Input::CoinPredicate(CoinPredicate { asset_id, .. })
-                | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
+                Input::CoinPredicate(CoinPredicate {
+                    common: CoinCommon { asset_id, .. },
+                    ..
+                })
+                | Input::CoinSigned(CoinSigned {
+                    common: CoinCommon { asset_id, .. },
+                    ..
+                }) => Some(asset_id),
                 Input::MessageCoinSigned(_)
                 | Input::MessageCoinPredicate(_)
                 | Input::MessageDataPredicate(_)
@@ -507,22 +515,24 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
             .iter()
             .filter_map(|i| match i {
                 Input::CoinPredicate(CoinPredicate {
-                    owner, predicate, ..
+                    common: CoinCommon { owner, .. },
+                    predicate,
+                    ..
                 }) => Some((owner, predicate)),
                 Input::MessageDataPredicate(MessageDataPredicate {
-                    recipient,
+                    common: MessageCommon { recipient, .. },
                     predicate,
                     ..
                 }) => Some((recipient, predicate)),
                 Input::MessageCoinPredicate(MessageCoinPredicate {
-                    recipient,
+                    common: MessageCommon { recipient, .. },
                     predicate,
                     ..
                 }) => Some((recipient, predicate)),
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate)
+                result && Input::is_predicate_owner_valid(owner, &predicate.code)
             })
     }
 

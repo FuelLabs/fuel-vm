@@ -77,28 +77,38 @@ impl StructAttrs {
 
 /// Parse `#[canonical(skip)]` attribute for a binding field.
 pub fn should_skip_field_binding(binding: &BindingInfo<'_>) -> bool {
-    should_skip_field(&binding.ast().attrs)
+    FieldAttrs::parse(&binding.ast().attrs).skip
 }
 
-/// Parse `#[canonical(skip)]` attribute for a struct field.
-pub fn should_skip_field(attrs: &[Attribute]) -> bool {
-    for attr in attrs {
-        if attr.style != AttrStyle::Outer {
-            continue
-        }
-        if let Meta::List(ml) = &attr.meta {
-            if ml.path.segments.len() == 1 && ml.path.segments[0].ident == "canonical" {
-                for token in ml.tokens.clone() {
-                    if let TokenTree::Ident(ident) = &token {
-                        if ident == "skip" {
-                            return true
-                        } else {
-                            panic!("unknown canonical attribute: {}", ident)
+#[derive(Default)]
+pub struct FieldAttrs {
+    pub skip: bool,
+    pub flatten: bool,
+}
+impl FieldAttrs {
+    pub fn parse(attrs: &[Attribute]) -> Self {
+        let mut result = FieldAttrs::default();
+        for attr in attrs {
+            if attr.style != AttrStyle::Outer {
+                continue
+            }
+            if let Meta::List(ml) = &attr.meta {
+                if ml.path.segments.len() == 1 && ml.path.segments[0].ident == "canonical"
+                {
+                    for token in ml.tokens.clone() {
+                        if let TokenTree::Ident(ident) = &token {
+                            if ident == "skip" {
+                                result.skip = true;
+                            } else if ident == "flatten" {
+                                result.flatten = true;
+                            } else {
+                                panic!("unknown canonical attribute: {}", ident)
+                            }
                         }
                     }
                 }
             }
         }
+        result
     }
-    false
 }

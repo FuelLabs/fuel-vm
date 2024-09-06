@@ -5,8 +5,8 @@ use quote::{
 };
 
 use crate::attribute::{
-    should_skip_field,
     should_skip_field_binding,
+    FieldAttrs,
     StructAttrs,
 };
 
@@ -16,7 +16,8 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
     let variant: &synstructure::VariantInfo = &s.variants()[0];
     let decode_main = variant.construct(|field, _| {
         let ty = &field.ty;
-        if should_skip_field(&field.attrs) {
+        let attrs = FieldAttrs::parse(&field.attrs);
+        if attrs.skip {
             quote! {
                 ::core::default::Default::default()
             }
@@ -100,7 +101,8 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         .enumerate()
         .map(|(index, variant)| {
             let decode_main = variant.construct(|field, _| {
-                if should_skip_field(&field.attrs) {
+                let attrs = FieldAttrs::parse(&field.attrs);
+                if attrs.skip {
                     quote! {
                         ::core::default::Default::default()
                     }

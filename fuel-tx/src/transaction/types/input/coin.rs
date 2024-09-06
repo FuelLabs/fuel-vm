@@ -148,6 +148,9 @@ where
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
+    /// Exact amount of gas used by the predicate.
+    /// If the predicate consumes different amount of gas,
+    /// it's considered to be false.
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[derivative(Debug(format_with = "fmt_as_field"))]

@@ -49,10 +49,7 @@ impl MintMetadata {
 /// by it.
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "da-compression",
-    derive(fuel_compression::Compress, fuel_compression::Decompress)
-)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
 #[derivative(Eq, PartialEq, Hash)]
@@ -133,6 +130,17 @@ impl crate::Cacheable for Mint {
         self.metadata = None;
         self.metadata = Some(MintMetadata::compute(self, chain_id));
         Ok(())
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl Mint {
+    // This is a function to clear malleable fields just like it
+    // does on other transactions types. Mint never needs this,
+    // but we use it for some tests.
+    pub fn prepare_sign(&mut self) {
+        self.input_contract.prepare_sign();
+        self.output_contract.prepare_sign();
     }
 }
 

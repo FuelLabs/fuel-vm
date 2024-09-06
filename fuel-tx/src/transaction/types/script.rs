@@ -93,6 +93,7 @@ impl fuel_compression::Compressible for ScriptCode {
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) receipts_root: Bytes32,
     pub(crate) script: ScriptCode,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]

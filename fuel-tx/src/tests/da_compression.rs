@@ -1,6 +1,6 @@
 use crate::{
-    builder::Finalizable,
     input::{
+        self,
         coin::{
             self,
             Coin,
@@ -14,19 +14,20 @@ use crate::{
         Empty,
         PredicateCode,
     },
-    test_helper::generate_bytes,
-    BlobBody,
-    BlobId,
+    output,
+    test_helper::TransactionFactory,
+    transaction::field::Inputs,
+    Blob,
     CompressedUtxoId,
-    ConsensusParameters,
-    Input,
-    Output,
+    Create,
+    Mint,
+    PrepareSign,
+    Script,
     ScriptCode,
     Transaction,
-    TransactionBuilder,
     TxPointer,
-    UpgradePurpose,
-    UploadBody,
+    Upgrade,
+    Upload,
     UtxoId,
 };
 use bimap::BiMap;
@@ -37,11 +38,11 @@ use fuel_compression::{
     DecompressibleBy,
     RegistryKey,
 };
-use fuel_crypto::SecretKey;
 use fuel_types::{
     Address,
     AssetId,
     ContractId,
+    Nonce,
     Word,
 };
 use rand::{
@@ -61,24 +62,69 @@ struct CoinInfo {
     owner: Address,
     amount: u64,
     asset_id: AssetId,
-    tx_pointer: TxPointer,
 }
 
 /// When a message is created, this data is stored
 struct MessageInfo {
-    pub _sender: Address,
-    pub _recipient: Address,
-    pub _amount: Word,
-    pub _data: Vec<u8>,
+    pub sender: Address,
+    pub recipient: Address,
+    pub amount: Word,
+    pub data: Vec<u8>,
 }
 
-/// A simple and inefficient registry for testing purposes
+/// A simple and inefficient registry for testing purposes.
+/// Also just stores the latest given transaction to just return it back.
 #[derive(Default)]
 struct TestCompressionCtx {
+    next_key: u32,
     registry: HashMap<Keyspace, BiMap<RegistryKey, Vec<u8>>>,
     tx_blocks: BiMap<CompressedUtxoId, UtxoId>,
-    coins: HashMap<UtxoId, CoinInfo>,
-    _messages: HashMap<usize, MessageInfo>,
+    latest_tx_coins: HashMap<UtxoId, CoinInfo>,
+    latest_tx_pointer: Option<TxPointer>,
+    latest_tx_messages: HashMap<Nonce, MessageInfo>,
+}
+
+impl TestCompressionCtx {
+    fn store_data_for_mint(&mut self, tx: &Mint) {
+        self.latest_tx_pointer = Some(tx.tx_pointer);
+    }
+
+    fn store_tx_info<Tx>(&mut self, tx: &Tx)
+    where
+        Tx: Inputs,
+    {
+        self.latest_tx_coins = tx
+            .inputs()
+            .iter()
+            .filter(|input| input.is_coin())
+            .map(|input| {
+                (
+                    input.utxo_id().unwrap().clone(),
+                    CoinInfo {
+                        owner: input.input_owner().unwrap().clone(),
+                        amount: input.amount().unwrap().clone(),
+                        asset_id: input.asset_id(&AssetId::default()).unwrap().clone(),
+                    },
+                )
+            })
+            .collect();
+        self.latest_tx_messages = tx
+            .inputs()
+            .iter()
+            .filter(|input| input.is_message())
+            .map(|input| {
+                (
+                    input.nonce().unwrap().clone(),
+                    MessageInfo {
+                        sender: input.sender().unwrap().clone(),
+                        recipient: input.recipient().unwrap().clone(),
+                        amount: input.amount().unwrap().clone(),
+                        data: input.input_data().clone().unwrap_or_default().to_vec(),
+                    },
+                )
+            })
+            .collect();
+    }
 }
 
 macro_rules! impl_substitutable_key {
@@ -90,15 +136,18 @@ macro_rules! impl_substitutable_key {
             ) -> Result<RegistryKey, Infallible> {
                 let keyspace = stringify!($t);
                 let value = postcard::to_stdvec(self).expect("failed to serialize");
-                let key_seed = ctx.registry.len(); // Just get an unique integer key
 
                 let entry = ctx.registry.entry(keyspace).or_default();
                 if let Some(key) = entry.get_by_right(&value) {
                     return Ok(*key);
                 }
 
-                let key = RegistryKey::try_from(key_seed as u32).expect("key too large");
-                entry.insert(key, value);
+                let key =
+                    RegistryKey::try_from(ctx.next_key as u32).expect("key too large");
+                ctx.next_key += 1;
+                entry
+                    .insert_no_overwrite(key, value)
+                    .expect("duplicate key");
                 Ok(key)
             }
         }
@@ -157,13 +206,13 @@ impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Full> {
         ctx: &TestCompressionCtx,
     ) -> Result<Coin<coin::Full>, Infallible> {
         let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
-        let coin_info = ctx.coins.get(&utxo_id).expect("coin not found");
+        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
         Ok(Coin {
             utxo_id,
             owner: coin_info.owner,
             amount: coin_info.amount,
             asset_id: coin_info.asset_id,
-            tx_pointer: coin_info.tx_pointer,
+            tx_pointer: Default::default(),
             witness_index: c.witness_index,
             predicate_gas_used: c.predicate_gas_used,
             predicate:
@@ -183,13 +232,13 @@ impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Signed> {
         ctx: &TestCompressionCtx,
     ) -> Result<Coin<coin::Signed>, Infallible> {
         let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
-        let coin_info = ctx.coins.get(&utxo_id).expect("coin not found");
+        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
         Ok(Coin {
             utxo_id,
             owner: coin_info.owner,
             amount: coin_info.amount,
             asset_id: coin_info.asset_id,
-            tx_pointer: coin_info.tx_pointer,
+            tx_pointer: Default::default(),
             witness_index: c.witness_index,
             predicate_gas_used: Empty::default(),
             predicate: Empty::default(),
@@ -204,13 +253,13 @@ impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Predicate> 
         ctx: &TestCompressionCtx,
     ) -> Result<Coin<coin::Predicate>, Infallible> {
         let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
-        let coin_info = ctx.coins.get(&utxo_id).expect("coin not found");
+        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
         Ok(Coin {
             utxo_id,
             owner: coin_info.owner,
             amount: coin_info.amount,
             asset_id: coin_info.asset_id,
-            tx_pointer: coin_info.tx_pointer,
+            tx_pointer: Default::default(),
             witness_index: Empty::default(),
             predicate_gas_used: c.predicate_gas_used,
             predicate:
@@ -224,41 +273,199 @@ impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Predicate> 
     }
 }
 
-macro_rules! impl_for_message {
-    ($spec:ty) => {
-        impl DecompressibleBy<TestCompressionCtx, Infallible> for Message<$spec> {
-            async fn decompress_with(
-                _c: &CompressedMessage<$spec>,
-                _ctx: &TestCompressionCtx,
-            ) -> Result<Message<$spec>, Infallible> {
-                // let msg_info = ctx.messages.get(&utxo_id).expect("message not found");
-                // let msg_info = todo!();
-                // Ok(Message {
-                //     sender: msg_info.sender,
-                //     recipient: msg_info.sender,
-                //     amount: msg_info.sender,
-                //     nonce: msg_info.sender,
-                //     witness_index: msg_info.sender,
-                //     predicate_gas_used: msg_info.sender,
-                //     data: msg_info.sender,
-                //     predicate: msg_info.sender,
-                //     predicate_data: msg_info.sender,
-                // })
-                todo!();
-            }
-        }
-    };
+impl DecompressibleBy<TestCompressionCtx, Infallible>
+    for Message<message::specifications::Full>
+{
+    async fn decompress_with(
+        c: &CompressedMessage<message::specifications::Full>,
+        ctx: &TestCompressionCtx,
+    ) -> Result<Message<message::specifications::Full>, Infallible> {
+        let msg = ctx
+            .latest_tx_messages
+            .get(&c.nonce)
+            .expect("message not found");
+        Ok(Message {
+            sender: msg.sender,
+            recipient: msg.recipient,
+            amount: msg.amount,
+            nonce: c.nonce,
+            witness_index: c.witness_index,
+            predicate_gas_used: c.predicate_gas_used,
+            data: msg.data.clone(),
+            predicate:
+                <message::specifications::Full as message::MessageSpecification>::Predicate::decompress_with(
+                    &c.predicate,
+                    ctx,
+                )
+                .await?,
+            predicate_data: c.predicate_data.clone(),
+        })
+    }
+}
+impl DecompressibleBy<TestCompressionCtx, Infallible>
+    for Message<message::specifications::MessageData<message::specifications::Signed>>
+{
+    async fn decompress_with(
+        c: &CompressedMessage<
+            message::specifications::MessageData<message::specifications::Signed>,
+        >,
+        ctx: &TestCompressionCtx,
+    ) -> Result<
+        Message<message::specifications::MessageData<message::specifications::Signed>>,
+        Infallible,
+    > {
+        let msg = ctx
+            .latest_tx_messages
+            .get(&c.nonce)
+            .expect("message not found");
+        Ok(Message {
+            sender: msg.sender,
+            recipient: msg.recipient,
+            amount: msg.amount,
+            nonce: c.nonce,
+            witness_index: c.witness_index,
+            predicate_gas_used: Empty::default(),
+            data: msg.data.clone(),
+            predicate: <<message::specifications::MessageData<
+                message::specifications::Signed,
+            > as message::MessageSpecification>::Predicate as DecompressibleBy<
+                _,
+                Infallible,
+            >>::decompress_with(&c.predicate, ctx)
+            .await?,
+            predicate_data: Empty::default(),
+        })
+    }
+}
+impl DecompressibleBy<TestCompressionCtx, Infallible>
+    for Message<message::specifications::MessageData<message::specifications::Predicate>>
+{
+    async fn decompress_with(
+        c: &CompressedMessage<
+            message::specifications::MessageData<message::specifications::Predicate>,
+        >,
+        ctx: &TestCompressionCtx,
+    ) -> Result<
+        Message<message::specifications::MessageData<message::specifications::Predicate>>,
+        Infallible,
+    > {
+        let msg = ctx
+            .latest_tx_messages
+            .get(&c.nonce)
+            .expect("message not found");
+        Ok(Message {
+            sender: msg.sender,
+            recipient: msg.recipient,
+            amount: msg.amount,
+            nonce: c.nonce,
+            witness_index: Empty::default(),
+            predicate_gas_used: c.predicate_gas_used,
+            data: msg.data.clone(),
+            predicate: <message::specifications::MessageData<
+                message::specifications::Predicate,
+            > as message::MessageSpecification>::Predicate::decompress_with(
+                &c.predicate,
+                ctx,
+            )
+            .await?,
+            predicate_data: c.predicate_data.clone(),
+        })
+    }
+}
+impl DecompressibleBy<TestCompressionCtx, Infallible>
+    for Message<message::specifications::MessageCoin<message::specifications::Signed>>
+{
+    async fn decompress_with(
+        c: &CompressedMessage<
+            message::specifications::MessageCoin<message::specifications::Signed>,
+        >,
+        ctx: &TestCompressionCtx,
+    ) -> Result<
+        Message<message::specifications::MessageCoin<message::specifications::Signed>>,
+        Infallible,
+    > {
+        let msg = ctx
+            .latest_tx_messages
+            .get(&c.nonce)
+            .expect("message not found");
+        Ok(Message {
+            sender: msg.sender,
+            recipient: msg.recipient,
+            amount: msg.amount,
+            nonce: c.nonce,
+            witness_index: c.witness_index,
+            predicate_gas_used: Empty::default(),
+            data: Empty::default(),
+            predicate: <<message::specifications::MessageCoin<
+                message::specifications::Signed,
+            > as message::MessageSpecification>::Predicate as DecompressibleBy<
+                _,
+                Infallible,
+            >>::decompress_with(&c.predicate, ctx)
+            .await?,
+            predicate_data: Empty::default(),
+        })
+    }
+}
+impl DecompressibleBy<TestCompressionCtx, Infallible>
+    for Message<message::specifications::MessageCoin<message::specifications::Predicate>>
+{
+    async fn decompress_with(
+        c: &CompressedMessage<
+            message::specifications::MessageCoin<message::specifications::Predicate>,
+        >,
+        ctx: &TestCompressionCtx,
+    ) -> Result<
+        Message<message::specifications::MessageCoin<message::specifications::Predicate>>,
+        Infallible,
+    > {
+        let msg = ctx
+            .latest_tx_messages
+            .get(&c.nonce)
+            .expect("message not found");
+        Ok(Message {
+            sender: msg.sender,
+            recipient: msg.recipient,
+            amount: msg.amount,
+            nonce: c.nonce,
+            witness_index: Empty::default(),
+            predicate_gas_used: c.predicate_gas_used,
+            data: Empty::default(),
+            predicate: <message::specifications::MessageCoin<
+                message::specifications::Predicate,
+            > as message::MessageSpecification>::Predicate::decompress_with(
+                &c.predicate,
+                ctx,
+            )
+            .await?,
+            predicate_data: c.predicate_data.clone(),
+        })
+    }
 }
 
-impl_for_message!(message::specifications::Full);
-impl_for_message!(message::specifications::MessageData<message::specifications::Signed>);
-impl_for_message!(
-    message::specifications::MessageData<message::specifications::Predicate>
-);
-impl_for_message!(message::specifications::MessageCoin<message::specifications::Signed>);
-impl_for_message!(
-    message::specifications::MessageCoin<message::specifications::Predicate>
-);
+impl DecompressibleBy<TestCompressionCtx, Infallible> for Mint {
+    async fn decompress_with(
+        c: &Self::Compressed,
+        ctx: &TestCompressionCtx,
+    ) -> Result<Self, Infallible> {
+        Ok(Transaction::mint(
+            ctx.latest_tx_pointer.expect("no latest tx pointer"),
+            <input::contract::Contract as DecompressibleBy<_, Infallible>>::decompress_with(
+                &c.input_contract,
+                ctx,
+            )
+            .await?,
+            <output::contract::Contract as DecompressibleBy<_, Infallible>>::decompress_with(
+                &c.output_contract,
+                ctx,
+            )
+            .await?,
+            <Word as DecompressibleBy<_, Infallible>>::decompress_with(&c.mint_amount, ctx).await?,
+            <AssetId as DecompressibleBy<_, Infallible>>::decompress_with(&c.mint_asset_id, ctx).await?,
+            <Word as DecompressibleBy<_, Infallible>>::decompress_with(&c.gas_price, ctx).await?,
+        ))
+    }
+}
 
 #[derive(Debug, PartialEq, Default, Compress, Decompress)]
 pub struct ExampleStruct {
@@ -317,91 +524,59 @@ async fn example_struct_postcard_roundtrip_multiple() {
     }
 }
 
+async fn verify_tx_roundtrip(tx: Transaction, ctx: &mut TestCompressionCtx) {
+    let compressed = tx.compress_with(ctx).await.expect("compression failed");
+    let postcard_compressed =
+        postcard::to_stdvec(&compressed).expect("failed to serialize");
+    let postcard_decompressed =
+        postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
+    let decompressed = <Transaction as DecompressibleBy<_, _>>::decompress_with(
+        &postcard_decompressed,
+        &ctx,
+    )
+    .await
+    .expect("decompression failed");
+    pretty_assertions::assert_eq!(tx, decompressed);
+}
+
 #[tokio::test]
-async fn transaction_postcard_roundtrip() {
-    let rng = &mut StdRng::seed_from_u64(8586);
-
-    // Malleable fields zero, others randomized.
-    let txs: Vec<Transaction> = vec![
-        TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
-            .maturity(100u32.into())
-            .add_random_fee_input()
-            .finalize()
-            .into(),
-        TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
-            .maturity(100u32.into())
-            .add_unsigned_coin_input(
-                SecretKey::random(rng),
-                rng.gen(),
-                0,
-                rng.gen(),
-                rng.gen(),
-            )
-            .add_contract_created()
-            .add_input(Input::coin_predicate(
-                Default::default(),
-                rng.gen(),
-                rng.gen(),
-                AssetId::default(),
-                Default::default(),
-                0,
-                Default::default(),
-                Default::default(),
-            ))
-            .add_output(Output::change(rng.gen(), 0, AssetId::default()))
-            .finalize()
-            .into(),
-        TransactionBuilder::upload(UploadBody {
-            root: rng.gen(),
-            witness_index: 0,
-            subsection_index: rng.gen(),
-            subsections_number: rng.gen(),
-            proof_set: Default::default(),
-        })
-        .add_random_fee_input()
-        .finalize()
-        .into(),
-        TransactionBuilder::upgrade(UpgradePurpose::StateTransition {
-            root: Default::default(),
-        })
-        .add_input(Input::coin_signed(
-            Default::default(),
-            *ConsensusParameters::standard().privileged_address(),
-            rng.gen(),
-            AssetId::BASE,
-            Default::default(),
-            0,
-        ))
-        .add_random_fee_input()
-        .finalize()
-        .into(),
-        TransactionBuilder::blob(BlobBody {
-            id: BlobId::new(rng.gen()),
-            witness_index: 0,
-        })
-        .add_witness(generate_bytes(rng).into())
-        .maturity(Default::default())
-        .add_random_fee_input()
-        .finalize()
-        .into(),
-    ];
-
+async fn test_tx_roundtrip() {
+    let number_cases = 100;
     let mut ctx = TestCompressionCtx::default();
-    for tx in txs {
-        let compressed = tx
-            .compress_with(&mut ctx)
-            .await
-            .expect("compression failed");
-        let postcard_compressed =
-            postcard::to_stdvec(&compressed).expect("failed to serialize");
-        let postcard_decompressed =
-            postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
-        let decompressed = <Transaction as DecompressibleBy<_, _>>::decompress_with(
-            &postcard_decompressed,
-            &ctx,
-        )
-        .await
-        .expect("decompression failed");
-        assert_eq!(tx, decompressed);
+
+    for mut tx in TransactionFactory::<_, Mint>::from_seed(1234).take(number_cases) {
+        ctx.store_data_for_mint(&tx);
+        tx.prepare_sign();
+        verify_tx_roundtrip(tx.into(), &mut ctx).await;
+    }
+    for (mut tx, _) in TransactionFactory::<_, Script>::from_seed(1234).take(number_cases)
+    {
+        ctx.store_tx_info(&tx);
+        tx.prepare_sign();
+        verify_tx_roundtrip(tx.into(), &mut ctx).await;
+    }
+    for (mut tx, _) in TransactionFactory::<_, Create>::from_seed(1234).take(number_cases)
+    {
+        ctx.store_tx_info(&tx);
+        tx.prepare_sign();
+        verify_tx_roundtrip(tx.into(), &mut ctx).await;
+    }
+    for (mut tx, _) in
+        TransactionFactory::<_, Upgrade>::from_seed(1234).take(number_cases)
+    {
+        ctx.store_tx_info(&tx);
+        tx.prepare_sign();
+        verify_tx_roundtrip(tx.into(), &mut ctx).await;
+    }
+    for (mut tx, _) in TransactionFactory::<_, Upload>::from_seed(1234).take(number_cases)
+    {
+        ctx.store_tx_info(&tx);
+        tx.prepare_sign();
+        verify_tx_roundtrip(tx.into(), &mut ctx).await;
+    }
+    for (mut tx, _) in TransactionFactory::<_, Blob>::from_seed(1234).take(number_cases) {
+        ctx.store_tx_info(&tx);
+        tx.prepare_sign();
+        verify_tx_roundtrip(tx.into(), &mut ctx).await;
     }
 }

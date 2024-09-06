@@ -49,7 +49,10 @@ pub use utxo_id::UtxoId;
 pub use witness::Witness;
 
 #[cfg(feature = "da-compression")]
-pub use utxo_id::CompressedUtxoId;
+pub use self::{
+    mint::CompressedMint,
+    utxo_id::CompressedUtxoId,
+};
 
 pub fn compute_transaction_id<T: fuel_types::canonical::Serialize>(
     chain_id: &fuel_types::ChainId,

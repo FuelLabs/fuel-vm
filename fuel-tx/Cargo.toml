@@ -40,6 +40,7 @@ fuel-types = { workspace = true, default-features = false, features = ["random"]
 hex = { version = "0.4", default-features = false }
 insta = "1.0"
 postcard = { version = "1.0", features = ["use-std"] }
+pretty_assertions = "1.4.0"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 rand = { version = "0.8", default-features = false, features = ["std_rng"] }

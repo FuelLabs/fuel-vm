@@ -64,7 +64,7 @@ macro_rules! array_types_compression {
             Ctx: ?Sized,
         {
             async fn compress_with(&self, ctx: &mut Ctx) -> Result<$compressed_t, E> {
-                ctx.compress(self).await
+                ctx.compress_to(self).await
             }
         }
 
@@ -77,7 +77,7 @@ macro_rules! array_types_compression {
                 value: &Self::Compressed,
                 ctx: &Ctx,
             ) -> Result<$t, E> {
-                ctx.decompress(value).await
+                ctx.decompress_from(value).await
             }
         }
     };

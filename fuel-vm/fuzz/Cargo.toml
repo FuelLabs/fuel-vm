@@ -15,8 +15,8 @@ clap = { version = "4.0", features = ["derive"] }
 hex = "*"
 
 [features]
-default = ["libfuzzer"] # Default feature is libfuzzer
-libfuzzer = ["libfuzzer-sys"] # Directly refer to the dependencies
+default = ["libfuzzer"]
+libfuzzer = ["libfuzzer-sys"]
 libafl = ["libafl_libfuzzer"]
 
 [dependencies.libfuzzer-sys]

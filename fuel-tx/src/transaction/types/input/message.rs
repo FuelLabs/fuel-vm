@@ -38,23 +38,43 @@ mod private {
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
     type Predicate: AsField<PredicateCode>
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
     type PredicateData: AsField<Vec<u8>>
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
     type PredicateGasUsed: AsField<Word>
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         > + Default;
     type Witness: AsField<u16>
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
 }
 

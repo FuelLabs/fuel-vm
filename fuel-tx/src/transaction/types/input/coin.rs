@@ -37,24 +37,36 @@ mod private {
 #[cfg(feature = "da-compression")]
 pub trait CoinSpecification: private::Seal {
     type Witness: AsField<u16>
-        + Clone
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
     type Predicate: AsField<PredicateCode>
-        + Clone
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
     type PredicateData: AsField<Vec<u8>>
-        + Clone
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
     type PredicateGasUsed: AsField<Word>
-        + Clone
         + for<'a> Compressible<
-            Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
         >;
 }
 #[cfg(not(feature = "da-compression"))]

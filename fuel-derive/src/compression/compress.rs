@@ -67,7 +67,7 @@ fn construct_compressed(
                 FieldAttrs::Skip => quote! {},
                 FieldAttrs::Normal => {
                     quote! {
-                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_, _>>::compress_with(&#binding, ctx).await?;
+                        let #cname = <#ty as ::fuel_compression::CompressibleBy<_>>::compress_with(&#binding, ctx).await?;
                     }
                 }
             }
@@ -178,12 +178,16 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
                 FieldAttrs::Normal => {
                     where_clause_push(
                         &mut w_impl_field_bounds_compress,
-                        syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx, E> },
+                        syn::parse_quote! { #ty: ::fuel_compression::CompressibleBy<Ctx> },
                     );
                 }
             }
         }
     }
+    where_clause_push(
+        &mut w_impl_field_bounds_compress,
+        syn::parse_quote! { Ctx: ::fuel_compression::ContextError },
+    );
 
     let mut w_impl_field_bounds_decompress = w_impl.clone();
     for variant in s.variants() {
@@ -194,7 +198,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
                 FieldAttrs::Normal => {
                     where_clause_push(
                         &mut w_impl_field_bounds_decompress,
-                        syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx, E> },
+                        syn::parse_quote! { #ty: ::fuel_compression::DecompressibleBy<Ctx> },
                     );
                 }
             }
@@ -211,7 +215,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
                 syn::Fields::Unit => quote! {;},
             };
             quote! {
-                #[derive(Clone, serde::Serialize, serde::Deserialize)]
+                #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
                 #[doc = concat!("Compressed version of `", stringify!(#name), "`.")]
                 pub struct #compressed_name #g #w_structure #defs #semi
             }
@@ -230,7 +234,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
                 .collect();
 
             quote! {
-                #[derive(Clone, serde::Serialize, serde::Deserialize)]
+                #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
                 #[doc = concat!("Compressed version of `", stringify!(#name), "`.")]
                 pub enum #compressed_name #g #w_structure { #variant_defs }
             }
@@ -253,8 +257,8 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
             type Compressed = #compressed_name #g;
         }
 
-        gen impl<Ctx, E> ::fuel_compression::CompressibleBy<Ctx, E> for @Self #w_impl_field_bounds_compress {
-            async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+        gen impl<Ctx> ::fuel_compression::CompressibleBy<Ctx> for @Self #w_impl_field_bounds_compress {
+            async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
                 Ok(match self { #compress_per_variant })
             }
         }

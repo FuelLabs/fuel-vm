@@ -20,20 +20,23 @@ macro_rules! identity_compression {
             type Compressed = Self;
         }
 
-        impl<Ctx, E> CompressibleBy<Ctx, E> for $t
+        impl<Ctx> CompressibleBy<Ctx> for $t
         where
-            Ctx: ?Sized,
+            Ctx: ContextError,
         {
-            async fn compress_with(&self, _: &mut Ctx) -> Result<Self, E> {
+            async fn compress_with(&self, _: &mut Ctx) -> Result<Self, Ctx::Error> {
                 Ok(*self)
             }
         }
 
-        impl<Ctx, E> DecompressibleBy<Ctx, E> for $t
+        impl<Ctx> DecompressibleBy<Ctx> for $t
         where
-            Ctx: ?Sized,
+            Ctx: ContextError,
         {
-            async fn decompress_with(c: &Self::Compressed, _: &Ctx) -> Result<Self, E> {
+            async fn decompress_with(
+                c: &Self::Compressed,
+                _: &Ctx,
+            ) -> Result<Self, Ctx::Error> {
                 Ok(*c)
             }
         }
@@ -71,12 +74,13 @@ where
     type Compressed = [T::Compressed; S];
 }
 
-impl<const S: usize, T, Ctx, E> CompressibleBy<Ctx, E> for [T; S]
+impl<const S: usize, T, Ctx> CompressibleBy<Ctx> for [T; S]
 where
-    T: CompressibleBy<Ctx, E>,
+    T: CompressibleBy<Ctx>,
+    Ctx: ContextError,
 {
     #[allow(unsafe_code)]
-    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
         // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
         // which do not require initialization.
         let mut tmp: [MaybeUninit<T::Compressed>; S] =
@@ -97,12 +101,16 @@ where
     }
 }
 
-impl<const S: usize, T, Ctx, E> DecompressibleBy<Ctx, E> for [T; S]
+impl<const S: usize, T, Ctx> DecompressibleBy<Ctx> for [T; S]
 where
-    T: DecompressibleBy<Ctx, E> + Clone,
+    T: DecompressibleBy<Ctx>,
+    Ctx: ContextError,
 {
     #[allow(unsafe_code)]
-    async fn decompress_with(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+    async fn decompress_with(
+        c: &Self::Compressed,
+        ctx: &Ctx,
+    ) -> Result<Self, Ctx::Error> {
         // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
         // which do not require initialization.
         let mut tmp: [MaybeUninit<T>; S] = unsafe { MaybeUninit::uninit().assume_init() };
@@ -124,16 +132,17 @@ where
 
 impl<T> Compressible for Vec<T>
 where
-    T: Compressible + Clone,
+    T: Compressible,
 {
     type Compressed = Vec<T::Compressed>;
 }
 
-impl<T, Ctx, E> CompressibleBy<Ctx, E> for Vec<T>
+impl<T, Ctx> CompressibleBy<Ctx> for Vec<T>
 where
-    T: CompressibleBy<Ctx, E> + Clone,
+    T: CompressibleBy<Ctx>,
+    Ctx: ContextError,
 {
-    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, E> {
+    async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
         let mut result = Vec::with_capacity(self.len());
         for item in self {
             result.push(item.compress_with(ctx).await?);
@@ -142,11 +151,15 @@ where
     }
 }
 
-impl<T, Ctx, E> DecompressibleBy<Ctx, E> for Vec<T>
+impl<T, Ctx> DecompressibleBy<Ctx> for Vec<T>
 where
-    T: DecompressibleBy<Ctx, E> + Clone,
+    T: DecompressibleBy<Ctx>,
+    Ctx: ContextError,
 {
-    async fn decompress_with(c: &Self::Compressed, ctx: &Ctx) -> Result<Self, E> {
+    async fn decompress_with(
+        c: &Self::Compressed,
+        ctx: &Ctx,
+    ) -> Result<Self, Ctx::Error> {
         let mut result = Vec::with_capacity(c.len());
         for item in c {
             result.push(T::decompress_with(item, ctx).await?);

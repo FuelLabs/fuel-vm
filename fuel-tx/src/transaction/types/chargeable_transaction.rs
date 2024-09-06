@@ -47,14 +47,24 @@ use fuel_compression::Compressible;
 
 #[cfg(feature = "da-compression")]
 pub trait BodyConstraints:
-    for<'a> Compressible<Compressed: Clone + serde::Serialize + serde::Deserialize<'a>>
+    for<'a> Compressible<
+    Compressed: core::fmt::Debug
+                    + PartialEq
+                    + Clone
+                    + serde::Serialize
+                    + serde::Deserialize<'a>,
+>
 {
 }
 
 #[cfg(feature = "da-compression")]
 impl<T> BodyConstraints for T where
     T: for<'a> Compressible<
-        Compressed: Clone + serde::Serialize + serde::Deserialize<'a>,
+        Compressed: core::fmt::Debug
+                        + PartialEq
+                        + Clone
+                        + serde::Serialize
+                        + serde::Deserialize<'a>,
     >
 {
 }

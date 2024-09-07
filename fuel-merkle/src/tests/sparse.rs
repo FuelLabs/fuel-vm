@@ -25,6 +25,7 @@ use core::fmt::{
     Formatter,
 };
 use proptest::{
+    arbitrary::any,
     collection::{
         hash_set,
         vec,
@@ -47,7 +48,7 @@ impl Mappable for TestTable {
     type Value = Self::OwnedValue;
 }
 
-#[derive(Copy, Clone, Eq, Hash, PartialEq)]
+#[derive(Copy, Clone, Eq, Hash, PartialEq, proptest_derive::Arbitrary)]
 struct Key(Bytes32);
 
 impl Debug for Key {
@@ -68,7 +69,7 @@ impl From<Key> for Bytes32 {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, proptest_derive::Arbitrary)]
 struct Value(Bytes32);
 
 impl Debug for Value {

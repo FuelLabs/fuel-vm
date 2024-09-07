@@ -6,6 +6,7 @@ use core::fmt::{
 };
 
 use proptest::{
+    arbitrary::any,
     collection::vec,
     prop_assert,
     prop_compose,
@@ -37,7 +38,7 @@ impl Mappable for TestTable {
     type Value = Self::OwnedValue;
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, proptest_derive::Arbitrary)]
 struct Value(Bytes32);
 
 impl Debug for Value {

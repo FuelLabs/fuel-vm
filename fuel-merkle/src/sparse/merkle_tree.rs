@@ -76,6 +76,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 /// The safe Merkle tree storage key prevents Merkle tree structure manipulations.
 /// The type contains only one constructor that hashes the storage key.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct MerkleTreeKey(Bytes32);
 
 impl MerkleTreeKey {

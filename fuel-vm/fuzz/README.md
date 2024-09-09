@@ -17,14 +17,7 @@ rustup component add llvm-tools-preview --toolchain nightly
 
 The input to the fuzzer is a byte vector that contains script assembly, script data, and the assembly of a contract to be called. Each of these is separated by a 64-bit magic value `0x00ADBEEF5566CEAA`.
 
-An initial input is provided in the `example_corpus` directory, and can be loaded by copying it over to the `corpus/grammar_aware_advanced` folder:
-
-```
-mkdir -p corpus/grammar_aware_advanced
-cp example_corpus/ corpus/grammar_aware_advanced
-```
-
-This corpus is generated from the [sway examples](https://github.com/FuelLabs/sway/tree/master/examples), according to the procedure described below.
+While the fuzzer can be started without any seeds, it is recommended to generate seeds from compiled sway programs.
 
 #### Generate your own seeds
 
@@ -34,8 +27,10 @@ If you want to run the fuzzer with custom input, you can run the `seed` binary a
 cargo run --bin seed <input dir> <output dir>
 ```
 
-#### Example: Regenerate the `example_corpus`
-The `example_corpus` can be recreated by doing the following:
+#### Example: Generating a corpus from the sway examples
+This section explains how to use the [sway examples](https://github.com/FuelLabs/sway/tree/master/examples) to generate an initial corpus.
+
+This can be acieved by doing the following:
 
 1. Compile the sway examples with `forc`.
 ```
@@ -55,6 +50,8 @@ for file in $(find . -name "*.bin" | rg debug); do cp $file /tmp/corpus; done
 mkdir generated_seeds
 cargo run --bin seed /tmp/corpus ./generated_seeds
 ```
+
+Now the directory `./generated_seeds` contains the newly generated seeds. Copy this over to `corpus/grammar_aware_advanced` to run the fuzzer with these seeds.
 
 ### Running the Fuzzer
 The Rust nightly version is required for executing cargo-fuzz. The simplest way to run the fuzzer is to run the following command:

@@ -57,7 +57,7 @@ fn construct_decompress(
 
             match FieldAttrs::parse(&binding.ast().attrs) {
                 FieldAttrs::Skip => quote! {
-                    let #cname = ::core::default::Default::default(),
+                    let #cname = ::core::default::Default::default();
                 },
                 FieldAttrs::Normal => {
                     quote! {

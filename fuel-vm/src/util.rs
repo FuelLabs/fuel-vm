@@ -211,7 +211,6 @@ pub mod test_helpers {
             self.block_height
         }
 
-        #[cfg(any(fuzzing, feature = "test-helpers"))]
         pub fn start_script_bytes(
             &mut self,
             script: Vec<u8>,
@@ -447,7 +446,6 @@ pub mod test_helpers {
                 .build()
         }
 
-        #[cfg(any(fuzzing, feature = "test-helpers"))]
         pub fn setup_contract_bytes(
             &mut self,
             contract: Vec<u8>,
@@ -465,7 +463,6 @@ pub mod test_helpers {
         ) -> CreatedContract {
             let contract = contract
                 .into_iter()
-                .flat_map(Instruction::to_bytes)
                 .collect();
 
             self.setup_contract_inner(contract, initial_balance, initial_state)

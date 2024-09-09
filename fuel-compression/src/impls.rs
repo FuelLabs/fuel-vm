@@ -86,16 +86,29 @@ where
         let mut tmp: [MaybeUninit<T::Compressed>; S] =
             unsafe { MaybeUninit::uninit().assume_init() };
 
-        // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
-        // TODO: Handle the case of the error. Currently it will cause a memory leak.
-        //  https://github.com/FuelLabs/fuel-vm/issues/811
-        for (v, empty) in self.iter().zip(tmp.iter_mut()) {
-            unsafe {
-                core::ptr::write(empty.as_mut_ptr(), v.compress_with(ctx).await?);
+        let mut i = 0;
+        while i < self.len() {
+            match self[i].compress_with(ctx).await {
+                Ok(value) => {
+                    // SAFETY: MaybeUninit can be safely overwritten.
+                    tmp[i].write(value);
+                }
+                Err(e) => {
+                    // Drop the already initialized elements, so we don't leak the memory
+                    for initialized_item in tmp.iter_mut().take(i) {
+                        // Safety: First i elements have been initialized succesfully.
+                        unsafe {
+                            initialized_item.assume_init_drop();
+                        }
+                    }
+                    return Err(e);
+                }
             }
+            i += 1;
         }
 
-        // SAFETY: Every element is initialized.
+        // SAFETY: Every element is initialized. In case of error, we have returned
+        // instead.
         let result = tmp.map(|v| unsafe { v.assume_init() });
         Ok(result)
     }
@@ -115,13 +128,25 @@ where
         // which do not require initialization.
         let mut tmp: [MaybeUninit<T>; S] = unsafe { MaybeUninit::uninit().assume_init() };
 
-        // Dropping a `MaybeUninit` does nothing, so we can just overwrite the array.
-        // TODO: Handle the case of the error. Currently it will cause a memory leak.
-        //  https://github.com/FuelLabs/fuel-vm/issues/811
-        for (v, empty) in c.iter().zip(tmp.iter_mut()) {
-            unsafe {
-                core::ptr::write(empty.as_mut_ptr(), T::decompress_with(v, ctx).await?);
+        let mut i = 0;
+        while i < c.len() {
+            match T::decompress_with(&c[i], ctx).await {
+                Ok(value) => {
+                    // SAFETY: MaybeUninit can be safely overwritten.
+                    tmp[i].write(value);
+                }
+                Err(e) => {
+                    // Drop the already initialized elements, so we don't leak the memory
+                    for initialized_item in tmp.iter_mut().take(i) {
+                        // Safety: First i elements have been initialized succesfully.
+                        unsafe {
+                            initialized_item.assume_init_drop();
+                        }
+                    }
+                    return Err(e);
+                }
             }
+            i += 1;
         }
 
         // SAFETY: Every element is initialized.

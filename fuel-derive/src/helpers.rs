@@ -4,7 +4,7 @@ pub fn where_clause_push(w: &mut Option<syn::WhereClause>, p: TokenStream2) {
     if w.is_none() {
         *w = Some(syn::WhereClause {
             where_token: syn::Token![where](proc_macro2::Span::call_site()),
-            predicates: Default::default(),
+            predicates: ::core::default::Default::default(),
         });
     }
     w.as_mut()

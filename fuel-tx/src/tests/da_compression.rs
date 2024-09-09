@@ -1,20 +1,17 @@
 use crate::{
+    field,
     input::{
-        self,
         coin::{
-            self,
             Coin,
-            CompressedCoin,
+            CoinSpecification,
         },
         message::{
-            self,
-            CompressedMessage,
             Message,
+            MessageSpecification,
         },
-        Empty,
+        AsField,
         PredicateCode,
     },
-    output,
     test_helper::TransactionFactory,
     transaction::field::Inputs,
     Blob,
@@ -33,7 +30,9 @@ use crate::{
 use bimap::BiMap;
 use fuel_compression::{
     Compress,
+    Compressible,
     CompressibleBy,
+    ContextError,
     Decompress,
     DecompressibleBy,
     RegistryKey,
@@ -58,6 +57,7 @@ use std::{
 type Keyspace = &'static str;
 
 /// When a coin is created, this data is stored
+#[derive(Debug, Default, Clone, PartialEq)]
 struct CoinInfo {
     owner: Address,
     amount: u64,
@@ -65,6 +65,7 @@ struct CoinInfo {
 }
 
 /// When a message is created, this data is stored
+#[derive(Debug, Default, Clone, PartialEq)]
 struct MessageInfo {
     pub sender: Address,
     pub recipient: Address,
@@ -74,7 +75,7 @@ struct MessageInfo {
 
 /// A simple and inefficient registry for testing purposes.
 /// Also just stores the latest given transaction to just return it back.
-#[derive(Default)]
+#[derive(Debug, Default, Clone, PartialEq)]
 struct TestCompressionCtx {
     next_key: u32,
     registry: HashMap<Keyspace, BiMap<RegistryKey, Vec<u8>>>,
@@ -85,15 +86,18 @@ struct TestCompressionCtx {
 }
 
 impl TestCompressionCtx {
-    fn store_data_for_mint(&mut self, tx: &Mint) {
-        self.latest_tx_pointer = Some(tx.tx_pointer);
+    fn store_data_for_mint(tx: &Mint) -> Self {
+        Self {
+            latest_tx_pointer: Some(tx.tx_pointer),
+            ..Default::default()
+        }
     }
 
     fn store_tx_info<Tx>(&mut self, tx: &Tx)
     where
         Tx: Inputs,
     {
-        self.latest_tx_coins = tx
+        let latest_tx_coins = tx
             .inputs()
             .iter()
             .filter(|input| input.is_coin())
@@ -107,8 +111,8 @@ impl TestCompressionCtx {
                     },
                 )
             })
-            .collect();
-        self.latest_tx_messages = tx
+            .collect::<Vec<_>>();
+        let latest_tx_messages = tx
             .inputs()
             .iter()
             .filter(|input| input.is_message())
@@ -123,13 +127,20 @@ impl TestCompressionCtx {
                     },
                 )
             })
-            .collect();
+            .collect::<Vec<_>>();
+
+        self.latest_tx_coins.extend(latest_tx_coins);
+        self.latest_tx_messages.extend(latest_tx_messages);
     }
+}
+
+impl ContextError for TestCompressionCtx {
+    type Error = Infallible;
 }
 
 macro_rules! impl_substitutable_key {
     ($t:ty) => {
-        impl CompressibleBy<TestCompressionCtx, Infallible> for $t {
+        impl CompressibleBy<TestCompressionCtx> for $t {
             async fn compress_with(
                 &self,
                 ctx: &mut TestCompressionCtx,
@@ -152,7 +163,7 @@ macro_rules! impl_substitutable_key {
             }
         }
 
-        impl DecompressibleBy<TestCompressionCtx, Infallible> for $t {
+        impl DecompressibleBy<TestCompressionCtx> for $t {
             async fn decompress_with(
                 key: &RegistryKey,
                 ctx: &TestCompressionCtx,
@@ -172,7 +183,7 @@ impl_substitutable_key!(ContractId);
 impl_substitutable_key!(ScriptCode);
 impl_substitutable_key!(PredicateCode);
 
-impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
+impl CompressibleBy<TestCompressionCtx> for UtxoId {
     async fn compress_with(
         &self,
         ctx: &mut TestCompressionCtx,
@@ -191,7 +202,7 @@ impl CompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
     }
 }
 
-impl DecompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
+impl DecompressibleBy<TestCompressionCtx> for UtxoId {
     async fn decompress_with(
         key: &CompressedUtxoId,
         ctx: &TestCompressionCtx,
@@ -200,269 +211,92 @@ impl DecompressibleBy<TestCompressionCtx, Infallible> for UtxoId {
     }
 }
 
-impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Full> {
+impl<Specification> DecompressibleBy<TestCompressionCtx> for Coin<Specification>
+where
+    Specification: CoinSpecification,
+    Specification::Predicate: DecompressibleBy<TestCompressionCtx>,
+    Specification::PredicateData: DecompressibleBy<TestCompressionCtx>,
+    Specification::PredicateGasUsed: DecompressibleBy<TestCompressionCtx>,
+    Specification::Witness: DecompressibleBy<TestCompressionCtx>,
+{
     async fn decompress_with(
-        c: &CompressedCoin<coin::Full>,
+        c: &<Coin<Specification> as Compressible>::Compressed,
         ctx: &TestCompressionCtx,
-    ) -> Result<Coin<coin::Full>, Infallible> {
+    ) -> Result<Coin<Specification>, Infallible> {
         let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
         let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
-        Ok(Coin {
+        let witness_index = c.witness_index.decompress(ctx).await?;
+        let predicate_gas_used = c.predicate_gas_used.decompress(ctx).await?;
+        let predicate = c.predicate.decompress(ctx).await?;
+        let predicate_data = c.predicate_data.decompress(ctx).await?;
+
+        Ok(Self {
             utxo_id,
             owner: coin_info.owner,
             amount: coin_info.amount,
             asset_id: coin_info.asset_id,
             tx_pointer: Default::default(),
-            witness_index: c.witness_index,
-            predicate_gas_used: c.predicate_gas_used,
-            predicate:
-                <coin::Full as coin::CoinSpecification>::Predicate::decompress_with(
-                    &c.predicate,
-                    ctx,
-                )
-                .await?,
-            predicate_data: c.predicate_data.clone(),
+            witness_index,
+            predicate_gas_used,
+            predicate,
+            predicate_data,
         })
     }
 }
 
-impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Signed> {
+impl<Specification> DecompressibleBy<TestCompressionCtx> for Message<Specification>
+where
+    Specification: MessageSpecification,
+    Specification::Data: DecompressibleBy<TestCompressionCtx> + Default,
+    Specification::Predicate: DecompressibleBy<TestCompressionCtx>,
+    Specification::PredicateData: DecompressibleBy<TestCompressionCtx>,
+    Specification::PredicateGasUsed: DecompressibleBy<TestCompressionCtx>,
+    Specification::Witness: DecompressibleBy<TestCompressionCtx>,
+{
     async fn decompress_with(
-        c: &CompressedCoin<coin::Signed>,
+        c: &<Message<Specification> as Compressible>::Compressed,
         ctx: &TestCompressionCtx,
-    ) -> Result<Coin<coin::Signed>, Infallible> {
-        let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
-        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
-        Ok(Coin {
-            utxo_id,
-            owner: coin_info.owner,
-            amount: coin_info.amount,
-            asset_id: coin_info.asset_id,
-            tx_pointer: Default::default(),
-            witness_index: c.witness_index,
-            predicate_gas_used: Empty::default(),
-            predicate: Empty::default(),
-            predicate_data: Empty::default(),
-        })
+    ) -> Result<Message<Specification>, Infallible> {
+        let msg = ctx
+            .latest_tx_messages
+            .get(&c.nonce)
+            .expect("message not found");
+        let witness_index = c.witness_index.decompress(ctx).await?;
+        let predicate_gas_used = c.predicate_gas_used.decompress(ctx).await?;
+        let predicate = c.predicate.decompress(ctx).await?;
+        let predicate_data = c.predicate_data.decompress(ctx).await?;
+        let mut message: Message<Specification> = Message {
+            sender: msg.sender,
+            recipient: msg.recipient,
+            amount: msg.amount,
+            nonce: c.nonce,
+            witness_index,
+            predicate_gas_used,
+            data: Default::default(),
+            predicate,
+            predicate_data,
+        };
+
+        if let Some(data) = message.data.as_mut_field() {
+            data.clone_from(&msg.data)
+        }
+
+        Ok(message)
     }
 }
 
-impl DecompressibleBy<TestCompressionCtx, Infallible> for Coin<coin::Predicate> {
-    async fn decompress_with(
-        c: &CompressedCoin<coin::Predicate>,
-        ctx: &TestCompressionCtx,
-    ) -> Result<Coin<coin::Predicate>, Infallible> {
-        let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
-        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
-        Ok(Coin {
-            utxo_id,
-            owner: coin_info.owner,
-            amount: coin_info.amount,
-            asset_id: coin_info.asset_id,
-            tx_pointer: Default::default(),
-            witness_index: Empty::default(),
-            predicate_gas_used: c.predicate_gas_used,
-            predicate:
-                <coin::Full as coin::CoinSpecification>::Predicate::decompress_with(
-                    &c.predicate,
-                    ctx,
-                )
-                .await?,
-            predicate_data: c.predicate_data.clone(),
-        })
-    }
-}
-
-impl DecompressibleBy<TestCompressionCtx, Infallible>
-    for Message<message::specifications::Full>
-{
-    async fn decompress_with(
-        c: &CompressedMessage<message::specifications::Full>,
-        ctx: &TestCompressionCtx,
-    ) -> Result<Message<message::specifications::Full>, Infallible> {
-        let msg = ctx
-            .latest_tx_messages
-            .get(&c.nonce)
-            .expect("message not found");
-        Ok(Message {
-            sender: msg.sender,
-            recipient: msg.recipient,
-            amount: msg.amount,
-            nonce: c.nonce,
-            witness_index: c.witness_index,
-            predicate_gas_used: c.predicate_gas_used,
-            data: msg.data.clone(),
-            predicate:
-                <message::specifications::Full as message::MessageSpecification>::Predicate::decompress_with(
-                    &c.predicate,
-                    ctx,
-                )
-                .await?,
-            predicate_data: c.predicate_data.clone(),
-        })
-    }
-}
-impl DecompressibleBy<TestCompressionCtx, Infallible>
-    for Message<message::specifications::MessageData<message::specifications::Signed>>
-{
-    async fn decompress_with(
-        c: &CompressedMessage<
-            message::specifications::MessageData<message::specifications::Signed>,
-        >,
-        ctx: &TestCompressionCtx,
-    ) -> Result<
-        Message<message::specifications::MessageData<message::specifications::Signed>>,
-        Infallible,
-    > {
-        let msg = ctx
-            .latest_tx_messages
-            .get(&c.nonce)
-            .expect("message not found");
-        Ok(Message {
-            sender: msg.sender,
-            recipient: msg.recipient,
-            amount: msg.amount,
-            nonce: c.nonce,
-            witness_index: c.witness_index,
-            predicate_gas_used: Empty::default(),
-            data: msg.data.clone(),
-            predicate: <<message::specifications::MessageData<
-                message::specifications::Signed,
-            > as message::MessageSpecification>::Predicate as DecompressibleBy<
-                _,
-                Infallible,
-            >>::decompress_with(&c.predicate, ctx)
-            .await?,
-            predicate_data: Empty::default(),
-        })
-    }
-}
-impl DecompressibleBy<TestCompressionCtx, Infallible>
-    for Message<message::specifications::MessageData<message::specifications::Predicate>>
-{
-    async fn decompress_with(
-        c: &CompressedMessage<
-            message::specifications::MessageData<message::specifications::Predicate>,
-        >,
-        ctx: &TestCompressionCtx,
-    ) -> Result<
-        Message<message::specifications::MessageData<message::specifications::Predicate>>,
-        Infallible,
-    > {
-        let msg = ctx
-            .latest_tx_messages
-            .get(&c.nonce)
-            .expect("message not found");
-        Ok(Message {
-            sender: msg.sender,
-            recipient: msg.recipient,
-            amount: msg.amount,
-            nonce: c.nonce,
-            witness_index: Empty::default(),
-            predicate_gas_used: c.predicate_gas_used,
-            data: msg.data.clone(),
-            predicate: <message::specifications::MessageData<
-                message::specifications::Predicate,
-            > as message::MessageSpecification>::Predicate::decompress_with(
-                &c.predicate,
-                ctx,
-            )
-            .await?,
-            predicate_data: c.predicate_data.clone(),
-        })
-    }
-}
-impl DecompressibleBy<TestCompressionCtx, Infallible>
-    for Message<message::specifications::MessageCoin<message::specifications::Signed>>
-{
-    async fn decompress_with(
-        c: &CompressedMessage<
-            message::specifications::MessageCoin<message::specifications::Signed>,
-        >,
-        ctx: &TestCompressionCtx,
-    ) -> Result<
-        Message<message::specifications::MessageCoin<message::specifications::Signed>>,
-        Infallible,
-    > {
-        let msg = ctx
-            .latest_tx_messages
-            .get(&c.nonce)
-            .expect("message not found");
-        Ok(Message {
-            sender: msg.sender,
-            recipient: msg.recipient,
-            amount: msg.amount,
-            nonce: c.nonce,
-            witness_index: c.witness_index,
-            predicate_gas_used: Empty::default(),
-            data: Empty::default(),
-            predicate: <<message::specifications::MessageCoin<
-                message::specifications::Signed,
-            > as message::MessageSpecification>::Predicate as DecompressibleBy<
-                _,
-                Infallible,
-            >>::decompress_with(&c.predicate, ctx)
-            .await?,
-            predicate_data: Empty::default(),
-        })
-    }
-}
-impl DecompressibleBy<TestCompressionCtx, Infallible>
-    for Message<message::specifications::MessageCoin<message::specifications::Predicate>>
-{
-    async fn decompress_with(
-        c: &CompressedMessage<
-            message::specifications::MessageCoin<message::specifications::Predicate>,
-        >,
-        ctx: &TestCompressionCtx,
-    ) -> Result<
-        Message<message::specifications::MessageCoin<message::specifications::Predicate>>,
-        Infallible,
-    > {
-        let msg = ctx
-            .latest_tx_messages
-            .get(&c.nonce)
-            .expect("message not found");
-        Ok(Message {
-            sender: msg.sender,
-            recipient: msg.recipient,
-            amount: msg.amount,
-            nonce: c.nonce,
-            witness_index: Empty::default(),
-            predicate_gas_used: c.predicate_gas_used,
-            data: Empty::default(),
-            predicate: <message::specifications::MessageCoin<
-                message::specifications::Predicate,
-            > as message::MessageSpecification>::Predicate::decompress_with(
-                &c.predicate,
-                ctx,
-            )
-            .await?,
-            predicate_data: c.predicate_data.clone(),
-        })
-    }
-}
-
-impl DecompressibleBy<TestCompressionCtx, Infallible> for Mint {
+impl DecompressibleBy<TestCompressionCtx> for Mint {
     async fn decompress_with(
         c: &Self::Compressed,
         ctx: &TestCompressionCtx,
     ) -> Result<Self, Infallible> {
         Ok(Transaction::mint(
             ctx.latest_tx_pointer.expect("no latest tx pointer"),
-            <input::contract::Contract as DecompressibleBy<_, Infallible>>::decompress_with(
-                &c.input_contract,
-                ctx,
-            )
-            .await?,
-            <output::contract::Contract as DecompressibleBy<_, Infallible>>::decompress_with(
-                &c.output_contract,
-                ctx,
-            )
-            .await?,
-            <Word as DecompressibleBy<_, Infallible>>::decompress_with(&c.mint_amount, ctx).await?,
-            <AssetId as DecompressibleBy<_, Infallible>>::decompress_with(&c.mint_asset_id, ctx).await?,
-            <Word as DecompressibleBy<_, Infallible>>::decompress_with(&c.gas_price, ctx).await?,
+            c.input_contract.decompress(ctx).await?,
+            c.output_contract.decompress(ctx).await?,
+            c.mint_amount.decompress(ctx).await?,
+            c.mint_asset_id.decompress(ctx).await?,
+            c.gas_price.decompress(ctx).await?,
         ))
     }
 }
@@ -526,57 +360,87 @@ async fn example_struct_postcard_roundtrip_multiple() {
 
 async fn verify_tx_roundtrip(tx: Transaction, ctx: &mut TestCompressionCtx) {
     let compressed = tx.compress_with(ctx).await.expect("compression failed");
+
     let postcard_compressed =
         postcard::to_stdvec(&compressed).expect("failed to serialize");
     let postcard_decompressed =
         postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
-    let decompressed = <Transaction as DecompressibleBy<_, _>>::decompress_with(
-        &postcard_decompressed,
-        ctx,
-    )
-    .await
-    .expect("decompression failed");
+    pretty_assertions::assert_eq!(compressed, postcard_decompressed);
+
+    let decompressed = postcard_decompressed
+        .decompress(ctx)
+        .await
+        .expect("decompression failed");
     pretty_assertions::assert_eq!(tx, decompressed);
 }
 
-#[tokio::test]
-async fn test_tx_roundtrip() {
-    let number_cases = 100;
-    let mut ctx = TestCompressionCtx::default();
+const NUMBER_CASES: usize = 100;
 
-    for mut tx in TransactionFactory::<_, Mint>::from_seed(1234).take(number_cases) {
-        ctx.store_data_for_mint(&tx);
+#[tokio::test]
+async fn can_decompress_compressed_transaction_mint() {
+    for mut tx in TransactionFactory::<_, Mint>::from_seed(1234).take(NUMBER_CASES) {
+        let mut ctx = TestCompressionCtx::store_data_for_mint(&tx);
         tx.prepare_sign();
         verify_tx_roundtrip(tx.into(), &mut ctx).await;
     }
-    for (mut tx, _) in TransactionFactory::<_, Script>::from_seed(1234).take(number_cases)
-    {
-        ctx.store_tx_info(&tx);
-        tx.prepare_sign();
-        verify_tx_roundtrip(tx.into(), &mut ctx).await;
+}
+
+async fn assert_can_decompress_compressed_transaction<Tx, Iterator>(iterator: Iterator)
+where
+    Iterator: core::iter::Iterator<Item = Tx>,
+    Tx: PrepareSign + field::Inputs + Clone + Into<Transaction>,
+{
+    let mut ctx = TestCompressionCtx::default();
+    let txs = iterator
+        .take(NUMBER_CASES)
+        .map(|mut tx| {
+            tx.prepare_sign();
+            tx
+        })
+        .collect::<Vec<_>>();
+    for tx in txs.iter() {
+        ctx.store_tx_info(tx);
+        verify_tx_roundtrip(tx.clone().into(), &mut ctx).await;
     }
-    for (mut tx, _) in TransactionFactory::<_, Create>::from_seed(1234).take(number_cases)
-    {
-        ctx.store_tx_info(&tx);
-        tx.prepare_sign();
-        verify_tx_roundtrip(tx.into(), &mut ctx).await;
+
+    // Given
+    let original_ctx = ctx.clone();
+
+    // When
+    for tx in txs.iter() {
+        verify_tx_roundtrip(tx.clone().into(), &mut ctx).await;
     }
-    for (mut tx, _) in
-        TransactionFactory::<_, Upgrade>::from_seed(1234).take(number_cases)
-    {
-        ctx.store_tx_info(&tx);
-        tx.prepare_sign();
-        verify_tx_roundtrip(tx.into(), &mut ctx).await;
-    }
-    for (mut tx, _) in TransactionFactory::<_, Upload>::from_seed(1234).take(number_cases)
-    {
-        ctx.store_tx_info(&tx);
-        tx.prepare_sign();
-        verify_tx_roundtrip(tx.into(), &mut ctx).await;
-    }
-    for (mut tx, _) in TransactionFactory::<_, Blob>::from_seed(1234).take(number_cases) {
-        ctx.store_tx_info(&tx);
-        tx.prepare_sign();
-        verify_tx_roundtrip(tx.into(), &mut ctx).await;
-    }
+
+    // Then
+    assert_eq!(original_ctx, ctx);
+}
+
+#[tokio::test]
+async fn can_decompress_compressed_transaction_script() {
+    let iter = TransactionFactory::<_, Script>::from_seed(1234).map(|(tx, _)| tx);
+    assert_can_decompress_compressed_transaction(iter).await;
+}
+
+#[tokio::test]
+async fn can_decompress_compressed_transaction_create() {
+    let iter = TransactionFactory::<_, Create>::from_seed(1234).map(|(tx, _)| tx);
+    assert_can_decompress_compressed_transaction(iter).await;
+}
+
+#[tokio::test]
+async fn can_decompress_compressed_transaction_upgrade() {
+    let iter = TransactionFactory::<_, Upgrade>::from_seed(1234).map(|(tx, _)| tx);
+    assert_can_decompress_compressed_transaction(iter).await;
+}
+
+#[tokio::test]
+async fn can_decompress_compressed_transaction_upload() {
+    let iter = TransactionFactory::<_, Upload>::from_seed(1234).map(|(tx, _)| tx);
+    assert_can_decompress_compressed_transaction(iter).await;
+}
+
+#[tokio::test]
+async fn can_decompress_compressed_transaction_blob() {
+    let iter = TransactionFactory::<_, Blob>::from_seed(1234).map(|(tx, _)| tx);
+    assert_can_decompress_compressed_transaction(iter).await;
 }

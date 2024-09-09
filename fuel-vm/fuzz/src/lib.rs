@@ -114,8 +114,7 @@ pub fn execute(data: FuzzData) -> ExecuteResult {
 
     let max_program_length = 2usize.pow(18)
         - test_context.get_tx_params().tx_offset()
-        - <fuel_vm::prelude::Script as Script>::script_offset_static()
-        - 256; // TODO reevalute this one
+        - <fuel_vm::prelude::Script as Script>::script_offset_static();
 
     let actual_program = &data.program[..max_program_length.min(data.program.len())];
 

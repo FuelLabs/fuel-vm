@@ -138,7 +138,7 @@ where
                 Err(e) => {
                     // Drop the already initialized elements, so we don't leak the memory
                     for initialized_item in tmp.iter_mut().take(i) {
-                        // Safety: First i elements have been initialized succesfully.
+                        // Safety: First i elements have been initialized successfully.
                         unsafe {
                             initialized_item.assume_init_drop();
                         }

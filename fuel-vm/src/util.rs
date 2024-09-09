@@ -461,9 +461,7 @@ pub mod test_helpers {
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
         ) -> CreatedContract {
-            let contract = contract
-                .into_iter()
-                .collect();
+            let contract = contract.into_iter().collect();
 
             self.setup_contract_inner(contract, initial_balance, initial_state)
         }

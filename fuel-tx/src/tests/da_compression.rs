@@ -301,47 +301,36 @@ impl DecompressibleBy<TestCompressionCtx> for Mint {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Compress, Decompress)]
-pub struct ExampleStruct {
-    pub asset_id: AssetId,
-    pub array: [u8; 32],
-    pub vec: Vec<u8>,
-    pub integer: u32,
-}
-
-#[derive(Debug, PartialEq, Compress, Decompress)]
-pub struct InnerStruct {
-    pub asset_id: AssetId,
-    pub count: u64,
-    #[compress(skip)]
-    pub cached: [u8; 32],
-}
-
-#[tokio::test]
-async fn example_struct_roundtrip_simple() {
-    let mut ctx = TestCompressionCtx::default();
-    let original = ExampleStruct::default();
-    let compressed = original
-        .compress_with(&mut ctx)
-        .await
-        .expect("compression failed");
-    let decompressed = ExampleStruct::decompress_with(&compressed, &ctx)
-        .await
-        .expect("decompression failed");
-    assert_eq!(original, decompressed);
-}
-
 #[tokio::test]
 async fn example_struct_postcard_roundtrip_multiple() {
+    #[derive(Debug, PartialEq, Default, Compress, Decompress)]
+    pub struct Example {
+        pub asset_id: AssetId,
+        pub array: [u8; 32],
+        pub vec: Vec<u8>,
+        pub integer: u32,
+        pub inner: Inner,
+    }
+
+    #[derive(Debug, PartialEq, Default, Compress, Decompress)]
+    pub struct Inner {
+        pub asset_id: AssetId,
+        pub count: u64,
+    }
+
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let mut ctx = TestCompressionCtx::default();
     for _ in 0..10 {
-        let original = ExampleStruct {
+        let original = Example {
             asset_id: AssetId::new(rng.gen()),
             array: rng.gen(),
             vec: (0..rng.gen_range(0..32)).map(|_| rng.gen::<u8>()).collect(),
             integer: rng.gen(),
+            inner: Inner {
+                asset_id: AssetId::new(rng.gen()),
+                count: rng.gen(),
+            },
         };
         let compressed = original
             .compress_with(&mut ctx)
@@ -351,11 +340,55 @@ async fn example_struct_postcard_roundtrip_multiple() {
             postcard::to_stdvec(&compressed).expect("failed to serialize");
         let postcard_decompressed =
             postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
-        let decompressed = ExampleStruct::decompress_with(&postcard_decompressed, &ctx)
+        let decompressed = Example::decompress_with(&postcard_decompressed, &ctx)
             .await
             .expect("decompression failed");
         assert_eq!(original, decompressed);
     }
+}
+
+#[tokio::test]
+async fn skipped_fields_are_set_to_default_when_deserializing() {
+    #[derive(Debug, PartialEq, Default, Compress, Decompress)]
+    pub struct Example {
+        pub not_skipped: u64,
+        #[compress(skip)]
+        pub automatic: u64,
+        #[compress(skip)]
+        pub manual: HasManualDefault,
+    }
+
+    #[derive(Debug, PartialEq)]
+    pub struct HasManualDefault {
+        pub value: u64,
+    }
+    impl Default for HasManualDefault {
+        fn default() -> Self {
+            Self { value: 42 }
+        }
+    }
+
+    let mut ctx = TestCompressionCtx::default();
+    let original = Example {
+        not_skipped: 123,
+        automatic: 456,
+        manual: HasManualDefault { value: 789 },
+    };
+    let compressed = original
+        .compress_with(&mut ctx)
+        .await
+        .expect("compression failed");
+    let decompressed = Example::decompress_with(&compressed, &ctx)
+        .await
+        .expect("decompression failed");
+    assert_eq!(
+        decompressed,
+        Example {
+            not_skipped: 123,
+            automatic: 0,
+            manual: HasManualDefault::default(),
+        }
+    );
 }
 
 async fn verify_tx_roundtrip(tx: Transaction, ctx: &mut TestCompressionCtx) {

@@ -49,7 +49,7 @@ fn field_defs(fields: &syn::Fields, include_vis: bool) -> TokenStream2 {
     }
 }
 
-/// Construct compressed version of the struct from the original one
+/// Construct a compressed version of the struct from the original one
 fn construct_compressed(
     // The structure to construct, i.e. struct name or enum variant path
     compressed: &TokenStream2,

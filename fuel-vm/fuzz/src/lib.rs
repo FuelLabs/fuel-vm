@@ -20,17 +20,14 @@ pub struct FuzzData {
 }
 
 pub fn encode(data: &FuzzData) -> Vec<u8> {
-    let seperator: Vec<_> = MAGIC_VALUE_SEPARATOR.into();
-    let parts: [Vec<u8>; 5] = [
-        data.program.iter().copied().collect(),
-        seperator.clone(),
-        data.script_data.clone(),
-        seperator.clone(),
-        data.sub_program.iter().copied().collect(),
-    ];
-
-    let data: Vec<u8> = parts.iter().flatten().copied().collect();
-    data
+    let separator: Vec<u8> = MAGIC_VALUE_SEPARATOR.into();
+    data.program.iter()
+        .copied()
+        .chain(separator.iter().copied())
+        .chain(data.script_data.iter().copied())
+        .chain(separator.iter().copied())
+        .chain(data.sub_program.iter().copied())
+        .collect()
 }
 
 fn split_by_separator(data: &[u8], separator: &[u8]) -> Vec<Range<usize>> {
@@ -59,20 +56,15 @@ fn split_by_separator(data: &[u8], separator: &[u8]) -> Vec<Range<usize>> {
 
 pub fn decode(data: &[u8]) -> Option<FuzzData> {
     let x = split_by_separator(data, &MAGIC_VALUE_SEPARATOR);
-
     if x.len() != 3 {
         return None;
     }
-
-    let program = data[x[0].clone()].to_vec();
-    let sub_program = data[x[2].clone()].to_vec();
     Some(FuzzData {
-        program,
+        program: data[x[0].clone()].to_vec(),
         script_data: data[x[1].clone()].to_vec(),
-        sub_program,
+        sub_program: data[x[2].clone()].to_vec(),
     })
 }
-
 pub fn decode_instructions(bytes: &[u8]) -> Option<Vec<Instruction>> {
     let instructions: Vec<_> = fuel_vm::fuel_asm::from_bytes(bytes.iter().cloned())
         .flat_map(|i: Result<Instruction, InvalidOpcode>| i.ok())

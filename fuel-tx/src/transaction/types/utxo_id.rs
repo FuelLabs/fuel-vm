@@ -28,6 +28,30 @@ pub struct UtxoId {
     output_index: u16,
 }
 
+#[cfg(feature = "da-compression")]
+#[derive(
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+pub struct CompressedUtxoId {
+    pub tx_pointer: crate::TxPointer,
+    pub output_index: u16,
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for UtxoId {
+    type Compressed = CompressedUtxoId;
+}
+
 impl UtxoId {
     pub const LEN: usize = TxId::LEN + 8;
 

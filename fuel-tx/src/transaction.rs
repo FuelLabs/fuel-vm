@@ -94,6 +94,10 @@ pub type TxId = Bytes32;
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[allow(clippy::large_enum_variant)]
 pub enum Transaction {
     Script(Script),
@@ -113,7 +117,7 @@ impl Default for Transaction {
 
 impl Transaction {
     /// Return default valid transaction useful for tests.
-    #[cfg(all(feature = "rand", feature = "std", feature = "test-helpers"))]
+    #[cfg(all(feature = "random", feature = "std", feature = "test-helpers"))]
     pub fn default_test_tx() -> Self {
         use crate::Finalizable;
 
@@ -139,7 +143,7 @@ impl Transaction {
             body: ScriptBody {
                 script_gas_limit: gas_limit,
                 receipts_root,
-                script,
+                script: ScriptCode { bytes: script },
                 script_data,
             },
             policies,
@@ -522,7 +526,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate)
+                result && Input::is_predicate_owner_valid(owner, &**predicate)
             })
     }
 

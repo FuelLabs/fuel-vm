@@ -69,6 +69,9 @@ pub mod profiler {
 #[doc(no_inline)]
 pub use fuel_asm;
 #[doc(no_inline)]
+#[cfg(feature = "da-compression")]
+pub use fuel_compression;
+#[doc(no_inline)]
 pub use fuel_crypto;
 #[doc(no_inline)]
 pub use fuel_merkle;

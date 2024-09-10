@@ -1,3 +1,8 @@
+use core::ops::{
+    Deref,
+    DerefMut,
+};
+
 use crate::{
     field::WitnessLimit,
     transaction::{
@@ -45,16 +50,52 @@ pub struct ScriptMetadata {
     pub script_data_offset: usize,
 }
 
+#[derive(Clone, Default, Derivative)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(transparent))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derivative(Eq, PartialEq, Hash, Debug)]
+pub struct ScriptCode {
+    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    pub bytes: Vec<u8>,
+}
+impl From<Vec<u8>> for ScriptCode {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self { bytes }
+    }
+}
+impl Deref for ScriptCode {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bytes
+    }
+}
+impl DerefMut for ScriptCode {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.bytes
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for ScriptCode {
+    type Compressed = fuel_compression::RegistryKey;
+}
+
 #[derive(Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[canonical(prefix = TransactionRepr::Script)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) receipts_root: Bytes32,
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    pub(crate) script: Vec<u8>,
+    pub(crate) script: ScriptCode,
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub(crate) script_data: Vec<u8>,
 }
@@ -69,7 +110,7 @@ impl Default for ScriptBody {
         Self {
             script_gas_limit: Default::default(),
             receipts_root: Default::default(),
-            script,
+            script: script.into(),
             script_data: Default::default(),
         }
     }

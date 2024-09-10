@@ -40,7 +40,7 @@ fn tx_with_predicate_coin_snapshot() {
             tx_pointer: TxPointer::new(46.into(), 5),
             witness_index: Empty::new(),
             predicate_gas_used: 100_000,
-            predicate: vec![3u8; 10],
+            predicate: vec![3u8; 10].into(),
             predicate_data: vec![4u8; 12],
         }))
         .tip(1)
@@ -109,7 +109,7 @@ fn tx_with_predicate_message_coin() {
             witness_index: Empty::new(),
             predicate_gas_used: 100_000,
             data: Empty::new(),
-            predicate: vec![7u8; 11],
+            predicate: vec![7u8; 11].into(),
             predicate_data: vec![8u8; 12],
         }))
         .tip(1)
@@ -158,7 +158,7 @@ fn tx_with_predicate_message_data() {
             witness_index: Empty::new(),
             predicate_gas_used: 100_000,
             data: vec![6u8; 10],
-            predicate: vec![7u8; 11],
+            predicate: vec![7u8; 11].into(),
             predicate_data: vec![8u8; 12],
         }))
         .tip(1)

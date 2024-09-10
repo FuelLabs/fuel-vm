@@ -4,12 +4,16 @@ use crate::{
 };
 use alloc::vec::Vec;
 use derivative::Derivative;
+#[cfg(feature = "da-compression")]
+use fuel_compression::Compressible;
 use fuel_types::{
     Address,
     MessageId,
     Nonce,
     Word,
 };
+
+use super::PredicateCode;
 
 pub type FullMessage = Message<specifications::Full>;
 pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
@@ -30,9 +34,54 @@ mod private {
 }
 
 /// Specifies the message based on the usage context. See [`Message`].
+#[cfg(feature = "da-compression")]
+pub trait MessageSpecification: private::Seal {
+    type Data: AsField<Vec<u8>>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type Predicate: AsField<PredicateCode>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type PredicateData: AsField<Vec<u8>>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type PredicateGasUsed: AsField<Word>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        > + Default;
+    type Witness: AsField<u16>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+}
+
+#[cfg(not(feature = "da-compression"))]
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>;
-    type Predicate: AsField<Vec<u8>>;
+    type Predicate: AsField<PredicateCode>;
     type PredicateData: AsField<Vec<u8>>;
     type PredicateGasUsed: AsField<Word>;
     type Witness: AsField<u16>;
@@ -42,7 +91,10 @@ pub mod specifications {
     use alloc::vec::Vec;
 
     use super::MessageSpecification;
-    use crate::input::Empty;
+    use crate::input::{
+        Empty,
+        PredicateCode,
+    };
     use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
@@ -50,12 +102,20 @@ pub mod specifications {
     /// `witnesses` vector of the [`crate::Transaction`].
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(
+        feature = "da-compression",
+        derive(fuel_compression::Compress, fuel_compression::Decompress)
+    )]
     pub struct Signed;
 
     /// The type means that the message is not signed, and the `owner` is a `predicate`
     /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
     #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(
+        feature = "da-compression",
+        derive(fuel_compression::Compress, fuel_compression::Decompress)
+    )]
     pub struct Predicate;
 
     /// The retrayable message metadata. It is a message that can't be used as a coin to
@@ -69,7 +129,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageData<Signed> {
         type Data = Vec<u8>;
-        type Predicate = Empty<Vec<u8>>;
+        type Predicate = Empty<PredicateCode>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
@@ -77,7 +137,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageData<Predicate> {
         type Data = Vec<u8>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
@@ -90,7 +150,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageCoin<Signed> {
         type Data = Empty<Vec<u8>>;
-        type Predicate = Empty<Vec<u8>>;
+        type Predicate = Empty<PredicateCode>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
@@ -98,7 +158,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageCoin<Predicate> {
         type Data = Empty<Vec<u8>>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
@@ -116,7 +176,7 @@ pub mod specifications {
 
     impl MessageSpecification for Full {
         type Data = Vec<u8>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = u16;
@@ -143,21 +203,30 @@ pub mod specifications {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>
 where
     Specification: MessageSpecification,
 {
     /// The sender from the L1 chain.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub recipient: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub amount: Word,
+    // Unique identifier of the message
     pub nonce: Nonce,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
+    /// Exact amount of gas used by the predicate.
+    /// If the predicate consumes different amount of gas,
+    /// it's considered to be false.
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub data: Specification::Data,
     #[derivative(Debug(format_with = "fmt_as_field"))]

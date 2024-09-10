@@ -4,7 +4,7 @@ This crate provides the `grammar_aware_advanced` fuzz target which can be run wi
 General information about fuzzing Rust can be found on [appsec.guide](https://appsec.guide/docs/fuzzing/rust/cargo-fuzz/).
 
 ### Installation
-To be able to run the fuzzer, the following tools must be installed.
+The fuzzer requires nightly rust and works with rustc version `1.82.0-nightly`. To be able to run the fuzzer, the following tools must be installed.
 
 Install:
 ```

@@ -334,11 +334,11 @@ async fn example_struct_postcard_roundtrip_multiple() {
             .compress_with(&mut ctx)
             .await
             .expect("compression failed");
-        let postcard_compressed =
+        let compressed_serialized =
             postcard::to_stdvec(&compressed).expect("failed to serialize");
-        let postcard_decompressed =
-            postcard::from_bytes(&postcard_compressed).expect("failed to deserialize");
-        let decompressed = Example::decompress_with(&postcard_decompressed, &ctx)
+        let compressed_deserialized =
+            postcard::from_bytes(&compressed_serialized).expect("failed to deserialize");
+        let decompressed = Example::decompress_with(&compressed_deserialized, &ctx)
             .await
             .expect("decompression failed");
         assert_eq!(original, decompressed);

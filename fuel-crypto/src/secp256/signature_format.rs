@@ -56,7 +56,6 @@ impl TryFrom<secp256k1::ecdsa::RecoveryId> for RecoveryId {
 /// signature. Panics if the recovery id is in reduced-x form.
 pub fn encode_signature(mut signature: [u8; 64], recovery_id: RecoveryId) -> [u8; 64] {
     assert!(signature[32] >> 7 == 0, "Non-normalized signature");
-
     let v = recovery_id.is_y_odd as u8;
 
     signature[32] = (v << 7) | (signature[32] & 0x7f);

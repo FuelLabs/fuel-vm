@@ -112,12 +112,6 @@ impl Input {
                     recover_address()?
                 };
 
-                // This error is often returned during fuzzing when we encounter
-                // non-normalized signatures in `encode_signature`,
-                // in fuel-crypto/src/secp256/signature_format.rs.
-                // TODO(#815): Investigate if it makes sense to allow
-                //             non-normalized signatures during fuzzing.
-                #[cfg(not(fuzzing))]
                 if owner != &recovered_address {
                     return Err(ValidityError::InputInvalidSignature { index });
                 }

@@ -156,7 +156,7 @@ impl UniqueFormatValidityChecks for Script {
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
         let script_params = consensus_params.script_params();
-        if self.body.script.bytes.len() as u64 > script_params.max_script_length() {
+        if self.body.script.len() as u64 > script_params.max_script_length() {
             Err(ValidityError::TransactionScriptLength)?;
         }
 

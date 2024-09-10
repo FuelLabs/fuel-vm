@@ -346,6 +346,44 @@ async fn example_struct_postcard_roundtrip_multiple() {
 }
 
 #[tokio::test]
+async fn skipped_fields_are_not_part_of_the_compressed_output() {
+    #[derive(Debug, PartialEq, Default, Compress, Decompress)]
+    pub struct NoSkip {
+        pub common: u64,
+    }
+    #[derive(Debug, PartialEq, Default, Compress, Decompress)]
+    pub struct Skip {
+        pub common: u64,
+        #[compress(skip)]
+        pub skipped: u64,
+    }
+
+    let noskip = NoSkip { common: 123 };
+    let skip = Skip {
+        common: 123,
+        skipped: 456,
+    };
+
+    let mut ctx = TestCompressionCtx::default();
+    let noskip_compressed = noskip
+        .compress_with(&mut ctx)
+        .await
+        .expect("compression failed");
+    let noskip_compressed_serialized =
+        postcard::to_stdvec(&noskip_compressed).expect("failed to serialize");
+
+    let mut ctx = TestCompressionCtx::default();
+    let skip_compressed = skip
+        .compress_with(&mut ctx)
+        .await
+        .expect("compression failed");
+    let skip_compressed_serialized =
+        postcard::to_stdvec(&skip_compressed).expect("failed to serialize");
+
+    assert_eq!(noskip_compressed_serialized, skip_compressed_serialized);
+}
+
+#[tokio::test]
 async fn skipped_fields_are_set_to_default_when_deserializing() {
     #[derive(Debug, PartialEq, Default, Compress, Decompress)]
     pub struct Example {

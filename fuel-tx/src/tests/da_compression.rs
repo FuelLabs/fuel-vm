@@ -97,21 +97,20 @@ impl TestCompressionCtx {
     where
         Tx: Inputs,
     {
-        let latest_tx_coins = tx
-            .inputs()
-            .iter()
-            .filter(|input| input.is_coin())
-            .map(|input| {
-                (
-                    *input.utxo_id().unwrap(),
-                    CoinInfo {
-                        owner: *input.input_owner().unwrap(),
-                        amount: input.amount().unwrap(),
-                        asset_id: *input.asset_id(&AssetId::default()).unwrap(),
-                    },
-                )
-            })
-            .collect::<Vec<_>>();
+        let latest_tx_coins =
+            tx.inputs()
+                .iter()
+                .filter(|input| input.is_coin())
+                .map(|input| {
+                    (
+                        *input.utxo_id().unwrap(),
+                        CoinInfo {
+                            owner: *input.input_owner().unwrap(),
+                            amount: input.amount().unwrap(),
+                            asset_id: *input.asset_id(&AssetId::default()).unwrap(),
+                        },
+                    )
+                });
         let latest_tx_messages = tx
             .inputs()
             .iter()
@@ -126,8 +125,7 @@ impl TestCompressionCtx {
                         data: input.input_data().unwrap_or_default().to_vec(),
                     },
                 )
-            })
-            .collect::<Vec<_>>();
+            });
 
         self.latest_tx_coins.extend(latest_tx_coins);
         self.latest_tx_messages.extend(latest_tx_messages);

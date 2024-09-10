@@ -11,7 +11,7 @@ use crate::{
 
 /// Returns None if:
 /// - `num_leaves` is 0
-/// - the result doens't fit in an usize
+/// - the result doesn't fit in an usize
 fn path_length_from_key(key: u64, num_leaves: u64) -> Option<usize> {
     if num_leaves == 0 {
         return None;

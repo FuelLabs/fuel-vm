@@ -131,7 +131,7 @@ impl TransactionBuilder<Script> {
             body: ScriptBody {
                 script_gas_limit: Default::default(),
                 receipts_root: Default::default(),
-                script,
+                script: script.into(),
                 script_data,
             },
             policies: Policies::new().with_max_fee(0),

@@ -11,11 +11,15 @@ use crate::{
 };
 use alloc::vec::Vec;
 use derivative::Derivative;
+#[cfg(feature = "da-compression")]
+use fuel_compression::Compressible;
 use fuel_types::{
     Address,
     AssetId,
     Word,
 };
+
+use super::PredicateCode;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -30,19 +34,59 @@ mod private {
 }
 
 /// Specifies the coin based on the usage context. See [`Coin`].
+#[cfg(feature = "da-compression")]
+pub trait CoinSpecification: private::Seal {
+    type Witness: AsField<u16>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type Predicate: AsField<PredicateCode>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type PredicateData: AsField<Vec<u8>>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type PredicateGasUsed: AsField<Word>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+}
+#[cfg(not(feature = "da-compression"))]
 pub trait CoinSpecification: private::Seal {
     type Witness: AsField<u16>;
-    type Predicate: AsField<Vec<u8>>;
+    type Predicate: AsField<PredicateCode>;
     type PredicateData: AsField<Vec<u8>>;
     type PredicateGasUsed: AsField<Word>;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 pub struct Signed;
 
 impl CoinSpecification for Signed {
-    type Predicate = Empty<Vec<u8>>;
+    type Predicate = Empty<PredicateCode>;
     type PredicateData = Empty<Vec<u8>>;
     type PredicateGasUsed = Empty<Word>;
     type Witness = u16;
@@ -50,10 +94,14 @@ impl CoinSpecification for Signed {
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 pub struct Predicate;
 
 impl CoinSpecification for Predicate {
-    type Predicate = Vec<u8>;
+    type Predicate = PredicateCode;
     type PredicateData = Vec<u8>;
     type PredicateGasUsed = Word;
     type Witness = Empty<u16>;
@@ -64,7 +112,7 @@ impl CoinSpecification for Predicate {
 pub struct Full;
 
 impl CoinSpecification for Full {
-    type Predicate = Vec<u8>;
+    type Predicate = PredicateCode;
     type PredicateData = Vec<u8>;
     type PredicateGasUsed = Word;
     type Witness = u16;
@@ -95,18 +143,26 @@ impl CoinSpecification for Full {
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Coin<Specification>
 where
     Specification: CoinSpecification,
 {
     pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub owner: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub amount: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub asset_id: AssetId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub witness_index: Specification::Witness,
+    /// Exact amount of gas used by the predicate.
+    /// If the predicate consumes different amount of gas,
+    /// it's considered to be false.
     #[derivative(Debug(format_with = "fmt_as_field"))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[derivative(Debug(format_with = "fmt_as_field"))]

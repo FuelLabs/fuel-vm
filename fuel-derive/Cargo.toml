@@ -8,7 +8,7 @@ homepage = { workspace = true }
 keywords = ["blockchain", "cryptocurrencies", "fuel-vm", "vm"]
 license = { workspace = true }
 repository = { workspace = true }
-description = "FuelVM (de)serialization derive macros for `fuel-vm` data structures."
+description = "FuelVM (de)serialization and compression derive macros for `fuel-vm` data structures."
 
 [lib]
 proc-macro = true

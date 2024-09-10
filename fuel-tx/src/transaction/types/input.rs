@@ -9,9 +9,9 @@ use alloc::{
 use coin::*;
 use consts::*;
 use contract::*;
-use core::{
-    fmt,
-    fmt::Formatter,
+use core::fmt::{
+    self,
+    Formatter,
 };
 use fuel_crypto::{
     Hasher,
@@ -41,8 +41,10 @@ pub mod coin;
 mod consts;
 pub mod contract;
 pub mod message;
+mod predicate;
 mod repr;
 
+pub use predicate::PredicateCode;
 pub use repr::InputRepr;
 
 #[cfg(all(test, feature = "std"))]
@@ -54,10 +56,29 @@ pub trait AsField<Type>: AsFieldFmt {
     fn as_mut_field(&mut self) -> Option<&mut Type>;
 }
 
+pub trait AsFieldFmt {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result;
+}
+
+pub fn fmt_as_field<T>(field: &T, f: &mut Formatter) -> fmt::Result
+where
+    T: AsFieldFmt,
+{
+    field.fmt_as_field(f)
+}
+
 /// The empty field used by sub-types of the specification.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Empty<Type>(::core::marker::PhantomData<Type>);
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
+#[cfg_attr(feature = "da-compression", compress(discard(Type)))]
+pub struct Empty<Type>(
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    ::core::marker::PhantomData<Type>,
+);
 
 impl<Type> Empty<Type> {
     /// Creates `Self`.
@@ -184,19 +205,29 @@ impl AsFieldFmt for Vec<u8> {
     }
 }
 
-pub trait AsFieldFmt {
-    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result;
+impl AsField<PredicateCode> for PredicateCode {
+    #[inline(always)]
+    fn as_field(&self) -> Option<&PredicateCode> {
+        Some(self)
+    }
+
+    fn as_mut_field(&mut self) -> Option<&mut PredicateCode> {
+        Some(self)
+    }
 }
 
-pub fn fmt_as_field<T>(field: &T, f: &mut Formatter) -> fmt::Result
-where
-    T: AsFieldFmt,
-{
-    field.fmt_as_field(f)
+impl AsFieldFmt for PredicateCode {
+    fn fmt_as_field(&self, f: &mut Formatter) -> fmt::Result {
+        fmt_truncated_hex::<16>(self, f)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 pub enum Input {
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
@@ -248,7 +279,7 @@ impl Input {
             tx_pointer,
             witness_index: Empty::new(),
             predicate_gas_used,
-            predicate,
+            predicate: PredicateCode { bytes: predicate },
             predicate_data,
         })
     }
@@ -327,7 +358,7 @@ impl Input {
             witness_index: Empty::new(),
             predicate_gas_used,
             data: Empty::new(),
-            predicate,
+            predicate: PredicateCode { bytes: predicate },
             predicate_data,
         })
     }
@@ -371,7 +402,7 @@ impl Input {
             witness_index: Empty::new(),
             predicate_gas_used,
             data,
-            predicate,
+            predicate: PredicateCode { bytes: predicate },
             predicate_data,
         })
     }
@@ -966,7 +997,7 @@ pub mod typescript {
                 tx_pointer,
                 witness_index: Empty::new(),
                 predicate_gas_used,
-                predicate,
+                predicate: PredicateCode { bytes: predicate },
                 predicate_data,
             })))
         }
@@ -1052,7 +1083,7 @@ pub mod typescript {
                     witness_index: Empty::new(),
                     predicate_gas_used,
                     data: Empty::new(),
-                    predicate,
+                    predicate: PredicateCode { bytes: predicate },
                     predicate_data,
                 },
             )))
@@ -1102,7 +1133,7 @@ pub mod typescript {
                     witness_index: Empty::new(),
                     predicate_gas_used,
                     data,
-                    predicate,
+                    predicate: PredicateCode { bytes: predicate },
                     predicate_data,
                 },
             )))

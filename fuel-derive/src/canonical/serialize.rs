@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
-use crate::attribute::{
+use super::attribute::{
     should_skip_field_binding,
     StructAttrs,
 };
@@ -211,7 +211,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 }
 
 /// Derives `Serialize` trait for the given `struct` or `enum`.
-pub fn serialize_derive(mut s: synstructure::Structure) -> TokenStream2 {
+pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.add_bounds(synstructure::AddBounds::Fields)
         .underscore_const(true);
 

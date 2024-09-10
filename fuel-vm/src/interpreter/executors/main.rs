@@ -346,7 +346,7 @@ where
                 recipient: address,
                 ..
             }) => {
-                if !Input::is_predicate_owner_valid(address, predicate) {
+                if !Input::is_predicate_owner_valid(address, &**predicate) {
                     return (0, Err(PredicateVerificationFailed::InvalidOwner));
                 }
             }

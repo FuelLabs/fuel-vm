@@ -107,6 +107,7 @@ impl CheckRegId for RegId {
 
 impl CheckRegId for u8 {
     fn check(self) -> RegId {
+        assert_eq!(self, 0);
         RegId::new_checked(self).expect("CheckRegId was given invalid RegId")
     }
 }

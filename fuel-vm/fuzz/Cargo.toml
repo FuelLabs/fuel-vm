@@ -3,22 +3,41 @@ name = "fuel-vm-fuzz"
 version = "0.0.0"
 authors = ["Automatically generated"]
 publish = false
-edition = "2018"
+edition = "2021"
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = { version = "1.0", features = ["derive"] }
-fuel-vm = { path = "..", features = ["arbitrary"] }
-libfuzzer-sys = "0.4"
+fuel-vm = { path = "..", features = ["test-helpers"] }
+clap = { version = "4.0", features = ["derive"] }
+hex = "*"
+
+[features]
+default = ["libfuzzer"]
+libfuzzer = ["libfuzzer-sys"]
+libafl = ["libafl_libfuzzer"]
+
+[dependencies.libfuzzer-sys]
+version = "0.4"
+optional = true
+
+[dependencies.libafl_libfuzzer]
+version = "0.13"
+optional = true
 
 # Prevent this from interfering with workspaces as this crate requires unstable features.
 [workspace]
 members = ["."]
 
+[profile.release]
+panic = 'abort'
+
+[profile.dev]
+panic = 'abort'
+
 [[bin]]
-name = "grammar_aware"
-path = "fuzz_targets/grammar_aware.rs"
+name = "grammar_aware_advanced"
+path = "fuzz_targets/grammar_aware_advanced.rs"
 test = false
 doc = false

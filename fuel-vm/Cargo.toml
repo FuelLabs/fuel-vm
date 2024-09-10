@@ -85,7 +85,6 @@ std = [
     "itertools/use_std",
 ]
 alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-tx/alloc"]
-arbitrary = ["fuel-asm/arbitrary"]
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
@@ -109,3 +108,6 @@ test-helpers = [
     "tai64",
     "fuel-crypto/test-helpers",
 ]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

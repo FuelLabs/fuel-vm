@@ -211,13 +211,29 @@ pub mod test_helpers {
             self.block_height
         }
 
+        pub fn start_script_bytes(
+            &mut self,
+            script: Vec<u8>,
+            script_data: Vec<u8>,
+        ) -> &mut Self {
+            self.start_script_inner(script, script_data)
+        }
+
         pub fn start_script(
             &mut self,
             script: Vec<Instruction>,
             script_data: Vec<u8>,
         ) -> &mut Self {
-            let bytecode = script.into_iter().collect();
-            self.builder = TransactionBuilder::script(bytecode, script_data);
+            let script = script.into_iter().collect();
+            self.start_script_inner(script, script_data)
+        }
+
+        fn start_script_inner(
+            &mut self,
+            script: Vec<u8>,
+            script_data: Vec<u8>,
+        ) -> &mut Self {
+            self.builder = TransactionBuilder::script(script, script_data);
             self.builder.script_gas_limit(self.script_gas_limit);
             self
         }
@@ -430,20 +446,36 @@ pub mod test_helpers {
                 .build()
         }
 
+        pub fn setup_contract_bytes(
+            &mut self,
+            contract: Vec<u8>,
+            initial_balance: Option<(AssetId, Word)>,
+            initial_state: Option<Vec<StorageSlot>>,
+        ) -> CreatedContract {
+            self.setup_contract_inner(contract, initial_balance, initial_state)
+        }
+
         pub fn setup_contract(
             &mut self,
             contract: Vec<Instruction>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
         ) -> CreatedContract {
+            let contract = contract.into_iter().collect();
+
+            self.setup_contract_inner(contract, initial_balance, initial_state)
+        }
+
+        fn setup_contract_inner(
+            &mut self,
+            contract: Vec<u8>,
+            initial_balance: Option<(AssetId, Word)>,
+            initial_state: Option<Vec<StorageSlot>>,
+        ) -> CreatedContract {
             let storage_slots = initial_state.unwrap_or_default();
 
             let salt: Salt = self.rng.gen();
-            let program: Witness = contract
-                .into_iter()
-                .flat_map(Instruction::to_bytes)
-                .collect::<Vec<u8>>()
-                .into();
+            let program: Witness = contract.into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());
             let contract = Contract::from(program.as_ref());
             let contract_root = contract.root();

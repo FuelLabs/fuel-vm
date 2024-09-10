@@ -8,13 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
-
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): Add DA compression functionality to `Transaction` and any types within
+- [#733](https://github.com/FuelLabs/fuel-vm/pull/733): Add LibAFL based fuzzer and update `secp256k1` version to 0.29.1.
 
 ### Changed
 
 #### Breaking
-
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): The `predicate` field of `fuel_tx::input::Coin` is now a wrapper struct `PredicateCode`.
 
 ## [Version 0.56.0]

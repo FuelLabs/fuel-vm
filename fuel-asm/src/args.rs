@@ -11,7 +11,6 @@ crate::enum_try_from! {
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
     #[repr(u8)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
     /// Argument list for GM (get metadata) instruction
     /// The VM is the only who should match this struct, and it *MUST* always perform
     /// exhaustive match so all offered variants are covered.
@@ -51,7 +50,6 @@ crate::enum_try_from! {
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
     #[repr(u16)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
     pub enum GTFArgs {
         /// Set `$rA` to `tx.type`
         Type = 0x001,

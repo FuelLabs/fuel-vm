@@ -70,8 +70,8 @@ fn signatures(c: &mut Criterion) {
 
         let public = PublicKey::from_secret_key(&secp, &key);
         let message = fuel_crypto::Message::new(message);
-        let message =
-            Message::from_slice(message.as_ref()).expect("failed to create secp message");
+        let message = Message::from_digest_slice(message.as_ref())
+            .expect("failed to create secp message");
         let signature = secp_signing.sign_ecdsa(&message, &key);
         let recoverable = secp.sign_ecdsa_recoverable(&message, &key);
 

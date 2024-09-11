@@ -71,6 +71,10 @@ impl CreateMetadata {
 
 #[derive(Default, Debug, Clone, Derivative)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Create)]
 #[derivative(Eq, PartialEq, Hash)]

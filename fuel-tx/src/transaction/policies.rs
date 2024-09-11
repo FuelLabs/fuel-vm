@@ -20,11 +20,17 @@ use rand::{
     Rng,
 };
 
+/// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
+pub struct PoliciesBits(u32);
+
 bitflags::bitflags! {
-    /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
-    #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    pub struct PoliciesBits: u32 {
+    impl PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
         const Tip = 1 << 0;
         /// If set, the witness limit is present in the policies.
@@ -82,6 +88,10 @@ pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as us
 /// Container for managing policies.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Policies {
     /// A bitmask that indicates what policies are set.

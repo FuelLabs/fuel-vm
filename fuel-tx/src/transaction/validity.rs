@@ -131,7 +131,7 @@ impl Input {
                 recipient: owner,
                 predicate,
                 ..
-            }) if !Input::is_predicate_owner_valid(owner, predicate) => {
+            }) if !Input::is_predicate_owner_valid(owner, &**predicate) => {
                 Err(ValidityError::InputPredicateOwner { index })
             }
 

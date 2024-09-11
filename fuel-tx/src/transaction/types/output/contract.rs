@@ -7,14 +7,20 @@ use fuel_types::Bytes32;
 /// the `fuel-vm`.
 #[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = OutputContract))]
 pub struct Contract {
     /// Index of input contract.
     pub input_index: u16,
     /// Root of amount of coins owned by contract after transaction execution.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub balance_root: Bytes32,
     /// State root of contract after transaction execution.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub state_root: Bytes32,
 }
 

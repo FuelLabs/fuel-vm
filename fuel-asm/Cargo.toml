@@ -11,9 +11,8 @@ repository = { workspace = true }
 description = "Atomic types of the FuelVM."
 
 [dependencies]
-arbitrary = { version = "1.1", features = ["derive"], optional = true }
 bitflags = { workspace = true }
-fuel-types = { workspace = true }
+fuel-types = { workspace = true, default-features = false }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 strum = { version = "0.24", default-features = false, features = ["derive"] }
 wasm-bindgen = { version = "0.2.88", optional = true }

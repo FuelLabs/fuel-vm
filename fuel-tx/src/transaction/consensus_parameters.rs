@@ -61,36 +61,8 @@ impl ConsensusParameters {
         ConsensusParametersV1::standard_with_id(chain_id).into()
     }
 
-    // TODO[RC]: Shall we get rid of these constructors?
-    /// Constructor for the version 1 of `ConsensusParameters`
+    /// Constructor for the `ConsensusParameters`
     pub const fn new(
-        tx_params: TxParameters,
-        predicate_params: PredicateParameters,
-        script_params: ScriptParameters,
-        contract_params: ContractParameters,
-        fee_params: FeeParameters,
-        chain_id: ChainId,
-        gas_costs: GasCosts,
-        base_asset_id: AssetId,
-        block_gas_limit: u64,
-        privileged_address: Address,
-    ) -> Self {
-        Self::V1(ConsensusParametersV1 {
-            tx_params,
-            predicate_params,
-            script_params,
-            contract_params,
-            fee_params,
-            chain_id,
-            gas_costs,
-            base_asset_id,
-            block_gas_limit,
-            privileged_address,
-        })
-    }
-
-    /// Constructor for the version 2 of `ConsensusParameters`
-    pub const fn new_v2(
         tx_params: TxParameters,
         predicate_params: PredicateParameters,
         script_params: ScriptParameters,

@@ -22,11 +22,15 @@ const MAX_GAS: u64 = 100_000_000;
 #[cfg(feature = "test-helpers")]
 const MAX_SIZE: u64 = 110 * 1024;
 
+#[derive(Debug)]
+pub struct SettingBlockTransactionSizeLimitNotSupported;
+
 /// A versioned set of consensus parameters.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub enum ConsensusParameters {
     /// Version 1 of the consensus parameters
     V1(ConsensusParametersV1),
+    V2(ConsensusParametersV2),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -37,10 +41,18 @@ impl Default for ConsensusParameters {
 }
 
 impl ConsensusParameters {
+    const DEFAULT_BLOCK_TRANSACTION_SIZE_LIMIT: u64 = 126 * 1024;
+
     #[cfg(feature = "test-helpers")]
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
         ConsensusParametersV1::standard().into()
+    }
+
+    #[cfg(feature = "test-helpers")]
+    /// Constructor for the `ConsensusParameters` with Standard values.
+    pub fn standard_v2() -> Self {
+        ConsensusParametersV2::standard().into()
     }
 
     #[cfg(feature = "test-helpers")]
@@ -49,7 +61,8 @@ impl ConsensusParameters {
         ConsensusParametersV1::standard_with_id(chain_id).into()
     }
 
-    /// Constructor for the `ConsensusParameters`
+    // TODO[RC]: Shall we get rid of these constructors?
+    /// Constructor for the version 1 of `ConsensusParameters`
     pub const fn new(
         tx_params: TxParameters,
         predicate_params: PredicateParameters,
@@ -60,10 +73,37 @@ impl ConsensusParameters {
         gas_costs: GasCosts,
         base_asset_id: AssetId,
         block_gas_limit: u64,
-        block_transaction_size_limit: u32,
         privileged_address: Address,
     ) -> Self {
         Self::V1(ConsensusParametersV1 {
+            tx_params,
+            predicate_params,
+            script_params,
+            contract_params,
+            fee_params,
+            chain_id,
+            gas_costs,
+            base_asset_id,
+            block_gas_limit,
+            privileged_address,
+        })
+    }
+
+    /// Constructor for the version 2 of `ConsensusParameters`
+    pub const fn new_v2(
+        tx_params: TxParameters,
+        predicate_params: PredicateParameters,
+        script_params: ScriptParameters,
+        contract_params: ContractParameters,
+        fee_params: FeeParameters,
+        chain_id: ChainId,
+        gas_costs: GasCosts,
+        base_asset_id: AssetId,
+        block_gas_limit: u64,
+        block_transaction_size_limit: u64,
+        privileged_address: Address,
+    ) -> Self {
+        Self::V2(ConsensusParametersV2 {
             tx_params,
             predicate_params,
             script_params,
@@ -82,6 +122,7 @@ impl ConsensusParameters {
     pub const fn tx_params(&self) -> &TxParameters {
         match self {
             Self::V1(params) => &params.tx_params,
+            Self::V2(params) => &params.tx_params,
         }
     }
 
@@ -89,6 +130,7 @@ impl ConsensusParameters {
     pub const fn predicate_params(&self) -> &PredicateParameters {
         match self {
             Self::V1(params) => &params.predicate_params,
+            Self::V2(params) => &params.predicate_params,
         }
     }
 
@@ -96,6 +138,7 @@ impl ConsensusParameters {
     pub const fn script_params(&self) -> &ScriptParameters {
         match self {
             Self::V1(params) => &params.script_params,
+            Self::V2(params) => &params.script_params,
         }
     }
 
@@ -103,6 +146,7 @@ impl ConsensusParameters {
     pub const fn contract_params(&self) -> &ContractParameters {
         match self {
             Self::V1(params) => &params.contract_params,
+            Self::V2(params) => &params.contract_params,
         }
     }
 
@@ -110,6 +154,7 @@ impl ConsensusParameters {
     pub const fn fee_params(&self) -> &FeeParameters {
         match self {
             Self::V1(params) => &params.fee_params,
+            Self::V2(params) => &params.fee_params,
         }
     }
 
@@ -117,6 +162,7 @@ impl ConsensusParameters {
     pub const fn chain_id(&self) -> ChainId {
         match self {
             Self::V1(params) => params.chain_id,
+            Self::V2(params) => params.chain_id,
         }
     }
 
@@ -124,6 +170,7 @@ impl ConsensusParameters {
     pub const fn gas_costs(&self) -> &GasCosts {
         match self {
             Self::V1(params) => &params.gas_costs,
+            Self::V2(params) => &params.gas_costs,
         }
     }
 
@@ -131,6 +178,7 @@ impl ConsensusParameters {
     pub const fn base_asset_id(&self) -> &AssetId {
         match self {
             Self::V1(params) => &params.base_asset_id,
+            Self::V2(params) => &params.base_asset_id,
         }
     }
 
@@ -138,13 +186,18 @@ impl ConsensusParameters {
     pub const fn block_gas_limit(&self) -> u64 {
         match self {
             Self::V1(params) => params.block_gas_limit,
+            Self::V2(params) => params.block_gas_limit,
         }
     }
 
     /// Get the block transaction size limit
-    pub const fn block_transaction_size_limit(&self) -> u32 {
+    pub fn block_transaction_size_limit(&self) -> u64 {
         match self {
-            Self::V1(params) => params.block_transaction_size_limit,
+            Self::V1(params) => params
+                .block_gas_limit
+                .checked_div(self.fee_params().gas_per_byte())
+                .unwrap_or(Self::DEFAULT_BLOCK_TRANSACTION_SIZE_LIMIT),
+            Self::V2(params) => params.block_transaction_size_limit,
         }
     }
 
@@ -152,6 +205,7 @@ impl ConsensusParameters {
     pub const fn privileged_address(&self) -> &Address {
         match self {
             Self::V1(params) => &params.privileged_address,
+            Self::V2(params) => &params.privileged_address,
         }
     }
 }
@@ -161,6 +215,7 @@ impl ConsensusParameters {
     pub fn set_tx_params(&mut self, tx_params: TxParameters) {
         match self {
             Self::V1(params) => params.tx_params = tx_params,
+            Self::V2(params) => params.tx_params = tx_params,
         }
     }
 
@@ -168,6 +223,7 @@ impl ConsensusParameters {
     pub fn set_predicate_params(&mut self, predicate_params: PredicateParameters) {
         match self {
             Self::V1(params) => params.predicate_params = predicate_params,
+            Self::V2(params) => params.predicate_params = predicate_params,
         }
     }
 
@@ -175,6 +231,7 @@ impl ConsensusParameters {
     pub fn set_script_params(&mut self, script_params: ScriptParameters) {
         match self {
             Self::V1(params) => params.script_params = script_params,
+            Self::V2(params) => params.script_params = script_params,
         }
     }
 
@@ -182,6 +239,7 @@ impl ConsensusParameters {
     pub fn set_contract_params(&mut self, contract_params: ContractParameters) {
         match self {
             Self::V1(params) => params.contract_params = contract_params,
+            Self::V2(params) => params.contract_params = contract_params,
         }
     }
 
@@ -189,6 +247,7 @@ impl ConsensusParameters {
     pub fn set_fee_params(&mut self, fee_params: FeeParameters) {
         match self {
             Self::V1(params) => params.fee_params = fee_params,
+            Self::V2(params) => params.fee_params = fee_params,
         }
     }
 
@@ -196,6 +255,7 @@ impl ConsensusParameters {
     pub fn set_chain_id(&mut self, chain_id: ChainId) {
         match self {
             Self::V1(params) => params.chain_id = chain_id,
+            Self::V2(params) => params.chain_id = chain_id,
         }
     }
 
@@ -203,6 +263,7 @@ impl ConsensusParameters {
     pub fn set_gas_costs(&mut self, gas_costs: GasCosts) {
         match self {
             Self::V1(params) => params.gas_costs = gas_costs,
+            Self::V2(params) => params.gas_costs = gas_costs,
         }
     }
 
@@ -210,6 +271,7 @@ impl ConsensusParameters {
     pub fn set_base_asset_id(&mut self, base_asset_id: AssetId) {
         match self {
             Self::V1(params) => params.base_asset_id = base_asset_id,
+            Self::V2(params) => params.base_asset_id = base_asset_id,
         }
     }
 
@@ -217,6 +279,21 @@ impl ConsensusParameters {
     pub fn set_block_gas_limit(&mut self, block_gas_limit: u64) {
         match self {
             Self::V1(params) => params.block_gas_limit = block_gas_limit,
+            Self::V2(params) => params.block_gas_limit = block_gas_limit,
+        }
+    }
+
+    /// Set the block transaction size limit.
+    pub fn set_block_transaction_size_limit(
+        &mut self,
+        block_transaction_size_limit: u64,
+    ) -> Result<(), SettingBlockTransactionSizeLimitNotSupported> {
+        match self {
+            Self::V1(_) => Err(SettingBlockTransactionSizeLimitNotSupported),
+            Self::V2(params) => {
+                params.block_transaction_size_limit = block_transaction_size_limit;
+                Ok(())
+            }
         }
     }
 
@@ -224,6 +301,7 @@ impl ConsensusParameters {
     pub fn set_privileged_address(&mut self, privileged_address: Address) {
         match self {
             Self::V1(params) => params.privileged_address = privileged_address,
+            Self::V2(params) => params.privileged_address = privileged_address,
         }
     }
 }
@@ -240,7 +318,6 @@ pub struct ConsensusParametersV1 {
     pub gas_costs: GasCosts,
     pub base_asset_id: AssetId,
     pub block_gas_limit: u64,
-    pub block_transaction_size_limit: u32,
     /// The privileged address(user or predicate) that can perform permissioned
     /// operations(like upgrading the network).
     pub privileged_address: Address,
@@ -265,9 +342,6 @@ impl ConsensusParametersV1 {
             gas_costs: GasCosts::default(),
             base_asset_id: Default::default(),
             block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx(),
-            // TODO[RC]: Should not be u64::default(), but some other "default" value,
-            // like 126kb?
-            block_transaction_size_limit: Default::default(),
             privileged_address: Default::default(),
         }
     }
@@ -283,6 +357,63 @@ impl Default for ConsensusParametersV1 {
 impl From<ConsensusParametersV1> for ConsensusParameters {
     fn from(params: ConsensusParametersV1) -> Self {
         Self::V1(params)
+    }
+}
+
+/// A collection of parameters for convenience
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct ConsensusParametersV2 {
+    pub tx_params: TxParameters,
+    pub predicate_params: PredicateParameters,
+    pub script_params: ScriptParameters,
+    pub contract_params: ContractParameters,
+    pub fee_params: FeeParameters,
+    pub chain_id: ChainId,
+    pub gas_costs: GasCosts,
+    pub base_asset_id: AssetId,
+    pub block_gas_limit: u64,
+    pub block_transaction_size_limit: u64,
+    /// The privileged address(user or predicate) that can perform permissioned
+    /// operations(like upgrading the network).
+    pub privileged_address: Address,
+}
+
+#[cfg(feature = "test-helpers")]
+impl ConsensusParametersV2 {
+    /// Constructor for the `ConsensusParameters` with Standard values.
+    pub fn standard() -> Self {
+        Self::standard_with_id(ChainId::default())
+    }
+
+    /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
+    pub fn standard_with_id(chain_id: ChainId) -> Self {
+        Self {
+            tx_params: TxParameters::DEFAULT,
+            predicate_params: PredicateParameters::DEFAULT,
+            script_params: ScriptParameters::DEFAULT,
+            contract_params: ContractParameters::DEFAULT,
+            fee_params: FeeParameters::DEFAULT,
+            chain_id,
+            gas_costs: GasCosts::default(),
+            base_asset_id: Default::default(),
+            block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx(),
+            block_transaction_size_limit:
+                ConsensusParameters::DEFAULT_BLOCK_TRANSACTION_SIZE_LIMIT,
+            privileged_address: Default::default(),
+        }
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for ConsensusParametersV2 {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl From<ConsensusParametersV2> for ConsensusParameters {
+    fn from(params: ConsensusParametersV2) -> Self {
+        Self::V2(params)
     }
 }
 
@@ -927,5 +1058,36 @@ pub mod typescript {
 
             PredicateParameters(params.into())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ConsensusParameters,
+        FeeParameters,
+    };
+
+    #[test]
+    fn v1_returns_correct_block_transaction_size_limit_with_non_zero_gas_per_byte() {
+        let fee_params = FeeParameters::DEFAULT.with_gas_per_byte(2);
+        let mut consensus_params_v1 = ConsensusParameters::standard();
+        consensus_params_v1.set_fee_params(fee_params);
+        consensus_params_v1.set_block_gas_limit(100);
+
+        assert_eq!(100 / 2, consensus_params_v1.block_transaction_size_limit())
+    }
+
+    #[test]
+    fn v1_returns_correct_block_transaction_size_limit_with_zero_gas_per_byte() {
+        let fee_params = FeeParameters::DEFAULT.with_gas_per_byte(0);
+        let mut consensus_params_v1 = ConsensusParameters::standard();
+        consensus_params_v1.set_fee_params(fee_params);
+        consensus_params_v1.set_block_gas_limit(100);
+
+        assert_eq!(
+            ConsensusParameters::DEFAULT_BLOCK_TRANSACTION_SIZE_LIMIT,
+            consensus_params_v1.block_transaction_size_limit()
+        )
     }
 }

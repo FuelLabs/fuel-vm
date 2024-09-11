@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [#819](https://github.com/FuelLabs/fuel-vm/pull/819): Added `block_transaction_size_limit` to `ConsensusParameters`
+
 ## [Version 0.56.0]
 
 ### Added

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#733](https://github.com/FuelLabs/fuel-vm/pull/733): Add LibAFL based fuzzer and update `secp256k1` version to 0.29.1.
 
 ### Changed
+- [#824](https://github.com/FuelLabs/fuel-vm/pull/824): Use `self` instead of `&self` during decompression.
 - [#823](https://github.com/FuelLabs/fuel-vm/pull/823): Returned the old behaviour of the json serialization for policies.
 
 #### Breaking

@@ -327,6 +327,8 @@ impl From<ConsensusParametersV1> for ConsensusParameters {
 }
 
 /// A collection of parameters for convenience
+/// The difference with [`ConsensusParametersV1`]:
+/// - `block_transaction_size_limit` has been added.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct ConsensusParametersV2 {
     pub tx_params: TxParameters,

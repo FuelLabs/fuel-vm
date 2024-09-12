@@ -46,19 +46,13 @@ impl ConsensusParameters {
     #[cfg(feature = "test-helpers")]
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
-        ConsensusParametersV1::standard().into()
-    }
-
-    #[cfg(feature = "test-helpers")]
-    /// Constructor for the `ConsensusParameters` with Standard values.
-    pub fn standard_v2() -> Self {
         ConsensusParametersV2::standard().into()
     }
 
     #[cfg(feature = "test-helpers")]
     /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
     pub fn standard_with_id(chain_id: ChainId) -> Self {
-        ConsensusParametersV1::standard_with_id(chain_id).into()
+        ConsensusParametersV2::standard_with_id(chain_id).into()
     }
 
     /// Constructor for the `ConsensusParameters`
@@ -1035,6 +1029,8 @@ pub mod typescript {
 
 #[cfg(test)]
 mod tests {
+    use crate::consensus_parameters::ConsensusParametersV1;
+
     use super::{
         ConsensusParameters,
         FeeParameters,
@@ -1042,24 +1038,35 @@ mod tests {
 
     #[test]
     fn v1_returns_correct_block_transaction_size_limit_with_non_zero_gas_per_byte() {
-        let fee_params = FeeParameters::DEFAULT.with_gas_per_byte(2);
-        let mut consensus_params_v1 = ConsensusParameters::standard();
-        consensus_params_v1.set_fee_params(fee_params);
-        consensus_params_v1.set_block_gas_limit(100);
+        const BLOCK_GAS_LIMIT: u64 = 100;
+        const GAS_PER_BYTE: u64 = 2;
 
-        assert_eq!(100 / 2, consensus_params_v1.block_transaction_size_limit())
+        let fee_params = FeeParameters::DEFAULT.with_gas_per_byte(GAS_PER_BYTE);
+        let v1 = ConsensusParametersV1::standard();
+        let mut consensus_params: ConsensusParameters = v1.into();
+        consensus_params.set_fee_params(fee_params);
+        consensus_params.set_block_gas_limit(BLOCK_GAS_LIMIT);
+
+        assert_eq!(
+            BLOCK_GAS_LIMIT / GAS_PER_BYTE,
+            consensus_params.block_transaction_size_limit()
+        )
     }
 
     #[test]
     fn v1_returns_correct_block_transaction_size_limit_with_zero_gas_per_byte() {
-        let fee_params = FeeParameters::DEFAULT.with_gas_per_byte(0);
-        let mut consensus_params_v1 = ConsensusParameters::standard();
-        consensus_params_v1.set_fee_params(fee_params);
-        consensus_params_v1.set_block_gas_limit(100);
+        const BLOCK_GAS_LIMIT: u64 = 100;
+        const GAS_PER_BYTE: u64 = 0;
+
+        let fee_params = FeeParameters::DEFAULT.with_gas_per_byte(GAS_PER_BYTE);
+        let v1 = ConsensusParametersV1::standard();
+        let mut consensus_params: ConsensusParameters = v1.into();
+        consensus_params.set_fee_params(fee_params);
+        consensus_params.set_block_gas_limit(BLOCK_GAS_LIMIT);
 
         assert_eq!(
             ConsensusParameters::DEFAULT_BLOCK_TRANSACTION_SIZE_LIMIT,
-            consensus_params_v1.block_transaction_size_limit()
+            consensus_params.block_transaction_size_limit()
         )
     }
 }

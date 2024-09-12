@@ -56,8 +56,8 @@ impl<Ctx> fuel_compression::DecompressibleBy<Ctx> for PoliciesBits
 where
     Ctx: fuel_compression::ContextError,
 {
-    async fn decompress_with(c: &Self::Compressed, _: &Ctx) -> Result<Self, Ctx::Error> {
-        Ok(Self::from_bits_truncate(*c))
+    async fn decompress_with(c: Self::Compressed, _: &Ctx) -> Result<Self, Ctx::Error> {
+        Ok(Self::from_bits_truncate(c))
     }
 }
 

@@ -163,12 +163,12 @@ macro_rules! impl_substitutable_key {
 
         impl DecompressibleBy<TestCompressionCtx> for $t {
             async fn decompress_with(
-                key: &RegistryKey,
+                key: RegistryKey,
                 ctx: &TestCompressionCtx,
             ) -> Result<$t, Infallible> {
                 let keyspace = stringify!($t);
                 let values = ctx.registry.get(&keyspace).expect("key not found");
-                let value = values.get_by_left(key).expect("key not found");
+                let value = values.get_by_left(&key).expect("key not found");
                 Ok(postcard::from_bytes(value).expect("failed to deserialize"))
             }
         }
@@ -202,10 +202,10 @@ impl CompressibleBy<TestCompressionCtx> for UtxoId {
 
 impl DecompressibleBy<TestCompressionCtx> for UtxoId {
     async fn decompress_with(
-        key: &CompressedUtxoId,
+        key: CompressedUtxoId,
         ctx: &TestCompressionCtx,
     ) -> Result<UtxoId, Infallible> {
-        Ok(*ctx.tx_blocks.get_by_left(key).expect("key not found"))
+        Ok(*ctx.tx_blocks.get_by_left(&key).expect("key not found"))
     }
 }
 
@@ -218,10 +218,10 @@ where
     Specification::Witness: DecompressibleBy<TestCompressionCtx>,
 {
     async fn decompress_with(
-        c: &<Coin<Specification> as Compressible>::Compressed,
+        c: <Coin<Specification> as Compressible>::Compressed,
         ctx: &TestCompressionCtx,
     ) -> Result<Coin<Specification>, Infallible> {
-        let utxo_id = UtxoId::decompress_with(&c.utxo_id, ctx).await?;
+        let utxo_id = UtxoId::decompress_with(c.utxo_id, ctx).await?;
         let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
         let witness_index = c.witness_index.decompress(ctx).await?;
         let predicate_gas_used = c.predicate_gas_used.decompress(ctx).await?;
@@ -252,7 +252,7 @@ where
     Specification::Witness: DecompressibleBy<TestCompressionCtx>,
 {
     async fn decompress_with(
-        c: &<Message<Specification> as Compressible>::Compressed,
+        c: <Message<Specification> as Compressible>::Compressed,
         ctx: &TestCompressionCtx,
     ) -> Result<Message<Specification>, Infallible> {
         let msg = ctx
@@ -285,7 +285,7 @@ where
 
 impl DecompressibleBy<TestCompressionCtx> for Mint {
     async fn decompress_with(
-        c: &Self::Compressed,
+        c: Self::Compressed,
         ctx: &TestCompressionCtx,
     ) -> Result<Self, Infallible> {
         Ok(Transaction::mint(
@@ -338,7 +338,7 @@ async fn example_struct_postcard_roundtrip_multiple() {
             postcard::to_stdvec(&compressed).expect("failed to serialize");
         let compressed_deserialized =
             postcard::from_bytes(&compressed_serialized).expect("failed to deserialize");
-        let decompressed = Example::decompress_with(&compressed_deserialized, &ctx)
+        let decompressed = Example::decompress_with(compressed_deserialized, &ctx)
             .await
             .expect("decompression failed");
         assert_eq!(original, decompressed);
@@ -414,7 +414,7 @@ async fn skipped_fields_are_set_to_default_when_deserializing() {
         .compress_with(&mut ctx)
         .await
         .expect("compression failed");
-    let decompressed = Example::decompress_with(&compressed, &ctx)
+    let decompressed = Example::decompress_with(compressed, &ctx)
         .await
         .expect("decompression failed");
     assert_eq!(

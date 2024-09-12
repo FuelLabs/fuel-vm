@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#733](https://github.com/FuelLabs/fuel-vm/pull/733): Add LibAFL based fuzzer and update `secp256k1` version to 0.29.1.
 
 ### Changed
+- [#823](https://github.com/FuelLabs/fuel-vm/pull/823): Returned the old behaviour of the json serialization for policies.
 
 #### Breaking
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): The `predicate` field of `fuel_tx::input::Coin` is now a wrapper struct `PredicateCode`.

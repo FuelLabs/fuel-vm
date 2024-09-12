@@ -301,7 +301,7 @@ impl<T: Serialize> Serialize for Vec<T> {
     // `encode_dynamic` method.
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
         if self.len() > VEC_DECODE_LIMIT {
-            return Err(Error::AllocationLimit)
+            return Err(Error::AllocationLimit);
         }
         let len: u64 = self.len().try_into().expect("msg.len() > u64::MAX");
         len.encode(buffer)
@@ -334,7 +334,7 @@ impl<T: Deserialize> Deserialize for Vec<T> {
         let cap = u64::decode(buffer)?;
         let cap: usize = cap.try_into().map_err(|_| Error::AllocationLimit)?;
         if cap > VEC_DECODE_LIMIT {
-            return Err(Error::AllocationLimit)
+            return Err(Error::AllocationLimit);
         }
         Ok(Vec::with_capacity(cap))
     }
@@ -430,23 +430,40 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
         } else {
             // Spec doesn't say how to deserialize arrays with unaligned
             // primitives(as `u16`, `u32`, `usize`), so unpad them.
-            let mut uninit = <MaybeUninit<[T; N]>>::uninit();
+            let mut uninit: [MaybeUninit<T>; N] =
+                [const { MaybeUninit::<T>::uninit() }; N];
             // The following line coerces the pointer to the array to a pointer
             // to the first array element which is equivalent.
             let mut ptr = uninit.as_mut_ptr() as *mut T;
-            for _ in 0..N {
-                let decoded = T::decode_static(buffer)?;
-                // SAFETY: We do not read uninitialized array contents
-                // 		 while initializing them.
-                unsafe {
-                    core::ptr::write(ptr, decoded);
+            for i in 0..N {
+                match T::decode_static(buffer) {
+                    Err(e) => {
+                        for item in uninit.iter_mut().take(i) {
+                            // SAFETY: all elements up to index i (excluded have been
+                            // initialised)
+                            unsafe {
+                                item.assume_init_drop();
+                            }
+                        }
+                        return Err(e);
+                    }
+                    Ok(decoded) => {
+                        // SAFETY: We do not read uninitialized array contents
+                        // 		 while initializing them.
+                        unsafe {
+                            core::ptr::write(ptr, decoded);
+                        }
+
+                        // SAFETY: Point to the next element after every iteration.
+                        // 		 We do this N times therefore this is safe.
+                        ptr = unsafe { ptr.add(1) };
+                    }
                 }
-                // SAFETY: Point to the next element after every iteration.
-                // 		 We do this N times therefore this is safe.
-                ptr = unsafe { ptr.add(1) };
             }
+            let final_ptr = &mut uninit as *mut _ as *mut [T; N];
             // SAFETY: All array elements have been initialized above.
-            let init = unsafe { uninit.assume_init() };
+            let init = unsafe { final_ptr.read() };
+
             Ok(init)
         }
     }
@@ -470,7 +487,7 @@ impl Output for Vec<u8> {
 impl<'a> Output for &'a mut [u8] {
     fn write(&mut self, from: &[u8]) -> Result<(), Error> {
         if from.len() > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
         let len = from.len();
         self[..len].copy_from_slice(from);
@@ -491,7 +508,7 @@ impl<'a> Input for &'a [u8] {
 
     fn peek(&self, into: &mut [u8]) -> Result<(), Error> {
         if into.len() > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
 
         let len = into.len();
@@ -501,7 +518,7 @@ impl<'a> Input for &'a [u8] {
 
     fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {
         if into.len() > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
 
         let len = into.len();
@@ -512,7 +529,7 @@ impl<'a> Input for &'a [u8] {
 
     fn skip(&mut self, n: usize) -> Result<(), Error> {
         if n > self.len() {
-            return Err(Error::BufferIsTooShort)
+            return Err(Error::BufferIsTooShort);
         }
 
         *self = &self[n..];

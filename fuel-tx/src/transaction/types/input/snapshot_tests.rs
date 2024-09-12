@@ -24,9 +24,14 @@ fn tx_with_signed_coin_snapshot() {
         .witness_limit(1000)
         .finalize_as_transaction();
 
+    // Canonical
     let bytes = tx.to_bytes();
     let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
+
+    // Json
+    let json = serde_json::to_string_pretty(&tx).unwrap();
+    insta::assert_snapshot!(json);
 }
 
 #[test]
@@ -48,9 +53,14 @@ fn tx_with_predicate_coin_snapshot() {
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
+    // Canonical
     let bytes = tx.to_bytes();
     let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
+
+    // Json
+    let json = serde_json::to_string_pretty(&tx).unwrap();
+    insta::assert_snapshot!(json);
 }
 
 #[test]
@@ -68,9 +78,14 @@ fn tx_with_contract_snapshot() {
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
+    // Canonical
     let bytes = tx.to_bytes();
     let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
+
+    // Json
+    let json = serde_json::to_string_pretty(&tx).unwrap();
+    insta::assert_snapshot!(json);
 }
 
 #[test]
@@ -93,9 +108,14 @@ fn tx_with_signed_message_coin() {
         .witness_limit(1000)
         .finalize_as_transaction();
 
+    // Canonical
     let bytes = tx.to_bytes();
     let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
+
+    // Json
+    let json = serde_json::to_string_pretty(&tx).unwrap();
+    insta::assert_snapshot!(json);
 }
 
 #[test]
@@ -117,9 +137,14 @@ fn tx_with_predicate_message_coin() {
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
+    // Canonical
     let bytes = tx.to_bytes();
     let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
+
+    // Json
+    let json = serde_json::to_string_pretty(&tx).unwrap();
+    insta::assert_snapshot!(json);
 }
 
 #[test]
@@ -142,9 +167,14 @@ fn tx_with_signed_message_data() {
         .witness_limit(1000)
         .finalize_as_transaction();
 
+    // Canonical
     let bytes = tx.to_bytes();
     let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
+
+    // Json
+    let json = serde_json::to_string_pretty(&tx).unwrap();
+    insta::assert_snapshot!(json);
 }
 
 #[test]
@@ -166,7 +196,12 @@ fn tx_with_predicate_message_data() {
         .max_fee_limit(1000000)
         .finalize_as_transaction();
 
+    // Canonical
     let bytes = tx.to_bytes();
     let hex = hex::encode(bytes);
     insta::assert_snapshot!(hex);
+
+    // Json
+    let json = serde_json::to_string_pretty(&tx).unwrap();
+    insta::assert_snapshot!(json);
 }

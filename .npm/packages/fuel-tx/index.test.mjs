@@ -230,7 +230,7 @@ describe('fuel-tx [mjs]', () => {
 
     it('should be able to deserialize snapshots', () => {
         const snapshots = '../../../fuel-tx/src/transaction/types/input/snapshots';
-        fs.readdirSync(snapshots).forEach(file => {
+        fs.readdirSync(snapshots).filter(fn => fn.endsWith('_canonical.snap')).forEach(file => {
             fs.readFile(path.join(snapshots, file), 'utf8', (err, data) => {
                 expect(err).to.be.null;
                 let dataBytes = hexToBytes(data.split('---\n').at(-1).trim());

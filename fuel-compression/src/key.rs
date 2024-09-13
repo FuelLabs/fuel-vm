@@ -44,7 +44,7 @@ impl TryFrom<u32> for RegistryKey {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let v = value.to_be_bytes();
         if v[0] != 0 {
-            return Err("RegistryKey must be less than 2^24")
+            return Err("RegistryKey must be less than 2^24");
         }
 
         let mut bytes = [0u8; 3];

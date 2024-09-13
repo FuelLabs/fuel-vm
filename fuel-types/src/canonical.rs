@@ -430,11 +430,12 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
         } else {
             // Spec doesn't say how to deserialize arrays with unaligned
             // primitives(as `u16`, `u32`, `usize`), so unpad them.
+            // SAFETY: `uninit`` is an array of `MaybUninit`, which do not require
+            // initialization
             let mut uninit: [MaybeUninit<T>; N] =
-                [const { MaybeUninit::<T>::uninit() }; N];
+                unsafe { MaybeUninit::uninit().assume_init() };
             // The following line coerces the pointer to the array to a pointer
             // to the first array element which is equivalent.
-            let mut ptr = uninit.as_mut_ptr() as *mut T;
             for i in 0..N {
                 match T::decode_static(buffer) {
                     Err(e) => {
@@ -448,22 +449,18 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
                         return Err(e);
                     }
                     Ok(decoded) => {
-                        // SAFETY: We do not read uninitialized array contents
-                        // 		 while initializing them.
-                        unsafe {
-                            core::ptr::write(ptr, decoded);
-                        }
+                        // SAFETY: `uninit[i]` is a MaybeUninit which can be
+                        // safely overwritten.
+                        uninit[i].write(decoded);
 
                         // SAFETY: Point to the next element after every iteration.
                         // 		 We do this N times therefore this is safe.
-                        ptr = unsafe { ptr.add(1) };
                     }
                 }
             }
-            let final_ptr = &mut uninit as *mut _ as *mut [T; N];
-            // SAFETY: All array elements have been initialized above.
-            let init = unsafe { final_ptr.read() };
 
+            // SAFETY: All array elements have been initialized above.
+            let init = uninit.map(|v| unsafe { v.assume_init() });
             Ok(init)
         }
     }

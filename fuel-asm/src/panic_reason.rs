@@ -23,14 +23,14 @@ macro_rules! enum_from {
 }
 
 enum_from! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
     #[repr(u8)]
     #[non_exhaustive]
     /// Panic reason representation for the interpreter.
     pub enum PanicReason {
+        #[default]
         /// The byte can't be mapped to any known `PanicReason`.
         UnknownPanicReason = 0x00,
         /// Found `RVRT` instruction.

@@ -301,7 +301,7 @@ impl<T: Serialize> Serialize for Vec<T> {
     // `encode_dynamic` method.
     fn encode_static<O: Output + ?Sized>(&self, buffer: &mut O) -> Result<(), Error> {
         if self.len() > VEC_DECODE_LIMIT {
-            return Err(Error::AllocationLimit);
+            return Err(Error::AllocationLimit)
         }
         let len: u64 = self.len().try_into().expect("msg.len() > u64::MAX");
         len.encode(buffer)
@@ -334,7 +334,7 @@ impl<T: Deserialize> Deserialize for Vec<T> {
         let cap = u64::decode(buffer)?;
         let cap: usize = cap.try_into().map_err(|_| Error::AllocationLimit)?;
         if cap > VEC_DECODE_LIMIT {
-            return Err(Error::AllocationLimit);
+            return Err(Error::AllocationLimit)
         }
         Ok(Vec::with_capacity(cap))
     }
@@ -446,7 +446,7 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
                                 item.assume_init_drop();
                             }
                         }
-                        return Err(e);
+                        return Err(e)
                     }
                     Ok(decoded) => {
                         // SAFETY: `uninit[i]` is a MaybeUninit which can be
@@ -484,7 +484,7 @@ impl Output for Vec<u8> {
 impl<'a> Output for &'a mut [u8] {
     fn write(&mut self, from: &[u8]) -> Result<(), Error> {
         if from.len() > self.len() {
-            return Err(Error::BufferIsTooShort);
+            return Err(Error::BufferIsTooShort)
         }
         let len = from.len();
         self[..len].copy_from_slice(from);
@@ -505,7 +505,7 @@ impl<'a> Input for &'a [u8] {
 
     fn peek(&self, into: &mut [u8]) -> Result<(), Error> {
         if into.len() > self.len() {
-            return Err(Error::BufferIsTooShort);
+            return Err(Error::BufferIsTooShort)
         }
 
         let len = into.len();
@@ -515,7 +515,7 @@ impl<'a> Input for &'a [u8] {
 
     fn read(&mut self, into: &mut [u8]) -> Result<(), Error> {
         if into.len() > self.len() {
-            return Err(Error::BufferIsTooShort);
+            return Err(Error::BufferIsTooShort)
         }
 
         let len = into.len();
@@ -526,7 +526,7 @@ impl<'a> Input for &'a [u8] {
 
     fn skip(&mut self, n: usize) -> Result<(), Error> {
         if n > self.len() {
-            return Err(Error::BufferIsTooShort);
+            return Err(Error::BufferIsTooShort)
         }
 
         *self = &self[n..];

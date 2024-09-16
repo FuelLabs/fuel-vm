@@ -1028,3 +1028,39 @@ pub mod typescript {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::consensus_parameters::{
+        ConsensusParametersV2,
+        SettingBlockTransactionSizeLimitNotSupported,
+    };
+
+    use super::{
+        ConsensusParameters,
+        ConsensusParametersV1,
+    };
+
+    #[test]
+    fn error_when_setting_block_size_limit_in_consensus_parameters_v1() {
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV1::default().into();
+
+        let result = consensus_params.set_block_transaction_size_limit(0);
+
+        assert!(matches!(
+            result,
+            Err(SettingBlockTransactionSizeLimitNotSupported)
+        ))
+    }
+
+    #[test]
+    fn ok_when_setting_block_size_limit_in_consensus_parameters_v2() {
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV2::default().into();
+
+        let result = consensus_params.set_block_transaction_size_limit(0);
+
+        assert!(matches!(result, Ok(())))
+    }
+}

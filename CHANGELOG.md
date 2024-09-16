@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#825](https://github.com/FuelLabs/fuel-vm/pull/733): Avoid leaking partially allocated memory when array deserialization fails
 
 ### Changed
+- [#823](https://github.com/FuelLabs/fuel-vm/pull/823): Returned the old behaviour of the json serialization for policies.
 
 #### Breaking
 - [#826](https://github.com/FuelLabs/fuel-vm/pull/826): Skip the panic reason from canonical serialization of the panic receipt.

@@ -159,7 +159,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
 
     let impls = s.gen_impl(quote! {
         gen impl<Ctx> ::fuel_compression::DecompressibleBy<Ctx> for @Self #w_impl_field_bounds_decompress {
-            async fn decompress_with(compressed: &Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
+            async fn decompress_with(compressed: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
                 Ok(match compressed { #decompress_per_variant })
             }
         }

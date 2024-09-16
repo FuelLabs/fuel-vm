@@ -34,10 +34,10 @@ macro_rules! identity_compression {
             Ctx: ContextError,
         {
             async fn decompress_with(
-                c: &Self::Compressed,
+                c: Self::Compressed,
                 _: &Ctx,
             ) -> Result<Self, Ctx::Error> {
-                Ok(*c)
+                Ok(c)
             }
         }
     };
@@ -120,17 +120,13 @@ where
     Ctx: ContextError,
 {
     #[allow(unsafe_code)]
-    async fn decompress_with(
-        c: &Self::Compressed,
-        ctx: &Ctx,
-    ) -> Result<Self, Ctx::Error> {
+    async fn decompress_with(c: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
         // SAFETY: we are claiming to have initialized an array of `MaybeUninit`s,
         // which do not require initialization.
         let mut tmp: [MaybeUninit<T>; S] = unsafe { MaybeUninit::uninit().assume_init() };
 
-        let mut i = 0;
-        while i < c.len() {
-            match T::decompress_with(&c[i], ctx).await {
+        for (i, c) in c.into_iter().enumerate() {
+            match T::decompress_with(c, ctx).await {
                 Ok(value) => {
                     // SAFETY: MaybeUninit can be safely overwritten.
                     tmp[i].write(value);
@@ -146,7 +142,6 @@ where
                     return Err(e);
                 }
             }
-            i += 1;
         }
 
         // SAFETY: Every element is initialized.
@@ -181,10 +176,7 @@ where
     T: DecompressibleBy<Ctx>,
     Ctx: ContextError,
 {
-    async fn decompress_with(
-        c: &Self::Compressed,
-        ctx: &Ctx,
-    ) -> Result<Self, Ctx::Error> {
+    async fn decompress_with(c: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error> {
         let mut result = Vec::with_capacity(c.len());
         for item in c {
             result.push(T::decompress_with(item, ctx).await?);

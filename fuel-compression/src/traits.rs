@@ -34,8 +34,7 @@ where
 {
     /// Perform decompression, returning the original data.
     /// The context can be used to resolve references.
-    async fn decompress_with(c: &Self::Compressed, ctx: &Ctx)
-        -> Result<Self, Ctx::Error>;
+    async fn decompress_with(c: Self::Compressed, ctx: &Ctx) -> Result<Self, Ctx::Error>;
 }
 
 /// The trait allows for decompression of a compressed type.
@@ -46,7 +45,7 @@ where
     Ctx: ContextError,
 {
     /// Perform decompression, returning the original data.
-    async fn decompress(&self, ctx: &Ctx) -> Result<Decompressed, Ctx::Error>;
+    async fn decompress(self, ctx: &Ctx) -> Result<Decompressed, Ctx::Error>;
 }
 
 impl<T, Ctx, Decompressed> Decompress<Decompressed, Ctx> for T
@@ -54,7 +53,7 @@ where
     Ctx: ContextError,
     Decompressed: DecompressibleBy<Ctx, Compressed = Self>,
 {
-    async fn decompress(&self, ctx: &Ctx) -> Result<Decompressed, Ctx::Error> {
+    async fn decompress(self, ctx: &Ctx) -> Result<Decompressed, Ctx::Error> {
         Decompressed::decompress_with(self, ctx).await
     }
 }

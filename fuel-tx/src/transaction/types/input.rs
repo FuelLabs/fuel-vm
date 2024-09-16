@@ -423,11 +423,13 @@ impl Input {
         match self {
             Self::CoinSigned(CoinSigned { owner, .. })
             | Self::CoinPredicate(CoinPredicate { owner, .. }) => Some(owner),
-            Self::MessageCoinSigned(_)
-            | Self::MessageCoinPredicate(_)
-            | Self::MessageDataSigned(_)
-            | Self::MessageDataPredicate(_)
-            | Self::Contract(_) => None,
+            Self::MessageCoinSigned(MessageCoinSigned { recipient, .. })
+            | Self::MessageCoinPredicate(MessageCoinPredicate { recipient, .. })
+            | Self::MessageDataSigned(MessageDataSigned { recipient, .. })
+            | Self::MessageDataPredicate(MessageDataPredicate { recipient, .. }) => {
+                Some(recipient)
+            }
+            Self::Contract(_) => None,
         }
     }
 

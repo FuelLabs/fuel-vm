@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#821](https://github.com/FuelLabs/fuel-vm/pull/821): Added `block_transaction_size_limit` to `ConsensusParameters`. It adds a new `ConensusParametersV2` as a variant of the `ConsensusParameters`.
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): The `predicate` field of `fuel_tx::input::Coin` is now a wrapper struct `PredicateCode`.
 
+### Fixed
+- [#822](https://github.com/FuelLabs/fuel-vm/pull/822): Return recipient as an owner for the message inputs.
+
 ## [Version 0.56.0]
 
 ### Added

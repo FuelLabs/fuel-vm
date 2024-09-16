@@ -10,12 +10,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): Add DA compression functionality to `Transaction` and any types within
 - [#733](https://github.com/FuelLabs/fuel-vm/pull/733): Add LibAFL based fuzzer and update `secp256k1` version to 0.29.1.
+- [#825](https://github.com/FuelLabs/fuel-vm/pull/733): Avoid leaking partially allocated memory when array deserialization fails
 
 ### Changed
 
 #### Breaking
 - [#826](https://github.com/FuelLabs/fuel-vm/pull/826): Skip the panic reason from canonical serialization of the panic receipt.
+- [#821](https://github.com/FuelLabs/fuel-vm/pull/821): Added `block_transaction_size_limit` to `ConsensusParameters`. It adds a new `ConensusParametersV2` as a variant of the `ConsensusParameters`.
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): The `predicate` field of `fuel_tx::input::Coin` is now a wrapper struct `PredicateCode`.
+
+### Fixed
+- [#822](https://github.com/FuelLabs/fuel-vm/pull/822): Return recipient as an owner for the message inputs.
 
 ## [Version 0.56.0]
 

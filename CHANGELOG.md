@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 #### Breaking
+- [#826](https://github.com/FuelLabs/fuel-vm/pull/826): Skip the panic reason from canonical serialization of the panic receipt.
 - [#821](https://github.com/FuelLabs/fuel-vm/pull/821): Added `block_transaction_size_limit` to `ConsensusParameters`. It adds a new `ConensusParametersV2` as a variant of the `ConsensusParameters`.
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): The `predicate` field of `fuel_tx::input::Coin` is now a wrapper struct `PredicateCode`.
 

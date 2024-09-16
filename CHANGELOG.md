@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): Add DA compression functionality to `Transaction` and any types within
 - [#733](https://github.com/FuelLabs/fuel-vm/pull/733): Add LibAFL based fuzzer and update `secp256k1` version to 0.29.1.
+- [#825](https://github.com/FuelLabs/fuel-vm/pull/733): Avoid leaking partially allocated memory when array deserialization fails
 
 ### Changed
 

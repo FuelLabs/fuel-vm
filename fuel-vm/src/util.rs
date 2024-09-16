@@ -396,6 +396,10 @@ pub mod test_helpers {
             self.consensus_params.block_gas_limit()
         }
 
+        pub fn get_block_transaction_size_limit(&self) -> u64 {
+            self.consensus_params.block_transaction_size_limit()
+        }
+
         pub fn get_privileged_address(&self) -> &Address {
             self.consensus_params.privileged_address()
         }

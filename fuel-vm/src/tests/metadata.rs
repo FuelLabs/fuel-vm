@@ -86,7 +86,7 @@ fn metadata() {
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
@@ -135,7 +135,7 @@ fn metadata() {
     let contract_call = contract.id(&salt, &contract_root, &state_root);
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
@@ -199,7 +199,7 @@ fn metadata() {
         .add_input(inputs[1].clone())
         .add_output(outputs[0])
         .add_output(outputs[1])
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
@@ -261,7 +261,7 @@ fn get_metadata_chain_id() {
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .script_gas_limit(gas_limit)
         .with_chain_id(chain_id)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
         .unwrap();
@@ -296,7 +296,7 @@ fn get_metadata_base_asset_id() {
         vec![],
     )
     .script_gas_limit(gas_limit)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &params)
     .unwrap();
@@ -334,7 +334,7 @@ fn get_metadata_tx_start() {
         vec![],
     )
     .script_gas_limit(gas_limit)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &ConsensusParameters::default())
     .unwrap();

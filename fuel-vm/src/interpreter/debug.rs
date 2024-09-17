@@ -94,7 +94,7 @@ mod tests {
 
         let tx = TransactionBuilder::script(script, vec![])
             .script_gas_limit(gas_limit)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to generate checked tx")
@@ -173,7 +173,7 @@ mod tests {
 
         let tx = TransactionBuilder::script(script, vec![])
             .script_gas_limit(gas_limit)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to generate checked tx")
@@ -226,7 +226,7 @@ mod tests {
 
         let tx = TransactionBuilder::script(script, vec![])
             .script_gas_limit(gas_limit)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to generate checked tx")

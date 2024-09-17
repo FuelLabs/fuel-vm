@@ -117,7 +117,7 @@ fn valid_script_tx() -> Checked<Script> {
 
     TransactionBuilder::script(vec![], vec![])
         .max_fee_limit(arb_max_fee)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked_basic(Default::default())
 }
 
@@ -151,7 +151,7 @@ fn valid_create_tx() -> Checked<Create> {
 
     TransactionBuilder::create(witness, salt, vec![])
         .max_fee_limit(arb_max_fee)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_contract_created()
         .finalize_checked_basic(Default::default())
 }
@@ -193,7 +193,7 @@ fn valid_upgrade_tx() -> Checked<Upgrade> {
         Default::default(),
         0,
     ))
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize_checked_basic(Default::default())
 }
 
@@ -234,7 +234,7 @@ fn valid_upload_tx() -> Checked<Upload> {
     })
     .add_witness(subsection.subsection.into())
     .max_fee_limit(arb_max_fee)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize_checked_basic(Default::default())
 }
 

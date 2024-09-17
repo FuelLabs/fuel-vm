@@ -73,7 +73,7 @@ fn deploy_contract<M>(
     let height = Default::default();
     let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
         .with_tx_params(tx_params)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_contract_created()
         .finalize_checked(height);
 
@@ -600,7 +600,7 @@ where
     let tx_create_target =
         TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
             .maturity(maturity)
-            .add_random_fee_input()
+            .add_fee_input()
             .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
@@ -662,7 +662,7 @@ where
     .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_input(input0.clone())
-    .add_random_fee_input()
+    .add_fee_input()
     .add_output(output0)
     .finalize()
     .into_checked(height, &consensus_params)
@@ -679,7 +679,7 @@ where
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_input(input0)
-            .add_random_fee_input()
+            .add_fee_input()
             .add_output(output0)
             .finalize()
             .into_checked(height, &consensus_params)
@@ -737,7 +737,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
@@ -753,7 +753,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     )
     .script_gas_limit(gas_limit)
     .maturity(maturity)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");
@@ -1938,7 +1938,7 @@ fn timestamp_works() {
         let tx = TransactionBuilder::script(script, script_data)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize_checked(block_height);
 
         let receipts = client.transact(tx);
@@ -1992,7 +1992,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
@@ -2041,7 +2041,7 @@ fn block_hash_works(
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
@@ -2079,7 +2079,7 @@ fn coinbase_works() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(10.into());
 
     let receipts = client.transact(tx);
@@ -2122,7 +2122,7 @@ fn various_ldc_issues_poc() {
     let tx_create_target =
         TransactionBuilder::create(target_program.clone(), salt, vec![])
             .maturity(maturity)
-            .add_random_fee_input()
+            .add_fee_input()
             .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
@@ -2193,7 +2193,7 @@ fn various_ldc_issues_poc() {
     let tx_create_loader =
         TransactionBuilder::create(loader_program.clone(), salt, vec![])
             .maturity(maturity)
-            .add_random_fee_input()
+            .add_fee_input()
             .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
@@ -2246,7 +2246,7 @@ fn various_ldc_issues_poc() {
             .maturity(maturity)
             .add_input(input0)
             .add_input(input1)
-            .add_random_fee_input()
+            .add_fee_input()
             .add_output(output0)
             .add_output(output1)
             .finalize()
@@ -2372,7 +2372,7 @@ where
     })
     .add_witness(blob_code.into())
     .maturity(maturity)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");
@@ -2432,7 +2432,7 @@ where
     )
     .script_gas_limit(gas_limit)
     .maturity(maturity)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");
@@ -2446,7 +2446,7 @@ where
         TransactionBuilder::script(load_blob.into_iter().collect(), vec![])
             .script_gas_limit(gas_limit)
             .maturity(maturity)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -2492,7 +2492,7 @@ fn ldcv2_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     })
     .add_witness(program.into())
     .maturity(maturity)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");
@@ -2505,7 +2505,7 @@ fn ldcv2_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
         TransactionBuilder::script(load_blob.into_iter().collect(), blob_id.to_vec())
             .script_gas_limit(gas_limit)
             .maturity(maturity)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");

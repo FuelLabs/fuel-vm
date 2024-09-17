@@ -418,7 +418,7 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
         tx.body.storage_slots.reverse();
 
@@ -441,7 +441,7 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .check(0.into(), &ConsensusParameters::standard())
         .expect_err("Expected erroneous transaction");

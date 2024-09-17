@@ -131,7 +131,7 @@ fn variable_output_updates_in_memory() {
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(gas_limit)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_output(variable_output)
         .finalize()
         .into_checked(height, &consensus_params)

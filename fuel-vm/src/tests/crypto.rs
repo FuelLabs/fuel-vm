@@ -92,7 +92,7 @@ fn secp256k1_recover() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
@@ -145,7 +145,7 @@ fn ecrecover_tx_id() {
     let mut tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
 
     tx.sign_inputs(&secret, &chain_id);
@@ -377,7 +377,7 @@ fn secp256r1_recover() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
@@ -512,7 +512,7 @@ fn ed25519_verifies_message() {
     let tx = TransactionBuilder::script(script.clone(), script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
@@ -537,7 +537,7 @@ fn ed25519_verifies_message() {
     let tx = TransactionBuilder::script(script.clone(), script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
@@ -561,7 +561,7 @@ fn ed25519_verifies_message() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
@@ -612,7 +612,7 @@ fn ed25519_zero_length_is_treated_as_32() {
     let tx = TransactionBuilder::script(script.clone(), script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
@@ -715,7 +715,7 @@ fn sha256() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);
@@ -804,7 +804,7 @@ fn keccak256() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(height);
 
     let receipts = client.transact(tx);

@@ -68,6 +68,11 @@ use fuel_types::{
     Salt,
     Word,
 };
+#[cfg(feature = "rand")]
+use rand::{
+    rngs::StdRng,
+    Rng,
+};
 
 pub trait BuildableAloc
 where
@@ -408,7 +413,18 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     #[cfg(feature = "rand")]
-    pub fn add_random_fee_input(&mut self) -> &mut Self {
+    pub fn add_random_fee_input(&mut self, rng: &mut StdRng) -> &mut Self {
+        self.add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            u32::MAX as u64,
+            *self.params.base_asset_id(),
+            Default::default(),
+        )
+    }
+
+    #[cfg(feature = "rand")]
+    pub fn add_fee_input(&mut self) -> &mut Self {
         use rand::{
             Rng,
             SeedableRng,

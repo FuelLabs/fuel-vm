@@ -45,7 +45,7 @@ fn execution(c: &mut Criterion) {
         vec![],
     )
     .max_fee_limit(0)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize();
     let script = script
         .into_checked_basic(Default::default(), &Default::default())
@@ -92,7 +92,7 @@ fn execution(c: &mut Criterion) {
         vec![],
     )
     .max_fee_limit(0)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize();
     let script = script
         .into_checked_basic(Default::default(), &Default::default())
@@ -137,7 +137,7 @@ fn execution(c: &mut Criterion) {
         vec![],
     )
     .max_fee_limit(0)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize();
     let script = script
         .into_checked_basic(Default::default(), &Default::default())

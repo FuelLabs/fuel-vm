@@ -228,7 +228,7 @@ fn check__set_witness_limit_less_than_witness_data_size_fails() {
 #[test]
 fn check__no_max_fee_fails() {
     let block_height = 1000.into();
-    let mut tx = valid_upload_transaction().add_random_fee_input().finalize();
+    let mut tx = valid_upload_transaction().add_fee_input().finalize();
 
     // Given
     tx.policies_mut().set(PolicyType::MaxFee, None);

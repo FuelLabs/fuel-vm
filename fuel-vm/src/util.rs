@@ -309,7 +309,7 @@ pub mod test_helpers {
         }
 
         pub fn fee_input(&mut self) -> &mut TestBuilder {
-            self.builder.add_random_fee_input();
+            self.builder.add_fee_input();
             self
         }
 
@@ -488,7 +488,7 @@ pub mod test_helpers {
             let tx = TransactionBuilder::create(program, salt, storage_slots)
                 .max_fee_limit(self.max_fee_limit)
                 .maturity(Default::default())
-                .add_random_fee_input()
+                .add_fee_input()
                 .add_contract_created()
                 .finalize()
                 .into_checked(self.block_height, &self.consensus_params)
@@ -523,7 +523,7 @@ pub mod test_helpers {
             .add_witness(data.into())
             .max_fee_limit(self.max_fee_limit)
             .maturity(Default::default())
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(self.block_height, &self.consensus_params)
             .expect("failed to check tx");
@@ -719,7 +719,7 @@ pub mod test_helpers {
         let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
             .max_fee_limit(zero_fee_limit)
             .with_tx_params(tx_params)
-            .add_random_fee_input()
+            .add_fee_input()
             .add_contract_created()
             .finalize_checked(height);
 
@@ -755,7 +755,7 @@ pub mod test_helpers {
                 Default::default(),
                 contract_id,
             ))
-            .add_random_fee_input()
+            .add_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
             .finalize_checked(height);
 

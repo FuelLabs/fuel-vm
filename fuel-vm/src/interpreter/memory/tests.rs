@@ -28,7 +28,7 @@ fn memcopy() {
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
         .script_gas_limit(100_000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
 
     let tx = tx
@@ -97,7 +97,7 @@ fn stack_alloc_ownership() {
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")

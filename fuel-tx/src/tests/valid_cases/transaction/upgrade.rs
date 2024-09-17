@@ -130,7 +130,7 @@ fn script_set_witness_limit_less_than_witness_data_size_fails() {
     let failing_limit = limit - 1;
     let tx = valid_upgrade_transaction()
         .witness_limit(failing_limit as u64)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_as_transaction();
 
     // When
@@ -143,9 +143,7 @@ fn script_set_witness_limit_less_than_witness_data_size_fails() {
 #[test]
 fn check__no_max_fee_fails() {
     let block_height = 1000.into();
-    let mut tx = valid_upgrade_transaction()
-        .add_random_fee_input()
-        .finalize();
+    let mut tx = valid_upgrade_transaction().add_fee_input().finalize();
 
     // Given
     tx.policies_mut().set(PolicyType::MaxFee, None);

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.57.0]
+
 ### Added
 - [#670](https://github.com/FuelLabs/fuel-vm/pull/670): Add DA compression functionality to `Transaction` and any types within
 - [#733](https://github.com/FuelLabs/fuel-vm/pull/733): Add LibAFL based fuzzer and update `secp256k1` version to 0.29.1.

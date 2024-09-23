@@ -24,6 +24,14 @@ const MAX_SIZE: u64 = 110 * 1024;
 
 #[derive(Debug)]
 pub struct SettingBlockTransactionSizeLimitNotSupported;
+#[cfg(feature = "std")]
+impl std::fmt::Display for SettingBlockTransactionSizeLimitNotSupported {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "setting block transaction size limit is not supported")
+    }
+}
+#[cfg(feature = "std")]
+impl std::error::Error for SettingBlockTransactionSizeLimitNotSupported {}
 
 /// A versioned set of consensus parameters.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

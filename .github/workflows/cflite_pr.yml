@@ -8,23 +8,29 @@ jobs:
   PR:
     runs-on: ubuntu-latest
     steps:
-    - name: Build Fuzzers
-      id: build
-      uses: google/clusterfuzzlite/actions/build_fuzzers@v1
-      with:
-        language: rust
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
-        storage-repo-branch: main
-        storage-repo-branch-coverage: gh-pages
-    - name: Run Fuzzers
-      id: run
-      uses: google/clusterfuzzlite/actions/run_fuzzers@v1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        fuzz-seconds: 600
-        mode: 'code-change'
-        output-sarif: true
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
-        storage-repo-branch: main
-        storage-repo-branch-coverage: gh-pages
+      - name: Get fuzzer auth token
+        uses: actions/create-github-app-token@v1
+        id: fuzzer-token
+        with:
+          app-id: ${{ vars.FUEL_FUZZING_CORPUS_APP_ID }}
+          private-key: ${{ secrets.FUEL_FUZZING_CORPUS_APP_KEY }}
+      - name: Build Fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: rust
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          storage-repo: https://${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages
+      - name: Run Fuzzers
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: 'code-change'
+          output-sarif: true
+          storage-repo: https://${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages

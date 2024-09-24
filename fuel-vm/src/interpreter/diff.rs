@@ -297,9 +297,10 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     M: Memory,
 {
-    /// The diff function generates a diff of VM state, represented by the Diff struct,
-    /// between two VMs internal states.
-    pub fn diff(&self, desired_state: &Self) -> Diff<Deltas>
+    /// The function generates a diff of VM state, represented by the Diff struct,
+    /// between two VMs internal states. The `desired_state` is the desired state
+    /// that we expect after rollback is done.
+    pub fn rollback_to(&self, desired_state: &Self) -> Diff<Deltas>
     where
         Tx: PartialEq + Clone + Debug + 'static,
     {
@@ -487,7 +488,7 @@ impl From<Diff<Deltas>> for Diff<InitialVmState> {
 
 impl<T> From<Delta<T>> for Previous<T> {
     fn from(d: Delta<T>) -> Self {
-        Self(d.from)
+        Self(d.to)
     }
 }
 

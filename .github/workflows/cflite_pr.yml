@@ -1,0 +1,13 @@
+name: ClusterFuzzLite PR fuzzing
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions: read-all
+jobs:
+  PR:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get fuzzer auth token
+        run: echo "true"

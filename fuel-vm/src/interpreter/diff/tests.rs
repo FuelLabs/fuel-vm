@@ -16,6 +16,12 @@ use fuel_types::{
 use test_case::test_case;
 
 use crate::{
+    constraints::reg_key::{
+        Reg,
+        RegMut,
+        HP,
+        SP,
+    },
     consts::*,
     storage::MemoryStorage,
 };
@@ -216,15 +222,59 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
 }
 
 #[test]
-fn reset_vm_memory() {
-    let mut a = Interpreter::<_, _, Script>::with_memory_storage();
-    a.memory_mut().grow_stack(132).unwrap();
-    let mut b = a.clone();
-    b.memory_mut()[100..132].copy_from_slice(&[1u8; 32]);
-    let diff: Diff<InitialVmState> = a.diff(&b).into();
-    assert_ne!(a, b);
-    b.reset_vm_state(&diff);
-    assert_eq!(a, b);
+fn reset_vm_memory_grow_stack() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    let desired = latest.clone();
+    latest.memory_mut().grow_stack(132).unwrap();
+    let diff: Diff<InitialVmState> = latest.diff(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
+}
+
+#[test]
+fn reset_vm_memory_grow_heap() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    let desired = latest.clone();
+    let sp = 0;
+    let mut hp = MEM_SIZE as u64;
+    latest
+        .memory_mut()
+        .grow_heap_by(Reg::<SP>::new(&sp), RegMut::<HP>::new(&mut hp), 132)
+        .unwrap();
+    let diff: Diff<InitialVmState> = latest.diff(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
+}
+
+#[test]
+fn reset_vm_memory_range_write_stack() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    latest.memory_mut().grow_stack(132).unwrap();
+    let desired = latest.clone();
+    latest.memory_mut()[100..132].copy_from_slice(&[1u8; 32]);
+    let diff: Diff<InitialVmState> = latest.diff(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
+}
+
+#[test]
+fn reset_vm_memory_range_write_heap() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    let sp = 0;
+    let mut hp = MEM_SIZE as u64;
+    latest
+        .memory_mut()
+        .grow_heap_by(Reg::<SP>::new(&sp), RegMut::<HP>::new(&mut hp), 132)
+        .unwrap();
+    let desired = latest.clone();
+    latest.memory_mut()[MEM_SIZE - 32..MEM_SIZE].copy_from_slice(&[1u8; 32]);
+    let diff: Diff<InitialVmState> = latest.diff(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
 }
 
 #[test]

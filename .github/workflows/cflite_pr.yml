@@ -13,6 +13,7 @@ jobs:
         uses: actions/create-github-app-token@v1
         id: fuzzer-token
         with:
+          owner: FuelLabs
           app-id: ${{ vars.FUEL_FUZZING_CORPUS_APP_ID }}
           private-key: ${{ secrets.FUEL_FUZZING_CORPUS_APP_KEY }}
       - name: Build Fuzzers
@@ -35,6 +36,10 @@ jobs:
           storage-repo: https://oauth2:${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
           storage-repo-branch: main
           storage-repo-branch-coverage: gh-pages
+      - name: Token to env
+        if: ${{ failure() }}
+        run: |
+          echo "FUZZER_TOKEN=${{ steps.fuzzer-token.outputs.token }}" >> $GITHUB_ENV
       - name: Debug with tmate on failure
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3

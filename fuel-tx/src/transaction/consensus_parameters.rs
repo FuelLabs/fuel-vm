@@ -22,14 +22,9 @@ const MAX_GAS: u64 = 100_000_000;
 #[cfg(feature = "test-helpers")]
 const MAX_SIZE: u64 = 110 * 1024;
 
-#[derive(Debug)]
+#[derive(Debug, derive_more::Display)]
+#[display(fmt = "setting block transaction size limit is not supported")]
 pub struct SettingBlockTransactionSizeLimitNotSupported;
-#[cfg(feature = "std")]
-impl std::fmt::Display for SettingBlockTransactionSizeLimitNotSupported {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "setting block transaction size limit is not supported")
-    }
-}
 #[cfg(feature = "std")]
 impl std::error::Error for SettingBlockTransactionSizeLimitNotSupported {}
 

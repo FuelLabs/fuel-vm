@@ -35,3 +35,6 @@ jobs:
           storage-repo: https://oauth2:${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
           storage-repo-branch: main
           storage-repo-branch-coverage: gh-pages
+      - name: Debug with tmate on failure
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3

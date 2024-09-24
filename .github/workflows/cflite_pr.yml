@@ -20,8 +20,8 @@ jobs:
         uses: google/clusterfuzzlite/actions/build_fuzzers@v1
         with:
           language: rust
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          storage-repo: https://${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
+          github-token: ${{ steps.fuzzer-token.outputs.token }}
+          storage-repo: https://github.com/FuelLabs/fuel-fuzzing-corpus.git
           storage-repo-branch: main
           storage-repo-branch-coverage: gh-pages
       - name: Run Fuzzers
@@ -32,6 +32,6 @@ jobs:
           fuzz-seconds: 600
           mode: 'code-change'
           output-sarif: true
-          storage-repo: https://${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
+          storage-repo: https://oauth2:${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
           storage-repo-branch: main
           storage-repo-branch-coverage: gh-pages

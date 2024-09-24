@@ -21,7 +21,7 @@ jobs:
         with:
           language: rust
           github-token: ${{ steps.fuzzer-token.outputs.token }}
-          storage-repo: https://github.com/FuelLabs/fuel-fuzzing-corpus.git
+          storage-repo: https://oauth2:${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
           storage-repo-branch: main
           storage-repo-branch-coverage: gh-pages
       - name: Run Fuzzers

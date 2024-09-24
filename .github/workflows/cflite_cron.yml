@@ -8,39 +8,53 @@ jobs:
   Pruning:
     runs-on: ubuntu-latest
     steps:
-    - name: Build Fuzzers
-      id: build
-      uses: google/clusterfuzzlite/actions/build_fuzzers@v1
-      with:
-        language: rust
-    - name: Run Fuzzers
-      id: run
-      uses: google/clusterfuzzlite/actions/run_fuzzers@v1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        fuzz-seconds: 600 # Time after which minimization is aborted
-        mode: 'prune'
-        output-sarif: true
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
-        storage-repo-branch: main
-        storage-repo-branch-coverage: gh-pages
+      - name: Get fuzzer auth token
+        uses: actions/create-github-app-token@v1
+        id: fuzzer-token
+        with:
+          owner: ${{ github.repository_owner }} # set this to get access to all allowed repos
+          app-id: ${{ vars.FUEL_FUZZING_CORPUS_APP_ID }}
+          private-key: ${{ secrets.FUEL_FUZZING_CORPUS_APP_KEY }}
+      - name: Build Fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: rust
+      - name: Run Fuzzers
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600 # Time after which minimization is aborted
+          mode: 'prune'
+          output-sarif: true
+          storage-repo: https://oauth2:${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages
   Coverage:
     runs-on: ubuntu-latest
     steps:
-    - name: Build Fuzzers
-      id: build
-      uses: google/clusterfuzzlite/actions/build_fuzzers@v1
-      with:
-        language: rust
-        sanitizer: coverage
-    - name: Run Fuzzers
-      id: run
-      uses: google/clusterfuzzlite/actions/run_fuzzers@v1
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        fuzz-seconds: 600
-        mode: 'coverage'
-        sanitizer: 'coverage'
-        storage-repo: https://${{ secrets.FUZZ_STORAGE_PAT }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
-        storage-repo-branch: main
-        storage-repo-branch-coverage: gh-pages
+      - name: Get fuzzer auth token
+        uses: actions/create-github-app-token@v1
+        id: fuzzer-token
+        with:
+          owner: ${{ github.repository_owner }} # set this to get access to all allowed repos
+          app-id: ${{ vars.FUEL_FUZZING_CORPUS_APP_ID }}
+          private-key: ${{ secrets.FUEL_FUZZING_CORPUS_APP_KEY }}
+      - name: Build Fuzzers
+        id: build
+        uses: google/clusterfuzzlite/actions/build_fuzzers@v1
+        with:
+          language: rust
+          sanitizer: coverage
+      - name: Run Fuzzers
+        id: run
+        uses: google/clusterfuzzlite/actions/run_fuzzers@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fuzz-seconds: 600
+          mode: 'coverage'
+          sanitizer: 'coverage'
+          storage-repo: https://oauth2:${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
+          storage-repo-branch: main
+          storage-repo-branch-coverage: gh-pages

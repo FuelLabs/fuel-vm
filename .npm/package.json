@@ -13,7 +13,7 @@
     "wasm": ".scripts/prepare-wasm-packages.sh",
     "build": "turbo run build",
     "test": "turbo run test",
-    "pack:all": "pnpm run-s wasm build test"
+    "pack:all": "run-s wasm build test"
   },
   "license": "Apache-2.0",
   "devDependencies": {
@@ -25,4 +25,5 @@
     "rollup-plugin-dts": "^5.3.1",
     "turbo": "^2.1.2"
   }
+
 }

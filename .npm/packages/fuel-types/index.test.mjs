@@ -6,9 +6,8 @@ import * as types from './dist/web/index.mjs'
 describe('fuel-types [esm]', () => {
 
   it('should ensure URL/fetch patching was succesful', async () => {
-    const dist = join(import.meta.dirname, 'dist');
-    const cjsContents = readFileSync(join(dist, 'node/index.cjs'), 'utf-8')
-    const mjsContents = readFileSync(join(dist, 'web/index.mjs'), 'utf-8')
+    const cjsContents = readFileSync('./dist/node/index.cjs', 'utf-8')
+    const mjsContents = readFileSync('./dist/web/index.mjs', 'utf-8')
 
     const reg = /(new URL|fetch)\(.+\)/
     expect(mjsContents).to.not.match(reg);

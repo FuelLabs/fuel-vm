@@ -6,9 +6,8 @@ import * as tx from './dist/web/index.mjs'
 describe('fuel-tx [mjs]', () => {
 
     it('should ensure URL/fetch patching was succesful', async () => {
-        const dist = path.join(import.meta.dirname, 'dist');
-        const cjsContents = fs.readFileSync(path.join(dist, 'node/index.cjs'), 'utf-8')
-        const mjsContents = fs.readFileSync(path.join(dist, 'web/index.mjs'), 'utf-8')
+        const mjsContents = fs.readFileSync('./dist/web/index.mjs', 'utf-8')
+        const cjsContents = fs.readFileSync('./dist/node/index.cjs', 'utf-8')
 
         const reg = /(new URL|fetch)\(.+\)/
         expect(mjsContents).to.not.match(reg);

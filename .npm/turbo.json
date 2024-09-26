@@ -1,12 +1,17 @@
 {
   "$schema": "https://turborepo.org/schema.json",
-  "pipeline": {
+  "tasks": {
     "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**"],
       "outputs": ["dist/**"],
-      "outputMode": "new-only"
+      "outputLogs": "new-only"
     },
     "test": {
-      "outputMode": "new-only"
+      "dependsOn": ["^test", "build"],
+      "inputs": ["src/**"],
+      "outputs": ["dist/**"],
+      "outputLogs": "new-only"
     }
   }
 }

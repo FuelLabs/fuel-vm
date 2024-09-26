@@ -1,4 +1,6 @@
 import { expect } from 'chai'
+import { join } from 'path'
+import { readFileSync } from 'fs'
 import * as asm from './dist/web/index.mjs'
 
 /*
@@ -12,6 +14,16 @@ Top-level usage:
 */
 
 describe('fuel-asm [esm]', () => {
+
+  it('should ensure URL/fetch patching was succesful', async () => {
+    const dist = join(import.meta.dirname, 'dist');
+    const cjsContents = readFileSync(join(dist, 'node/index.cjs'), 'utf-8')
+    const mjsContents = readFileSync(join(dist, 'web/index.mjs'), 'utf-8')
+
+    const reg = /(new URL|fetch)\(.+\)/
+    expect(mjsContents).to.not.match(reg);
+    expect(cjsContents).to.not.match(reg);
+  })
 
   it('should compose simple script', async () => {
 

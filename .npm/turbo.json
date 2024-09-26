@@ -2,10 +2,15 @@
   "$schema": "https://turborepo.org/schema.json",
   "tasks": {
     "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**"],
       "outputs": ["dist/**"],
       "outputLogs": "new-only"
     },
     "test": {
+      "dependsOn": ["^test", "build"],
+      "inputs": ["src/**"],
+      "outputs": ["dist/**"],
       "outputLogs": "new-only"
     }
   }

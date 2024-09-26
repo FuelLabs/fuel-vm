@@ -1,7 +1,18 @@
 import { expect } from 'chai'
+import { join } from 'path'
+import { readFileSync } from 'fs'
 import * as types from './dist/web/index.mjs'
 
 describe('fuel-types [esm]', () => {
+
+  it('should ensure URL/fetch patching was succesful', async () => {
+    const cjsContents = readFileSync('./dist/node/index.cjs', 'utf-8')
+    const mjsContents = readFileSync('./dist/web/index.mjs', 'utf-8')
+
+    const reg = /(new URL|fetch)\(.+\)/
+    expect(mjsContents).to.not.match(reg);
+    expect(cjsContents).to.not.match(reg);
+  })
 
   it('should export all types', () => {
 

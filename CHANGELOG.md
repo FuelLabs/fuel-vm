@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.57.1]
+
 ### Fixed
 - [#835](https://github.com/FuelLabs/fuel-vm/pull/835): Fixing WASM-NPM packaging and publishing
 

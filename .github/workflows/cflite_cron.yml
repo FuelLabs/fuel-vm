@@ -12,7 +12,7 @@ jobs:
         uses: actions/create-github-app-token@v1
         id: fuzzer-token
         with:
-          owner: ${{ github.repository_owner }} # set this to get access to all allowed repos
+          owner: ${{ github.repository_owner }}
           app-id: ${{ vars.FUEL_FUZZING_CORPUS_APP_ID }}
           private-key: ${{ secrets.FUEL_FUZZING_CORPUS_APP_KEY }}
       - name: Build Fuzzers
@@ -25,7 +25,7 @@ jobs:
         uses: google/clusterfuzzlite/actions/run_fuzzers@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fuzz-seconds: 600 # Time after which minimization is aborted
+          fuzz-seconds: 600
           mode: 'prune'
           output-sarif: true
           storage-repo: https://oauth2:${{ steps.fuzzer-token.outputs.token }}@github.com/FuelLabs/fuel-fuzzing-corpus.git
@@ -38,7 +38,7 @@ jobs:
         uses: actions/create-github-app-token@v1
         id: fuzzer-token
         with:
-          owner: ${{ github.repository_owner }} # set this to get access to all allowed repos
+          owner: ${{ github.repository_owner }}
           app-id: ${{ vars.FUEL_FUZZING_CORPUS_APP_ID }}
           private-key: ${{ secrets.FUEL_FUZZING_CORPUS_APP_KEY }}
       - name: Build Fuzzers

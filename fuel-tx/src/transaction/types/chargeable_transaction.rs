@@ -76,7 +76,7 @@ impl<T> BodyConstraints for T {}
 
 #[derive(Clone, Derivative)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -92,7 +92,7 @@ where
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
-    #[cfg_attr(feature = "serde", serde(skip))]
+    #[serde(skip)]
     #[cfg_attr(feature = "da-compression", compress(skip))]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]

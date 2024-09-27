@@ -65,7 +65,7 @@ jobs:
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: check
-            args: --target wasm32-unknown-unknown -p fuel-tx --features serde --no-default-features
+            args: --target wasm32-unknown-unknown -p fuel-tx --features alloc --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-types --features serde --no-default-features
           - command: rustc

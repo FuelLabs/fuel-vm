@@ -1,8 +1,16 @@
 use crate::Transaction;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    fuel_types::canonical::Serialize,
+    fuel_types::canonical::Deserialize,
+)]
 #[repr(u64)]
 pub enum TransactionRepr {
     Script = 0x00,

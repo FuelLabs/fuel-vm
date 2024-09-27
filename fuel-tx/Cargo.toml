@@ -11,10 +11,10 @@ repository = { workspace = true }
 description = "FuelVM transaction."
 
 [dependencies]
-bitflags = { workspace = true }
+bitflags = { workspace = true, features = ["serde"], optional = true }
 derivative = { version = "2.2.0", default-features = false, features = ["use_core"], optional = true }
-derive_more = { version = "0.99", default-features = false, features = ["display"] }
-fuel-asm = { workspace = true, default-features = false }
+derive_more = { version = "0.99", default-features = false, features = ["display"], optional = true }
+fuel-asm = { workspace = true, default-features = false, features = ["serde"] }
 fuel-compression = { workspace = true, optional = true }
 fuel-crypto = { workspace = true, default-features = false }
 fuel-merkle = { workspace = true, default-features = false, optional = true }
@@ -22,7 +22,7 @@ fuel-types = { workspace = true, default-features = false, features = ["serde"] 
 hashbrown = { version = "0.14", optional = true }
 itertools = { version = "0.10", default-features = false, optional = true }
 js-sys = { version = "0.3", optional = true }
-postcard = { version = "1.0", features = ["alloc"] }
+postcard = { version = "1.0", features = ["alloc"], optional = true }
 rand = { version = "0.8", default-features = false, features = ["std_rng"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde-wasm-bindgen = { version = "0.6", optional = true }
@@ -35,7 +35,7 @@ wasm-bindgen = { version = "0.2.88", optional = true }
 bimap = "0.6"
 bincode = { workspace = true }
 fuel-crypto = { workspace = true, default-features = false, features = ["random"] }
-fuel-tx = { path = ".", features = ["random", "serde", "test-helpers"] }
+fuel-tx = { path = ".", features = ["random", "test-helpers", "da-compression"] }
 fuel-types = { workspace = true, default-features = false, features = ["random"] }
 hex = { version = "0.4", default-features = false }
 insta = "1.0"
@@ -52,13 +52,11 @@ tokio = { version = "1.27", features = ["full"] }
 default = ["fuel-asm/default", "fuel-crypto/default", "fuel-merkle/default", "fuel-types/default", "std"]
 test-helpers = ["alloc", "internals"]
 internals = []
-typescript = ["alloc", "js-sys", "wasm-bindgen", "serde", "serde-wasm-bindgen", "fuel-types/typescript"]
+typescript = ["dep:serde_json", "alloc", "js-sys", "wasm-bindgen", "serde-wasm-bindgen", "fuel-types/typescript"]
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde/default", "hex/std"]
-alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "strum", "strum_macros"]
-# serde is requiring alloc because its mandatory for serde_json. to avoid adding a new feature only for serde_json, we just require `alloc` here since as of the moment we don't have a use case of serde without alloc.
-serde = ["alloc", "fuel-asm/serde", "fuel-crypto/serde", "fuel-merkle/serde", "serde_json", "hashbrown/serde", "bitflags/serde"]
-da-compression = ["serde", "fuel-compression"]
+alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "strum", "strum_macros", "bitflags", "postcard", "derive_more"]
+da-compression = ["fuel-compression"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

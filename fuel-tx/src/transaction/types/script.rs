@@ -59,11 +59,33 @@ pub struct ScriptCode {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
     pub bytes: Vec<u8>,
 }
+
 impl From<Vec<u8>> for ScriptCode {
     fn from(bytes: Vec<u8>) -> Self {
         Self { bytes }
     }
 }
+
+impl From<&[u8]> for ScriptCode {
+    fn from(bytes: &[u8]) -> Self {
+        Self {
+            bytes: bytes.to_vec(),
+        }
+    }
+}
+
+impl AsRef<[u8]> for ScriptCode {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+impl AsMut<[u8]> for ScriptCode {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.bytes
+    }
+}
+
 impl Deref for ScriptCode {
     type Target = Vec<u8>;
 
@@ -71,6 +93,7 @@ impl Deref for ScriptCode {
         &self.bytes
     }
 }
+
 impl DerefMut for ScriptCode {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.bytes

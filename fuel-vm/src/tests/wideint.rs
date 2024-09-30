@@ -153,8 +153,7 @@ fn cmp_u128_resets_err() {
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
     ops.push(op::flag(0x20));
-    ops.push(op::movi(0x20, 1));
-    ops.push(op::divi(0x20, 0x20, 0));
+    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
     ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
 
     // Now push a cmp_u128 operation and log the value of $err again
@@ -303,8 +302,7 @@ fn cmp_u256_resets_err() {
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
     ops.push(op::flag(0x20));
-    ops.push(op::movi(0x20, 1));
-    ops.push(op::divi(0x20, 0x20, 0));
+    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
     ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
 
     // Now push a cmp_u256 operation and log the value of $err again

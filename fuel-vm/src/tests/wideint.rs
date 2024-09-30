@@ -100,12 +100,13 @@ fn cmp_u128(
 fn cmp_u128_resets_of() {
     // Given
     // Issue an overflowing operation first and log the value of $of
-    let mut ops = Vec::new();
-    ops.push(op::movi(0x20, Flags::WRAPPING.bits() as u32));
-    ops.push(op::flag(0x20));
-    ops.push(op::not(0x20, 0));
-    ops.push(op::mul(0x20, 0x20, 0x20));
-    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    let mut ops = vec![
+        op::movi(0x20, Flags::WRAPPING.bits() as u32),
+        op::flag(0x20),
+        op::not(0x20, 0),
+        op::mul(0x20, 0x20, 0x20),
+        op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+    ];
 
     // Now push a cmp_u128 operation and log the value of $of again
     ops.extend(make_u128(0x20, 0));
@@ -150,11 +151,12 @@ fn cmp_u128_resets_of() {
 fn cmp_u128_resets_err() {
     // Given
     // Issue an erroring operation first and log the value of $err
-    let mut ops = Vec::new();
-    ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
-    ops.push(op::flag(0x20));
-    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
-    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    let mut ops = vec![
+        op::movi(0x20, Flags::UNSAFEMATH.bits() as u32),
+        op::flag(0x20),
+        op::div(0x10, RegId::ONE, RegId::ZERO),
+        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+    ];
 
     // Now push a cmp_u128 operation and log the value of $err again
     ops.extend(make_u128(0x20, 0));
@@ -249,12 +251,13 @@ fn cmp_u256(
 fn cmp_u256_resets_of() {
     // Given
     // Issue an overflowing operation first and log the value of $of
-    let mut ops = Vec::new();
-    ops.push(op::movi(0x20, Flags::WRAPPING.bits() as u32));
-    ops.push(op::flag(0x20));
-    ops.push(op::not(0x20, 0));
-    ops.push(op::mul(0x20, 0x20, 0x20));
-    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    let mut ops = vec![
+        op::movi(0x20, Flags::WRAPPING.bits() as u32),
+        op::flag(0x20),
+        op::not(0x20, 0),
+        op::mul(0x20, 0x20, 0x20),
+        op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+    ];
 
     // Now push a cmp_u256 operation and log the value of $of again
     ops.extend(make_u256(0x20, 0u64.into()));
@@ -299,11 +302,12 @@ fn cmp_u256_resets_of() {
 fn cmp_u256_resets_err() {
     // Given
     // Issue an erroring operation first and log the value of $err
-    let mut ops = Vec::new();
-    ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
-    ops.push(op::flag(0x20));
-    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
-    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    let mut ops = vec![
+        op::movi(0x20, Flags::UNSAFEMATH.bits() as u32),
+        op::flag(0x20),
+        op::div(0x10, RegId::ONE, RegId::ZERO),
+        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+    ];
 
     // Now push a cmp_u256 operation and log the value of $err again
     ops.extend(make_u256(0x20, 0u64.into()));

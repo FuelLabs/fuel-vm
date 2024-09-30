@@ -29,7 +29,7 @@ use rand::{
 };
 
 /// Asymmetric secret key, guaranteed to be valid by construction
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Zeroize)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Zeroize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct SecretKey(Bytes32);

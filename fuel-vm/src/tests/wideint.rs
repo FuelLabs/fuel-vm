@@ -131,7 +131,7 @@ fn cmp_u128_resets_of() {
     let Receipt::Log {
         ra: reg_of_before_cmp,
         ..
-    } = receipts.get(0).unwrap()
+    } = receipts.first().unwrap()
     else {
         panic!("Expected log receipt");
     };
@@ -180,7 +180,7 @@ fn cmp_u128_resets_err() {
     let Receipt::Log {
         ra: reg_err_before_cmp,
         ..
-    } = receipts.get(0).unwrap()
+    } = receipts.first().unwrap()
     else {
         panic!("Expected log receipt");
     };
@@ -282,7 +282,7 @@ fn cmp_u256_resets_of() {
     let Receipt::Log {
         ra: reg_of_before_cmp,
         ..
-    } = receipts.get(0).unwrap()
+    } = receipts.first().unwrap()
     else {
         panic!("Expected log receipt");
     };
@@ -331,7 +331,7 @@ fn cmp_u256_resets_err() {
     let Receipt::Log {
         ra: reg_err_before_cmp,
         ..
-    } = receipts.get(0).unwrap()
+    } = receipts.first().unwrap()
     else {
         panic!("Expected log receipt");
     };

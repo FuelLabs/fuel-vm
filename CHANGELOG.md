@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
-- [#844](https://github.com/FuelLabs/fuel-vm/pull/844): `WDCM` and `WDQCM` reset `$of` and `$err`.
 
 ### Removed
 
@@ -21,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Breaking
 - [#829](https://github.com/FuelLabs/fuel-vm/pull/829): Updated `add_random_fee_input()` to accept an `rng` for true randomization. Introduced `add_fee_input()` to retain the previous behavior of `add_random_fee_input()`.
 - [#845](https://github.com/FuelLabs/fuel-vm/pull/845): Removed `Default` implementation of `SecretKey`.
+- [#844](https://github.com/FuelLabs/fuel-vm/pull/844): `WDCM` and `WQCM` reset `$of` and `$err`.
 
 ## [Version 0.57.1]
 

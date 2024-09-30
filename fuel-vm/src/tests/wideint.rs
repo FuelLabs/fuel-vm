@@ -103,11 +103,8 @@ fn cmp_u128_resets_of() {
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, Flags::WRAPPING.bits() as u32));
     ops.push(op::flag(0x20));
-    ops.extend(make_u128(0x20, u128::MAX));
-    ops.extend(make_u128(0x21, 3u64.into()));
-    ops.extend(make_u128(0x22, 2u64.into()));
-    ops.extend(make_u128(0x23, 0u64.into()));
-    ops.push(op::wdmd(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::not(0x20, 0));
+    ops.push(op::mul(0x20, 0x20, 0x20));
     ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
 
     // Now push a cmp_u128 operation and log the value of $of again
@@ -145,19 +142,19 @@ fn cmp_u128_resets_of() {
     };
 
     // Then
-    assert_eq!(*reg_of_before_cmp, 1);
+    assert!(*reg_of_before_cmp != 0);
     assert_eq!(*reg_of_after_cmp, 0);
 }
 
 #[test]
 fn cmp_u128_resets_err() {
+    // Given
     // Issue an erroring operation first and log the value of $err
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
     ops.push(op::flag(0x20));
-    ops.extend(make_u128(0x20, 1u64.into()));
-    ops.extend(make_u128(0x23, 0u64.into()));
-    ops.push(op::wdam(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::movi(0x20, 1));
+    ops.push(op::divi(0x20, 0x20, 0));
     ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
 
     // Now push a cmp_u128 operation and log the value of $err again
@@ -175,6 +172,7 @@ fn cmp_u128_resets_err() {
     ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
     ops.push(op::ret(RegId::ONE));
 
+    // When
     let receipts: Vec<Receipt> = run_script(ops);
 
     let Receipt::Log {
@@ -193,6 +191,7 @@ fn cmp_u128_resets_err() {
         panic!("Expected log receipt");
     };
 
+    // Then
     assert_eq!(*reg_err_before_cmp, 1);
     assert_eq!(*reg_err_after_cmp, 0);
 }
@@ -254,11 +253,8 @@ fn cmp_u256_resets_of() {
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, Flags::WRAPPING.bits() as u32));
     ops.push(op::flag(0x20));
-    ops.extend(make_u128(0x20, u128::MAX));
-    ops.extend(make_u128(0x21, 3u64.into()));
-    ops.extend(make_u128(0x22, 2u64.into()));
-    ops.extend(make_u128(0x23, 0u64.into()));
-    ops.push(op::wdmd(0x23, 0x20, 0x21, 0x22));
+    ops.push(op::not(0x20, 0));
+    ops.push(op::mul(0x20, 0x20, 0x20));
     ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
 
     // Now push a cmp_u256 operation and log the value of $of again
@@ -296,19 +292,19 @@ fn cmp_u256_resets_of() {
     };
 
     // Then
-    assert_eq!(*reg_of_before_cmp, 1);
+    assert!(*reg_of_before_cmp != 0);
     assert_eq!(*reg_of_after_cmp, 0);
 }
 
 #[test]
 fn cmp_u256_resets_err() {
+    // Given
     // Issue an erroring operation first and log the value of $err
     let mut ops = Vec::new();
     ops.push(op::movi(0x20, Flags::UNSAFEMATH.bits() as u32));
     ops.push(op::flag(0x20));
-    ops.extend(make_u128(0x20, 1u64.into()));
-    ops.extend(make_u128(0x23, 0u64.into()));
-    ops.push(op::wdam(0x23, 0x20, 0x20, 0x23));
+    ops.push(op::movi(0x20, 1));
+    ops.push(op::divi(0x20, 0x20, 0));
     ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
 
     // Now push a cmp_u256 operation and log the value of $err again
@@ -326,6 +322,7 @@ fn cmp_u256_resets_err() {
     ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
     ops.push(op::ret(RegId::ONE));
 
+    // When
     let receipts: Vec<Receipt> = run_script(ops);
 
     let Receipt::Log {
@@ -344,6 +341,7 @@ fn cmp_u256_resets_err() {
         panic!("Expected log receipt");
     };
 
+    // Then
     assert_eq!(*reg_err_before_cmp, 1);
     assert_eq!(*reg_err_after_cmp, 0);
 }

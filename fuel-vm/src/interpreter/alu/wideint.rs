@@ -89,7 +89,7 @@ macro_rules! wideint_ops {
                     };
 
                     *dest = [<cmp_ $t:lower>](lhs, rhs, args.mode);
-                    *of =  0;
+                    *of = 0;
                     *err = 0;
 
                     inc_pc(pc)?;

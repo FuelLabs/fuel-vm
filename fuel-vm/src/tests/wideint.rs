@@ -147,7 +147,6 @@ fn cmp_u128_resets_of() {
         panic!("Expected log receipt");
     };
 
-    println!("{:?}", receipts);
     // Then
     assert!(*reg_of_before_cmp != 0);
     assert_eq!(*reg_of_after_cmp, 0);
@@ -203,7 +202,6 @@ fn cmp_u128_resets_err() {
     };
 
     // Then
-    println!("{:?}", receipts);
     assert_eq!(*reg_err_before_cmp, 1);
     assert_eq!(*reg_err_after_cmp, 0);
 }
@@ -309,7 +307,6 @@ fn cmp_u256_resets_of() {
         panic!("Expected log receipt");
     };
 
-    println!("{:?}", receipts);
     // Then
     assert!(*reg_of_before_cmp != 0);
     assert_eq!(*reg_of_after_cmp, 0);
@@ -365,7 +362,6 @@ fn cmp_u256_resets_err() {
     };
 
     // Then
-    println!("{:?}", receipts);
     assert_eq!(*reg_err_before_cmp, 1);
     assert_eq!(*reg_err_after_cmp, 0);
 }

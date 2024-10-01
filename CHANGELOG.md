@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 - [#829](https://github.com/FuelLabs/fuel-vm/pull/829): Updated `add_random_fee_input()` to accept an `rng` for true randomization. Introduced `add_fee_input()` to retain the previous behavior of `add_random_fee_input()`.
+- [#845](https://github.com/FuelLabs/fuel-vm/pull/845): Removed `Default` implementation of `SecretKey`.
 
 ## [Version 0.57.1]
 

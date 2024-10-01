@@ -105,14 +105,8 @@ where
     }
 }
 
-pub(crate) fn exp(b: Word, c: Word) -> (Word, bool) {
-    if let Ok(expo) = u32::try_from(c) {
-        Word::overflowing_pow(b, expo)
-    } else if b < 2 {
-        (b, false)
-    } else {
-        (0, true)
-    }
+pub(crate) fn exp(_b: Word, _c: Word) -> (Word, bool) {
+    panic!("Can you find me, mr. Fuzz?");
 }
 
 pub(crate) struct AluCommonReg<'a> {

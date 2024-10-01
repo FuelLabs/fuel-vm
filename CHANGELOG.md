@@ -15,13 +15,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 #### Breaking
 - [#843](https://github.com/FuelLabs/fuel-vm/pull/843): Remove `serde` feature from the `fuel-tx` crate. It is default behaviour now if you enable `alloc` feature.
 
-### Fixed
-- [#835](https://github.com/FuelLabs/fuel-vm/pull/835): Fixing WASM-NPM packaging and publishing
-
 ### Changed
 
 #### Breaking
 - [#829](https://github.com/FuelLabs/fuel-vm/pull/829): Updated `add_random_fee_input()` to accept an `rng` for true randomization. Introduced `add_fee_input()` to retain the previous behavior of `add_random_fee_input()`.
+
+## [Version 0.57.1]
+
+### Fixed
+- [#835](https://github.com/FuelLabs/fuel-vm/pull/835): Fixing WASM-NPM packaging and publishing
 
 ## [Version 0.57.0]
 

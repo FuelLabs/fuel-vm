@@ -105,13 +105,15 @@ where
     }
 }
 
-     if let Ok(expo) = u32::try_from(c) {
-         Word::pow(b, expo).unwrap()
-     } else if b < 2 {
-         (b, false)
-     } else {
-         (0, true)
-     }
+pub(crate) fn exp(b: Word, c: Word) -> (Word, bool) {
+    if let Ok(expo) = u32::try_from(c) {
+        (Word::checked_pow(b, expo).unwrap(), false)
+    } else if b < 2 {
+        (b, false)
+    } else {
+        (0, true)
+    }
+}
 
 pub(crate) struct AluCommonReg<'a> {
     pub of: RegMut<'a, OF>,

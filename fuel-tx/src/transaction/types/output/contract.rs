@@ -5,8 +5,9 @@ use fuel_types::Bytes32;
 ///
 /// The specification defines the layout of the [`Contract`] in the serialized form for
 /// the `fuel-vm`.
-#[derive(Default, Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Default, Debug, Copy, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

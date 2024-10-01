@@ -45,8 +45,7 @@ pub type Blob = ChargeableTransaction<BlobBody, BlobMetadata>;
 pub struct BlobMetadata;
 
 /// The body of the [`Blob`] transaction.
-#[derive(Clone, Default, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

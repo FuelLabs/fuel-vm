@@ -24,9 +24,9 @@ mod script_result;
 use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
-#[derive(Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Deserialize, Serialize)]
+#[derive(
+    Clone, Derivative, serde::Serialize, serde::Deserialize, Deserialize, Serialize,
+)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {

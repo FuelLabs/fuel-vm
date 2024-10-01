@@ -99,22 +99,27 @@ fn cmp_u128(
 #[test]
 fn cmp_u128_resets_of() {
     // Given
-    // Issue an overflowing operation first and log the value of $of
     let mut ops = vec![
         op::movi(0x20, Flags::WRAPPING.bits() as u32),
         op::flag(0x20),
-        op::not(0x20, 0),
-        op::mul(0x20, 0x20, 0x20),
-        op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO),
     ];
 
-    // Now push a cmp_u128 operation and log the value of $of again
-    ops.extend(make_u128(0x20, 0));
+    // Prepare the operands used for the cmp_u128 operation before
+    // performing the division. This is needed because make_u128
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
     ops.extend(make_u128(0x21, 0));
+    ops.extend(make_u128(0x22, 0));
+
+    // Perform a mul operation that overflows and log the value of RegId::OF
+    ops.push(op::not(0x20, 0));
+    ops.push(op::mul(0x20, 0x20, 0x20));
+    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Now push a cmp_u128 operation and log the value of RegId::OF again
     ops.push(op::wdcm_args(
-        0x22,
-        0x20,
+        0x23,
         0x21,
+        0x22,
         CompareArgs {
             indirect_rhs: true,
             mode: CompareMode::EQ,
@@ -142,6 +147,7 @@ fn cmp_u128_resets_of() {
         panic!("Expected log receipt");
     };
 
+    println!("{:?}", receipts);
     // Then
     assert!(*reg_of_before_cmp != 0);
     assert_eq!(*reg_of_after_cmp, 0);
@@ -150,21 +156,25 @@ fn cmp_u128_resets_of() {
 #[test]
 fn cmp_u128_resets_err() {
     // Given
-    // Issue an erroring operation first and log the value of $err
     let mut ops = vec![
         op::movi(0x20, Flags::UNSAFEMATH.bits() as u32),
         op::flag(0x20),
-        op::div(0x10, RegId::ONE, RegId::ZERO),
-        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
     ];
-
-    // Now push a cmp_u128 operation and log the value of $err again
-    ops.extend(make_u128(0x20, 0));
+    // Prepare the operands used for the cmp_u128 operation before
+    // performing the division. This is needed because make_u128
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
     ops.extend(make_u128(0x21, 0));
+    ops.extend(make_u128(0x22, 0));
+
+    // Perform the division and log the value of RegId::ERR
+    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
+    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Push a cmp_u128 operation and log the value of RegId::ERR again
     ops.push(op::wdcm_args(
-        0x22,
-        0x20,
+        0x23,
         0x21,
+        0x22,
         CompareArgs {
             indirect_rhs: true,
             mode: CompareMode::EQ,
@@ -193,6 +203,7 @@ fn cmp_u128_resets_err() {
     };
 
     // Then
+    println!("{:?}", receipts);
     assert_eq!(*reg_err_before_cmp, 1);
     assert_eq!(*reg_err_after_cmp, 0);
 }
@@ -250,22 +261,27 @@ fn cmp_u256(
 #[test]
 fn cmp_u256_resets_of() {
     // Given
-    // Issue an overflowing operation first and log the value of $of
     let mut ops = vec![
         op::movi(0x20, Flags::WRAPPING.bits() as u32),
         op::flag(0x20),
-        op::not(0x20, 0),
-        op::mul(0x20, 0x20, 0x20),
-        op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO),
     ];
 
-    // Now push a cmp_u256 operation and log the value of $of again
-    ops.extend(make_u256(0x20, 0u64.into()));
+    // Prepare the operands used for the cmp_u256 operation before
+    // performing the division. This is needed because make_u256
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
     ops.extend(make_u256(0x21, 0u64.into()));
+    ops.extend(make_u256(0x22, 0u64.into()));
+
+    // Perform a mul operation that overflows and log the value of RegId::OF
+    ops.push(op::not(0x20, 0));
+    ops.push(op::mul(0x20, 0x20, 0x20));
+    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Now push a cmp_u256 operation and log the value of RegId::OF again
     ops.push(op::wqcm_args(
-        0x22,
-        0x20,
+        0x23,
         0x21,
+        0x22,
         CompareArgs {
             indirect_rhs: true,
             mode: CompareMode::EQ,
@@ -293,6 +309,7 @@ fn cmp_u256_resets_of() {
         panic!("Expected log receipt");
     };
 
+    println!("{:?}", receipts);
     // Then
     assert!(*reg_of_before_cmp != 0);
     assert_eq!(*reg_of_after_cmp, 0);
@@ -301,21 +318,25 @@ fn cmp_u256_resets_of() {
 #[test]
 fn cmp_u256_resets_err() {
     // Given
-    // Issue an erroring operation first and log the value of $err
     let mut ops = vec![
         op::movi(0x20, Flags::UNSAFEMATH.bits() as u32),
         op::flag(0x20),
-        op::div(0x10, RegId::ONE, RegId::ZERO),
-        op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO),
     ];
-
-    // Now push a cmp_u256 operation and log the value of $err again
-    ops.extend(make_u256(0x20, 0u64.into()));
+    // Prepare the operands used for the cmp_u256 operation before
+    // performing the division. This is needed because make_u256
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
     ops.extend(make_u256(0x21, 0u64.into()));
+    ops.extend(make_u256(0x22, 0u64.into()));
+
+    // Perform the division and log the value of the RegId::ERR
+    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
+    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Push a cmp_u256 operation and log the value of RegId::ERR again
     ops.push(op::wqcm_args(
-        0x22,
-        0x20,
+        0x23,
         0x21,
+        0x22,
         CompareArgs {
             indirect_rhs: true,
             mode: CompareMode::EQ,
@@ -344,6 +365,7 @@ fn cmp_u256_resets_err() {
     };
 
     // Then
+    println!("{:?}", receipts);
     assert_eq!(*reg_err_before_cmp, 1);
     assert_eq!(*reg_err_after_cmp, 0);
 }

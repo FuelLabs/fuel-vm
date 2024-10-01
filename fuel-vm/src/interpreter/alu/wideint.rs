@@ -75,6 +75,7 @@ macro_rules! wideint_ops {
                     c: Word,
                     args: CompareArgs,
                 ) -> SimpleResult<()> {
+
                     let (SystemRegisters { mut of, mut err, pc, .. }, mut w) = split_registers(&mut self.registers);
                     let dest: &mut Word = &mut w[ra.try_into()?];
 

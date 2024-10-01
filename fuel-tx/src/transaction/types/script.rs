@@ -50,9 +50,8 @@ pub struct ScriptMetadata {
     pub script_data_offset: usize,
 }
 
-#[derive(Clone, Default, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(transparent))]
+#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptCode {
@@ -105,9 +104,14 @@ impl fuel_compression::Compressible for ScriptCode {
     type Compressed = fuel_compression::RegistryKey;
 }
 
-#[derive(Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(
+    Clone,
+    Derivative,
+    serde::Serialize,
+    serde::Deserialize,
+    fuel_types::canonical::Deserialize,
+    fuel_types::canonical::Serialize,
+)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

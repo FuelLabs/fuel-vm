@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
 - [#820](https://github.com/FuelLabs/fuel-vm/pull/820): Add fuzzing in CI with ClusterFuzzLite.
 
+### Removed
+
+#### Breaking
+- [#843](https://github.com/FuelLabs/fuel-vm/pull/843): Remove `serde` feature from the `fuel-tx` crate. It is default behaviour now if you enable `alloc` feature.
+
 ### Fixed
 - [#835](https://github.com/FuelLabs/fuel-vm/pull/835): Fixing WASM-NPM packaging and publishing
 

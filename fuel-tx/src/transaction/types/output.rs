@@ -19,8 +19,17 @@ mod repr;
 use contract::Contract;
 pub use repr::OutputRepr;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum_macros::EnumCount)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    strum_macros::EnumCount,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -253,14 +262,12 @@ pub mod typescript {
         vec::Vec,
     };
 
-    #[derive(Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]
     pub struct Output(#[wasm_bindgen(skip)] pub Box<crate::Output>);
 
     #[wasm_bindgen]
     impl Output {
-        #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
             serde_json::to_string(&self.0).expect("unable to json format")

@@ -100,8 +100,9 @@ pub mod specifications {
     /// The type means that the message should be signed by the `recipient`, and the
     /// signature(witness) should be stored under the `witness_index` index in the
     /// `witnesses` vector of the [`crate::Transaction`].
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     #[cfg_attr(
         feature = "da-compression",
         derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -110,8 +111,9 @@ pub mod specifications {
 
     /// The type means that the message is not signed, and the `owner` is a `predicate`
     /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     #[cfg_attr(
         feature = "da-compression",
         derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -123,8 +125,9 @@ pub mod specifications {
     /// non-zero `value` that will be transferred to the contract as a native asset
     /// during the execution. If the execution of the transaction fails, the metadata
     /// is not consumed and can be used later until successful execution.
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageData<Signed> {
@@ -144,8 +147,9 @@ pub mod specifications {
     }
 
     /// The spendable message acts as a standard coin.
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageCoin<Signed> {
@@ -170,8 +174,9 @@ pub mod specifications {
     /// Otherwise into [`MessageCoin`].
     /// If the `predicate` is empty, the usage rules should be [`Signed`], else
     /// [`Predicate`].
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     pub struct Full;
 
     impl MessageSpecification for Full {
@@ -202,7 +207,7 @@ pub mod specifications {
 /// - [`specifications::Full`].
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>

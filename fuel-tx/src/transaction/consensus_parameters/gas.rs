@@ -1181,10 +1181,10 @@ pub struct GasCostsValuesV1 {
     pub lw: Word,
     pub mint: Word,
     pub mlog: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "mod"))]
+    #[serde(rename = "mod")]
     pub mod_op: Word,
     pub modi: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "move"))]
+    #[serde(rename = "move")]
     pub move_op: Word,
     pub movi: Word,
     pub mroo: Word,
@@ -1199,9 +1199,9 @@ pub struct GasCostsValuesV1 {
     pub popl: Word,
     pub pshh: Word,
     pub pshl: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "ret_contract"))]
+    #[serde(rename = "ret_contract")]
     pub ret: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
+    #[serde(rename = "rvrt_contract")]
     pub rvrt: Word,
     pub sb: Word,
     pub sll: Word,
@@ -1246,7 +1246,7 @@ pub struct GasCostsValuesV1 {
     pub mcp: DependentCost,
     pub mcpi: DependentCost,
     pub meq: DependentCost,
-    #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
+    #[serde(rename = "retd_contract")]
     pub retd: DependentCost,
     pub s256: DependentCost,
     pub scwq: DependentCost,
@@ -1308,10 +1308,10 @@ pub struct GasCostsValuesV2 {
     pub lw: Word,
     pub mint: Word,
     pub mlog: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "mod"))]
+    #[serde(rename = "mod")]
     pub mod_op: Word,
     pub modi: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "move"))]
+    #[serde(rename = "move")]
     pub move_op: Word,
     pub movi: Word,
     pub mroo: Word,
@@ -1326,9 +1326,9 @@ pub struct GasCostsValuesV2 {
     pub popl: Word,
     pub pshh: Word,
     pub pshl: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "ret_contract"))]
+    #[serde(rename = "ret_contract")]
     pub ret: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
+    #[serde(rename = "rvrt_contract")]
     pub rvrt: Word,
     pub sb: Word,
     pub sll: Word,
@@ -1374,7 +1374,7 @@ pub struct GasCostsValuesV2 {
     pub mcp: DependentCost,
     pub mcpi: DependentCost,
     pub meq: DependentCost,
-    #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
+    #[serde(rename = "retd_contract")]
     pub retd: DependentCost,
     pub s256: DependentCost,
     pub scwq: DependentCost,
@@ -1436,10 +1436,10 @@ pub struct GasCostsValuesV3 {
     pub lw: Word,
     pub mint: Word,
     pub mlog: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "mod"))]
+    #[serde(rename = "mod")]
     pub mod_op: Word,
     pub modi: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "move"))]
+    #[serde(rename = "move")]
     pub move_op: Word,
     pub movi: Word,
     pub mroo: Word,
@@ -1454,9 +1454,9 @@ pub struct GasCostsValuesV3 {
     pub popl: Word,
     pub pshh: Word,
     pub pshl: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "ret_contract"))]
+    #[serde(rename = "ret_contract")]
     pub ret: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
+    #[serde(rename = "rvrt_contract")]
     pub rvrt: Word,
     pub sb: Word,
     pub sll: Word,
@@ -1504,7 +1504,7 @@ pub struct GasCostsValuesV3 {
     pub mcp: DependentCost,
     pub mcpi: DependentCost,
     pub meq: DependentCost,
-    #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
+    #[serde(rename = "retd_contract")]
     pub retd: DependentCost,
     pub s256: DependentCost,
     pub scwq: DependentCost,
@@ -1565,10 +1565,10 @@ pub struct GasCostsValuesV4 {
     pub lw: Word,
     pub mint: Word,
     pub mlog: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "mod"))]
+    #[serde(rename = "mod")]
     pub mod_op: Word,
     pub modi: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "move"))]
+    #[serde(rename = "move")]
     pub move_op: Word,
     pub movi: Word,
     pub mroo: Word,
@@ -1583,9 +1583,9 @@ pub struct GasCostsValuesV4 {
     pub popl: Word,
     pub pshh: Word,
     pub pshl: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "ret_contract"))]
+    #[serde(rename = "ret_contract")]
     pub ret: Word,
-    #[cfg_attr(feature = "serde", serde(rename = "rvrt_contract"))]
+    #[serde(rename = "rvrt_contract")]
     pub rvrt: Word,
     pub sb: Word,
     pub sll: Word,
@@ -1636,7 +1636,7 @@ pub struct GasCostsValuesV4 {
     pub mcp: DependentCost,
     pub mcpi: DependentCost,
     pub meq: DependentCost,
-    #[cfg_attr(feature = "serde", serde(rename = "retd_contract"))]
+    #[serde(rename = "retd_contract")]
     pub retd: DependentCost,
     pub s256: DependentCost,
     pub scwq: DependentCost,

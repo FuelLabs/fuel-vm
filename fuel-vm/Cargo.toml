@@ -96,7 +96,6 @@ serde = [
     "hashbrown/serde",
     "fuel-asm/serde",
     "fuel-types/serde",
-    "fuel-tx/serde",
     "fuel-merkle/serde",
     "backtrace?/serde",
 ]

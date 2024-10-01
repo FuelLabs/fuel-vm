@@ -105,9 +105,13 @@ where
     }
 }
 
-pub(crate) fn exp(_b: Word, _c: Word) -> (Word, bool) {
-    panic!("Can you find me, mr. Fuzz?");
-}
+     if let Ok(expo) = u32::try_from(c) {
+         Word::pow(b, expo).unwrap()
+     } else if b < 2 {
+         (b, false)
+     } else {
+         (0, true)
+     }
 
 pub(crate) struct AluCommonReg<'a> {
     pub of: RegMut<'a, OF>,

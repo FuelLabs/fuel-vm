@@ -26,8 +26,19 @@ use fuel_asm::Word;
 use fuel_types::canonical::Serialize;
 use hashbrown::HashSet;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct TransactionFee {
     pub(crate) min_fee: Word,
     pub(crate) max_fee: Word,

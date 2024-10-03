@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
+- [#820](https://github.com/FuelLabs/fuel-vm/pull/820): Add fuzzing in CI with ClusterFuzzLite.
 
 ### Removed
 

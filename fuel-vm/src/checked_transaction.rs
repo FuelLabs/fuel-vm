@@ -49,7 +49,10 @@ use crate::{
     },
     pool::VmMemoryPool,
     prelude::*,
-    storage::BlobData,
+    storage::{
+        predicate::PredicateBlobStorage,
+        BlobData,
+    },
 };
 
 bitflags::bitflags! {
@@ -303,8 +306,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug,
+        S: PredicateBlobStorage,
     {
         self.into_checked_reusable_memory(
             block_height,
@@ -325,8 +327,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug,
+        S: PredicateBlobStorage,
     {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
@@ -408,8 +409,7 @@ pub trait CheckPredicates: Sized {
         storage: S,
     ) -> Result<Self, CheckError>
     where
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug;
+        S: PredicateBlobStorage;
 
     /// Performs predicates verification of the transaction in parallel.
     async fn check_predicates_async<E: ParallelExecutor, S>(
@@ -419,8 +419,7 @@ pub trait CheckPredicates: Sized {
         storage: S,
     ) -> Result<Self, CheckError>
     where
-        S: StorageRead<BlobData> + Send + 'static + Clone,
-        S::Error: Debug;
+        S: PredicateBlobStorage + Send + 'static;
 }
 
 /// Provides predicate estimation functionality for the transaction.
@@ -434,8 +433,7 @@ pub trait EstimatePredicates: Sized {
         storage: S,
     ) -> Result<(), CheckError>
     where
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug;
+        S: PredicateBlobStorage;
 
     /// Estimates predicates of the transaction in parallel.
     async fn estimate_predicates_async<E: ParallelExecutor, S>(
@@ -445,8 +443,7 @@ pub trait EstimatePredicates: Sized {
         storage: S,
     ) -> Result<(), CheckError>
     where
-        S: StorageRead<BlobData> + Send + 'static + Clone,
-        S::Error: Debug;
+        S: PredicateBlobStorage + Send + 'static;
 }
 
 /// Executes CPU-heavy tasks in parallel.
@@ -481,8 +478,7 @@ where
         storage: S,
     ) -> Result<Self, CheckError>
     where
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug,
+        S: PredicateBlobStorage,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             Interpreter::<&mut MemoryInstance, PredicateStorage<S>, Tx>::check_predicates(&self, params, memory, storage)?;
@@ -499,8 +495,7 @@ where
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
-        S: StorageRead<BlobData> + Clone + Send + 'static,
-        S::Error: Debug,
+        S: PredicateBlobStorage + Send + 'static,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             Interpreter::check_predicates_async::<E>(&self, params, pool, storage)
@@ -524,8 +519,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
         storage: S,
     ) -> Result<(), CheckError>
     where
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug,
+        S: PredicateBlobStorage,
     {
         Interpreter::estimate_predicates(self, params, memory, storage)?;
         Ok(())
@@ -539,8 +533,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
-        S: StorageRead<BlobData> + Clone + Send + 'static,
-        S::Error: Debug,
+        S: PredicateBlobStorage + Send + 'static,
     {
         Interpreter::estimate_predicates_async::<E>(self, params, pool, storage).await?;
 
@@ -557,8 +550,7 @@ impl EstimatePredicates for Transaction {
         storage: S,
     ) -> Result<(), CheckError>
     where
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug,
+        S: PredicateBlobStorage,
     {
         match self {
             Self::Script(tx) => tx.estimate_predicates(params, memory, storage),
@@ -577,8 +569,7 @@ impl EstimatePredicates for Transaction {
         storage: S,
     ) -> Result<(), CheckError>
     where
-        S: StorageRead<BlobData> + Clone + Send + 'static,
-        S::Error: Debug,
+        S: PredicateBlobStorage + Send + 'static,
     {
         match self {
             Self::Script(tx) => {
@@ -615,8 +606,7 @@ impl CheckPredicates for Checked<Mint> {
         _storage: S,
     ) -> Result<Self, CheckError>
     where
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug,
+        S: PredicateBlobStorage,
     {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -645,8 +635,7 @@ impl CheckPredicates for Checked<Transaction> {
         storage: S,
     ) -> Result<Self, CheckError>
     where
-        S: StorageRead<BlobData> + Clone,
-        S::Error: Debug,
+        S: PredicateBlobStorage,
     {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
@@ -680,8 +669,7 @@ impl CheckPredicates for Checked<Transaction> {
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
-        S: StorageRead<BlobData> + Clone + Send + 'static,
-        S::Error: Debug,
+        S: PredicateBlobStorage + Send + 'static,
     {
         let checked_transaction: CheckedTransaction = self.into();
 

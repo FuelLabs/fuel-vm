@@ -53,29 +53,25 @@ impl<D: PredicateBlobStorage> PredicateStorage<D> {
     }
 }
 
-pub trait PredicateBlobStorage: StorageRead<BlobData> + Clone
-where
-    Self::Error: Debug,
-{
-}
+pub trait PredicateBlobStorage: StorageRead<BlobData> + Clone {}
 
 #[derive(Debug, Clone, Copy)]
-pub enum PredicateStorageError<E> {
+pub enum PredicateStorageError {
     /// Storage operation is unavailable in predicate context.
     UnsupportedStorageOperation,
     /// An storage error occurred
-    WrappedError(E),
+    StorageError,
 }
 
-impl<E> From<PredicateStorageError<E>> for InterpreterError<PredicateStorageError<E>> {
-    fn from(val: PredicateStorageError<E>) -> Self {
-        let rt: RuntimeError<StorageUnavailable> = val.into();
+impl From<PredicateStorageError> for InterpreterError<PredicateStorageError> {
+    fn from(val: PredicateStorageError) -> Self {
+        let rt: RuntimeError<PredicateStorageError> = val.into();
         rt.into()
     }
 }
 
-impl<E> From<PredicateStorageError<E>> for RuntimeError<PredicateStorageError<E>> {
-    fn from(val: PredicateStorageError<E>) -> Self {
+impl From<PredicateStorageError> for RuntimeError<PredicateStorageError> {
+    fn from(val: PredicateStorageError) -> Self {
         RuntimeError::Storage(val)
     }
 }
@@ -100,9 +96,9 @@ impl From<StorageUnavailable> for RuntimeError<StorageUnavailable> {
 impl<Type, D> StorageInspect<Type> for PredicateStorage<D>
 where
     Type: Mappable,
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
-    type Error = PredicateStorageError<D::Error>;
+    type Error = PredicateStorageError;
 
     fn get(
         &self,
@@ -119,7 +115,7 @@ where
 impl<Type, D> StorageMutate<Type> for PredicateStorage<D>
 where
     Type: Mappable,
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn replace(
         &mut self,
@@ -139,7 +135,7 @@ where
 
 impl<D> StorageSize<ContractsRawCode> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn size_of_value(&self, _key: &ContractId) -> Result<Option<usize>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
@@ -148,7 +144,7 @@ where
 
 impl<D> StorageRead<ContractsRawCode> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn read(
         &self,
@@ -168,7 +164,7 @@ where
 
 impl<D> StorageWrite<ContractsRawCode> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn write_bytes(
         &mut self,
@@ -196,7 +192,7 @@ where
 
 impl<D> StorageSize<ContractsState> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn size_of_value(
         &self,
@@ -208,7 +204,7 @@ where
 
 impl<D> StorageRead<ContractsState> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn read(
         &self,
@@ -228,7 +224,7 @@ where
 
 impl<D> StorageWrite<ContractsState> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn write_bytes(
         &mut self,
@@ -256,20 +252,20 @@ where
 
 impl<D> StorageSize<BlobData> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn size_of_value(
         &self,
         key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<usize>, Self::Error> {
         StorageSize::<BlobData>::size_of_value(&self.storage, key)
-            .map_err(|e| Self::Error::WrappedError(e))
+            .map_err(|_| Self::Error::StorageError)
     }
 }
 
 impl<D> StorageRead<BlobData> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn read(
         &self,
@@ -277,7 +273,7 @@ where
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
         StorageRead::<BlobData>::read(&self.storage, key, buf)
-            .map_err(|e| Self::Error::WrappedError(e))
+            .map_err(|_| Self::Error::StorageError)
     }
 
     fn read_alloc(
@@ -285,13 +281,13 @@ where
         key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
         StorageRead::<BlobData>::read_alloc(&self.storage, key)
-            .map_err(|e| Self::Error::WrappedError(e))
+            .map_err(|_| Self::Error::StorageError)
     }
 }
 
 impl<D> StorageWrite<BlobData> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
+    D: PredicateBlobStorage,
 {
     fn write_bytes(
         &mut self,
@@ -317,14 +313,13 @@ where
     }
 }
 
-impl<D> ContractsAssetsStorage for PredicateStorage<D> where D: StorageRead<BlobData> {}
+impl<D> ContractsAssetsStorage for PredicateStorage<D> where D: PredicateBlobStorage {}
 
 impl<D> InterpreterStorage for PredicateStorage<D>
 where
-    D: StorageRead<BlobData>,
-    D::Error: Debug,
+    D: PredicateBlobStorage,
 {
-    type DataError = PredicateStorageError<D::Error>;
+    type DataError = PredicateStorageError;
 
     fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
         Err(Self::DataError::UnsupportedStorageOperation)

@@ -7,11 +7,7 @@ use super::{
 use crate::{
     checked_transaction::CheckPredicates,
     prelude::*,
-    storage::BlobData,
-};
-use fuel_storage::{
-    StorageRead,
-    StorageSize,
+    storage::predicate::PredicateBlobStorage,
 };
 use fuel_tx::{
     Finalizable,
@@ -28,7 +24,7 @@ where
     fn finalize_checked(
         &self,
         height: BlockHeight,
-        storage: impl StorageSize<BlobData> + StorageRead<BlobData> + Clone,
+        storage: impl PredicateBlobStorage,
     ) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
@@ -44,7 +40,7 @@ where
     fn finalize_checked(
         &self,
         height: BlockHeight,
-        storage: impl StorageSize<BlobData> + StorageRead<BlobData> + Clone,
+        storage: impl PredicateBlobStorage,
     ) -> Checked<Tx> {
         self.finalize()
             .into_checked(height, self.get_params(), storage)

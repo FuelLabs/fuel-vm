@@ -35,18 +35,18 @@ use fuel_types::{
 };
 use tai64::Tai64;
 
+use super::{
+    interpreter::ContractsAssetsStorage,
+    BlobBytes,
+    BlobData,
+};
+use crate::storage::predicate::PredicateBlobStorage;
 use alloc::{
     borrow::Cow,
     collections::BTreeMap,
     vec::Vec,
 };
 use core::convert::Infallible;
-
-use super::{
-    interpreter::ContractsAssetsStorage,
-    BlobBytes,
-    BlobData,
-};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
@@ -199,6 +199,8 @@ impl Default for MemoryStorage {
         Self::new(block_height, coinbase)
     }
 }
+
+impl PredicateBlobStorage for MemoryStorage {}
 
 impl StorageInspect<ContractsRawCode> for MemoryStorage {
     type Error = Infallible;

@@ -54,6 +54,7 @@ use crate::{
     interpreter::InterpreterParams,
     prelude::MemoryInstance,
     storage::{
+        predicate::PredicateBlobStorage,
         UploadedBytecode,
         UploadedBytecodes,
     },
@@ -107,7 +108,6 @@ use fuel_types::{
     BlobId,
     Word,
 };
-use crate::storage::predicate::PredicateBlobStorage;
 
 /// Predicates were checked succesfully
 #[derive(Debug, Clone, Copy)]

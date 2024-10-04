@@ -794,7 +794,6 @@ where
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
     M: Memory,
-
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,

@@ -104,7 +104,7 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
-    pub(crate) fn load_contract_code(
+    pub(crate) fn zload_contract_code(
         &mut self,
         id_addr: Word,
         offset: Word,
@@ -598,6 +598,11 @@ where
         let ssp = *self.ssp;
         let sp = *self.sp;
         let region_start = ssp;
+
+        // only blobs are allowed in predicates
+        if self.context.is_predicate() {
+            return Err(PanicReason::ContractInstructionNotAllowed.into())
+        }
 
         if ssp != sp {
             return Err(PanicReason::ExpectedUnallocatedStack.into())

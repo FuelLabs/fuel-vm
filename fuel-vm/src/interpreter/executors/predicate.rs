@@ -30,18 +30,7 @@ where
     pub(crate) fn verify_predicate(
         &mut self,
     ) -> Result<ProgramState, PredicateVerificationFailed> {
-        let range = self
-            .context
-            .predicate()
-            .expect("The predicate is not initialized")
-            .program()
-            .words();
-
         loop {
-            if range.end <= self.registers[RegId::PC] {
-                return Err(PanicReason::MemoryOverflow.into())
-            }
-
             match self.execute()? {
                 ExecuteState::Return(r) => {
                     if r == 1 {

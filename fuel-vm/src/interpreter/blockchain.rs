@@ -623,8 +623,15 @@ where
             current_contract,
             profiler: self.profiler,
         };
+
+        // We copy the contract code directly on the stack.
+        // We want to copy length bytes starting from the contract_offset.
+        // Because we load the contract storage starting from the 0 offset,
+        // We must grow th `contract_offset + length`.
+        let length_with_contract_offset = length.saturating_add(contract_offset);
+
         let contract_len = contract_size(&self.storage, &contract_id)?;
-        let charge_len = core::cmp::max(contract_len as u64, length);
+        let charge_len = core::cmp::max(contract_len as u64, length_with_contract_offset);
         dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
@@ -632,12 +639,6 @@ where
             self.gas_cost,
             charge_len,
         )?;
-
-        // We copy the contract code directly on the stack.
-        // We want to copy length bytes starting from the contract_offset.
-        // Because we load the contract storage starting from the 0 offset,
-        // We must grow th `contract_offset + length`.
-        let length_with_contract_offset = length.saturating_add(contract_offset);
 
         let new_sp = ssp.saturating_add(length);
         let max_sp = ssp.saturating_add(length_with_contract_offset);

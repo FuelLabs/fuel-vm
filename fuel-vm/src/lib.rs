@@ -18,7 +18,9 @@ pub extern crate alloc;
 
 extern crate core;
 #[cfg(feature = "std")]
-extern crate libm as _; // Not needed with stdlib
+extern crate libm as _;
+
+// Not needed with stdlib
 #[cfg(test)]
 use criterion as _;
 

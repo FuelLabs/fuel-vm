@@ -104,7 +104,7 @@ where
     /// contract_code = contracts[contract_id]
     /// mem[$ssp, $rC] = contract_code[$rB, $rC]
     /// ```
-    pub(crate) fn zload_contract_code(
+    pub(crate) fn load_contract_code(
         &mut self,
         id_addr: Word,
         offset: Word,

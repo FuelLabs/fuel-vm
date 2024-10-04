@@ -60,6 +60,7 @@ use fuel_storage::{
 use fuel_tx::{
     consts::BALANCE_ENTRY_SIZE,
     BlobId,
+    Contract,
     ContractIdExt,
     DependentCost,
     Receipt,
@@ -631,29 +632,59 @@ where
             self.gas_cost,
             charge_len,
         )?;
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
+
+        // We copy the contract code directly on the stack.
+        // We want to copy length bytes starting from the contract_offset.
+        // Because we load the contract storage starting from the 0 offset,
+        // We must grow th `contract_offset + length`.
+        let length_with_contract_offset = length.saturating_add(contract_offset);
 
         let new_sp = ssp.saturating_add(length);
-        self.memory.grow_stack(new_sp)?;
+        let max_sp = ssp.saturating_add(length_with_contract_offset);
+
+        self.memory.grow_stack(max_sp)?;
 
         // Set up ownership registers for the copy using old ssp
         let owner =
-            OwnershipRegisters::only_allow_stack_write(new_sp, *self.ssp, *self.hp);
+            OwnershipRegisters::only_allow_stack_write(max_sp, *self.ssp, *self.hp);
 
         // Mark stack space as allocated
+        *self.sp = max_sp;
+        *self.ssp = max_sp;
+
+        let stack_slice_for_contract =
+            self.memory
+                .write(owner, region_start, length_with_contract_offset)?;
+
+        // If the contract offset exceeds the contract length, we fill the stack with
+        // zeros. This is to be consistent with the behaviour of
+        // `copy_from_slice_zero_fill`.
+        if contract_offset > contract_len as u64 {
+            stack_slice_for_contract[..].fill(0)
+        } else {
+            // Safety: `contract_offset <= contract_len <= u32::MAx <= usize::MAX`.
+            // It is safe to truncate `contract_offset`.
+            #[allow(clippy::cast_possible_truncation)]
+            let contract_offset = contract_offset as usize;
+            // Load directly the slice into the stack
+            self.storage
+                .read_contract(&contract_id, stack_slice_for_contract)
+                .transpose()
+                .ok_or(PanicReason::ContractNotFound)?
+                .map_err(RuntimeError::Storage)?;
+
+            // Copy within the slice itself to shift the bytes starting from
+            // contract_offset to the beginning of the stack
+
+            // TODO: Is this safe?
+            stack_slice_for_contract.copy_within(contract_offset.., 0);
+        }
+        // We can shrink the stack by `contract_offset`, as its content are not needed
+        // anymore
         *self.sp = new_sp;
         *self.ssp = new_sp;
 
-        // Copy the code.
-        copy_from_slice_zero_fill(
-            self.memory,
-            owner,
-            contract_bytes,
-            region_start,
-            contract_offset,
-            length,
-        )?;
+        // Copy the contract code into the stack
 
         // Update frame code size, if we have a stack frame (i.e. fp > 0)
         if self.context.is_internal() {
@@ -899,9 +930,19 @@ where
         self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
 
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
-        let contract_len = contract_bytes.len();
+        let contract_len = contract_size(self.storage, &contract_id)?;
+
+        let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len as usize];
+        self.storage
+            .read_contract(&contract_id, &mut contract_buffer)
+            .transpose()
+            .ok_or(PanicReason::ContractNotFound)?
+            .map_err(RuntimeError::Storage)?;
+
+        if contract_buffer.len() != contract_len as usize {
+            return Err(PanicReason::ContractMismatch.into())
+        }
+
         let charge_len = core::cmp::max(contract_len as u64, length);
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
@@ -921,7 +962,7 @@ where
         copy_from_slice_zero_fill(
             self.memory,
             self.owner,
-            contract.as_ref().as_ref(),
+            &contract_buffer,
             dst_addr,
             contract_offset,
             length,
@@ -1017,13 +1058,18 @@ impl<'vm, S> CodeRootCtx<'vm, S> {
             self.gas_cost,
             len as u64,
         )?;
-        let root = self
-            .storage
-            .storage_contract(&contract_id)
+        // TODO: Can we write this to the stack and avoid allocation?
+        let mut buf: Vec<u8> = alloc::vec![0u8; len as usize];
+        self.storage
+            .read_contract(&contract_id, &mut buf)
             .transpose()
             .ok_or(PanicReason::ContractNotFound)?
-            .map_err(RuntimeError::Storage)?
-            .root();
+            .map_err(RuntimeError::Storage)?;
+
+        if buf.len() != len as usize {
+            return Err(PanicReason::ContractMismatch.into())
+        }
+        let root = Contract::root_from_code(buf);
 
         self.memory.write_bytes(self.owner, a, *root)?;
 

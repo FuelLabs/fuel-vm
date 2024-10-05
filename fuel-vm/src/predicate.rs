@@ -359,11 +359,12 @@ mod tests {
                     op::ret(0x0),
                     // Good return opcode that we want to use for the `LDC`.
                     op::ret(0x1),
-                    // This will be our zeroed blob id
+                    // Take the start of the code and move it for 2 opcodes to get the
+                    // desired opcode to copy.
                     op::move_(0x10, IS),
                     // We don't need to copy `jmpf` and bad `ret` opcodes via `LDC`.
                     op::addi(0x10, 0x10, 2 * Instruction::SIZE as u16),
-                    // Store start of the code
+                    // Store end of the code
                     op::move_(0x12, SSP),
                     // Subtract the start of the code from the end of the code
                     op::sub(0x12, 0x12, IS),
@@ -474,11 +475,12 @@ mod tests {
                     op::ret(0x1),
                     // Bad return opcode that we want to use for the `LDC`.
                     op::ret(0x0),
-                    // This will be our zeroed blob id
+                    // Take the start of the code and move it for 2 opcodes to get the
+                    // desired opcode to copy.
                     op::move_(0x10, IS),
                     // We don't need to copy `jmpf` and bad `ret` opcodes via `LDC`.
                     op::addi(0x10, 0x10, 2 * Instruction::SIZE as u16),
-                    // Store start of the code
+                    // Store end of the code
                     op::move_(0x12, SSP),
                     // Subtract the start of the code from the end of the code
                     op::sub(0x12, 0x12, IS),

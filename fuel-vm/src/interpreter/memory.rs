@@ -326,23 +326,74 @@ impl MemoryInstance {
         Ok(())
     }
 
-    /// Copies the memory from `src` to `dst`.
+    /// Copies the memory from `src` to `dst` verifying ownership.
     #[inline]
     #[track_caller]
-    pub fn memcopy_noownerchecks<A: ToAddr, B: ToAddr, C: ToAddr>(
+    pub fn memcopy(
         &mut self,
-        dst: A,
-        src: B,
-        len: C,
+        dst: Word,
+        src: Word,
+        length: Word,
+        owner: OwnershipRegisters,
     ) -> Result<(), PanicReason> {
-        // TODO: Optimize
+        let dst_range = self.verify(dst, length)?;
+        let src_range = self.verify(src, length)?;
 
-        let src = src.to_addr()?;
-        let dst = dst.to_addr()?;
-        let len = len.to_addr()?;
+        if dst_range.start() <= src_range.start() && src_range.start() < dst_range.end()
+            || src_range.start() <= dst_range.start()
+                && dst_range.start() < src_range.end()
+            || dst_range.start() < src_range.end() && src_range.end() <= dst_range.end()
+            || src_range.start() < dst_range.end() && dst_range.end() <= src_range.end()
+        {
+            return Err(PanicReason::MemoryWriteOverlap)
+        }
 
-        let tmp = self.read(src, len)?.to_vec();
-        self.write_noownerchecks(dst, len)?.copy_from_slice(&tmp);
+        owner.verify_ownership(&dst_range)?;
+
+        if src_range.end() <= self.stack.len() {
+            if dst_range.end() <= self.stack.len() {
+                self.stack
+                    .copy_within(src_range.usizes(), dst_range.start());
+            } else if dst_range.start() >= self.heap_offset() {
+                #[allow(clippy::arithmetic_side_effects)]
+                // Safety: subtractions are checked above
+                let dst_start = dst_range.start() - self.heap_offset();
+                #[allow(clippy::arithmetic_side_effects)]
+                // Safety: subtractions are checked above
+                let dst_end = dst_range.end() - self.heap_offset();
+
+                let src_array = &self.stack[src_range.usizes()];
+                let dst_array = &mut self.heap[dst_start..dst_end];
+                dst_array.copy_from_slice(src_array);
+            } else {
+                unreachable!("Range was verified to be valid")
+            }
+        } else if src_range.start() >= self.heap_offset() {
+            #[allow(clippy::arithmetic_side_effects)]
+            // Safety: subtractions are checked above
+            let src_start = src_range.start() - self.heap_offset();
+            #[allow(clippy::arithmetic_side_effects)]
+            // Safety: subtractions are checked above
+            let src_end = src_range.end() - self.heap_offset();
+
+            if dst_range.end() <= self.stack.len() {
+                let src_array = &self.heap[src_start..src_end];
+
+                let dst_array = &mut self.stack[dst_range.usizes()];
+                dst_array.copy_from_slice(src_array);
+            } else if dst_range.start() >= self.heap_offset() {
+                #[allow(clippy::arithmetic_side_effects)]
+                // Safety: subtractions are checked above
+                let dst_start = dst_range.start() - self.heap_offset();
+
+                self.heap.copy_within(src_start..src_end, dst_start);
+            } else {
+                unreachable!("Range was verified to be valid")
+            }
+        } else {
+            unreachable!("Range was verified to be valid")
+        }
+
         Ok(())
     }
 
@@ -857,23 +908,11 @@ pub(crate) fn memcopy(
     memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Word,
+    dst: Word,
+    src: Word,
+    length: Word,
 ) -> SimpleResult<()> {
-    let dst_range = memory.verify(a, c)?;
-    let src_range = memory.verify(b, c)?;
-
-    if dst_range.start() <= src_range.start() && src_range.start() < dst_range.end()
-        || src_range.start() <= dst_range.start() && dst_range.start() < src_range.end()
-        || dst_range.start() < src_range.end() && src_range.end() <= dst_range.end()
-        || src_range.start() < dst_range.end() && dst_range.end() <= src_range.end()
-    {
-        return Err(PanicReason::MemoryWriteOverlap.into())
-    }
-
-    owner.verify_ownership(&dst_range)?;
-    memory.memcopy_noownerchecks(a, b, c)?;
+    memory.memcopy(dst, src, length, owner)?;
 
     Ok(inc_pc(pc)?)
 }

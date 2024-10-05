@@ -1,5 +1,8 @@
 #![allow(non_snake_case)]
 
+#[cfg(test)]
+mod ldc_mode_2;
+
 use crate::{
     consts::*,
     interpreter::{
@@ -2262,6 +2265,7 @@ fn various_ldc_issues_poc() {
     });
 }
 
+// TODO: Move to `blockchain/ldc_mode_1.rs`
 // === Begin temporary tests for ldcv2 ===
 
 #[test]
@@ -2275,20 +2279,20 @@ fn ldcv2__loading_less_bytes_due_to_offset_reduces_cost() {
     let offset = 0;
     let len = 100;
     let starting_gas_amount =
-        ldcv2__gas_cost_for_len(&mut client, number_of_opcodes, offset, len);
+        ldcv1__gas_cost_for_len(&mut client, number_of_opcodes, offset, len);
 
     for i in 1..10 {
         let offset = i * 4;
         let expected_gas_used = starting_gas_amount - (i * noop_cost);
         let actual_gas_used =
-            ldcv2__gas_cost_for_len(&mut client, number_of_opcodes, offset as u16, len);
+            ldcv1__gas_cost_for_len(&mut client, number_of_opcodes, offset as u16, len);
 
         assert_eq!(expected_gas_used, actual_gas_used);
     }
 }
 
 #[test]
-fn ldcv2__cost_is_proportional_to_total_blobs_size_not_rC() {
+fn ldcv1__cost_is_proportional_to_total_blobs_size_not_rC() {
     let mut client = MemoryClient::default();
 
     let gas_costs = client.gas_costs();
@@ -2301,7 +2305,7 @@ fn ldcv2__cost_is_proportional_to_total_blobs_size_not_rC() {
     let offset = 0;
     let len = 0;
     let starting_gas_amount =
-        ldcv2__gas_cost_for_len(&mut client, blob_size, offset, len);
+        ldcv1__gas_cost_for_len(&mut client, blob_size, offset, len);
 
     let bytes_per_op = 4;
 
@@ -2314,12 +2318,12 @@ fn ldcv2__cost_is_proportional_to_total_blobs_size_not_rC() {
         let expected_gas_used = starting_gas_amount + cost_of_ldc;
 
         let actual_gas_used =
-            ldcv2__gas_cost_for_len(&mut client, number_of_opcodes, offset, len);
+            ldcv1__gas_cost_for_len(&mut client, number_of_opcodes, offset, len);
         assert_eq!(actual_gas_used, expected_gas_used);
     }
 }
 
-fn ldcv2__gas_cost_for_len<M>(
+fn ldcv1__gas_cost_for_len<M>(
     client: &mut MemoryClient<M>,
     // in number of opcodes
     number_of_opcodes: usize,
@@ -2336,7 +2340,7 @@ where
 
     let bytes = target_blob.into_iter().collect::<Vec<u8>>();
 
-    let receipts = ldcv2__load_len_of_target_blob(client, offset, len, bytes, false);
+    let receipts = ldcv1__load_len_of_target_blob(client, offset, len, bytes, false);
 
     let result = receipts.last().expect("No receipt");
 
@@ -2348,7 +2352,7 @@ where
     *actual_gas_used
 }
 
-fn ldcv2__load_len_of_target_blob<M>(
+fn ldcv1__load_len_of_target_blob<M>(
     client: &mut MemoryClient<M>,
     offset: u16,
     len: u16,
@@ -2454,7 +2458,7 @@ where
     client.transact(tx_deploy_loader)
 }
 
-fn ldcv2_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
+fn ldcv1_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let gas_price = 0;
 
     // make gas costs free
@@ -2525,7 +2529,7 @@ fn ldcv2_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 }
 
 #[test]
-fn ldcv2__fails_with_nonempty_stack() {
+fn ldcv1__fails_with_nonempty_stack() {
     let (load_blob, _) = script_with_data_offset!(
         data_offset,
         vec![
@@ -2536,11 +2540,11 @@ fn ldcv2__fails_with_nonempty_stack() {
         TxParameters::DEFAULT.tx_offset()
     );
 
-    ldcv2_reason_helper(load_blob, ExpectedUnallocatedStack);
+    ldcv1_reason_helper(load_blob, ExpectedUnallocatedStack);
 }
 
 #[test]
-fn ldcv2__fails_when_mem_offset_is_above_reg_hp() {
+fn ldcv1__fails_when_mem_offset_is_above_reg_hp() {
     // Then deploy another contract that attempts to read the first one
 
     let (load_blob, _) = script_with_data_offset!(
@@ -2552,12 +2556,12 @@ fn ldcv2__fails_when_mem_offset_is_above_reg_hp() {
         TxParameters::DEFAULT.tx_offset()
     );
 
-    ldcv2_reason_helper(load_blob, MemoryOverflow);
+    ldcv1_reason_helper(load_blob, MemoryOverflow);
 }
 
 #[test]
-fn ldcv2__fails_when_blob_size_overflows() {
-    ldcv2_reason_helper(
+fn ldcv1__fails_when_blob_size_overflows() {
+    ldcv1_reason_helper(
         vec![
             op::not(0x20, RegId::ZERO),
             op::ldc(RegId::HP, RegId::ZERO, 0x20, 1),
@@ -2567,7 +2571,7 @@ fn ldcv2__fails_when_blob_size_overflows() {
 }
 
 #[test]
-fn ldcv2__fails_wehn_blob_id_ends_beyond_max_ram() {
+fn ldcv1__fails_wehn_blob_id_ends_beyond_max_ram() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
     let reg_b = 0x21;
@@ -2580,11 +2584,11 @@ fn ldcv2__fails_wehn_blob_id_ends_beyond_max_ram() {
         op::ldc(reg_a, RegId::ZERO, reg_b, 1), // Load first two words from the contract
     ];
 
-    ldcv2_reason_helper(load_blob, MemoryOverflow);
+    ldcv1_reason_helper(load_blob, MemoryOverflow);
 }
 
 #[test]
-fn ldcv2__fails_when_blob_doesnt_exist() {
+fn ldcv1__fails_when_blob_doesnt_exist() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
     let reg_b = 0x21;
@@ -2594,7 +2598,7 @@ fn ldcv2__fails_when_blob_doesnt_exist() {
         op::ldc(reg_a, RegId::ZERO, reg_b, 1), // Load first two words from the contract
     ];
 
-    ldcv2_reason_helper(load_blob, PanicReason::BlobNotFound);
+    ldcv1_reason_helper(load_blob, PanicReason::BlobNotFound);
 }
 
 #[test]
@@ -2701,4 +2705,4 @@ fn load_blob_code__doesnt_load_above_offset() {
     assert_eq!(0, ret.val().expect("Return value"));
 }
 
-// === End temporary tests for ldcv2 ===
+// === End temporary tests for ldcv1 ===

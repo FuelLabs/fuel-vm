@@ -23,7 +23,7 @@ use rand::{
 bitflags::bitflags! {
     /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
     #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
         const Tip = 1 << 0;
@@ -33,6 +33,31 @@ bitflags::bitflags! {
         const Maturity = 1 << 2;
         /// If set, the max fee is present in the policies.
         const MaxFee = 1 << 3;
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for PoliciesBits {
+    type Compressed = u32;
+}
+
+#[cfg(feature = "da-compression")]
+impl<Ctx> fuel_compression::CompressibleBy<Ctx> for PoliciesBits
+where
+    Ctx: fuel_compression::ContextError,
+{
+    async fn compress_with(&self, _: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+        Ok(self.bits())
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl<Ctx> fuel_compression::DecompressibleBy<Ctx> for PoliciesBits
+where
+    Ctx: fuel_compression::ContextError,
+{
+    async fn decompress_with(c: Self::Compressed, _: &Ctx) -> Result<Self, Ctx::Error> {
+        Ok(Self::from_bits_truncate(c))
     }
 }
 
@@ -47,8 +72,9 @@ bitflags::bitflags! {
     Hash,
     strum_macros::EnumCount,
     strum_macros::EnumIter,
+    serde::Serialize,
+    serde::Deserialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PolicyType {
     Tip,
     WitnessLimit,
@@ -80,8 +106,13 @@ impl PolicyType {
 pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as usize;
 
 /// Container for managing policies.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone, Copy, Default, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Policies {
     /// A bitmask that indicates what policies are set.
@@ -296,7 +327,6 @@ pub mod typescript {
             Policies::default()
         }
 
-        #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
             serde_json::to_string(&self).expect("unable to json format")

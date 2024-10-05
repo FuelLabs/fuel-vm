@@ -145,8 +145,12 @@ impl MemoryInstance {
 
     /// Grows the stack to be at least `new_sp` bytes.
     pub fn grow_stack(&mut self, new_sp: Word) -> Result<(), PanicReason> {
-        #[allow(clippy::cast_possible_truncation)] // Safety: MEM_SIZE is usize
-        let new_sp = new_sp.min(MEM_SIZE as Word) as usize;
+        if new_sp > VM_MAX_RAM {
+            return Err(PanicReason::MemoryOverflow);
+        }
+        #[allow(clippy::cast_possible_truncation)] // Safety: VM_MAX_RAM is usize
+        let new_sp = new_sp as usize;
+
         if new_sp > self.stack.len() {
             if new_sp > self.hp {
                 return Err(PanicReason::MemoryGrowthOverlap)
@@ -972,11 +976,10 @@ impl OwnershipRegisters {
 
     /// Empty range is owned iff the range.start is owned
     pub(crate) fn has_ownership_heap(&self, range: &Range<Word>) -> bool {
-        // TODO implement fp->hp and (addr, size) validations
-        // fp->hp
-        // it means $hp from the previous context, i.e. what's saved in the
-        // "Saved registers from previous context" of the call frame at
-        // $fp`
+        if range.is_empty() && range.start == self.hp {
+            return true
+        }
+
         if range.start < self.hp {
             return false
         }
@@ -987,21 +990,32 @@ impl OwnershipRegisters {
 
 /// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
 /// Performs overflow and memory range checks, but no ownership checks.
+/// Note that if `src_offset` is larger than `src.len()`, the whole range will be
+/// zero-filled.
 pub(crate) fn copy_from_slice_zero_fill<A: ToAddr, B: ToAddr>(
     memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     src: &[u8],
     dst_addr: A,
-    src_offset: usize,
+    src_offset: Word,
     len: B,
 ) -> SimpleResult<()> {
     let range = memory.write(owner, dst_addr, len)?;
 
-    let src_end = src_offset.saturating_add(range.len()).min(src.len());
-    let data = src.get(src_offset..src_end).unwrap_or_default();
+    // Special-case the ranges that are completely out of bounds,
+    // to avoid platform-dependenct usize conversion.
+    if src_offset >= src.len() as Word {
+        range[..].fill(0);
+    } else {
+        // Safety: since we check above that this is not larger than `src.len()`,
+        // which is `usize`, the cast never truncates.
+        #[allow(clippy::cast_possible_truncation)]
+        let src_offset = src_offset as usize;
+        let src_end = src_offset.saturating_add(range.len()).min(src.len());
+        let data = src.get(src_offset..src_end).unwrap_or(&[]);
 
-    range[..data.len()].copy_from_slice(data);
-    range[data.len()..].fill(0);
-
+        range[..data.len()].copy_from_slice(data);
+        range[data.len()..].fill(0);
+    }
     Ok(())
 }

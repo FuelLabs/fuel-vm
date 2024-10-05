@@ -12,14 +12,24 @@ use fuel_types::{
 ///
 /// The specification defines the layout of the [`Contract`] in the serialized form for
 /// the `fuel-vm`.
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen(js_name = InputContract))]
 pub struct Contract {
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub balance_root: Bytes32,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub state_root: Bytes32,
+    /// Pointer to transction that last modified the contract state.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
     pub contract_id: ContractId,
 }

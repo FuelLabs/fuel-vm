@@ -229,20 +229,21 @@ where
     fn path_set(
         &self,
         leaf_key: &Bytes32,
-    ) -> Result<(Vec<Node>, Vec<Node>), MerkleTreeError<StorageError>> {
+    ) -> Result<(Vec<Node>, Vec<Bytes32>), MerkleTreeError<StorageError>> {
         let root_node = self.root_node().clone();
         let root_storage_node = StorageNode::new(&self.storage, root_node);
-        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Node>) = root_storage_node
-            .as_path_iter(leaf_key)
-            .map(|(path_node, side_node)| {
-                Ok((
-                    path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                    side_node.map_err(MerkleTreeError::ChildError)?.into_node(),
-                ))
-            })
-            .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
-            .into_iter()
-            .unzip();
+        let (mut path_nodes, mut side_nodes): (Vec<Node>, Vec<Bytes32>) =
+            root_storage_node
+                .as_path_iter(leaf_key)
+                .map(|(path_node, side_node)| {
+                    Ok((
+                        path_node.map_err(MerkleTreeError::ChildError)?.into_node(),
+                        side_node.map_err(MerkleTreeError::ChildError)?,
+                    ))
+                })
+                .collect::<Result<Vec<_>, MerkleTreeError<StorageError>>>()?
+                .into_iter()
+                .unzip();
         path_nodes.reverse();
         side_nodes.reverse();
         side_nodes.pop(); // The last element in the side nodes list is the
@@ -444,16 +445,12 @@ where
             return Ok(())
         }
 
-        let (path_nodes, side_nodes): (Vec<Node>, Vec<Node>) =
+        let (path_nodes, side_nodes): (Vec<Node>, Vec<_>) =
             self.path_set(key.as_ref())?;
 
         match path_nodes.first() {
             Some(node) if *node.leaf_key() == key.as_ref() => {
-                self.delete_with_path_set(
-                    key.as_ref(),
-                    path_nodes.as_slice(),
-                    side_nodes.as_slice(),
-                )?;
+                self.delete_with_path_set(path_nodes.as_slice(), side_nodes.as_slice())?;
             }
             _ => {}
         };
@@ -465,7 +462,7 @@ where
         &mut self,
         requested_leaf_node: &Node,
         path_nodes: &[Node],
-        side_nodes: &[Node],
+        side_nodes: &[Bytes32],
     ) -> Result<(), StorageError> {
         let path = requested_leaf_node.leaf_key();
         let actual_leaf_node = &path_nodes[0];
@@ -524,14 +521,27 @@ where
         }
 
         // Merge side nodes
-        for side_node in side_nodes {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+        for (side_node, old_parent) in
+            side_nodes.iter().zip(path_nodes.iter().skip(1 /* leaf */))
+        {
+            let new_parent = if old_parent.bytes_lo() == side_node {
+                Node::create_node_from_hashes(
+                    *side_node,
+                    *current_node.hash(),
+                    old_parent.height(),
+                )
+            } else {
+                Node::create_node_from_hashes(
+                    *current_node.hash(),
+                    *side_node,
+                    old_parent.height(),
+                )
+            };
+
+            current_node = new_parent;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
-        }
-
-        for node in path_nodes.iter().skip(1 /* leaf */) {
-            self.storage.remove(node.hash())?;
+            self.storage.remove(old_parent.hash())?;
         }
 
         self.set_root_node(current_node);
@@ -541,16 +551,16 @@ where
 
     fn delete_with_path_set(
         &mut self,
-        requested_leaf_key: &Bytes32,
         path_nodes: &[Node],
-        side_nodes: &[Node],
-    ) -> Result<(), StorageError> {
+        side_nodes: &[Bytes32],
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         for node in path_nodes {
             self.storage.remove(node.hash())?;
         }
 
-        let path = requested_leaf_key;
         let mut side_nodes_iter = side_nodes.iter();
+        let mut path_nodes_iter = path_nodes.iter();
+        path_nodes_iter.next(); // Skip the requested leaf node
 
         // The deleted leaf is replaced by a placeholder. Build the tree upwards
         // starting with the placeholder.
@@ -565,6 +575,14 @@ where
         // calculation. We then create a valid ancestor node for the orphaned
         // leaf node by joining it with the earliest non-placeholder side node.
         if let Some(first_side_node) = side_nodes.first() {
+            let first_side_node: Node = self
+                .storage
+                .get(first_side_node)?
+                .ok_or(MerkleTreeError::LoadError(*first_side_node))?
+                .into_owned()
+                .try_into()
+                .map_err(MerkleTreeError::DeserializeError)?;
+
             if first_side_node.is_leaf() {
                 side_nodes_iter.next();
                 current_node = first_side_node.clone();
@@ -582,20 +600,51 @@ where
                 // node will be an internal node, and not a leaf, by the time we
                 // start merging the remaining side nodes.
                 // See https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.find.
-                if let Some(side_node) =
-                    side_nodes_iter.find(|side_node| !side_node.is_placeholder())
+                if let Some(side_node) = side_nodes_iter
+                    .find(|side_node| *side_node != Node::Placeholder.hash())
                 {
-                    current_node =
-                        Node::create_node_on_path(path, &current_node, side_node);
-                    self.storage
-                        .insert(current_node.hash(), &current_node.as_ref().into())?;
+                    // Skip parents until the parent of the first side node is found
+                    if let Some(old_parent) = path_nodes_iter.find(|parent| {
+                        parent.bytes_lo() == side_node || parent.bytes_hi() == side_node
+                    }) {
+                        let new_parent = if old_parent.bytes_lo() == side_node {
+                            Node::create_node_from_hashes(
+                                *side_node,
+                                *current_node.hash(),
+                                old_parent.height(),
+                            )
+                        } else {
+                            Node::create_node_from_hashes(
+                                *current_node.hash(),
+                                *side_node,
+                                old_parent.height(),
+                            )
+                        };
+                        current_node = new_parent;
+                        self.storage
+                            .insert(current_node.hash(), &current_node.as_ref().into())?;
+                    }
                 }
             }
         }
 
         // Merge side nodes
-        for side_node in side_nodes_iter {
-            current_node = Node::create_node_on_path(path, &current_node, side_node);
+        for (side_node, old_parent) in side_nodes_iter.zip(path_nodes_iter) {
+            let new_parent = if old_parent.bytes_lo() == side_node {
+                Node::create_node_from_hashes(
+                    *side_node,
+                    *current_node.hash(),
+                    old_parent.height(),
+                )
+            } else {
+                Node::create_node_from_hashes(
+                    *current_node.hash(),
+                    *side_node,
+                    old_parent.height(),
+                )
+            };
+
+            current_node = new_parent;
             self.storage
                 .insert(current_node.hash(), &current_node.as_ref().into())?;
         }
@@ -629,10 +678,7 @@ where
         // requesting an exclusion proof.
         //
         let actual_leaf = &path_nodes[0];
-        let proof_set = side_nodes
-            .into_iter()
-            .map(|side_node| *side_node.hash())
-            .collect::<Vec<_>>();
+        let proof_set = side_nodes;
         let proof = if !actual_leaf.is_placeholder() && actual_leaf.leaf_key() == path {
             // If the requested key is part of the tree, build an inclusion
             // proof.

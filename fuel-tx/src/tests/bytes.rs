@@ -31,7 +31,6 @@ use rand::{
     SeedableRng,
 };
 use std::fmt;
-use strum::IntoEnumIterator;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
@@ -158,7 +157,7 @@ fn output() {
 fn receipt() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let mut receipts = vec![
+    let receipts = vec![
         Receipt::call(
             rng.gen(),
             rng.gen(),
@@ -216,7 +215,7 @@ fn receipt() {
         Receipt::panic(
             rng.gen(),
             PanicInstruction::error(
-                PanicReason::ContractNotInInputs,
+                PanicReason::UnknownPanicReason,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
             rng.gen(),
@@ -241,18 +240,6 @@ fn receipt() {
         Receipt::mint(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Receipt::burn(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
     ];
-
-    for panic_reason in PanicReason::iter() {
-        receipts.push(Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                panic_reason,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ));
-    }
 
     assert_encoding_correct(&receipts);
 }

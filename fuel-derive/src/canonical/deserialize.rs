@@ -4,7 +4,7 @@ use quote::{
     quote,
 };
 
-use crate::attribute::{
+use super::attribute::{
     should_skip_field,
     should_skip_field_binding,
     StructAttrs,
@@ -174,7 +174,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 }
 
 /// Derives `Deserialize` trait for the given `struct` or `enum`.
-pub fn deserialize_derive(mut s: synstructure::Structure) -> TokenStream2 {
+pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
     s.bind_with(|_| synstructure::BindStyle::RefMut)
         .add_bounds(synstructure::AddBounds::Fields)
         .underscore_const(true);

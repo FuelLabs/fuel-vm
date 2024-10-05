@@ -23,15 +23,14 @@ macro_rules! enum_from {
 }
 
 enum_from! {
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumIter)]
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[derive(fuel_types::canonical::Serialize, fuel_types::canonical::Deserialize)]
-    #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
     #[repr(u8)]
     #[non_exhaustive]
     /// Panic reason representation for the interpreter.
     pub enum PanicReason {
+        #[default]
         /// The byte can't be mapped to any known `PanicReason`.
         UnknownPanicReason = 0x00,
         /// Found `RVRT` instruction.
@@ -147,6 +146,12 @@ enum_from! {
         BytecodeAlreadyUploaded = 0x34,
         /// The part of the bytecode is not sequentially connected to the previous parts.
         ThePartIsNotSequentiallyConnected = 0x35,
+        /// The requested blob is not found.
+        BlobNotFound = 0x36,
+        /// The blob was already
+        BlobIdAlreadyUploaded = 0x37,
+        /// Active gas costs do not define the cost for this instruction.
+        GasCostNotDefined = 0x38,
     }
 }
 

@@ -1,0 +1,70 @@
+---
+source: fuel-tx/src/transaction/types/input/snapshot_tests.rs
+expression: json
+---
+{
+  "Script": {
+    "body": {
+      "script_gas_limit": 0,
+      "receipts_root": "0000000000000000000000000000000000000000000000000000000000000000",
+      "script": [],
+      "script_data": []
+    },
+    "policies": {
+      "bits": "Tip | Maturity | MaxFee",
+      "values": [
+        1,
+        0,
+        123,
+        1000000
+      ]
+    },
+    "inputs": [
+      {
+        "CoinPredicate": {
+          "utxo_id": {
+            "tx_id": "0101010101010101010101010101010101010101010101010101010101010101",
+            "output_index": 2
+          },
+          "owner": "0202020202020202020202020202020202020202020202020202020202020202",
+          "amount": 11,
+          "asset_id": "0505050505050505050505050505050505050505050505050505050505050505",
+          "tx_pointer": {
+            "block_height": 46,
+            "tx_index": 5
+          },
+          "witness_index": null,
+          "predicate_gas_used": 100000,
+          "predicate": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          "predicate_data": [
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4
+          ]
+        }
+      }
+    ],
+    "outputs": [],
+    "witnesses": []
+  }
+}

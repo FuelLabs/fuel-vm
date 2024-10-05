@@ -4,7 +4,6 @@ use crate::{
             CoinPredicate,
             CoinSigned,
         },
-        contract::Contract,
         message::{
             MessageCoinPredicate,
             MessageDataPredicate,
@@ -25,6 +24,7 @@ use fuel_types::{
     },
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     Nonce,
     Salt,
@@ -92,8 +92,20 @@ pub use id::{
 pub type TxId = Bytes32;
 
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    strum_macros::EnumCount,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[allow(clippy::large_enum_variant)]
 pub enum Transaction {
     Script(Script),
@@ -101,6 +113,7 @@ pub enum Transaction {
     Mint(Mint),
     Upgrade(Upgrade),
     Upload(Upload),
+    Blob(Blob),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -112,13 +125,13 @@ impl Default for Transaction {
 
 impl Transaction {
     /// Return default valid transaction useful for tests.
-    #[cfg(all(feature = "rand", feature = "std", feature = "test-helpers"))]
+    #[cfg(all(feature = "random", feature = "std", feature = "test-helpers"))]
     pub fn default_test_tx() -> Self {
         use crate::Finalizable;
 
         crate::TransactionBuilder::script(vec![], vec![])
             .max_fee_limit(0)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into()
     }
@@ -138,7 +151,7 @@ impl Transaction {
             body: ScriptBody {
                 script_gas_limit: gas_limit,
                 receipts_root,
-                script,
+                script: ScriptCode { bytes: script },
                 script_data,
             },
             policies,
@@ -288,6 +301,45 @@ impl Transaction {
         }
     }
 
+    pub fn blob(
+        body: BlobBody,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        witnesses: Vec<Witness>,
+    ) -> Blob {
+        Blob {
+            body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
+    }
+
+    pub fn blob_from_bytes(
+        bytes: Vec<u8>,
+        policies: Policies,
+        inputs: Vec<Input>,
+        outputs: Vec<Output>,
+        mut witnesses: Vec<Witness>,
+    ) -> Blob {
+        let body = BlobBody {
+            id: BlobId::compute(&bytes),
+            witness_index: u16::try_from(witnesses.len()).unwrap_or(u16::MAX),
+        };
+        witnesses.push(bytes.into());
+        Blob {
+            body,
+            policies,
+            inputs,
+            outputs,
+            witnesses,
+            metadata: None,
+        }
+    }
+
     /// Convert the type into a JSON string
     ///
     /// This is implemented as infallible because serde_json will fail only if the type
@@ -295,7 +347,7 @@ impl Transaction {
     /// transaction because all of its attributes are trivially serialized.
     ///
     /// If an error happens, a JSON string with the error description will be returned
-    #[cfg(all(feature = "serde", feature = "alloc"))]
+    #[cfg(test)]
     pub fn to_json(&self) -> alloc::string::String {
         serde_json::to_string(self)
             .unwrap_or_else(|e| alloc::format!(r#"{{"error": "{e}"}}"#))
@@ -303,7 +355,7 @@ impl Transaction {
 
     /// Attempt to deserialize a transaction from a JSON string, returning `None` if it
     /// fails
-    #[cfg(all(feature = "serde", feature = "alloc"))]
+    #[cfg(test)]
     pub fn from_json<J>(json: J) -> Option<Self>
     where
         J: AsRef<str>,
@@ -333,6 +385,10 @@ impl Transaction {
 
     pub const fn is_upload(&self) -> bool {
         matches!(self, Self::Upload { .. })
+    }
+
+    pub const fn is_blob(&self) -> bool {
+        matches!(self, Self::Blob { .. })
     }
 
     pub const fn as_script(&self) -> Option<&Script> {
@@ -404,6 +460,20 @@ impl Transaction {
             _ => None,
         }
     }
+
+    pub const fn as_blob(&self) -> Option<&Blob> {
+        match self {
+            Self::Blob(tx) => Some(tx),
+            _ => None,
+        }
+    }
+
+    pub fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        match self {
+            Self::Blob(tx) => Some(tx),
+            _ => None,
+        }
+    }
 }
 
 pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
@@ -443,22 +513,6 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         asset_ids.collect_vec().into_iter()
     }
 
-    /// Returns ids of all `Input::Contract` that are present in the inputs.
-    // TODO: Return `Vec<input::Contract>` instead
-    fn input_contracts(&self) -> IntoIter<&fuel_types::ContractId> {
-        let mut inputs: Vec<_> = self
-            .inputs()
-            .iter()
-            .filter_map(|input| match input {
-                Input::Contract(Contract { contract_id, .. }) => Some(contract_id),
-                _ => None,
-            })
-            .collect();
-        inputs.sort();
-        inputs.dedup();
-        inputs.into_iter()
-    }
-
     /// Checks that all owners of inputs in the predicates are valid.
     fn check_predicate_owners(&self) -> bool {
         self.inputs()
@@ -480,7 +534,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 _ => None,
             })
             .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, predicate)
+                result && Input::is_predicate_owner_valid(owner, &**predicate)
             })
     }
 
@@ -580,6 +634,12 @@ impl From<Upload> for Transaction {
     }
 }
 
+impl From<Blob> for Transaction {
+    fn from(tx: Blob) -> Self {
+        Self::Blob(tx)
+    }
+}
+
 impl Serialize for Transaction {
     fn size_static(&self) -> usize {
         match self {
@@ -588,6 +648,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.size_static(),
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
+            Self::Blob(tx) => tx.size_static(),
         }
     }
 
@@ -598,6 +659,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.size_dynamic(),
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
+            Self::Blob(tx) => tx.size_dynamic(),
         }
     }
 
@@ -611,6 +673,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.encode_static(buffer),
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
+            Self::Blob(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -624,6 +687,7 @@ impl Serialize for Transaction {
             Self::Mint(tx) => tx.encode_dynamic(buffer),
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
+            Self::Blob(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -654,6 +718,9 @@ impl Deserialize for Transaction {
             TransactionRepr::Upload => {
                 Ok(<Upload as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::Blob => {
+                Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
+            }
         }
     }
 
@@ -667,6 +734,7 @@ impl Deserialize for Transaction {
             Self::Mint(tx) => tx.decode_dynamic(buffer),
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
+            Self::Blob(tx) => tx.decode_dynamic(buffer),
         }
     }
 }
@@ -971,6 +1039,16 @@ pub mod field {
         fn bytecode_root_offset_static() -> usize;
     }
 
+    pub trait BlobId {
+        fn blob_id(&self) -> &fuel_types::BlobId;
+        fn blob_id_mut(&mut self) -> &mut fuel_types::BlobId;
+        fn blob_id_offset(&self) -> usize {
+            Self::blob_id_offset_static()
+        }
+
+        fn blob_id_offset_static() -> usize;
+    }
+
     pub trait SubsectionIndex {
         fn subsection_index(&self) -> &u16;
         fn subsection_index_mut(&mut self) -> &mut u16;
@@ -1024,44 +1102,46 @@ pub mod typescript {
     };
     use fuel_types::Bytes32;
 
-    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]
     pub struct Transaction(#[wasm_bindgen(skip)] pub Box<crate::Transaction>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Create(#[wasm_bindgen(skip)] pub Box<crate::Create>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Script(#[wasm_bindgen(skip)] pub Box<crate::Script>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Mint(#[wasm_bindgen(skip)] pub Box<crate::Mint>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Upgrade(#[wasm_bindgen(skip)] pub Box<crate::Upgrade>);
 
-    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]
     pub struct UpgradePurpose(#[wasm_bindgen(skip)] pub Box<crate::UpgradePurpose>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Upload(#[wasm_bindgen(skip)] pub Box<crate::Upload>);
 
     #[wasm_bindgen]
     impl Transaction {
-        #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
             serde_json::to_string(&self.0).expect("unable to json format")
@@ -1222,7 +1302,6 @@ pub mod typescript {
                     <$t>::default()
                 }
 
-                #[cfg(feature = "serde")]
                 #[wasm_bindgen(js_name = toJSON)]
                 pub fn to_json(&self) -> String {
                     serde_json::to_string(&self).expect("unable to json format")

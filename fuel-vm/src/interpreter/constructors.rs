@@ -73,6 +73,8 @@ where
             frames: vec![],
             receipts: Default::default(),
             tx: Default::default(),
+            input_contracts: Default::default(),
+            input_contracts_index_to_output_index: Default::default(),
             initial_balances: Default::default(),
             storage,
             debugger: Debugger::default(),

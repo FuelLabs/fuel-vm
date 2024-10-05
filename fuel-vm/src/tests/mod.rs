@@ -1,6 +1,7 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
 use futures as _;
+use ntest as _;
 use tokio as _;
 use tokio_rayon as _;
 
@@ -8,9 +9,11 @@ mod test_helpers;
 
 mod alu;
 mod backtrace;
+mod blob;
 mod blockchain;
 mod cgas;
 mod code_coverage;
+mod coins;
 mod contract;
 mod crypto;
 mod encoding;

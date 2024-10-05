@@ -47,13 +47,14 @@ impl MintMetadata {
 ///
 /// This transaction can be created by the block producer and included in the block only
 /// by it.
-#[derive(Default, Debug, Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Default, Debug, Clone, Derivative, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
 #[derivative(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) tx_pointer: TxPointer,
     /// The `Input::Contract` that assets are minted to.
     pub(crate) input_contract: input::contract::Contract,
@@ -65,9 +66,10 @@ pub struct Mint {
     pub(crate) mint_asset_id: AssetId,
     /// Gas Price used for current block
     pub(crate) gas_price: Word,
-    #[cfg_attr(feature = "serde", serde(skip))]
+    #[serde(skip)]
     #[derivative(PartialEq = "ignore", Hash = "ignore")]
     #[canonical(skip)]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) metadata: Option<MintMetadata>,
 }
 
@@ -127,6 +129,17 @@ impl crate::Cacheable for Mint {
         self.metadata = None;
         self.metadata = Some(MintMetadata::compute(self, chain_id));
         Ok(())
+    }
+}
+
+#[cfg(any(test, feature = "test-helpers"))]
+impl Mint {
+    // This is a function to clear malleable fields just like it
+    // does on other transactions types. Mint never needs this,
+    // but we use it for some tests.
+    pub fn prepare_sign(&mut self) {
+        self.input_contract.prepare_sign();
+        self.output_contract.prepare_sign();
     }
 }
 

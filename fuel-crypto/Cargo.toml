@@ -22,7 +22,7 @@ p256 =  { version = "0.13", default-features = false, features = ["digest", "ecd
 rand = { version = "0.8", default-features = false, optional = true }
 # `rand-std` is used to further protect the blinders from side-channel attacks and won't compromise
 # the deterministic arguments of the signature (key, nonce, message), as defined in the RFC-6979
-secp256k1 = { version = "0.26", default-features = false, features = ["rand-std", "recovery"], optional = true }
+secp256k1 = { version = "0.29.1", default-features = false, features = ["rand-std", "recovery"], optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
 sha2 = { version = "0.10", default-features = false }
 zeroize = { version = "1.5", features = ["derive"] }
@@ -40,6 +40,9 @@ random = ["fuel-types/random", "rand"]
 serde = ["dep:serde", "fuel-types/serde"]
 std = ["alloc", "coins-bip32", "secp256k1", "coins-bip39", "fuel-types/std", "lazy_static", "rand?/std_rng", "serde?/default"]
 test-helpers = []
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
 
 [[bench]]
 name = "signature"

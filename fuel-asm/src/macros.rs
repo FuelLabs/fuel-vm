@@ -1092,6 +1092,7 @@ macro_rules! impl_instructions {
     // Recursively generate a test constructor for each opcode
     (impl_opcode_test_construct $doc:literal $ix:literal $Op:ident $op:ident [$($fname:ident: $field:ident)*] $($rest:tt)*) => {
         #[cfg(test)]
+        #[allow(clippy::cast_possible_truncation)]
         impl crate::_op::$Op {
             op_test_construct_fn!($($field)*);
         }

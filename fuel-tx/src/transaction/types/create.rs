@@ -69,8 +69,11 @@ impl CreateMetadata {
     }
 }
 
-#[derive(Default, Debug, Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Default, Debug, Clone, Derivative, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Create)]
 #[derivative(Eq, PartialEq, Hash)]
@@ -246,6 +249,10 @@ impl UniqueFormatValidityChecks for Create {
                 _ => Ok(()),
             })?;
 
+        if !contract_created {
+            return Err(ValidityError::TransactionOutputDoesntContainContractCreated);
+        }
+
         Ok(())
     }
 }
@@ -410,7 +417,7 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
         tx.body.storage_slots.reverse();
 
@@ -433,7 +440,7 @@ mod tests {
             Salt::zeroed(),
             storage_slots,
         )
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .check(0.into(), &ConsensusParameters::standard())
         .expect_err("Expected erroneous transaction");

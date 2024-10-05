@@ -25,7 +25,11 @@ use rand::{
 #[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Witness {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
@@ -120,7 +124,6 @@ pub mod typescript {
 
     #[wasm_bindgen]
     impl Witness {
-        #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
             serde_json::to_string(&self.data).expect("unable to json format")

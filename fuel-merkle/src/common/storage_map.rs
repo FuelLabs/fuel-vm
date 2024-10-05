@@ -72,22 +72,18 @@ where
     Type::Key: Eq + core::hash::Hash,
     Type::OwnedKey: Eq + core::hash::Hash + core::borrow::Borrow<Type::Key>,
 {
-    fn insert(
+    fn replace(
         &mut self,
         key: &Type::Key,
         value: &Type::Value,
     ) -> Result<Option<Type::OwnedValue>, Self::Error> {
-        let previous = self.map.remove(key);
-
-        self.map
+        let previous = self
+            .map
             .insert(key.to_owned().into(), value.to_owned().into());
         Ok(previous)
     }
 
-    fn remove(
-        &mut self,
-        key: &Type::Key,
-    ) -> Result<Option<Type::OwnedValue>, Self::Error> {
+    fn take(&mut self, key: &Type::Key) -> Result<Option<Type::OwnedValue>, Self::Error> {
         let value = self.map.remove(key);
         Ok(value)
     }
@@ -156,7 +152,7 @@ mod test {
         let mut store = StorageMap::<TestTable>::new();
         let _ = store.insert(&key, &TestValue(0));
 
-        assert_eq!(store.remove(&key).unwrap(), Some(TestValue(0)));
+        assert_eq!(store.take(&key).unwrap(), Some(TestValue(0)));
     }
 
     #[test]
@@ -164,7 +160,7 @@ mod test {
         let invalid_key = TestKey(0);
         let mut store = StorageMap::<TestTable>::new();
 
-        assert_eq!(store.remove(&invalid_key).unwrap(), None);
+        assert_eq!(store.take(&invalid_key).unwrap(), None);
     }
 
     #[test]

@@ -2,7 +2,10 @@
 
 use crate::{
     call::CallFrame,
-    checked_transaction::CheckPredicateParams,
+    checked_transaction::{
+        BlobCheckedMetadata,
+        CheckPredicateParams,
+    },
     constraints::reg_key::*,
     consts::*,
     context::Context,
@@ -21,7 +24,7 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field,
-    output,
+    Blob,
     Chargeable,
     Create,
     Executable,
@@ -48,6 +51,7 @@ use fuel_types::{
 
 mod alu;
 mod balances;
+mod blob;
 mod blockchain;
 mod constructors;
 pub mod contract;
@@ -120,6 +124,8 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     receipts: ReceiptsCtx,
     tx: Tx,
     initial_balances: InitialBalances,
+    input_contracts: alloc::collections::BTreeSet<ContractId>,
+    input_contracts_index_to_output_index: alloc::collections::BTreeMap<u16, u16>,
     storage: S,
     debugger: Debugger,
     context: Context,
@@ -416,6 +422,16 @@ pub trait ExecutableTransaction:
         None
     }
 
+    /// Casts the `Self` transaction into `&Blob` if any.
+    fn as_blob(&self) -> Option<&Blob> {
+        None
+    }
+
+    /// Casts the `Self` transaction into `&mut Blob` if any.
+    fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        None
+    }
+
     /// Returns the type of the transaction like `Transaction::Create` or
     /// `Transaction::Script`.
     fn transaction_type() -> Word;
@@ -519,20 +535,6 @@ pub trait ExecutableTransaction:
             _ => Ok(()),
         })
     }
-
-    /// Finds `Output::Contract` corresponding to the `input` index.
-    fn find_output_contract(&self, input: usize) -> Option<(usize, &Output)> {
-        self.outputs().iter().enumerate().find(|(_idx, o)| {
-            matches!(o, Output::Contract( output::contract::Contract {
-                input_index, ..
-            }) if *input_index as usize == input)
-        })
-    }
-
-    /// Prepares the transaction for execution.
-    fn prepare_init_execute(&mut self) {
-        self.prepare_sign()
-    }
 }
 
 impl ExecutableTransaction for Create {
@@ -547,8 +549,6 @@ impl ExecutableTransaction for Create {
     fn transaction_type() -> Word {
         TransactionRepr::Create as Word
     }
-
-    fn prepare_init_execute(&mut self) {}
 }
 
 impl ExecutableTransaction for Script {
@@ -590,6 +590,20 @@ impl ExecutableTransaction for Upload {
 
     fn transaction_type() -> Word {
         TransactionRepr::Upload as Word
+    }
+}
+
+impl ExecutableTransaction for Blob {
+    fn as_blob(&self) -> Option<&Blob> {
+        Some(self)
+    }
+
+    fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        Some(self)
+    }
+
+    fn transaction_type() -> Word {
+        TransactionRepr::Blob as Word
     }
 }
 
@@ -644,22 +658,34 @@ impl CheckedMetadata for UploadCheckedMetadata {
     }
 }
 
-pub(crate) struct InputContracts<'vm, I> {
-    tx_input_contracts: I,
+impl CheckedMetadata for BlobCheckedMetadata {
+    fn balances(&self) -> InitialBalances {
+        InitialBalances {
+            non_retryable: self.free_balances.clone(),
+            retryable: None,
+        }
+    }
+}
+
+pub(crate) struct InputContracts<'vm> {
+    input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
     panic_context: &'vm mut PanicContext,
 }
 
-impl<'vm, I: Iterator<Item = &'vm ContractId>> InputContracts<'vm, I> {
-    pub fn new(tx_input_contracts: I, panic_context: &'vm mut PanicContext) -> Self {
+impl<'vm> InputContracts<'vm> {
+    pub fn new(
+        input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
+        panic_context: &'vm mut PanicContext,
+    ) -> Self {
         Self {
-            tx_input_contracts,
+            input_contracts,
             panic_context,
         }
     }
 
     /// Checks that the contract is declared in the transaction inputs.
     pub fn check(&mut self, contract: &ContractId) -> SimpleResult<()> {
-        if !self.tx_input_contracts.any(|input| input == contract) {
+        if !self.input_contracts.contains(contract) {
             *self.panic_context = PanicContext::ContractId(*contract);
             Err(PanicReason::ContractNotInInputs.into())
         } else {

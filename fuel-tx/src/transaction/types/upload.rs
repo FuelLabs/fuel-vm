@@ -37,8 +37,11 @@ pub type Upload = ChargeableTransaction<UploadBody, UploadMetadata>;
 pub struct UploadMetadata;
 
 /// The body of the [`Upload`] transaction.
-#[derive(Clone, Default, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Upload)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
@@ -55,8 +58,9 @@ pub struct UploadBody {
     pub proof_set: Vec<Bytes32>,
 }
 
-#[derive(Clone, Default, Eq, PartialEq, Hash, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone, Default, Eq, PartialEq, Hash, Debug, serde::Serialize, serde::Deserialize,
+)]
 pub struct UploadSubsection {
     /// The root of the Merkle tree is created over the bytecode.
     pub root: Bytes32,
@@ -70,8 +74,9 @@ pub struct UploadSubsection {
     pub proof_set: Vec<Bytes32>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Copy, Clone, Eq, PartialEq, Hash, Debug, serde::Serialize, serde::Deserialize,
+)]
 pub enum SplitError {
     /// The size of the subsection is too small to fit all subsections into `u16::MAX`.
     SubsectionSizeTooSmall,

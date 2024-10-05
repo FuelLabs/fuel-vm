@@ -5,10 +5,10 @@ on:
     branches:
       - master
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [ opened, synchronize, reopened, labeled, unlabeled ]
   merge_group:
   release:
-    types: [published]
+    types: [ published ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -16,7 +16,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.75.0
+  RUST_VERSION: 1.79.0
   RUST_VERSION_FMT: nightly-2024-02-07
   RUST_VERSION_COV: nightly-2024-06-05
   GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
@@ -65,7 +65,7 @@ jobs:
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: check
-            args: --target wasm32-unknown-unknown -p fuel-tx --features serde --no-default-features
+            args: --target wasm32-unknown-unknown -p fuel-tx --features alloc --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-types --features serde --no-default-features
           - command: rustc
@@ -146,8 +146,8 @@ jobs:
           git push
           export PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_B64/index.html"
           echo "$PAGES_URL"
-          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY          
-        
+          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY
+
 
   rustfmt:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -198,7 +198,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
 
       - name: Publish crate check
-        uses: xgreenx/publish-crates@v1
+        uses: FuelLabs/publish-crates@v1
         with:
           dry-run: true
           check-repo: false
@@ -224,9 +224,9 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-opt
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8.6.9
+          version: ^9.4.0
 
       - name: Setup Node
         uses: actions/setup-node@v3
@@ -262,7 +262,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
 
       - name: Publish crate
-        uses: xgreenx/publish-crates@v1
+        uses: FuelLabs/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -284,8 +284,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-            fetch-depth: 0
-            ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -296,9 +296,9 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-opt
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8.6.9
+          version: ^9.4.0
 
       - name: Setup Node
         uses: actions/setup-node@v3

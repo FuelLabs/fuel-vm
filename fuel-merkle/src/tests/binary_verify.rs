@@ -114,7 +114,7 @@ proptest! {
     }
 
     #[test]
-    fn verify__returns_false_for_invalid_proof_set((values, tree) in random_tree(1, 1_000), arb_num: usize, proof_set: ProofSet){
+    fn verify__returns_false_for_invalid_proof_set((values, tree) in random_tree(2, 1_000), arb_num: usize, proof_set: ProofSet){
         let num_leaves = values.len();
         let index = arb_num % num_leaves;
         let data = values[index];

@@ -108,7 +108,7 @@ fn example_file_read() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
@@ -170,7 +170,7 @@ fn example_counter() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
@@ -233,7 +233,7 @@ fn example_shared_counter() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");

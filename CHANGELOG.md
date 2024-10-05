@@ -7,11 +7,104 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
+- [#820](https://github.com/FuelLabs/fuel-vm/pull/820): Add fuzzing in CI with ClusterFuzzLite.
+
+### Removed
+
+#### Breaking
+- [#843](https://github.com/FuelLabs/fuel-vm/pull/843): Remove `serde` feature from the `fuel-tx` crate. It is default behaviour now if you enable `alloc` feature.
+- [#766](https://github.com/FuelLabs/fuel-vm/pull/766): Use correct gas price when validating native signatures
+
 ### Changed
 
 #### Breaking
-- [#766](https://github.com/FuelLabs/fuel-vm/pull/766): Use correct gas price when validating native signatures
-- [#765](https://github.com/FuelLabs/fuel-vm/pull/765): corrected the gas units for WDOP and WQOP
+- [#829](https://github.com/FuelLabs/fuel-vm/pull/829): Updated `add_random_fee_input()` to accept an `rng` for true randomization. Introduced `add_fee_input()` to retain the previous behavior of `add_random_fee_input()`.
+- [#845](https://github.com/FuelLabs/fuel-vm/pull/845): Removed `Default` implementation of `SecretKey`.
+- [#844](https://github.com/FuelLabs/fuel-vm/pull/844): `WDCM` and `WQCM` reset `$of` and `$err`.
+
+## [Version 0.57.1]
+
+### Fixed
+- [#835](https://github.com/FuelLabs/fuel-vm/pull/835): Fixing WASM-NPM packaging and publishing
+
+## [Version 0.57.0]
+
+### Added
+- [#670](https://github.com/FuelLabs/fuel-vm/pull/670): Add DA compression functionality to `Transaction` and any types within
+- [#733](https://github.com/FuelLabs/fuel-vm/pull/733): Add LibAFL based fuzzer and update `secp256k1` version to 0.29.1.
+- [#825](https://github.com/FuelLabs/fuel-vm/pull/733): Avoid leaking partially allocated memory when array deserialization fails
+
+### Changed
+- [#824](https://github.com/FuelLabs/fuel-vm/pull/824): Use `self` instead of `&self` during decompression.
+- [#823](https://github.com/FuelLabs/fuel-vm/pull/823): Returned the old behaviour of the json serialization for policies.
+
+#### Breaking
+- [#826](https://github.com/FuelLabs/fuel-vm/pull/826): Skip the panic reason from canonical serialization of the panic receipt.
+- [#821](https://github.com/FuelLabs/fuel-vm/pull/821): Added `block_transaction_size_limit` to `ConsensusParameters`. It adds a new `ConensusParametersV2` as a variant of the `ConsensusParameters`.
+- [#670](https://github.com/FuelLabs/fuel-vm/pull/670): The `predicate` field of `fuel_tx::input::Coin` is now a wrapper struct `PredicateCode`.
+
+### Fixed
+- [#822](https://github.com/FuelLabs/fuel-vm/pull/822): Return recipient as an owner for the message inputs.
+
+## [Version 0.56.0]
+
+### Added
+- [#796](https://github.com/FuelLabs/fuel-vm/pull/796): Added implementation of the `MerkleRootStorage` for references.
+
+### Changed
+- [#806](https://github.com/FuelLabs/fuel-vm/pull/806): Update MSRV to 1.79.0.
+
+#### Breaking
+- [#780](https://github.com/FuelLabs/fuel-vm/pull/780): Added `Blob` transaction, and `BSIZ` and `BLDD` instructions. Also allows `LDC` to load blobs.
+- [#795](https://github.com/FuelLabs/fuel-vm/pull/795): Fixed `ed19` instruction to take variable length message instead of a fixed-length one. Changed the gas cost to be `DependentCost`.
+
+## [Version 0.55.0]
+
+### Added
+- [#781](https://github.com/FuelLabs/fuel-vm/pull/781): Added `base_asset_id` to checked metadata.
+
+### Changed
+- [#784](https://github.com/FuelLabs/fuel-vm/pull/784): Avoid storage lookups for side nodes in the SMT.
+- [#787](https://github.com/FuelLabs/fuel-vm/pull/787): Fixed charge functions to profile cost before charging.
+
+#### Breaking
+- [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Remove unnecessary look up for old values by adding new methods to the `StorageMutate` trait.  The old `insert` and `remove` are now `replace` and `take`. The new `insert` and `remove` don't return a value.
+- [#783](https://github.com/FuelLabs/fuel-vm/pull/783): Renamed methods of `StorageWrite` trait from `write`, `replace`, `take` to `write_bytes`, `replace_bytes`, `take_bytes`.
+- [#788](https://github.com/FuelLabs/fuel-vm/pull/788): Fix truncating `sp` to `MEM_SIZE` in `grow_stack`, and allow empty writes to zero-length ranges at `$hp`.
+
+### Fixed
+
+#### Breaking
+- [#789](https://github.com/FuelLabs/fuel-vm/pull/789): Avoid conversion into `usize` type and use `u32` or `u64` instead. The change is breaking since could return other errors for 32-bit systems.
+- [#786](https://github.com/FuelLabs/fuel-vm/pull/786): Fixed the CCP opcode to charge for the length from the input arguments.
+- [#785](https://github.com/FuelLabs/fuel-vm/pull/785): Require `ContractCreated` output in the `Create` transaction. The `TransactionBuilder<Create>` has a `add_contract_created` method to simplify the creation of the `ContractCreated` output for tests.
+
+
+## [Version 0.54.1]
+
+### Changed
+- [#776](https://github.com/FuelLabs/fuel-vm/pull/776): Charge for max length in LDC opcode.
+
+## [Version 0.54.0]
+
+### Added
+
+- [#770](https://github.com/FuelLabs/fuel-vm/pull/770): Cache contract inputs in the VM.
+
+### Changed
+- [#768](https://github.com/FuelLabs/fuel-vm/pull/768): Charge for LDC opcode before loading the contract into memory.
+
+- [#771](https://github.com/FuelLabs/fuel-vm/pull/771): Take into account spent gas during synchronous predicates estimation.
+
+#### Breaking
+- [#769](https://github.com/FuelLabs/fuel-vm/pull/769): Use `DependentCost` for `CFE` and `CFEI` opcodes.
+- [#767](https://github.com/FuelLabs/fuel-vm/pull/767): Fixed no zeroing malleable fields for `Create` transaction.
+- [#765](https://github.com/FuelLabs/fuel-vm/pull/765): Corrected the gas units for WDOP and WQOP.
+
+### Removed
+- [#772](https://github.com/FuelLabs/fuel-vm/pull/772): Removed redundant `self.receipts.root()` call.
 
 ## [Version 0.53.0]
 

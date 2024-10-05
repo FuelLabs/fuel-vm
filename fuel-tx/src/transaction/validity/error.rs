@@ -6,8 +6,16 @@ use fuel_types::{
 };
 
 /// The error returned during the checking of the transaction's validity rules.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::Display)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    derive_more::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[non_exhaustive]
 pub enum ValidityError {
     /// The actual and calculated metadata of the transaction mismatch.
@@ -174,4 +182,8 @@ pub enum ValidityError {
     SerializedWitnessTooLarge {
         index: usize,
     },
+    /// The `Create` transaction doesn't contain `Output::ContractCreated`.
+    TransactionOutputDoesntContainContractCreated,
+    /// Blob id of the transaction differs from the data.
+    TransactionBlobIdVerificationFailed,
 }

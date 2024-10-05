@@ -519,6 +519,7 @@ impl EstimatePredicates for Transaction {
             Self::Mint(_) => Ok(()),
             Self::Upgrade(tx) => tx.estimate_predicates(params, memory),
             Self::Upload(tx) => tx.estimate_predicates(params, memory),
+            Self::Blob(tx) => tx.estimate_predicates(params, memory),
         }
     }
 
@@ -533,6 +534,7 @@ impl EstimatePredicates for Transaction {
             Self::Mint(_) => Ok(()),
             Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
             Self::Upload(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Blob(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
         }
     }
 }
@@ -582,6 +584,9 @@ impl CheckPredicates for Checked<Transaction> {
             CheckedTransaction::Upload(tx) => {
                 CheckPredicates::check_predicates(tx, params, memory)?.into()
             }
+            CheckedTransaction::Blob(tx) => {
+                CheckPredicates::check_predicates(tx, params, memory)?.into()
+            }
         };
         Ok(checked_transaction.into())
     }
@@ -622,6 +627,11 @@ impl CheckPredicates for Checked<Transaction> {
                     .await?
                     .into()
             }
+            CheckedTransaction::Blob(tx) => {
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
+                    .await?
+                    .into()
+            }
         };
 
         Ok(checked_transaction.into())
@@ -641,6 +651,7 @@ pub enum CheckedTransaction {
     Mint(Checked<Mint>),
     Upgrade(Checked<Upgrade>),
     Upload(Checked<Upload>),
+    Blob(Checked<Blob>),
 }
 
 impl From<Checked<Transaction>> for CheckedTransaction {
@@ -668,6 +679,9 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Upload(transaction), CheckedMetadata::Upload(metadata)) => {
                 Self::Upload(Checked::new(transaction, metadata, checks_bitmask))
             }
+            (Transaction::Blob(transaction), CheckedMetadata::Blob(metadata)) => {
+                Self::Blob(Checked::new(transaction, metadata, checks_bitmask))
+            }
             // The code should produce the `CheckedMetadata` for the corresponding
             // transaction variant. It is done in the implementation of the
             // `IntoChecked` trait for `Transaction`. With the current
@@ -677,6 +691,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Mint(_), _) => unreachable!(),
             (Transaction::Upgrade(_), _) => unreachable!(),
             (Transaction::Upload(_), _) => unreachable!(),
+            (Transaction::Blob(_), _) => unreachable!(),
         }
     }
 }
@@ -711,6 +726,12 @@ impl From<Checked<Upload>> for CheckedTransaction {
     }
 }
 
+impl From<Checked<Blob>> for CheckedTransaction {
+    fn from(checked: Checked<Blob>) -> Self {
+        Self::Blob(checked)
+    }
+}
+
 impl From<CheckedTransaction> for Checked<Transaction> {
     fn from(checked: CheckedTransaction) -> Self {
         match checked {
@@ -739,6 +760,11 @@ impl From<CheckedTransaction> for Checked<Transaction> {
                 metadata,
                 checks_bitmask,
             }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
+            CheckedTransaction::Blob(Checked {
+                transaction,
+                metadata,
+                checks_bitmask,
+            }) => Checked::new(transaction.into(), metadata.into(), checks_bitmask),
         }
     }
 }
@@ -752,6 +778,7 @@ pub enum CheckedMetadata {
     Mint(<Mint as IntoChecked>::Metadata),
     Upgrade(<Upgrade as IntoChecked>::Metadata),
     Upload(<Upload as IntoChecked>::Metadata),
+    Blob(<Blob as IntoChecked>::Metadata),
 }
 
 impl From<<Script as IntoChecked>::Metadata> for CheckedMetadata {
@@ -781,6 +808,11 @@ impl From<<Upgrade as IntoChecked>::Metadata> for CheckedMetadata {
 impl From<<Upload as IntoChecked>::Metadata> for CheckedMetadata {
     fn from(metadata: <Upload as IntoChecked>::Metadata) -> Self {
         Self::Upload(metadata)
+    }
+}
+impl From<<Blob as IntoChecked>::Metadata> for CheckedMetadata {
+    fn from(metadata: <Blob as IntoChecked>::Metadata) -> Self {
+        Self::Blob(metadata)
     }
 }
 
@@ -818,6 +850,12 @@ impl IntoChecked for Transaction {
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Upload(tx) => {
+                let (transaction, metadata) = tx
+                    .into_checked_basic(block_height, consensus_params)?
+                    .into();
+                Ok((transaction.into(), metadata.into()))
+            }
+            Self::Blob(tx) => {
                 let (transaction, metadata) = tx
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
@@ -877,6 +915,7 @@ mod tests {
             ScriptParameters::default(),
             ContractParameters::default(),
             FeeParameters::default().with_gas_price_factor(factor),
+            Default::default(),
             Default::default(),
             Default::default(),
             Default::default(),

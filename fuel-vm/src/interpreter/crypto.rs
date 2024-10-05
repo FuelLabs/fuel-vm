@@ -62,9 +62,10 @@ where
         a: Word,
         b: Word,
         c: Word,
+        len: Word,
     ) -> SimpleResult<()> {
         let (SystemRegisters { err, pc, .. }, _) = split_registers(&mut self.registers);
-        ed25519_verify(self.memory.as_mut(), err, pc, a, b, c)
+        ed25519_verify(self.memory.as_mut(), err, pc, a, b, c, len)
     }
 
     pub(crate) fn keccak256(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
@@ -155,13 +156,13 @@ pub(crate) fn ed25519_verify(
     a: Word,
     b: Word,
     c: Word,
+    len: Word,
 ) -> SimpleResult<()> {
     let pub_key = Bytes32::from(memory.read_bytes(a)?);
     let sig = Bytes64::from(memory.read_bytes(b)?);
-    let msg = Bytes32::from(memory.read_bytes(c)?);
-    let message = Message::from_bytes_ref(&msg);
+    let msg = memory.read(c, len)?;
 
-    if fuel_crypto::ed25519::verify(&pub_key, &sig, message).is_ok() {
+    if fuel_crypto::ed25519::verify(&pub_key, &sig, msg).is_ok() {
         clear_err(err);
     } else {
         set_err(err);

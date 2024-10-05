@@ -29,7 +29,7 @@ use rand::{
 };
 
 /// Asymmetric secret key, guaranteed to be valid by construction
-#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Zeroize)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Zeroize)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
 pub struct SecretKey(Bytes32);
@@ -115,6 +115,15 @@ impl From<&SecretKey> for ::secp256k1::SecretKey {
     }
 }
 
+#[cfg(all(feature = "random", feature = "test-helpers"))]
+impl Default for SecretKey {
+    /// Creates a new random secret using rand::thread_rng()
+    fn default() -> Self {
+        let mut rng = rand::thread_rng();
+        SecretKey::random(&mut rng)
+    }
+}
+
 #[cfg(feature = "std")]
 pub type W = English;
 
@@ -186,5 +195,16 @@ impl str::FromStr for SecretKey {
         Bytes32::from_str(s)
             .map_err(|_| Error::InvalidSecretKey)
             .and_then(SecretKey::try_from)
+    }
+}
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod tests {
+    #[cfg(feature = "random")]
+    #[test]
+    fn default__yields_valid_secret() {
+        use super::SecretKey;
+        let _ = SecretKey::default();
     }
 }

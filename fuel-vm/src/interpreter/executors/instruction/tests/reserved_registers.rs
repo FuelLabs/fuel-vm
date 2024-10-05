@@ -69,7 +69,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let script = op::ret(0x10).to_bytes().to_vec();
     let block_height = Default::default();
     let tx = TransactionBuilder::script(script, vec![])
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
 
     let tx = tx
@@ -242,6 +242,8 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::CFE => false,
         Opcode::CFS => false,
         Opcode::ECAL => true,
+        Opcode::BSIZ => true,
+        Opcode::BLDD => false,
     }
 }
 
@@ -357,5 +359,7 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::CFE => false,
         Opcode::CFS => false,
         Opcode::ECAL => true,
+        Opcode::BSIZ => false,
+        Opcode::BLDD => false,
     }
 }

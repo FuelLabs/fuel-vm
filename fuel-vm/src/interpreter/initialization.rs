@@ -17,9 +17,13 @@ use crate::{
     storage::InterpreterStorage,
 };
 use fuel_asm::RegId;
-use fuel_tx::field::{
-    Script,
-    ScriptGasLimit,
+use fuel_tx::{
+    field::{
+        Script,
+        ScriptGasLimit,
+    },
+    Input,
+    Output,
 };
 use fuel_types::Word;
 
@@ -39,8 +43,35 @@ where
         runtime_balances: RuntimeBalances,
         gas_limit: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
-        tx.prepare_init_execute();
+        tx.prepare_sign();
         self.tx = tx;
+        self.input_contracts = self
+            .tx
+            .inputs()
+            .iter()
+            .filter_map(|i| match i {
+                Input::Contract(contract) => Some(contract.contract_id),
+                _ => None,
+            })
+            .collect();
+
+        self.input_contracts_index_to_output_index = self
+            .tx
+            .outputs()
+            .iter()
+            .enumerate()
+            .filter_map(|(output_idx, o)| match o {
+                Output::Contract(fuel_tx::output::contract::Contract {
+                    input_index,
+                    ..
+                }) => Some((
+                    *input_index,
+                    u16::try_from(output_idx)
+                        .expect("The maximum number of outputs is `u16::MAX`"),
+                )),
+                _ => None,
+            })
+            .collect();
 
         self.initial_balances = initial_balances.clone();
 
@@ -52,7 +83,6 @@ where
         self.registers.iter_mut().for_each(|r| *r = 0);
 
         self.registers[RegId::ONE] = 1;
-        self.registers[RegId::SSP] = 0;
 
         // Set heap area
         self.registers[RegId::HP] = VM_MAX_RAM;

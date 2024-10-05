@@ -131,7 +131,7 @@ impl Input {
                 recipient: owner,
                 predicate,
                 ..
-            }) if !Input::is_predicate_owner_valid(owner, predicate) => {
+            }) if !Input::is_predicate_owner_valid(owner, &**predicate) => {
                 Err(ValidityError::InputPredicateOwner { index })
             }
 
@@ -274,6 +274,7 @@ impl FormatValidityChecks for Transaction {
             Self::Mint(tx) => tx.check_signatures(chain_id),
             Self::Upgrade(tx) => tx.check_signatures(chain_id),
             Self::Upload(tx) => tx.check_signatures(chain_id),
+            Self::Blob(tx) => tx.check_signatures(chain_id),
         }
     }
 
@@ -296,6 +297,7 @@ impl FormatValidityChecks for Transaction {
             Self::Upload(tx) => {
                 tx.check_without_signatures(block_height, consensus_params)
             }
+            Self::Blob(tx) => tx.check_without_signatures(block_height, consensus_params),
         }
     }
 }
@@ -389,11 +391,6 @@ where
                 .iter()
                 .filter_map(|output| match output {
                     Output::Change { asset_id, .. } if input_asset_id == asset_id => {
-                        Some(())
-                    }
-                    Output::Change { asset_id, .. }
-                        if asset_id != base_asset_id && input_asset_id == asset_id =>
-                    {
                         Some(())
                     }
                     _ => None,

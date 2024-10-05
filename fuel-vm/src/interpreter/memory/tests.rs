@@ -28,7 +28,7 @@ fn memcopy() {
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
         .script_gas_limit(100_000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
 
     let tx = tx
@@ -97,7 +97,7 @@ fn stack_alloc_ownership() {
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
@@ -163,6 +163,14 @@ fn stack_alloc_ownership() {
 #[test_case(
     OwnershipRegisters::test(0..20, 40..50),
     20..41 => false; "start exclusive and end inclusive"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM),
+    MEM_SIZE..MEM_SIZE => true; "empty range at $hp (VM_MAX_RAM) should be allowed"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..0, 100..VM_MAX_RAM),
+    100..100 => true; "empty range at $hp (not VM_MAX_RAM) should be allowed"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<usize>) -> bool {
     reg.verify_ownership(&MemoryRange::new(range.start, range.len()))
@@ -263,7 +271,7 @@ fn test_mem_write(
 fn test_copy_from_slice_zero_fill(
     addr: usize,
     len: usize,
-    src_offset: usize,
+    src_offset: Word,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
     let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();

@@ -89,6 +89,8 @@ where
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = GTFInput {
             tx: &self.tx,
+            input_contracts_index_to_output_index: &self
+                .input_contracts_index_to_output_index,
             tx_offset,
             tx_size,
             pc,
@@ -136,6 +138,7 @@ pub(crate) fn metadata(
 
 struct GTFInput<'vm, Tx> {
     tx: &'vm Tx,
+    input_contracts_index_to_output_index: &'vm alloc::collections::BTreeMap<u16, u16>,
     tx_offset: usize,
     tx_size: Word,
     pc: RegMut<'vm, PC>,
@@ -154,6 +157,7 @@ impl<Tx> GTFInput<'_, Tx> {
         let b = convert::to_usize(b).ok_or(PanicReason::InvalidMetadataIdentifier)?;
         let args = GTFArgs::try_from(imm)?;
         let tx = self.tx;
+        let input_contract_to_output_index = self.input_contracts_index_to_output_index;
         let ofs = self.tx_offset;
 
         // We use saturating_add with tx offset below.
@@ -321,8 +325,11 @@ impl<Tx> GTFInput<'_, Tx> {
                     .ok_or(PanicReason::InputNotFound)?,
             ) as Word,
             GTFArgs::InputContractOutputIndex => {
-                tx.find_output_contract(b)
-                    .map(|(idx, _o)| idx)
+                let b = u16::try_from(b)
+                    .map_err(|_| PanicReason::InvalidMetadataIdentifier)?;
+                input_contract_to_output_index
+                    .get(&b)
+                    .copied()
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputContractId => ofs.saturating_add(

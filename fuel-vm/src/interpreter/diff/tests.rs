@@ -49,7 +49,7 @@ use crate::interpreter::InterpreterParams;
 fn record_and_invert_storage() {
     let arb_gas_price = 1;
     let interpreter_params =
-        InterpreterParams::new(arb_gas_price, &ConsensusParameters::standard());
+        InterpreterParams::new(arb_gas_price, ConsensusParameters::standard());
 
     let a = Interpreter::<_, _, Script>::with_storage(
         crate::interpreter::MemoryInstance::new(),
@@ -107,7 +107,8 @@ fn reset_vm_state_frame() {
         Default::default(),
         Default::default(),
         Default::default(),
-    );
+    )
+    .unwrap();
     b.frames.push(frame);
     assert_ne!(a.frames, b.frames);
     let diff: Diff<InitialVmState> = a.diff(&b).into();

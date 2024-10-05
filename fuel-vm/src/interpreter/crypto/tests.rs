@@ -4,6 +4,7 @@ use alloc::vec;
 use fuel_crypto::SecretKey;
 use rand::{
     rngs::StdRng,
+    RngCore,
     SeedableRng,
 };
 
@@ -110,21 +111,22 @@ fn test_verify_ed25519() -> SimpleResult<()> {
     let mut err = 0;
     let mut pc = 4;
 
-    let sig_address = 0;
-    let msg_address = 64;
-    let pubkey_address = 64 + 32;
+    let pubkey_address = 0;
+    let sig_address = pubkey_address + 32;
+    let msg_address = sig_address + 64;
 
     let mut rng = rand::rngs::OsRng;
     let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
 
-    let message = Message::new([3u8; 100]);
-    let signature = signing_key.sign(&*message);
+    let mut message = [0u8; 100];
+    rng.fill_bytes(&mut message);
+    let signature = signing_key.sign(&message);
 
-    memory[sig_address..sig_address + Signature::LEN]
-        .copy_from_slice(&signature.to_bytes());
-    memory[msg_address..msg_address + Message::LEN].copy_from_slice(message.as_ref());
     memory[pubkey_address..pubkey_address + Bytes32::LEN]
         .copy_from_slice(signing_key.verifying_key().as_ref());
+    memory[sig_address..sig_address + Signature::LEN]
+        .copy_from_slice(&signature.to_bytes());
+    memory[msg_address..msg_address + message.len()].copy_from_slice(message.as_ref());
 
     ed25519_verify(
         &mut memory,
@@ -133,6 +135,7 @@ fn test_verify_ed25519() -> SimpleResult<()> {
         pubkey_address as Word,
         sig_address as Word,
         msg_address as Word,
+        message.len() as Word,
     )?;
     assert_eq!(pc, 8);
     assert_eq!(err, 0);

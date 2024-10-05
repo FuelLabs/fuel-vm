@@ -1,3 +1,5 @@
+#![allow(clippy::cast_possible_truncation)]
+
 use crate::storage::{
     ContractsAssetKey,
     ContractsAssets,
@@ -25,6 +27,7 @@ use fuel_tx::{
     Contract,
 };
 use fuel_types::{
+    BlobId,
     BlockHeight,
     Bytes32,
     ContractId,
@@ -39,13 +42,18 @@ use alloc::{
 };
 use core::convert::Infallible;
 
-use super::interpreter::ContractsAssetsStorage;
+use super::{
+    interpreter::ContractsAssetsStorage,
+    BlobBytes,
+    BlobData,
+};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
     contracts: BTreeMap<ContractId, Contract>,
     balances: BTreeMap<ContractsAssetKey, Word>,
     contract_state: BTreeMap<ContractsStateKey, ContractsStateData>,
+    blobs: BTreeMap<BlobId, BlobBytes>,
     /// Mapping from consensus parameters version to consensus parameters.
     consensus_parameters_versions: BTreeMap<u32, ConsensusParameters>,
     /// Mapping from state transition bytecode root to bytecode.
@@ -205,7 +213,7 @@ impl StorageInspect<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsRawCode> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &ContractId,
         value: &[u8],
@@ -213,19 +221,19 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
         Ok(self.memory.contracts.insert(*key, value.into()))
     }
 
-    fn remove(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
+    fn take(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
         Ok(self.memory.contracts.remove(key))
     }
 }
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
-    fn write(&mut self, key: &ContractId, buf: &[u8]) -> Result<usize, Infallible> {
+    fn write_bytes(&mut self, key: &ContractId, buf: &[u8]) -> Result<usize, Infallible> {
         let size = buf.len();
         self.memory.contracts.insert(*key, Contract::from(buf));
         Ok(size)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         key: &ContractId,
         buf: &[u8],
@@ -239,7 +247,7 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
         Ok((size, prev))
     }
 
-    fn take(&mut self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
+    fn take_bytes(&mut self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
         let prev = self.memory.contracts.remove(key).map(Into::into);
         Ok(prev)
     }
@@ -292,7 +300,7 @@ impl StorageInspect<UploadedBytecodes> for MemoryStorage {
 }
 
 impl StorageMutate<UploadedBytecodes> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &<UploadedBytecodes as Mappable>::Key,
         value: &<UploadedBytecodes as Mappable>::Value,
@@ -303,7 +311,7 @@ impl StorageMutate<UploadedBytecodes> for MemoryStorage {
             .insert(*key, value.clone()))
     }
 
-    fn remove(
+    fn take(
         &mut self,
         key: &<UploadedBytecodes as Mappable>::Key,
     ) -> Result<Option<UploadedBytecode>, Infallible> {
@@ -330,7 +338,7 @@ impl StorageInspect<ContractsAssets> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsAssets> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &<ContractsAssets as Mappable>::Key,
         value: &Word,
@@ -338,7 +346,7 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
         Ok(self.memory.balances.insert(*key, *value))
     }
 
-    fn remove(
+    fn take(
         &mut self,
         key: &<ContractsAssets as Mappable>::Key,
     ) -> Result<Option<Word>, Infallible> {
@@ -366,7 +374,7 @@ impl StorageInspect<ContractsState> for MemoryStorage {
 }
 
 impl StorageMutate<ContractsState> for MemoryStorage {
-    fn insert(
+    fn replace(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         value: &<ContractsState as Mappable>::Value,
@@ -374,7 +382,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         Ok(self.memory.contract_state.insert(*key, value.into()))
     }
 
-    fn remove(
+    fn take(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
     ) -> Result<Option<ContractsStateData>, Infallible> {
@@ -383,7 +391,7 @@ impl StorageMutate<ContractsState> for MemoryStorage {
 }
 
 impl StorageWrite<ContractsState> for MemoryStorage {
-    fn write(
+    fn write_bytes(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
@@ -395,7 +403,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         Ok(size)
     }
 
-    fn replace(
+    fn replace_bytes(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
@@ -412,7 +420,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         Ok((size, prev))
     }
 
-    fn take(
+    fn take_bytes(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
     ) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -456,6 +464,108 @@ impl StorageRead<ContractsState> for MemoryStorage {
             .contract_state
             .get(key)
             .map(|c| c.as_ref().to_vec()))
+    }
+}
+
+impl StorageSize<BlobData> for MemoryStorage {
+    fn size_of_value(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<usize>, Infallible> {
+        Ok(self.memory.blobs.get(key).map(|c| c.as_ref().len()))
+    }
+}
+
+impl StorageRead<BlobData> for MemoryStorage {
+    fn read(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+        buf: &mut [u8],
+    ) -> Result<Option<usize>, Self::Error> {
+        Ok(self.memory.blobs.get(key).map(|data| {
+            let len = buf.len().min(data.as_ref().len());
+            buf.copy_from_slice(&data.as_ref()[..len]);
+            len
+        }))
+    }
+
+    fn read_alloc(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self.memory.blobs.get(key).map(|c| c.as_ref().to_vec()))
+    }
+}
+
+impl StorageInspect<BlobData> for MemoryStorage {
+    type Error = Infallible;
+
+    fn get(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<Cow<'_, <BlobData as Mappable>::OwnedValue>>, Infallible> {
+        Ok(self.memory.blobs.get(key).map(Cow::Borrowed))
+    }
+
+    fn contains_key(
+        &self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<bool, Infallible> {
+        Ok(self.memory.blobs.contains_key(key))
+    }
+}
+
+impl StorageMutate<BlobData> for MemoryStorage {
+    fn replace(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+        value: &<BlobData as Mappable>::Value,
+    ) -> Result<Option<<BlobData as Mappable>::OwnedValue>, Infallible> {
+        Ok(self.memory.blobs.insert(*key, value.into()))
+    }
+
+    fn take(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<BlobBytes>, Infallible> {
+        Ok(self.memory.blobs.remove(key))
+    }
+}
+
+impl StorageWrite<BlobData> for MemoryStorage {
+    fn write_bytes(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+        buf: &[u8],
+    ) -> Result<usize, Infallible> {
+        let size = buf.len();
+        self.memory.blobs.insert(*key, BlobBytes::from(buf));
+        Ok(size)
+    }
+
+    fn replace_bytes(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+        buf: &[u8],
+    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    where
+        Self: StorageSize<BlobData>,
+    {
+        let size = buf.len();
+        let prev = self
+            .memory
+            .blobs
+            .insert(*key, BlobBytes::from(buf))
+            .map(Into::into);
+        Ok((size, prev))
+    }
+
+    fn take_bytes(
+        &mut self,
+        key: &<BlobData as Mappable>::Key,
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        let prev = self.memory.blobs.remove(key).map(Into::into);
+        Ok(prev)
     }
 }
 
@@ -579,7 +689,7 @@ impl InterpreterStorage for MemoryStorage {
             if !storage.contains_key(&key)? {
                 unset_count += 1;
             }
-            storage.write(&key, value)?;
+            storage.write_bytes(&key, value)?;
             Ok::<_, Self::DataError>(())
         })?;
         Ok(unset_count)

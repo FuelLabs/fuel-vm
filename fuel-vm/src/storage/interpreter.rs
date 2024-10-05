@@ -44,6 +44,8 @@ use core::ops::{
     DerefMut,
 };
 
+use super::blob_data::BlobData;
+
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
@@ -54,6 +56,9 @@ pub trait InterpreterStorage:
     + StorageSize<ContractsState, Error = Self::DataError>
     + StorageRead<ContractsState, Error = Self::DataError>
     + StorageMutate<UploadedBytecodes, Error = Self::DataError>
+    + StorageWrite<BlobData, Error = Self::DataError>
+    + StorageSize<BlobData, Error = Self::DataError>
+    + StorageRead<BlobData, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
@@ -174,7 +179,7 @@ pub trait InterpreterStorage:
         &mut self,
         id: &ContractId,
         contract: &Contract,
-    ) -> Result<Option<Contract>, Self::DataError> {
+    ) -> Result<(), Self::DataError> {
         StorageMutate::<ContractsRawCode>::insert(self, id, contract.as_ref())
     }
 
@@ -198,24 +203,28 @@ pub trait InterpreterStorage:
         contract: &ContractId,
         key: &Bytes32,
         value: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::DataError> {
-        let result = StorageWrite::<ContractsState>::replace(
+    ) -> Result<(), Self::DataError> {
+        StorageWrite::<ContractsState>::write_bytes(
             self,
             &(contract, key).into(),
             value,
         )?;
-        Ok(result)
+        Ok(())
     }
 
-    /// Remove a key-value mapping from a contract storage.
-    fn contract_state_remove(
+    /// Insert a key-value mapping into a contract storage.
+    fn contract_state_replace(
         &mut self,
         contract: &ContractId,
         key: &Bytes32,
-    ) -> Result<Option<ContractsStateData>, Self::DataError> {
-        let result = StorageWrite::<ContractsState>::take(self, &(contract, key).into())?
-            .map(Into::into);
-        Ok(result)
+        value: &[u8],
+    ) -> Result<Option<Vec<u8>>, Self::DataError> {
+        let (_, prev) = StorageWrite::<ContractsState>::replace_bytes(
+            self,
+            &(contract, key).into(),
+            value,
+        )?;
+        Ok(prev)
     }
 
     /// Fetch a range of values from a key-value mapping in a contract storage.
@@ -266,14 +275,28 @@ pub trait ContractsAssetsStorage: StorageMutate<ContractsAssets> {
     }
 
     /// Update the balance of an asset ID in a contract storage.
-    /// Returns the old balance, if any.
     fn contract_asset_id_balance_insert(
         &mut self,
         contract: &ContractId,
         asset_id: &AssetId,
         value: Word,
-    ) -> Result<Option<Word>, Self::Error> {
+    ) -> Result<(), Self::Error> {
         StorageMutate::<ContractsAssets>::insert(
+            self,
+            &(contract, asset_id).into(),
+            &value,
+        )
+    }
+
+    /// Update the balance of an asset ID in a contract storage.
+    /// Returns the old balance, if any.
+    fn contract_asset_id_balance_replace(
+        &mut self,
+        contract: &ContractId,
+        asset_id: &AssetId,
+        value: Word,
+    ) -> Result<Option<Word>, Self::Error> {
+        StorageMutate::<ContractsAssets>::replace(
             self,
             &(contract, asset_id).into(),
             &value,

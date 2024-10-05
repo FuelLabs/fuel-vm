@@ -38,8 +38,10 @@ fn test_metadata() {
 fn test_get_transaction_field() {
     let mut pc = 4;
     let tx = Script::default();
+    let input_contracts_index_to_output_index = Default::default();
     let input = GTFInput {
         tx: &tx,
+        input_contracts_index_to_output_index: &input_contracts_index_to_output_index,
         tx_offset: 0,
         tx_size: fuel_tx::TxParameters::DEFAULT.tx_offset() as Word,
         pc: RegMut::new(&mut pc),

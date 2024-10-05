@@ -34,9 +34,9 @@ use crate::{
         StateTransitionRef,
     },
     storage::{
+        predicate::PredicateStorage,
         BlobData,
         InterpreterStorage,
-        PredicateStorage,
     },
 };
 use alloc::{
@@ -54,6 +54,7 @@ use crate::{
     interpreter::InterpreterParams,
     prelude::MemoryInstance,
     storage::{
+        predicate::PredicateStorageRequirements,
         UploadedBytecode,
         UploadedBytecodes,
     },
@@ -62,7 +63,6 @@ use fuel_asm::PanicReason;
 use fuel_storage::{
     StorageAsMut,
     StorageAsRef,
-    StorageRead,
 };
 use fuel_tx::{
     field::{
@@ -140,27 +140,29 @@ enum PredicateAction {
     Estimating { available_gas: Word },
 }
 
-impl<Tx, S> Interpreter<&mut MemoryInstance, S, Tx>
-where
-    Tx: ExecutableTransaction,
-{
+/// The module contains functions to check predicates defined in the inputs of a
+/// transaction.
+pub mod predicates {
+    use super::*;
+    use crate::storage::predicate::PredicateStorageProvider;
+
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn check_predicates(
+    pub fn check_predicates<Tx>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
-        storage: S,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
+        Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
-        S: StorageRead<BlobData>,
     {
         let tx = checked.transaction();
-        Self::run_predicates(
+        run_predicates(
             PredicateRunKind::Verifying(tx),
             params,
             memory.as_mut(),
@@ -173,21 +175,20 @@ where
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn check_predicates_async<E>(
+    pub async fn check_predicates_async<Tx, E>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
-        storage: S,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: Send + 'static,
-        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
+        Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
     {
         let tx = checked.transaction();
 
-        let predicates_checked = Self::run_predicate_async::<E>(
+        let predicates_checked = run_predicate_async::<Tx, E>(
             PredicateRunKind::Verifying(tx),
             params,
             pool,
@@ -204,16 +205,16 @@ where
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn estimate_predicates(
+    pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
-        storage: S,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        S: StorageRead<BlobData>,
+        Tx: ExecutableTransaction,
     {
-        let predicates_checked = Self::run_predicates(
+        let predicates_checked = run_predicates(
             PredicateRunKind::Estimating(transaction),
             params,
             memory.as_mut(),
@@ -228,18 +229,17 @@ where
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn estimate_predicates_async<E>(
+    pub async fn estimate_predicates_async<Tx, E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
-        storage: S,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: Send + 'static,
-        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
+        Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
     {
-        let predicates_checked = Self::run_predicate_async::<E>(
+        let predicates_checked = run_predicate_async::<Tx, E>(
             PredicateRunKind::Estimating(transaction),
             params,
             pool,
@@ -250,15 +250,14 @@ where
         Ok(predicates_checked)
     }
 
-    async fn run_predicate_async<E>(
+    async fn run_predicate_async<Tx, E>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
-        storage: S,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: Send + 'static,
-        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
+        Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
     {
         let mut checks = vec![];
@@ -281,17 +280,17 @@ where
                 let tx = kind.tx().clone();
                 let my_params = params.clone();
                 let mut memory = pool.get_new().await;
-                let my_storage = storage.clone();
+                let storage_instance = storage.storage();
 
                 let verify_task = E::create_task(move || {
-                    let (used_gas, result) = Interpreter::check_predicate(
+                    let (used_gas, result) = check_predicate(
                         tx,
                         index,
                         predicate_action,
                         predicate,
                         my_params,
                         memory.as_mut(),
-                        my_storage,
+                        &storage_instance,
                     );
 
                     result.map(|_| (used_gas, index))
@@ -303,17 +302,17 @@ where
 
         let checks = E::execute_tasks(checks).await;
 
-        Self::finalize_check_predicate(kind, checks, params)
+        finalize_check_predicate(kind, checks, params)
     }
 
-    fn run_predicates(
+    fn run_predicates<Tx>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
-        storage: S,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        S: StorageRead<BlobData>,
+        Tx: ExecutableTransaction,
     {
         let mut checks = vec![];
 
@@ -335,14 +334,14 @@ where
                         PredicateAction::Estimating { available_gas }
                     }
                 };
-                let (gas_used, result) = Interpreter::check_predicate(
+                let (gas_used, result) = check_predicate(
                     tx,
                     index,
                     predicate_action,
                     predicate,
                     params.clone(),
                     memory.as_mut(),
-                    &storage,
+                    storage,
                 );
                 available_gas = available_gas.saturating_sub(gas_used);
                 let result = result.map(|_| (gas_used, index));
@@ -350,20 +349,20 @@ where
             }
         }
 
-        Self::finalize_check_predicate(kind, checks, params)
+        finalize_check_predicate(kind, checks, params)
     }
 
-    fn check_predicate(
+    fn check_predicate<Tx>(
         tx: Tx,
         index: usize,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
         params: CheckPredicateParams,
         memory: &mut MemoryInstance,
-        storage: S,
+        storage: &impl PredicateStorageRequirements,
     ) -> (Word, Result<(), PredicateVerificationFailed>)
     where
-        S: StorageRead<BlobData>,
+        Tx: ExecutableTransaction,
     {
         match &tx.inputs()[index] {
             Input::CoinPredicate(CoinPredicate {
@@ -441,11 +440,14 @@ where
         (gas_used, Ok(()))
     }
 
-    fn finalize_check_predicate(
+    fn finalize_check_predicate<Tx>(
         mut kind: PredicateRunKind<Tx>,
         checks: Vec<Result<(Word, usize), PredicateVerificationFailed>>,
         params: &CheckPredicateParams,
-    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
         if let PredicateRunKind::Estimating(tx) = &mut kind {
             checks.iter().for_each(|result| {
                 if let Ok((gas_used, index)) = result {

@@ -34,7 +34,6 @@ pub use interpreter::{
 };
 #[cfg(feature = "test-helpers")]
 pub use memory::MemoryStorage;
-pub use predicate::PredicateStorage;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;

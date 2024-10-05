@@ -6,7 +6,11 @@ use crate::{
         Checked,
     },
     interpreter::MemoryInstance,
-    prelude::*,
+    prelude::{
+        predicates::estimate_predicates,
+        *,
+    },
+    storage::predicate::EmptyStorage,
 };
 use alloc::{
     vec,
@@ -58,7 +62,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params.into(), MemoryInstance::new())
+        .check_predicates(&params.into(), MemoryInstance::new(), &EmptyStorage)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -98,10 +102,11 @@ fn estimate_gas_gives_proper_gas_used() {
         .into_checked(Default::default(), params)
         .is_err());
 
-    Interpreter::estimate_predicates(
+    estimate_predicates(
         &mut transaction,
         &params.into(),
         MemoryInstance::new(),
+        &EmptyStorage,
     )
     .expect("Should successfully estimate predicates");
 

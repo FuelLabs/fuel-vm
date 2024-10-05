@@ -18,9 +18,8 @@ pub extern crate alloc;
 
 extern crate core;
 #[cfg(feature = "std")]
-extern crate libm as _;
+extern crate libm as _; // Not needed with stdlib
 
-// Not needed with stdlib
 #[cfg(test)]
 use criterion as _;
 
@@ -147,6 +146,7 @@ pub mod prelude {
             RuntimeError,
         },
         interpreter::{
+            predicates,
             ExecutableTransaction,
             Interpreter,
             Memory,
@@ -162,8 +162,8 @@ pub mod prelude {
             StateTransitionRef,
         },
         storage::{
+            predicate::PredicateStorage,
             InterpreterStorage,
-            PredicateStorage,
         },
         transactor::Transactor,
     };

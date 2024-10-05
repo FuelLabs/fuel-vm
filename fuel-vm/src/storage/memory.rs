@@ -41,6 +41,7 @@ use super::{
     BlobData,
 };
 
+use crate::storage::predicate::PredicateStorageRequirements;
 use alloc::{
     borrow::Cow,
     collections::BTreeMap,
@@ -721,6 +722,12 @@ impl InterpreterStorage for MemoryStorage {
             c != contract || !r
         });
         Ok((all_set_key && values.is_empty()).then_some(()))
+    }
+}
+
+impl PredicateStorageRequirements for MemoryStorage {
+    fn storage_error_to_string(error: Self::Error) -> alloc::string::String {
+        alloc::format!("{:?}", error)
     }
 }
 

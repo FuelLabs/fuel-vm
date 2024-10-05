@@ -35,6 +35,7 @@ use sha3::{
 
 use crate::{
     prelude::*,
+    storage::predicate::EmptyStorage,
     tests::test_helpers::set_full_word,
     util::test_helpers::check_expected_reason_for_instructions,
 };
@@ -233,7 +234,11 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&check_params, &DummyPool)
+            .estimate_predicates_async::<TokioWithRayon>(
+                &check_params,
+                &DummyPool,
+                &EmptyStorage,
+            )
             .await
             .expect("Should estimate predicate successfully");
 
@@ -243,7 +248,7 @@ async fn recover_tx_id_predicate() {
     }
 
     // sequential version
-    tx.estimate_predicates(&check_params, MemoryInstance::new())
+    tx.estimate_predicates(&check_params, MemoryInstance::new(), &EmptyStorage)
         .expect("Should estimate predicate successfully");
 
     tx.into_checked(maturity, &consensus_params)

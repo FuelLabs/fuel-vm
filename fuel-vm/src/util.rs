@@ -119,7 +119,6 @@ pub mod test_helpers {
             Backtrace,
             Call,
         },
-        storage::BlobData,
     };
     use fuel_asm::{
         op,
@@ -128,7 +127,6 @@ pub mod test_helpers {
         PanicReason,
         RegId,
     };
-    use fuel_storage::StorageRead;
     use fuel_tx::{
         field::{
             Outputs,
@@ -357,10 +355,7 @@ pub mod test_helpers {
             self
         }
 
-        pub fn build<S>(&mut self, storage: S) -> Checked<Script>
-        where
-            S: StorageRead<BlobData>,
-        {
+        pub fn build(&mut self) -> Checked<Script> {
             self.builder.max_fee_limit(self.max_fee_limit);
             self.builder.with_tx_params(*self.get_tx_params());
             self.builder
@@ -370,7 +365,8 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder.finalize_checked(self.block_height, storage)
+            self.builder
+                .finalize_checked_with_storage(self.block_height, &self.storage)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {
@@ -417,15 +413,11 @@ pub mod test_helpers {
             self.consensus_params.gas_costs()
         }
 
-        pub fn build_get_balance_tx<S>(
+        pub fn build_get_balance_tx(
             contract_id: &ContractId,
             asset_id: &AssetId,
             tx_offset: usize,
-            storage: S,
-        ) -> Checked<Script>
-        where
-            S: StorageRead<BlobData>,
-        {
+        ) -> Checked<Script> {
             let (script, _) = script_with_data_offset!(
                 data_offset,
                 vec![
@@ -456,47 +448,35 @@ pub mod test_helpers {
                 .contract_input(*contract_id)
                 .fee_input()
                 .contract_output(contract_id)
-                .build(storage)
+                .build()
         }
 
-        pub fn setup_contract_bytes<S>(
+        pub fn setup_contract_bytes(
             &mut self,
             contract: Vec<u8>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
-            storage: S,
-        ) -> CreatedContract
-        where
-            S: StorageRead<BlobData>,
-        {
-            self.setup_contract_inner(contract, initial_balance, initial_state, storage)
+        ) -> CreatedContract {
+            self.setup_contract_inner(contract, initial_balance, initial_state)
         }
 
-        pub fn setup_contract<S>(
+        pub fn setup_contract(
             &mut self,
             contract: Vec<Instruction>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
-            storage: S,
-        ) -> CreatedContract
-        where
-            S: StorageRead<BlobData>,
-        {
+        ) -> CreatedContract {
             let contract = contract.into_iter().collect();
 
-            self.setup_contract_inner(contract, initial_balance, initial_state, storage)
+            self.setup_contract_inner(contract, initial_balance, initial_state)
         }
 
-        fn setup_contract_inner<S>(
+        fn setup_contract_inner(
             &mut self,
             contract: Vec<u8>,
             initial_balance: Option<(AssetId, Word)>,
             initial_state: Option<Vec<StorageSlot>>,
-            storage: S,
-        ) -> CreatedContract
-        where
-            S: StorageRead<BlobData>,
-        {
+        ) -> CreatedContract {
             let storage_slots = initial_state.unwrap_or_default();
 
             let salt: Salt = self.rng.gen();
@@ -512,7 +492,7 @@ pub mod test_helpers {
                 .add_fee_input()
                 .add_contract_created()
                 .finalize()
-                .into_checked(self.block_height, &self.consensus_params, storage)
+                .into_checked(self.block_height, &self.consensus_params)
                 .expect("failed to check tx");
 
             // setup a contract in current test state
@@ -534,10 +514,7 @@ pub mod test_helpers {
             }
         }
 
-        pub fn setup_blob<S>(&mut self, data: Vec<u8>, storage: S)
-        where
-            S: StorageRead<BlobData>,
-        {
+        pub fn setup_blob(&mut self, data: Vec<u8>) {
             let id = BlobId::compute(data.as_slice());
 
             let tx = TransactionBuilder::blob(BlobBody {
@@ -549,7 +526,7 @@ pub mod test_helpers {
             .maturity(Default::default())
             .add_fee_input()
             .finalize()
-            .into_checked(self.block_height, &self.consensus_params, storage)
+            .into_checked(self.block_height, &self.consensus_params)
             .expect("failed to check tx");
 
             let interpreter_params =
@@ -665,11 +642,8 @@ pub mod test_helpers {
         }
 
         /// Build test tx and execute it
-        pub fn execute<S>(&mut self, storage: S) -> StateTransition<Script>
-        where
-            S: StorageRead<BlobData>,
-        {
-            let tx = self.build(storage);
+        pub fn execute(&mut self) -> StateTransition<Script> {
+            let tx = self.build();
 
             self.execute_tx(tx)
                 .expect("expected successful vm execution")
@@ -679,39 +653,24 @@ pub mod test_helpers {
             &self.storage
         }
 
-        pub fn execute_get_outputs<S>(&mut self, storage: S) -> Vec<Output>
-        where
-            S: StorageRead<BlobData>,
-        {
-            self.execute(storage).tx().outputs().to_vec()
+        pub fn execute_get_outputs(&mut self) -> Vec<Output> {
+            self.execute().tx().outputs().to_vec()
         }
 
-        pub fn execute_get_change<S>(
-            &mut self,
-            find_asset_id: AssetId,
-            storage: S,
-        ) -> Word
-        where
-            S: StorageRead<BlobData>,
-        {
-            let outputs = self.execute_get_outputs(storage);
+        pub fn execute_get_change(&mut self, find_asset_id: AssetId) -> Word {
+            let outputs = self.execute_get_outputs();
             find_change(outputs, find_asset_id)
         }
 
-        pub fn get_contract_balance<S>(
+        pub fn get_contract_balance(
             &mut self,
             contract_id: &ContractId,
             asset_id: &AssetId,
-            storage: S,
-        ) -> Word
-        where
-            S: StorageRead<BlobData>,
-        {
+        ) -> Word {
             let tx = TestBuilder::build_get_balance_tx(
                 contract_id,
                 asset_id,
                 self.consensus_params.tx_params().tx_offset(),
-                storage,
             );
             let state = self
                 .execute_tx(tx)
@@ -763,7 +722,7 @@ pub mod test_helpers {
             .with_tx_params(tx_params)
             .add_fee_input()
             .add_contract_created()
-            .finalize_checked(height, MemoryStorage::default());
+            .finalize_checked(height);
 
         client
             .deploy(contract_deployer)
@@ -799,7 +758,7 @@ pub mod test_helpers {
             ))
             .add_fee_input()
             .add_output(Output::contract(0, Default::default(), Default::default()))
-            .finalize_checked(height, MemoryStorage::default());
+            .finalize_checked(height);
 
         check_reason_for_transaction(client, tx_deploy_loader, expected_reason);
     }

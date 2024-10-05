@@ -7,9 +7,8 @@ use super::{
 use crate::{
     checked_transaction::CheckPredicates,
     prelude::*,
-    storage::BlobData,
+    storage::predicate::PredicateStorageRequirements,
 };
-use fuel_storage::StorageRead;
 use fuel_tx::{
     Finalizable,
     TransactionBuilder,
@@ -22,10 +21,14 @@ where
     Tx: IntoChecked,
 {
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type
-    fn finalize_checked(
+    fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx>;
+
+    /// Finalize the builder into a [`Checked<Tx>`] of the correct type
+    /// using the storage during verification.
+    fn finalize_checked_with_storage(
         &self,
         height: BlockHeight,
-        storage: impl StorageRead<BlobData>,
+        storage: &impl PredicateStorageRequirements,
     ) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
@@ -38,13 +41,24 @@ where
     Self: Finalizable<Tx>,
     Checked<Tx>: CheckPredicates,
 {
-    fn finalize_checked(
+    fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx> {
+        self.finalize()
+            .into_checked(height, self.get_params())
+            .expect("failed to check tx")
+    }
+
+    fn finalize_checked_with_storage(
         &self,
         height: BlockHeight,
-        storage: impl StorageRead<BlobData>,
+        storage: &impl PredicateStorageRequirements,
     ) -> Checked<Tx> {
         self.finalize()
-            .into_checked(height, self.get_params(), storage)
+            .into_checked_reusable_memory(
+                height,
+                self.get_params(),
+                MemoryInstance::new(),
+                storage,
+            )
             .expect("failed to check tx")
     }
 

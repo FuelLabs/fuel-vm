@@ -33,6 +33,7 @@ use rand::{
     SeedableRng,
 };
 
+use crate::storage::predicate::EmptyStorage;
 #[cfg(feature = "alloc")]
 use alloc::vec;
 
@@ -129,8 +130,12 @@ fn malleable_fields_do_not_affect_validity_of_create() {
             Default::default(),
         ))
         .finalize();
-    tx.estimate_predicates(&CheckPredicateParams::from(&params), MemoryInstance::new())
-        .expect("Should estimate predicate");
+    tx.estimate_predicates(
+        &CheckPredicateParams::from(&params),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .expect("Should estimate predicate");
 
     let run_tx = |tx: Create| tx.into_checked(0u32.into(), &params).map(|_| ());
     let result = run_tx(tx.clone());
@@ -225,8 +230,12 @@ fn malleable_fields_do_not_affect_validity_of_script() {
         .add_output(Output::contract(1, Default::default(), Default::default()))
         .script_gas_limit(1_000_000)
         .finalize();
-    tx.estimate_predicates(&CheckPredicateParams::from(&params), MemoryInstance::new())
-        .expect("Should estimate predicate");
+    tx.estimate_predicates(
+        &CheckPredicateParams::from(&params),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .expect("Should estimate predicate");
 
     let run_tx = |tx: Script| tx.into_checked(0u32.into(), &params).map(|_| ());
     let result = run_tx(tx.clone());

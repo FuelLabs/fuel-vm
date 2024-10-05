@@ -12,19 +12,18 @@ use crate::{
         ExecuteState,
         ProgramState,
     },
-    storage::PredicateStorage,
+    storage::predicate::PredicateStorage,
 };
 
-use crate::storage::BlobData;
+use crate::storage::predicate::PredicateStorageRequirements;
 use fuel_asm::PanicReason;
-use fuel_storage::StorageRead;
 
 impl<M, Tx, Ecal, S> Interpreter<M, PredicateStorage<S>, Tx, Ecal>
 where
     M: Memory,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    S: StorageRead<BlobData>,
+    S: PredicateStorageRequirements,
 {
     /// Verify a predicate that has been initialized already
     pub(crate) fn verify_predicate(

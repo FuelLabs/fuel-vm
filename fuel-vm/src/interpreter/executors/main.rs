@@ -54,7 +54,6 @@ use crate::{
     interpreter::InterpreterParams,
     prelude::MemoryInstance,
     storage::{
-        predicate::PredicateBlobStorage,
         UploadedBytecode,
         UploadedBytecodes,
     },
@@ -144,7 +143,7 @@ enum PredicateAction {
 impl<Tx, S> Interpreter<&mut MemoryInstance, PredicateStorage<S>, Tx>
 where
     Tx: ExecutableTransaction,
-    S: PredicateBlobStorage,
+    S: StorageRead<BlobData> + Clone,
 {
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.

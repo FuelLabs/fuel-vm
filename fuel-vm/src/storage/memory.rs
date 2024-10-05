@@ -40,7 +40,7 @@ use super::{
     BlobBytes,
     BlobData,
 };
-use crate::storage::predicate::PredicateBlobStorage;
+
 use alloc::{
     borrow::Cow,
     collections::BTreeMap,
@@ -199,8 +199,6 @@ impl Default for MemoryStorage {
         Self::new(block_height, coinbase)
     }
 }
-
-impl PredicateBlobStorage for MemoryStorage {}
 
 impl StorageInspect<ContractsRawCode> for MemoryStorage {
     type Error = Infallible;

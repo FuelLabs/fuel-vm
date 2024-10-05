@@ -55,7 +55,7 @@ internals = []
 typescript = ["dep:serde_json", "alloc", "js-sys", "wasm-bindgen", "serde-wasm-bindgen", "fuel-types/typescript"]
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde/default", "hex/std"]
-alloc = ["hashbrown", "fuel-types/alloc", "fuel-crypto/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "strum", "strum_macros", "bitflags", "postcard", "derive_more", "fuel-asm/serde", "fuel-types/serde", "fuel-crypto/serde"]
+alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "strum", "strum_macros", "bitflags", "postcard", "derive_more", "fuel-asm/serde", "fuel-types/serde", "fuel-crypto/serde"]
 da-compression = ["fuel-compression"]
 
 [lints.rust]

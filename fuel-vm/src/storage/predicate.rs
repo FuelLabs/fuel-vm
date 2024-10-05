@@ -14,7 +14,6 @@ use core::fmt::Debug;
 use fuel_asm::Word;
 use fuel_storage::{
     Mappable,
-    StorageAsMut,
     StorageInspect,
     StorageMutate,
     StorageRead,
@@ -42,18 +41,16 @@ use super::{
 /// operations. However, predicates, as defined in the protocol, cannot execute contract
 /// opcodes. This means its storage backend for predicate execution shouldn't provide any
 /// functionality. Unless the storage access is limited to immutable data and read-only.
-#[derive(Debug, Default, Clone, Copy)]
-pub struct PredicateStorage<D: StorageRead<BlobData> + Clone> {
+#[derive(Debug, Default)]
+pub struct PredicateStorage<D: StorageRead<BlobData>> {
     storage: D,
 }
 
-impl<D: StorageRead<BlobData> + Clone> PredicateStorage<D> {
+impl<D: StorageRead<BlobData>> PredicateStorage<D> {
     pub fn new(storage: D) -> Self {
         Self { storage }
     }
 }
-
-// pub trait StorageRead<BlobData> + Clone: StorageRead<BlobData> + Clone {}
 
 #[derive(Debug, Clone, Copy)]
 pub enum PredicateStorageError {
@@ -96,7 +93,7 @@ impl From<StorageUnavailable> for RuntimeError<StorageUnavailable> {
 impl<Type, D> StorageInspect<Type> for PredicateStorage<D>
 where
     Type: Mappable,
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     type Error = PredicateStorageError;
 
@@ -115,7 +112,7 @@ where
 impl<Type, D> StorageMutate<Type> for PredicateStorage<D>
 where
     Type: Mappable,
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn replace(
         &mut self,
@@ -135,7 +132,7 @@ where
 
 impl<D> StorageSize<ContractsRawCode> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn size_of_value(&self, _key: &ContractId) -> Result<Option<usize>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
@@ -144,7 +141,7 @@ where
 
 impl<D> StorageRead<ContractsRawCode> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn read(
         &self,
@@ -164,7 +161,7 @@ where
 
 impl<D> StorageWrite<ContractsRawCode> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn write_bytes(
         &mut self,
@@ -192,7 +189,7 @@ where
 
 impl<D> StorageSize<ContractsState> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn size_of_value(
         &self,
@@ -204,7 +201,7 @@ where
 
 impl<D> StorageRead<ContractsState> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn read(
         &self,
@@ -224,7 +221,7 @@ where
 
 impl<D> StorageWrite<ContractsState> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn write_bytes(
         &mut self,
@@ -252,7 +249,7 @@ where
 
 impl<D> StorageSize<BlobData> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn size_of_value(
         &self,
@@ -265,7 +262,7 @@ where
 
 impl<D> StorageRead<BlobData> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn read(
         &self,
@@ -287,7 +284,7 @@ where
 
 impl<D> StorageWrite<BlobData> for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     fn write_bytes(
         &mut self,
@@ -313,14 +310,11 @@ where
     }
 }
 
-impl<D> ContractsAssetsStorage for PredicateStorage<D> where
-    D: StorageRead<BlobData> + Clone
-{
-}
+impl<D> ContractsAssetsStorage for PredicateStorage<D> where D: StorageRead<BlobData> {}
 
 impl<D> InterpreterStorage for PredicateStorage<D>
 where
-    D: StorageRead<BlobData> + Clone,
+    D: StorageRead<BlobData>,
 {
     type DataError = PredicateStorageError;
 

@@ -25,7 +25,7 @@ where
     fn finalize_checked(
         &self,
         height: BlockHeight,
-        storage: impl StorageRead<BlobData> + Clone,
+        storage: impl StorageRead<BlobData>,
     ) -> Checked<Tx>;
 
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
@@ -41,7 +41,7 @@ where
     fn finalize_checked(
         &self,
         height: BlockHeight,
-        storage: impl StorageRead<BlobData> + Clone,
+        storage: impl StorageRead<BlobData>,
     ) -> Checked<Tx> {
         self.finalize()
             .into_checked(height, self.get_params(), storage)

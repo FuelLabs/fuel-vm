@@ -143,7 +143,7 @@ enum PredicateAction {
 impl<Tx, S> Interpreter<&mut MemoryInstance, PredicateStorage<S>, Tx>
 where
     Tx: ExecutableTransaction,
-    S: StorageRead<BlobData> + Clone,
+    S: StorageRead<BlobData>,
 {
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -278,7 +278,7 @@ where
                 let tx = kind.tx().clone();
                 let my_params = params.clone();
                 let mut memory = pool.get_new().await;
-                let my_storage = storage.clone();
+                let my_storage = &storage;
 
                 let verify_task = E::create_task(move || {
                     let (used_gas, result) = Interpreter::check_predicate(
@@ -319,7 +319,6 @@ where
 
         for index in 0..kind.tx().inputs().len() {
             let tx = kind.tx().clone();
-            let storage = storage.clone();
 
             if let Some(predicate) =
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
@@ -337,7 +336,7 @@ where
                     predicate,
                     params.clone(),
                     memory.as_mut(),
-                    storage,
+                    &storage,
                 );
                 available_gas = available_gas.saturating_sub(gas_used);
                 let result = result.map(|_| (gas_used, index));

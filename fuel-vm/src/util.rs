@@ -359,7 +359,7 @@ pub mod test_helpers {
 
         pub fn build<S>(&mut self, storage: S) -> Checked<Script>
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             self.builder.max_fee_limit(self.max_fee_limit);
             self.builder.with_tx_params(*self.get_tx_params());
@@ -424,7 +424,7 @@ pub mod test_helpers {
             storage: S,
         ) -> Checked<Script>
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             let (script, _) = script_with_data_offset!(
                 data_offset,
@@ -467,7 +467,7 @@ pub mod test_helpers {
             storage: S,
         ) -> CreatedContract
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             self.setup_contract_inner(contract, initial_balance, initial_state, storage)
         }
@@ -480,7 +480,7 @@ pub mod test_helpers {
             storage: S,
         ) -> CreatedContract
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             let contract = contract.into_iter().collect();
 
@@ -495,7 +495,7 @@ pub mod test_helpers {
             storage: S,
         ) -> CreatedContract
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             let storage_slots = initial_state.unwrap_or_default();
 
@@ -536,7 +536,7 @@ pub mod test_helpers {
 
         pub fn setup_blob<S>(&mut self, data: Vec<u8>, storage: S)
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             let id = BlobId::compute(data.as_slice());
 
@@ -667,7 +667,7 @@ pub mod test_helpers {
         /// Build test tx and execute it
         pub fn execute<S>(&mut self, storage: S) -> StateTransition<Script>
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             let tx = self.build(storage);
 
@@ -681,7 +681,7 @@ pub mod test_helpers {
 
         pub fn execute_get_outputs<S>(&mut self, storage: S) -> Vec<Output>
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             self.execute(storage).tx().outputs().to_vec()
         }
@@ -692,7 +692,7 @@ pub mod test_helpers {
             storage: S,
         ) -> Word
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             let outputs = self.execute_get_outputs(storage);
             find_change(outputs, find_asset_id)
@@ -705,7 +705,7 @@ pub mod test_helpers {
             storage: S,
         ) -> Word
         where
-            S: StorageRead<BlobData> + Clone,
+            S: StorageRead<BlobData>,
         {
             let tx = TestBuilder::build_get_balance_tx(
                 contract_id,

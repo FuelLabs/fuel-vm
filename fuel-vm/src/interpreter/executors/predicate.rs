@@ -24,7 +24,7 @@ where
     M: Memory,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    S: StorageRead<BlobData> + Clone,
+    S: StorageRead<BlobData>,
 {
     /// Verify a predicate that has been initialized already
     pub(crate) fn verify_predicate(

@@ -84,7 +84,7 @@ std = [
   "fuel-tx/std",
   "itertools/use_std",
 ]
-alloc = ["fuel-asm/alloc", "fuel-tx/alloc"]
+alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-crypto/alloc"]
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this

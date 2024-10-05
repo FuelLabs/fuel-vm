@@ -464,15 +464,15 @@ mod tests {
                 // Use `LDC` with mode `2` to load the part of the predicate from the
                 // transaction.
                 vec![
-                    // Skip the return opcodes. One of two opcodes is a good opcode that
-                    // returns `0x1`. This opcode is our source for the `LDC`
-                    // opcode. We will copy return good opcode to the end
+                    // Skip the return opcodes. One of two opcodes is a bad opcode that
+                    // returns `0x0`. This opcode is our source for the `LDC`
+                    // opcode. We will copy return bad opcode to the end
                     // of the `ssp` via `LDC`. And jump there to
                     // return `false` from the predicate adn fail.
                     op::jmpf(ZERO, 2),
-                    // Bad return opcode that we want to skip.
+                    // Good return opcode that we want to skip.
                     op::ret(0x1),
-                    // Good return opcode that we want to use for the `LDC`.
+                    // Bad return opcode that we want to use for the `LDC`.
                     op::ret(0x0),
                     // This will be our zeroed blob id
                     op::move_(0x10, IS),
@@ -485,7 +485,7 @@ mod tests {
                     // Divide the code by the instruction size to get the number of
                     // instructions
                     op::divi(0x12, 0x12, Instruction::SIZE as u16),
-                    // We want to load only on good `ret` opcode.
+                    // We want to load only on bad `ret` opcode.
                     op::movi(0x11, Instruction::SIZE as u32),
                     // Load the code from the memory address `0x10` with the `0x11` size
                     op::ldc(0x10, ZERO, 0x11, 2),

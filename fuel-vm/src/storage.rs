@@ -13,7 +13,7 @@ mod contracts_state;
 mod interpreter;
 #[cfg(feature = "test-helpers")]
 mod memory;
-pub(crate) mod predicate;
+pub mod predicate;
 
 pub use blob_data::{
     BlobBytes,

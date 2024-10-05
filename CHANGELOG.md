@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.58.0]
+
 ### Added
 - [#849](https://github.com/FuelLabs/fuel-vm/pull/849): Add a new mode `2` to the LDC that allows to use the memory as a source for code.
 - [#848](https://github.com/FuelLabs/fuel-vm/pull/848): Allow usage of the blob opcode `BSIZ`, `BLDD`, and `LDC` with mode `1` in the predicates.

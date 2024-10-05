@@ -86,23 +86,6 @@ impl From<PredicateStorageError> for RuntimeError<PredicateStorageError> {
     }
 }
 
-/// Storage is unavailable in predicate context.
-#[derive(Debug, Clone, Copy)]
-pub struct StorageUnavailable;
-
-impl From<StorageUnavailable> for InterpreterError<StorageUnavailable> {
-    fn from(val: StorageUnavailable) -> Self {
-        let rt: RuntimeError<StorageUnavailable> = val.into();
-        rt.into()
-    }
-}
-
-impl From<StorageUnavailable> for RuntimeError<StorageUnavailable> {
-    fn from(val: StorageUnavailable) -> Self {
-        RuntimeError::Storage(val)
-    }
-}
-
 /// Storage requirements for predicates.
 pub trait PredicateStorageRequirements
 where

@@ -801,6 +801,11 @@ where
             return Err(PanicReason::ExpectedUnallocatedStack.into())
         }
 
+        if length_unpadded == 0 {
+            inc_pc(self.pc)?;
+            return Ok(())
+        }
+
         let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
         let length = bytes::padded_len_word(length_unpadded).unwrap_or(Word::MAX);

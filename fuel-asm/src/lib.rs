@@ -182,8 +182,8 @@ impl_instructions! {
     0x30 CSIZ csiz [dst: RegId contract_id_addr: RegId]
     "Get current block proposer's address."
     0x31 CB cb [dst: RegId]
-    "Load a contract's code as executable."
-    0x32 LDC ldc [contract_id_addr: RegId offset: RegId len: RegId mode: Imm06]
+    "Load a code as executable either from contract, blob, or memory."
+    0x32 LDC ldc [src_addr: RegId offset: RegId len: RegId mode: Imm06]
     "Log an event."
     0x33 LOG log [a: RegId b: RegId c: RegId d: RegId]
     "Log data."

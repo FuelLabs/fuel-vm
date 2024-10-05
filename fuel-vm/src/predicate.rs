@@ -320,7 +320,7 @@ mod tests {
                 Ok(()),
             ),
             (
-                // PC exceeding predicate bounds
+                // Use `LDC` with mode `1` to load the blob into the predicate.
                 vec![
                     // Allocate 32 byte on the heap.
                     op::movi(0x10, 32),
@@ -338,6 +338,41 @@ mod tests {
                     op::divi(0x12, 0x12, Instruction::SIZE as u16),
                     // Load the blob by `0x10` ID with the `0x11` size
                     op::ldc(0x10, ZERO, 0x11, 1),
+                    // Jump to a new code location
+                    op::jmp(0x12),
+                ],
+                CORRECT_GAS,
+                Ok(()),
+            ),
+            (
+                // Use `LDC` with mode `2` to load the part of the predicate from the
+                // transaction.
+                vec![
+                    // Skip the return opcodes. One of two opcodes is a good opcode that
+                    // returns `0x1`. This opcode is our source for the `LDC`
+                    // opcode. We will copy return good opcode to the end
+                    // of the `ssp` via `LDC`. And jump there to
+                    // return `true` from the predicate.
+                    op::jmpf(ZERO, 2),
+                    // Bad return opcode that we want to skip.
+                    op::ret(0x0),
+                    // Good return opcode that we want to use for the `LDC`.
+                    op::ret(0x1),
+                    // This will be our zeroed blob id
+                    op::move_(0x10, IS),
+                    // We don't need to copy `jmpf` and bad `ret` opcodes via `LDC`.
+                    op::addi(0x10, 0x10, 2 * Instruction::SIZE as u16),
+                    // Store start of the code
+                    op::move_(0x12, SSP),
+                    // Subtract the start of the code from the end of the code
+                    op::sub(0x12, 0x12, IS),
+                    // Divide the code by the instruction size to get the number of
+                    // instructions
+                    op::divi(0x12, 0x12, Instruction::SIZE as u16),
+                    // We want to load only on good `ret` opcode.
+                    op::movi(0x11, Instruction::SIZE as u32),
+                    // Load the code from the memory address `0x10` with the `0x11` size
+                    op::ldc(0x10, ZERO, 0x11, 2),
                     // Jump to a new code location
                     op::jmp(0x12),
                 ],
@@ -387,7 +422,7 @@ mod tests {
                 )),
             ),
             (
-                // PC exceeding predicate bounds
+                // Use `LDC` with mode `1` to load the blob into the predicate.
                 vec![
                     // Allocate 32 byte on the heap.
                     op::movi(0x10, 32),
@@ -405,6 +440,43 @@ mod tests {
                     op::divi(0x12, 0x12, Instruction::SIZE as u16),
                     // Load the blob by `0x10` ID with the `0x11` size
                     op::ldc(0x10, ZERO, 0x11, 1),
+                    // Jump to a new code location
+                    op::jmp(0x12),
+                ],
+                CORRECT_GAS,
+                Err(PredicateVerificationFailed::Panic(
+                    PanicReason::PredicateReturnedNonOne,
+                )),
+            ),
+            (
+                // Use `LDC` with mode `2` to load the part of the predicate from the
+                // transaction.
+                vec![
+                    // Skip the return opcodes. One of two opcodes is a good opcode that
+                    // returns `0x1`. This opcode is our source for the `LDC`
+                    // opcode. We will copy return good opcode to the end
+                    // of the `ssp` via `LDC`. And jump there to
+                    // return `false` from the predicate adn fail.
+                    op::jmpf(ZERO, 2),
+                    // Bad return opcode that we want to skip.
+                    op::ret(0x1),
+                    // Good return opcode that we want to use for the `LDC`.
+                    op::ret(0x0),
+                    // This will be our zeroed blob id
+                    op::move_(0x10, IS),
+                    // We don't need to copy `jmpf` and bad `ret` opcodes via `LDC`.
+                    op::addi(0x10, 0x10, 2 * Instruction::SIZE as u16),
+                    // Store start of the code
+                    op::move_(0x12, SSP),
+                    // Subtract the start of the code from the end of the code
+                    op::sub(0x12, 0x12, IS),
+                    // Divide the code by the instruction size to get the number of
+                    // instructions
+                    op::divi(0x12, 0x12, Instruction::SIZE as u16),
+                    // We want to load only on good `ret` opcode.
+                    op::movi(0x11, Instruction::SIZE as u32),
+                    // Load the code from the memory address `0x10` with the `0x11` size
+                    op::ldc(0x10, ZERO, 0x11, 2),
                     // Jump to a new code location
                     op::jmp(0x12),
                 ],

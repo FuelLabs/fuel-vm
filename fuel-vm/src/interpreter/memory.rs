@@ -2,6 +2,7 @@
 
 use super::{
     internal::inc_pc,
+    register::verify_register_user_writable,
     Interpreter,
 };
 use crate::{
@@ -18,7 +19,6 @@ use fuel_asm::{
 };
 use fuel_types::{
     fmt_truncated_hex,
-    RegisterId,
     Word,
 };
 
@@ -48,9 +48,6 @@ mod impl_tests;
 
 #[cfg(test)]
 mod allocation_tests;
-
-#[cfg(test)]
-mod stack_tests;
 
 /// The trait for the memory.
 pub trait Memory: AsRef<MemoryInstance> + AsMut<MemoryInstance> {}
@@ -484,13 +481,6 @@ impl MemoryRange {
     pub fn words(&self) -> Range<Word> {
         self.0.start as Word..self.0.end as Word
     }
-
-    /// Splits range at given relative offset. Panics if offset > range length.
-    pub fn split_at_offset(self, at: usize) -> (Self, Self) {
-        let mid = self.0.start.saturating_add(at);
-        assert!(mid <= self.0.end);
-        (Self(self.0.start..mid), Self(mid..self.0.end))
-    }
 }
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
@@ -528,22 +518,37 @@ where
         segment: ProgramRegistersSegment,
         bitmask: Imm24,
     ) -> SimpleResult<()> {
-        let (
-            SystemRegisters {
-                sp, ssp, hp, pc, ..
-            },
-            program_regs,
-        ) = split_registers(&mut self.registers);
-        push_selected_registers(
-            self.memory.as_mut(),
-            sp,
-            ssp.as_ref(),
-            hp.as_ref(),
-            pc,
-            &program_regs,
-            segment,
-            bitmask,
-        )
+        let (SystemRegisters { sp, ssp, hp, .. }, program_regs) =
+            split_registers(&mut self.registers);
+        let memory: &mut MemoryInstance = self.memory.as_mut();
+        let ssp = ssp.as_ref();
+        let hp = hp.as_ref();
+        let bitmask = bitmask.to_u32();
+
+        // First update the new stack pointer, as that's the only error condition
+        let count: u64 = bitmask.count_ones().into();
+        let write_size = count
+            .checked_mul(WORD_SIZE as u64)
+            .expect("Bitmask size times 8 can never oveflow");
+        let write_at = *sp;
+        // If this would overflow, the stack pointer update below will fail
+        let new_sp = write_at.saturating_add(write_size);
+        try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
+
+        // Write the registers to the stack
+        let mut it = memory
+            .write_noownerchecks(write_at, write_size)?
+            .chunks_exact_mut(WORD_SIZE);
+        for (i, reg) in program_regs.segment(segment).iter().enumerate() {
+            if (bitmask & (1 << i)) != 0 {
+                let item = it
+                    .next()
+                    .expect("Memory range mismatched with register count");
+                item.copy_from_slice(&reg.to_be_bytes());
+            }
+        }
+
+        self.inc_pc()
     }
 
     pub(crate) fn pop_selected_registers(
@@ -551,68 +556,74 @@ where
         segment: ProgramRegistersSegment,
         bitmask: Imm24,
     ) -> SimpleResult<()> {
-        let (
-            SystemRegisters {
-                sp, ssp, hp, pc, ..
-            },
-            mut program_regs,
-        ) = split_registers(&mut self.registers);
-        pop_selected_registers(
-            self.memory.as_mut(),
-            sp,
-            ssp.as_ref(),
-            hp.as_ref(),
-            pc,
-            &mut program_regs,
-            segment,
-            bitmask,
-        )
+        let (SystemRegisters { sp, ssp, hp, .. }, mut program_regs) =
+            split_registers(&mut self.registers);
+        let memory: &mut MemoryInstance = self.memory.as_mut();
+        let ssp = ssp.as_ref();
+        let hp = hp.as_ref();
+        let bitmask = bitmask.to_u32();
+
+        // First update the stack pointer, as that's the only error condition
+        let count: u64 = bitmask.count_ones().into();
+        let size_in_stack = count
+            .checked_mul(WORD_SIZE as u64)
+            .expect("Bitmask size times 8 can never oveflow");
+        let new_sp = sp
+            .checked_sub(size_in_stack)
+            .ok_or(PanicReason::MemoryOverflow)?;
+        try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
+
+        // Restore registers from the stack
+        let mut it = memory.read(new_sp, size_in_stack)?.chunks_exact(WORD_SIZE);
+        for (i, reg) in program_regs.segment_mut(segment).iter_mut().enumerate() {
+            if (bitmask & (1 << i)) != 0 {
+                let mut buf = [0u8; WORD_SIZE];
+                buf.copy_from_slice(it.next().expect("Count mismatch"));
+                *reg = Word::from_be_bytes(buf);
+            }
+        }
+
+        self.inc_pc()
     }
 
-    pub(crate) fn load_byte(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Word,
-    ) -> SimpleResult<()> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_byte(self.memory.as_ref(), pc, result, b, c)
+    pub(crate) fn load_byte(&mut self, ra: RegId, b: Word, c: Word) -> SimpleResult<()> {
+        verify_register_user_writable(ra)?;
+        let [b] = self.memory.as_ref().read_bytes(b.saturating_add(c))?;
+        *self.write_user_register(ra)? = b as Word;
+        self.inc_pc()
     }
 
-    pub(crate) fn load_word(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Imm12,
-    ) -> SimpleResult<()> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_word(self.memory.as_ref(), pc, result, b, c)
+    pub(crate) fn load_word(&mut self, ra: RegId, b: Word, c: Imm12) -> SimpleResult<()> {
+        verify_register_user_writable(ra)?;
+        let offset = u64::from(c)
+            .checked_mul(WORD_SIZE as u64)
+            .expect("u12 * 8 cannot overflow a Word");
+        let addr = b.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
+        let result = Word::from_be_bytes(self.memory.as_ref().read_bytes(addr)?);
+        *self.write_user_register(ra)? = result;
+        self.inc_pc()
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        store_byte(
-            self.memory.as_mut(),
-            owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-            c,
-        )
+        self.memory
+            .as_mut()
+            .write_bytes(owner, a.saturating_add(c), [b as u8])?;
+        self.inc_pc()
     }
 
     pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Imm12) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        store_word(
-            self.memory.as_mut(),
-            owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-            c,
-        )
+        #[allow(clippy::arithmetic_side_effects)]
+        let offset = u64::from(c)
+            .checked_mul(WORD_SIZE as u64)
+            .expect("12-bits number multiplied by 8 cannot overflow a Word");
+        let addr = a.saturating_add(offset);
+        self.memory
+            .as_mut()
+            .write_bytes(owner, addr, b.to_be_bytes())?;
+        self.inc_pc()
     }
 
     /// Expand heap by `amount` bytes.
@@ -623,38 +634,51 @@ where
     }
 
     pub(crate) fn malloc(&mut self, a: Word) -> SimpleResult<()> {
-        let (SystemRegisters { hp, sp, pc, .. }, _) =
-            split_registers(&mut self.registers);
-        malloc(hp, sp.as_ref(), pc, a, self.memory.as_mut())
+        let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
+        let sp = sp.as_ref();
+        self.memory.as_mut().grow_heap_by(sp, hp, a)?;
+        self.inc_pc()
     }
 
     pub(crate) fn memclear(&mut self, a: Word, b: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        memclear(self.memory.as_mut(), owner, self.registers.pc_mut(), a, b)
+        self.memory.as_mut().write(owner, a, b)?.fill(0);
+        self.inc_pc()
     }
 
     pub(crate) fn memcopy(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        memcopy(
-            self.memory.as_mut(),
-            owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-            c,
-        )
+        let memory: &mut MemoryInstance = self.memory.as_mut();
+        let dst_range = memory.verify(a, c)?;
+        let src_range = memory.verify(b, c)?;
+
+        if dst_range.start() <= src_range.start() && src_range.start() < dst_range.end()
+            || src_range.start() <= dst_range.start()
+                && dst_range.start() < src_range.end()
+            || dst_range.start() < src_range.end() && src_range.end() <= dst_range.end()
+            || src_range.start() < dst_range.end() && dst_range.end() <= src_range.end()
+        {
+            return Err(PanicReason::MemoryWriteOverlap.into())
+        }
+
+        owner.verify_ownership(&dst_range)?;
+        memory.memcopy_noownerchecks(a, b, c)?;
+
+        self.inc_pc()
     }
 
     pub(crate) fn memeq(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
         d: Word,
     ) -> SimpleResult<()> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        memeq(self.memory.as_mut(), result, pc, b, c, d)
+        verify_register_user_writable(ra)?;
+        *self.write_user_register(ra)? = (self.memory.as_ref().read(b, d)?
+            == self.memory.as_ref().read(c, d)?)
+            as Word;
+        self.inc_pc()
     }
 }
 
@@ -696,197 +720,6 @@ where
     }
 
     try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
-    Ok(inc_pc(pc)?)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn push_selected_registers(
-    memory: &mut MemoryInstance,
-    sp: RegMut<SP>,
-    ssp: Reg<SSP>,
-    hp: Reg<HP>,
-    pc: RegMut<PC>,
-    program_regs: &ProgramRegisters,
-    segment: ProgramRegistersSegment,
-    bitmask: Imm24,
-) -> SimpleResult<()> {
-    let bitmask = bitmask.to_u32();
-
-    // First update the new stack pointer, as that's the only error condition
-    let count: u64 = bitmask.count_ones().into();
-    let write_size = count
-        .checked_mul(WORD_SIZE as u64)
-        .expect("Bitmask size times 8 can never oveflow");
-    let write_at = *sp;
-    // If this would overflow, the stack pointer update below will fail
-    let new_sp = write_at.saturating_add(write_size);
-    try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
-
-    // Write the registers to the stack
-    let mut it = memory
-        .write_noownerchecks(write_at, write_size)?
-        .chunks_exact_mut(WORD_SIZE);
-    for (i, reg) in program_regs.segment(segment).iter().enumerate() {
-        if (bitmask & (1 << i)) != 0 {
-            let item = it
-                .next()
-                .expect("Memory range mismatched with register count");
-            item.copy_from_slice(&reg.to_be_bytes());
-        }
-    }
-
-    Ok(inc_pc(pc)?)
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn pop_selected_registers(
-    memory: &mut MemoryInstance,
-    sp: RegMut<SP>,
-    ssp: Reg<SSP>,
-    hp: Reg<HP>,
-    pc: RegMut<PC>,
-    program_regs: &mut ProgramRegisters,
-    segment: ProgramRegistersSegment,
-    bitmask: Imm24,
-) -> SimpleResult<()> {
-    let bitmask = bitmask.to_u32();
-
-    // First update the stack pointer, as that's the only error condition
-    let count: u64 = bitmask.count_ones().into();
-    let size_in_stack = count
-        .checked_mul(WORD_SIZE as u64)
-        .expect("Bitmask size times 8 can never oveflow");
-    let new_sp = sp
-        .checked_sub(size_in_stack)
-        .ok_or(PanicReason::MemoryOverflow)?;
-    try_update_stack_pointer(sp, ssp, hp, new_sp, memory)?;
-
-    // Restore registers from the stack
-    let mut it = memory.read(new_sp, size_in_stack)?.chunks_exact(WORD_SIZE);
-    for (i, reg) in program_regs.segment_mut(segment).iter_mut().enumerate() {
-        if (bitmask & (1 << i)) != 0 {
-            let mut buf = [0u8; WORD_SIZE];
-            buf.copy_from_slice(it.next().expect("Count mismatch"));
-            *reg = Word::from_be_bytes(buf);
-        }
-    }
-
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn load_byte(
-    memory: &MemoryInstance,
-    pc: RegMut<PC>,
-    result: &mut Word,
-    b: Word,
-    c: Word,
-) -> SimpleResult<()> {
-    let [b] = memory.read_bytes(b.saturating_add(c))?;
-    *result = b as Word;
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn load_word(
-    memory: &MemoryInstance,
-    pc: RegMut<PC>,
-    result: &mut Word,
-    b: Word,
-    c: Imm12,
-) -> SimpleResult<()> {
-    let offset = u64::from(c)
-        .checked_mul(WORD_SIZE as u64)
-        .expect("u12 * 8 cannot overflow a Word");
-    let addr = b.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
-    *result = Word::from_be_bytes(memory.read_bytes(addr)?);
-    Ok(inc_pc(pc)?)
-}
-
-#[allow(clippy::cast_possible_truncation)]
-pub(crate) fn store_byte(
-    memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Word,
-) -> SimpleResult<()> {
-    memory.write_bytes(owner, a.saturating_add(c), [b as u8])?;
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn store_word(
-    memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Imm12,
-) -> SimpleResult<()> {
-    #[allow(clippy::arithmetic_side_effects)]
-    let offset = u64::from(c)
-        .checked_mul(WORD_SIZE as u64)
-        .expect("12-bits number multiplied by 8 cannot overflow a Word");
-    let addr = a.saturating_add(offset);
-    memory.write_bytes(owner, addr, b.to_be_bytes())?;
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn malloc(
-    hp: RegMut<HP>,
-    sp: Reg<SP>,
-    pc: RegMut<PC>,
-    amount: Word,
-    memory: &mut MemoryInstance,
-) -> SimpleResult<()> {
-    memory.grow_heap_by(sp, hp, amount)?;
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn memclear(
-    memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-) -> SimpleResult<()> {
-    memory.write(owner, a, b)?.fill(0);
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn memcopy(
-    memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Word,
-) -> SimpleResult<()> {
-    let dst_range = memory.verify(a, c)?;
-    let src_range = memory.verify(b, c)?;
-
-    if dst_range.start() <= src_range.start() && src_range.start() < dst_range.end()
-        || src_range.start() <= dst_range.start() && dst_range.start() < src_range.end()
-        || dst_range.start() < src_range.end() && src_range.end() <= dst_range.end()
-        || src_range.start() < dst_range.end() && dst_range.end() <= src_range.end()
-    {
-        return Err(PanicReason::MemoryWriteOverlap.into())
-    }
-
-    owner.verify_ownership(&dst_range)?;
-    memory.memcopy_noownerchecks(a, b, c)?;
-
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn memeq(
-    memory: &mut MemoryInstance,
-    result: &mut Word,
-    pc: RegMut<PC>,
-    b: Word,
-    c: Word,
-    d: Word,
-) -> SimpleResult<()> {
-    *result = (memory.read(b, d)? == memory.read(c, d)?) as Word;
     Ok(inc_pc(pc)?)
 }
 

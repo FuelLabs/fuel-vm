@@ -22,7 +22,6 @@ use super::*;
 
 mod scwq;
 mod srwq;
-mod swwq;
 
 fn mem(chains: &[&[u8]]) -> MemoryInstance {
     let mut vec: Vec<_> = chains.iter().flat_map(|i| i.iter().copied()).collect();

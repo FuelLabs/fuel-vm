@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- [#849](https://github.com/FuelLabs/fuel-vm/pull/849): Add a new mode `2` to the LDC that allows to use the memory as a source for code.
 - [#848](https://github.com/FuelLabs/fuel-vm/pull/848): Allow usage of the blob opcode `BSIZ`, `BLDD`, and `LDC` with mode `1` in the predicates.
 - [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
 - [#820](https://github.com/FuelLabs/fuel-vm/pull/820): Add fuzzing in CI with ClusterFuzzLite.

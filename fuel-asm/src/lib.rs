@@ -701,7 +701,9 @@ impl Opcode {
             | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
             | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
             | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
-            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC => true,
+            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD => {
+                true
+            }
             _ => false,
         }
     }

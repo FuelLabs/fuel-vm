@@ -76,6 +76,7 @@ mod tests {
         constraints::reg_key::{
             HP,
             IS,
+            ONE,
             SSP,
             ZERO,
         },
@@ -383,6 +384,17 @@ mod tests {
                     PanicInstruction::error(
                         PanicReason::ContractInstructionNotAllowed,
                         op::time(0x20, 0x1).into(),
+                    ),
+                )),
+            ),
+            (
+                // Using a contract instruction
+                vec![op::ldc(ONE, ONE, ONE, 0)],
+                CORRECT_GAS,
+                Err(PredicateVerificationFailed::PanicInstruction(
+                    PanicInstruction::error(
+                        PanicReason::ContractInstructionNotAllowed,
+                        op::ldc(ONE, ONE, ONE, 0).into(),
                     ),
                 )),
             ),

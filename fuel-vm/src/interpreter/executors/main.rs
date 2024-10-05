@@ -140,10 +140,9 @@ enum PredicateAction {
     Estimating { available_gas: Word },
 }
 
-impl<Tx, S> Interpreter<&mut MemoryInstance, PredicateStorage<S>, Tx>
+impl<Tx, S> Interpreter<&mut MemoryInstance, S, Tx>
 where
     Tx: ExecutableTransaction,
-    S: StorageRead<BlobData>,
 {
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -158,6 +157,7 @@ where
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
+        S: StorageRead<BlobData>,
     {
         let tx = checked.transaction();
         Self::run_predicates(
@@ -181,7 +181,7 @@ where
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
-        S: Send + 'static,
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
     {
@@ -209,7 +209,10 @@ where
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: S,
-    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        S: StorageRead<BlobData>,
+    {
         let predicates_checked = Self::run_predicates(
             PredicateRunKind::Estimating(transaction),
             params,
@@ -233,7 +236,7 @@ where
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
-        S: Send + 'static,
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
         E: ParallelExecutor,
     {
         let predicates_checked = Self::run_predicate_async::<E>(
@@ -255,7 +258,7 @@ where
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: Send + 'static,
-        S: Send + 'static,
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
         E: ParallelExecutor,
     {
         let mut checks = vec![];
@@ -278,7 +281,7 @@ where
                 let tx = kind.tx().clone();
                 let my_params = params.clone();
                 let mut memory = pool.get_new().await;
-                let my_storage = &storage;
+                let my_storage = storage.clone();
 
                 let verify_task = E::create_task(move || {
                     let (used_gas, result) = Interpreter::check_predicate(
@@ -308,7 +311,10 @@ where
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: S,
-    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        S: StorageRead<BlobData>,
+    {
         let mut checks = vec![];
 
         let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
@@ -355,7 +361,10 @@ where
         params: CheckPredicateParams,
         memory: &mut MemoryInstance,
         storage: S,
-    ) -> (Word, Result<(), PredicateVerificationFailed>) {
+    ) -> (Word, Result<(), PredicateVerificationFailed>)
+    where
+        S: StorageRead<BlobData>,
+    {
         match &tx.inputs()[index] {
             Input::CoinPredicate(CoinPredicate {
                 owner: address,

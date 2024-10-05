@@ -416,7 +416,7 @@ pub trait CheckPredicates: Sized {
         storage: S,
     ) -> Result<Self, CheckError>
     where
-        S: StorageRead<BlobData> + Send + 'static;
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static;
 }
 
 /// Provides predicate estimation functionality for the transaction.
@@ -440,7 +440,7 @@ pub trait EstimatePredicates: Sized {
         storage: S,
     ) -> Result<(), CheckError>
     where
-        S: StorageRead<BlobData> + Send + 'static;
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static;
 }
 
 /// Executes CPU-heavy tasks in parallel.
@@ -478,7 +478,9 @@ where
         S: StorageRead<BlobData>,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            Interpreter::<&mut MemoryInstance, PredicateStorage<S>, Tx>::check_predicates(&self, params, memory, storage)?;
+            Interpreter::<&mut MemoryInstance, S, Tx>::check_predicates(
+                &self, params, memory, storage,
+            )?;
             self.checks_bitmask.insert(Checks::Predicates);
         }
         Ok(self)
@@ -492,7 +494,7 @@ where
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
-        S: StorageRead<BlobData> + Send + 'static,
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
             Interpreter::check_predicates_async::<E>(&self, params, pool, storage)
@@ -530,7 +532,7 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
-        S: StorageRead<BlobData> + Send + 'static,
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
     {
         Interpreter::estimate_predicates_async::<E>(self, params, pool, storage).await?;
 
@@ -566,7 +568,7 @@ impl EstimatePredicates for Transaction {
         storage: S,
     ) -> Result<(), CheckError>
     where
-        S: StorageRead<BlobData> + Send + 'static,
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
     {
         match self {
             Self::Script(tx) => {
@@ -666,7 +668,7 @@ impl CheckPredicates for Checked<Transaction> {
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
-        S: StorageRead<BlobData> + Send + 'static,
+        S: StorageRead<BlobData> + Send + Sync + Clone + 'static,
     {
         let checked_transaction: CheckedTransaction = self.into();
 

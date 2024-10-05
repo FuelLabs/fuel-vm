@@ -52,6 +52,7 @@ impl<D: StorageRead<BlobData>> PredicateStorage<D> {
     }
 }
 
+/// Errors that happen when using predicate storage
 #[derive(Debug, Clone, Copy)]
 pub enum PredicateStorageError {
     /// Storage operation is unavailable in predicate context.

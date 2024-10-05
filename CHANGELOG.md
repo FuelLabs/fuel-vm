@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 #### Breaking
 - [#843](https://github.com/FuelLabs/fuel-vm/pull/843): Remove `serde` feature from the `fuel-tx` crate. It is default behaviour now if you enable `alloc` feature.
+- [#766](https://github.com/FuelLabs/fuel-vm/pull/766): Use correct gas price when validating native signatures
 
 ### Changed
 

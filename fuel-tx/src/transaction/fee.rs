@@ -257,7 +257,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 // Charge EC recovery cost for signed inputs
                 Input::CoinSigned(_)
                 | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.ecr1(),
+                | Input::MessageDataSigned(_) => gas_costs.eck1(),
                 // Charge the cost of the contract root for predicate inputs
                 Input::CoinPredicate(CoinPredicate {
                     predicate,

@@ -31,7 +31,7 @@ fuel-compression = { workspace = true, default-features = false, optional = true
 fuel-crypto = { workspace = true, default-features = false }
 fuel-merkle = { workspace = true, default-features = false }
 fuel-storage = { workspace = true }
-fuel-tx = { workspace = true, default-features = false }
+fuel-tx = { workspace = true, default-features = false, features = ["alloc"] }
 fuel-types = { workspace = true, default-features = false }
 hashbrown = "0.14"
 itertools = { version = "0.10", default-features = false }
@@ -84,7 +84,7 @@ std = [
     "fuel-tx/std",
     "itertools/use_std",
 ]
-alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-tx/alloc"]
+alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-crypto/alloc"]
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
@@ -97,6 +97,7 @@ serde = [
     "fuel-asm/serde",
     "fuel-types/serde",
     "fuel-merkle/serde",
+    "fuel-crypto/serde",
     "backtrace?/serde",
 ]
 test-helpers = [

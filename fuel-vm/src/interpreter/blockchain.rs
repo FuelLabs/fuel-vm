@@ -599,6 +599,11 @@ where
         let sp = *self.sp;
         let region_start = ssp;
 
+        // only blobs are allowed in predicates
+        if self.context.is_predicate() {
+            return Err(PanicReason::ContractInstructionNotAllowed.into())
+        }
+
         if ssp != sp {
             return Err(PanicReason::ExpectedUnallocatedStack.into())
         }

@@ -572,6 +572,26 @@ impl Input {
         }
     }
 
+    pub fn set_predicate_gas_used(&mut self, gas: Word) {
+        match self {
+            Input::CoinPredicate(CoinPredicate {
+                predicate_gas_used, ..
+            })
+            | Input::MessageCoinPredicate(MessageCoinPredicate {
+                predicate_gas_used,
+                ..
+            })
+            | Input::MessageDataPredicate(MessageDataPredicate {
+                predicate_gas_used,
+                ..
+            }) => *predicate_gas_used = gas,
+            Input::CoinSigned(_)
+            | Input::MessageCoinSigned(_)
+            | Input::MessageDataSigned(_)
+            | Input::Contract(_) => {}
+        }
+    }
+
     pub fn message_id(&self) -> Option<MessageId> {
         match self {
             Self::MessageCoinSigned(message) => Some(message.message_id()),

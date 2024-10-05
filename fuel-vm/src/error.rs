@@ -285,10 +285,10 @@ pub enum PredicateVerificationFailed {
     Storage,
 }
 
-impl From<InterpreterError<predicate::StorageUnavailable>>
+impl From<InterpreterError<predicate::PredicateStorageError>>
     for PredicateVerificationFailed
 {
-    fn from(error: InterpreterError<predicate::StorageUnavailable>) -> Self {
+    fn from(error: InterpreterError<predicate::PredicateStorageError>) -> Self {
         match error {
             error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
                 PredicateVerificationFailed::OutOfGas

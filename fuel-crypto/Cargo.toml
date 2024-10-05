@@ -16,9 +16,9 @@ coins-bip39 = { version = "0.8", default-features = false, features = ["english"
 ecdsa = { version = "0.16", default-features = false }
 ed25519-dalek = { version = "2.0.0", default-features = false }
 fuel-types = { workspace = true, default-features = false }
-k256 =  { version = "0.13", default-features = false, features = ["digest", "ecdsa"] }
+k256 = { version = "0.13", default-features = false, features = ["digest", "ecdsa"] }
 lazy_static = { version = "1.4", optional = true }
-p256 =  { version = "0.13", default-features = false, features = ["digest", "ecdsa"] }
+p256 = { version = "0.13", default-features = false, features = ["digest", "ecdsa"] }
 rand = { version = "0.8", default-features = false, optional = true }
 # `rand-std` is used to further protect the blinders from side-channel attacks and won't compromise
 # the deterministic arguments of the signature (key, nonce, message), as defined in the RFC-6979
@@ -35,7 +35,7 @@ sha2 = "0.10"
 
 [features]
 default = ["fuel-types/default", "std"]
-alloc = ["rand?/alloc", "secp256k1/alloc", "fuel-types/alloc"]
+alloc = ["rand?/alloc", "secp256k1?/alloc", "fuel-types/alloc"]
 random = ["fuel-types/random", "rand"]
 serde = ["dep:serde", "fuel-types/serde"]
 std = ["alloc", "coins-bip32", "secp256k1", "coins-bip39", "fuel-types/std", "lazy_static", "rand?/std_rng", "serde?/default"]

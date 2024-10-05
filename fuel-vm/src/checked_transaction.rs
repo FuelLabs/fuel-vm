@@ -1306,7 +1306,7 @@ mod tests {
         let expected_min_fee = (tx.metered_bytes_size() as u64
             * fee_params.gas_per_byte()
             + gas_costs.vm_initialization().resolve(tx.size() as u64)
-            + 3 * gas_costs.ecr1()
+            + 3 * gas_costs.eck1()
             + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
@@ -1360,7 +1360,7 @@ mod tests {
         let expected_min_fee = (tx.metered_bytes_size() as u64
             * fee_params.gas_per_byte()
             + gas_costs.vm_initialization().resolve(tx.size() as u64)
-            + gas_costs.ecr1()
+            + gas_costs.eck1()
             + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
@@ -1512,7 +1512,7 @@ mod tests {
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64
             * fee_params.gas_per_byte()
-            + 3 * gas_costs.ecr1()
+            + 3 * gas_costs.eck1()
             + gas_costs.vm_initialization().resolve(tx.size() as u64)
             + gas_costs.contract_root().resolve(predicate_1.len() as u64)
             + gas_costs.contract_root().resolve(predicate_2.len() as u64)

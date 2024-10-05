@@ -47,6 +47,7 @@ pub struct PredicateStorage<D: StorageRead<BlobData>> {
 }
 
 impl<D: StorageRead<BlobData>> PredicateStorage<D> {
+    /// instantiate predicate storage with access to Blobs
     pub fn new(storage: D) -> Self {
         Self { storage }
     }

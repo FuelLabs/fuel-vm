@@ -8,12 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- [#848](https://github.com/FuelLabs/fuel-vm/pull/848): Allow usage of the blob opcode `BSIZ`, `BLDD`, and `LDC` with mode `1` in the predicates.
 - [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
 - [#820](https://github.com/FuelLabs/fuel-vm/pull/820): Add fuzzing in CI with ClusterFuzzLite.
 
 ### Removed
 
 #### Breaking
+- [#848](https://github.com/FuelLabs/fuel-vm/pull/848): All estimation and verification of predicate functionality is reworked and now requires the instance of the storage with predicates.
 - [#843](https://github.com/FuelLabs/fuel-vm/pull/843): Remove `serde` feature from the `fuel-tx` crate. It is default behaviour now if you enable `alloc` feature.
 
 ### Changed

@@ -1,4 +1,5 @@
 #![cfg(feature = "std")]
+#![allow(non_snake_case)]
 
 use fuel_asm::{
     op,
@@ -36,7 +37,10 @@ use crate::{
     storage::predicate::EmptyStorage,
 };
 use core::iter;
-use fuel_tx::ConsensusParameters;
+use fuel_tx::{
+    consensus_parameters::gas::GasCostsValuesV4,
+    ConsensusParameters,
+};
 
 pub struct TokioWithRayon;
 
@@ -156,6 +160,69 @@ where
         }
         _ => panic!("Parallel and sequential execution should return the same result"),
     }
+}
+
+#[test]
+fn estimate_predicate_works_when_max_gas_per_predicate_less_than_tx_gas__10_inputs() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let predicate: Vec<u8> = iter::once(op::ret(0x01)).collect();
+    let predicate_data = vec![];
+    let predicate_owner = Input::predicate_owner(&predicate);
+
+    let mut builder = TransactionBuilder::script(vec![], vec![]);
+
+    const PREDICATE_COUNT: u64 = 10;
+    const MAX_PREDICATE_GAS: u64 = 1_000_000;
+    const MAX_TX_GAS: u64 = MAX_PREDICATE_GAS * PREDICATE_COUNT;
+
+    for _ in 0..PREDICATE_COUNT {
+        let input = Input::coin_predicate(
+            rng.gen(),
+            predicate_owner,
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            0,
+            predicate.clone(),
+            predicate_data.clone(),
+        );
+
+        builder.add_input(input.clone());
+    }
+
+    let mut script = builder.finalize();
+
+    // Given
+    let gas_costs = GasCostsValuesV4 {
+        ret: MAX_PREDICATE_GAS,
+        ..GasCostsValuesV4::free()
+    };
+    let gas_costs = GasCosts::new(gas_costs.into());
+    let predicate_param =
+        PredicateParameters::default().with_max_gas_per_predicate(MAX_PREDICATE_GAS);
+    let tx_param = TxParameters::default().with_max_gas_per_tx(MAX_TX_GAS);
+    let fee_param = FeeParameters::default().with_gas_per_byte(0);
+
+    let mut consensus_params = ConsensusParameters::standard();
+    consensus_params.set_gas_costs(gas_costs.clone());
+    consensus_params.set_predicate_params(predicate_param);
+    consensus_params.set_tx_params(tx_param);
+    consensus_params.set_fee_params(fee_param);
+    let gas_before_estimation = script.max_gas(&gas_costs, &fee_param);
+
+    // When
+    script
+        .estimate_predicates(
+            &consensus_params.into(),
+            MemoryInstance::new(),
+            &EmptyStorage,
+        )
+        .unwrap();
+
+    // Then
+    let gas_after_estimation = script.max_gas(&gas_costs, &fee_param);
+    assert_eq!(gas_before_estimation, 0);
+    assert_eq!(gas_after_estimation, MAX_TX_GAS);
 }
 
 #[tokio::test]

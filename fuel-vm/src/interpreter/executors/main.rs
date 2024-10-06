@@ -263,12 +263,13 @@ pub mod predicates {
         let mut checks = vec![];
         let tx_offset = params.tx_offset;
 
-        let max_gas_per_tx = params.max_gas_per_tx;
-        let max_gas_per_predicate = params.max_gas_per_predicate;
-        let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
         let predicate_action = match kind {
             PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
             PredicateRunKind::Estimating(_) => {
+                let max_gas_per_tx = params.max_gas_per_tx;
+                let max_gas_per_predicate = params.max_gas_per_predicate;
+                let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
+
                 PredicateAction::Estimating { available_gas }
             }
         };
@@ -319,8 +320,7 @@ pub mod predicates {
         let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
         let max_gas_per_tx = params.max_gas_per_tx;
         let max_gas_per_predicate = params.max_gas_per_predicate;
-        let mut available_gas =
-            core::cmp::min(max_gas_per_predicate, max_gas_per_tx).saturating_sub(max_gas);
+        let mut global_available_gas = max_gas_per_tx.saturating_sub(max_gas);
 
         for index in 0..kind.tx().inputs().len() {
             let tx = kind.tx().clone();
@@ -328,6 +328,7 @@ pub mod predicates {
             if let Some(predicate) =
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
             {
+                let available_gas = global_available_gas.min(max_gas_per_predicate);
                 let predicate_action = match kind {
                     PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
                     PredicateRunKind::Estimating(_) => {
@@ -343,7 +344,7 @@ pub mod predicates {
                     memory.as_mut(),
                     storage,
                 );
-                available_gas = available_gas.saturating_sub(gas_used);
+                global_available_gas = global_available_gas.saturating_sub(gas_used);
                 let result = result.map(|_| (gas_used, index));
                 checks.push(result);
             }

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- [#852](https://github.com/FuelLabs/fuel-vm/pull/852): Fixed incorrect predicate estimation when max predicate gas is less than max tx gas.
+
 ## [Version 0.58.0]
 
 ### Added

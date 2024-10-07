@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- [#847](https://github.com/FuelLabs/fuel-vm/pull/847): LDC optimization avoids allocating extra memory when loading contract code onto the stack.
+
 ## [Version 0.58.1]
 
 ### Fixed

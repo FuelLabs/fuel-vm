@@ -809,6 +809,9 @@ where
         let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
         let length = bytes::padded_len_word(length_unpadded).unwrap_or(Word::MAX);
+        #[allow(clippy::arithmetic_side_effects)]
+        // length >= length_unpadded as per line above
+        let length_padding = length - length_unpadded;
 
         // Fetch the storage blob
         let profiler = ProfileGas {
@@ -833,8 +836,15 @@ where
         let owner = OwnershipRegisters::only_allow_stack_write(new_sp, ssp, *self.hp);
         let src = input_src_addr.saturating_add(input_offset);
 
-        // Copy the code.
-        self.memory.memcopy(dst, src, length, owner)?;
+        // Copy the code
+        self.memory.memcopy(dst, src, length_unpadded, owner)?;
+
+        // Write padding
+        if length_padding > 0 {
+            self.memory
+                .write(owner, dst.saturating_add(length_unpadded), length_padding)?
+                .fill(0);
+        }
 
         // Mark stack space as allocated
         *self.sp = new_sp;

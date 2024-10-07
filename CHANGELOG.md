@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [Version 0.58.1]
+## [Version 0.58.2]
 
 ### Fixed
 - [#854](https://github.com/FuelLabs/fuel-vm/pull/854): Fixed a bug where LDC mode 2 padding bytes would be copied from memory instead of using zeroes.

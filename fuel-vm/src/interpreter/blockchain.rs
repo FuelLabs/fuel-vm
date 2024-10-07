@@ -809,9 +809,7 @@ where
         let current_contract = current_contract(self.context, self.fp, self.memory)?;
 
         let length = bytes::padded_len_word(length_unpadded).unwrap_or(Word::MAX);
-        #[allow(clippy::arithmetic_side_effects)]
-        // length >= length_unpadded as per line above
-        let length_padding = length - length_unpadded;
+        let length_padding = length.saturating_sub(length_unpadded);
 
         // Fetch the storage blob
         let profiler = ProfileGas {

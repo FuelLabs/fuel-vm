@@ -81,6 +81,7 @@ pub use ecal::{
     EcalHandler,
     PredicateErrorEcal,
 };
+pub use executors::predicates;
 pub use memory::{
     Memory,
     MemoryInstance,

@@ -7,14 +7,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.58.1]
+
+### Fixed
+- [#852](https://github.com/FuelLabs/fuel-vm/pull/852): Fixed incorrect predicate estimation when max predicate gas is less than max tx gas.
+
+## [Version 0.58.0]
+
 ### Added
+- [#849](https://github.com/FuelLabs/fuel-vm/pull/849): Add a new mode `2` to the LDC that allows to use the memory as a source for code.
+- [#848](https://github.com/FuelLabs/fuel-vm/pull/848): Allow usage of the blob opcode `BSIZ`, `BLDD`, and `LDC` with mode `1` in the predicates.
 - [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
 - [#820](https://github.com/FuelLabs/fuel-vm/pull/820): Add fuzzing in CI with ClusterFuzzLite.
 
 ### Removed
 
 #### Breaking
+- [#848](https://github.com/FuelLabs/fuel-vm/pull/848): All estimation and verification of predicate functionality is reworked and now requires the instance of the storage with predicates.
 - [#843](https://github.com/FuelLabs/fuel-vm/pull/843): Remove `serde` feature from the `fuel-tx` crate. It is default behaviour now if you enable `alloc` feature.
+- [#766](https://github.com/FuelLabs/fuel-vm/pull/766): Use correct gas price when validating native signatures
 
 ### Changed
 

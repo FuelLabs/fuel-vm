@@ -108,6 +108,7 @@ where
                 }) if owner == &pk => Some(*witness_index as usize),
                 _ => None,
             })
+            .sorted()
             .dedup()
             .collect_vec();
 

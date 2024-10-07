@@ -28,7 +28,6 @@ use core::{
     fmt::Debug,
     future::Future,
 };
-
 use fuel_tx::{
     field::MaxFeeLimit,
     ConsensusParameters,
@@ -49,6 +48,11 @@ use crate::{
     },
     pool::VmMemoryPool,
     prelude::*,
+    storage::predicate::{
+        EmptyStorage,
+        PredicateStorageProvider,
+        PredicateStorageRequirements,
+    },
 };
 
 bitflags::bitflags! {
@@ -305,6 +309,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
             block_height,
             consensus_params,
             MemoryInstance::new(),
+            &EmptyStorage,
         )
     }
 
@@ -315,6 +320,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
         memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
@@ -322,7 +328,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
             .check_signatures(&consensus_params.chain_id())?
-            .check_predicates(&check_predicate_params, memory)
+            .check_predicates(&check_predicate_params, memory, storage)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -396,6 +402,7 @@ pub trait CheckPredicates: Sized {
         self,
         params: &CheckPredicateParams,
         memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<Self, CheckError>;
 
     /// Performs predicates verification of the transaction in parallel.
@@ -403,6 +410,7 @@ pub trait CheckPredicates: Sized {
         self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<Self, CheckError>;
 }
 
@@ -414,6 +422,7 @@ pub trait EstimatePredicates: Sized {
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<(), CheckError>;
 
     /// Estimates predicates of the transaction in parallel.
@@ -421,6 +430,7 @@ pub trait EstimatePredicates: Sized {
         &mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<(), CheckError>;
 }
 
@@ -453,9 +463,10 @@ where
         mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            Interpreter::check_predicates(&self, params, memory)?;
+            predicates::check_predicates(&self, params, memory, storage)?;
             self.checks_bitmask.insert(Checks::Predicates);
         }
         Ok(self)
@@ -465,12 +476,14 @@ where
         mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
     {
         if !self.checks_bitmask.contains(Checks::Predicates) {
-            Interpreter::check_predicates_async::<E>(&self, params, pool).await?;
+            predicates::check_predicates_async::<Tx, E>(&self, params, pool, storage)
+                .await?;
 
             self.checks_bitmask.insert(Checks::Predicates);
 
@@ -487,8 +500,9 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<(), CheckError> {
-        Interpreter::estimate_predicates(self, params, memory)?;
+        predicates::estimate_predicates(self, params, memory, storage)?;
         Ok(())
     }
 
@@ -496,11 +510,13 @@ impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for T
         &mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<(), CheckError>
     where
         E: ParallelExecutor,
     {
-        Interpreter::estimate_predicates_async::<E>(self, params, pool).await?;
+        predicates::estimate_predicates_async::<Self, E>(self, params, pool, storage)
+            .await?;
 
         Ok(())
     }
@@ -512,14 +528,15 @@ impl EstimatePredicates for Transaction {
         &mut self,
         params: &CheckPredicateParams,
         memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<(), CheckError> {
         match self {
-            Self::Script(tx) => tx.estimate_predicates(params, memory),
-            Self::Create(tx) => tx.estimate_predicates(params, memory),
+            Self::Script(tx) => tx.estimate_predicates(params, memory, storage),
+            Self::Create(tx) => tx.estimate_predicates(params, memory, storage),
             Self::Mint(_) => Ok(()),
-            Self::Upgrade(tx) => tx.estimate_predicates(params, memory),
-            Self::Upload(tx) => tx.estimate_predicates(params, memory),
-            Self::Blob(tx) => tx.estimate_predicates(params, memory),
+            Self::Upgrade(tx) => tx.estimate_predicates(params, memory, storage),
+            Self::Upload(tx) => tx.estimate_predicates(params, memory, storage),
+            Self::Blob(tx) => tx.estimate_predicates(params, memory, storage),
         }
     }
 
@@ -527,14 +544,30 @@ impl EstimatePredicates for Transaction {
         &mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<(), CheckError> {
         match self {
-            Self::Script(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
-            Self::Create(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Script(tx) => {
+                tx.estimate_predicates_async::<E>(params, pool, storage)
+                    .await
+            }
+            Self::Create(tx) => {
+                tx.estimate_predicates_async::<E>(params, pool, storage)
+                    .await
+            }
             Self::Mint(_) => Ok(()),
-            Self::Upgrade(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
-            Self::Upload(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
-            Self::Blob(tx) => tx.estimate_predicates_async::<E>(params, pool).await,
+            Self::Upgrade(tx) => {
+                tx.estimate_predicates_async::<E>(params, pool, storage)
+                    .await
+            }
+            Self::Upload(tx) => {
+                tx.estimate_predicates_async::<E>(params, pool, storage)
+                    .await
+            }
+            Self::Blob(tx) => {
+                tx.estimate_predicates_async::<E>(params, pool, storage)
+                    .await
+            }
         }
     }
 }
@@ -545,6 +578,7 @@ impl CheckPredicates for Checked<Mint> {
         mut self,
         _params: &CheckPredicateParams,
         _memory: impl Memory,
+        _storage: &impl PredicateStorageRequirements,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -554,6 +588,7 @@ impl CheckPredicates for Checked<Mint> {
         mut self,
         _params: &CheckPredicateParams,
         _pool: &impl VmMemoryPool,
+        _storage: &impl PredicateStorageProvider,
     ) -> Result<Self, CheckError> {
         self.checks_bitmask.insert(Checks::Predicates);
         Ok(self)
@@ -566,26 +601,27 @@ impl CheckPredicates for Checked<Transaction> {
         self,
         params: &CheckPredicateParams,
         memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<Self, CheckError> {
         let checked_transaction: CheckedTransaction = self.into();
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory)?.into()
+                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory)?.into()
+                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory)?.into()
+                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
             }
             CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory)?.into()
+                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
             }
             CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory)?.into()
+                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
             }
             CheckedTransaction::Blob(tx) => {
-                CheckPredicates::check_predicates(tx, params, memory)?.into()
+                CheckPredicates::check_predicates(tx, params, memory, storage)?.into()
             }
         };
         Ok(checked_transaction.into())
@@ -595,6 +631,7 @@ impl CheckPredicates for Checked<Transaction> {
         mut self,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<Self, CheckError>
     where
         E: ParallelExecutor,
@@ -603,32 +640,32 @@ impl CheckPredicates for Checked<Transaction> {
 
         let checked_transaction: CheckedTransaction = match checked_transaction {
             CheckedTransaction::Script(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
                     .await?
                     .into()
             }
             CheckedTransaction::Create(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
                     .await?
                     .into()
             }
             CheckedTransaction::Mint(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
                     .await?
                     .into()
             }
             CheckedTransaction::Upgrade(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
                     .await?
                     .into()
             }
             CheckedTransaction::Upload(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
                     .await?
                     .into()
             }
             CheckedTransaction::Blob(tx) => {
-                CheckPredicates::check_predicates_async::<E>(tx, params, pool)
+                CheckPredicates::check_predicates_async::<E>(tx, params, pool, storage)
                     .await?
                     .into()
             }
@@ -1269,7 +1306,7 @@ mod tests {
         let expected_min_fee = (tx.metered_bytes_size() as u64
             * fee_params.gas_per_byte()
             + gas_costs.vm_initialization().resolve(tx.size() as u64)
-            + 3 * gas_costs.ecr1()
+            + 3 * gas_costs.eck1()
             + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
@@ -1323,7 +1360,7 @@ mod tests {
         let expected_min_fee = (tx.metered_bytes_size() as u64
             * fee_params.gas_per_byte()
             + gas_costs.vm_initialization().resolve(tx.size() as u64)
-            + gas_costs.ecr1()
+            + gas_costs.eck1()
             + gas_costs.s256().resolve(tx.size() as u64))
             * gas_price;
         assert_eq!(min_fee, expected_min_fee);
@@ -1475,7 +1512,7 @@ mod tests {
         let min_fee = fee.min_fee();
         let expected_min_fee = (tx.metered_bytes_size() as u64
             * fee_params.gas_per_byte()
-            + 3 * gas_costs.ecr1()
+            + 3 * gas_costs.eck1()
             + gas_costs.vm_initialization().resolve(tx.size() as u64)
             + gas_costs.contract_root().resolve(predicate_1.len() as u64)
             + gas_costs.contract_root().resolve(predicate_2.len() as u64)
@@ -1938,7 +1975,7 @@ mod tests {
             )
             .unwrap()
             // Sets Checks::Predicates
-            .check_predicates(&check_predicate_params, MemoryInstance::new())
+            .check_predicates(&check_predicate_params, MemoryInstance::new(), &EmptyStorage)
             .unwrap();
         assert!(checked
             .checks()

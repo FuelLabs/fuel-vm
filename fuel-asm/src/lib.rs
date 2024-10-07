@@ -182,8 +182,8 @@ impl_instructions! {
     0x30 CSIZ csiz [dst: RegId contract_id_addr: RegId]
     "Get current block proposer's address."
     0x31 CB cb [dst: RegId]
-    "Load a contract's code as executable."
-    0x32 LDC ldc [contract_id_addr: RegId offset: RegId len: RegId mode: Imm06]
+    "Load code as executable either from contract, blob, or memory."
+    0x32 LDC ldc [src_addr: RegId offset: RegId len: RegId mode: Imm06]
     "Log an event."
     0x33 LOG log [a: RegId b: RegId c: RegId d: RegId]
     "Log data."
@@ -701,7 +701,9 @@ impl Opcode {
             | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
             | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
             | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
-            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
+            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD => {
+                true
+            }
             _ => false,
         }
     }
@@ -991,9 +993,9 @@ fn check_predicate_allowed() {
     for byte in 0..u8::MAX {
         if let Ok(repr) = Opcode::try_from(byte) {
             let should_allow = match repr {
-                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG
-                | LOGD | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ
-                | TIME | TR | TRO | ECAL | BSIZ | BLDD => false,
+                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LOG | LOGD
+                | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME
+                | TR | TRO | ECAL => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

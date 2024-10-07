@@ -7,6 +7,7 @@ use super::{
 use crate::{
     checked_transaction::CheckPredicates,
     prelude::*,
+    storage::predicate::PredicateStorageRequirements,
 };
 use fuel_tx::{
     Finalizable,
@@ -22,6 +23,14 @@ where
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type
     fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx>;
 
+    /// Finalize the builder into a [`Checked<Tx>`] of the correct type
+    /// using the storage during verification.
+    fn finalize_checked_with_storage(
+        &self,
+        height: BlockHeight,
+        storage: &impl PredicateStorageRequirements,
+    ) -> Checked<Tx>;
+
     /// Finalize the builder into a [`Checked<Tx>`] of the correct type, with basic checks
     /// only
     fn finalize_checked_basic(&self, height: BlockHeight) -> Checked<Tx>;
@@ -35,6 +44,21 @@ where
     fn finalize_checked(&self, height: BlockHeight) -> Checked<Tx> {
         self.finalize()
             .into_checked(height, self.get_params())
+            .expect("failed to check tx")
+    }
+
+    fn finalize_checked_with_storage(
+        &self,
+        height: BlockHeight,
+        storage: &impl PredicateStorageRequirements,
+    ) -> Checked<Tx> {
+        self.finalize()
+            .into_checked_reusable_memory(
+                height,
+                self.get_params(),
+                MemoryInstance::new(),
+                storage,
+            )
             .expect("failed to check tx")
     }
 

@@ -49,6 +49,7 @@ mod tests;
 pub use error::ValidityError;
 
 impl Input {
+    #[cfg(any(feature = "typescript", test))]
     pub fn check(
         &self,
         index: usize,

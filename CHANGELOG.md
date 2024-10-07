@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Version 0.58.1]
 
 ### Fixed
+- [#854](https://github.com/FuelLabs/fuel-vm/pull/854): Fixed a bug where LDC mode 2 padding bytes would be copied from memory instead of using zeroes.
+
+## [Version 0.58.1]
+
+### Fixed
 - [#852](https://github.com/FuelLabs/fuel-vm/pull/852): Fixed incorrect predicate estimation when max predicate gas is less than max tx gas.
 
 ## [Version 0.58.0]

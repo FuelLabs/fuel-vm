@@ -145,15 +145,6 @@ pub trait InterpreterStorage:
         Ok(())
     }
 
-    /// Fetch a previously inserted contract code from the chain state for a
-    /// given contract.
-    fn storage_contract(
-        &self,
-        id: &ContractId,
-    ) -> Result<Option<Cow<'_, Contract>>, Self::DataError> {
-        StorageInspect::<ContractsRawCode>::get(self, id)
-    }
-
     /// Fetch the size of a previously inserted contract code from the chain state for a
     /// given contract.
     fn storage_contract_size(

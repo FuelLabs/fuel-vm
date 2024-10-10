@@ -628,15 +628,8 @@ where
             current_contract,
             profiler: self.profiler,
         };
-
-        // We copy the contract code directly on the stack.
-        // We want to copy length bytes starting from the contract_offset.
-        // Because we load the contract storage starting from the 0 offset,
-        // We must grow th `contract_offset + length`.
-        let length_with_contract_offset = length.saturating_add(contract_offset);
-
         let contract_len = contract_size(&self.storage, &contract_id)?;
-        let charge_len = core::cmp::max(contract_len as u64, length_with_contract_offset);
+        let charge_len = core::cmp::max(contract_len as u64, length);
         dependent_gas_charge_without_base(
             self.cgas,
             self.ggas,
@@ -645,52 +638,37 @@ where
             charge_len,
         )?;
 
-        let new_sp = ssp.saturating_add(length);
-        let max_sp = ssp.saturating_add(length_with_contract_offset);
+        let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len as usize];
+        self.storage
+            .read_contract(&contract_id, &mut contract_buffer)
+            .transpose()
+            .ok_or(PanicReason::ContractNotFound)?
+            .map_err(RuntimeError::Storage)?;
 
-        self.memory.grow_stack(max_sp)?;
+        if contract_buffer.len() != contract_len as usize {
+            return Err(PanicReason::ContractMismatch.into())
+        }
+
+        let new_sp = ssp.saturating_add(length);
+        self.memory.grow_stack(new_sp)?;
 
         // Set up ownership registers for the copy using old ssp
         let owner =
-            OwnershipRegisters::only_allow_stack_write(max_sp, *self.ssp, *self.hp);
+            OwnershipRegisters::only_allow_stack_write(new_sp, *self.ssp, *self.hp);
 
         // Mark stack space as allocated
-        *self.sp = max_sp;
-        *self.ssp = max_sp;
-
-        let stack_slice_for_contract =
-            self.memory
-                .write(owner, region_start, length_with_contract_offset)?;
-
-        // If the contract offset exceeds the contract length, we fill the stack with
-        // zeros. This is to be consistent with the behaviour of
-        // `copy_from_slice_zero_fill`.
-        if contract_offset > contract_len as u64 {
-            stack_slice_for_contract[..].fill(0)
-        } else {
-            // Safety: `contract_offset <= contract_len <= u32::MAx <= usize::MAX`.
-            // It is safe to truncate `contract_offset`.
-            #[allow(clippy::cast_possible_truncation)]
-            let contract_offset = contract_offset as usize;
-            // Load directly the slice into the stack
-            self.storage
-                .read_contract(&contract_id, stack_slice_for_contract)
-                .transpose()
-                .ok_or(PanicReason::ContractNotFound)?
-                .map_err(RuntimeError::Storage)?;
-
-            // Copy within the slice itself to shift the bytes starting from
-            // contract_offset to the beginning of the stack
-
-            // TODO: Is this safe?
-            stack_slice_for_contract.copy_within(contract_offset.., 0);
-        }
-        // We can shrink the stack by `contract_offset`, as its content are not needed
-        // anymore
         *self.sp = new_sp;
         *self.ssp = new_sp;
 
-        // Copy the contract code into the stack
+        // Copy the code.
+        copy_from_slice_zero_fill(
+            self.memory,
+            owner,
+            &contract_buffer,
+            region_start,
+            contract_offset,
+            length,
+        )?;
 
         // Update frame code size, if we have a stack frame (i.e. fp > 0)
         if self.context.is_internal() {

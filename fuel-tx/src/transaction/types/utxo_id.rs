@@ -1,7 +1,7 @@
 use crate::TxId;
 
 use fuel_types::Bytes32;
-
+use postcard_bindgen::PostcardBindings;
 use core::{
     fmt,
     str,
@@ -22,6 +22,7 @@ use rand::{
 #[derive(
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
     fuel_types::canonical::Deserialize,
     fuel_types::canonical::Serialize,
 )]

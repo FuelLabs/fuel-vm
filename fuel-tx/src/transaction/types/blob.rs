@@ -26,6 +26,7 @@ use fuel_types::{
     ChainId,
     Word,
 };
+use postcard_bindgen::PostcardBindings;
 
 /// Adds method to `BlobId` to compute the it from blob data.
 pub trait BlobIdExt {
@@ -45,7 +46,7 @@ pub type Blob = ChargeableTransaction<BlobBody, BlobMetadata>;
 pub struct BlobMetadata;
 
 /// The body of the [`Blob`] transaction.
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

@@ -21,7 +21,7 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
 };
-
+use postcard_bindgen::PostcardBindings;
 use fuel_types::ChainId;
 
 use fuel_types::canonical::Serialize;
@@ -47,7 +47,7 @@ impl MintMetadata {
 ///
 /// This transaction can be created by the block producer and included in the block only
 /// by it.
-#[derive(Default, Debug, Clone, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, Derivative, serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]

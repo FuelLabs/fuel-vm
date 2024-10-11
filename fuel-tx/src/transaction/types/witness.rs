@@ -1,6 +1,6 @@
 use derivative::Derivative;
 use fuel_types::fmt_truncated_hex;
-
+use postcard_bindgen::PostcardBindings;
 use alloc::vec::Vec;
 
 use crate::{
@@ -25,7 +25,7 @@ use rand::{
 #[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

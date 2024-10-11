@@ -32,6 +32,8 @@ use fuel_types::{
     ChainId,
 };
 use hashbrown::HashMap;
+use postcard_bindgen::PostcardBindings;
+use postcard_bindgen_core::type_info::GenJsBinding;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
@@ -52,7 +54,7 @@ pub trait BodyConstraints:
                     + PartialEq
                     + Clone
                     + serde::Serialize
-                    + serde::Deserialize<'a>,
+                    + serde::Deserialize<'a>
 >
 {
 }
@@ -64,7 +66,7 @@ impl<T> BodyConstraints for T where
                         + PartialEq
                         + Clone
                         + serde::Serialize
-                        + serde::Deserialize<'a>,
+                        + serde::Deserialize<'a>
     >
 {
 }
@@ -76,7 +78,7 @@ impl<T> BodyConstraints for T {}
 
 #[derive(Clone, Derivative)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

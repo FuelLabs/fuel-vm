@@ -10,6 +10,7 @@ use fuel_types::{
     BlockHeight,
     Word,
 };
+use postcard_bindgen::PostcardBindings;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -23,7 +24,7 @@ use rand::{
 bitflags::bitflags! {
     /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
     #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-    #[derive(serde::Serialize, serde::Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize, PostcardBindings)]
     pub struct PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
         const Tip = 1 << 0;
@@ -107,7 +108,7 @@ pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as us
 
 /// Container for managing policies.
 #[derive(
-    Clone, Copy, Default, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    Clone, Copy, Default, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",

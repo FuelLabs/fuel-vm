@@ -37,7 +37,7 @@ pub type Upload = ChargeableTransaction<UploadBody, UploadMetadata>;
 pub struct UploadMetadata;
 
 /// The body of the [`Upload`] transaction.
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize, postcard_bindgen::PostcardBindings)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -59,7 +59,7 @@ pub struct UploadBody {
 }
 
 #[derive(
-    Clone, Default, Eq, PartialEq, Hash, Debug, serde::Serialize, serde::Deserialize,
+    Clone, Default, Eq, PartialEq, Hash, Debug, serde::Serialize, serde::Deserialize, postcard_bindgen::PostcardBindings,
 )]
 pub struct UploadSubsection {
     /// The root of the Merkle tree is created over the bytecode.
@@ -75,7 +75,7 @@ pub struct UploadSubsection {
 }
 
 #[derive(
-    Copy, Clone, Eq, PartialEq, Hash, Debug, serde::Serialize, serde::Deserialize,
+    Copy, Clone, Eq, PartialEq, Hash, Debug, serde::Serialize, serde::Deserialize, postcard_bindgen::PostcardBindings,
 )]
 pub enum SplitError {
     /// The size of the subsection is too small to fit all subsections into `u16::MAX`.

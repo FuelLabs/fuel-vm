@@ -2,7 +2,7 @@ use fuel_types::{
     bytes::WORD_SIZE,
     BlockHeight,
 };
-
+use postcard_bindgen::PostcardBindings;
 use fuel_types::canonical::{
     Deserialize,
     Serialize,
@@ -25,7 +25,7 @@ use rand::{
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

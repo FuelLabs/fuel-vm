@@ -45,6 +45,7 @@ use alloc::vec::{
     Vec,
 };
 use itertools::Itertools;
+use postcard_bindgen::PostcardBindings;
 
 mod fee;
 mod metadata;
@@ -101,6 +102,7 @@ pub type TxId = Bytes32;
     strum_macros::EnumCount,
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",

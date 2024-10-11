@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 
 #[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize, postcard_bindgen::PostcardBindings)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
 pub struct PredicateCode {
     #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]

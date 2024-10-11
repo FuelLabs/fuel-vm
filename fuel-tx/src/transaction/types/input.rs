@@ -13,6 +13,7 @@ use core::fmt::{
     self,
     Formatter,
 };
+use postcard_bindgen::PostcardBindings;
 use fuel_crypto::{
     Hasher,
     PublicKey,
@@ -68,7 +69,7 @@ where
 }
 
 /// The empty field used by sub-types of the specification.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -230,6 +231,7 @@ impl AsFieldFmt for PredicateCode {
     strum_macros::EnumCount,
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",

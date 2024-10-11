@@ -11,6 +11,7 @@ use fuel_types::{
     Nonce,
     Word,
 };
+use postcard_bindgen::PostcardBindings;
 
 mod consts;
 pub mod contract;
@@ -29,6 +30,7 @@ pub use repr::OutputRepr;
     strum_macros::EnumCount,
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",

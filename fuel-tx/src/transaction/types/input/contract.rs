@@ -6,14 +6,14 @@ use fuel_types::{
     Bytes32,
     ContractId,
 };
-
+use postcard_bindgen::PostcardBindings;
 /// It is a full representation of the contract input from the specification:
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcontract>.
 ///
 /// The specification defines the layout of the [`Contract`] in the serialized form for
 /// the `fuel-vm`.
 #[derive(
-    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",

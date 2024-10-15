@@ -9,6 +9,7 @@ use alloc::{
 use coin::*;
 use consts::*;
 use contract::*;
+use postcard_bindgen_core::type_info::{GenJsBinding, JsType, ObjectMeta};
 use core::fmt::{
     self,
     Formatter,
@@ -69,7 +70,7 @@ where
 }
 
 /// The empty field used by sub-types of the specification.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -79,6 +80,14 @@ pub struct Empty<Type>(
     #[cfg_attr(feature = "da-compression", compress(skip))]
     ::core::marker::PhantomData<Type>,
 );
+
+impl<T: GenJsBinding> GenJsBinding for Empty<T> { 
+    fn get_type() -> JsType {
+        JsType::Object(ObjectMeta {
+            name: "Empty",
+        })
+    }
+}
 
 impl<Type> Empty<Type> {
     /// Creates `Self`.

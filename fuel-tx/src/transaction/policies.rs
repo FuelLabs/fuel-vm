@@ -11,6 +11,7 @@ use fuel_types::{
     Word,
 };
 use postcard_bindgen::PostcardBindings;
+use postcard_bindgen_core::type_info::{GenJsBinding, JsType, NumberMeta};
 
 #[cfg(feature = "random")]
 use rand::{
@@ -24,7 +25,7 @@ use rand::{
 bitflags::bitflags! {
     /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
     #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-    #[derive(serde::Serialize, serde::Deserialize, PostcardBindings)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
         const Tip = 1 << 0;
@@ -34,6 +35,12 @@ bitflags::bitflags! {
         const Maturity = 1 << 2;
         /// If set, the max fee is present in the policies.
         const MaxFee = 1 << 3;
+    }
+}
+
+impl GenJsBinding for PoliciesBits {
+    fn get_type() -> JsType {
+        JsType::Number(NumberMeta::Integer { bytes: 64, signed: false })
     }
 }
 
@@ -75,6 +82,7 @@ where
     strum_macros::EnumIter,
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
 )]
 pub enum PolicyType {
     Tip,

@@ -13,8 +13,6 @@ use alloc::vec::Vec;
 use derivative::Derivative;
 use postcard_bindgen::PostcardBindings;
 
-use postcard_bindgen_core::type_info::GenJsBinding;
-
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
 use fuel_types::{

@@ -46,6 +46,7 @@ pub struct UtxoId {
     Hash,
     serde::Serialize,
     serde::Deserialize,
+    postcard_bindgen::PostcardBindings
 )]
 pub struct CompressedUtxoId {
     pub tx_pointer: crate::TxPointer,

@@ -42,7 +42,7 @@ impl BlobIdExt for BlobId {
 
 pub type Blob = ChargeableTransaction<BlobBody, BlobMetadata>;
 
-#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash, PostcardBindings)]
 pub struct BlobMetadata;
 
 /// The body of the [`Blob`] transaction.

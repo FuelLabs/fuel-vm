@@ -91,6 +91,7 @@ pub trait MessageSpecification: private::Seal {
 pub mod specifications {
     use alloc::vec::Vec;
     use postcard_bindgen::PostcardBindings;
+    use postcard_bindgen_core::type_info::{GenJsBinding, JsType, ObjectMeta};
 
     use super::MessageSpecification;
     use crate::input::{
@@ -128,9 +129,17 @@ pub mod specifications {
     /// during the execution. If the execution of the transaction fails, the metadata
     /// is not consumed and can be used later until successful execution.
     #[derive(
-        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
     )]
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
+
+    impl<T: GenJsBinding> GenJsBinding for MessageData<T> {
+        fn get_type() -> JsType {
+            JsType::Object(ObjectMeta {
+                name: "MessageData",
+            })
+        }
+    }
 
     impl MessageSpecification for MessageData<Signed> {
         type Data = Vec<u8>;
@@ -150,9 +159,17 @@ pub mod specifications {
 
     /// The spendable message acts as a standard coin.
     #[derive(
-        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
     )]
     pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
+
+    impl<T: GenJsBinding> GenJsBinding for MessageCoin<T> {
+        fn get_type() -> JsType {
+            JsType::Object(ObjectMeta {
+                name: "MessageCoin",
+            })
+        }
+    }
 
     impl MessageSpecification for MessageCoin<Signed> {
         type Data = Empty<Vec<u8>>;

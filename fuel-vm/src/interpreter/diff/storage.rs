@@ -410,6 +410,14 @@ where
         }
         Ok(existing)
     }
+
+    fn replace_forced(
+        &mut self,
+        _key: &<Type as Mappable>::Key,
+        _value: &<Type as Mappable>::Value,
+    ) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
+        unimplemented!()
+    }
 }
 
 impl<Type: StorageType, S> StorageWrite<Type> for Record<S>

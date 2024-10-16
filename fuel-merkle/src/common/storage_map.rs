@@ -87,6 +87,14 @@ where
         let value = self.map.remove(key);
         Ok(value)
     }
+
+    fn replace_forced(
+        &mut self,
+        _key: &<Type as Mappable>::Key,
+        _value: &<Type as Mappable>::Value,
+    ) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]

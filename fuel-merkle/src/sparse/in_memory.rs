@@ -114,6 +114,15 @@ impl MerkleTree {
             fn take(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
                 Ok(None)
             }
+
+            fn replace_forced(
+                &mut self,
+                _key: &<NodesTable as Mappable>::Key,
+                _value: &<NodesTable as Mappable>::Value,
+            ) -> Result<Option<<NodesTable as Mappable>::OwnedValue>, Self::Error>
+            {
+                unimplemented!();
+            }
         }
 
         let tree = sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage, set)
@@ -176,6 +185,15 @@ impl MerkleTree {
 
             fn take(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
                 unimplemented!("Take operation is not supported")
+            }
+
+            fn replace_forced(
+                &mut self,
+                _key: &<NodesTable as Mappable>::Key,
+                _value: &<NodesTable as Mappable>::Value,
+            ) -> Result<Option<<NodesTable as Mappable>::OwnedValue>, Self::Error>
+            {
+                unimplemented!()
             }
         }
 

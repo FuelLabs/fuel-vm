@@ -83,9 +83,21 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
 
     /// Append `Key->Value` mapping to the storage.
     ///
-    /// If `Key` was already mappped to a value, return the replaced value as
+    /// If `Key` was already mapped to a value, return the replaced value as
     /// `Ok(Some(Value))`. Return `Ok(None)` otherwise.
     fn replace(
+        &mut self,
+        key: &Type::Key,
+        value: &Type::Value,
+    ) -> Result<Option<Type::OwnedValue>, Self::Error>;
+
+    /// Append `Key->Value` mapping to the storage.
+    ///
+    /// If `Key` was already mapped to a value, return the replaced value as
+    /// `Ok(Some(Value))`. Return `Ok(None)` otherwise.
+
+    // TODO[RC]: Limit to types that implement ForcedReplace or smth like that
+    fn replace_forced(
         &mut self,
         key: &Type::Key,
         value: &Type::Value,

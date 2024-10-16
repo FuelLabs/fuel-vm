@@ -5,6 +5,7 @@ use crate::{
     StorageInspect,
     StorageMut,
     StorageMutate,
+    StorageMutateForced,
     StorageRead,
     StorageRef,
     StorageSize,
@@ -49,6 +50,33 @@ impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type>
     }
 }
 
+impl<'a, T: StorageMutateForced<Type> + ?Sized, Type: Mappable> StorageMutateForced<Type>
+    for &'a mut T
+{
+    fn replace_forced(
+        &mut self,
+        key: &Type::Key,
+        value: &Type::Value,
+    ) -> Result<Option<Type::OwnedValue>, Self::Error> {
+        <T as StorageMutateForced<Type>>::replace_forced(self, key, value)
+    }
+}
+
+impl<'a, T, Type> StorageMut<'a, T, Type>
+where
+    T: StorageMutateForced<Type>,
+    Type: Mappable,
+{
+    #[inline(always)]
+    pub fn replace_forced(
+        self,
+        key: &Type::Key,
+        value: &Type::Value,
+    ) -> Result<Option<Type::OwnedValue>, T::Error> {
+        StorageMutateForced::replace_forced(self.0, key, value)
+    }
+}
+
 impl<'a, T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type>
     for &'a mut T
 {
@@ -61,14 +89,6 @@ impl<'a, T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type>
     }
 
     fn replace(
-        &mut self,
-        key: &Type::Key,
-        value: &Type::Value,
-    ) -> Result<Option<Type::OwnedValue>, Self::Error> {
-        <T as StorageMutate<Type>>::replace(self, key, value)
-    }
-
-    fn replace_forced(
         &mut self,
         key: &Type::Key,
         value: &Type::Value,
@@ -255,16 +275,6 @@ where
         value: &Type::Value,
     ) -> Result<Option<Type::OwnedValue>, T::Error> {
         StorageMutate::replace(self.0, key, value)
-    }
-
-    // TODO[RC]: Limit to types that implement ForcedReplace or smth like that
-    #[inline(always)]
-    pub fn replace_forced(
-        self,
-        key: &Type::Key,
-        value: &Type::Value,
-    ) -> Result<Option<Type::OwnedValue>, T::Error> {
-        StorageMutate::replace_forced(self.0, key, value)
     }
 
     #[inline(always)]

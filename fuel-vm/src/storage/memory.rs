@@ -225,14 +225,6 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
     fn take(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
         Ok(self.memory.contracts.remove(key))
     }
-
-    fn replace_forced(
-        &mut self,
-        _key: &<ContractsRawCode as Mappable>::Key,
-        _value: &<ContractsRawCode as Mappable>::Value,
-    ) -> Result<Option<<ContractsRawCode as Mappable>::OwnedValue>, Self::Error> {
-        unimplemented!();
-    }
 }
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
@@ -326,14 +318,6 @@ impl StorageMutate<UploadedBytecodes> for MemoryStorage {
     ) -> Result<Option<UploadedBytecode>, Infallible> {
         Ok(self.memory.state_transition_bytecodes.remove(key))
     }
-
-    fn replace_forced(
-        &mut self,
-        _key: &<UploadedBytecodes as Mappable>::Key,
-        _value: &<UploadedBytecodes as Mappable>::Value,
-    ) -> Result<Option<<UploadedBytecodes as Mappable>::OwnedValue>, Self::Error> {
-        unimplemented!()
-    }
 }
 
 impl StorageInspect<ContractsAssets> for MemoryStorage {
@@ -368,14 +352,6 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
         key: &<ContractsAssets as Mappable>::Key,
     ) -> Result<Option<Word>, Infallible> {
         Ok(self.memory.balances.remove(key))
-    }
-
-    fn replace_forced(
-        &mut self,
-        _key: &<ContractsAssets as Mappable>::Key,
-        _value: &<ContractsAssets as Mappable>::Value,
-    ) -> Result<Option<<ContractsAssets as Mappable>::OwnedValue>, Self::Error> {
-        unimplemented!()
     }
 }
 
@@ -412,14 +388,6 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         key: &<ContractsState as Mappable>::Key,
     ) -> Result<Option<ContractsStateData>, Infallible> {
         Ok(self.memory.contract_state.remove(key))
-    }
-
-    fn replace_forced(
-        &mut self,
-        _key: &<ContractsState as Mappable>::Key,
-        _value: &<ContractsState as Mappable>::Value,
-    ) -> Result<Option<<ContractsState as Mappable>::OwnedValue>, Self::Error> {
-        unimplemented!()
     }
 }
 
@@ -562,14 +530,6 @@ impl StorageMutate<BlobData> for MemoryStorage {
         key: &<BlobData as Mappable>::Key,
     ) -> Result<Option<BlobBytes>, Infallible> {
         Ok(self.memory.blobs.remove(key))
-    }
-
-    fn replace_forced(
-        &mut self,
-        _key: &<BlobData as Mappable>::Key,
-        _value: &<BlobData as Mappable>::Value,
-    ) -> Result<Option<<BlobData as Mappable>::OwnedValue>, Self::Error> {
-        unimplemented!()
     }
 }
 

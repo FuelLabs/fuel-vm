@@ -68,6 +68,14 @@ pub trait StorageInspect<Type: Mappable> {
     fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error>;
 }
 
+pub trait StorageMutateForced<Type: Mappable>: StorageInspect<Type> {
+    fn replace_forced(
+        &mut self,
+        key: &Type::Key,
+        value: &Type::Value,
+    ) -> Result<Option<Type::OwnedValue>, Self::Error>;
+}
+
 /// Base storage trait for Fuel infrastructure.
 ///
 /// Generic should implement [`Mappable`] trait with all storage type information.
@@ -86,18 +94,6 @@ pub trait StorageMutate<Type: Mappable>: StorageInspect<Type> {
     /// If `Key` was already mapped to a value, return the replaced value as
     /// `Ok(Some(Value))`. Return `Ok(None)` otherwise.
     fn replace(
-        &mut self,
-        key: &Type::Key,
-        value: &Type::Value,
-    ) -> Result<Option<Type::OwnedValue>, Self::Error>;
-
-    /// Append `Key->Value` mapping to the storage.
-    ///
-    /// If `Key` was already mapped to a value, return the replaced value as
-    /// `Ok(Some(Value))`. Return `Ok(None)` otherwise.
-
-    // TODO[RC]: Limit to types that implement ForcedReplace or smth like that
-    fn replace_forced(
         &mut self,
         key: &Type::Key,
         value: &Type::Value,

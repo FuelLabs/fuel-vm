@@ -229,14 +229,6 @@ where
     ) -> Result<Option<Type::OwnedValue>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
-
-    fn replace_forced(
-        &mut self,
-        _key: &<Type as Mappable>::Key,
-        _value: &<Type as Mappable>::Value,
-    ) -> Result<Option<<Type as Mappable>::OwnedValue>, Self::Error> {
-        unimplemented!()
-    }
 }
 
 impl<D> StorageSize<ContractsRawCode> for PredicateStorage<D> {

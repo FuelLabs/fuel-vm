@@ -21,13 +21,14 @@ use rand::{
     },
     Rng,
 };
+use postcard_bindgen::PostcardBindings;
 
 #[cfg(all(feature = "alloc", feature = "typescript"))]
 use alloc::vec::Vec;
 
 macro_rules! key {
     ($i:ident, $t:ty) => {
-        #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, PostcardBindings)]
         /// FuelVM atomic numeric type.
         #[repr(transparent)]
         #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

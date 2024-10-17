@@ -11,6 +11,8 @@ use crate::{
 };
 use alloc::vec::Vec;
 use derivative::Derivative;
+use postcard_bindgen::PostcardBindings;
+
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
 use fuel_types::{
@@ -78,7 +80,7 @@ pub trait CoinSpecification: private::Seal {
 }
 
 #[derive(
-    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",
@@ -94,7 +96,7 @@ impl CoinSpecification for Signed {
 }
 
 #[derive(
-    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",
@@ -110,7 +112,7 @@ impl CoinSpecification for Predicate {
 }
 
 #[derive(
-    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings
 )]
 pub struct Full;
 
@@ -145,7 +147,7 @@ impl CoinSpecification for Full {
 ///   [`Signed`], else [`Predicate`].
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Coin<Specification>

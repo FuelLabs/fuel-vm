@@ -10,6 +10,8 @@ use fuel_types::{
     BlockHeight,
     Word,
 };
+use postcard_bindgen::PostcardBindings;
+use postcard_bindgen_core::type_info::{GenJsBinding, JsType, NumberMeta};
 
 #[cfg(feature = "random")]
 use rand::{
@@ -33,6 +35,12 @@ bitflags::bitflags! {
         const Maturity = 1 << 2;
         /// If set, the max fee is present in the policies.
         const MaxFee = 1 << 3;
+    }
+}
+
+impl GenJsBinding for PoliciesBits {
+    fn get_type() -> JsType {
+        JsType::Number(NumberMeta::Integer { bytes: 64, signed: false })
     }
 }
 
@@ -74,6 +82,7 @@ where
     strum_macros::EnumIter,
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
 )]
 pub enum PolicyType {
     Tip,
@@ -107,7 +116,7 @@ pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as us
 
 /// Container for managing policies.
 #[derive(
-    Clone, Copy, Default, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    Clone, Copy, Default, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",

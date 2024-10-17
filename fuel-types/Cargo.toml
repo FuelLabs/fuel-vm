@@ -16,6 +16,7 @@ hex = { version = "0.4", default-features = false }
 rand = { version = "0.8", default-features = false, optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"], optional = true }
 wasm-bindgen = { version = "0.2.88", optional = true }
+postcard-bindgen = {version = "0.3.6",  features = ["generating"] }
 
 [dev-dependencies]
 bincode = { workspace = true }

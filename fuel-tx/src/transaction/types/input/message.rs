@@ -12,7 +12,8 @@ use fuel_types::{
     Nonce,
     Word,
 };
-
+use postcard_bindgen::PostcardBindings;
+use postcard_bindgen_core::type_info::GenJsBinding;
 use super::PredicateCode;
 
 pub type FullMessage = Message<specifications::Full>;
@@ -42,7 +43,7 @@ pub trait MessageSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
         >;
     type Predicate: AsField<PredicateCode>
         + for<'a> Compressible<
@@ -50,7 +51,7 @@ pub trait MessageSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
         >;
     type PredicateData: AsField<Vec<u8>>
         + for<'a> Compressible<
@@ -58,7 +59,7 @@ pub trait MessageSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
         >;
     type PredicateGasUsed: AsField<Word>
         + for<'a> Compressible<
@@ -66,7 +67,7 @@ pub trait MessageSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
         > + Default;
     type Witness: AsField<u16>
         + for<'a> Compressible<
@@ -74,7 +75,7 @@ pub trait MessageSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>                            
         >;
 }
 
@@ -89,6 +90,8 @@ pub trait MessageSpecification: private::Seal {
 
 pub mod specifications {
     use alloc::vec::Vec;
+    use postcard_bindgen::PostcardBindings;
+    use postcard_bindgen_core::type_info::{GenJsBinding, JsType, ObjectMeta};
 
     use super::MessageSpecification;
     use crate::input::{
@@ -101,7 +104,7 @@ pub mod specifications {
     /// signature(witness) should be stored under the `witness_index` index in the
     /// `witnesses` vector of the [`crate::Transaction`].
     #[derive(
-        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
     )]
     #[cfg_attr(
         feature = "da-compression",
@@ -112,7 +115,7 @@ pub mod specifications {
     /// The type means that the message is not signed, and the `owner` is a `predicate`
     /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
     #[derive(
-        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
     )]
     #[cfg_attr(
         feature = "da-compression",
@@ -129,6 +132,14 @@ pub mod specifications {
         Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
     )]
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
+
+    impl<T: GenJsBinding> GenJsBinding for MessageData<T> {
+        fn get_type() -> JsType {
+            JsType::Object(ObjectMeta {
+                name: "MessageData",
+            })
+        }
+    }
 
     impl MessageSpecification for MessageData<Signed> {
         type Data = Vec<u8>;
@@ -151,6 +162,14 @@ pub mod specifications {
         Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
     )]
     pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
+
+    impl<T: GenJsBinding> GenJsBinding for MessageCoin<T> {
+        fn get_type() -> JsType {
+            JsType::Object(ObjectMeta {
+                name: "MessageCoin",
+            })
+        }
+    }
 
     impl MessageSpecification for MessageCoin<Signed> {
         type Data = Empty<Vec<u8>>;
@@ -175,7 +194,7 @@ pub mod specifications {
     /// If the `predicate` is empty, the usage rules should be [`Signed`], else
     /// [`Predicate`].
     #[derive(
-        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, PostcardBindings,
     )]
     pub struct Full;
 
@@ -207,7 +226,7 @@ pub mod specifications {
 /// - [`specifications::Full`].
 #[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
 #[derivative(Debug)]
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, PostcardBindings,)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>

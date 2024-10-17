@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.
+
 ## [Version 0.58.2]
 
 ### Fixed

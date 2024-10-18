@@ -13,7 +13,6 @@ use fuel_types::{
     Word,
 };
 use postcard_bindgen::PostcardBindings;
-use postcard_bindgen_core::type_info::GenJsBinding;
 use super::PredicateCode;
 
 pub type FullMessage = Message<specifications::Full>;

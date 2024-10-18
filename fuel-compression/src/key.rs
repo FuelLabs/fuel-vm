@@ -1,3 +1,4 @@
+use postcard_bindgen::PostcardBindings;
 use serde::{
     Deserialize,
     Serialize,
@@ -6,7 +7,7 @@ use serde::{
 /// Untyped key pointing to a registry table entry.
 /// The last key (all bits set) is reserved for the default value and cannot be written
 /// to.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PostcardBindings)]
 pub struct RegistryKey([u8; Self::SIZE]);
 impl RegistryKey {
     /// Key mapping to default value for the table type.

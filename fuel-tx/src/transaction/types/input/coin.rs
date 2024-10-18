@@ -20,6 +20,7 @@ use fuel_types::{
     AssetId,
     Word,
 };
+use postcard_bindgen_core::type_info::GenJsBinding;
 
 use super::PredicateCode;
 
@@ -44,7 +45,8 @@ pub trait CoinSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
+                            + GenJsBinding,
         >;
     type Predicate: AsField<PredicateCode>
         + for<'a> Compressible<
@@ -52,7 +54,8 @@ pub trait CoinSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
+                            + GenJsBinding,
         >;
     type PredicateData: AsField<Vec<u8>>
         + for<'a> Compressible<
@@ -60,7 +63,8 @@ pub trait CoinSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
+                            + GenJsBinding,
         >;
     type PredicateGasUsed: AsField<Word>
         + for<'a> Compressible<
@@ -68,7 +72,8 @@ pub trait CoinSpecification: private::Seal {
                             + PartialEq
                             + Clone
                             + serde::Serialize
-                            + serde::Deserialize<'a>,
+                            + serde::Deserialize<'a>
+                            + GenJsBinding,
         >;
 }
 #[cfg(not(feature = "da-compression"))]

@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-### Changed
-- [#847](https://github.com/FuelLabs/fuel-vm/pull/847): LDC optimization avoids allocating extra memory when loading contract code onto the stack.
+### Changed 
+- [#847](https://github.com/FuelLabs/fuel-vm/pull/847): Remove `contract_read`, and change `load_contract_code`, `code_copy` and `code_root`  to explicitly load the contract code in a buffer. Also check for mismatches between contract size stored and actual size of contract in those functions.
+
+### Fixed
+- [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.
 
 ## [Version 0.58.2]
 

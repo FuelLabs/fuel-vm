@@ -30,7 +30,7 @@ use alloc::format;
 macro_rules! key {
     ($i:ident, $s:expr) => {
         /// FuelVM atomic array type.
-        #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, postcard_bindgen::PostcardBindings)]
         #[repr(transparent)]
         #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
         #[derive(

@@ -95,7 +95,7 @@ impl UpgradeMetadata {
 /// The types describe the purpose of the upgrade performed by the [`Upgrade`]
 /// transaction.
 #[derive(
-    Copy, Clone, Derivative, strum_macros::EnumCount, serde::Serialize, serde::Deserialize,
+    Copy, Clone, Derivative, strum_macros::EnumCount, serde::Serialize, serde::Deserialize, postcard_bindgen::PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",
@@ -125,7 +125,7 @@ pub enum UpgradePurpose {
 }
 
 /// The body of the [`Upgrade`] transaction.
-#[derive(Clone, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Derivative, serde::Serialize, serde::Deserialize, postcard_bindgen::PostcardBindings)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)

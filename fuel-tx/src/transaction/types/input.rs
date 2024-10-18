@@ -9,10 +9,12 @@ use alloc::{
 use coin::*;
 use consts::*;
 use contract::*;
+use postcard_bindgen_core::type_info::{GenJsBinding, JsType, ObjectMeta};
 use core::fmt::{
     self,
     Formatter,
 };
+use postcard_bindgen::PostcardBindings;
 use fuel_crypto::{
     Hasher,
     PublicKey,
@@ -78,6 +80,14 @@ pub struct Empty<Type>(
     #[cfg_attr(feature = "da-compression", compress(skip))]
     ::core::marker::PhantomData<Type>,
 );
+
+impl<T: GenJsBinding> GenJsBinding for Empty<T> { 
+    fn get_type() -> JsType {
+        JsType::Object(ObjectMeta {
+            name: "Empty",
+        })
+    }
+}
 
 impl<Type> Empty<Type> {
     /// Creates `Self`.
@@ -230,6 +240,7 @@ impl AsFieldFmt for PredicateCode {
     strum_macros::EnumCount,
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
 )]
 #[cfg_attr(
     feature = "da-compression",

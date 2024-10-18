@@ -30,6 +30,8 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"], 
 strum = { version = "0.24", default-features = false, optional = true }
 strum_macros = { version = "0.24", optional = true }
 wasm-bindgen = { version = "0.2.88", optional = true }
+postcard-bindgen = {version = "0.3.6",  features = ["generating"] }
+postcard-bindgen-core = {version = "0.3.6",  features = ["generating"] }
 
 [dev-dependencies]
 bimap = "0.6"

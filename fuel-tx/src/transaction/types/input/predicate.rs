@@ -7,7 +7,7 @@ use fuel_types::fmt_truncated_hex;
 
 use alloc::vec::Vec;
 
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize, postcard_bindgen::PostcardBindings)]
 #[serde(transparent)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]

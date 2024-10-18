@@ -2,7 +2,7 @@ use core::ops::{
     Deref,
     DerefMut,
 };
-
+use postcard_bindgen::PostcardBindings;
 use crate::{
     field::WitnessLimit,
     transaction::{
@@ -50,7 +50,7 @@ pub struct ScriptMetadata {
     pub script_data_offset: usize,
 }
 
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize, PostcardBindings)]
 #[serde(transparent)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[derivative(Eq, PartialEq, Hash, Debug)]
@@ -109,6 +109,7 @@ impl fuel_compression::Compressible for ScriptCode {
     Derivative,
     serde::Serialize,
     serde::Deserialize,
+    PostcardBindings,
     fuel_types::canonical::Deserialize,
     fuel_types::canonical::Serialize,
 )]

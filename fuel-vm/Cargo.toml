@@ -50,7 +50,7 @@ strum = { version = "0.24", features = ["derive"], default-features = false }
 tai64 = { version = "4.0", default-features = false, optional = true }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = { workspace = true }
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 fuel-crypto = { workspace = true, features = ["test-helpers"] }
 fuel-tx = { workspace = true, features = ["test-helpers"] }
@@ -70,7 +70,7 @@ quickcheck_macros = "1.0"
 rayon = "1.7"
 rstest = "0.17"
 serde_json = "1.0"
-test-case = "2.2"
+test-case = "3.3"
 tokio = { version = "1.27", features = ["full"] }
 tokio-rayon = "2.1.0"
 

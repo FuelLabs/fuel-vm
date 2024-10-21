@@ -21,7 +21,7 @@ sha2 = { version = "0.10", default-features = false }
 
 [dev-dependencies]
 criterion = { workspace = true }
-datatest-stable = "0.1"
+datatest-stable = "0.2"
 fuel-merkle-test-helpers = { path = "test-helpers" }
 hex = "0.4"
 proptest = "1.4"

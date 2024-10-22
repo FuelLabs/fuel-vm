@@ -638,16 +638,11 @@ where
             charge_len,
         )?;
 
-        let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len as usize];
-        self.storage
-            .read_contract(&contract_id, &mut contract_buffer)
-            .transpose()
-            .ok_or(PanicReason::ContractNotFound)?
-            .map_err(RuntimeError::Storage)?;
-
-        if contract_buffer.len() != contract_len as usize {
-            return Err(PanicReason::ContractMismatch.into())
-        }
+        let contract_buffer: Vec<u8> = load_contract_code_from_storage(
+            self.storage,
+            contract_len as usize,
+            &contract_id,
+        )?;
 
         let new_sp = ssp.saturating_add(length);
         self.memory.grow_stack(new_sp)?;
@@ -880,6 +875,28 @@ where
     }
 }
 
+fn load_contract_code_from_storage<S>(
+    storage: &S,
+    contract_len: usize,
+    contract_id: &ContractId,
+) -> Result<Vec<u8>, RuntimeError<<S as InterpreterStorage>::DataError>>
+where
+    S: InterpreterStorage,
+{
+    let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len as usize];
+    storage
+        .read_contract(&contract_id, &mut contract_buffer)
+        .transpose()
+        .ok_or(PanicReason::ContractNotFound)?
+        .map_err(RuntimeError::Storage)?;
+
+    if contract_buffer.len() != contract_len as usize {
+        Err(PanicReason::ContractMismatch)?
+    } else {
+        Ok(contract_buffer)
+    }
+}
+
 struct BurnCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
@@ -1006,16 +1023,11 @@ where
 
         let contract_len = contract_size(self.storage, &contract_id)?;
 
-        let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len as usize];
-        self.storage
-            .read_contract(&contract_id, &mut contract_buffer)
-            .transpose()
-            .ok_or(PanicReason::ContractNotFound)?
-            .map_err(RuntimeError::Storage)?;
-
-        if contract_buffer.len() != contract_len as usize {
-            return Err(PanicReason::ContractMismatch.into())
-        }
+        let mut contract_buffer = load_contract_code_from_storage(
+            self.storage,
+            contract_len as usize,
+            &contract_id,
+        )?;
 
         let charge_len = core::cmp::max(contract_len as u64, length);
         let profiler = ProfileGas {
@@ -1132,16 +1144,10 @@ impl<'vm, S> CodeRootCtx<'vm, S> {
             self.gas_cost,
             len as u64,
         )?;
-        let mut buf: Vec<u8> = alloc::vec![0u8; len as usize];
-        self.storage
-            .read_contract(&contract_id, &mut buf)
-            .transpose()
-            .ok_or(PanicReason::ContractNotFound)?
-            .map_err(RuntimeError::Storage)?;
 
-        if buf.len() != len as usize {
-            return Err(PanicReason::ContractMismatch.into())
-        }
+        let buf: Vec<u8> =
+            load_contract_code_from_storage(self.storage, len as usize, &contract_id)?;
+
         let root = Contract::root_from_code(buf);
 
         self.memory.write_bytes(self.owner, a, *root)?;

@@ -60,6 +60,7 @@ use fuel_storage::{
 use fuel_tx::{
     consts::BALANCE_ENTRY_SIZE,
     BlobId,
+    Contract,
     ContractIdExt,
     DependentCost,
     Receipt,
@@ -636,8 +637,12 @@ where
             self.gas_cost,
             charge_len,
         )?;
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
+
+        let contract_buffer: Vec<u8> = load_contract_code_from_storage(
+            self.storage,
+            contract_len as usize,
+            contract_id,
+        )?;
 
         let new_sp = ssp.saturating_add(length);
         self.memory.grow_stack(new_sp)?;
@@ -654,7 +659,7 @@ where
         copy_from_slice_zero_fill(
             self.memory,
             owner,
-            contract_bytes,
+            &contract_buffer,
             region_start,
             contract_offset,
             length,
@@ -870,6 +875,28 @@ where
     }
 }
 
+fn load_contract_code_from_storage<S>(
+    storage: &S,
+    contract_len: usize,
+    contract_id: ContractId,
+) -> Result<Vec<u8>, RuntimeError<<S as InterpreterStorage>::DataError>>
+where
+    S: InterpreterStorage,
+{
+    let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len];
+    storage
+        .read_contract(&contract_id, &mut contract_buffer)
+        .transpose()
+        .ok_or(PanicReason::ContractNotFound)?
+        .map_err(RuntimeError::Storage)?;
+
+    if contract_buffer.len() != contract_len {
+        Err(PanicReason::ContractMismatch)?
+    } else {
+        Ok(contract_buffer)
+    }
+}
+
 struct BurnCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
@@ -994,9 +1021,14 @@ where
         self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
 
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
-        let contract_len = contract_bytes.len();
+        let contract_len = contract_size(self.storage, &contract_id)?;
+
+        let contract_buffer = load_contract_code_from_storage(
+            self.storage,
+            contract_len as usize,
+            contract_id,
+        )?;
+
         let charge_len = core::cmp::max(contract_len as u64, length);
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
@@ -1016,7 +1048,7 @@ where
         copy_from_slice_zero_fill(
             self.memory,
             self.owner,
-            contract.as_ref().as_ref(),
+            &contract_buffer,
             dst_addr,
             contract_offset,
             length,
@@ -1112,13 +1144,11 @@ impl<'vm, S> CodeRootCtx<'vm, S> {
             self.gas_cost,
             len as u64,
         )?;
-        let root = self
-            .storage
-            .storage_contract(&contract_id)
-            .transpose()
-            .ok_or(PanicReason::ContractNotFound)?
-            .map_err(RuntimeError::Storage)?
-            .root();
+
+        let buf: Vec<u8> =
+            load_contract_code_from_storage(self.storage, len as usize, contract_id)?;
+
+        let root = Contract::root_from_code(buf);
 
         self.memory.write_bytes(self.owner, a, *root)?;
 

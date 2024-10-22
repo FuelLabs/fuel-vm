@@ -641,7 +641,7 @@ where
         let contract_buffer: Vec<u8> = load_contract_code_from_storage(
             self.storage,
             contract_len as usize,
-            &contract_id,
+            contract_id,
         )?;
 
         let new_sp = ssp.saturating_add(length);
@@ -878,19 +878,19 @@ where
 fn load_contract_code_from_storage<S>(
     storage: &S,
     contract_len: usize,
-    contract_id: &ContractId,
+    contract_id: ContractId,
 ) -> Result<Vec<u8>, RuntimeError<<S as InterpreterStorage>::DataError>>
 where
     S: InterpreterStorage,
 {
-    let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len as usize];
+    let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len];
     storage
         .read_contract(&contract_id, &mut contract_buffer)
         .transpose()
         .ok_or(PanicReason::ContractNotFound)?
         .map_err(RuntimeError::Storage)?;
 
-    if contract_buffer.len() != contract_len as usize {
+    if contract_buffer.len() != contract_len {
         Err(PanicReason::ContractMismatch)?
     } else {
         Ok(contract_buffer)
@@ -1023,10 +1023,10 @@ where
 
         let contract_len = contract_size(self.storage, &contract_id)?;
 
-        let mut contract_buffer = load_contract_code_from_storage(
+        let contract_buffer = load_contract_code_from_storage(
             self.storage,
             contract_len as usize,
-            &contract_id,
+            contract_id,
         )?;
 
         let charge_len = core::cmp::max(contract_len as u64, length);
@@ -1146,7 +1146,7 @@ impl<'vm, S> CodeRootCtx<'vm, S> {
         )?;
 
         let buf: Vec<u8> =
-            load_contract_code_from_storage(self.storage, len as usize, &contract_id)?;
+            load_contract_code_from_storage(self.storage, len as usize, contract_id)?;
 
         let root = Contract::root_from_code(buf);
 

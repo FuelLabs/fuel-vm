@@ -1132,7 +1132,6 @@ impl<'vm, S> CodeRootCtx<'vm, S> {
             self.gas_cost,
             len as u64,
         )?;
-        // TODO: Can we write this to the stack and avoid allocation?
         let mut buf: Vec<u8> = alloc::vec![0u8; len as usize];
         self.storage
             .read_contract(&contract_id, &mut buf)

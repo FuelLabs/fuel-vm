@@ -264,11 +264,19 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
     fn read(
         &self,
         key: &ContractId,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
         Ok(self.memory.contracts.get(key).map(|c| {
-            let len = buf.len().min(c.as_ref().len());
-            buf[..len].copy_from_slice(&c.as_ref()[..len]);
+            // We need to handle the case where the offset is greater than the length of
+            // the contract In this case we follow the same approach as
+            // `copy_from_slice_zero_fill`
+            if offset >= c.as_ref().len() {
+                buf.fill(0);
+            }
+            let starting_from_offset = &c.as_ref()[offset..];
+            let len = buf.len().min(starting_from_offset.as_ref().len());
+            buf[..len].copy_from_slice(&starting_from_offset.as_ref()[..len]);
             buf[len..].fill(0);
             len
         }))
@@ -448,11 +456,20 @@ impl StorageRead<ContractsState> for MemoryStorage {
     fn read(
         &self,
         key: &<ContractsState as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
         Ok(self.memory.contract_state.get(key).map(|data| {
-            let len = buf.len().min(data.as_ref().len());
-            buf.copy_from_slice(&data.as_ref()[..len]);
+            // We need to handle the case where the offset is greater than the length of
+            // the serialized ContractState. In this case we follow the same approach as
+            // `copy_from_slice_zero_fill` and fill the input buffer with zeros.
+            if offset >= data.as_ref().len() {
+                buf.fill(0);
+            }
+            let starting_from_offset = &data.as_ref()[offset..];
+            let len = buf.len().min(starting_from_offset.as_ref().len());
+            buf[..len].copy_from_slice(&starting_from_offset.as_ref()[..len]);
+            buf[len..].fill(0);
             len
         }))
     }
@@ -482,11 +499,20 @@ impl StorageRead<BlobData> for MemoryStorage {
     fn read(
         &self,
         key: &<BlobData as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
         Ok(self.memory.blobs.get(key).map(|data| {
-            let len = buf.len().min(data.as_ref().len());
-            buf.copy_from_slice(&data.as_ref()[..len]);
+            // We need to handle the case where the offset is greater than the length of
+            // the serialized ContractState. In this case we follow the same approach as
+            // `copy_from_slice_zero_fill` and fill the input buffer with zeros.
+            if offset >= data.as_ref().len() {
+                buf.fill(0);
+            }
+            let starting_from_offset = &data.as_ref()[offset..];
+            let len = buf.len().min(starting_from_offset.as_ref().len());
+            buf[..len].copy_from_slice(&starting_from_offset.as_ref()[..len]);
+            buf[len..].fill(0);
             len
         }))
     }

@@ -158,9 +158,13 @@ pub trait InterpreterStorage:
     fn read_contract(
         &self,
         id: &ContractId,
+        offset: usize,
         writer: &mut [u8],
     ) -> Result<Option<Word>, Self::DataError> {
-        Ok(StorageRead::<ContractsRawCode>::read(self, id, writer)?.map(|r| r as Word))
+        Ok(
+            StorageRead::<ContractsRawCode>::read(self, id, offset, writer)?
+                .map(|r| r as Word),
+        )
     }
 
     /// Append a contract to the chain, provided its identifier.
@@ -361,9 +365,10 @@ where
     fn read_contract(
         &self,
         id: &ContractId,
+        offset: usize,
         writer: &mut [u8],
     ) -> Result<Option<Word>, Self::DataError> {
-        <S as InterpreterStorage>::read_contract(self.deref(), id, writer)
+        <S as InterpreterStorage>::read_contract(self.deref(), id, offset, writer)
     }
 
     fn contract_state_range(

@@ -275,8 +275,8 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
                 buf.fill(0);
             }
             let starting_from_offset = &c.as_ref()[offset..];
-            let len = buf.len().min(starting_from_offset.as_ref().len());
-            buf[..len].copy_from_slice(&starting_from_offset.as_ref()[..len]);
+            let len = buf.len().min(starting_from_offset.len());
+            buf[..len].copy_from_slice(&starting_from_offset[..len]);
             buf[len..].fill(0);
             len
         }))
@@ -467,8 +467,8 @@ impl StorageRead<ContractsState> for MemoryStorage {
                 buf.fill(0);
             }
             let starting_from_offset = &data.as_ref()[offset..];
-            let len = buf.len().min(starting_from_offset.as_ref().len());
-            buf[..len].copy_from_slice(&starting_from_offset.as_ref()[..len]);
+            let len = buf.len().min(starting_from_offset.len());
+            buf[..len].copy_from_slice(&starting_from_offset[..len]);
             buf[len..].fill(0);
             len
         }))
@@ -510,8 +510,8 @@ impl StorageRead<BlobData> for MemoryStorage {
                 buf.fill(0);
             }
             let starting_from_offset = &data.as_ref()[offset..];
-            let len = buf.len().min(starting_from_offset.as_ref().len());
-            buf[..len].copy_from_slice(&starting_from_offset.as_ref()[..len]);
+            let len = buf.len().min(starting_from_offset.len());
+            buf[..len].copy_from_slice(&starting_from_offset[..len]);
             buf[len..].fill(0);
             len
         }))

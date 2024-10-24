@@ -127,8 +127,12 @@ pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> 
     ///
     /// Returns None if the value does not exist.
     /// Otherwise, returns the number of bytes read.
-    fn read(&self, key: &Type::Key, buf: &mut [u8])
-        -> Result<Option<usize>, Self::Error>;
+    fn read(
+        &self,
+        key: &Type::Key,
+        offset: usize,
+        buf: &mut [u8],
+    ) -> Result<Option<usize>, Self::Error>;
 
     /// Same as `read` but allocates a new buffer and returns it.
     ///

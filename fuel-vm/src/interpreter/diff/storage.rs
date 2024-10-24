@@ -369,9 +369,10 @@ where
     fn read(
         &self,
         key: &<Type as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        <S as StorageRead<Type>>::read(&self.0, key, buf)
+        <S as StorageRead<Type>>::read(&self.0, key, offset, buf)
     }
 
     fn read_alloc(

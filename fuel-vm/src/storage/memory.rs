@@ -267,18 +267,20 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
         offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.contracts.get(key).map(|c| {
+        Ok(self.memory.contracts.get(key).and_then(|c| {
             // We need to handle the case where the offset is greater than the length of
             // the contract In this case we follow the same approach as
             // `copy_from_slice_zero_fill`
             if offset >= c.as_ref().len() {
                 buf.fill(0);
+                // TODO: Do we want to return `None` or `Some(0)` here?
+                return None;
             }
             let starting_from_offset = &c.as_ref()[offset..];
             let len = buf.len().min(starting_from_offset.len());
             buf[..len].copy_from_slice(&starting_from_offset[..len]);
             buf[len..].fill(0);
-            len
+            Some(len)
         }))
     }
 
@@ -459,18 +461,19 @@ impl StorageRead<ContractsState> for MemoryStorage {
         offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.contract_state.get(key).map(|data| {
+        Ok(self.memory.contract_state.get(key).and_then(|data| {
             // We need to handle the case where the offset is greater than the length of
             // the serialized ContractState. In this case we follow the same approach as
             // `copy_from_slice_zero_fill` and fill the input buffer with zeros.
             if offset >= data.as_ref().len() {
                 buf.fill(0);
+                return None;
             }
             let starting_from_offset = &data.as_ref()[offset..];
             let len = buf.len().min(starting_from_offset.len());
             buf[..len].copy_from_slice(&starting_from_offset[..len]);
             buf[len..].fill(0);
-            len
+            Some(len)
         }))
     }
 
@@ -502,18 +505,19 @@ impl StorageRead<BlobData> for MemoryStorage {
         offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.blobs.get(key).map(|data| {
+        Ok(self.memory.blobs.get(key).and_then(|data| {
             // We need to handle the case where the offset is greater than the length of
             // the serialized ContractState. In this case we follow the same approach as
             // `copy_from_slice_zero_fill` and fill the input buffer with zeros.
             if offset >= data.as_ref().len() {
                 buf.fill(0);
+                return None;
             }
             let starting_from_offset = &data.as_ref()[offset..];
             let len = buf.len().min(starting_from_offset.len());
             buf[..len].copy_from_slice(&starting_from_offset[..len]);
             buf[len..].fill(0);
-            len
+            Some(len)
         }))
     }
 
@@ -808,5 +812,57 @@ mod tests {
             .into_iter()
             .map(|v| v.map(|v| v.into_owned()))
             .collect()
+    }
+
+    #[test_case(0, 32)]
+    #[test_case(4, 32)]
+    #[test_case(8, 32)]
+    #[test_case(0, 28)]
+    #[test_case(4, 28)]
+    #[test_case(8, 28)]
+    #[test_case(28, 0)]
+    #[test_case(28, 4)]
+    #[test_case(28, 8)]
+    #[test_case(32, 0)]
+    #[test_case(32, 4)]
+    #[test_case(32, 8)]
+    fn test_contract_read(offset: usize, load_buf_size: usize) {
+        // Given
+        let raw_contract = [1u8; 32];
+        let contract_len = raw_contract.len();
+        let mut mem = MemoryStorage::default();
+        let contract = Contract::from(raw_contract.as_ref());
+        mem.memory
+            .contracts
+            .insert(ContractId::default(), contract.clone());
+        let mut buf: Vec<u8> = Vec::with_capacity(load_buf_size);
+        (0..load_buf_size).for_each(|_| buf.push(0));
+
+        // When
+        let bytes_read = StorageRead::<ContractsRawCode>::read(
+            &mem,
+            &ContractId::default(),
+            offset,
+            &mut buf,
+        )
+        .unwrap();
+
+        // Then
+        // If we read at the end of the contract, we expect to return `None`
+        // This is to be consistent with the semantics of `copy_from_slice_zero_fill`.
+        let bytes_readable_from_contract =
+            contract_len.checked_sub(offset).filter(|&v| v > 0);
+        // We expect to read as many bytes from the offset until the end of the contract,
+        // up to the buffer size.
+        let expected_bytes_read = bytes_readable_from_contract
+            .map(|partial_contract_len| partial_contract_len.min(load_buf_size));
+        let contract_bytes_in_buffer = expected_bytes_read.unwrap_or(0);
+        assert_eq!(expected_bytes_read, bytes_read);
+        assert!(buf[..contract_bytes_in_buffer]
+            .iter()
+            .all(|&v| v == raw_contract[offset]));
+        assert!(buf[contract_bytes_in_buffer..].iter().all(|&v| v == 0));
+
+        println!("{bytes_read:?} bytes: {buf:?}");
     }
 }

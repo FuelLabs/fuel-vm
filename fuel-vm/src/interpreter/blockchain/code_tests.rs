@@ -1,17 +1,19 @@
 #![allow(clippy::cast_possible_truncation)]
-use core::convert::Infallible;
 
 use alloc::vec;
 
 use super::*;
 use crate::{
     interpreter::PanicContext,
-    storage::MemoryStorage,
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
 };
 use fuel_tx::Contract;
 
 #[test]
-fn test_load_contract_in_script() -> IoResult<(), Infallible> {
+fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
@@ -70,7 +72,7 @@ fn test_load_contract_in_script() -> IoResult<(), Infallible> {
     Ok(())
 }
 #[test]
-fn test_load_contract_in_call() -> IoResult<(), Infallible> {
+fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
@@ -130,7 +132,7 @@ fn test_load_contract_in_call() -> IoResult<(), Infallible> {
 }
 
 #[test]
-fn test_code_copy() -> IoResult<(), Infallible> {
+fn test_code_copy() -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut cgas = 1000;

@@ -814,22 +814,21 @@ mod tests {
             .collect()
     }
 
-    #[test_case(0, 32)]
-    #[test_case(4, 32)]
-    #[test_case(8, 32)]
-    #[test_case(0, 28)]
-    #[test_case(4, 28)]
-    #[test_case(8, 28)]
-    #[test_case(28, 0)]
-    #[test_case(28, 4)]
-    #[test_case(28, 8)]
-    #[test_case(32, 0)]
-    #[test_case(32, 4)]
-    #[test_case(32, 8)]
-    fn test_contract_read(offset: usize, load_buf_size: usize) {
+    #[test_case(0, 32 => Some(32))]
+    #[test_case(4, 32 => Some(28))]
+    #[test_case(8, 32 => Some(24))]
+    #[test_case(0, 28 => Some(28))]
+    #[test_case(4, 28 => Some(28))]
+    #[test_case(8, 28 => Some(24))]
+    #[test_case(28, 0 => Some(0))]
+    #[test_case(28, 4 => Some(4))]
+    #[test_case(28, 8 => Some(4))]
+    #[test_case(32, 0 => None)]
+    #[test_case(32, 4 => None)]
+    #[test_case(32, 8 => None)]
+    fn test_contract_read(offset: usize, load_buf_size: usize) -> Option<usize> {
         // Given
         let raw_contract = [1u8; 32];
-        let contract_len = raw_contract.len();
         let mut mem = MemoryStorage::default();
         let contract = Contract::from(raw_contract.as_ref());
         mem.memory
@@ -848,21 +847,9 @@ mod tests {
         .unwrap();
 
         // Then
-        // If we read at the end of the contract, we expect to return `None`
-        // This is to be consistent with the semantics of `copy_from_slice_zero_fill`.
-        let bytes_readable_from_contract =
-            contract_len.checked_sub(offset).filter(|&v| v > 0);
-        // We expect to read as many bytes from the offset until the end of the contract,
-        // up to the buffer size.
-        let expected_bytes_read = bytes_readable_from_contract
-            .map(|partial_contract_len| partial_contract_len.min(load_buf_size));
-        let contract_bytes_in_buffer = expected_bytes_read.unwrap_or(0);
-        assert_eq!(expected_bytes_read, bytes_read);
-        assert!(buf[..contract_bytes_in_buffer]
-            .iter()
-            .all(|&v| v == raw_contract[offset]));
+        let contract_bytes_in_buffer = bytes_read.unwrap_or(0);
+        assert!(buf[0..contract_bytes_in_buffer].iter().all(|&v| v == 1));
         assert!(buf[contract_bytes_in_buffer..].iter().all(|&v| v == 0));
-
-        println!("{bytes_read:?} bytes: {buf:?}");
+        bytes_read
     }
 }

@@ -271,9 +271,8 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
             // We need to handle the case where the offset is greater than the length of
             // the contract In this case we follow the same approach as
             // `copy_from_slice_zero_fill`
-            if offset >= c.as_ref().len() {
+            if offset > c.as_ref().len() {
                 buf.fill(0);
-                // TODO: Do we want to return `None` or `Some(0)` here?
                 return None;
             }
             let starting_from_offset = &c.as_ref()[offset..];
@@ -465,7 +464,7 @@ impl StorageRead<ContractsState> for MemoryStorage {
             // We need to handle the case where the offset is greater than the length of
             // the serialized ContractState. In this case we follow the same approach as
             // `copy_from_slice_zero_fill` and fill the input buffer with zeros.
-            if offset >= data.as_ref().len() {
+            if offset > data.as_ref().len() {
                 buf.fill(0);
                 return None;
             }
@@ -509,7 +508,7 @@ impl StorageRead<BlobData> for MemoryStorage {
             // We need to handle the case where the offset is greater than the length of
             // the serialized ContractState. In this case we follow the same approach as
             // `copy_from_slice_zero_fill` and fill the input buffer with zeros.
-            if offset >= data.as_ref().len() {
+            if offset > data.as_ref().len() {
                 buf.fill(0);
                 return None;
             }
@@ -823,9 +822,12 @@ mod tests {
     #[test_case(28, 0 => Some(0))]
     #[test_case(28, 4 => Some(4))]
     #[test_case(28, 8 => Some(4))]
-    #[test_case(32, 0 => None)]
-    #[test_case(32, 4 => None)]
-    #[test_case(32, 8 => None)]
+    #[test_case(32, 0 => Some(0))]
+    #[test_case(32, 4 => Some(0))]
+    #[test_case(32, 8 => Some(0))]
+    #[test_case(33, 0 => None)]
+    #[test_case(33, 4 => None)]
+    #[test_case(33, 8 => None)]
     fn test_contract_read(offset: usize, load_buf_size: usize) -> Option<usize> {
         // Given
         let raw_contract = [1u8; 32];

@@ -638,7 +638,7 @@ where
 {
     let bytes_read = storage
         .storage::<ContractsRawCode>()
-        .read(contract, dst)
+        .read(contract, 0, dst)
         .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
     if bytes_read != dst.len() {

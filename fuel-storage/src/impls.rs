@@ -201,9 +201,10 @@ impl<'a, T: StorageRead<Type>, Type: Mappable> StorageRef<'a, T, Type> {
     pub fn read(
         &self,
         key: &<Type as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, T::Error> {
-        self.0.read(key, 0, buf)
+        self.0.read(key, offset, buf)
     }
 
     #[inline(always)]

@@ -33,9 +33,10 @@ pub use interpreter::{
     InterpreterStorage,
 };
 #[cfg(feature = "test-helpers")]
-pub use memory::MemoryStorage;
-#[cfg(feature = "test-helpers")]
-pub use memory::MemoryStorageError;
+pub use memory::{
+    MemoryStorage,
+    MemoryStorageError,
+};
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;

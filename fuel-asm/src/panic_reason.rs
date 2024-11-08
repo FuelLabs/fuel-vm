@@ -152,6 +152,8 @@ enum_from! {
         BlobIdAlreadyUploaded = 0x37,
         /// Active gas costs do not define the cost for this instruction.
         GasCostNotDefined = 0x38,
+        /// Given input contract does not exist.
+        InputContractDoesNotExist = 0x39,
     }
 }
 

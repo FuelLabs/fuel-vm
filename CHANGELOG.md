@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.
 
+### Breaking
+- [868](https://github.com/FuelLabs/fuel-vm/pull/868): Fixed error message when having a nonexistent contract in inputs. Instead of saying "contract was in inputs, but doesn't exist", the message was just "contract not in inputs". Now there's a separate error for that.
+
 ## [Version 0.58.2]
 
 ### Fixed

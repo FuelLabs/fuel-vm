@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.
 
+### Breaking 
+- [863](https://github.com/FuelLabs/fuel-vm/pull/863): Changed StorageRead::read to load a serialized value starting from a offset. The function returns an optional value equal to the number of bytes read when defined, or none if the offset specified in input is outside the boundaries of the serialized value read.
+
 ## [Version 0.58.2]
 
 ### Fixed

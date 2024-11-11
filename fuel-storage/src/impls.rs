@@ -101,9 +101,10 @@ impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
     fn read(
         &self,
         key: &<Type as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        <T as StorageRead<Type>>::read(self, key, buf)
+        <T as StorageRead<Type>>::read(self, key, offset, buf)
     }
 
     fn read_alloc(
@@ -120,9 +121,10 @@ impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
     fn read(
         &self,
         key: &<Type as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        <T as StorageRead<Type>>::read(self, key, buf)
+        <T as StorageRead<Type>>::read(self, key, offset, buf)
     }
 
     fn read_alloc(
@@ -199,9 +201,10 @@ impl<'a, T: StorageRead<Type>, Type: Mappable> StorageRef<'a, T, Type> {
     pub fn read(
         &self,
         key: &<Type as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, T::Error> {
-        self.0.read(key, buf)
+        self.0.read(key, offset, buf)
     }
 
     #[inline(always)]

@@ -636,8 +636,6 @@ where
             self.gas_cost,
             charge_len,
         )?;
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
 
         let new_sp = ssp.saturating_add(length);
         self.memory.grow_stack(new_sp)?;
@@ -650,15 +648,25 @@ where
         *self.sp = new_sp;
         *self.ssp = new_sp;
 
-        // Copy the code.
-        copy_from_slice_zero_fill(
-            self.memory,
-            owner,
-            contract_bytes,
-            region_start,
-            contract_offset,
-            length,
-        )?;
+        // Get the slice where to read the contract code into
+        let contract_buffer = self.memory.write(owner, region_start, length)?;
+
+        if contract_offset >= contract_len.into() {
+            contract_buffer[..].fill(0);
+        } else {
+            // The conract offset is within the contract bounds, which
+            // is guaranteed to be at most `u32::MAX`. As such, it is safe
+            // to convert `contract_offset` to `usize`, which is required
+            // to invoke `self.storage.read_contract`. Furthermore,
+            // the call to `self.storage.read_contract` cannot fail with
+            // error `StorageError::`
+            #[allow(clippy::cast_possible_truncation)]
+            self.storage
+                .read_contract(&contract_id, contract_offset as usize, contract_buffer)
+                .transpose()
+                .ok_or(PanicReason::ContractNotFound)?
+                .map_err(RuntimeError::Storage)?;
+        }
 
         // Update frame code size, if we have a stack frame (i.e. fp > 0)
         if self.context.is_internal() {
@@ -994,9 +1002,8 @@ where
         self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
 
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
-        let contract_len = contract_bytes.len();
+        let contract_bytes = self.memory.write(self.owner, dst_addr, length)?;
+        let contract_len = contract_size(&self.storage, &contract_id)?;
         let charge_len = core::cmp::max(contract_len as u64, length);
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
@@ -1012,15 +1019,22 @@ where
             charge_len,
         )?;
 
-        // Owner checks already performed above
-        copy_from_slice_zero_fill(
-            self.memory,
-            self.owner,
-            contract.as_ref().as_ref(),
-            dst_addr,
-            contract_offset,
-            length,
-        )?;
+        if contract_offset >= contract_len.into() {
+            contract_bytes[..].fill(0);
+        } else {
+            // The conract offset is within the contract bounds, which
+            // is guaranteed to be at most `u32::MAX`. As such, it is safe
+            // to convert `contract_offset` to `usize`, which is required
+            // to invoke `self.storage.read_contract`. Furthermore,
+            // the call to `self.storage.read_contract` cannot fail with
+            // error `StorageError::`
+            #[allow(clippy::cast_possible_truncation)]
+            self.storage
+                .read_contract(&contract_id, contract_offset as usize, contract_bytes)
+                .transpose()
+                .ok_or(PanicReason::ContractNotFound)?
+                .map_err(RuntimeError::Storage)?;
+        }
 
         Ok(inc_pc(self.pc)?)
     }

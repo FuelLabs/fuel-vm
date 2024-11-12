@@ -44,7 +44,6 @@ use fuel_asm::{
 };
 use fuel_storage::StorageSize;
 use fuel_tx::{
-    Contract,
     Output,
     Receipt,
 };
@@ -54,8 +53,6 @@ use fuel_types::{
     Bytes32,
     ContractId,
 };
-
-use alloc::borrow::Cow;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
@@ -177,19 +174,6 @@ where
             .storage_contract_exists(contract)
             .map_err(RuntimeError::Storage)
     }
-}
-
-pub(crate) fn contract<'s, S>(
-    storage: &'s S,
-    contract: &ContractId,
-) -> IoResult<Cow<'s, Contract>, S::DataError>
-where
-    S: InterpreterStorage,
-{
-    storage
-        .storage_contract(contract)
-        .map_err(RuntimeError::Storage)?
-        .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
 struct ContractBalanceCtx<'vm, S> {

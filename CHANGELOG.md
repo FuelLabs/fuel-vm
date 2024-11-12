@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking 
 - [863](https://github.com/FuelLabs/fuel-vm/pull/863): Changed StorageRead::read to load a serialized value starting from a offset. The function returns an optional value equal to the number of bytes read when defined, or none if the offset specified in input is outside the boundaries of the serialized value read.
 
+### Changed
+- [847](https://github.com/FuelLabs/fuel-vm/pull/847): Changed `interpreter::blockchain::load_contract_code` and `interpreter::blockchain::code_copy` to use the new version of `StorageRead::read` where the contract is loaded into a buffer starting from an offset. The contract is copied directly into the portion of memory starting at the destination address, rather than having to be copied indirectly after being fetched from storage.
+
 ## [Version 0.58.2]
 
 ### Fixed

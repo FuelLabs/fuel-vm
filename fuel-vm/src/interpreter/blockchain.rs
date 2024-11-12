@@ -885,7 +885,7 @@ where
 {
     let mut contract_buffer: Vec<u8> = alloc::vec![0u8; contract_len];
     storage
-        .read_contract(&contract_id, &mut contract_buffer)
+        .read_contract(&contract_id, 0, &mut contract_buffer)
         .transpose()
         .ok_or(PanicReason::ContractNotFound)?
         .map_err(RuntimeError::Storage)?;

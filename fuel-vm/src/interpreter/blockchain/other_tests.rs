@@ -2,8 +2,10 @@
 
 use alloc::vec;
 
-use crate::storage::MemoryStorage;
-use core::convert::Infallible;
+use crate::storage::{
+    MemoryStorage,
+    MemoryStorageError,
+};
 
 use super::*;
 use crate::interpreter::PanicContext;
@@ -25,7 +27,7 @@ fn test_burn(
     initialize: impl Into<Option<Word>>,
     amount: Word,
     sub_id: [u8; 32],
-) -> IoResult<(), Infallible> {
+) -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);
@@ -103,7 +105,7 @@ fn test_mint(
     initialize: impl Into<Option<Word>>,
     amount: Word,
     sub_id: [u8; 32],
-) -> IoResult<(), Infallible> {
+) -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let contract_id = ContractId::from([3u8; 32]);

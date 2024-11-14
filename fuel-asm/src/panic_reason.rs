@@ -152,6 +152,11 @@ enum_from! {
         BlobIdAlreadyUploaded = 0x37,
         /// Active gas costs do not define the cost for this instruction.
         GasCostNotDefined = 0x38,
+        /// The curve id is not supported.
+        UnsupportedCurveId = 0x39,
+        // TODO: Maybe add more different errors
+        /// Read alt_bn_128 curve point is invalid.
+        InvalidAltBn128Point = 0x3a,
     }
 }
 

@@ -345,6 +345,12 @@ impl_instructions! {
     0xba BSIZ bsiz [dst: RegId blob_id_ptr: RegId]
     "Load blob as data"
     0xbb BLDD bldd [dst_ptr: RegId blob_id_ptr: RegId offset: RegId len: RegId]
+    "Given some curve, performs addition of two points"
+    0xbc EADD eadd [dst: RegId curve_id: RegId point1_ptr: RegId point2_ptr: RegId]
+    "Given some curve, performs a scalar multiplication"
+    0xbd EMUL emul [dst: RegId curve_id: RegId point_ptr: RegId scalar_ptr: RegId]
+    "Given some curve, performs bilinear function on groups"
+    0xbe EPAR epar [success: RegId curve_id: RegId num_points: RegId points_ptr: RegId]
 }
 
 impl Instruction {
@@ -701,7 +707,8 @@ impl Opcode {
             | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
             | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
             | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
-            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD => {
+            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD
+            | EADD | EMUL | EPAR => {
                 true
             }
             _ => false,

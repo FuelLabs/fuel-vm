@@ -917,6 +917,18 @@ where
                 let (a, b, c, d) = bldd.unpack();
                 self.blob_load_data(r!(a), r!(b), r!(c), r!(d))?;
             }
+
+            Instruction::EADD(_edd) => {
+                unimplemented!("EADD is not yet implemented")
+            }
+
+            Instruction::EMUL(_emul) => {
+                unimplemented!("EMUL is not yet implemented")
+            }
+
+            Instruction::EPAR(_epar) => {
+                unimplemented!("EPAR is not yet implemented")
+            }
         }
 
         Ok(ExecuteState::Proceed)

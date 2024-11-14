@@ -1616,6 +1616,8 @@ pub struct GasCostsValuesV4 {
     pub wqmm: Word,
     pub xor: Word,
     pub xori: Word,
+    pub eadd: Word,
+    pub emul: Word,
 
     // Dependent
     pub aloc: DependentCost,
@@ -1643,6 +1645,7 @@ pub struct GasCostsValuesV4 {
     pub smo: DependentCost,
     pub srwq: DependentCost,
     pub swwq: DependentCost,
+    pub epar: DependentCost,
 
     // Non-opcode costs
     pub contract_root: DependentCost,
@@ -2509,6 +2512,8 @@ impl GasCostsValuesV4 {
             wqmm: 0,
             xor: 0,
             xori: 0,
+            eadd: 0,
+            emul: 0,
             aloc: DependentCost::free(),
             bsiz: DependentCost::free(),
             bldd: DependentCost::free(),
@@ -2533,6 +2538,7 @@ impl GasCostsValuesV4 {
             smo: DependentCost::free(),
             srwq: DependentCost::free(),
             swwq: DependentCost::free(),
+            epar: DependentCost::free(),
 
             // Non-opcode costs
             contract_root: DependentCost::free(),
@@ -2630,6 +2636,8 @@ impl GasCostsValuesV4 {
             wqmm: 1,
             xor: 1,
             xori: 1,
+            eadd: 1,
+            emul: 1,
             aloc: DependentCost::unit(),
             bsiz: DependentCost::unit(),
             bldd: DependentCost::unit(),
@@ -2654,6 +2662,7 @@ impl GasCostsValuesV4 {
             smo: DependentCost::unit(),
             srwq: DependentCost::unit(),
             swwq: DependentCost::unit(),
+            epar: DependentCost::unit(),
 
             // Non-opcode costs
             contract_root: DependentCost::unit(),

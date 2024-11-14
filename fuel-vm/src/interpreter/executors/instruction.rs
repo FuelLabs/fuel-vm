@@ -918,16 +918,19 @@ where
                 self.blob_load_data(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            Instruction::EADD(_edd) => {
-                unimplemented!("EADD is not yet implemented")
+            Instruction::EADD(eadd) => {
+                let (a, b, c, d) = eadd.unpack();
+                self.ec_add(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            Instruction::EMUL(_emul) => {
-                unimplemented!("EMUL is not yet implemented")
+            Instruction::EMUL(emul) => {
+                let (a, b, c, d) = emul.unpack();
+                self.ec_mul(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            Instruction::EPAR(_epar) => {
-                unimplemented!("EPAR is not yet implemented")
+            Instruction::EPAR(epar) => {
+                let (a, b, c, d) = epar.unpack();
+                self.ec_pairing(r!(a), r!(b), r!(c), r!(d))?;
             }
         }
 

@@ -91,6 +91,45 @@ where
             c,
         )
     }
+
+    pub(crate) fn ec_add(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
+        let owner = self.ownership_registers();
+        ec_add(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+            d,
+        )
+    }
+
+    pub(crate) fn ec_mul(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
+        let owner = self.ownership_registers();
+        ec_mul(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+            d,
+        )
+    }
+
+    pub(crate) fn ec_pairing(&mut self, a: Word, b: Word, c: Word, d: Word) -> SimpleResult<()> {
+        let owner = self.ownership_registers();
+        ec_pairing(
+            self.memory.as_mut(),
+            owner,
+            self.registers.pc_mut(),
+            a,
+            b,
+            c,
+            d,
+        )
+    }
 }
 
 pub(crate) fn secp256k1_recover(
@@ -201,4 +240,40 @@ pub(crate) fn sha256(
 ) -> SimpleResult<()> {
     memory.write_bytes(owner, a, *Hasher::hash(memory.read(b, c)?))?;
     Ok(inc_pc(pc)?)
+}
+
+pub(crate) fn ec_add(
+    _memory: &mut MemoryInstance,
+    _owner: OwnershipRegisters,
+    _pc: RegMut<PC>,
+    _a: Word,
+    _b: Word,
+    _c: Word,
+    _d: Word,
+) -> SimpleResult<()> {
+    todo!()
+}
+
+pub(crate) fn ec_mul(
+    _memory: &mut MemoryInstance,
+    _owner: OwnershipRegisters,
+    _pc: RegMut<PC>,
+    _a: Word,
+    _b: Word,
+    _c: Word,
+    _d: Word,
+) -> SimpleResult<()> {
+    todo!()
+}
+
+pub(crate) fn ec_pairing(
+    _memory: &mut MemoryInstance,
+    _owner: OwnershipRegisters,
+    _pc: RegMut<PC>,
+    _a: Word,
+    _b: Word,
+    _c: Word,
+    _d: Word,
+) -> SimpleResult<()> {
+    todo!()
 }

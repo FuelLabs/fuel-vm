@@ -89,7 +89,7 @@ pub fn default_gas_costs() -> GasCostsValues {
         wqmm: 3,
         xor: 1,
         xori: 1,
-        //TODO: Change
+        // TODO: Change
         eadd: 1,
         emul: 1,
         epar: DependentCost::LightOperation {

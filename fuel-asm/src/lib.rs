@@ -708,9 +708,7 @@ impl Opcode {
             | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
             | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
             | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD
-            | EADD | EMUL | EPAR => {
-                true
-            }
+            | EADD | EMUL | EPAR => true,
             _ => false,
         }
     }

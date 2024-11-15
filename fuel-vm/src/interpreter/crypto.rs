@@ -15,6 +15,7 @@ use crate::{
     error::SimpleResult,
 };
 
+use alloc::vec::Vec;
 use bn::{
     AffineG1,
     AffineG2,

@@ -306,8 +306,6 @@ fn read_g2_point_alt_bn_128(
     memory: &MemoryInstance,
     point_ptr: Word,
 ) -> SimpleResult<G2> {
-    // Reading Y because : https://github.com/bluealloy/revm/blob/main/crates/precompile/src/bn128.rs#L197 is doing it
-    // TODO: confirm why
     let ay = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
         crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
     })?;

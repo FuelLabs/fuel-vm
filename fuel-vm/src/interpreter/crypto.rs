@@ -17,10 +17,14 @@ use crate::{
 
 use bn::{
     AffineG1,
+    AffineG2,
     Fq,
+    Fq2,
     Fr,
     Group,
+    Gt,
     G1,
+    G2,
 };
 use fuel_crypto::{
     Hasher,
@@ -267,7 +271,10 @@ pub(crate) fn sha256(
     Ok(inc_pc(pc)?)
 }
 
-fn read_point_alt_bn_128(memory: &MemoryInstance, point_ptr: Word) -> SimpleResult<G1> {
+fn read_g1_point_alt_bn_128(
+    memory: &MemoryInstance,
+    point_ptr: Word,
+) -> SimpleResult<G1> {
     let px = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
         crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
     })?;
@@ -294,6 +301,65 @@ fn read_point_alt_bn_128(memory: &MemoryInstance, point_ptr: Word) -> SimpleResu
     }
 }
 
+fn read_g2_point_alt_bn_128(
+    memory: &MemoryInstance,
+    point_ptr: Word,
+) -> SimpleResult<G2> {
+    // Reading Y because : https://github.com/bluealloy/revm/blob/main/crates/precompile/src/bn128.rs#L197 is doing it
+    // TODO: confirm why
+    let ay = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+    })?;
+    let ax = Fq::from_slice(
+        memory.read(
+            point_ptr
+                .checked_add(32)
+                .ok_or(crate::error::PanicOrBug::Panic(
+                    fuel_tx::PanicReason::ArithmeticOverflow,
+                ))?,
+            32u64,
+        )?,
+    )
+    .map_err(|_| {
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+    })?;
+    let by = Fq::from_slice(
+        memory.read(
+            point_ptr
+                .checked_add(64)
+                .ok_or(crate::error::PanicOrBug::Panic(
+                    fuel_tx::PanicReason::ArithmeticOverflow,
+                ))?,
+            32u64,
+        )?,
+    )
+    .map_err(|_| {
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+    })?;
+    let bx = Fq::from_slice(
+        memory.read(
+            point_ptr
+                .checked_add(96)
+                .ok_or(crate::error::PanicOrBug::Panic(
+                    fuel_tx::PanicReason::ArithmeticOverflow,
+                ))?,
+            32u64,
+        )?,
+    )
+    .map_err(|_| {
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+    })?;
+    let a = Fq2::new(ax, ay);
+    let b = Fq2::new(bx, by);
+    if a.is_zero() && b.is_zero() {
+        Ok(G2::zero())
+    } else {
+        Ok(G2::from(AffineG2::new(a, b).map_err(|_| {
+            crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        })?))
+    }
+}
+
 // TODO: When regid when imm ?
 pub(crate) fn ec_add(
     memory: &mut MemoryInstance,
@@ -306,8 +372,8 @@ pub(crate) fn ec_add(
 ) -> SimpleResult<()> {
     match curve_id {
         0 => {
-            let point1 = read_point_alt_bn_128(memory, point1_ptr)?;
-            let point2 = read_point_alt_bn_128(memory, point2_ptr)?;
+            let point1 = read_g1_point_alt_bn_128(memory, point1_ptr)?;
+            let point2 = read_g1_point_alt_bn_128(memory, point2_ptr)?;
             let mut output = [0u8; 64];
             #[allow(clippy::arithmetic_side_effects)]
             if let Some(sum) = AffineG1::from_jacobian(point1 + point2) {
@@ -336,7 +402,7 @@ pub(crate) fn ec_mul(
 ) -> SimpleResult<()> {
     match curve_id {
         0 => {
-            let point = read_point_alt_bn_128(memory, point_ptr)?;
+            let point = read_g1_point_alt_bn_128(memory, point_ptr)?;
             let scalar =
                 Fr::from_slice(memory.read(scalar_ptr, 32u64)?).map_err(|_| {
                     crate::error::PanicOrBug::Panic(
@@ -361,16 +427,52 @@ pub(crate) fn ec_mul(
 }
 
 pub(crate) fn ec_pairing(
-    _memory: &mut MemoryInstance,
-    _owner: OwnershipRegisters,
+    memory: &mut MemoryInstance,
+    owner: OwnershipRegisters,
     pc: RegMut<PC>,
-    _success: Word,
+    success: Word,
     curve_id: Word,
-    _num_points: Word,
-    _points_ptr: Word,
+    num_elements: Word,
+    elements_ptr: Word,
 ) -> SimpleResult<()> {
     match curve_id {
-        0 => {}
+        0 => {
+            // Each element consistsof an uncompressed G1 point (64 bytes) and an
+            // uncompressed G2 point (128 bytes).
+            let element_size = 128 + 64;
+            let mut elements =
+                Vec::with_capacity(usize::try_from(num_elements).map_err(|_| {
+                    crate::error::PanicOrBug::Panic(
+                        fuel_tx::PanicReason::ArithmeticOverflow,
+                    )
+                })?);
+            for idx in 0..num_elements {
+                let start_offset = elements_ptr
+                    .checked_add(idx.checked_mul(element_size).ok_or(
+                        crate::error::PanicOrBug::Panic(
+                            fuel_tx::PanicReason::ArithmeticOverflow,
+                        ),
+                    )?)
+                    .ok_or(crate::error::PanicOrBug::Panic(
+                        fuel_tx::PanicReason::ArithmeticOverflow,
+                    ))?;
+                let a = read_g1_point_alt_bn_128(memory, start_offset)?;
+                let b = read_g2_point_alt_bn_128(
+                    memory,
+                    start_offset.checked_add(64).ok_or(
+                        crate::error::PanicOrBug::Panic(
+                            fuel_tx::PanicReason::ArithmeticOverflow,
+                        ),
+                    )?,
+                )?;
+                elements.push((a, b));
+            }
+            if bn::pairing_batch(&elements) == Gt::one() {
+                memory.write_bytes(owner, success, [1])?;
+            } else {
+                memory.write_bytes(owner, success, [0])?;
+            }
+        }
         _ => {
             return Err(crate::error::PanicOrBug::Panic(
                 fuel_tx::PanicReason::UnsupportedCurveId,

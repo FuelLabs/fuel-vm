@@ -858,6 +858,24 @@ impl GasCostsValues {
         }
     }
 
+    pub fn eadd(&self) -> Result<Word, GasCostNotDefined> {
+        match self {
+            GasCostsValues::V1(_) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_) => Err(GasCostNotDefined),
+            GasCostsValues::V4(v4) => Ok(v4.eadd),
+        }
+    }
+
+    pub fn emul(&self) -> Result<Word, GasCostNotDefined> {
+        match self {
+            GasCostsValues::V1(_) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_) => Err(GasCostNotDefined),
+            GasCostsValues::V4(v4) => Ok(v4.emul),
+        }
+    }
+
     pub fn aloc(&self) -> DependentCost {
         match self {
             GasCostsValues::V1(v1) => DependentCost::HeavyOperation {
@@ -1095,6 +1113,15 @@ impl GasCostsValues {
             GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
             GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
             GasCostsValues::V4(v4) => Ok(v4.bldd),
+        }
+    }
+
+    pub fn epar(&self) -> Result<DependentCost, GasCostNotDefined> {
+        match self {
+            GasCostsValues::V1(_v1) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_v2) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
+            GasCostsValues::V4(v4) => Ok(v4.epar),
         }
     }
 

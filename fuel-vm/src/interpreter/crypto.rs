@@ -469,7 +469,6 @@ pub(crate) fn ec_pairing(
                 )?;
                 elements.push((a, b));
             }
-            dbg!(&elements);
             let mut output = [0u8; 32];
             if bn::pairing_batch(&elements) == Gt::one() {
                 output[31] = 1;

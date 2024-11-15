@@ -362,6 +362,7 @@ fn read_g2_point_alt_bn_128(
 }
 
 // TODO: When regid when imm ?
+// TODO: Should we only have 1 point ptr
 pub(crate) fn ec_add(
     memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
@@ -468,11 +469,12 @@ pub(crate) fn ec_pairing(
                 )?;
                 elements.push((a, b));
             }
+            dbg!(&elements);
+            let mut output = [0u8; 32];
             if bn::pairing_batch(&elements) == Gt::one() {
-                memory.write_bytes(owner, success, [1])?;
-            } else {
-                memory.write_bytes(owner, success, [0])?;
+                output[31] = 1;
             }
+            memory.write_bytes(owner, success, output)?;
         }
         _ => {
             return Err(crate::error::PanicOrBug::Panic(

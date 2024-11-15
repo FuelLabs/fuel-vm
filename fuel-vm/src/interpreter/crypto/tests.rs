@@ -283,7 +283,7 @@ fn test_eadd(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
     };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100;
+    let result = 2100u64;
     // P1(x,y),P2(x,y)
     memory[points_address..points_address + 128].copy_from_slice(&input);
 
@@ -300,7 +300,10 @@ fn test_eadd(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
 
     // Then
     assert_eq!(pc, 8);
-    assert_eq!(&memory[result as usize..result as usize + 64], &expected);
+    assert_eq!(
+        &memory[result as usize..result.checked_add(64).unwrap() as usize],
+        &expected
+    );
     Ok(())
 }
 
@@ -325,7 +328,7 @@ fn test_eadd_error() -> SimpleResult<()> {
     };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100;
+    let result = 2100u64;
     // P1(x,y),P2(x,y)
     memory[points_address..points_address + 128].copy_from_slice(&input);
 
@@ -433,7 +436,7 @@ fn test_emul(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
     };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100;
+    let result = 2100u64;
 
     // P1(x,y),scalar
     memory[points_address..points_address + 96].copy_from_slice(&input);
@@ -451,7 +454,10 @@ fn test_emul(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
 
     // Then
     assert_eq!(pc, 8);
-    assert_eq!(&memory[result as usize..result as usize + 64], &expected);
+    assert_eq!(
+        &memory[result as usize..result.checked_add(64).unwrap() as usize],
+        &expected
+    );
     Ok(())
 }
 
@@ -475,7 +481,7 @@ fn test_emul_error() -> SimpleResult<()> {
     };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100;
+    let result = 2100u64;
     // P1(x,y),scalar
     memory[points_address..points_address + 96].copy_from_slice(&input);
 
@@ -643,7 +649,7 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
     };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100;
+    let result = 2100u64;
 
     // P1(x,y),G2(p1(x,y), p2(x,y))
     memory[points_address..points_address + input.len()].copy_from_slice(&input);
@@ -661,7 +667,10 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
 
     // Then
     assert_eq!(pc, 8);
-    assert_eq!(&memory[result as usize..result as usize + 32], &expected);
+    assert_eq!(
+        &memory[result as usize..result.checked_add(32).unwrap() as usize],
+        &expected
+    );
     Ok(())
 }
 
@@ -687,7 +696,7 @@ fn test_epar_error() -> SimpleResult<()> {
     };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100;
+    let result = 2100u64;
     // P1(x,y),G2(p1(x,y), p2(x,y))
     memory[points_address..points_address + 192].copy_from_slice(&input);
 

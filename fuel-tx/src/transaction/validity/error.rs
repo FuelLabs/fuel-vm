@@ -128,6 +128,7 @@ pub enum ValidityError {
     TransactionPoliciesAreInvalid,
     TransactionNoGasPricePolicy,
     TransactionMaturity,
+    TransactionExpiration,
     TransactionMaxFeeNotSet,
     TransactionInputsMax,
     TransactionOutputsMax,

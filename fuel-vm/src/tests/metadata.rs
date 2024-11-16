@@ -561,6 +561,7 @@ fn get_transaction_fields() {
     // blocked by https://github.com/FuelLabs/fuel-vm/issues/59
     // TODO GTFArgs::InputCoinTxPointer
     // TODO GTFArgs::InputContractTxPointer
+    // TODO GTFArgs::PolicyExpiration
 
     #[rustfmt::skip]
     let mut script: Vec<u8> = vec![

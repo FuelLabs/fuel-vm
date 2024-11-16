@@ -11,7 +11,7 @@ expression: json
       "script_data": []
     },
     "policies": {
-      "bits": "Tip | Maturity | MaxFee",
+      "bits": "Tip | Maturity | MaxFee | Expiration",
       "values": [
         1,
         0,

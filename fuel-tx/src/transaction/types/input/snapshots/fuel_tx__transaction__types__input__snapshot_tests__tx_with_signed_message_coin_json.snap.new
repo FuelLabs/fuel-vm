@@ -1,5 +1,6 @@
 ---
 source: fuel-tx/src/transaction/types/input/snapshot_tests.rs
+assertion_line: 153
 expression: json
 ---
 {
@@ -16,7 +17,8 @@ expression: json
         1,
         1000,
         123,
-        1000000
+        1000000,
+        456
       ]
     },
     "inputs": [

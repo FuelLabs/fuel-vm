@@ -124,6 +124,56 @@ fn maturity() {
 }
 
 #[test]
+fn expiration() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+
+    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .expiration(block_height)
+        .add_fee_input()
+        .finalize()
+        .check(block_height, &test_params())
+        .expect("Failed to validate script");
+
+    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .expiration(block_height)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        .check(block_height, &test_params())
+        .expect("Failed to validate tx create");
+
+    let err = Transaction::script(
+        Default::default(),
+        vec![],
+        vec![],
+        Policies::new().with_expiration(999.into()).with_max_fee(0),
+        vec![],
+        vec![],
+        vec![],
+    )
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
+
+    assert_eq!(ValidityError::TransactionExpiration, err);
+
+    let err = Transaction::create(
+        0,
+        Policies::new().with_expiration(999.into()).with_max_fee(0),
+        rng.gen(),
+        vec![],
+        vec![],
+        vec![],
+        vec![rng.gen()],
+    )
+    .check(block_height, &test_params())
+    .expect_err("Expected erroneous transaction");
+
+    assert_eq!(ValidityError::TransactionExpiration, err);
+}
+
+#[test]
 fn script__check__not_set_witness_limit_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);

@@ -1,5 +1,6 @@
 ---
 source: fuel-tx/src/transaction/types/input/snapshot_tests.rs
+assertion_line: 45
 expression: json
 ---
 {
@@ -11,17 +12,18 @@ expression: json
       "script_data": []
     },
     "policies": {
-      "bits": "Tip | Maturity | MaxFee | Expiration",
+      "bits": "Tip | WitnessLimit | Maturity | MaxFee | Expiration",
       "values": [
         1,
-        0,
+        1000,
         123,
-        1000000
+        1000000,
+        456
       ]
     },
     "inputs": [
       {
-        "CoinPredicate": {
+        "CoinSigned": {
           "utxo_id": {
             "tx_id": "0101010101010101010101010101010101010101010101010101010101010101",
             "output_index": 2
@@ -33,34 +35,10 @@ expression: json
             "block_height": 46,
             "tx_index": 5
           },
-          "witness_index": null,
-          "predicate_gas_used": 100000,
-          "predicate": [
-            3,
-            3,
-            3,
-            3,
-            3,
-            3,
-            3,
-            3,
-            3,
-            3
-          ],
-          "predicate_data": [
-            4,
-            4,
-            4,
-            4,
-            4,
-            4,
-            4,
-            4,
-            4,
-            4,
-            4,
-            4
-          ]
+          "witness_index": 4,
+          "predicate_gas_used": null,
+          "predicate": null,
+          "predicate_data": null
         }
       }
     ],

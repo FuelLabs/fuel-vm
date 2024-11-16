@@ -1,5 +1,6 @@
 ---
 source: fuel-tx/src/transaction/types/input/snapshot_tests.rs
+assertion_line: 265
 expression: json
 ---
 {
@@ -16,19 +17,31 @@ expression: json
         1,
         0,
         123,
-        1000000
+        1000000,
+        456
       ]
     },
     "inputs": [
       {
-        "MessageCoinPredicate": {
+        "MessageDataPredicate": {
           "sender": "0202020202020202020202020202020202020202020202020202020202020202",
           "recipient": "0303030303030303030303030303030303030303030303030303030303030303",
           "amount": 4,
           "nonce": "0505050505050505050505050505050505050505050505050505050505050505",
           "witness_index": null,
           "predicate_gas_used": 100000,
-          "data": null,
+          "data": [
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
           "predicate": [
             7,
             7,

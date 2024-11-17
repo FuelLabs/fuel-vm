@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [871](https://github.com/FuelLabs/fuel-vm/pull/871): Add `expiration` policy that prevent a transaction to be inserted after a given block height.
+
 ### Fixed
 - [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.
 

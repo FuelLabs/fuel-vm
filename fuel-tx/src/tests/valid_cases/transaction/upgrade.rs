@@ -53,6 +53,7 @@ fn valid_upgrade_transaction_with_message() -> TransactionBuilder<Upgrade> {
         vec![],
     ));
     builder.with_params(test_params());
+    builder.expiration(u32::MAX.into());
 
     builder
 }

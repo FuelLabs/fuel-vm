@@ -140,7 +140,9 @@ impl TransactionBuilder<Script> {
                 script: script.into(),
                 script_data,
             },
-            policies: Policies::new().with_max_fee(0),
+            policies: Policies::new()
+                .with_max_fee(0)
+                .with_expiration(u32::MAX.into()),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -164,7 +166,9 @@ impl TransactionBuilder<Create> {
                 salt,
                 storage_slots,
             },
-            policies: Policies::new().with_max_fee(0),
+            policies: Policies::new()
+                .with_max_fee(0)
+                .with_expiration(u32::MAX.into()),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -194,7 +198,9 @@ impl TransactionBuilder<Upgrade> {
     pub fn upgrade(purpose: UpgradePurpose) -> Self {
         let tx = Upgrade {
             body: UpgradeBody { purpose },
-            policies: Policies::new().with_max_fee(0),
+            policies: Policies::new()
+                .with_max_fee(0)
+                .with_expiration(u32::MAX.into()),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -208,7 +214,9 @@ impl TransactionBuilder<Upload> {
     pub fn upload(body: UploadBody) -> Self {
         let tx = Upload {
             body,
-            policies: Policies::new().with_max_fee(0),
+            policies: Policies::new()
+                .with_max_fee(0)
+                .with_expiration(u32::MAX.into()),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),
@@ -222,7 +230,9 @@ impl TransactionBuilder<Blob> {
     pub fn blob(body: BlobBody) -> Self {
         let tx = Blob {
             body,
-            policies: Policies::new().with_max_fee(0),
+            policies: Policies::new()
+                .with_max_fee(0)
+                .with_expiration(u32::MAX.into()),
             inputs: Default::default(),
             outputs: Default::default(),
             witnesses: Default::default(),

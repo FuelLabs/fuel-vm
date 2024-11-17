@@ -120,7 +120,9 @@ fn split_bytecode__generates_valid_transactions() {
         // Given
         let tx = Transaction::upload_from_subsection(
             subsection,
-            Policies::new().with_max_fee(0),
+            Policies::new()
+                .with_max_fee(0)
+                .with_expiration(u32::MAX.into()),
             vec![Input::coin_predicate(
                 Default::default(),
                 Input::predicate_owner(predicate()),

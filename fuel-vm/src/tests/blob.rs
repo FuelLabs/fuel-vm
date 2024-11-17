@@ -45,7 +45,9 @@ fn blob_cannot_be_reuploaded() {
         .collect::<Vec<u8>>()
         .into();
 
-    let policies = Policies::new().with_max_fee(0);
+    let policies = Policies::new()
+        .with_max_fee(0)
+        .with_expiration(u32::MAX.into());
 
     let mut blob = Transaction::blob(
         BlobBody {

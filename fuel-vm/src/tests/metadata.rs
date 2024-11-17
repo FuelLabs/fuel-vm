@@ -369,6 +369,7 @@ fn get_transaction_fields() {
     let gas_limit = 10_000_000;
     let maturity = 50.into();
     let height = 122.into();
+    let expiration = 123.into();
     let input = 10_000_000;
 
     let tx_params = TxParameters::default();
@@ -441,6 +442,7 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .maturity(maturity)
+        .expiration(expiration)
         .with_gas_costs(gas_costs)
         .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
@@ -561,7 +563,6 @@ fn get_transaction_fields() {
     // blocked by https://github.com/FuelLabs/fuel-vm/issues/59
     // TODO GTFArgs::InputCoinTxPointer
     // TODO GTFArgs::InputContractTxPointer
-    // TODO GTFArgs::PolicyExpiration
 
     #[rustfmt::skip]
     let mut script: Vec<u8> = vec![
@@ -600,6 +601,12 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x00),
         op::movi(0x11, *maturity as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaturity),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, *expiration as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyExpiration),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -944,6 +951,7 @@ fn get_transaction_fields() {
     let tx = builder
         .tip(tip)
         .maturity(maturity)
+        .expiration(expiration)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)

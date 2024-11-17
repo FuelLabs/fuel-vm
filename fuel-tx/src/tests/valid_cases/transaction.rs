@@ -951,7 +951,9 @@ fn create__check_without_signatures__errors_if_wrong_witness_index() {
 
     let err = Transaction::create(
         1,
-        Policies::default().with_max_fee(0),
+        Policies::default()
+            .with_max_fee(0)
+            .with_expiration(u32::MAX.into()),
         rng.gen(),
         vec![],
         vec![Input::coin_signed(

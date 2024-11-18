@@ -347,7 +347,7 @@ fn test_eadd_error() -> SimpleResult<()> {
     // Then
     assert_eq!(
         err,
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     );
     Ok(())
 }
@@ -500,7 +500,7 @@ fn test_emul_error() -> SimpleResult<()> {
     // Then
     assert_eq!(
         err,
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     );
     Ok(())
 }
@@ -715,7 +715,7 @@ fn test_epar_error() -> SimpleResult<()> {
     // Then
     assert_eq!(
         err,
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     );
     Ok(())
 }

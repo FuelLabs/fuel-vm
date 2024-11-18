@@ -156,7 +156,7 @@ enum_from! {
         UnsupportedCurveId = 0x39,
         // TODO: Maybe add more different errors
         /// Read alt_bn_128 curve point is invalid.
-        InvalidAltBn128Point = 0x3a,
+        InvalidEllipticCurvePoint = 0x3a,
     }
 }
 

@@ -277,7 +277,7 @@ fn read_g1_point_alt_bn_128(
     point_ptr: Word,
 ) -> SimpleResult<G1> {
     let px = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
     let py = Fq::from_slice(
         memory.read(
@@ -290,14 +290,16 @@ fn read_g1_point_alt_bn_128(
         )?,
     )
     .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
 
     if px == Fq::zero() && py == Fq::zero() {
         Ok(G1::zero())
     } else {
         AffineG1::new(px, py).map(Into::into).map_err(|_| {
-            crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+            crate::error::PanicOrBug::Panic(
+                fuel_tx::PanicReason::InvalidEllipticCurvePoint,
+            )
         })
     }
 }
@@ -307,7 +309,7 @@ fn read_g2_point_alt_bn_128(
     point_ptr: Word,
 ) -> SimpleResult<G2> {
     let ay = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
     let ax = Fq::from_slice(
         memory.read(
@@ -320,7 +322,7 @@ fn read_g2_point_alt_bn_128(
         )?,
     )
     .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
     let by = Fq::from_slice(
         memory.read(
@@ -333,7 +335,7 @@ fn read_g2_point_alt_bn_128(
         )?,
     )
     .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
     let bx = Fq::from_slice(
         memory.read(
@@ -346,7 +348,7 @@ fn read_g2_point_alt_bn_128(
         )?,
     )
     .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
     let a = Fq2::new(ax, ay);
     let b = Fq2::new(bx, by);
@@ -354,7 +356,9 @@ fn read_g2_point_alt_bn_128(
         Ok(G2::zero())
     } else {
         Ok(G2::from(AffineG2::new(a, b).map_err(|_| {
-            crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidAltBn128Point)
+            crate::error::PanicOrBug::Panic(
+                fuel_tx::PanicReason::InvalidEllipticCurvePoint,
+            )
         })?))
     }
 }
@@ -406,7 +410,7 @@ pub(crate) fn ec_mul(
             let scalar =
                 Fr::from_slice(memory.read(scalar_ptr, 32u64)?).map_err(|_| {
                     crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::InvalidAltBn128Point,
+                        fuel_tx::PanicReason::InvalidEllipticCurvePoint,
                     )
                 })?;
             let mut output = [0u8; 64];

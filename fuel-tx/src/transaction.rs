@@ -872,6 +872,23 @@ pub mod field {
         }
     }
 
+    pub trait Owner {
+        fn owner(&self) -> Option<Word>;
+        fn set_owner(&mut self, value: Word);
+    }
+
+    impl<T: Policies + ?Sized> Owner for T {
+        #[inline(always)]
+        fn owner(&self) -> Option<Word> {
+            self.policies().get(PolicyType::Owner)
+        }
+
+        #[inline(always)]
+        fn set_owner(&mut self, value: Word) {
+            self.policies_mut().set(PolicyType::Owner, Some(value))
+        }
+    }
+
     pub trait TxPointer {
         fn tx_pointer(&self) -> &crate::TxPointer;
         fn tx_pointer_mut(&mut self) -> &mut crate::TxPointer;

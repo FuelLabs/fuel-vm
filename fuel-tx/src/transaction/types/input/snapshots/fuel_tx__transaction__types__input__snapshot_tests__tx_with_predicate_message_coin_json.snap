@@ -12,12 +12,13 @@ snapshot_kind: text
       "script_data": []
     },
     "policies": {
-      "bits": "Tip | Maturity | MaxFee | Expiration",
+      "bits": "Tip | Maturity | MaxFee | Expiration | Owner",
       "values": [
         1,
         123,
         1000000,
-        456
+        456,
+        0
       ]
     },
     "inputs": [

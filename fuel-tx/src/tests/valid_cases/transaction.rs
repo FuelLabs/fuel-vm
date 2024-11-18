@@ -124,26 +124,27 @@ fn maturity() {
 }
 
 #[test]
-fn expiration() {
+fn script__check__valid_expiration_policy() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     let block_height = 1000.into();
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        // Given
         .expiration(block_height)
         .add_fee_input()
         .finalize()
+        // When
         .check(block_height, &test_params())
+        // Then
         .expect("Failed to validate script");
+}
 
-    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
-        .expiration(block_height)
-        .add_fee_input()
-        .add_contract_created()
-        .finalize()
-        .check(block_height, &test_params())
-        .expect("Failed to validate tx create");
+#[test]
+fn script__check__invalid_expiration_policy() {
+    let block_height = 1000.into();
 
+    // Given
     let err = Transaction::script(
         Default::default(),
         vec![],
@@ -153,11 +154,39 @@ fn expiration() {
         vec![],
         vec![],
     )
+    // When
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
+    // Then
     assert_eq!(ValidityError::TransactionExpiration, err);
+}
 
+#[test]
+fn create__check__valid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+
+    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        // Given
+        .expiration(block_height)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        // Then
+        .expect("Failed to validate tx create");
+}
+
+#[test]
+fn create__check__invalid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+
+    // Given
     let err = Transaction::create(
         0,
         Policies::new().with_expiration(999.into()).with_max_fee(0),
@@ -167,9 +196,11 @@ fn expiration() {
         vec![],
         vec![rng.gen()],
     )
+    // When
     .check(block_height, &test_params())
     .expect_err("Expected erroneous transaction");
 
+    // Then
     assert_eq!(ValidityError::TransactionExpiration, err);
 }
 
@@ -951,9 +982,7 @@ fn create__check_without_signatures__errors_if_wrong_witness_index() {
 
     let err = Transaction::create(
         1,
-        Policies::default()
-            .with_max_fee(0)
-            .with_expiration(u32::MAX.into()),
+        Policies::default().with_max_fee(0),
         rng.gen(),
         vec![],
         vec![Input::coin_signed(

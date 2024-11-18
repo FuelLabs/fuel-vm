@@ -47,9 +47,7 @@ fn prevent_contract_id_redeployment() {
 
     let output = Output::contract_created(contract_undefined, state_root);
 
-    let policies = Policies::new()
-        .with_max_fee(0)
-        .with_expiration(u32::MAX.into());
+    let policies = Policies::new().with_max_fee(0);
 
     let mut create = Transaction::create(
         Default::default(),

@@ -108,7 +108,6 @@ where
             body: Default::default(),
             policies: Policies::new()
                 .with_maturity(0.into())
-                .with_expiration(u32::MAX.into())
                 .with_witness_limit(10000),
             inputs: Default::default(),
             outputs: Default::default(),

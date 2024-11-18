@@ -94,7 +94,7 @@ fn maturity() {
 }
 
 #[test]
-fn expiration() {
+fn upgrade__check__valid_expiration_policy() {
     let block_height: BlockHeight = 1000.into();
     let failing_block_height = block_height.pred().unwrap();
 

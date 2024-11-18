@@ -68,13 +68,14 @@ fn transaction_can_be_executed_after_maturity() {
 }
 
 #[test]
-fn transaction_can_be_executed_before_expiration() {
-    const EXPIRATION: BlockHeight = BlockHeight::new(2);
-    const BLOCK_HEIGHT: BlockHeight = BlockHeight::new(1);
-
+fn transaction__execution__works_before_expiration() {
     let arb_max_fee = 1;
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // Given
+    const EXPIRATION: BlockHeight = BlockHeight::new(2);
+    const BLOCK_HEIGHT: BlockHeight = BlockHeight::new(1);
     let tx = TransactionBuilder::script(
         Some(op::ret(1)).into_iter().collect(),
         Default::default(),
@@ -91,9 +92,12 @@ fn transaction_can_be_executed_before_expiration() {
     .expiration(EXPIRATION)
     .finalize_checked(BLOCK_HEIGHT);
 
+    // When
     let result = TestBuilder::new(2322u64)
         .block_height(BLOCK_HEIGHT)
         .execute_tx(tx);
+
+    // Then
     assert!(result.is_ok());
 }
 

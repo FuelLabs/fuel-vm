@@ -842,8 +842,9 @@ pub mod field {
         fn expiration(&self) -> BlockHeight {
             self.policies()
                 .get(PolicyType::Expiration)
-                .map(|value| u32::try_from(value).unwrap_or(u32::MAX).into())
-                .unwrap_or_default()
+                .and_then(|value| u32::try_from(value).ok())
+                .unwrap_or(u32::MAX)
+                .into()
         }
 
         #[inline(always)]

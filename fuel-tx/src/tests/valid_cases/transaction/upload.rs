@@ -120,9 +120,7 @@ fn split_bytecode__generates_valid_transactions() {
         // Given
         let tx = Transaction::upload_from_subsection(
             subsection,
-            Policies::new()
-                .with_max_fee(0)
-                .with_expiration(u32::MAX.into()),
+            Policies::new().with_max_fee(0),
             vec![Input::coin_predicate(
                 Default::default(),
                 Input::predicate_owner(predicate()),
@@ -172,7 +170,7 @@ fn maturity() {
 }
 
 #[test]
-fn expiration() {
+fn upload__check__valid_expiration_policy() {
     let block_height: BlockHeight = 1000.into();
     let failing_block_height = block_height.pred().unwrap();
 

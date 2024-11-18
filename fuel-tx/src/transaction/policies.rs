@@ -35,6 +35,8 @@ bitflags::bitflags! {
         const MaxFee = 1 << 3;
         /// If set, the expiration is present in the policies.
         const Expiration = 1 << 4;
+        /// If set, the owner is present in the policies.
+        const Owner = 1 << 5;
     }
 }
 
@@ -83,6 +85,7 @@ pub enum PolicyType {
     Maturity,
     MaxFee,
     Expiration,
+    Owner,
 }
 
 impl PolicyType {
@@ -93,6 +96,7 @@ impl PolicyType {
             PolicyType::Maturity => 2,
             PolicyType::MaxFee => 3,
             PolicyType::Expiration => 4,
+            PolicyType::Owner => 5,
         }
     }
 
@@ -103,6 +107,7 @@ impl PolicyType {
             PolicyType::Maturity => PoliciesBits::Maturity,
             PolicyType::MaxFee => PoliciesBits::MaxFee,
             PolicyType::Expiration => PoliciesBits::Expiration,
+            PolicyType::Owner => PoliciesBits::Owner,
         }
     }
 }
@@ -177,6 +182,12 @@ impl Policies {
     /// Sets the `max_fee` policy.
     pub fn with_max_fee(mut self, max_fee: Word) -> Self {
         self.set(PolicyType::MaxFee, Some(max_fee));
+        self
+    }
+
+    /// Sets the `owner` policy.
+    pub fn with_owner(mut self, owner: Word) -> Self {
+        self.set(PolicyType::Owner, Some(owner));
         self
     }
 
@@ -383,8 +394,9 @@ pub mod typescript {
 #[test]
 fn values_for_bitmask_produces_expected_values() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
-    const VALUES: [Word; POLICIES_NUMBER] =
-        [0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001];
+    const VALUES: [Word; POLICIES_NUMBER] = [
+        0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001, 0x6000001,
+    ];
 
     // Given
     let mut set = hashbrown::HashSet::new();
@@ -403,8 +415,9 @@ fn values_for_bitmask_produces_expected_values() {
 #[test]
 fn canonical_serialization_deserialization_for_any_combination_of_values_works() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
-    const VALUES: [Word; POLICIES_NUMBER] =
-        [0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001];
+    const VALUES: [Word; POLICIES_NUMBER] = [
+        0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001, 0x6000001,
+    ];
 
     for bitmask in 0..MAX_BITMASK {
         let bits =

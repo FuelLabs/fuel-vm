@@ -193,6 +193,10 @@ impl<Tx> GTFInput<'_, Tx> {
                 .policies()
                 .get(PolicyType::MaxFee)
                 .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyOwner => tx
+                .policies()
+                .get(PolicyType::Owner)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => {
                 tx.inputs().len() as Word
             }

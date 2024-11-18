@@ -23,6 +23,7 @@ fn tx_with_signed_coin_snapshot() -> Transaction {
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
+        .owner(0)
         .max_fee_limit(1000000)
         .witness_limit(1000)
         .finalize_as_transaction()
@@ -61,6 +62,7 @@ fn tx_with_predicate_coin_snapshot() -> Transaction {
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
+        .owner(0)
         .max_fee_limit(1000000)
         .finalize_as_transaction()
 }
@@ -94,6 +96,7 @@ fn tx_with_contract_snapshot() -> Transaction {
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
+        .owner(0)
         .max_fee_limit(1000000)
         .finalize_as_transaction()
 }
@@ -131,6 +134,7 @@ fn tx_with_signed_message_coin() -> Transaction {
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
+        .owner(0)
         .max_fee_limit(1000000)
         .witness_limit(1000)
         .finalize_as_transaction()
@@ -169,6 +173,7 @@ fn tx_with_predicate_message_coin() -> Transaction {
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
+        .owner(0)
         .max_fee_limit(1000000)
         .finalize_as_transaction()
 }
@@ -205,6 +210,7 @@ fn tx_with_signed_message_data() -> Transaction {
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
+        .owner(0)
         .max_fee_limit(1000000)
         .witness_limit(1000)
         .finalize_as_transaction()
@@ -243,6 +249,7 @@ fn tx_with_predicate_message_data() -> Transaction {
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
+        .owner(0)
         .max_fee_limit(1000000)
         .finalize_as_transaction()
 }

@@ -2,6 +2,7 @@ use crate::{
     field::{
         Expiration,
         Maturity,
+        Owner,
     },
     input::{
         coin::{
@@ -375,6 +376,11 @@ where
 
     if tx.witnesses().len() > tx_params.max_witnesses() as usize {
         Err(ValidityError::TransactionWitnessesMax)?
+    }
+
+    let owner = usize::try_from(tx.owner()).map_err(|_| ValidityError::TransactionOwnerIndexDoesntExist)?;
+    if owner >= tx.inputs().len() {
+        Err(ValidityError::TransactionOwnerIndexDoesntExist)?
     }
 
     let any_spendable_input = tx.inputs().iter().find(|input| match input {

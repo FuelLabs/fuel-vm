@@ -378,7 +378,8 @@ where
         Err(ValidityError::TransactionWitnessesMax)?
     }
 
-    let owner = usize::try_from(tx.owner()).map_err(|_| ValidityError::TransactionOwnerIndexDoesntExist)?;
+    let owner = usize::try_from(tx.owner())
+        .map_err(|_| ValidityError::TransactionOwnerIndexDoesntExist)?;
     if owner >= tx.inputs().len() {
         Err(ValidityError::TransactionOwnerIndexDoesntExist)?
     }

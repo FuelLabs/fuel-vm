@@ -81,7 +81,7 @@ pub enum GasCostsValues {
     /// Version 4 of the gas costs.
     V4(GasCostsValuesV4),
     /// Version 5 of the gas costs.
-    V5(GasCostsValuesV5)
+    V5(GasCostsValuesV5),
 }
 
 /// Gas cost for this instruction is not defined for this version.
@@ -2942,7 +2942,6 @@ impl GasCostsValuesV4 {
         }
     }
 }
-
 
 impl GasCostsValuesV5 {
     /// Create costs that are all set to zero.

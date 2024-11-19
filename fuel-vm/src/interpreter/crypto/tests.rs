@@ -523,9 +523,7 @@ fn test_emul_error() -> SimpleResult<()> {
         090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b\
         12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa",
     ).unwrap(),
-    hex::decode(
-        "0000000000000000000000000000000000000000000000000000000000000001"
-    ).unwrap()
+    1u64
 )]
 // From https://github.com/ethereum/tests/blob/develop/GeneralStateTests/stZeroKnowledge/ecpairing_three_point_match_1.json
 #[case(
@@ -544,9 +542,7 @@ fn test_emul_error() -> SimpleResult<()> {
         2f997f3dbd66a7afe07fe7862ce239edba9e05c5afff7f8a1259c9733b2dfbb9\
         29d1691530ca701b4a106054688728c9972c8512e9789e9567aae23e302ccd75"
     ).unwrap(),
-    hex::decode(
-        "0000000000000000000000000000000000000000000000000000000000000001"
-    ).unwrap()
+    1u64
 )]
 // From https://github.com/ethereum/tests/blob/develop/GeneralStateTests/stZeroKnowledge/ecpairing_three_point_fail_1.json
 #[case(
@@ -565,9 +561,7 @@ fn test_emul_error() -> SimpleResult<()> {
         00cacf3523caf879d7d05e30549f1e6fdce364cbb8724b0329c6c2a39d4f018e\
         0692e55db067300e6e3fe56218fa2f940054e57e7ef92bf7d475a9d8a8502fd2"
     ).unwrap(),
-    hex::decode(
-        "0000000000000000000000000000000000000000000000000000000000000000"
-    ).unwrap()
+    0u64
 )]
 // From https://github.com/poanetwork/parity-ethereum/blob/2ea4265b0083c4148571b21e1079c641d5f31dc2/ethcore/benches/builtin.rs#L686
 #[case(
@@ -634,22 +628,14 @@ fn test_emul_error() -> SimpleResult<()> {
         275dc4a288d1afb3cbb1ac09187524c7db36395df7be3b99e673b13a075a65ec\
         1d9befcd05a5323e6da4d435f3b617cdb3af83285c2df711ef39c01571827f9d"
     ).unwrap(),
-    hex::decode(
-        "0000000000000000000000000000000000000000000000000000000000000001"
-    ).unwrap()
+    1u64
 )]
-fn test_epar(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<()> {
+fn test_epar(#[case] input: Vec<u8>, #[case] expected: u64) -> SimpleResult<()> {
     // Given
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1000,
-        hp: 2000,
-        prev_hp: VM_MAX_RAM - 1,
-    };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100u64;
+    let mut result = 0;
 
     // P1(x,y),G2(p1(x,y), p2(x,y))
     memory[points_address..points_address + input.len()].copy_from_slice(&input);
@@ -657,9 +643,8 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
     // When
     ec_pairing(
         &mut memory,
-        owner,
         RegMut::new(&mut pc),
-        result as Word,
+        &mut result,
         0,
         2,
         points_address as Word,
@@ -667,10 +652,7 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
 
     // Then
     assert_eq!(pc, 8);
-    assert_eq!(
-        &memory[result as usize..result.checked_add(32).unwrap() as usize],
-        &expected
-    );
+    assert_eq!(result, expected);
     Ok(())
 }
 
@@ -688,24 +670,17 @@ fn test_epar_error() -> SimpleResult<()> {
     )
     .unwrap();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
-    let owner = OwnershipRegisters {
-        sp: 1000,
-        ssp: 1000,
-        hp: 2000,
-        prev_hp: VM_MAX_RAM - 1,
-    };
     let mut pc = 4;
     let points_address = 0;
-    let result = 2100u64;
+    let mut result = 0;
     // P1(x,y),G2(p1(x,y), p2(x,y))
     memory[points_address..points_address + 192].copy_from_slice(&input);
 
     // When
     let err = ec_pairing(
         &mut memory,
-        owner,
         RegMut::new(&mut pc),
-        result as Word,
+        &mut result,
         0,
         2,
         points_address as Word,

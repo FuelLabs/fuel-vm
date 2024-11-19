@@ -36,6 +36,7 @@ use fuel_crypto::{
 use fuel_types::{
     Bytes32,
     Bytes64,
+    RegisterId,
     Word,
 };
 
@@ -144,21 +145,14 @@ where
 
     pub(crate) fn ec_pairing(
         &mut self,
-        a: Word,
+        ra: RegisterId,
         b: Word,
         c: Word,
         d: Word,
     ) -> SimpleResult<()> {
-        let owner = self.ownership_registers();
-        ec_pairing(
-            self.memory.as_mut(),
-            owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-            c,
-            d,
-        )
+        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+        let dest = &mut w[ra.try_into()?];
+        ec_pairing(self.memory.as_mut(), pc, dest, b, c, d)
     }
 }
 
@@ -432,9 +426,8 @@ pub(crate) fn ec_mul(
 
 pub(crate) fn ec_pairing(
     memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
     pc: RegMut<PC>,
-    success: Word,
+    success: &mut u64,
     curve_id: Word,
     num_elements: Word,
     elements_ptr: Word,
@@ -471,11 +464,7 @@ pub(crate) fn ec_pairing(
                 )?;
                 elements.push((a, b));
             }
-            let mut output = [0u8; 32];
-            if bn::pairing_batch(&elements) == Gt::one() {
-                output[31] = 1;
-            }
-            memory.write_bytes(owner, success, output)?;
+            *success = (bn::pairing_batch(&elements) == Gt::one()) as u64;
         }
         _ => {
             return Err(crate::error::PanicOrBug::Panic(

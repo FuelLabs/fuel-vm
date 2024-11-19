@@ -937,7 +937,7 @@ where
                     self.gas_costs().epar().map_err(PanicReason::from)?,
                     len,
                 )?;
-                self.ec_pairing(r!(a), r!(b), len, r!(d))?;
+                self.ec_pairing(a.into(), r!(b), len, r!(d))?;
             }
         }
 

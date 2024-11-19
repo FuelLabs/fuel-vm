@@ -270,6 +270,7 @@ fn read_g1_point_alt_bn_128(
     memory: &MemoryInstance,
     point_ptr: Word,
 ) -> SimpleResult<G1> {
+    // Big endian required by the library
     let px = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
         crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
@@ -302,6 +303,7 @@ fn read_g2_point_alt_bn_128(
     memory: &MemoryInstance,
     point_ptr: Word,
 ) -> SimpleResult<G2> {
+    // Big endian required by the library
     let ay = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
         crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
     })?;
@@ -357,8 +359,6 @@ fn read_g2_point_alt_bn_128(
     }
 }
 
-// TODO: When regid when imm ?
-// TODO: Should we only have 1 point ptr
 pub(crate) fn ec_add(
     memory: &mut MemoryInstance,
     owner: OwnershipRegisters,

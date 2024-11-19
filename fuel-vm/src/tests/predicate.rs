@@ -38,7 +38,7 @@ use crate::{
 };
 use core::iter;
 use fuel_tx::{
-    consensus_parameters::gas::GasCostsValuesV4,
+    consensus_parameters::gas::GasCostsValuesV5,
     ConsensusParameters,
 };
 
@@ -193,9 +193,9 @@ fn estimate_predicate_works_when_max_gas_per_predicate_less_than_tx_gas__10_inpu
     let mut script = builder.finalize();
 
     // Given
-    let gas_costs = GasCostsValuesV4 {
+    let gas_costs = GasCostsValuesV5 {
         ret: MAX_PREDICATE_GAS,
-        ..GasCostsValuesV4::free()
+        ..GasCostsValuesV5::free()
     };
     let gas_costs = GasCosts::new(gas_costs.into());
     let predicate_param =

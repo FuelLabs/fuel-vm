@@ -945,23 +945,13 @@ impl GasCostsValues {
         }
     }
 
-    pub fn eadd(&self) -> Result<Word, GasCostNotDefined> {
+    pub fn ecop(&self) -> Result<Word, GasCostNotDefined> {
         match self {
             GasCostsValues::V1(_) => Err(GasCostNotDefined),
             GasCostsValues::V2(_) => Err(GasCostNotDefined),
             GasCostsValues::V3(_) => Err(GasCostNotDefined),
             GasCostsValues::V4(_) => Err(GasCostNotDefined),
-            GasCostsValues::V5(v5) => Ok(v5.eadd),
-        }
-    }
-
-    pub fn emul(&self) -> Result<Word, GasCostNotDefined> {
-        match self {
-            GasCostsValues::V1(_) => Err(GasCostNotDefined),
-            GasCostsValues::V2(_) => Err(GasCostNotDefined),
-            GasCostsValues::V3(_) => Err(GasCostNotDefined),
-            GasCostsValues::V4(_) => Err(GasCostNotDefined),
-            GasCostsValues::V5(v5) => Ok(v5.emul),
+            GasCostsValues::V5(v5) => Ok(v5.ecop),
         }
     }
 
@@ -1798,7 +1788,7 @@ pub struct GasCostsValuesV4 {
 
 /// Gas costs for every op.
 /// The difference with [`GasCostsValuesV4`]:
-/// - Added `eadd`, `emul` and `epar` instructions
+/// - Added `ecop` and `epar` instructions
 #[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(default = "GasCostsValuesV5::unit")]
@@ -1892,8 +1882,7 @@ pub struct GasCostsValuesV5 {
     pub wqmm: Word,
     pub xor: Word,
     pub xori: Word,
-    pub eadd: Word,
-    pub emul: Word,
+    pub ecop: Word,
 
     // Dependent
     pub aloc: DependentCost,
@@ -3032,8 +3021,7 @@ impl GasCostsValuesV5 {
             wqmm: 0,
             xor: 0,
             xori: 0,
-            eadd: 0,
-            emul: 0,
+            ecop: 0,
             aloc: DependentCost::free(),
             bsiz: DependentCost::free(),
             bldd: DependentCost::free(),
@@ -3156,8 +3144,7 @@ impl GasCostsValuesV5 {
             wqmm: 1,
             xor: 1,
             xori: 1,
-            eadd: 1,
-            emul: 1,
+            ecop: 1,
             aloc: DependentCost::unit(),
             bsiz: DependentCost::unit(),
             bldd: DependentCost::unit(),

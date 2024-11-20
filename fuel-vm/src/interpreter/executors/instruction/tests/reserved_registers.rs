@@ -251,8 +251,7 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::ECAL => true,
         Opcode::BSIZ => true,
         Opcode::BLDD => false,
-        Opcode::EADD => false,
-        Opcode::EMUL => false,
+        Opcode::ECOP => false,
         Opcode::EPAR => true,
     }
 }
@@ -371,8 +370,7 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::ECAL => true,
         Opcode::BSIZ => false,
         Opcode::BLDD => false,
-        Opcode::EADD => false,
-        Opcode::EMUL => false,
+        Opcode::ECOP => false,
         Opcode::EPAR => false,
     }
 }

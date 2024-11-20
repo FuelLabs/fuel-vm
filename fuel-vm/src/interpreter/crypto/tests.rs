@@ -272,7 +272,10 @@ fn test_sha256() -> SimpleResult<()> {
         15ed738c0e0a7c92e7845f96b2ae9c0a68a6a449e3538fc7ff3ebf7a5a18a2c4",
     ).unwrap()
 )]
-fn test_eadd(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<()> {
+fn test_ecop_addition(
+    #[case] input: Vec<u8>,
+    #[case] expected: Vec<u8>,
+) -> SimpleResult<()> {
     // Given
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
@@ -288,14 +291,14 @@ fn test_eadd(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
     memory[points_address..points_address + 128].copy_from_slice(&input);
 
     // When
-    ec_add(
+    ec_operation(
         &mut memory,
         owner,
         RegMut::new(&mut pc),
         result as Word,
         0,
+        0,
         points_address as Word,
-        (points_address + 64) as Word,
     )?;
 
     // Then
@@ -309,7 +312,7 @@ fn test_eadd(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
 
 // From https://github.com/bluealloy/revm/blob/main/crates/precompile/src/bn128.rs
 #[test]
-fn test_eadd_error() -> SimpleResult<()> {
+fn test_ecop_addition_error() -> SimpleResult<()> {
     // Given
     let input = hex::decode(
         "\
@@ -333,14 +336,14 @@ fn test_eadd_error() -> SimpleResult<()> {
     memory[points_address..points_address + 128].copy_from_slice(&input);
 
     // When
-    let err = ec_add(
+    let err = ec_operation(
         &mut memory,
         owner,
         RegMut::new(&mut pc),
         result as Word,
         0,
+        0,
         points_address as Word,
-        (points_address + 64) as Word,
     )
     .unwrap_err();
 
@@ -425,7 +428,10 @@ fn test_eadd_error() -> SimpleResult<()> {
         031b8ce914eba3a9ffb989f9cdd5b0f01943074bf4f0f315690ec3cec6981afc"
     ).unwrap()
 )]
-fn test_emul(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<()> {
+fn test_ecop_multiplication(
+    #[case] input: Vec<u8>,
+    #[case] expected: Vec<u8>,
+) -> SimpleResult<()> {
     // Given
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let owner = OwnershipRegisters {
@@ -442,14 +448,14 @@ fn test_emul(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
     memory[points_address..points_address + 96].copy_from_slice(&input);
 
     // When
-    ec_mul(
+    ec_operation(
         &mut memory,
         owner,
         RegMut::new(&mut pc),
         result as Word,
         0,
+        1,
         points_address as Word,
-        (points_address + 64) as Word,
     )?;
 
     // Then
@@ -463,7 +469,7 @@ fn test_emul(#[case] input: Vec<u8>, #[case] expected: Vec<u8>) -> SimpleResult<
 
 // From https://github.com/bluealloy/revm/blob/main/crates/precompile/src/bn128.rs
 #[test]
-fn test_emul_error() -> SimpleResult<()> {
+fn test_ecop_multiplication_error() -> SimpleResult<()> {
     // Given
     let input = hex::decode(
         "\
@@ -486,14 +492,14 @@ fn test_emul_error() -> SimpleResult<()> {
     memory[points_address..points_address + 96].copy_from_slice(&input);
 
     // When
-    let err = ec_mul(
+    let err = ec_operation(
         &mut memory,
         owner,
         RegMut::new(&mut pc),
         result as Word,
         0,
+        1,
         points_address as Word,
-        (points_address + 64) as Word,
     )
     .unwrap_err();
 
@@ -634,11 +640,21 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: u64) -> SimpleResult<()> 
     // Given
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
-    let points_address = 0;
+    let mut points_address: usize = 0;
     let mut result = 0;
 
+    // Length
+    memory[points_address..points_address.checked_add(8).unwrap()].copy_from_slice(
+        &(input
+            .len()
+            .checked_div(128usize.checked_add(64).unwrap())
+            .unwrap())
+        .to_be_bytes(),
+    );
+    points_address = points_address.checked_add(8).unwrap();
     // P1(x,y),G2(p1(x,y), p2(x,y))
-    memory[points_address..points_address + input.len()].copy_from_slice(&input);
+    memory[points_address..points_address.checked_add(input.len()).unwrap()]
+        .copy_from_slice(&input);
 
     // When
     ec_pairing(
@@ -646,8 +662,8 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: u64) -> SimpleResult<()> 
         RegMut::new(&mut pc),
         &mut result,
         0,
-        2,
-        points_address as Word,
+        0,
+        0 as Word,
     )?;
 
     // Then
@@ -671,9 +687,18 @@ fn test_epar_error() -> SimpleResult<()> {
     .unwrap();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
-    let points_address = 0;
+    let mut points_address = 0;
     let mut result = 0;
+    // Length
+    memory[points_address..points_address + 8].copy_from_slice(
+        &(input
+            .len()
+            .checked_div(128usize.checked_add(64).unwrap())
+            .unwrap())
+        .to_be_bytes(),
+    );
     // P1(x,y),G2(p1(x,y), p2(x,y))
+    points_address = points_address.checked_add(8).unwrap();
     memory[points_address..points_address + 192].copy_from_slice(&input);
 
     // When
@@ -682,8 +707,8 @@ fn test_epar_error() -> SimpleResult<()> {
         RegMut::new(&mut pc),
         &mut result,
         0,
-        2,
-        points_address as Word,
+        0,
+        0 as Word,
     )
     .unwrap_err();
 

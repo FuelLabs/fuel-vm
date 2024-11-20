@@ -105,7 +105,7 @@ where
         )
     }
 
-    pub(crate) fn ec_add(
+    pub(crate) fn ec_operation(
         &mut self,
         a: Word,
         b: Word,
@@ -113,26 +113,7 @@ where
         d: Word,
     ) -> SimpleResult<()> {
         let owner = self.ownership_registers();
-        ec_add(
-            self.memory.as_mut(),
-            owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-            c,
-            d,
-        )
-    }
-
-    pub(crate) fn ec_mul(
-        &mut self,
-        a: Word,
-        b: Word,
-        c: Word,
-        d: Word,
-    ) -> SimpleResult<()> {
-        let owner = self.ownership_registers();
-        ec_mul(
+        ec_operation(
             self.memory.as_mut(),
             owner,
             self.registers.pc_mut(),
@@ -359,61 +340,67 @@ fn read_g2_point_alt_bn_128(
     }
 }
 
-pub(crate) fn ec_add(
+pub(crate) fn ec_operation(
     memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
     pc: RegMut<PC>,
     dst: Word,
     curve_id: Word,
-    point1_ptr: Word,
-    point2_ptr: Word,
+    operation_type: Word,
+    points_ptr: Word,
 ) -> SimpleResult<()> {
     match curve_id {
         0 => {
-            let point1 = read_g1_point_alt_bn_128(memory, point1_ptr)?;
-            let point2 = read_g1_point_alt_bn_128(memory, point2_ptr)?;
-            let mut output = [0u8; 64];
-            #[allow(clippy::arithmetic_side_effects)]
-            if let Some(sum) = AffineG1::from_jacobian(point1 + point2) {
-                sum.x().to_big_endian(&mut output[..32]).unwrap();
-                sum.y().to_big_endian(&mut output[32..]).unwrap();
+            match operation_type {
+                // Two points addition
+                0 => {
+                    let point1 = read_g1_point_alt_bn_128(memory, points_ptr)?;
+                    let point2 = read_g1_point_alt_bn_128(
+                        memory,
+                        points_ptr.checked_add(64).ok_or(
+                            crate::error::PanicOrBug::Panic(
+                                fuel_tx::PanicReason::ArithmeticOverflow,
+                            ),
+                        )?,
+                    )?;
+                    let mut output = [0u8; 64];
+                    #[allow(clippy::arithmetic_side_effects)]
+                    if let Some(sum) = AffineG1::from_jacobian(point1 + point2) {
+                        sum.x().to_big_endian(&mut output[..32]).unwrap();
+                        sum.y().to_big_endian(&mut output[32..]).unwrap();
+                    }
+                    memory.write_bytes(owner, dst, output)?;
+                }
+                // Scalar multiplication
+                1 => {
+                    let point = read_g1_point_alt_bn_128(memory, points_ptr)?;
+                    let scalar = Fr::from_slice(memory.read(
+                        points_ptr.checked_add(64).ok_or(
+                            crate::error::PanicOrBug::Panic(
+                                fuel_tx::PanicReason::ArithmeticOverflow,
+                            ),
+                        )?,
+                        32u64,
+                    )?)
+                    .map_err(|_| {
+                        crate::error::PanicOrBug::Panic(
+                            fuel_tx::PanicReason::InvalidEllipticCurvePoint,
+                        )
+                    })?;
+                    let mut output = [0u8; 64];
+                    #[allow(clippy::arithmetic_side_effects)]
+                    if let Some(product) = AffineG1::from_jacobian(point * scalar) {
+                        product.x().to_big_endian(&mut output[..32]).unwrap();
+                        product.y().to_big_endian(&mut output[32..]).unwrap();
+                    }
+                    memory.write_bytes(owner, dst, output)?;
+                }
+                _ => {
+                    return Err(crate::error::PanicOrBug::Panic(
+                        fuel_tx::PanicReason::UnsupportedOperationType,
+                    ))
+                }
             }
-            memory.write_bytes(owner, dst, output)?;
-        }
-        _ => {
-            return Err(crate::error::PanicOrBug::Panic(
-                fuel_tx::PanicReason::UnsupportedCurveId,
-            ))
-        }
-    }
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn ec_mul(
-    memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    dst: Word,
-    curve_id: Word,
-    point_ptr: Word,
-    scalar_ptr: Word,
-) -> SimpleResult<()> {
-    match curve_id {
-        0 => {
-            let point = read_g1_point_alt_bn_128(memory, point_ptr)?;
-            let scalar =
-                Fr::from_slice(memory.read(scalar_ptr, 32u64)?).map_err(|_| {
-                    crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::InvalidEllipticCurvePoint,
-                    )
-                })?;
-            let mut output = [0u8; 64];
-            #[allow(clippy::arithmetic_side_effects)]
-            if let Some(product) = AffineG1::from_jacobian(point * scalar) {
-                product.x().to_big_endian(&mut output[..32]).unwrap();
-                product.y().to_big_endian(&mut output[32..]).unwrap();
-            }
-            memory.write_bytes(owner, dst, output)?;
         }
         _ => {
             return Err(crate::error::PanicOrBug::Panic(
@@ -429,42 +416,61 @@ pub(crate) fn ec_pairing(
     pc: RegMut<PC>,
     success: &mut u64,
     curve_id: Word,
-    num_elements: Word,
+    pairing_type: Word,
     elements_ptr: Word,
 ) -> SimpleResult<()> {
     match curve_id {
         0 => {
-            // Each element consistsof an uncompressed G1 point (64 bytes) and an
-            // uncompressed G2 point (128 bytes).
-            let element_size = 128 + 64;
-            let mut elements =
-                Vec::with_capacity(usize::try_from(num_elements).map_err(|_| {
-                    crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::ArithmeticOverflow,
-                    )
-                })?);
-            for idx in 0..num_elements {
-                let start_offset = elements_ptr
-                    .checked_add(idx.checked_mul(element_size).ok_or(
+            match pairing_type {
+                // Optimal ate pairing
+                0 => {
+                    let num_elements =
+                        u64::from_be_bytes(memory.read_bytes(elements_ptr)?);
+
+                    let elements_ptr = elements_ptr.checked_add(8).ok_or(
                         crate::error::PanicOrBug::Panic(
                             fuel_tx::PanicReason::ArithmeticOverflow,
                         ),
-                    )?)
-                    .ok_or(crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::ArithmeticOverflow,
-                    ))?;
-                let a = read_g1_point_alt_bn_128(memory, start_offset)?;
-                let b = read_g2_point_alt_bn_128(
-                    memory,
-                    start_offset.checked_add(64).ok_or(
-                        crate::error::PanicOrBug::Panic(
-                            fuel_tx::PanicReason::ArithmeticOverflow,
-                        ),
-                    )?,
-                )?;
-                elements.push((a, b));
+                    )?;
+                    // Each element consistsof an uncompressed G1 point (64 bytes) and an
+                    // uncompressed G2 point (128 bytes).
+                    let element_size = 128 + 64;
+                    let mut elements = Vec::with_capacity(
+                        usize::try_from(num_elements).map_err(|_| {
+                            crate::error::PanicOrBug::Panic(
+                                fuel_tx::PanicReason::ArithmeticOverflow,
+                            )
+                        })?,
+                    );
+                    for idx in 0..num_elements {
+                        let start_offset = elements_ptr
+                            .checked_add(idx.checked_mul(element_size).ok_or(
+                                crate::error::PanicOrBug::Panic(
+                                    fuel_tx::PanicReason::ArithmeticOverflow,
+                                ),
+                            )?)
+                            .ok_or(crate::error::PanicOrBug::Panic(
+                                fuel_tx::PanicReason::ArithmeticOverflow,
+                            ))?;
+                        let a = read_g1_point_alt_bn_128(memory, start_offset)?;
+                        let b = read_g2_point_alt_bn_128(
+                            memory,
+                            start_offset.checked_add(64).ok_or(
+                                crate::error::PanicOrBug::Panic(
+                                    fuel_tx::PanicReason::ArithmeticOverflow,
+                                ),
+                            )?,
+                        )?;
+                        elements.push((a, b));
+                    }
+                    *success = (bn::pairing_batch(&elements) == Gt::one()) as u64;
+                }
+                _ => {
+                    return Err(crate::error::PanicOrBug::Panic(
+                        fuel_tx::PanicReason::UnsupportedOperationType,
+                    ))
+                }
             }
-            *success = (bn::pairing_batch(&elements) == Gt::one()) as u64;
         }
         _ => {
             return Err(crate::error::PanicOrBug::Panic(

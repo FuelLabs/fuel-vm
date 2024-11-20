@@ -154,9 +154,11 @@ enum_from! {
         GasCostNotDefined = 0x38,
         /// The curve id is not supported.
         UnsupportedCurveId = 0x39,
-        // TODO: Maybe add more different errors
+        /// The operation type is not supported.
+        UnsupportedOperationType = 0x3a,
         /// Read alt_bn_128 curve point is invalid.
-        InvalidEllipticCurvePoint = 0x3a,
+        InvalidEllipticCurvePoint = 0x3b,
+
     }
 }
 

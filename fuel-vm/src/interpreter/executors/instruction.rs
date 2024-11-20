@@ -918,16 +918,10 @@ where
                 self.blob_load_data(r!(a), r!(b), r!(c), r!(d))?;
             }
 
-            Instruction::EADD(eadd) => {
-                self.gas_charge(self.gas_costs().eadd().map_err(PanicReason::from)?)?;
-                let (a, b, c, d) = eadd.unpack();
-                self.ec_add(r!(a), r!(b), r!(c), r!(d))?;
-            }
-
-            Instruction::EMUL(emul) => {
-                self.gas_charge(self.gas_costs().emul().map_err(PanicReason::from)?)?;
-                let (a, b, c, d) = emul.unpack();
-                self.ec_mul(r!(a), r!(b), r!(c), r!(d))?;
+            Instruction::ECOP(ecop) => {
+                self.gas_charge(self.gas_costs().ecop().map_err(PanicReason::from)?)?;
+                let (a, b, c, d) = ecop.unpack();
+                self.ec_operation(r!(a), r!(b), r!(c), r!(d))?;
             }
 
             Instruction::EPAR(epar) => {

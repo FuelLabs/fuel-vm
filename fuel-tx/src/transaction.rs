@@ -872,14 +872,14 @@ pub mod field {
     }
 
     pub trait Owner {
-        fn owner(&self) -> Word;
+        fn owner(&self) -> Option<Word>;
         fn set_owner(&mut self, value: Word);
     }
 
     impl<T: Policies + ?Sized> Owner for T {
         #[inline(always)]
-        fn owner(&self) -> Word {
-            self.policies().get(PolicyType::Owner).unwrap_or(0)
+        fn owner(&self) -> Option<Word> {
+            self.policies().get(PolicyType::Owner)
         }
 
         #[inline(always)]

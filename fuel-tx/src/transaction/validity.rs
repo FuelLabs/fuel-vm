@@ -383,6 +383,10 @@ where
     if owner >= tx.inputs().len() {
         Err(ValidityError::TransactionOwnerIndexDoesntExist)?
     }
+    // SAFETY: `owner` is guaranteed to be a valid index because it was checked above.
+    if !&tx.inputs()[owner].input_owner().is_some() {
+        Err(ValidityError::TransactionOwnerInputHasNoOwner)?
+    }
 
     let any_spendable_input = tx.inputs().iter().find(|input| match input {
         Input::CoinSigned(_)

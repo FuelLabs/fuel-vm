@@ -640,18 +640,14 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: u64) -> SimpleResult<()> 
     // Given
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
-    let mut points_address: usize = 0;
+    let points_address: usize = 0;
     let mut result = 0;
 
     // Length
-    memory[points_address..points_address.checked_add(8).unwrap()].copy_from_slice(
-        &(input
-            .len()
-            .checked_div(128usize.checked_add(64).unwrap())
-            .unwrap())
-        .to_be_bytes(),
-    );
-    points_address = points_address.checked_add(8).unwrap();
+    let nb_elements = input
+        .len()
+        .checked_div(128usize.checked_add(64).unwrap())
+        .unwrap();
     // P1(x,y),G2(p1(x,y), p2(x,y))
     memory[points_address..points_address.checked_add(input.len()).unwrap()]
         .copy_from_slice(&input);
@@ -662,7 +658,7 @@ fn test_epar(#[case] input: Vec<u8>, #[case] expected: u64) -> SimpleResult<()> 
         RegMut::new(&mut pc),
         &mut result,
         0,
-        0,
+        nb_elements as Word,
         0 as Word,
     )?;
 
@@ -687,18 +683,14 @@ fn test_epar_error() -> SimpleResult<()> {
     .unwrap();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
-    let mut points_address = 0;
+    let points_address = 0;
     let mut result = 0;
     // Length
-    memory[points_address..points_address + 8].copy_from_slice(
-        &(input
-            .len()
-            .checked_div(128usize.checked_add(64).unwrap())
-            .unwrap())
-        .to_be_bytes(),
-    );
+    let nb_elements = input
+        .len()
+        .checked_div(128usize.checked_add(64).unwrap())
+        .unwrap();
     // P1(x,y),G2(p1(x,y), p2(x,y))
-    points_address = points_address.checked_add(8).unwrap();
     memory[points_address..points_address + 192].copy_from_slice(&input);
 
     // When
@@ -707,7 +699,7 @@ fn test_epar_error() -> SimpleResult<()> {
         RegMut::new(&mut pc),
         &mut result,
         0,
-        0,
+        nb_elements as Word,
         0 as Word,
     )
     .unwrap_err();

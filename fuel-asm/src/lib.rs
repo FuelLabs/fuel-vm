@@ -348,7 +348,7 @@ impl_instructions! {
     "Given some curve, performs an operation on points"
     0xbc ECOP ecop [dst: RegId curve_id: RegId operation_type: RegId points_ptr: RegId]
     "Given some curve, performs a pairing on groups of points"
-    0xbe EPAR epar [success: RegId curve_id: RegId pairing_type: RegId points_ptr: RegId]
+    0xbe EPAR epar [success: RegId curve_id: RegId number_elements: RegId points_ptr: RegId]
 }
 
 impl Instruction {

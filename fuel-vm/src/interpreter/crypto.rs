@@ -415,66 +415,48 @@ pub(crate) fn ec_pairing(
     memory: &mut MemoryInstance,
     pc: RegMut<PC>,
     success: &mut u64,
-    curve_id: Word,
-    pairing_type: Word,
+    identifier: Word,
+    number_elements: Word,
     elements_ptr: Word,
 ) -> SimpleResult<()> {
-    match curve_id {
+    match identifier {
+        // Optimal ate pairing / alt_bn128
         0 => {
-            match pairing_type {
-                // Optimal ate pairing
-                0 => {
-                    let num_elements =
-                        u64::from_be_bytes(memory.read_bytes(elements_ptr)?);
-
-                    let elements_ptr = elements_ptr.checked_add(8).ok_or(
+            // Each element consistsof an uncompressed G1 point (64 bytes) and an
+            // uncompressed G2 point (128 bytes).
+            let element_size = 128 + 64;
+            let mut elements =
+                Vec::with_capacity(usize::try_from(number_elements).map_err(|_| {
+                    crate::error::PanicOrBug::Panic(
+                        fuel_tx::PanicReason::ArithmeticOverflow,
+                    )
+                })?);
+            for idx in 0..number_elements {
+                let start_offset = elements_ptr
+                    .checked_add(idx.checked_mul(element_size).ok_or(
                         crate::error::PanicOrBug::Panic(
                             fuel_tx::PanicReason::ArithmeticOverflow,
                         ),
-                    )?;
-                    // Each element consistsof an uncompressed G1 point (64 bytes) and an
-                    // uncompressed G2 point (128 bytes).
-                    let element_size = 128 + 64;
-                    let mut elements = Vec::with_capacity(
-                        usize::try_from(num_elements).map_err(|_| {
-                            crate::error::PanicOrBug::Panic(
-                                fuel_tx::PanicReason::ArithmeticOverflow,
-                            )
-                        })?,
-                    );
-                    for idx in 0..num_elements {
-                        let start_offset = elements_ptr
-                            .checked_add(idx.checked_mul(element_size).ok_or(
-                                crate::error::PanicOrBug::Panic(
-                                    fuel_tx::PanicReason::ArithmeticOverflow,
-                                ),
-                            )?)
-                            .ok_or(crate::error::PanicOrBug::Panic(
-                                fuel_tx::PanicReason::ArithmeticOverflow,
-                            ))?;
-                        let a = read_g1_point_alt_bn_128(memory, start_offset)?;
-                        let b = read_g2_point_alt_bn_128(
-                            memory,
-                            start_offset.checked_add(64).ok_or(
-                                crate::error::PanicOrBug::Panic(
-                                    fuel_tx::PanicReason::ArithmeticOverflow,
-                                ),
-                            )?,
-                        )?;
-                        elements.push((a, b));
-                    }
-                    *success = (bn::pairing_batch(&elements) == Gt::one()) as u64;
-                }
-                _ => {
-                    return Err(crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::UnsupportedOperationType,
-                    ))
-                }
+                    )?)
+                    .ok_or(crate::error::PanicOrBug::Panic(
+                        fuel_tx::PanicReason::ArithmeticOverflow,
+                    ))?;
+                let a = read_g1_point_alt_bn_128(memory, start_offset)?;
+                let b = read_g2_point_alt_bn_128(
+                    memory,
+                    start_offset.checked_add(64).ok_or(
+                        crate::error::PanicOrBug::Panic(
+                            fuel_tx::PanicReason::ArithmeticOverflow,
+                        ),
+                    )?,
+                )?;
+                elements.push((a, b));
             }
+            *success = (bn::pairing_batch(&elements) == Gt::one()) as u64;
         }
         _ => {
             return Err(crate::error::PanicOrBug::Panic(
-                fuel_tx::PanicReason::UnsupportedCurveId,
+                fuel_tx::PanicReason::UnsupportedOperationType,
             ))
         }
     }

@@ -447,6 +447,31 @@ fn script__check__set_owner_bad_idx() {
 }
 
 #[test]
+fn script__check__set_owner_bad_input_type() {
+    // Given
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let block_height = 1000.into();
+
+    // When
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        .add_fee_input()
+        .add_input(Input::contract(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+        ))
+        .owner(1)
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
+
+    // Then
+    assert_eq!(ValidityError::TransactionOwnerInputHasNoOwner, err); // and this line here
+}
+
+#[test]
 fn create__check__not_set_owner_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);

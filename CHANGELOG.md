@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - [871](https://github.com/FuelLabs/fuel-vm/pull/871): Add `expiration` policy that prevent a transaction to be inserted after a given block height.
-- [872](https://github.com/FuelLabs/fuel-vm/pull/872): Add `owner` policy to specify a primary owner of the transaction. We use an index of an input to identify the owner.
+- [872](https://github.com/FuelLabs/fuel-vm/pull/872): Add `owner` policy to specify a primary owner of the transaction. We use the index of an input to identify the owner.
 
 ### Fixed
 - [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.

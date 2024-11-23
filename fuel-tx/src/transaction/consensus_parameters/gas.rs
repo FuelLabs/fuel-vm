@@ -1963,12 +1963,12 @@ impl GasCosts {
 impl GasCostsValues {
     /// Create costs that are all set to zero.
     pub fn free() -> Self {
-        GasCostsValuesV4::free().into()
+        GasCostsValuesV5::free().into()
     }
 
     /// Create costs that are all set to one.
     pub fn unit() -> Self {
-        GasCostsValuesV4::unit().into()
+        GasCostsValuesV5::unit().into()
     }
 }
 

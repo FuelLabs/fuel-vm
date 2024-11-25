@@ -90,10 +90,9 @@ pub fn default_gas_costs() -> GasCostsValues {
         xor: 1,
         xori: 1,
         ecop: 3500,
-        // TODO: Change
-        epar: DependentCost::LightOperation {
-            base: 1,
-            units_per_gas: 1,
+        epar: DependentCost::HeavyOperation { 
+            base: 69000,
+            gas_per_unit: 52000
         },
         aloc: DependentCost::LightOperation {
             base: 2,

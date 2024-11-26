@@ -328,12 +328,16 @@ where
 {
     if let Some(owner) = tx.owner() {
         let owner = usize::try_from(owner)
-            .map_err(|_| ValidityError::TransactionOwnerIndexDoesntExist)?;
+            .map_err(|_| ValidityError::TransactionOwnerIndexOutOfBounds)?;
         if owner >= tx.inputs().len() {
-            Err(ValidityError::TransactionOwnerIndexDoesntExist)?
+            Err(ValidityError::TransactionOwnerIndexOutOfBounds)?
         }
-        // SAFETY: `owner` is guaranteed to be a valid index because it was checked above.
-        if !&tx.inputs()[owner].input_owner().is_some() {
+        if tx
+            .inputs()
+            .get(owner)
+            .and_then(|input| input.input_owner())
+            .is_none()
+        {
             Err(ValidityError::TransactionOwnerInputHasNoOwner)?
         }
     }

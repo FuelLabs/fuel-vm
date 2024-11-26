@@ -443,7 +443,7 @@ fn script__check__set_owner_bad_idx() {
         .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(ValidityError::TransactionOwnerIndexDoesntExist, err);
+    assert_eq!(ValidityError::TransactionOwnerIndexOutOfBounds, err);
 }
 
 #[test]
@@ -522,7 +522,7 @@ fn create__check__set_owner_bad_idx() {
         .expect_err("Expected erroneous transaction");
 
     // Then
-    assert_eq!(ValidityError::TransactionOwnerIndexDoesntExist, err);
+    assert_eq!(ValidityError::TransactionOwnerIndexOutOfBounds, err);
 }
 
 #[test]

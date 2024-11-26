@@ -184,7 +184,7 @@ fn check__fails_if_owner_bad_index() {
     let result = tx.check(block_height, &test_params());
 
     // Then
-    assert_eq!(Err(ValidityError::TransactionOwnerIndexDoesntExist), result);
+    assert_eq!(Err(ValidityError::TransactionOwnerIndexOutOfBounds), result);
 }
 
 #[test]

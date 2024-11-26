@@ -133,7 +133,7 @@ pub enum ValidityError {
     TransactionInputsMax,
     TransactionOutputsMax,
     TransactionWitnessesMax,
-    TransactionOwnerIndexDoesntExist,
+    TransactionOwnerIndexOutOfBounds,
     TransactionOwnerInputHasNoOwner,
     TransactionOutputChangeAssetIdDuplicated(AssetId),
     TransactionOutputChangeAssetIdNotFound(AssetId),

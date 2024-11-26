@@ -323,12 +323,12 @@ impl Distribution<Policies> for Standard {
             values: Policies::values_for_bitmask(bits, values),
         };
 
-        if policies.get(PolicyType::Maturity).is_some() {
+        if policies.is_set(PolicyType::Maturity) {
             let maturity: u32 = rng.gen();
             policies.set(PolicyType::Maturity, Some(maturity as u64));
         }
 
-        if policies.get(PolicyType::Expiration).is_some() {
+        if policies.is_set(PolicyType::Expiration) {
             let expiration: u32 = rng.gen();
             policies.set(PolicyType::Expiration, Some(expiration as u64));
         }

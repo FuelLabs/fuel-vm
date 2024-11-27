@@ -16,6 +16,7 @@ pub mod avl;
 pub mod binary;
 pub mod btree;
 pub mod common;
+pub mod jellyfish;
 pub mod sparse;
 pub mod storage;
 

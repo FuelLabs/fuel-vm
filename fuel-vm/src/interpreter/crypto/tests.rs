@@ -799,7 +799,7 @@ fn test_epar_read_memory_not_accessible() -> SimpleResult<()> {
     let points_address = VM_MAX_RAM;
     let mut result = 0;
     // Length
-    let nb_elements = 1;
+    let nb_elements = 1u64;
     // When
     let err = ec_pairing(
         &mut memory,

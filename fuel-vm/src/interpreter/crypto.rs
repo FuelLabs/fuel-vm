@@ -318,6 +318,9 @@ pub(crate) fn ec_operation(
                             .ok_or(fuel_tx::PanicReason::MemoryOverflow)?,
                     )?;
                     let mut output = [0u8; 64];
+                    // SAFETY: The library override the addition and is tested and
+                    // audited. Here is the code of the addition :
+                    // https://github.com/paritytech/bn/blob/63f8c587356a67b33c7396af98e065b66fca5dda/src/groups/mod.rs#L297
                     #[allow(clippy::arithmetic_side_effects)]
                     if let Some(sum) = AffineG1::from_jacobian(point1 + point2) {
                         sum.x().to_big_endian(&mut output[..32]).unwrap();
@@ -338,6 +341,9 @@ pub(crate) fn ec_operation(
                     )
                     .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
                     let mut output = [0u8; 64];
+                    // SAFETY: The library override the multiplication and is tested and
+                    // audited. Here is the code of the multiplication
+                    // : https://github.com/paritytech/bn/blob/63f8c587356a67b33c7396af98e065b66fca5dda/src/groups/mod.rs#L275
                     #[allow(clippy::arithmetic_side_effects)]
                     if let Some(product) = AffineG1::from_jacobian(point * scalar) {
                         product.x().to_big_endian(&mut output[..32]).unwrap();

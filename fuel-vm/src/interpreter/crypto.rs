@@ -364,7 +364,7 @@ pub(crate) fn ec_pairing(
     match identifier {
         // Optimal ate pairing / alt_bn128
         0 => {
-            // Each element consistsof an uncompressed G1 point (64 bytes) and an
+            // Each element consists of an uncompressed G1 point (64 bytes) and an
             // uncompressed G2 point (128 bytes).
             let element_size = 128 + 64;
             let mut elements = Vec::with_capacity(

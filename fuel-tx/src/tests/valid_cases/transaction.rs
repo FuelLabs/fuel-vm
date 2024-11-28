@@ -142,22 +142,19 @@ fn script__check__valid_expiration_policy() {
 
 #[test]
 fn script__check__invalid_expiration_policy() {
-    let block_height = 1000.into();
+    let rng = &mut StdRng::seed_from_u64(8586);
 
     // Given
+    let block_height = 1000.into();
     let old_block_height = 999u32.into();
-    let err = Transaction::script(
-        Default::default(),
-        vec![],
-        vec![],
-        Policies::new().with_expiration(old_block_height).with_max_fee(0),
-        vec![],
-        vec![],
-        vec![],
-    )
-    // When
-    .check(block_height, &test_params())
-    .expect_err("Expected erroneous transaction");
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        // Given
+        .expiration(old_block_height)
+        .add_fee_input()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
 
     // Then
     assert_eq!(ValidityError::TransactionExpiration, err);
@@ -185,21 +182,17 @@ fn create__check__valid_expiration_policy() {
 fn create__check__invalid_expiration_policy() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let block_height = 1000.into();
-
     // Given
-    let err = Transaction::create(
-        0,
-        Policies::new().with_expiration(999.into()).with_max_fee(0),
-        rng.gen(),
-        vec![],
-        vec![],
-        vec![],
-        vec![rng.gen()],
-    )
-    // When
-    .check(block_height, &test_params())
-    .expect_err("Expected erroneous transaction");
+    let block_height = 1000.into();
+    let old_block_height = 999u32.into();
+    let err = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .expiration(old_block_height)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        .expect_err("Failed to validate tx create");
 
     // Then
     assert_eq!(ValidityError::TransactionExpiration, err);

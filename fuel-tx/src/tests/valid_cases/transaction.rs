@@ -145,11 +145,12 @@ fn script__check__invalid_expiration_policy() {
     let block_height = 1000.into();
 
     // Given
+    let old_block_height = 999u32.into();
     let err = Transaction::script(
         Default::default(),
         vec![],
         vec![],
-        Policies::new().with_expiration(999.into()).with_max_fee(0),
+        Policies::new().with_expiration(old_block_height).with_max_fee(0),
         vec![],
         vec![],
         vec![],

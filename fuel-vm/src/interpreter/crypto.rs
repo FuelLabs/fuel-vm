@@ -252,17 +252,12 @@ fn read_g1_point_alt_bn_128(
     point_ptr: Word,
 ) -> SimpleResult<G1> {
     // Big endian required by the library
-    let px = Fq::from_slice(memory.read(point_ptr, 32u64)?)
+    let arg_bytes: [u8; 2 * 32] = memory.read_bytes(point_ptr)?;
+
+    let py = Fq::from_slice(&arg_bytes[..32])
         .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
-    let py = Fq::from_slice(
-        memory.read(
-            point_ptr
-                .checked_add(32)
-                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
-            32u64,
-        )?,
-    )
-    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
+    let px = Fq::from_slice(&arg_bytes[32..64])
+        .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
 
     Ok(if px == Fq::zero() && py == Fq::zero() {
         G1::zero()
@@ -278,35 +273,17 @@ fn read_g2_point_alt_bn_128(
     point_ptr: Word,
 ) -> SimpleResult<G2> {
     // Big endian required by the library
-    let ay = Fq::from_slice(memory.read(point_ptr, 32u64)?)
+    let arg_bytes: [u8; 4 * 32] = memory.read_bytes(point_ptr)?;
+
+    let ay = Fq::from_slice(&arg_bytes[..32])
         .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
-    let ax = Fq::from_slice(
-        memory.read(
-            point_ptr
-                .checked_add(32)
-                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
-            32u64,
-        )?,
-    )
-    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
-    let by = Fq::from_slice(
-        memory.read(
-            point_ptr
-                .checked_add(64)
-                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
-            32u64,
-        )?,
-    )
-    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
-    let bx = Fq::from_slice(
-        memory.read(
-            point_ptr
-                .checked_add(96)
-                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
-            32u64,
-        )?,
-    )
-    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
+    let ax = Fq::from_slice(&arg_bytes[32..64])
+        .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
+    let by = Fq::from_slice(&arg_bytes[64..96])
+        .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
+    let bx = Fq::from_slice(&arg_bytes[96..128])
+        .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
+
     let a = Fq2::new(ax, ay);
     let b = Fq2::new(bx, by);
     Ok(if a.is_zero() && b.is_zero() {
@@ -338,7 +315,7 @@ pub(crate) fn ec_operation(
                         memory,
                         points_ptr
                             .checked_add(64)
-                            .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
+                            .ok_or(fuel_tx::PanicReason::MemoryOverflow)?,
                     )?;
                     let mut output = [0u8; 64];
                     #[allow(clippy::arithmetic_side_effects)]
@@ -355,7 +332,7 @@ pub(crate) fn ec_operation(
                         memory.read(
                             points_ptr
                                 .checked_add(64)
-                                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
+                                .ok_or(fuel_tx::PanicReason::MemoryOverflow)?,
                             32u64,
                         )?,
                     )
@@ -392,21 +369,21 @@ pub(crate) fn ec_pairing(
             let element_size = 128 + 64;
             let mut elements = Vec::with_capacity(
                 usize::try_from(number_elements)
-                    .map_err(|_| fuel_tx::PanicReason::ArithmeticOverflow)?,
+                    .map_err(|_| fuel_tx::PanicReason::MemoryOverflow)?,
             );
             for idx in 0..number_elements {
                 let start_offset = elements_ptr
                     .checked_add(
                         idx.checked_mul(element_size)
-                            .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
+                            .ok_or(fuel_tx::PanicReason::MemoryOverflow)?,
                     )
-                    .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?;
+                    .ok_or(fuel_tx::PanicReason::MemoryOverflow)?;
                 let a = read_g1_point_alt_bn_128(memory, start_offset)?;
                 let b = read_g2_point_alt_bn_128(
                     memory,
                     start_offset
                         .checked_add(64)
-                        .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
+                        .ok_or(fuel_tx::PanicReason::MemoryOverflow)?,
                 )?;
                 elements.push((a, b));
             }

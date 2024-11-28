@@ -9,6 +9,8 @@ use rand::{
 };
 use rstest::rstest;
 
+use crate::consts::VM_MAX_RAM;
+
 use super::*;
 use fuel_vm::consts::*;
 
@@ -511,6 +513,83 @@ fn test_ecop_multiplication_error() -> SimpleResult<()> {
     Ok(())
 }
 
+#[test]
+fn test_ecop_read_memory_not_accessible() -> SimpleResult<()> {
+    // Given
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let owner = OwnershipRegisters {
+        sp: 1000,
+        ssp: 1000,
+        hp: 2000,
+        prev_hp: VM_MAX_RAM - 1,
+    };
+    let mut pc = 4;
+    let points_address = VM_MAX_RAM;
+    let result = 2100u64;
+
+    // When
+    let err = ec_operation(
+        &mut memory,
+        owner,
+        RegMut::new(&mut pc),
+        result as Word,
+        0,
+        1,
+        points_address as Word,
+    )
+    .unwrap_err();
+
+    // Then
+    assert_eq!(
+        err,
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::MemoryOverflow)
+    );
+    Ok(())
+}
+
+#[test]
+fn test_ecop_write_memory_not_accessible() -> SimpleResult<()> {
+    // Given
+    let input = hex::decode(
+        "\
+        2bd3e6d0f3b142924f5ca7b49ce5b9d54c4703d7ae5648e61d02268b1a0a9fb7\
+        21611ce0a6af85915e2f1d70300909ce2e49dfad4a4619c8390cae66cefdb204\
+        00000000000000000000000000000000000000000000000011138ce750fa15c2",
+    )
+    .unwrap();
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let owner = OwnershipRegisters {
+        sp: 1000,
+        ssp: 1000,
+        hp: 2000,
+        prev_hp: VM_MAX_RAM - 1,
+    };
+    let mut pc = 4;
+    let points_address = 0;
+    let result = 0u64;
+    // P1(x,y),scalar
+    memory[points_address..points_address + 96].copy_from_slice(&input);
+
+    // When
+    let err = ec_operation(
+        &mut memory,
+        owner,
+        RegMut::new(&mut pc),
+        result as Word,
+        0,
+        1,
+        points_address as Word,
+    )
+    .unwrap_err();
+
+    // Then
+    assert_eq!(
+        err,
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::MemoryOwnership)
+    );
+    Ok(())
+}
+
 #[rstest]
 // From https://github.com/bluealloy/revm/blob/main/crates/precompile/src/bn128.rs
 #[case(
@@ -708,6 +787,34 @@ fn test_epar_error() -> SimpleResult<()> {
     assert_eq!(
         err,
         crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
+    );
+    Ok(())
+}
+
+#[test]
+fn test_epar_read_memory_not_accessible() -> SimpleResult<()> {
+    // Given
+    let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
+    let mut pc = 4;
+    let points_address = VM_MAX_RAM;
+    let mut result = 0;
+    // Length
+    let nb_elements = 1;
+    // When
+    let err = ec_pairing(
+        &mut memory,
+        RegMut::new(&mut pc),
+        &mut result,
+        0,
+        nb_elements as Word,
+        points_address as Word,
+    )
+    .unwrap_err();
+
+    // Then
+    assert_eq!(
+        err,
+        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::MemoryOverflow)
     );
     Ok(())
 }

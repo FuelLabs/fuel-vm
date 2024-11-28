@@ -254,9 +254,9 @@ fn read_g1_point_alt_bn_128(
     // Big endian required by the library
     let arg_bytes: [u8; 2 * 32] = memory.read_bytes(point_ptr)?;
 
-    let py = Fq::from_slice(&arg_bytes[..32])
+    let px = Fq::from_slice(&arg_bytes[..32])
         .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
-    let px = Fq::from_slice(&arg_bytes[32..64])
+    let py = Fq::from_slice(&arg_bytes[32..64])
         .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
 
     Ok(if px == Fq::zero() && py == Fq::zero() {

@@ -1,9 +1,12 @@
+use hashbrown::HashMap;
+
 use crate::{
     common::{
         error::DeserializeError,
         node::{
             ChildError,
             ChildResult,
+            KeyFormatting,
             Node as NodeTrait,
             ParentNode as ParentNodeTrait,
         },
@@ -36,80 +39,310 @@ use crate::{
 use crate::common::node::ChildKeyResult;
 use core::{
     fmt,
+    iter,
     marker::PhantomData,
 };
 
+#[derive(Clone, Default, Debug, Copy, PartialEq, Eq)]
+pub struct Version(u64);
+
+/// The version of a Jellyfish Merkle tree, represented as a 64-bit unsigned integer.
+impl Version {
+    pub fn new(version: u64) -> Self {
+        Self(version)
+    }
+
+    pub fn to_be_bytes(&self) -> [u8; 8] {
+        self.0.to_be_bytes()
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Nibble(u8);
+
+impl Nibble {
+    pub fn new(nibble: u8) -> Self {
+        debug_assert_eq!(nibble & 0xF0, 0);
+        Self(nibble)
+    }
+}
+
+impl From<Nibble> for u8 {
+    fn from(nibble: Nibble) -> Self {
+        nibble.0
+    }
+}
+/// JellyFish Merkle Trees have a radix of 16,
+/// which means that a nibble (4 bits) can be used to select
+/// the next node in a path from the root to the leaf.
+/// Assuming a 32-byte key, the path from the root to a leaf
+/// will contain at most 64 nibbles, or 32 bytes.
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct NibblePath {
+    // We store two nibbles in each byte in the nibbles Vec
+    // TODO: Consider making this a CoW<'a, [u8]>
+    // TODO: Keep this on the stack ([u8; 32]) and track the actual length of the path
+    // instead of add_to_lsb
+    nibbles: Vec<u8>,
+    // Flag to indicate if the next nibble should be added to
+    // the least significant bits of the current byte
+    add_to_lsb: bool,
+}
+
+impl<'a> NibblePath {
+    pub fn push(&mut self, nibble: Nibble) {
+        let as_byte: u8 = nibble.into();
+        // The nibble is the lower 4 bits of the byte
+        if self.add_to_lsb {
+            // try to pop the last element to handle the case where the inner Vec<u8> is
+            // empty
+            let last = self.nibbles.pop().unwrap_or_default();
+            debug_assert_eq!(as_byte & 0xF0, 0);
+            self.nibbles.push(last | as_byte);
+            self.add_to_lsb = false;
+        } else {
+            self.nibbles.push(as_byte << 4);
+            self.add_to_lsb = true;
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.nibbles.len() * 2 - if self.add_to_lsb { 1 } else { 0 }
+    }
+
+    pub fn get(&self, index: u8) -> Option<Nibble> {
+        let byte_index = (index / 2) as usize;
+        // The nibble index is 0 for a nibble in lsb, and 1 for a nibble in msb
+        let nibble_index = index % 2;
+        let byte = self.nibbles.get(byte_index)?;
+        if nibble_index == 0 {
+            Some(Nibble(byte >> 4))
+        } else if byte_index == self.nibbles.len() - 1 {
+            // We are fetching the last nibble in the path.
+            // Because we push a byte for every other nibble inserted,
+            // we need to check the special case when logically there is no
+            // nibble at this index. This can be done by looking at the add_to_lsb flag.
+            (!self.add_to_lsb).then(|| Nibble(byte & 0x0F))
+        } else {
+            Some(Nibble(byte & 0x0F))
+        }
+    }
+
+    pub fn iter(&self) -> NibbleIterator<'_> {
+        NibbleIterator {
+            current_index: 0,
+            nibble_path: &self,
+        }
+    }
+
+    pub fn common_path_length(&self, other: NibblePath) -> usize {
+        self.iter()
+            .zip(other.iter())
+            .take_while(|(lhs, rhs)| *lhs == *rhs)
+            .count()
+    }
+}
+
+pub struct NibbleIterator<'a> {
+    current_index: u8,
+    nibble_path: &'a NibblePath,
+}
+
+impl<'a> Iterator for NibbleIterator<'a> {
+    type Item = Nibble;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let item = self.nibble_path.get(self.current_index);
+        if let Some(_) = item {
+            self.current_index += 1
+        };
+        item
+    }
+}
+
+impl<'a> AsRef<[u8]> for NibblePath {
+    fn as_ref(&self) -> &[u8] {
+        &self.nibbles
+    }
+}
+
+impl From<&NibblePath> for Bytes32 {
+    fn from(value: &NibblePath) -> Self {
+        let mut bytes = [0u8; 32];
+        (0..32).for_each(|i| {
+            bytes[i] = value.nibbles.get(i).copied().unwrap_or_default();
+        });
+        bytes
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NodeKey {
+    version: Version,
+    nibbles: NibblePath,
+}
+
+impl NodeKey {
+    pub fn new(version: Version, nibbles: NibblePath) -> Self {
+        NodeKey { version, nibbles }
+    }
+
+    pub fn new_with_empty_path(version: Version) -> Self {
+        Self::new(version, NibblePath::default())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Key {
+    Node(NodeKey),
+    Leaf(NibblePath),
+}
+
+impl From<NodeKey> for Key {
+    fn from(value: NodeKey) -> Self {
+        Key::Node(value)
+    }
+}
+
+impl From<NibblePath> for Key {
+    fn from(value: NibblePath) -> Self {
+        Key::Leaf(value)
+    }
+}
+
+impl KeyFormatting for Key {
+    type PrettyType = String;
+
+    fn pretty(&self) -> Self::PrettyType {
+        match self {
+            Key::Node(key) => {
+                format!("0x{}@{}", hex::encode(key.nibbles.as_ref()), key.version)
+            }
+
+            Key::Leaf(nibble_path) => hex::encode(nibble_path.as_ref()),
+        }
+    }
+}
+
+/// Number of children for each branch node
+const RADIX: usize = 16;
+/// Maximum depth of the tree: 256 key bits / 4 bits per level = 64 levels
+const MAX_DEPTH: usize = (std::mem::size_of::<Bytes32>() * 8) / RADIX;
+
 #[derive(Clone, PartialEq, Eq)]
 pub enum Node {
-    Node {
+    BranchNode {
+        key: NodeKey,
         hash: Bytes32,
         height: u32,
-        prefix: Prefix,
-        bytes_lo: Bytes32,
-        bytes_hi: Bytes32,
+        children: HashMap<Nibble, (Version, Bytes32)>,
+    },
+    LeafNode {
+        version: Version,
+        hash: Bytes32,
+        height: u32,
+        key: NibblePath,
+        data: Bytes32,
     },
     Placeholder,
 }
 
 impl Node {
     pub fn max_height() -> u32 {
-        Node::key_size_bits()
+        Self::key_size_bits()
     }
 
-    pub fn new(
-        height: u32,
-        prefix: Prefix,
-        bytes_lo: Bytes32,
-        bytes_hi: Bytes32,
+    pub fn version(&self) -> Option<Version> {
+        match self {
+            Self::BranchNode {
+                key: NodeKey { version, .. },
+                ..
+            } => Some(*version),
+            // Only internal nodes have a version
+            Self::LeafNode { version, .. } => Some(*version),
+            Self::Placeholder => None,
+        }
+    }
+
+    #[inline(always)]
+    pub fn version_or_default(&self) -> Version {
+        self.version().unwrap_or_default()
+    }
+
+    pub fn create_leaf<D: AsRef<[u8]>>(
+        version: Version,
+        key: &NibblePath,
+        data: D,
     ) -> Self {
-        Self::Node {
-            hash: calculate_hash(&prefix, &bytes_lo, &bytes_hi),
-            height,
-            prefix,
-            bytes_lo,
-            bytes_hi,
-        }
-    }
-
-    pub fn create_leaf<D: AsRef<[u8]>>(key: &Bytes32, data: D) -> Self {
-        let bytes_hi = sum(data);
-        Self::Node {
-            hash: calculate_leaf_hash(key, &bytes_hi),
+        let data = sum(data);
+        Self::LeafNode {
+            version,
+            hash: calculate_leaf_hash(key, &data),
             height: 0u32,
-            prefix: Prefix::Leaf,
-            bytes_lo: *key,
-            bytes_hi,
+            key: key.clone(),
+            data: sum(data),
         }
     }
 
-    pub fn create_node(left_child: &Node, right_child: &Node, height: u32) -> Self {
-        let bytes_lo = *left_child.hash();
-        let bytes_hi = *right_child.hash();
-        Self::Node {
-            hash: calculate_node_hash(&bytes_lo, &bytes_hi),
+    // TODO: Check if it is okay to use a fixed value for all heights,
+    // This seems to be what Diem and Penumbra do
+    fn placeholder_hash(_height: u32) -> Bytes32 {
+        sum("JMT_PLACEHOLDER_HASH")
+    }
+
+    pub fn create_node(
+        version: Version,
+        nibble_path: NibblePath,
+        // Assume vector of children is consistent with indexing
+        children: &HashMap<Nibble, Node>,
+        height: u32,
+    ) -> Self {
+        let children: HashMap<Nibble, (Version, Bytes32)> = children
+            .into_iter()
+            .map(|(nibble, node)| {
+                let version = node.version_or_default();
+                // TODO: In theory the node_hash will live only as
+                // long as the child node lives, and we could use a reference.
+                // But that would also mean that this node will partially borrow
+                // from all of its children, which might affect inserting new nodes.
+                let node_hash = node.hash().clone();
+                (*nibble, (version, node_hash))
+            })
+            .collect();
+
+        let key = NodeKey::new(version, nibble_path);
+        Self::BranchNode {
+            key,
+            hash: calculate_node_hash(&children, Self::placeholder_hash(height)),
             height,
-            prefix: Prefix::Node,
-            bytes_lo,
-            bytes_hi,
+            children,
         }
     }
 
     pub fn create_node_from_hashes(
-        bytes_lo: Bytes32,
-        bytes_hi: Bytes32,
+        version: Version,
+        nibble_path: NibblePath,
+        // Assume vector of children is consistent with indexing
+        children: HashMap<Nibble, (Version, Bytes32)>,
         height: u32,
     ) -> Self {
-        Self::Node {
-            hash: calculate_node_hash(&bytes_lo, &bytes_hi),
+        let key = NodeKey::new(version, nibble_path);
+        Self::BranchNode {
+            key,
+            hash: calculate_node_hash(&children, Self::placeholder_hash(height)),
             height,
-            prefix: Prefix::Node,
-            bytes_lo,
-            bytes_hi,
+            children,
         }
     }
 
     pub fn create_node_on_path(
-        path: &dyn Path,
+        path: NibblePath,
         path_node: &Node,
         side_node: &Node,
     ) -> Self {
@@ -122,7 +355,7 @@ impl Node {
             let parent_depth = path_node.common_path_length(side_node) as u32;
             #[allow(clippy::arithmetic_side_effects)] // parent_depth <= max_height
             let parent_height = Node::max_height() - parent_depth;
-            match path.get_instruction(parent_depth).unwrap() {
+            match path.get(parent_depth).unwrap() {
                 Side::Left => Node::create_node(path_node, side_node, parent_height),
                 Side::Right => Node::create_node(side_node, path_node, parent_height),
             }
@@ -163,7 +396,8 @@ impl Node {
 
     pub fn height(&self) -> u32 {
         match self {
-            Node::Node { height, .. } => *height,
+            Node::BranchNode { height, .. } => *height,
+            Node::LeafNode { height, .. } => *height,
             Node::Placeholder => 0,
         }
     }
@@ -182,29 +416,16 @@ impl Node {
 
     pub fn hash(&self) -> &Bytes32 {
         match self {
-            Node::Node { hash, .. } => hash,
+            Node::BranchNode { hash, .. } => hash,
+            Node::LeafNode { hash, .. } => hash,
             Node::Placeholder => zero_sum(),
         }
     }
 
     fn prefix(&self) -> Prefix {
         match self {
-            Node::Node { prefix, .. } => *prefix,
-            Node::Placeholder => Prefix::Leaf,
-        }
-    }
-
-    pub fn bytes_lo(&self) -> &Bytes32 {
-        match self {
-            Node::Node { bytes_lo, .. } => bytes_lo,
-            Node::Placeholder => zero_sum(),
-        }
-    }
-
-    pub fn bytes_hi(&self) -> &Bytes32 {
-        match self {
-            Node::Node { bytes_hi, .. } => bytes_hi,
-            Node::Placeholder => zero_sum(),
+            Node::BranchNode { .. } => Prefix::Node,
+            Node::LeafNode { .. } | Node::Placeholder => Prefix::Leaf,
         }
     }
 
@@ -219,9 +440,14 @@ impl Node {
     /// In `debug`, this method will panic if the node is not a leaf node to
     /// indicate to the developer that there is a potential problem in the
     /// tree's implementation.  
-    pub(super) fn leaf_key(&self) -> &Bytes32 {
+    pub(super) fn leaf_key(&self) -> &NibblePath {
         debug_assert!(self.is_leaf());
-        self.bytes_lo()
+        match self {
+            Node::BranchNode { .. } | Node::Placeholder => {
+                panic!("leaf_key cannot be called on a non_leaf node");
+            }
+            Node::LeafNode { key, .. } => key,
+        }
     }
 
     /// Get the leaf data of a leaf node.
@@ -269,7 +495,11 @@ impl Node {
     /// tree's implementation.
     pub fn right_child_key(&self) -> &Bytes32 {
         debug_assert!(self.is_node());
-        self.bytes_hi()
+        match self {
+            Node::BranchNode { .. } => panic!("Not supported"),
+            Node::LeafNode { data, .. } => data,
+            Node::Placeholder => zero_sum(),
+        }
     }
 }
 
@@ -280,7 +510,7 @@ impl AsRef<Node> for Node {
 }
 
 impl NodeTrait for Node {
-    type Key = Bytes32;
+    type Key = Key;
 
     fn height(&self) -> u32 {
         Node::height(self)
@@ -291,8 +521,9 @@ impl NodeTrait for Node {
         core::mem::size_of::<Self::Key>() as u32 * 8
     }
 
+    // TODO: Way too many clones in this
     fn leaf_key(&self) -> Self::Key {
-        *Node::leaf_key(self)
+        self.leaf_key().clone().into()
     }
 
     fn is_leaf(&self) -> bool {
@@ -385,7 +616,7 @@ impl<TableType, StorageType> StorageNode<'_, TableType, StorageType> {
 }
 
 impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageType> {
-    type Key = Bytes32;
+    type Key = NibblePath;
 
     fn height(&self) -> u32 {
         self.node.height()
@@ -397,7 +628,7 @@ impl<TableType, StorageType> NodeTrait for StorageNode<'_, TableType, StorageTyp
     }
 
     fn leaf_key(&self) -> Self::Key {
-        *self.node.leaf_key()
+        self.node.leaf_key().clone()
     }
 
     fn is_leaf(&self) -> bool {

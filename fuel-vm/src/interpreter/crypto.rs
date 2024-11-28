@@ -252,32 +252,25 @@ fn read_g1_point_alt_bn_128(
     point_ptr: Word,
 ) -> SimpleResult<G1> {
     // Big endian required by the library
-    let px = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
-    })?;
+    let px = Fq::from_slice(memory.read(point_ptr, 32u64)?)
+        .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
     let py = Fq::from_slice(
         memory.read(
             point_ptr
                 .checked_add(32)
-                .ok_or(crate::error::PanicOrBug::Panic(
-                    fuel_tx::PanicReason::ArithmeticOverflow,
-                ))?,
+                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
             32u64,
         )?,
     )
-    .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
-    })?;
+    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
 
-    if px == Fq::zero() && py == Fq::zero() {
-        Ok(G1::zero())
+    Ok(if px == Fq::zero() && py == Fq::zero() {
+        G1::zero()
     } else {
-        AffineG1::new(px, py).map(Into::into).map_err(|_| {
-            crate::error::PanicOrBug::Panic(
-                fuel_tx::PanicReason::InvalidEllipticCurvePoint,
-            )
-        })
-    }
+        AffineG1::new(px, py)
+            .map(Into::into)
+            .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?
+    })
 }
 
 fn read_g2_point_alt_bn_128(
@@ -285,59 +278,45 @@ fn read_g2_point_alt_bn_128(
     point_ptr: Word,
 ) -> SimpleResult<G2> {
     // Big endian required by the library
-    let ay = Fq::from_slice(memory.read(point_ptr, 32u64)?).map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
-    })?;
+    let ay = Fq::from_slice(memory.read(point_ptr, 32u64)?)
+        .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
     let ax = Fq::from_slice(
         memory.read(
             point_ptr
                 .checked_add(32)
-                .ok_or(crate::error::PanicOrBug::Panic(
-                    fuel_tx::PanicReason::ArithmeticOverflow,
-                ))?,
+                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
             32u64,
         )?,
     )
-    .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
-    })?;
+    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
     let by = Fq::from_slice(
         memory.read(
             point_ptr
                 .checked_add(64)
-                .ok_or(crate::error::PanicOrBug::Panic(
-                    fuel_tx::PanicReason::ArithmeticOverflow,
-                ))?,
+                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
             32u64,
         )?,
     )
-    .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
-    })?;
+    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
     let bx = Fq::from_slice(
         memory.read(
             point_ptr
                 .checked_add(96)
-                .ok_or(crate::error::PanicOrBug::Panic(
-                    fuel_tx::PanicReason::ArithmeticOverflow,
-                ))?,
+                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
             32u64,
         )?,
     )
-    .map_err(|_| {
-        crate::error::PanicOrBug::Panic(fuel_tx::PanicReason::InvalidEllipticCurvePoint)
-    })?;
+    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
     let a = Fq2::new(ax, ay);
     let b = Fq2::new(bx, by);
-    if a.is_zero() && b.is_zero() {
-        Ok(G2::zero())
+    Ok(if a.is_zero() && b.is_zero() {
+        G2::zero()
     } else {
-        Ok(G2::from(AffineG2::new(a, b).map_err(|_| {
-            crate::error::PanicOrBug::Panic(
-                fuel_tx::PanicReason::InvalidEllipticCurvePoint,
-            )
-        })?))
-    }
+        G2::from(
+            AffineG2::new(a, b)
+                .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?,
+        )
+    })
 }
 
 pub(crate) fn ec_operation(
@@ -357,11 +336,9 @@ pub(crate) fn ec_operation(
                     let point1 = read_g1_point_alt_bn_128(memory, points_ptr)?;
                     let point2 = read_g1_point_alt_bn_128(
                         memory,
-                        points_ptr.checked_add(64).ok_or(
-                            crate::error::PanicOrBug::Panic(
-                                fuel_tx::PanicReason::ArithmeticOverflow,
-                            ),
-                        )?,
+                        points_ptr
+                            .checked_add(64)
+                            .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
                     )?;
                     let mut output = [0u8; 64];
                     #[allow(clippy::arithmetic_side_effects)]
@@ -374,19 +351,15 @@ pub(crate) fn ec_operation(
                 // Scalar multiplication
                 1 => {
                     let point = read_g1_point_alt_bn_128(memory, points_ptr)?;
-                    let scalar = Fr::from_slice(memory.read(
-                        points_ptr.checked_add(64).ok_or(
-                            crate::error::PanicOrBug::Panic(
-                                fuel_tx::PanicReason::ArithmeticOverflow,
-                            ),
+                    let scalar = Fr::from_slice(
+                        memory.read(
+                            points_ptr
+                                .checked_add(64)
+                                .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
+                            32u64,
                         )?,
-                        32u64,
-                    )?)
-                    .map_err(|_| {
-                        crate::error::PanicOrBug::Panic(
-                            fuel_tx::PanicReason::InvalidEllipticCurvePoint,
-                        )
-                    })?;
+                    )
+                    .map_err(|_| fuel_tx::PanicReason::InvalidEllipticCurvePoint)?;
                     let mut output = [0u8; 64];
                     #[allow(clippy::arithmetic_side_effects)]
                     if let Some(product) = AffineG1::from_jacobian(point * scalar) {
@@ -395,18 +368,10 @@ pub(crate) fn ec_operation(
                     }
                     memory.write_bytes(owner, dst, output)?;
                 }
-                _ => {
-                    return Err(crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::UnsupportedOperationType,
-                    ))
-                }
+                _ => return Err(fuel_tx::PanicReason::UnsupportedOperationType.into()),
             }
         }
-        _ => {
-            return Err(crate::error::PanicOrBug::Panic(
-                fuel_tx::PanicReason::UnsupportedCurveId,
-            ))
-        }
+        _ => return Err(fuel_tx::PanicReason::UnsupportedCurveId.into()),
     }
     Ok(inc_pc(pc)?)
 }
@@ -425,40 +390,29 @@ pub(crate) fn ec_pairing(
             // Each element consistsof an uncompressed G1 point (64 bytes) and an
             // uncompressed G2 point (128 bytes).
             let element_size = 128 + 64;
-            let mut elements =
-                Vec::with_capacity(usize::try_from(number_elements).map_err(|_| {
-                    crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::ArithmeticOverflow,
-                    )
-                })?);
+            let mut elements = Vec::with_capacity(
+                usize::try_from(number_elements)
+                    .map_err(|_| fuel_tx::PanicReason::ArithmeticOverflow)?,
+            );
             for idx in 0..number_elements {
                 let start_offset = elements_ptr
-                    .checked_add(idx.checked_mul(element_size).ok_or(
-                        crate::error::PanicOrBug::Panic(
-                            fuel_tx::PanicReason::ArithmeticOverflow,
-                        ),
-                    )?)
-                    .ok_or(crate::error::PanicOrBug::Panic(
-                        fuel_tx::PanicReason::ArithmeticOverflow,
-                    ))?;
+                    .checked_add(
+                        idx.checked_mul(element_size)
+                            .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
+                    )
+                    .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?;
                 let a = read_g1_point_alt_bn_128(memory, start_offset)?;
                 let b = read_g2_point_alt_bn_128(
                     memory,
-                    start_offset.checked_add(64).ok_or(
-                        crate::error::PanicOrBug::Panic(
-                            fuel_tx::PanicReason::ArithmeticOverflow,
-                        ),
-                    )?,
+                    start_offset
+                        .checked_add(64)
+                        .ok_or(fuel_tx::PanicReason::ArithmeticOverflow)?,
                 )?;
                 elements.push((a, b));
             }
             *success = (bn::pairing_batch(&elements) == Gt::one()) as u64;
         }
-        _ => {
-            return Err(crate::error::PanicOrBug::Panic(
-                fuel_tx::PanicReason::UnsupportedOperationType,
-            ))
-        }
+        _ => return Err(fuel_tx::PanicReason::UnsupportedOperationType.into()),
     }
     Ok(inc_pc(pc)?)
 }

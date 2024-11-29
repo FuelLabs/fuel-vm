@@ -345,6 +345,10 @@ impl_instructions! {
     0xba BSIZ bsiz [dst: RegId blob_id_ptr: RegId]
     "Load blob as data"
     0xbb BLDD bldd [dst_ptr: RegId blob_id_ptr: RegId offset: RegId len: RegId]
+    "Given some curve, performs an operation on points"
+    0xbc ECOP ecop [dst: RegId curve_id: RegId operation_type: RegId points_ptr: RegId]
+    "Given some curve, performs a pairing on groups of points"
+    0xbe EPAR epar [success: RegId curve_id: RegId number_elements: RegId points_ptr: RegId]
 }
 
 impl Instruction {
@@ -701,9 +705,8 @@ impl Opcode {
             | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
             | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
             | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
-            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD => {
-                true
-            }
+            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD
+            | ECOP | EPAR => true,
             _ => false,
         }
     }

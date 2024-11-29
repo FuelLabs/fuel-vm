@@ -4,7 +4,7 @@ use super::*;
 pub const GIT: &str = "98341e564b75d1157e61d7d5f38612f6224a5b30";
 /// Modified manually afterwards in https://github.com/FuelLabs/fuel-vm/pull/780
 pub fn default_gas_costs() -> GasCostsValues {
-    GasCostsValuesV4 {
+    GasCostsValuesV5 {
         add: 1,
         addi: 1,
         and: 1,
@@ -89,6 +89,11 @@ pub fn default_gas_costs() -> GasCostsValues {
         wqmm: 3,
         xor: 1,
         xori: 1,
+        ecop: 3500,
+        epar: DependentCost::HeavyOperation {
+            base: 69000,
+            gas_per_unit: 52000,
+        },
         aloc: DependentCost::LightOperation {
             base: 2,
             units_per_gas: 214,

@@ -44,7 +44,7 @@ fn gas_factor_rounds_correctly() {
         .coin_input(AssetId::default(), input)
         .change_output(AssetId::default())
         .build()
-        .into_ready(gas_price, &gas_costs, &fee_params)
+        .into_ready(gas_price, &gas_costs, &fee_params, None)
         .unwrap();
 
     let profiler = GasProfiler::default();

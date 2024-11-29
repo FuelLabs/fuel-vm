@@ -357,7 +357,7 @@ fn transact__with_non_zero_gas_price_affects_change_output() {
     )
     .into_checked_basic(Default::default(), &Default::default())
     .expect("Failed to generate checked tx")
-    .into_ready(gas_price, &GasCosts::default(), &Default::default())
+    .into_ready(gas_price, &GasCosts::default(), &Default::default(), None)
     .expect("Failed to generate ready tx");
 
     // When

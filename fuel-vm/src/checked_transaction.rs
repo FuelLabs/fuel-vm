@@ -8,6 +8,7 @@
 #![allow(non_upper_case_globals)]
 
 use fuel_tx::{
+    field::Expiration,
     Create,
     Mint,
     Script,
@@ -188,6 +189,7 @@ impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
         gas_price: Word,
         gas_costs: &GasCosts,
         fee_parameters: &FeeParameters,
+        block_height: Option<BlockHeight>,
     ) -> Result<Ready<Tx>, CheckError> {
         let Checked {
             transaction,
@@ -204,6 +206,12 @@ impl<Tx: IntoChecked + Chargeable> Checked<Tx> {
 
         let max_fee_from_policies = transaction.max_fee_limit();
         let max_fee_from_gas_price = fee.max_fee();
+
+        if let Some(block_height) = block_height {
+            if block_height > transaction.expiration() {
+                return Err(CheckError::Validity(ValidityError::TransactionExpiration));
+            }
+        }
 
         if max_fee_from_gas_price > max_fee_from_policies {
             Err(CheckError::InsufficientMaxFee {
@@ -1682,7 +1690,7 @@ mod tests {
             .clone()
             .into_checked(Default::default(), &params)
             .unwrap()
-            .into_ready(gas_price, &GasCosts::default(), params.fee_params())
+            .into_ready(gas_price, &GasCosts::default(), params.fee_params(), None)
             .expect("`new_transaction` should be fully valid");
 
         // given
@@ -1694,7 +1702,7 @@ mod tests {
 
         // when
         let err = bigger_checked
-            .into_ready(gas_price, &GasCosts::default(), params.fee_params())
+            .into_ready(gas_price, &GasCosts::default(), params.fee_params(), None)
             .expect_err("Expected invalid transaction");
 
         let max_fee_from_policies = match err {
@@ -1759,7 +1767,7 @@ mod tests {
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_ready(max_gas_price, &gas_costs, fee_params)
+            .into_ready(max_gas_price, &gas_costs, fee_params, None)
             .expect_err("overflow expected");
 
         assert_eq!(err, CheckError::Validity(ValidityError::BalanceOverflow));
@@ -1786,7 +1794,7 @@ mod tests {
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
             .unwrap()
-            .into_ready(gas_price, &gas_costs, fee_params)
+            .into_ready(gas_price, &gas_costs, fee_params, None)
             .expect_err("overflow expected");
 
         // then
@@ -1812,7 +1820,7 @@ mod tests {
             .clone()
             .into_checked(block_height, &params)
             .unwrap()
-            .into_ready(gas_price, &gas_costs, params.fee_params())
+            .into_ready(gas_price, &gas_costs, params.fee_params(), None)
             .expect("Should be valid");
 
         // given
@@ -1827,7 +1835,7 @@ mod tests {
         tx_without_enough_to_pay_for_tip
             .into_checked(block_height, &params)
             .unwrap()
-            .into_ready(gas_price, &gas_costs, params.fee_params())
+            .into_ready(gas_price, &gas_costs, params.fee_params(), None)
             .expect_err("Expected invalid transaction");
 
         // when
@@ -1845,7 +1853,7 @@ mod tests {
         tx.clone()
             .into_checked(block_height, &params)
             .unwrap()
-            .into_ready(gas_price, &GasCosts::default(), params.fee_params())
+            .into_ready(gas_price, &GasCosts::default(), params.fee_params(), None)
             .expect("Should be valid");
     }
 
@@ -1868,6 +1876,7 @@ mod tests {
                 gas_price,
                 &GasCosts::default(),
                 consensus_params.fee_params(),
+                None,
             )
             .expect_err("overflow expected");
 

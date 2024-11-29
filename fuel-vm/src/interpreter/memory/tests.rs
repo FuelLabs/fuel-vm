@@ -38,6 +38,7 @@ fn memcopy() {
             zero_gas_price,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .unwrap();
 
@@ -105,6 +106,7 @@ fn stack_alloc_ownership() {
             gas_price,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .unwrap();
     vm.init_script(tx).expect("Failed to init VM");

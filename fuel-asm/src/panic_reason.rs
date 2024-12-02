@@ -158,7 +158,8 @@ enum_from! {
         UnsupportedOperationType = 0x3a,
         /// Read alt_bn_128 curve point is invalid.
         InvalidEllipticCurvePoint = 0x3b,
-
+        /// Given input contract does not exist.
+        InputContractDoesNotExist = 0x3c,
     }
 }
 

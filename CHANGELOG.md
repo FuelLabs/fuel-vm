@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Breaking 
 - [863](https://github.com/FuelLabs/fuel-vm/pull/863): Changed StorageRead::read to load a serialized value starting from a offset. The function returns an optional value equal to the number of bytes read when defined, or none if the offset specified in input is outside the boundaries of the serialized value read.
+- [868](https://github.com/FuelLabs/fuel-vm/pull/868): Fixed error message when having a nonexistent contract in inputs. Instead of saying "contract was in inputs, but doesn't exist", the message was just "contract not in inputs". Now there's a separate error for that.
 
 ## [Version 0.58.2]
 

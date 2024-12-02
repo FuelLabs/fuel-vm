@@ -7,10 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [870](https://github.com/FuelLabs/fuel-vm/pull/870): Add 3 new ZK-related opcodes: eadd (ecAdd on EVM), emul (ecMul on EVM), epar (ecPairing on EVM)
+- [875](https://github.com/FuelLabs/fuel-vm/pull/875): Updated `wasm-bindgen` to `0.2.97`
+
 ### Fixed
 - [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.
 
-### Breaking
+### Breaking 
+- [863](https://github.com/FuelLabs/fuel-vm/pull/863): Changed StorageRead::read to load a serialized value starting from a offset. The function returns an optional value equal to the number of bytes read when defined, or none if the offset specified in input is outside the boundaries of the serialized value read.
 - [868](https://github.com/FuelLabs/fuel-vm/pull/868): Fixed error message when having a nonexistent contract in inputs. Instead of saying "contract was in inputs, but doesn't exist", the message was just "contract not in inputs". Now there's a separate error for that.
 
 ## [Version 0.58.2]

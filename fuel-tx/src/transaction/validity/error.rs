@@ -133,6 +133,8 @@ pub enum ValidityError {
     TransactionInputsMax,
     TransactionOutputsMax,
     TransactionWitnessesMax,
+    TransactionOwnerIndexOutOfBounds,
+    TransactionOwnerInputHasNoOwner,
     TransactionOutputChangeAssetIdDuplicated(AssetId),
     TransactionOutputChangeAssetIdNotFound(AssetId),
     /// This error happens when a transaction attempts to create a coin output for an

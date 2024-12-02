@@ -32,6 +32,7 @@ use crate::{
     },
     prelude::Profiler,
     storage::{
+        BlobData,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
@@ -50,6 +51,7 @@ use fuel_tx::{
 use fuel_types::{
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     ContractId,
 };
@@ -369,7 +371,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> IoResult<u32, S::Error>
+) -> IoResult<usize, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
@@ -377,7 +379,18 @@ where
         .size_of_value(contract)
         .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
-    Ok(u32::try_from(size).map_err(|_| PanicReason::MemoryOverflow)?)
+    Ok(size)
+}
+
+pub(crate) fn blob_size<S>(storage: &S, blob_id: &BlobId) -> IoResult<usize, S::Error>
+where
+    S: StorageSize<BlobData> + ?Sized,
+{
+    let size = storage
+        .size_of_value(blob_id)
+        .map_err(RuntimeError::Storage)?
+        .ok_or(PanicReason::BlobNotFound)?;
+    Ok(size)
 }
 
 pub(crate) fn balance<S>(

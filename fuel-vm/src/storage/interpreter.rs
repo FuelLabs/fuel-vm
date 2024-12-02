@@ -163,19 +163,6 @@ pub trait InterpreterStorage:
         StorageSize::<ContractsRawCode>::size_of_value(self, id)
     }
 
-    /// Read contract bytes from storage into the buffer.
-    fn read_contract(
-        &self,
-        id: &ContractId,
-        offset: usize,
-        writer: &mut [u8],
-    ) -> Result<Option<Word>, Self::DataError> {
-        Ok(
-            StorageRead::<ContractsRawCode>::read(self, id, offset, writer)?
-                .map(|r| r as Word),
-        )
-    }
-
     /// Append a contract to the chain, provided its identifier.
     ///
     /// Canonically, the identifier should be [`Contract::id`].
@@ -369,15 +356,6 @@ where
         id: &ContractId,
     ) -> Result<Option<usize>, Self::DataError> {
         <S as InterpreterStorage>::storage_contract_size(self.deref(), id)
-    }
-
-    fn read_contract(
-        &self,
-        id: &ContractId,
-        offset: usize,
-        writer: &mut [u8],
-    ) -> Result<Option<Word>, Self::DataError> {
-        <S as InterpreterStorage>::read_contract(self.deref(), id, offset, writer)
     }
 
     fn contract_state_range(

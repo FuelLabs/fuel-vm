@@ -52,6 +52,7 @@ fn valid_upload_transaction() -> TransactionBuilder<Upload> {
         predicate(),
         vec![],
     ));
+    builder.expiration(u32::MAX.into());
 
     builder
 }
@@ -166,6 +167,39 @@ fn maturity() {
 
     // Then
     assert_eq!(Err(ValidityError::TransactionMaturity), result);
+}
+
+#[test]
+fn upload__check__success_if_expiration_met() {
+    // Given
+    let block_height: BlockHeight = 1000.into();
+    let success_block_height = block_height.succ().unwrap();
+    let tx = valid_upload_transaction()
+        .expiration(success_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Ok(()), result);
+}
+
+#[test]
+fn upload__check__valid_expiration_policy() {
+    let block_height: BlockHeight = 1000.into();
+    let failing_block_height = block_height.pred().unwrap();
+
+    // Given
+    let tx = valid_upload_transaction()
+        .expiration(failing_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Err(ValidityError::TransactionExpiration), result);
 }
 
 #[test]

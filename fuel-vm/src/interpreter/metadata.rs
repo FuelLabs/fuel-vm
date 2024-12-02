@@ -185,6 +185,10 @@ impl<Tx> GTFInput<'_, Tx> {
                 .policies()
                 .get(PolicyType::Maturity)
                 .ok_or(PanicReason::PolicyIsNotSet)?,
+            GTFArgs::PolicyExpiration => tx
+                .policies()
+                .get(PolicyType::Expiration)
+                .ok_or(PanicReason::PolicyIsNotSet)?,
             GTFArgs::PolicyMaxFee => tx
                 .policies()
                 .get(PolicyType::MaxFee)

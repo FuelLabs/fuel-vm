@@ -33,6 +33,7 @@ fn valid_upgrade_transaction() -> TransactionBuilder<Upgrade> {
         vec![],
     ));
     builder.with_params(test_params());
+    builder.expiration(u32::MAX.into());
 
     builder
 }
@@ -52,6 +53,7 @@ fn valid_upgrade_transaction_with_message() -> TransactionBuilder<Upgrade> {
         vec![],
     ));
     builder.with_params(test_params());
+    builder.expiration(u32::MAX.into());
 
     builder
 }
@@ -89,6 +91,39 @@ fn maturity() {
 
     // Then
     assert_eq!(Err(ValidityError::TransactionMaturity), result);
+}
+
+#[test]
+fn upgrade__check__success_if_expiration_met() {
+    // Given
+    let block_height: BlockHeight = 1000.into();
+    let success_block_height = block_height.succ().unwrap();
+    let tx = valid_upgrade_transaction()
+        .expiration(success_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Ok(()), result);
+}
+
+#[test]
+fn upgrade__check__valid_expiration_policy() {
+    let block_height: BlockHeight = 1000.into();
+    let failing_block_height = block_height.pred().unwrap();
+
+    // Given
+    let tx = valid_upgrade_transaction()
+        .expiration(failing_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Err(ValidityError::TransactionExpiration), result);
 }
 
 #[test]

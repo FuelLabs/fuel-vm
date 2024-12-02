@@ -96,6 +96,7 @@ use fuel_tx::{
     Input,
     Receipt,
     ScriptExecutionResult,
+    Transaction,
     Upgrade,
     UpgradeMetadata,
     UpgradePurpose,
@@ -845,12 +846,59 @@ where
     }
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
+        for input in self.transaction().inputs() {
+            if let Input::Contract(contract) = input {
+                if !self.check_contract_exists(&contract.contract_id)? {
+                    return Err(InterpreterError::Panic(
+                        PanicReason::InputContractDoesNotExist,
+                    ));
+                }
+            }
+        }
+
         // TODO: Remove `Create`, `Upgrade`, and `Upload` from here
         //  https://github.com/FuelLabs/fuel-vm/issues/251
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
         let gas_price = self.gas_price();
+
+        #[cfg(debug_assertions)]
+        // The `match` statement exists to ensure that all variants of `Transaction`
+        // are handled below. If a new variant is added, the compiler will
+        // emit an error.
+        {
+            let mint: Transaction = Transaction::mint(
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            )
+            .into();
+            match mint {
+                Transaction::Create(_) => {
+                    // Handled in the `self.tx.as_create_mut()` branch.
+                }
+                Transaction::Upgrade(_) => {
+                    // Handled in the `self.tx.as_upgrade_mut()` branch.
+                }
+                Transaction::Upload(_) => {
+                    // Handled in the `self.tx.as_upload_mut()` branch.
+                }
+                Transaction::Blob(_) => {
+                    // Handled in the `self.tx.as_blob_mut()` branch.
+                }
+                Transaction::Script(_) => {
+                    // Handled in the `else` branch.
+                }
+                Transaction::Mint(_) => {
+                    // The `Mint` transaction doesn't implement `ExecutableTransaction`.
+                }
+            };
+        }
+
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::deploy_inner(
                 create,
@@ -896,25 +944,15 @@ where
             )?;
             ProgramState::Return(1)
         } else {
-            if self.transaction().inputs().iter().any(|input| {
-                if let Input::Contract(contract) = input {
-                    !self
-                        .check_contract_exists(&contract.contract_id)
-                        .unwrap_or(false)
-                } else {
-                    false
-                }
-            }) {
-                return Err(InterpreterError::Panic(PanicReason::InputContractDoesNotExist));
-            }
-
             let gas_limit;
             let is_empty_script;
             if let Some(script) = self.transaction().as_script() {
                 gas_limit = *script.script_gas_limit();
                 is_empty_script = script.script().is_empty();
             } else {
-                unreachable!("Only `Create` and `Script` transactions can be executed inside of the VM")
+                unreachable!(
+                    "Only `Script` transactions can be executed inside of the VM"
+                )
             }
 
             // TODO set tree balance

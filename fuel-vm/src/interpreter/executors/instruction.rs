@@ -917,6 +917,22 @@ where
                 let (a, b, c, d) = bldd.unpack();
                 self.blob_load_data(r!(a), r!(b), r!(c), r!(d))?;
             }
+
+            Instruction::ECOP(ecop) => {
+                self.gas_charge(self.gas_costs().ecop().map_err(PanicReason::from)?)?;
+                let (a, b, c, d) = ecop.unpack();
+                self.ec_operation(r!(a), r!(b), r!(c), r!(d))?;
+            }
+
+            Instruction::EPAR(epar) => {
+                let (a, b, c, d) = epar.unpack();
+                let len = r!(c);
+                self.dependent_gas_charge(
+                    self.gas_costs().epar().map_err(PanicReason::from)?,
+                    len,
+                )?;
+                self.ec_pairing(a.into(), r!(b), len, r!(d))?;
+            }
         }
 
         Ok(ExecuteState::Proceed)

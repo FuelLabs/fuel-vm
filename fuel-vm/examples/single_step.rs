@@ -56,6 +56,7 @@ fn main() {
             0,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .expect("Failed to finalize tx");
 

@@ -832,6 +832,28 @@ pub mod field {
         }
     }
 
+    pub trait Expiration {
+        fn expiration(&self) -> BlockHeight;
+        fn set_expiration(&mut self, value: BlockHeight);
+    }
+
+    impl<T: Policies + ?Sized> Expiration for T {
+        #[inline(always)]
+        fn expiration(&self) -> BlockHeight {
+            self.policies()
+                .get(PolicyType::Expiration)
+                .and_then(|value| u32::try_from(value).ok())
+                .unwrap_or(u32::MAX)
+                .into()
+        }
+
+        #[inline(always)]
+        fn set_expiration(&mut self, block_height: BlockHeight) {
+            self.policies_mut()
+                .set(PolicyType::Expiration, Some(*block_height.deref() as u64))
+        }
+    }
+
     pub trait MaxFeeLimit {
         fn max_fee_limit(&self) -> Word;
         fn set_max_fee_limit(&mut self, value: Word);

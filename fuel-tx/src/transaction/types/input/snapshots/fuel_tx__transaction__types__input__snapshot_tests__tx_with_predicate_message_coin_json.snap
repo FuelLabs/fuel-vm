@@ -1,6 +1,7 @@
 ---
 source: fuel-tx/src/transaction/types/input/snapshot_tests.rs
 expression: json
+snapshot_kind: text
 ---
 {
   "Script": {
@@ -11,12 +12,13 @@ expression: json
       "script_data": []
     },
     "policies": {
-      "bits": "Tip | Maturity | MaxFee",
+      "bits": "Tip | Maturity | MaxFee | Expiration",
       "values": [
         1,
         0,
         123,
-        1000000
+        1000000,
+        456
       ]
     },
     "inputs": [

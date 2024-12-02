@@ -71,6 +71,22 @@ fn check__fails_if_maturity_not_met() {
 }
 
 #[test]
+fn check__success_if_expiration_met() {
+    // Given
+    let block_height: BlockHeight = 1000.into();
+    let success_block_height = block_height.succ().unwrap();
+    let tx = valid_blob_transaction()
+        .expiration(success_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Ok(()), result);
+}
+
+#[test]
 fn check__fails_if_expiration_not_met() {
     // Given
     let block_height: BlockHeight = 1000.into();

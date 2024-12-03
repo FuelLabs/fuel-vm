@@ -124,6 +124,81 @@ fn maturity() {
 }
 
 #[test]
+fn script__check__valid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+
+    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        // Given
+        .expiration(block_height)
+        .add_fee_input()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        // Then
+        .expect("Failed to validate script");
+}
+
+#[test]
+fn script__check__invalid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    // Given
+    let block_height = 1000.into();
+    let old_block_height = 999u32.into();
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        // Given
+        .expiration(old_block_height)
+        .add_fee_input()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
+
+    // Then
+    assert_eq!(ValidityError::TransactionExpiration, err);
+}
+
+#[test]
+fn create__check__valid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+
+    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        // Given
+        .expiration(block_height)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        // Then
+        .expect("Failed to validate tx create");
+}
+
+#[test]
+fn create__check__invalid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    // Given
+    let block_height = 1000.into();
+    let old_block_height = 999u32.into();
+    let err = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .expiration(old_block_height)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        .expect_err("Failed to validate tx create");
+
+    // Then
+    assert_eq!(ValidityError::TransactionExpiration, err);
+}
+
+#[test]
 fn script__check__not_set_witness_limit_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);

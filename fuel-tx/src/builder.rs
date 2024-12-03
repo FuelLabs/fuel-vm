@@ -5,6 +5,7 @@ use crate::{
         field::{
             self,
             BytecodeWitnessIndex,
+            Expiration,
             Maturity,
             Tip,
             Witnesses,
@@ -372,6 +373,12 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
     pub fn maturity(&mut self, maturity: BlockHeight) -> &mut Self {
         self.tx.set_maturity(maturity);
+
+        self
+    }
+
+    pub fn expiration(&mut self, expiration: BlockHeight) -> &mut Self {
+        self.tx.set_expiration(expiration);
 
         self
     }

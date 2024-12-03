@@ -245,6 +245,9 @@ crate::enum_try_from! {
 
         /// Set `$rA` to `tx.policies[count_ones(0b1111 & tx.policyTypes) - 1].maxFee`
         PolicyMaxFee = 0x504,
+
+        /// Set `$rA` to `tx.policies[count_ones(0b11111 & tx.policyTypes) - 1].expiration`
+        PolicyExpiration = 0x505,
     },
     Immediate12
 }
@@ -340,6 +343,7 @@ fn encode_gtf_args() {
         GTFArgs::PolicyTip,
         GTFArgs::PolicyWitnessLimit,
         GTFArgs::PolicyMaturity,
+        GTFArgs::PolicyExpiration,
         GTFArgs::PolicyMaxFee,
     ];
 

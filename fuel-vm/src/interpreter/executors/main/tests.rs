@@ -137,7 +137,7 @@ fn transact__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_script_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.transact(tx).unwrap_err();
 
@@ -172,7 +172,7 @@ fn deploy__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_create_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.deploy(tx).unwrap_err();
 
@@ -213,7 +213,7 @@ fn upgrade__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_upgrade_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.upgrade(tx).unwrap_err();
 
@@ -254,7 +254,7 @@ fn upload__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_upload_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.upload(tx).unwrap_err();
 

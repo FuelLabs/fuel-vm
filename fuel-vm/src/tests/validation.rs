@@ -148,7 +148,7 @@ fn malleable_fields_do_not_affect_validity_of_create() {
         match tx.inputs_mut()[0] {
             Input::CoinPredicate(CoinPredicate {
                 ref mut tx_pointer, ..
-            }) => *tx_pointer = TxPointer::from_str("123456780001").unwrap(),
+            }) => *tx_pointer = TxPointer::from_str("1234567800000001").unwrap(),
             _ => unreachable!(),
         };
 
@@ -250,7 +250,7 @@ fn malleable_fields_do_not_affect_validity_of_script() {
         match tx.inputs_mut()[0] {
             Input::CoinPredicate(CoinPredicate {
                 ref mut tx_pointer, ..
-            }) => *tx_pointer = TxPointer::from_str("123456780001").unwrap(),
+            }) => *tx_pointer = TxPointer::new(12345678u32.into(), 1),
             _ => unreachable!(),
         };
 
@@ -265,7 +265,7 @@ fn malleable_fields_do_not_affect_validity_of_script() {
                 *utxo_id = UtxoId::new([1; 32].into(), 0);
                 *balance_root = [2; 32].into();
                 *state_root = [3; 32].into();
-                *tx_pointer = TxPointer::from_str("123456780001").unwrap();
+                *tx_pointer = TxPointer::new(12345678u32.into(), 1);
             }
             _ => unreachable!(),
         };

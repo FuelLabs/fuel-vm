@@ -234,7 +234,7 @@ impl TransactionBuilder<Blob> {
 impl TransactionBuilder<Mint> {
     pub fn mint(
         block_height: BlockHeight,
-        tx_index: u16,
+        tx_index: u32,
         input_contract: input::contract::Contract,
         output_contract: output::contract::Contract,
         mint_amount: Word,

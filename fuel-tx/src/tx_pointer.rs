@@ -35,13 +35,13 @@ pub struct TxPointer {
     /// Block height
     block_height: BlockHeight,
     /// Transaction index
-    tx_index: u16,
+    tx_index: u32,
 }
 
 impl TxPointer {
     pub const LEN: usize = 2 * WORD_SIZE;
 
-    pub const fn new(block_height: BlockHeight, tx_index: u16) -> Self {
+    pub const fn new(block_height: BlockHeight, tx_index: u32) -> Self {
         Self {
             block_height,
             tx_index,
@@ -52,7 +52,7 @@ impl TxPointer {
         self.block_height
     }
 
-    pub const fn tx_index(&self) -> u16 {
+    pub const fn tx_index(&self) -> u32 {
         self.tx_index
     }
 }
@@ -72,33 +72,33 @@ impl fmt::Display for TxPointer {
 
 impl fmt::LowerHex for TxPointer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:08x}{:04x}", self.block_height, self.tx_index)
+        write!(f, "{:08x}{:08x}", self.block_height, self.tx_index)
     }
 }
 
 impl fmt::UpperHex for TxPointer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:08X}{:04X}", self.block_height, self.tx_index)
+        write!(f, "{:08X}{:08X}", self.block_height, self.tx_index)
     }
 }
 
 impl str::FromStr for TxPointer {
     type Err = &'static str;
 
-    /// TxPointer is encoded as 12 hex characters:
+    /// TxPointer is encoded as 16 hex characters:
     /// - 8 characters for block height
-    /// - 4 characters for tx index
+    /// - 8 characters for tx index
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const ERR: &str = "Invalid encoded byte in TxPointer";
 
-        if s.len() != 12 || !s.is_char_boundary(8) {
+        if s.len() != 16 || !s.is_char_boundary(8) {
             return Err(ERR)
         }
 
         let (block_height, tx_index) = s.split_at(8);
 
         let block_height = u32::from_str_radix(block_height, 16).map_err(|_| ERR)?;
-        let tx_index = u16::from_str_radix(tx_index, 16).map_err(|_| ERR)?;
+        let tx_index = u32::from_str_radix(tx_index, 16).map_err(|_| ERR)?;
 
         Ok(Self::new(block_height.into(), tx_index))
     }
@@ -156,8 +156,8 @@ fn fmt_encode_decode() {
         let lower = format!("{tx_pointer:x}");
         let upper = format!("{tx_pointer:X}");
 
-        assert_eq!(lower, format!("{block_height:08x}{tx_index:04x}"));
-        assert_eq!(upper, format!("{block_height:08X}{tx_index:04X}"));
+        assert_eq!(lower, format!("{block_height:08x}{tx_index:08x}"));
+        assert_eq!(upper, format!("{block_height:08X}{tx_index:08X}"));
 
         let x = TxPointer::from_str(&lower).expect("failed to decode from str");
         assert_eq!(tx_pointer, x);

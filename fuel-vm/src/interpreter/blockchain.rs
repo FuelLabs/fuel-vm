@@ -655,6 +655,7 @@ where
             &contract_id,
             contract_offset,
             contract_len,
+            PanicReason::ContractNotFound,
         )?;
 
         // Update frame code size, if we have a stack frame (i.e. fp > 0)
@@ -747,6 +748,7 @@ where
             &blob_id,
             blob_offset,
             blob_len,
+            PanicReason::BlobNotFound,
         )?;
 
         // Update frame code size, if we have a stack frame (i.e. fp > 0)
@@ -1011,6 +1013,7 @@ where
             &contract_id,
             contract_offset,
             contract_len,
+            PanicReason::ContractNotFound,
         )?;
 
         Ok(inc_pc(self.pc)?)

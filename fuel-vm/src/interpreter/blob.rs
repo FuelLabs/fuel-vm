@@ -86,6 +86,7 @@ where
             &blob_id,
             blob_offset,
             blob_len,
+            PanicReason::BlobNotFound,
         )?;
 
         Ok(inc_pc(self.registers.pc_mut())?)

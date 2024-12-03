@@ -293,6 +293,7 @@ fn test_copy_from_storage_zero_fill(
         &contract_id,
         src_offset,
         contract_size,
+        PanicReason::ContractNotFound,
     )
     .is_ok();
     let memory: [u8; 5] = memory[..5].try_into().unwrap();

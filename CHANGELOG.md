@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Breaking 
 - [863](https://github.com/FuelLabs/fuel-vm/pull/863): Changed StorageRead::read to load a serialized value starting from a offset. The function returns an optional value equal to the number of bytes read when defined, or none if the offset specified in input is outside the boundaries of the serialized value read.
 - [868](https://github.com/FuelLabs/fuel-vm/pull/868): Fixed error message when having a nonexistent contract in inputs. Instead of saying "contract was in inputs, but doesn't exist", the message was just "contract not in inputs". Now there's a separate error for that.
+- [837](https://github.com/FuelLabs/fuel-vm/pull/837): Change `diff` function to get VM instance diff to a `rollback_to` that allow to fetch changes to make self -> previous state. However, this support the new memory management that allow memory to grow between instances instead of fixed memory size.
 
 ### Changed
 - [847](https://github.com/FuelLabs/fuel-vm/pull/847): Changed `interpreter::blockchain::load_contract_code` and `interpreter::blockchain::code_copy` to use the new version of `StorageRead::read` where the contract is loaded into a buffer starting from an offset. The contract is copied directly into the portion of memory starting at the destination address, rather than having to be copied indirectly after being fetched from storage.

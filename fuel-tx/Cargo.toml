@@ -12,8 +12,8 @@ description = "FuelVM transaction."
 
 [dependencies]
 bitflags = { workspace = true, features = ["serde"], optional = true }
-educe = { version = "0.6", features = ["Eq", "PartialEq", "Hash", "Debug"], default-features = false, optional = true }
 derive_more = { version = "1", default-features = false, features = ["display"], optional = true }
+educe = { version = "0.6", features = ["Eq", "PartialEq", "Hash", "Debug"], default-features = false, optional = true }
 fuel-asm = { workspace = true, default-features = false }
 fuel-compression = { workspace = true, optional = true }
 fuel-crypto = { workspace = true, default-features = false }

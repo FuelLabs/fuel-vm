@@ -1,4 +1,4 @@
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::fmt_truncated_hex;
 
 use alloc::vec::Vec;
@@ -22,8 +22,8 @@ use rand::{
     Rng,
 };
 
-#[derive(Derivative, Default, Clone, PartialEq, Eq, Hash)]
-#[derivative(Debug)]
+#[derive(Educe, Default, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
@@ -32,7 +32,7 @@ use rand::{
 )]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Witness {
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
     data: Vec<u8>,
 }
 

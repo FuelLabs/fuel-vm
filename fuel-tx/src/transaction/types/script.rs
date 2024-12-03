@@ -29,7 +29,7 @@ use crate::{
     TransactionRepr,
     ValidityError,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
@@ -50,12 +50,12 @@ pub struct ScriptMetadata {
     pub script_data_offset: usize,
 }
 
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Educe, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptCode {
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
     pub bytes: Vec<u8>,
 }
 
@@ -106,7 +106,7 @@ impl fuel_compression::Compressible for ScriptCode {
 
 #[derive(
     Clone,
-    Derivative,
+    Educe,
     serde::Serialize,
     serde::Deserialize,
     fuel_types::canonical::Deserialize,
@@ -117,13 +117,13 @@ impl fuel_compression::Compressible for ScriptCode {
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
 #[canonical(prefix = TransactionRepr::Script)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) receipts_root: Bytes32,
     pub(crate) script: ScriptCode,
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
     pub(crate) script_data: Vec<u8>,
 }
 

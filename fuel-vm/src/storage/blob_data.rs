@@ -5,7 +5,7 @@ use fuel_types::{
 };
 
 use alloc::vec::Vec;
-use derivative::Derivative;
+use educe::Educe;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -27,12 +27,10 @@ impl Mappable for BlobData {
 }
 
 /// Storage type for blob bytes
-#[derive(Derivative, Clone, PartialEq, Eq, Hash)]
-#[derivative(Debug)]
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct BlobBytes(
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] pub Vec<u8>,
-);
+pub struct BlobBytes(#[educe(Debug(method(fmt_truncated_hex::<16>)))] pub Vec<u8>);
 
 impl From<Vec<u8>> for BlobBytes {
     fn from(c: Vec<u8>) -> Self {

@@ -21,7 +21,7 @@ async-trait = "0.1"
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 bitflags = { workspace = true }
 bn = { package = "substrate-bn", version = "0.6", default-features = false }
-derivative = "2.2"
+educe = { version = "0.6", default-features = false, features = ["Debug"] }
 derive_more = { version = "0.99", default-features = false, features = [
     "display",
 ] }

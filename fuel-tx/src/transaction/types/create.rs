@@ -23,7 +23,7 @@ use crate::{
     TransactionRepr,
     ValidityError,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes::WORD_SIZE,
     canonical,
@@ -43,8 +43,8 @@ mod ser_de_tests;
 
 pub type Create = ChargeableTransaction<CreateBody, CreateMetadata>;
 
-#[derive(Default, Debug, Clone, Derivative)]
-#[derivative(Eq, PartialEq, Hash)]
+#[derive(Default, Debug, Clone, Educe)]
+#[educe(Eq, PartialEq, Hash)]
 pub struct CreateMetadata {
     pub contract_id: ContractId,
     pub contract_root: Bytes32,
@@ -69,14 +69,14 @@ impl CreateMetadata {
     }
 }
 
-#[derive(Default, Debug, Clone, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, Educe, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Create)]
-#[derivative(Eq, PartialEq, Hash)]
+#[educe(Eq, PartialEq, Hash)]
 pub struct CreateBody {
     pub(crate) bytecode_witness_index: u16,
     pub(crate) salt: Salt,

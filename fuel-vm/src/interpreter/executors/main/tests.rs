@@ -6,7 +6,11 @@ use crate::{
         Checked,
     },
     interpreter::MemoryInstance,
-    prelude::*,
+    prelude::{
+        predicates::estimate_predicates,
+        *,
+    },
+    storage::predicate::EmptyStorage,
 };
 use alloc::{
     vec,
@@ -58,7 +62,7 @@ fn estimate_gas_gives_proper_gas_used() {
 
     let transaction_without_predicate = builder
         .finalize_checked_basic(Default::default())
-        .check_predicates(&params.into(), MemoryInstance::new())
+        .check_predicates(&params.into(), MemoryInstance::new(), &EmptyStorage)
         .expect("Predicate check failed even if we don't have any predicates");
 
     let mut client = MemoryClient::default();
@@ -98,10 +102,11 @@ fn estimate_gas_gives_proper_gas_used() {
         .into_checked(Default::default(), params)
         .is_err());
 
-    Interpreter::estimate_predicates(
+    estimate_predicates(
         &mut transaction,
         &params.into(),
         MemoryInstance::new(),
+        &EmptyStorage,
     )
     .expect("Should successfully estimate predicates");
 
@@ -132,7 +137,7 @@ fn transact__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_script_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.transact(tx).unwrap_err();
 
@@ -167,7 +172,7 @@ fn deploy__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_create_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.deploy(tx).unwrap_err();
 
@@ -208,7 +213,7 @@ fn upgrade__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_upgrade_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.upgrade(tx).unwrap_err();
 
@@ -249,7 +254,7 @@ fn upload__tx_with_wrong_gas_price_causes_error() {
 
     // When
     let tx = valid_upload_tx()
-        .into_ready(tx_gas_price, &Default::default(), &Default::default())
+        .into_ready(tx_gas_price, &Default::default(), &Default::default(), None)
         .unwrap();
     let err = interpreter.upload(tx).unwrap_err();
 

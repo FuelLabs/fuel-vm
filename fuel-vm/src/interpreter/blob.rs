@@ -2,13 +2,15 @@ use fuel_asm::{
     RegisterId,
     Word,
 };
-use fuel_storage::StorageSize;
 use fuel_tx::PanicReason;
 use fuel_types::BlobId;
 
 use crate::{
     error::IoResult,
-    prelude::*,
+    interpreter::{
+        contract::blob_size,
+        memory::copy_from_storage_zero_fill,
+    },
     storage::{
         BlobData,
         InterpreterStorage,
@@ -17,7 +19,6 @@ use crate::{
 
 use super::{
     internal::inc_pc,
-    memory::copy_from_slice_zero_fill,
     split_registers,
     GetRegMut,
     Interpreter,
@@ -46,9 +47,7 @@ where
 
         let blob_id = BlobId::from(self.memory.as_ref().read_bytes(blob_id_ptr)?);
 
-        let size = <S as StorageSize<BlobData>>::size_of_value(&self.storage, &blob_id)
-            .map_err(RuntimeError::Storage)?
-            .ok_or(PanicReason::BlobNotFound)?;
+        let size = blob_size(&self.storage, &blob_id)?;
 
         self.dependent_gas_charge_without_base(gas_cost, size as Word)?;
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
@@ -74,23 +73,20 @@ where
         let blob_id = BlobId::from(self.memory.as_ref().read_bytes(blob_id_ptr)?);
         let owner = self.ownership_registers();
 
-        let size = <S as StorageSize<BlobData>>::size_of_value(&self.storage, &blob_id)
-            .map_err(RuntimeError::Storage)?
-            .ok_or(PanicReason::BlobNotFound)?;
-        self.dependent_gas_charge_without_base(gas_cost, len.max(size as Word))?;
+        let blob_len = blob_size(&self.storage, &blob_id)?;
+        let charge_len = len.max(blob_len as Word);
+        self.dependent_gas_charge_without_base(gas_cost, charge_len)?;
 
-        let blob = <S as StorageInspect<BlobData>>::get(&self.storage, &blob_id)
-            .map_err(RuntimeError::Storage)?
-            .ok_or(PanicReason::BlobNotFound)?;
-        let blob = blob.as_ref().as_ref();
-
-        copy_from_slice_zero_fill(
+        copy_from_storage_zero_fill::<BlobData, _>(
             self.memory.as_mut(),
             owner,
-            blob,
+            &self.storage,
             dst_ptr,
-            blob_offset,
             len,
+            &blob_id,
+            blob_offset,
+            blob_len,
+            PanicReason::BlobNotFound,
         )?;
 
         Ok(inc_pc(self.registers.pc_mut())?)

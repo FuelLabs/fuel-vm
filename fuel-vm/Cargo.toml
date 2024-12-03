@@ -20,6 +20,7 @@ anyhow = { version = "1.0", optional = true }
 async-trait = "0.1"
 backtrace = { version = "0.3", optional = true } # requires debug symbols to work
 bitflags = { workspace = true }
+bn = { package = "substrate-bn", version = "0.6", default-features = false }
 derivative = "2.2"
 derive_more = { version = "0.99", default-features = false, features = [
     "display",
@@ -31,7 +32,7 @@ fuel-compression = { workspace = true, default-features = false, optional = true
 fuel-crypto = { workspace = true, default-features = false }
 fuel-merkle = { workspace = true, default-features = false }
 fuel-storage = { workspace = true }
-fuel-tx = { workspace = true, default-features = false }
+fuel-tx = { workspace = true, default-features = false, features = ["alloc"] }
 fuel-types = { workspace = true, default-features = false }
 hashbrown = "0.14"
 itertools = { version = "0.10", default-features = false }
@@ -50,7 +51,7 @@ strum = { version = "0.24", features = ["derive"], default-features = false }
 tai64 = { version = "4.0", default-features = false, optional = true }
 
 [dev-dependencies]
-criterion = "0.4"
+criterion = { workspace = true }
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 fuel-crypto = { workspace = true, features = ["test-helpers"] }
 fuel-tx = { workspace = true, features = ["test-helpers"] }
@@ -62,6 +63,7 @@ fuel-vm = { path = ".", default-features = false, features = [
     "random",
 ] }
 futures = "0.3.28"
+hex = "0.4.3"
 ntest = "0.9.2"
 num-integer = "0.1.45"
 p256 = "0.13"
@@ -70,7 +72,7 @@ quickcheck_macros = "1.0"
 rayon = "1.7"
 rstest = "0.17"
 serde_json = "1.0"
-test-case = "2.2"
+test-case = "3.3"
 tokio = { version = "1.27", features = ["full"] }
 tokio-rayon = "2.1.0"
 
@@ -84,7 +86,7 @@ std = [
     "fuel-tx/std",
     "itertools/use_std",
 ]
-alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-tx/alloc"]
+alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-crypto/alloc"]
 profile-gas = ["profile-any"]
 profile-coverage = ["profile-any"]
 profile-any = ["dyn-clone"] # All profiling features should depend on this
@@ -96,8 +98,8 @@ serde = [
     "hashbrown/serde",
     "fuel-asm/serde",
     "fuel-types/serde",
-    "fuel-tx/serde",
     "fuel-merkle/serde",
+    "fuel-crypto/serde",
     "backtrace?/serde",
 ]
 test-helpers = [

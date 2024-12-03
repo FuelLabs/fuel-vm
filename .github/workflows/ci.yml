@@ -65,7 +65,7 @@ jobs:
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: check
-            args: --target wasm32-unknown-unknown -p fuel-tx --features serde --no-default-features
+            args: --target wasm32-unknown-unknown -p fuel-tx --features alloc --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-types --features serde --no-default-features
           - command: rustc
@@ -146,8 +146,8 @@ jobs:
           git push
           export PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_B64/index.html"
           echo "$PAGES_URL"
-          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY          
-  
+          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY
+
 
   rustfmt:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -226,7 +226,7 @@ jobs:
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
-          version: 8.6.9
+          version: ^9.4.0
 
       - name: Setup Node
         uses: actions/setup-node@v3
@@ -298,7 +298,7 @@ jobs:
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
         with:
-          version: 8.6.9
+          version: ^9.4.0
 
       - name: Setup Node
         uses: actions/setup-node@v3

@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [871](https://github.com/FuelLabs/fuel-vm/pull/871): Add `expiration` policy that prevent a transaction to be inserted after a given block height.
+- [870](https://github.com/FuelLabs/fuel-vm/pull/870): Add 3 new ZK-related opcodes: eadd (ecAdd on EVM), emul (ecMul on EVM), epar (ecPairing on EVM)
+- [875](https://github.com/FuelLabs/fuel-vm/pull/875): Updated `wasm-bindgen` to `0.2.97`
+
+### Fixed
+- [860](https://github.com/FuelLabs/fuel-vm/pull/860): Fixed missing fuzzing coverage report in CI.
+
+### Breaking 
+- [863](https://github.com/FuelLabs/fuel-vm/pull/863): Changed StorageRead::read to load a serialized value starting from a offset. The function returns an optional value equal to the number of bytes read when defined, or none if the offset specified in input is outside the boundaries of the serialized value read.
+- [868](https://github.com/FuelLabs/fuel-vm/pull/868): Fixed error message when having a nonexistent contract in inputs. Instead of saying "contract was in inputs, but doesn't exist", the message was just "contract not in inputs". Now there's a separate error for that.
+
+### Changed
+- [847](https://github.com/FuelLabs/fuel-vm/pull/847): Changed `interpreter::blockchain::load_contract_code` and `interpreter::blockchain::code_copy` to use the new version of `StorageRead::read` where the contract is loaded into a buffer starting from an offset. The contract is copied directly into the portion of memory starting at the destination address, rather than having to be copied indirectly after being fetched from storage.
+
+## [Version 0.58.2]
+
+### Fixed
+- [#854](https://github.com/FuelLabs/fuel-vm/pull/854): Fixed a bug where LDC mode 2 padding bytes would be copied from memory instead of using zeroes.
+
+## [Version 0.58.1]
+
+### Fixed
+- [#852](https://github.com/FuelLabs/fuel-vm/pull/852): Fixed incorrect predicate estimation when max predicate gas is less than max tx gas.
+
+## [Version 0.58.0]
+
+### Added
+- [#849](https://github.com/FuelLabs/fuel-vm/pull/849): Add a new mode `2` to the LDC that allows to use the memory as a source for code.
+- [#848](https://github.com/FuelLabs/fuel-vm/pull/848): Allow usage of the blob opcode `BSIZ`, `BLDD`, and `LDC` with mode `1` in the predicates.
+- [#838](https://github.com/FuelLabs/fuel-vm/pull/838): Implemented `AsRef<[u8]>` and `TryFrom<&[u8]>` for DA compression types: ScriptCode, PredicateCode, RegistryKey.
+- [#820](https://github.com/FuelLabs/fuel-vm/pull/820): Add fuzzing in CI with ClusterFuzzLite.
+
+### Removed
+
+#### Breaking
+- [#848](https://github.com/FuelLabs/fuel-vm/pull/848): All estimation and verification of predicate functionality is reworked and now requires the instance of the storage with predicates.
+- [#843](https://github.com/FuelLabs/fuel-vm/pull/843): Remove `serde` feature from the `fuel-tx` crate. It is default behaviour now if you enable `alloc` feature.
+- [#766](https://github.com/FuelLabs/fuel-vm/pull/766): Use correct gas price when validating native signatures
+
+### Changed
+
+#### Breaking
+- [#829](https://github.com/FuelLabs/fuel-vm/pull/829): Updated `add_random_fee_input()` to accept an `rng` for true randomization. Introduced `add_fee_input()` to retain the previous behavior of `add_random_fee_input()`.
+- [#845](https://github.com/FuelLabs/fuel-vm/pull/845): Removed `Default` implementation of `SecretKey`.
+- [#844](https://github.com/FuelLabs/fuel-vm/pull/844): `WDCM` and `WQCM` reset `$of` and `$err`.
+
+## [Version 0.57.1]
+
+### Fixed
+- [#835](https://github.com/FuelLabs/fuel-vm/pull/835): Fixing WASM-NPM packaging and publishing
+
 ## [Version 0.57.0]
 
 ### Added

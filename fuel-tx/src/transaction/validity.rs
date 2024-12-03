@@ -1,5 +1,8 @@
 use crate::{
-    field::Maturity,
+    field::{
+        Expiration,
+        Maturity,
+    },
     input::{
         coin::{
             CoinPredicate,
@@ -49,6 +52,7 @@ mod tests;
 pub use error::ValidityError;
 
 impl Input {
+    #[cfg(any(feature = "typescript", test))]
     pub fn check(
         &self,
         index: usize,
@@ -355,6 +359,10 @@ where
 
     if tx.maturity() > block_height {
         Err(ValidityError::TransactionMaturity)?;
+    }
+
+    if tx.expiration() < block_height {
+        Err(ValidityError::TransactionExpiration)?;
     }
 
     if tx.inputs().len() > tx_params.max_inputs() as usize {

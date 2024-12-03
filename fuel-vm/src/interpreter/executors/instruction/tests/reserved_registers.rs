@@ -75,7 +75,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
     let tx = tx
         .into_checked(block_height, &consensus_params)
         .expect("failed to check tx")
-        .into_ready(zero_gas_price, vm.gas_costs(), &fee_params)
+        .into_ready(zero_gas_price, vm.gas_costs(), &fee_params, None)
         .expect("failed dynamic checks");
 
     vm.init_script(tx).expect("Failed to init VM");
@@ -95,6 +95,13 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
             // Some opcodes parse the immediate value as a part of the instruction itself,
             // and thus fail before the destination register writability check occurs.
             Err(Some(PanicReason::InvalidImmediateValue)) => return TestResult::discard(),
+            // Epar opcode parse the memory read and throw error if incorrect memory
+            // before changing the register
+            Err(Some(PanicReason::InvalidEllipticCurvePoint))
+                if opcode == Opcode::EPAR =>
+            {
+                return TestResult::discard();
+            }
             _ => {
                 return TestResult::error(format!(
                     "expected ReservedRegisterNotWritable error {:?}",
@@ -244,6 +251,8 @@ fn writes_to_ra(opcode: Opcode) -> bool {
         Opcode::ECAL => true,
         Opcode::BSIZ => true,
         Opcode::BLDD => false,
+        Opcode::ECOP => false,
+        Opcode::EPAR => true,
     }
 }
 
@@ -361,5 +370,7 @@ fn writes_to_rb(opcode: Opcode) -> bool {
         Opcode::ECAL => true,
         Opcode::BSIZ => false,
         Opcode::BLDD => false,
+        Opcode::ECOP => false,
+        Opcode::EPAR => false,
     }
 }

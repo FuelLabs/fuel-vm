@@ -60,7 +60,7 @@ fn external_balance() {
         .script_gas_limit(100)
         .maturity(maturity)
         .finalize_checked(height)
-        .into_ready(gas_price, &gas_costs, &fee_params)
+        .into_ready(gas_price, &gas_costs, &fee_params, None)
         .unwrap();
 
     vm.init_script(tx).expect("Failed to init VM!");
@@ -140,6 +140,7 @@ fn variable_output_updates_in_memory() {
             zero_gas_price,
             &GasCosts::default(),
             consensus_params.fee_params(),
+            None,
         )
         .unwrap();
 

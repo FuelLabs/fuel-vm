@@ -102,6 +102,7 @@ mod tests {
                 gas_price,
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
+                None,
             )
             .unwrap();
 
@@ -181,6 +182,7 @@ mod tests {
                 gas_price,
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
+                None,
             )
             .unwrap();
 
@@ -234,6 +236,7 @@ mod tests {
                 gas_price,
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
+                None,
             )
             .unwrap();
 

@@ -92,8 +92,16 @@ pub use id::{
 pub type TxId = Bytes32;
 
 /// The fuel transaction entity <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, strum_macros::EnumCount)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    strum_macros::EnumCount,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -339,7 +347,7 @@ impl Transaction {
     /// transaction because all of its attributes are trivially serialized.
     ///
     /// If an error happens, a JSON string with the error description will be returned
-    #[cfg(all(feature = "serde", feature = "alloc"))]
+    #[cfg(test)]
     pub fn to_json(&self) -> alloc::string::String {
         serde_json::to_string(self)
             .unwrap_or_else(|e| alloc::format!(r#"{{"error": "{e}"}}"#))
@@ -347,7 +355,7 @@ impl Transaction {
 
     /// Attempt to deserialize a transaction from a JSON string, returning `None` if it
     /// fails
-    #[cfg(all(feature = "serde", feature = "alloc"))]
+    #[cfg(test)]
     pub fn from_json<J>(json: J) -> Option<Self>
     where
         J: AsRef<str>,
@@ -824,6 +832,28 @@ pub mod field {
         }
     }
 
+    pub trait Expiration {
+        fn expiration(&self) -> BlockHeight;
+        fn set_expiration(&mut self, value: BlockHeight);
+    }
+
+    impl<T: Policies + ?Sized> Expiration for T {
+        #[inline(always)]
+        fn expiration(&self) -> BlockHeight {
+            self.policies()
+                .get(PolicyType::Expiration)
+                .and_then(|value| u32::try_from(value).ok())
+                .unwrap_or(u32::MAX)
+                .into()
+        }
+
+        #[inline(always)]
+        fn set_expiration(&mut self, block_height: BlockHeight) {
+            self.policies_mut()
+                .set(PolicyType::Expiration, Some(*block_height.deref() as u64))
+        }
+    }
+
     pub trait MaxFeeLimit {
         fn max_fee_limit(&self) -> Word;
         fn set_max_fee_limit(&mut self, value: Word);
@@ -1094,44 +1124,46 @@ pub mod typescript {
     };
     use fuel_types::Bytes32;
 
-    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]
     pub struct Transaction(#[wasm_bindgen(skip)] pub Box<crate::Transaction>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Create(#[wasm_bindgen(skip)] pub Box<crate::Create>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Script(#[wasm_bindgen(skip)] pub Box<crate::Script>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Mint(#[wasm_bindgen(skip)] pub Box<crate::Mint>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Upgrade(#[wasm_bindgen(skip)] pub Box<crate::Upgrade>);
 
-    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]
     pub struct UpgradePurpose(#[wasm_bindgen(skip)] pub Box<crate::UpgradePurpose>);
 
-    #[derive(Default, Debug, Clone, Eq, Hash, PartialEq)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize,
+    )]
     #[wasm_bindgen]
     pub struct Upload(#[wasm_bindgen(skip)] pub Box<crate::Upload>);
 
     #[wasm_bindgen]
     impl Transaction {
-        #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
             serde_json::to_string(&self.0).expect("unable to json format")
@@ -1292,7 +1324,6 @@ pub mod typescript {
                     <$t>::default()
                 }
 
-                #[cfg(feature = "serde")]
                 #[wasm_bindgen(js_name = toJSON)]
                 pub fn to_json(&self) -> String {
                     serde_json::to_string(&self).expect("unable to json format")

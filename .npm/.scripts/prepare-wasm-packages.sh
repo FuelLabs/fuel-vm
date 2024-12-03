@@ -50,8 +50,9 @@ build_wasm_npm_pkg_for ()
   write_template ${NAME_DASHED} ${NAME_UNDERSCORED} src/index.js
 
   # commenting out all `new URL()` and `fetch()` calls for great compatibility with JS bundlers
-  sed -i.bkp -r 's;(input = new URL.+);//\1;g' ${PKG_DIR}/src/${NAME_UNDERSCORED}.js
-  sed -i.bkp -r 's;(input = fetch.+);//\1;g' ${PKG_DIR}/src/${NAME_UNDERSCORED}.js
+  sed -i.bkp -r 's;(.+= new URL.+);//\1;g' ${PKG_DIR}/src/${NAME_UNDERSCORED}.js
+  sed -i.bkp -r 's;(.+= fetch.+);//\1;g' ${PKG_DIR}/src/${NAME_UNDERSCORED}.js
+
   rm ${PKG_DIR}/src/${NAME_UNDERSCORED}.js.bkp
 }
 

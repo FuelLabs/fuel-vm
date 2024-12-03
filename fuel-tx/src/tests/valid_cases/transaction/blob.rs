@@ -36,6 +36,7 @@ fn valid_blob_transaction() -> TransactionBuilder<Blob> {
         predicate(),
         vec![],
     ));
+    builder.expiration(u32::MAX.into());
 
     builder
 }
@@ -67,6 +68,38 @@ fn check__fails_if_maturity_not_met() {
 
     // Then
     assert_eq!(Err(ValidityError::TransactionMaturity), result);
+}
+
+#[test]
+fn check__success_if_expiration_met() {
+    // Given
+    let block_height: BlockHeight = 1000.into();
+    let success_block_height = block_height.succ().unwrap();
+    let tx = valid_blob_transaction()
+        .expiration(success_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Ok(()), result);
+}
+
+#[test]
+fn check__fails_if_expiration_not_met() {
+    // Given
+    let block_height: BlockHeight = 1000.into();
+    let failing_block_height = block_height.pred().unwrap();
+    let tx = valid_blob_transaction()
+        .expiration(failing_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Err(ValidityError::TransactionExpiration), result);
 }
 
 #[test]

@@ -38,6 +38,7 @@ impl RegistryKey {
         }
     }
 }
+
 impl TryFrom<u32> for RegistryKey {
     type Error = &'static str;
 
@@ -50,6 +51,26 @@ impl TryFrom<u32> for RegistryKey {
         let mut bytes = [0u8; 3];
         bytes.copy_from_slice(&v[1..]);
         Ok(Self(bytes))
+    }
+}
+
+impl TryFrom<&[u8]> for RegistryKey {
+    type Error = &'static str;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        if value.len() != Self::SIZE {
+            return Err("RegistryKey must be 3 bytes long");
+        }
+
+        let mut bytes = [0u8; 3];
+        bytes.copy_from_slice(value);
+        Ok(Self(bytes))
+    }
+}
+
+impl AsRef<[u8]> for RegistryKey {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 

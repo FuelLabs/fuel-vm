@@ -33,6 +33,7 @@ use rand::{
     SeedableRng,
 };
 
+use crate::storage::predicate::EmptyStorage;
 #[cfg(feature = "alloc")]
 use alloc::vec;
 
@@ -63,6 +64,74 @@ fn transaction_can_be_executed_after_maturity() {
     let result = TestBuilder::new(2322u64)
         .block_height(BLOCK_HEIGHT)
         .execute_tx(tx);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn transaction__execution__works_before_expiration() {
+    let arb_max_fee = 1;
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // Given
+    const EXPIRATION: BlockHeight = BlockHeight::new(2);
+    const BLOCK_HEIGHT: BlockHeight = BlockHeight::new(1);
+    let tx = TransactionBuilder::script(
+        Some(op::ret(1)).into_iter().collect(),
+        Default::default(),
+    )
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(
+        SecretKey::random(rng),
+        rng.gen(),
+        arb_max_fee,
+        Default::default(),
+        rng.gen(),
+    )
+    .script_gas_limit(100)
+    .expiration(EXPIRATION)
+    .finalize_checked(BLOCK_HEIGHT);
+
+    // When
+    let result = TestBuilder::new(2322u64)
+        .block_height(BLOCK_HEIGHT)
+        .execute_tx(tx);
+
+    // Then
+    assert!(result.is_ok());
+}
+
+#[test]
+fn transaction__execution__works_current_height_expiration() {
+    let arb_max_fee = 1;
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // Given
+    const EXPIRATION: BlockHeight = BlockHeight::new(1);
+    const BLOCK_HEIGHT: BlockHeight = BlockHeight::new(1);
+    let tx = TransactionBuilder::script(
+        Some(op::ret(1)).into_iter().collect(),
+        Default::default(),
+    )
+    .max_fee_limit(arb_max_fee)
+    .add_unsigned_coin_input(
+        SecretKey::random(rng),
+        rng.gen(),
+        arb_max_fee,
+        Default::default(),
+        rng.gen(),
+    )
+    .script_gas_limit(100)
+    .expiration(EXPIRATION)
+    .finalize_checked(BLOCK_HEIGHT);
+
+    // When
+    let result = TestBuilder::new(2322u64)
+        .block_height(BLOCK_HEIGHT)
+        .execute_tx(tx);
+
+    // Then
     assert!(result.is_ok());
 }
 
@@ -129,8 +198,12 @@ fn malleable_fields_do_not_affect_validity_of_create() {
             Default::default(),
         ))
         .finalize();
-    tx.estimate_predicates(&CheckPredicateParams::from(&params), MemoryInstance::new())
-        .expect("Should estimate predicate");
+    tx.estimate_predicates(
+        &CheckPredicateParams::from(&params),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .expect("Should estimate predicate");
 
     let run_tx = |tx: Create| tx.into_checked(0u32.into(), &params).map(|_| ());
     let result = run_tx(tx.clone());
@@ -225,8 +298,12 @@ fn malleable_fields_do_not_affect_validity_of_script() {
         .add_output(Output::contract(1, Default::default(), Default::default()))
         .script_gas_limit(1_000_000)
         .finalize();
-    tx.estimate_predicates(&CheckPredicateParams::from(&params), MemoryInstance::new())
-        .expect("Should estimate predicate");
+    tx.estimate_predicates(
+        &CheckPredicateParams::from(&params),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .expect("Should estimate predicate");
 
     let run_tx = |tx: Script| tx.into_checked(0u32.into(), &params).map(|_| ());
     let result = run_tx(tx.clone());

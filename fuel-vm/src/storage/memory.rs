@@ -1,15 +1,21 @@
 #![allow(clippy::cast_possible_truncation)]
 
-use crate::storage::{
-    ContractsAssetKey,
-    ContractsAssets,
-    ContractsRawCode,
-    ContractsState,
-    ContractsStateData,
-    ContractsStateKey,
-    InterpreterStorage,
-    UploadedBytecode,
-    UploadedBytecodes,
+use crate::{
+    error::{
+        InterpreterError,
+        RuntimeError,
+    },
+    storage::{
+        ContractsAssetKey,
+        ContractsAssets,
+        ContractsRawCode,
+        ContractsState,
+        ContractsStateData,
+        ContractsStateKey,
+        InterpreterStorage,
+        UploadedBytecode,
+        UploadedBytecodes,
+    },
 };
 
 use fuel_crypto::Hasher;
@@ -35,18 +41,38 @@ use fuel_types::{
 };
 use tai64::Tai64;
 
-use alloc::{
-    borrow::Cow,
-    collections::BTreeMap,
-    vec::Vec,
-};
-use core::convert::Infallible;
-
 use super::{
     interpreter::ContractsAssetsStorage,
     BlobBytes,
     BlobData,
 };
+
+use crate::storage::predicate::PredicateStorageRequirements;
+use alloc::{
+    borrow::Cow,
+    collections::BTreeMap,
+    vec::Vec,
+};
+
+/// Errors arising from accessing the memory storage.
+#[derive(Debug, Clone, PartialEq, Eq, derive_more::Display)]
+pub enum MemoryStorageError {
+    /// The offset specified for the serialized value exceeds its length
+    #[display(fmt = "Offset {_0} is greater than the length of the value {_1}")]
+    OffsetOutOfBounds(usize, usize),
+}
+
+impl From<MemoryStorageError> for RuntimeError<MemoryStorageError> {
+    fn from(e: MemoryStorageError) -> Self {
+        RuntimeError::Storage(e)
+    }
+}
+
+impl From<MemoryStorageError> for InterpreterError<MemoryStorageError> {
+    fn from(e: MemoryStorageError) -> Self {
+        InterpreterError::Storage(e)
+    }
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 struct MemoryStorageInner {
@@ -201,13 +227,13 @@ impl Default for MemoryStorage {
 }
 
 impl StorageInspect<ContractsRawCode> for MemoryStorage {
-    type Error = Infallible;
+    type Error = MemoryStorageError;
 
-    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, Contract>>, Infallible> {
+    fn get(&self, key: &ContractId) -> Result<Option<Cow<'_, Contract>>, Self::Error> {
         Ok(self.memory.contracts.get(key).map(Cow::Borrowed))
     }
 
-    fn contains_key(&self, key: &ContractId) -> Result<bool, Infallible> {
+    fn contains_key(&self, key: &ContractId) -> Result<bool, Self::Error> {
         Ok(self.memory.contracts.contains_key(key))
     }
 }
@@ -217,17 +243,21 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
         &mut self,
         key: &ContractId,
         value: &[u8],
-    ) -> Result<Option<Contract>, Infallible> {
+    ) -> Result<Option<Contract>, Self::Error> {
         Ok(self.memory.contracts.insert(*key, value.into()))
     }
 
-    fn take(&mut self, key: &ContractId) -> Result<Option<Contract>, Infallible> {
+    fn take(&mut self, key: &ContractId) -> Result<Option<Contract>, Self::Error> {
         Ok(self.memory.contracts.remove(key))
     }
 }
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
-    fn write_bytes(&mut self, key: &ContractId, buf: &[u8]) -> Result<usize, Infallible> {
+    fn write_bytes(
+        &mut self,
+        key: &ContractId,
+        buf: &[u8],
+    ) -> Result<usize, Self::Error> {
         let size = buf.len();
         self.memory.contracts.insert(*key, Contract::from(buf));
         Ok(size)
@@ -254,7 +284,7 @@ impl StorageWrite<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageSize<ContractsRawCode> for MemoryStorage {
-    fn size_of_value(&self, key: &ContractId) -> Result<Option<usize>, Infallible> {
+    fn size_of_value(&self, key: &ContractId) -> Result<Option<usize>, Self::Error> {
         Ok(self.memory.contracts.get(key).map(|c| c.as_ref().len()))
     }
 }
@@ -263,13 +293,28 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
     fn read(
         &self,
         key: &ContractId,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.contracts.get(key).map(|c| {
-            let len = buf.len().min(c.as_ref().len());
-            buf.copy_from_slice(&c.as_ref()[..len]);
-            len
-        }))
+        self.memory
+            .contracts
+            .get(key)
+            .map(|c| {
+                let contract_len = c.as_ref().len();
+                let start = offset;
+                let end = offset.saturating_add(buf.len());
+                // We need to handle the case where the offset is greater than the length
+                // of the contract In this case we follow the same
+                // approach as `copy_from_slice_zero_fill`
+                if end > contract_len {
+                    return Err(MemoryStorageError::OffsetOutOfBounds(end, contract_len));
+                }
+
+                let starting_from_offset = &c.as_ref()[start..end];
+                buf[..].copy_from_slice(starting_from_offset);
+                Ok(buf.len())
+            })
+            .transpose()
     }
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -278,12 +323,12 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageInspect<UploadedBytecodes> for MemoryStorage {
-    type Error = Infallible;
+    type Error = MemoryStorageError;
 
     fn get(
         &self,
         key: &<UploadedBytecodes as Mappable>::Key,
-    ) -> Result<Option<Cow<'_, UploadedBytecode>>, Infallible> {
+    ) -> Result<Option<Cow<'_, UploadedBytecode>>, Self::Error> {
         Ok(self
             .memory
             .state_transition_bytecodes
@@ -294,7 +339,7 @@ impl StorageInspect<UploadedBytecodes> for MemoryStorage {
     fn contains_key(
         &self,
         key: &<UploadedBytecodes as Mappable>::Key,
-    ) -> Result<bool, Infallible> {
+    ) -> Result<bool, Self::Error> {
         Ok(self.memory.state_transition_bytecodes.contains_key(key))
     }
 }
@@ -304,7 +349,7 @@ impl StorageMutate<UploadedBytecodes> for MemoryStorage {
         &mut self,
         key: &<UploadedBytecodes as Mappable>::Key,
         value: &<UploadedBytecodes as Mappable>::Value,
-    ) -> Result<Option<UploadedBytecode>, Infallible> {
+    ) -> Result<Option<UploadedBytecode>, Self::Error> {
         Ok(self
             .memory
             .state_transition_bytecodes
@@ -314,25 +359,25 @@ impl StorageMutate<UploadedBytecodes> for MemoryStorage {
     fn take(
         &mut self,
         key: &<UploadedBytecodes as Mappable>::Key,
-    ) -> Result<Option<UploadedBytecode>, Infallible> {
+    ) -> Result<Option<UploadedBytecode>, Self::Error> {
         Ok(self.memory.state_transition_bytecodes.remove(key))
     }
 }
 
 impl StorageInspect<ContractsAssets> for MemoryStorage {
-    type Error = Infallible;
+    type Error = MemoryStorageError;
 
     fn get(
         &self,
         key: &<ContractsAssets as Mappable>::Key,
-    ) -> Result<Option<Cow<'_, Word>>, Infallible> {
+    ) -> Result<Option<Cow<'_, Word>>, Self::Error> {
         Ok(self.memory.balances.get(key).map(Cow::Borrowed))
     }
 
     fn contains_key(
         &self,
         key: &<ContractsAssets as Mappable>::Key,
-    ) -> Result<bool, Infallible> {
+    ) -> Result<bool, Self::Error> {
         Ok(self.memory.balances.contains_key(key))
     }
 }
@@ -342,25 +387,25 @@ impl StorageMutate<ContractsAssets> for MemoryStorage {
         &mut self,
         key: &<ContractsAssets as Mappable>::Key,
         value: &Word,
-    ) -> Result<Option<Word>, Infallible> {
+    ) -> Result<Option<Word>, Self::Error> {
         Ok(self.memory.balances.insert(*key, *value))
     }
 
     fn take(
         &mut self,
         key: &<ContractsAssets as Mappable>::Key,
-    ) -> Result<Option<Word>, Infallible> {
+    ) -> Result<Option<Word>, Self::Error> {
         Ok(self.memory.balances.remove(key))
     }
 }
 
 impl StorageInspect<ContractsState> for MemoryStorage {
-    type Error = Infallible;
+    type Error = MemoryStorageError;
 
     fn get(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<Cow<'_, <ContractsState as Mappable>::OwnedValue>>, Infallible>
+    ) -> Result<Option<Cow<'_, <ContractsState as Mappable>::OwnedValue>>, Self::Error>
     {
         Ok(self.memory.contract_state.get(key).map(Cow::Borrowed))
     }
@@ -368,7 +413,7 @@ impl StorageInspect<ContractsState> for MemoryStorage {
     fn contains_key(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<bool, Infallible> {
+    ) -> Result<bool, Self::Error> {
         Ok(self.memory.contract_state.contains_key(key))
     }
 }
@@ -378,14 +423,14 @@ impl StorageMutate<ContractsState> for MemoryStorage {
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         value: &<ContractsState as Mappable>::Value,
-    ) -> Result<Option<<ContractsState as Mappable>::OwnedValue>, Infallible> {
+    ) -> Result<Option<<ContractsState as Mappable>::OwnedValue>, Self::Error> {
         Ok(self.memory.contract_state.insert(*key, value.into()))
     }
 
     fn take(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<ContractsStateData>, Infallible> {
+    ) -> Result<Option<ContractsStateData>, Self::Error> {
         Ok(self.memory.contract_state.remove(key))
     }
 }
@@ -395,7 +440,7 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
-    ) -> Result<usize, Infallible> {
+    ) -> Result<usize, Self::Error> {
         let size = buf.len();
         self.memory
             .contract_state
@@ -433,7 +478,7 @@ impl StorageSize<ContractsState> for MemoryStorage {
     fn size_of_value(
         &self,
         key: &<ContractsState as Mappable>::Key,
-    ) -> Result<Option<usize>, Infallible> {
+    ) -> Result<Option<usize>, Self::Error> {
         Ok(self
             .memory
             .contract_state
@@ -446,13 +491,31 @@ impl StorageRead<ContractsState> for MemoryStorage {
     fn read(
         &self,
         key: &<ContractsState as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.contract_state.get(key).map(|data| {
-            let len = buf.len().min(data.as_ref().len());
-            buf.copy_from_slice(&data.as_ref()[..len]);
-            len
-        }))
+        self.memory
+            .contract_state
+            .get(key)
+            .map(|data| {
+                let contract_state_len = data.as_ref().len();
+                // We need to handle the case where the offset is greater than the length
+                // of the serialized ContractState. In this case we follow
+                // the same approach as `copy_from_slice_zero_fill` and
+                // fill the input buffer with zeros.
+                if offset > contract_state_len {
+                    return Err(MemoryStorageError::OffsetOutOfBounds(
+                        offset,
+                        contract_state_len,
+                    ));
+                }
+                let starting_from_offset = &data.as_ref()[offset..];
+                let len = buf.len().min(starting_from_offset.len());
+                buf[..len].copy_from_slice(&starting_from_offset[..len]);
+                buf[len..].fill(0);
+                Ok(len)
+            })
+            .transpose()
     }
 
     fn read_alloc(
@@ -471,7 +534,7 @@ impl StorageSize<BlobData> for MemoryStorage {
     fn size_of_value(
         &self,
         key: &<BlobData as Mappable>::Key,
-    ) -> Result<Option<usize>, Infallible> {
+    ) -> Result<Option<usize>, Self::Error> {
         Ok(self.memory.blobs.get(key).map(|c| c.as_ref().len()))
     }
 }
@@ -480,13 +543,29 @@ impl StorageRead<BlobData> for MemoryStorage {
     fn read(
         &self,
         key: &<BlobData as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        Ok(self.memory.blobs.get(key).map(|data| {
-            let len = buf.len().min(data.as_ref().len());
-            buf.copy_from_slice(&data.as_ref()[..len]);
-            len
-        }))
+        self.memory
+            .blobs
+            .get(key)
+            .map(|data| {
+                let blob_len = data.as_ref().len();
+                let start = offset;
+                let end = offset.saturating_add(buf.len());
+                // We need to handle the case where the offset is greater than the length
+                // of the serialized ContractState. In this case we follow
+                // the same approach as `copy_from_slice_zero_fill` and
+                // fill the input buffer with zeros.
+                if end > blob_len {
+                    return Err(MemoryStorageError::OffsetOutOfBounds(offset, blob_len));
+                }
+
+                let starting_from_offset = &data.as_ref()[start..end];
+                buf[..].copy_from_slice(starting_from_offset);
+                Ok(buf.len())
+            })
+            .transpose()
     }
 
     fn read_alloc(
@@ -498,19 +577,19 @@ impl StorageRead<BlobData> for MemoryStorage {
 }
 
 impl StorageInspect<BlobData> for MemoryStorage {
-    type Error = Infallible;
+    type Error = MemoryStorageError;
 
     fn get(
         &self,
         key: &<BlobData as Mappable>::Key,
-    ) -> Result<Option<Cow<'_, <BlobData as Mappable>::OwnedValue>>, Infallible> {
+    ) -> Result<Option<Cow<'_, <BlobData as Mappable>::OwnedValue>>, Self::Error> {
         Ok(self.memory.blobs.get(key).map(Cow::Borrowed))
     }
 
     fn contains_key(
         &self,
         key: &<BlobData as Mappable>::Key,
-    ) -> Result<bool, Infallible> {
+    ) -> Result<bool, Self::Error> {
         Ok(self.memory.blobs.contains_key(key))
     }
 }
@@ -520,14 +599,14 @@ impl StorageMutate<BlobData> for MemoryStorage {
         &mut self,
         key: &<BlobData as Mappable>::Key,
         value: &<BlobData as Mappable>::Value,
-    ) -> Result<Option<<BlobData as Mappable>::OwnedValue>, Infallible> {
+    ) -> Result<Option<<BlobData as Mappable>::OwnedValue>, Self::Error> {
         Ok(self.memory.blobs.insert(*key, value.into()))
     }
 
     fn take(
         &mut self,
         key: &<BlobData as Mappable>::Key,
-    ) -> Result<Option<BlobBytes>, Infallible> {
+    ) -> Result<Option<BlobBytes>, Self::Error> {
         Ok(self.memory.blobs.remove(key))
     }
 }
@@ -537,7 +616,7 @@ impl StorageWrite<BlobData> for MemoryStorage {
         &mut self,
         key: &<BlobData as Mappable>::Key,
         buf: &[u8],
-    ) -> Result<usize, Infallible> {
+    ) -> Result<usize, Self::Error> {
         let size = buf.len();
         self.memory.blobs.insert(*key, BlobBytes::from(buf));
         Ok(size)
@@ -572,9 +651,9 @@ impl StorageWrite<BlobData> for MemoryStorage {
 impl ContractsAssetsStorage for MemoryStorage {}
 
 impl InterpreterStorage for MemoryStorage {
-    type DataError = Infallible;
+    type DataError = MemoryStorageError;
 
-    fn block_height(&self) -> Result<BlockHeight, Infallible> {
+    fn block_height(&self) -> Result<BlockHeight, Self::DataError> {
         Ok(self.block_height)
     }
 
@@ -594,11 +673,11 @@ impl InterpreterStorage for MemoryStorage {
         Ok((GENESIS + (*height as Word * INTERVAL)).0)
     }
 
-    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Infallible> {
+    fn block_hash(&self, block_height: BlockHeight) -> Result<Bytes32, Self::DataError> {
         Ok(Hasher::hash(block_height.to_be_bytes()))
     }
 
-    fn coinbase(&self) -> Result<ContractId, Infallible> {
+    fn coinbase(&self) -> Result<ContractId, Self::DataError> {
         Ok(self.coinbase)
     }
 
@@ -724,6 +803,12 @@ impl InterpreterStorage for MemoryStorage {
     }
 }
 
+impl PredicateStorageRequirements for MemoryStorage {
+    fn storage_error_to_string(error: Self::Error) -> alloc::string::String {
+        alloc::format!("{:?}", error)
+    }
+}
+
 fn add_one(a: &mut [u8; 32]) -> bool {
     let right = u128::from_be_bytes(a[16..].try_into().unwrap());
     let (right, of) = right.overflowing_add(1);
@@ -774,5 +859,53 @@ mod tests {
             .into_iter()
             .map(|v| v.map(|v| v.into_owned()))
             .collect()
+    }
+
+    #[test_case(0, 32 => Ok(Some(32)))]
+    #[test_case(4, 32 => Ok(Some(28)))]
+    #[test_case(8, 32 => Ok(Some(24)))]
+    #[test_case(0, 28 => Ok(Some(28)))]
+    #[test_case(4, 28 => Ok(Some(28)))]
+    #[test_case(8, 28 => Ok(Some(24)))]
+    #[test_case(28, 0 => Ok(Some(0)))]
+    #[test_case(28, 4 => Ok(Some(4)))]
+    #[test_case(28, 8 => Ok(Some(4)))]
+    #[test_case(32, 0 => Ok(Some(0)))]
+    #[test_case(32, 4 => Ok(Some(0)))]
+    #[test_case(32, 8 => Ok(Some(0)))]
+    #[test_case(33, 0 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
+    #[test_case(33, 4 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
+    #[test_case(33, 8 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
+    fn test_contract_read(
+        offset: usize,
+        load_buf_size: usize,
+    ) -> Result<Option<usize>, MemoryStorageError> {
+        // Given
+        let raw_contract = [1u8; 32];
+        let mut mem = MemoryStorage::default();
+        let contract = Contract::from(raw_contract.as_ref());
+        mem.memory
+            .contracts
+            .insert(ContractId::default(), contract.clone());
+        let buf_size = raw_contract.len().saturating_sub(offset).min(load_buf_size);
+        let mut buf = vec![0u8; buf_size];
+
+        // When
+        let bytes_read = StorageRead::<ContractsRawCode>::read(
+            &mem,
+            &ContractId::default(),
+            offset,
+            &mut buf,
+        );
+
+        // Then
+
+        if let Ok(bytes_read) = bytes_read {
+            let contract_bytes_in_buffer = bytes_read.unwrap_or(0);
+            assert!(buf[0..contract_bytes_in_buffer].iter().all(|&v| v == 1));
+            assert!(buf[contract_bytes_in_buffer..].iter().all(|&v| v == 0));
+        }
+
+        bytes_read
     }
 }

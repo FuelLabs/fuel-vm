@@ -23,7 +23,7 @@ use rand::{
 bitflags::bitflags! {
     /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
     #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
         const Tip = 1 << 0;
@@ -33,6 +33,8 @@ bitflags::bitflags! {
         const Maturity = 1 << 2;
         /// If set, the max fee is present in the policies.
         const MaxFee = 1 << 3;
+        /// If set, the expiration is present in the policies.
+        const Expiration = 1 << 4;
     }
 }
 
@@ -72,13 +74,15 @@ where
     Hash,
     strum_macros::EnumCount,
     strum_macros::EnumIter,
+    serde::Serialize,
+    serde::Deserialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PolicyType {
     Tip,
     WitnessLimit,
     Maturity,
     MaxFee,
+    Expiration,
 }
 
 impl PolicyType {
@@ -88,6 +92,7 @@ impl PolicyType {
             PolicyType::WitnessLimit => 1,
             PolicyType::Maturity => 2,
             PolicyType::MaxFee => 3,
+            PolicyType::Expiration => 4,
         }
     }
 
@@ -97,6 +102,7 @@ impl PolicyType {
             PolicyType::WitnessLimit => PoliciesBits::WitnessLimit,
             PolicyType::Maturity => PoliciesBits::Maturity,
             PolicyType::MaxFee => PoliciesBits::MaxFee,
+            PolicyType::Expiration => PoliciesBits::Expiration,
         }
     }
 }
@@ -105,8 +111,9 @@ impl PolicyType {
 pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as usize;
 
 /// Container for managing policies.
-#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Clone, Copy, Default, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -161,6 +168,12 @@ impl Policies {
         self
     }
 
+    /// Sets the `expiration` policy.
+    pub fn with_expiration(mut self, expiration: BlockHeight) -> Self {
+        self.set(PolicyType::Expiration, Some(*expiration.deref() as u64));
+        self
+    }
+
     /// Sets the `max_fee` policy.
     pub fn with_max_fee(mut self, max_fee: Word) -> Self {
         self.set(PolicyType::MaxFee, Some(max_fee));
@@ -211,6 +224,12 @@ impl Policies {
 
         if let Some(maturity) = self.get(PolicyType::Maturity) {
             if maturity > u32::MAX as u64 {
+                return false;
+            }
+        }
+
+        if let Some(expiration) = self.get(PolicyType::Expiration) {
+            if expiration > u32::MAX as u64 {
                 return false;
             }
         }
@@ -282,6 +301,12 @@ impl Deserialize for Policies {
             }
         }
 
+        if let Some(expiration) = self.get(PolicyType::Expiration) {
+            if expiration > u32::MAX as u64 {
+                return Err(Error::Unknown("The expiration in more than `u32::MAX`"));
+            }
+        }
+
         Ok(())
     }
 }
@@ -298,9 +323,14 @@ impl Distribution<Policies> for Standard {
             values: Policies::values_for_bitmask(bits, values),
         };
 
-        if policies.get(PolicyType::Maturity).is_some() {
+        if policies.is_set(PolicyType::Maturity) {
             let maturity: u32 = rng.gen();
             policies.set(PolicyType::Maturity, Some(maturity as u64));
+        }
+
+        if policies.is_set(PolicyType::Expiration) {
+            let expiration: u32 = rng.gen();
+            policies.set(PolicyType::Expiration, Some(expiration as u64));
         }
 
         policies
@@ -325,7 +355,6 @@ pub mod typescript {
             Policies::default()
         }
 
-        #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
             serde_json::to_string(&self).expect("unable to json format")
@@ -354,7 +383,8 @@ pub mod typescript {
 #[test]
 fn values_for_bitmask_produces_expected_values() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
-    const VALUES: [Word; POLICIES_NUMBER] = [0x1000001, 0x2000001, 0x3000001, 0x4000001];
+    const VALUES: [Word; POLICIES_NUMBER] =
+        [0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001];
 
     // Given
     let mut set = hashbrown::HashSet::new();
@@ -373,7 +403,8 @@ fn values_for_bitmask_produces_expected_values() {
 #[test]
 fn canonical_serialization_deserialization_for_any_combination_of_values_works() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
-    const VALUES: [Word; POLICIES_NUMBER] = [0x1000001, 0x2000001, 0x3000001, 0x4000001];
+    const VALUES: [Word; POLICIES_NUMBER] =
+        [0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001];
 
     for bitmask in 0..MAX_BITMASK {
         let bits =

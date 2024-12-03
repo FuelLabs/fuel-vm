@@ -365,7 +365,8 @@ pub mod test_helpers {
             self.builder.with_script_params(*self.get_script_params());
             self.builder.with_fee_params(*self.get_fee_params());
             self.builder.with_base_asset_id(*self.get_base_asset_id());
-            self.builder.finalize_checked(self.block_height)
+            self.builder
+                .finalize_checked_with_storage(self.block_height, &self.storage)
         }
 
         pub fn get_tx_params(&self) -> &TxParameters {

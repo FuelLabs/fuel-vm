@@ -13,7 +13,7 @@ mod contracts_state;
 mod interpreter;
 #[cfg(feature = "test-helpers")]
 mod memory;
-pub(crate) mod predicate;
+pub mod predicate;
 
 pub use blob_data::{
     BlobBytes,
@@ -33,8 +33,10 @@ pub use interpreter::{
     InterpreterStorage,
 };
 #[cfg(feature = "test-helpers")]
-pub use memory::MemoryStorage;
-pub use predicate::PredicateStorage;
+pub use memory::{
+    MemoryStorage,
+    MemoryStorageError,
+};
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;

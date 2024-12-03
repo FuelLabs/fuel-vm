@@ -18,18 +18,18 @@ edition = "2021"
 homepage = "https://fuel.network/"
 license = "BUSL-1.1"
 repository = "https://github.com/FuelLabs/fuel-vm"
-version = "0.57.0"
+version = "0.58.2"
 
 [workspace.dependencies]
-fuel-asm = { version = "0.57.0", path = "fuel-asm", default-features = false }
-fuel-crypto = { version = "0.57.0", path = "fuel-crypto", default-features = false }
-fuel-compression = { version = "0.57.0", path = "fuel-compression", default-features = false }
-fuel-derive = { version = "0.57.0", path = "fuel-derive", default-features = false }
-fuel-merkle = { version = "0.57.0", path = "fuel-merkle", default-features = false }
-fuel-storage = { version = "0.57.0", path = "fuel-storage", default-features = false }
-fuel-tx = { version = "0.57.0", path = "fuel-tx", default-features = false }
-fuel-types = { version = "0.57.0", path = "fuel-types", default-features = false }
-fuel-vm = { version = "0.57.0", path = "fuel-vm", default-features = false }
+fuel-asm = { version = "0.58.2", path = "fuel-asm", default-features = false }
+fuel-crypto = { version = "0.58.2", path = "fuel-crypto", default-features = false }
+fuel-compression = { version = "0.58.2", path = "fuel-compression", default-features = false }
+fuel-derive = { version = "0.58.2", path = "fuel-derive", default-features = false }
+fuel-merkle = { version = "0.58.2", path = "fuel-merkle", default-features = false }
+fuel-storage = { version = "0.58.2", path = "fuel-storage", default-features = false }
+fuel-tx = { version = "0.58.2", path = "fuel-tx", default-features = false }
+fuel-types = { version = "0.58.2", path = "fuel-types", default-features = false }
+fuel-vm = { version = "0.58.2", path = "fuel-vm", default-features = false }
 bitflags = "2"
 bincode = { version = "1.3", default-features = false }
 criterion = "0.5.0"

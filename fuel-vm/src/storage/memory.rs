@@ -301,20 +301,18 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
             .get(key)
             .map(|c| {
                 let contract_len = c.as_ref().len();
+                let start = offset;
+                let end = offset.saturating_add(buf.len());
                 // We need to handle the case where the offset is greater than the length
                 // of the contract In this case we follow the same
                 // approach as `copy_from_slice_zero_fill`
-                if offset > contract_len {
-                    return Err(MemoryStorageError::OffsetOutOfBounds(
-                        offset,
-                        contract_len,
-                    ));
+                if end > contract_len {
+                    return Err(MemoryStorageError::OffsetOutOfBounds(end, contract_len));
                 }
-                let starting_from_offset = &c.as_ref()[offset..];
-                let len = buf.len().min(starting_from_offset.len());
-                buf[..len].copy_from_slice(&starting_from_offset[..len]);
-                buf[len..].fill(0);
-                Ok(len)
+
+                let starting_from_offset = &c.as_ref()[start..end];
+                buf[..].copy_from_slice(starting_from_offset);
+                Ok(buf.len())
             })
             .transpose()
     }
@@ -553,18 +551,19 @@ impl StorageRead<BlobData> for MemoryStorage {
             .get(key)
             .map(|data| {
                 let blob_len = data.as_ref().len();
+                let start = offset;
+                let end = offset.saturating_add(buf.len());
                 // We need to handle the case where the offset is greater than the length
                 // of the serialized ContractState. In this case we follow
                 // the same approach as `copy_from_slice_zero_fill` and
                 // fill the input buffer with zeros.
-                if offset > blob_len {
+                if end > blob_len {
                     return Err(MemoryStorageError::OffsetOutOfBounds(offset, blob_len));
                 }
-                let starting_from_offset = &data.as_ref()[offset..];
-                let len = buf.len().min(starting_from_offset.len());
-                buf[..len].copy_from_slice(&starting_from_offset[..len]);
-                buf[len..].fill(0);
-                Ok(len)
+
+                let starting_from_offset = &data.as_ref()[start..end];
+                buf[..].copy_from_slice(starting_from_offset);
+                Ok(buf.len())
             })
             .transpose()
     }
@@ -888,8 +887,8 @@ mod tests {
         mem.memory
             .contracts
             .insert(ContractId::default(), contract.clone());
-        let mut buf: Vec<u8> = Vec::with_capacity(load_buf_size);
-        (0..load_buf_size).for_each(|_| buf.push(0));
+        let buf_size = raw_contract.len().saturating_sub(offset).min(load_buf_size);
+        let mut buf = vec![0u8; buf_size];
 
         // When
         let bytes_read = StorageRead::<ContractsRawCode>::read(

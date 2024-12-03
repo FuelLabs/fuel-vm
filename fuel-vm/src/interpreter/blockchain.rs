@@ -13,6 +13,7 @@ use crate::{
         contract::{
             balance,
             balance_decrease,
+            blob_size,
             contract_size,
         },
         gas::{
@@ -28,7 +29,7 @@ use crate::{
             tx_id,
         },
         memory::{
-            copy_from_slice_zero_fill,
+            copy_from_storage_zero_fill,
             OwnershipRegisters,
         },
         receipts::ReceiptsCtx,
@@ -53,10 +54,7 @@ use fuel_asm::{
     Imm06,
     PanicReason,
 };
-use fuel_storage::{
-    StorageInspect,
-    StorageSize,
-};
+use fuel_storage::StorageSize;
 use fuel_tx::{
     consts::BALANCE_ENTRY_SIZE,
     BlobId,
@@ -636,8 +634,6 @@ where
             self.gas_cost,
             charge_len,
         )?;
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
 
         let new_sp = ssp.saturating_add(length);
         self.memory.grow_stack(new_sp)?;
@@ -650,14 +646,16 @@ where
         *self.sp = new_sp;
         *self.ssp = new_sp;
 
-        // Copy the code.
-        copy_from_slice_zero_fill(
+        copy_from_storage_zero_fill::<ContractsRawCode, _>(
             self.memory,
             owner,
-            contract_bytes,
+            self.storage,
             region_start,
-            contract_offset,
             length,
+            &contract_id,
+            contract_offset,
+            contract_len,
+            PanicReason::ContractNotFound,
         )?;
 
         // Update frame code size, if we have a stack frame (i.e. fp > 0)
@@ -711,10 +709,7 @@ where
 
         let length = bytes::padded_len_word(length_unpadded).unwrap_or(Word::MAX);
 
-        let blob_len =
-            <S as StorageSize<BlobData>>::size_of_value(self.storage, &blob_id)
-                .map_err(RuntimeError::Storage)?
-                .ok_or(PanicReason::BlobNotFound)?;
+        let blob_len = blob_size(self.storage, &blob_id)?;
 
         // Fetch the storage blob
         let profiler = ProfileGas {
@@ -731,10 +726,6 @@ where
             self.gas_cost,
             charge_len,
         )?;
-        let blob = <S as StorageInspect<BlobData>>::get(self.storage, &blob_id)
-            .map_err(RuntimeError::Storage)?
-            .ok_or(PanicReason::BlobNotFound)?;
-        let blob_bytes = blob.as_ref().as_ref();
 
         let new_sp = ssp.saturating_add(length);
         self.memory.grow_stack(new_sp)?;
@@ -748,13 +739,16 @@ where
         *self.ssp = new_sp;
 
         // Copy the code.
-        copy_from_slice_zero_fill(
+        copy_from_storage_zero_fill::<BlobData, _>(
             self.memory,
             owner,
-            blob_bytes,
+            self.storage,
             region_start,
-            blob_offset,
             length,
+            &blob_id,
+            blob_offset,
+            blob_len,
+            PanicReason::BlobNotFound,
         )?;
 
         // Update frame code size, if we have a stack frame (i.e. fp > 0)
@@ -994,9 +988,7 @@ where
         self.memory.write(self.owner, dst_addr, length)?;
         self.input_contracts.check(&contract_id)?;
 
-        let contract = super::contract::contract(self.storage, &contract_id)?;
-        let contract_bytes = contract.as_ref().as_ref();
-        let contract_len = contract_bytes.len();
+        let contract_len = contract_size(&self.storage, &contract_id)?;
         let charge_len = core::cmp::max(contract_len as u64, length);
         let profiler = ProfileGas {
             pc: self.pc.as_ref(),
@@ -1012,14 +1004,16 @@ where
             charge_len,
         )?;
 
-        // Owner checks already performed above
-        copy_from_slice_zero_fill(
+        copy_from_storage_zero_fill::<ContractsRawCode, _>(
             self.memory,
             self.owner,
-            contract.as_ref().as_ref(),
+            self.storage,
             dst_addr,
-            contract_offset,
             length,
+            &contract_id,
+            contract_offset,
+            contract_len,
+            PanicReason::ContractNotFound,
         )?;
 
         Ok(inc_pc(self.pc)?)

@@ -35,9 +35,17 @@ use core::ops::{
     RangeTo,
 };
 
+use crate::error::{
+    IoResult,
+    RuntimeError,
+};
 use alloc::{
     vec,
     vec::Vec,
+};
+use fuel_storage::{
+    Mappable,
+    StorageRead,
 };
 
 #[cfg(test)]
@@ -1027,34 +1035,47 @@ impl OwnershipRegisters {
     }
 }
 
-/// Attempt copy from slice to memory, filling zero bytes when exceeding slice boundaries.
-/// Performs overflow and memory range checks, but no ownership checks.
+/// Attempt copy from the storage to memory, filling zero bytes when exceeding slice
+/// boundaries. Performs overflow and memory range checks, but no ownership checks.
 /// Note that if `src_offset` is larger than `src.len()`, the whole range will be
 /// zero-filled.
-pub(crate) fn copy_from_slice_zero_fill<A: ToAddr, B: ToAddr>(
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn copy_from_storage_zero_fill<M, S>(
     memory: &mut MemoryInstance,
     owner: OwnershipRegisters,
-    src: &[u8],
-    dst_addr: A,
-    src_offset: Word,
-    len: B,
-) -> SimpleResult<()> {
-    let range = memory.write(owner, dst_addr, len)?;
+    storage: &S,
+    dst_addr: Word,
+    dst_len: Word,
+    src_id: &M::Key,
+    src_offset: u64,
+    src_len: usize,
+    no_found_error: PanicReason,
+) -> IoResult<(), S::Error>
+where
+    M: Mappable,
+    S: StorageRead<M>,
+{
+    let write_buffer = memory.write(owner, dst_addr, dst_len)?;
+    let mut empty_offset = 0;
 
-    // Special-case the ranges that are completely out of bounds,
-    // to avoid platform-dependenct usize conversion.
-    if src_offset >= src.len() as Word {
-        range[..].fill(0);
-    } else {
-        // Safety: since we check above that this is not larger than `src.len()`,
-        // which is `usize`, the cast never truncates.
-        #[allow(clippy::cast_possible_truncation)]
-        let src_offset = src_offset as usize;
-        let src_end = src_offset.saturating_add(range.len()).min(src.len());
-        let data = src.get(src_offset..src_end).unwrap_or(&[]);
+    if src_offset < src_len as Word {
+        let src_offset =
+            u32::try_from(src_offset).map_err(|_| PanicReason::MemoryOverflow)?;
 
-        range[..data.len()].copy_from_slice(data);
-        range[data.len()..].fill(0);
+        let src_read_length = src_len.saturating_sub(src_offset as usize);
+        let src_read_length = src_read_length.min(write_buffer.len());
+
+        let (src_read_buffer, _) = write_buffer.split_at_mut(src_read_length);
+        storage
+            .read(src_id, src_offset as usize, src_read_buffer)
+            .transpose()
+            .ok_or(no_found_error)?
+            .map_err(RuntimeError::Storage)?;
+
+        empty_offset = src_read_length;
     }
+
+    write_buffer[empty_offset..].fill(0);
+
     Ok(())
 }

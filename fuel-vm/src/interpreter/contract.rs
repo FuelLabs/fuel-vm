@@ -32,6 +32,7 @@ use crate::{
     },
     prelude::Profiler,
     storage::{
+        BlobData,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
@@ -44,18 +45,16 @@ use fuel_asm::{
 };
 use fuel_storage::StorageSize;
 use fuel_tx::{
-    Contract,
     Output,
     Receipt,
 };
 use fuel_types::{
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     ContractId,
 };
-
-use alloc::borrow::Cow;
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
 where
@@ -177,19 +176,6 @@ where
             .storage_contract_exists(contract)
             .map_err(RuntimeError::Storage)
     }
-}
-
-pub(crate) fn contract<'s, S>(
-    storage: &'s S,
-    contract: &ContractId,
-) -> IoResult<Cow<'s, Contract>, S::DataError>
-where
-    S: InterpreterStorage,
-{
-    storage
-        .storage_contract(contract)
-        .map_err(RuntimeError::Storage)?
-        .ok_or_else(|| PanicReason::ContractNotFound.into())
 }
 
 struct ContractBalanceCtx<'vm, S> {
@@ -385,7 +371,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
 pub(crate) fn contract_size<S>(
     storage: &S,
     contract: &ContractId,
-) -> IoResult<u32, S::Error>
+) -> IoResult<usize, S::Error>
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
@@ -393,7 +379,18 @@ where
         .size_of_value(contract)
         .map_err(RuntimeError::Storage)?
         .ok_or(PanicReason::ContractNotFound)?;
-    Ok(u32::try_from(size).map_err(|_| PanicReason::MemoryOverflow)?)
+    Ok(size)
+}
+
+pub(crate) fn blob_size<S>(storage: &S, blob_id: &BlobId) -> IoResult<usize, S::Error>
+where
+    S: StorageSize<BlobData> + ?Sized,
+{
+    let size = storage
+        .size_of_value(blob_id)
+        .map_err(RuntimeError::Storage)?
+        .ok_or(PanicReason::BlobNotFound)?;
+    Ok(size)
 }
 
 pub(crate) fn balance<S>(

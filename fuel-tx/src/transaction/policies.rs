@@ -1,4 +1,7 @@
-use core::ops::Deref;
+use core::{
+    marker::PhantomData,
+    ops::Deref,
+};
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -19,6 +22,7 @@ use rand::{
     },
     Rng,
 };
+use serde::ser::SerializeStruct;
 
 bitflags::bitflags! {
     /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
@@ -111,9 +115,7 @@ impl PolicyType {
 pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as usize;
 
 /// Container for managing policies.
-#[derive(
-    Clone, Copy, Default, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
-)]
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
@@ -250,6 +252,157 @@ impl Policies {
             }
         }
         values
+    }
+}
+
+impl serde::Serialize for Policies {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Policies", 2)?;
+        state.serialize_field("bits", &self.bits)?;
+        state.serialize_field("values", &self.values)?;
+        state.end()
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Policies {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        enum Field {
+            Bits,
+            Values,
+            Ignore,
+        }
+        struct FieldVisitor;
+        impl<'de> serde::de::Visitor<'de> for FieldVisitor {
+            type Value = Field;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("field identifier")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    0 => Ok(Field::Bits),
+                    1 => Ok(Field::Values),
+                    _ => Ok(Field::Ignore),
+                }
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    "bits" => Ok(Field::Bits),
+                    "values" => Ok(Field::Values),
+                    _ => Ok(Field::Ignore),
+                }
+            }
+
+            fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    b"bits" => Ok(Field::Bits),
+                    b"values" => Ok(Field::Values),
+                    _ => Ok(Field::Ignore),
+                }
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+        struct StructVisitor<'de> {
+            marker: PhantomData<Policies>,
+            lifetime: PhantomData<&'de ()>,
+        }
+        impl<'de> serde::de::Visitor<'de> for StructVisitor<'de> {
+            type Value = Policies;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("struct Policies")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let bits = match seq.next_element::<PoliciesBits>()? {
+                    Some(bits) => bits,
+                    None => {
+                        return Err(serde::de::Error::invalid_length(
+                            0,
+                            &"struct Policies with 2 elements",
+                        ))
+                    }
+                };
+                let values = match seq.next_element::<[Word; POLICIES_NUMBER]>()? {
+                    Some(values) => values,
+                    None => {
+                        return Err(serde::de::Error::invalid_length(
+                            1,
+                            &"struct Policies with 2 elements",
+                        ))
+                    }
+                };
+                Ok(Policies { bits, values })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut bits = None;
+                let mut values = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Bits => {
+                            if bits.is_some() {
+                                return Err(serde::de::Error::duplicate_field("bits"));
+                            }
+                            bits = Some(map.next_value()?);
+                        }
+                        Field::Values => {
+                            if values.is_some() {
+                                return Err(serde::de::Error::duplicate_field("values"));
+                            }
+                            values = Some(map.next_value()?);
+                        }
+                        Field::Ignore => {
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                    }
+                }
+                let bits = bits.ok_or_else(|| serde::de::Error::missing_field("bits"))?;
+                let values =
+                    values.ok_or_else(|| serde::de::Error::missing_field("values"))?;
+                Ok(Policies { bits, values })
+            }
+        }
+        const FIELDS: &'static [&'static str] = &["bits", "values"];
+        serde::Deserializer::deserialize_struct(
+            deserializer,
+            "Policies",
+            FIELDS,
+            StructVisitor {
+                marker: PhantomData::<Policies>,
+                lifetime: PhantomData,
+            },
+        )
     }
 }
 

@@ -766,8 +766,8 @@ fn serde_de_serialization_is_backward_compatible() {
 fn serde_deserialization_new_format() {
     use serde_test::{
         assert_tokens,
+        Configure,
         Token,
-        Configure
     };
 
     // Given
@@ -776,28 +776,31 @@ fn serde_deserialization_new_format() {
         values: [0, 0, 20, 0, 10],
     };
 
-    assert_tokens(&policies.compact(), &[
-        Token::Struct {
-            name: "Policies",
-            len: 2,
-        },
-        Token::Str("bits"),
-        Token::NewtypeStruct {
-            name: "PoliciesBits",
-        },
-        Token::U32(20),
-        Token::Str("values"),
-        Token::Tuple { len: 2 },
-        Token::Tuple { len: 4 },
-        Token::U64(0),
-        Token::U64(0),
-        Token::U64(20),
-        Token::U64(0),
-        Token::TupleEnd,
-        Token::Seq { len: Some(1) },
-        Token::U64(10),
-        Token::SeqEnd,
-        Token::TupleEnd,
-        Token::StructEnd,
-    ]);
+    assert_tokens(
+        &policies.compact(),
+        &[
+            Token::Struct {
+                name: "Policies",
+                len: 2,
+            },
+            Token::Str("bits"),
+            Token::NewtypeStruct {
+                name: "PoliciesBits",
+            },
+            Token::U32(20),
+            Token::Str("values"),
+            Token::Tuple { len: 2 },
+            Token::Tuple { len: 4 },
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(20),
+            Token::U64(0),
+            Token::TupleEnd,
+            Token::Seq { len: Some(1) },
+            Token::U64(10),
+            Token::SeqEnd,
+            Token::TupleEnd,
+            Token::StructEnd,
+        ],
+    );
 }

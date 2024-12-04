@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.59.0]
+
 ### Added
 - [871](https://github.com/FuelLabs/fuel-vm/pull/871): Add `expiration` policy that prevent a transaction to be inserted after a given block height.
 - [870](https://github.com/FuelLabs/fuel-vm/pull/870): Add 3 new ZK-related opcodes: eadd (ecAdd on EVM), emul (ecMul on EVM), epar (ecPairing on EVM)

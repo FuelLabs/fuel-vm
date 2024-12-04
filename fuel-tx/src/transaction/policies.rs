@@ -1,4 +1,6 @@
+use alloc::vec::Vec;
 use core::{
+    fmt,
     marker::PhantomData,
     ops::Deref,
 };
@@ -286,7 +288,7 @@ impl serde::Serialize for Policies {
             state.serialize_field("values", &first_four_values)?;
         // New backward compatible behavior
         } else {
-            let mut values = vec![];
+            let mut values = Vec::new();
             for (value, bit) in self.values.iter().zip(PoliciesBits::all().iter()) {
                 if self.bits.contains(bit) {
                     values.push(*value);
@@ -312,7 +314,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
         impl<'de> serde::de::Visitor<'de> for FieldVisitor {
             type Value = Field;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("field identifier")
             }
 
@@ -364,7 +366,7 @@ impl<'de> serde::Deserialize<'de> for Policies {
         impl<'de> serde::de::Visitor<'de> for StructVisitor<'de> {
             type Value = Policies;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("struct Policies")
             }
 

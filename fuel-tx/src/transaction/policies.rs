@@ -429,7 +429,11 @@ impl<'de> serde::Deserialize<'de> for Policies {
                                     .ok_or(serde::de::Error::custom(
                                     "The values array isn't synchronized with the bits",
                                 ))?;
-                            decoded_index += 1;
+                            decoded_index = decoded_index.checked_add(1).ok_or(
+                                serde::de::Error::custom(
+                                    "Too many values in the values array",
+                                ),
+                            )?;
                         }
                     }
                     if decoded_index != decoded_values.len() {
@@ -498,7 +502,11 @@ impl<'de> serde::Deserialize<'de> for Policies {
                                                     .ok_or(serde::de::Error::custom(
                                                     "The values array isn't synchronized with the bits",
                                                 ))?;
-                                        decoded_index += 1;
+                                        decoded_index = decoded_index
+                                            .checked_add(1)
+                                            .ok_or(serde::de::Error::custom(
+                                                "Too many values in the values array",
+                                            ))?;
                                     }
                                 }
                                 if decoded_index != decoded_values.len() {

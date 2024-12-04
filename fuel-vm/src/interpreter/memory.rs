@@ -39,10 +39,7 @@ use crate::error::{
     IoResult,
     RuntimeError,
 };
-use alloc::{
-    vec,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use fuel_storage::{
     Mappable,
     StorageRead,
@@ -136,19 +133,6 @@ impl MemoryInstance {
     /// Offset of the heap section
     fn heap_offset(&self) -> usize {
         MEM_SIZE.saturating_sub(self.heap.len())
-    }
-
-    /// Returns a linear memory representation where stack is at the beginning and heap is
-    /// at the end.
-    pub fn into_linear_memory(self) -> Vec<u8> {
-        let uninit_memory_size = MEM_SIZE
-            .saturating_sub(self.stack.len())
-            .saturating_sub(self.heap.len());
-        let uninit_memory = vec![0u8; uninit_memory_size];
-        let mut memory = self.stack;
-        memory.extend(uninit_memory);
-        memory.extend(self.heap);
-        memory
     }
 
     /// Grows the stack to be at least `new_sp` bytes.
@@ -418,6 +402,120 @@ impl MemoryInstance {
     pub fn heap_raw(&self) -> &[u8] {
         &self.heap
     }
+
+    /// Returns a `MemoryRollbackData` that can be used to achieve the state of the
+    /// `desired_memory_state` instance.
+    pub fn collect_rollback_data(
+        &self,
+        desired_memory_state: &MemoryInstance,
+    ) -> Option<MemoryRollbackData> {
+        if self == desired_memory_state {
+            return None
+        }
+
+        let sp = desired_memory_state.stack.len();
+        let hp = desired_memory_state.hp;
+
+        assert!(
+            hp >= self.hp,
+            "We only allow shrinking of the heap during rollback"
+        );
+
+        let stack_changes =
+            get_changes(&self.stack[..sp], &desired_memory_state.stack[..sp], 0);
+
+        let heap_start = hp
+            .checked_sub(self.heap_offset())
+            .expect("Memory is invalid, hp is out of bounds");
+        let heap = &self.heap[heap_start..];
+        let desired_heap_start = hp
+            .checked_sub(desired_memory_state.heap_offset())
+            .expect("Memory is invalid, hp is out of bounds");
+        let desired_heap = &desired_memory_state.heap[desired_heap_start..];
+
+        let heap_changes = get_changes(heap, desired_heap, hp);
+
+        Some(MemoryRollbackData {
+            sp,
+            hp,
+            stack_changes,
+            heap_changes,
+        })
+    }
+
+    /// Rollbacks the memory changes returning the memory to the old state.
+    pub fn rollback(&mut self, data: &MemoryRollbackData) {
+        self.stack.resize(data.sp, 0);
+        assert!(
+            data.hp >= self.hp,
+            "We only allow shrinking of the heap during rollback"
+        );
+        self.hp = data.hp;
+
+        for change in &data.stack_changes {
+            self.stack[change.global_start
+                ..change.global_start.saturating_add(change.data.len())]
+                .copy_from_slice(&change.data);
+        }
+
+        let offset = self.heap_offset();
+        for change in &data.heap_changes {
+            let local_start = change
+                .global_start
+                .checked_sub(offset)
+                .expect("Invalid offset");
+            self.heap[local_start..local_start.saturating_add(change.data.len())]
+                .copy_from_slice(&change.data);
+        }
+    }
+}
+
+fn get_changes(
+    latest_array: &[u8],
+    desired_array: &[u8],
+    offset: usize,
+) -> Vec<MemorySliceChange> {
+    let mut changes = Vec::new();
+    let mut range = None;
+    for (i, (old, new)) in latest_array.iter().zip(desired_array.iter()).enumerate() {
+        if old != new {
+            range = match range {
+                None => Some((i, 1usize)),
+                Some((start, count)) => Some((start, count.saturating_add(1))),
+            };
+        } else if let Some((start, count)) = range.take() {
+            changes.push(MemorySliceChange {
+                global_start: offset.saturating_add(start),
+                data: desired_array[start..start.saturating_add(count)].to_vec(),
+            });
+        }
+    }
+    if let Some((start, count)) = range.take() {
+        changes.push(MemorySliceChange {
+            global_start: offset.saturating_add(start),
+            data: desired_array[start..start.saturating_add(count)].to_vec(),
+        });
+    }
+    changes
+}
+
+#[derive(Debug, Clone)]
+struct MemorySliceChange {
+    global_start: usize,
+    data: Vec<u8>,
+}
+
+/// The container for the data used to rollback memory changes.
+#[derive(Debug, Clone)]
+pub struct MemoryRollbackData {
+    /// Desired stack pointer.
+    sp: usize,
+    /// Desired heap pointer. Desired heap pointer can't be less than the current one.
+    hp: usize,
+    /// Changes to the stack to achieve the desired state of the stack.
+    stack_changes: Vec<MemorySliceChange>,
+    /// Changes to the heap to achieve the desired state of the heap.
+    heap_changes: Vec<MemorySliceChange>,
 }
 
 #[cfg(feature = "test-helpers")]

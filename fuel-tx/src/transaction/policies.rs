@@ -286,18 +286,13 @@ impl serde::Serialize for Policies {
             state.serialize_field("values", &first_four_values)?;
         // New backward compatible behavior
         } else {
-            let first_four_values: [Word; 4] =
-                self.values[..4].try_into().map_err(|_| {
-                    serde::ser::Error::custom("The first 4 values should be present")
-                })?;
             let mut values = vec![];
-            for (value, bit) in self.values.iter().zip(PoliciesBits::all().iter()).skip(4)
-            {
+            for (value, bit) in self.values.iter().zip(PoliciesBits::all().iter()) {
                 if self.bits.contains(bit) {
                     values.push(*value);
                 }
             }
-            state.serialize_field("values", &(first_four_values, values))?;
+            state.serialize_field("values", &values)?;
         }
         state.end()
     }
@@ -413,26 +408,29 @@ impl<'de> serde::Deserialize<'de> for Policies {
                     Ok(Policies { bits, values })
                 // New backward compatible behavior
                 } else {
-                    let mut decoded_values =
-                        match seq.next_element::<([Word; 4], Vec<Word>)>()? {
-                            Some(values) => values,
-                            None => {
-                                return Err(serde::de::Error::invalid_length(
-                                    1,
-                                    &"struct Policies with 2 elements",
-                                ))
-                            }
-                        };
+                    let decoded_values = match seq.next_element::<Vec<Word>>()? {
+                        Some(values) => values,
+                        None => {
+                            return Err(serde::de::Error::invalid_length(
+                                1,
+                                &"struct Policies with 2 elements",
+                            ))
+                        }
+                    };
                     let mut values: [Word; POLICIES_NUMBER] = [0; POLICIES_NUMBER];
-                    values[..4].copy_from_slice(&decoded_values.0);
-                    for (index, bit) in PoliciesBits::all().iter().enumerate().skip(4) {
+                    let mut decoded_index = 0;
+                    for (index, bit) in PoliciesBits::all().iter().enumerate() {
                         if bits.contains(bit) {
-                            if let Some(value) = decoded_values.1.pop() {
-                                values[index] = value;
-                            }
+                            values[index] =
+                                *decoded_values
+                                    .get(decoded_index)
+                                    .ok_or(serde::de::Error::custom(
+                                    "The values array isn't synchronized with the bits",
+                                ))?;
+                            decoded_index += 1;
                         }
                     }
-                    if !decoded_values.1.is_empty() {
+                    if decoded_index != decoded_values.len() {
                         return Err(serde::de::Error::custom(
                             "The values array isn't synchronized with the bits",
                         ));
@@ -485,24 +483,26 @@ impl<'de> serde::Deserialize<'de> for Policies {
                                 values = Some(tmp_values);
                             // New backward compatible behavior
                             } else {
-                                let mut decoded_values =
-                                    map.next_value::<([Word; 4], Vec<Word>)>()?;
+                                let decoded_values = map.next_value::<Vec<Word>>()?;
                                 let mut tmp_values: [Word; POLICIES_NUMBER] =
                                     [0; POLICIES_NUMBER];
-                                tmp_values[..4].copy_from_slice(&decoded_values.0);
-                                for (index, bit) in
-                                    PoliciesBits::all().iter().enumerate().skip(4)
+                                let mut decoded_index = 0;
+                                for (index, bit) in PoliciesBits::all().iter().enumerate()
                                 {
                                     if bits.contains(bit) {
-                                        if let Some(value) = decoded_values.1.pop() {
-                                            tmp_values[index] = value;
-                                        }
+                                        tmp_values[index] =
+                                                *decoded_values
+                                                    .get(decoded_index)
+                                                    .ok_or(serde::de::Error::custom(
+                                                    "The values array isn't synchronized with the bits",
+                                                ))?;
+                                        decoded_index += 1;
                                     }
                                 }
-                                if !decoded_values.1.is_empty() {
+                                if decoded_index != decoded_values.len() {
                                     return Err(serde::de::Error::custom(
-                                    "The values array isn't synchronized with the bits",
-                                    ));
+                                            "The values array isn't synchronized with the bits",
+                                        ));
                                 }
                                 values = Some(tmp_values);
                             }
@@ -763,6 +763,43 @@ fn serde_de_serialization_is_backward_compatible() {
 }
 
 #[test]
+fn serde_deserialization_empty_use_backward_compatibility() {
+    use serde_test::{
+        assert_tokens,
+        Configure,
+        Token,
+    };
+
+    // Given
+    let policies = Policies::new();
+
+    assert_tokens(
+        // When
+        &policies.compact(),
+        // Then
+        &[
+            Token::Struct {
+                name: "Policies",
+                len: 2,
+            },
+            Token::Str("bits"),
+            Token::NewtypeStruct {
+                name: "PoliciesBits",
+            },
+            Token::U32(0),
+            Token::Str("values"),
+            Token::Tuple { len: 4 },
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(0),
+            Token::TupleEnd,
+            Token::StructEnd,
+        ],
+    );
+}
+
+#[test]
 fn serde_deserialization_new_format() {
     use serde_test::{
         assert_tokens,
@@ -789,17 +826,10 @@ fn serde_deserialization_new_format() {
             },
             Token::U32(20),
             Token::Str("values"),
-            Token::Tuple { len: 2 },
-            Token::Tuple { len: 4 },
-            Token::U64(0),
-            Token::U64(0),
+            Token::Seq { len: Some(2) },
             Token::U64(20),
-            Token::U64(0),
-            Token::TupleEnd,
-            Token::Seq { len: Some(1) },
             Token::U64(10),
             Token::SeqEnd,
-            Token::TupleEnd,
             Token::StructEnd,
         ],
     );

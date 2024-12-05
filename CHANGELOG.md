@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- [879](https://github.com/FuelLabs/fuel-vm/pull/879): Debugger state wasn't propagated in contract contexts.
+
 ## [Version 0.59.0]
 
 ### Added

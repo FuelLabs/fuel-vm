@@ -12,8 +12,8 @@ description = "FuelVM transaction."
 
 [dependencies]
 bitflags = { workspace = true, features = ["serde"], optional = true }
-derivative = { version = "2.2.0", default-features = false, features = ["use_core"], optional = true }
-derive_more = { version = "0.99", default-features = false, features = ["display"], optional = true }
+derive_more = { version = "1", default-features = false, features = ["display"], optional = true }
+educe = { version = "0.6", features = ["Eq", "PartialEq", "Hash", "Debug"], default-features = false, optional = true }
 fuel-asm = { workspace = true, default-features = false }
 fuel-compression = { workspace = true, optional = true }
 fuel-crypto = { workspace = true, default-features = false }
@@ -56,7 +56,7 @@ internals = []
 typescript = ["dep:serde_json", "alloc", "js-sys", "wasm-bindgen", "serde-wasm-bindgen", "fuel-types/typescript"]
 random = ["fuel-crypto/random", "fuel-types/random", "rand"]
 std = ["alloc", "fuel-asm/std", "fuel-crypto/std", "fuel-merkle/std", "fuel-types/std", "itertools/default", "rand?/default", "serde/default", "hex/std"]
-alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "derivative", "fuel-merkle", "strum", "strum_macros", "bitflags", "postcard", "derive_more", "fuel-asm/serde", "fuel-types/serde"]
+alloc = ["hashbrown", "fuel-types/alloc", "itertools/use_alloc", "fuel-merkle", "strum", "strum_macros", "bitflags", "postcard", "educe", "derive_more", "fuel-asm/serde", "fuel-types/serde"]
 da-compression = ["fuel-compression"]
 
 [lints.rust]

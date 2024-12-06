@@ -3,7 +3,7 @@ use crate::{
     transaction::types::input::AsField,
 };
 use alloc::vec::Vec;
-use derivative::Derivative;
+use educe::Educe;
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
 use fuel_types::{
@@ -205,8 +205,8 @@ pub mod specifications {
 /// - [`specifications::MessageData`] with [`specifications::Signed`] usage rules.
 /// - [`specifications::MessageData`] with [`specifications::Predicate`] usage rules.
 /// - [`specifications::Full`].
-#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
-#[derivative(Debug)]
+#[derive(Default, Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
@@ -224,19 +224,19 @@ where
     pub amount: Word,
     // Unique identifier of the message
     pub nonce: Nonce,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub witness_index: Specification::Witness,
     /// Exact amount of gas used by the predicate.
     /// If the predicate consumes different amount of gas,
     /// it's considered to be false.
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
     #[cfg_attr(feature = "da-compression", compress(skip))]
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub data: Specification::Data,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate: Specification::Predicate,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_data: Specification::PredicateData,
 }
 

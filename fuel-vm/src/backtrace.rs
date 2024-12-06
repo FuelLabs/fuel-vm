@@ -15,7 +15,7 @@ use crate::{
         Interpreter,
     },
 };
-use derivative::Derivative;
+use educe::Educe;
 
 use crate::interpreter::{
     Memory,
@@ -27,8 +27,8 @@ use fuel_types::{
     Word,
 };
 
-#[derive(Derivative)]
-#[derivative(Debug)]
+#[derive(Educe)]
+#[educe(Debug)]
 /// Runtime description derived from a VM error.
 pub struct Backtrace {
     call_stack: Vec<CallFrame>,

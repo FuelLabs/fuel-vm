@@ -23,7 +23,7 @@ use crate::{
     ValidityError,
     Witness,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes,
     canonical::Serialize,
@@ -74,8 +74,8 @@ pub trait BodyConstraints {}
 #[cfg(not(feature = "da-compression"))]
 impl<T> BodyConstraints for T {}
 
-#[derive(Clone, Derivative)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Educe)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
@@ -94,7 +94,8 @@ where
     pub(crate) witnesses: Vec<Witness>,
     #[serde(skip)]
     #[cfg_attr(feature = "da-compression", compress(skip))]
-    #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[educe(PartialEq(ignore))]
+    #[educe(Hash(ignore))]
     #[canonical(skip)]
     pub(crate) metadata: Option<ChargeableMetadata<MetadataBody>>,
 }

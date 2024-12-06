@@ -18,7 +18,7 @@ use crate::{
     TransactionRepr,
     ValidityError,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes::WORD_SIZE,
     canonical::Serialize,
@@ -45,14 +45,14 @@ pub type Blob = ChargeableTransaction<BlobBody, BlobMetadata>;
 pub struct BlobMetadata;
 
 /// The body of the [`Blob`] transaction.
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Educe, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Blob)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub struct BlobBody {
     /// Hash of the bytecode. Used both as a unique identifier and to verify the
     /// bytecode.

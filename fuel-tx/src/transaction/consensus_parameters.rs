@@ -23,7 +23,7 @@ const MAX_GAS: u64 = 100_000_000;
 const MAX_SIZE: u64 = 110 * 1024;
 
 #[derive(Debug, derive_more::Display)]
-#[display(fmt = "setting block transaction size limit is not supported")]
+#[display("setting block transaction size limit is not supported")]
 pub struct SettingBlockTransactionSizeLimitNotSupported;
 #[cfg(feature = "std")]
 impl std::error::Error for SettingBlockTransactionSizeLimitNotSupported {}

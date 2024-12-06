@@ -1,0 +1,11 @@
+[package]
+name = "version-compatibility-tests"
+version = "0.0.0"
+edition = "2021"
+license = "BUSL-1.1"
+publish = false
+
+[dev-dependencies]
+latest-fuel-tx = { package = "fuel-tx", path = "../fuel-tx", features = ["random", "test-helpers"] }
+fuel-tx-0-58-2 = { package = "fuel-tx", version = "0.58.2", features = ["random", "test-helpers"] }
+postcard = { version = "1.0", features = ["use-std"] }

@@ -45,6 +45,15 @@ fn tx_with_signed_coin_snapshot_json() {
     insta::assert_snapshot!(json);
 }
 
+#[test]
+fn tx_with_signed_coin_snapshot_postcard() {
+    let tx = tx_with_signed_coin_snapshot();
+
+    let bytes = postcard::to_allocvec(&tx).unwrap();
+    let hex = hex::encode(bytes);
+    insta::assert_snapshot!(hex);
+}
+
 fn tx_with_predicate_coin_snapshot() -> Transaction {
     TransactionBuilder::script(vec![], vec![])
         .add_input(Input::CoinPredicate(CoinPredicate {
@@ -82,6 +91,15 @@ fn tx_with_predicate_coin_snapshot_json() {
     insta::assert_snapshot!(json);
 }
 
+#[test]
+fn tx_with_predicate_coin_snapshot_postcard() {
+    let tx = tx_with_predicate_coin_snapshot();
+
+    let bytes = postcard::to_allocvec(&tx).unwrap();
+    let hex = hex::encode(bytes);
+    insta::assert_snapshot!(hex);
+}
+
 fn tx_with_contract_snapshot() -> Transaction {
     TransactionBuilder::script(vec![], vec![])
         .add_input(Input::Contract(Contract {
@@ -113,6 +131,15 @@ fn tx_with_contract_snapshot_json() {
 
     let json = serde_json::to_string_pretty(&tx).unwrap();
     insta::assert_snapshot!(json);
+}
+
+#[test]
+fn tx_with_contract_snapshot_postcard() {
+    let tx = tx_with_contract_snapshot();
+
+    let bytes = postcard::to_allocvec(&tx).unwrap();
+    let hex = hex::encode(bytes);
+    insta::assert_snapshot!(hex);
 }
 
 fn tx_with_signed_message_coin() -> Transaction {
@@ -153,6 +180,15 @@ fn tx_with_signed_message_coin_json() {
     insta::assert_snapshot!(json);
 }
 
+#[test]
+fn tx_with_signed_message_coin_postcard() {
+    let tx = tx_with_signed_message_coin();
+
+    let bytes = postcard::to_allocvec(&tx).unwrap();
+    let hex = hex::encode(bytes);
+    insta::assert_snapshot!(hex);
+}
+
 fn tx_with_predicate_message_coin() -> Transaction {
     TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageCoinPredicate(MessageCoinPredicate {
@@ -187,6 +223,15 @@ fn tx_with_predicate_message_coin_json() {
     let tx = tx_with_predicate_message_coin();
     let json = serde_json::to_string_pretty(&tx).unwrap();
     insta::assert_snapshot!(json);
+}
+
+#[test]
+fn tx_with_predicate_message_coin_postcard() {
+    let tx = tx_with_predicate_message_coin();
+
+    let bytes = postcard::to_allocvec(&tx).unwrap();
+    let hex = hex::encode(bytes);
+    insta::assert_snapshot!(hex);
 }
 
 fn tx_with_signed_message_data() -> Transaction {
@@ -227,6 +272,15 @@ fn tx_with_signed_message_data_json() {
     insta::assert_snapshot!(json);
 }
 
+#[test]
+fn tx_with_signed_message_data_postcard() {
+    let tx = tx_with_signed_message_data();
+
+    let bytes = postcard::to_allocvec(&tx).unwrap();
+    let hex = hex::encode(bytes);
+    insta::assert_snapshot!(hex);
+}
+
 fn tx_with_predicate_message_data() -> Transaction {
     TransactionBuilder::script(vec![], vec![])
         .add_input(Input::MessageDataPredicate(MessageDataPredicate {
@@ -263,4 +317,13 @@ fn tx_with_predicate_message_data_json() {
     // Json
     let json = serde_json::to_string_pretty(&tx).unwrap();
     insta::assert_snapshot!(json);
+}
+
+#[test]
+fn tx_with_predicate_message_data_postcard() {
+    let tx = tx_with_predicate_message_data();
+
+    let bytes = postcard::to_allocvec(&tx).unwrap();
+    let hex = hex::encode(bytes);
+    insta::assert_snapshot!(hex);
 }

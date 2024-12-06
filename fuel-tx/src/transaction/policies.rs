@@ -300,6 +300,11 @@ impl serde::Serialize for Policies {
     }
 }
 
+// Most of the code is copy-paste from the auto-generated code
+// by `serde::Deserialize` derive macro with small modifications to support
+// backward compatibility.
+//
+// See description of the https://github.com/FuelLabs/fuel-vm/pull/878.
 impl<'de> serde::Deserialize<'de> for Policies {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

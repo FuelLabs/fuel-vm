@@ -259,7 +259,7 @@ impl Policies {
 
 // This serde is manually implemented because of the `values` field format.
 // Serialization of the `values` field :
-// 1. Always write the 4 elements for the first 4 policies even if they are not set for
+// 1. Always write the 4 elements for the policies `Maturity, MaxFee, Tip, WitnessLimit`, even if they are not set for
 //    backward compatibility.
 // 2. For the remaining, write the value only if the policy is set.
 impl serde::Serialize for Policies {

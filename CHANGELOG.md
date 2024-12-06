@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- [878](https://github.com/FuelLabs/fuel-vm/pull/878): Fix the transaction de/serialization that wasn't backward compatible with the addition of the new policy.
+
 ## [Version 0.59.0]
 
 ### Added

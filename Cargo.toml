@@ -8,6 +8,7 @@ members = [
     "fuel-tx",
     "fuel-types",
     "fuel-vm",
+    "version-compatibility",
 ]
 resolver = "2"
 

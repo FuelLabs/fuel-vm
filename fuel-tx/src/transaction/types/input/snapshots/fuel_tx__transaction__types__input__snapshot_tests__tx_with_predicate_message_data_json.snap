@@ -15,7 +15,6 @@ snapshot_kind: text
       "bits": "Tip | Maturity | MaxFee | Expiration",
       "values": [
         1,
-        0,
         123,
         1000000,
         456

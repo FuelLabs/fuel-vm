@@ -2,17 +2,17 @@ use core::ops::{
     Deref,
     DerefMut,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::fmt_truncated_hex;
 
 use alloc::vec::Vec;
 
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Educe, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub struct PredicateCode {
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
     pub bytes: Vec<u8>,
 }
 

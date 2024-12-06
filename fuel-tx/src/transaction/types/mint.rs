@@ -13,7 +13,7 @@ use crate::{
     TxPointer,
     ValidityError,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_asm::Word;
 use fuel_types::{
     bytes::WORD_SIZE,
@@ -47,11 +47,11 @@ impl MintMetadata {
 ///
 /// This transaction can be created by the block producer and included in the block only
 /// by it.
-#[derive(Default, Debug, Clone, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, Educe, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Mint)]
-#[derivative(Eq, PartialEq, Hash)]
+#[educe(Eq, PartialEq, Hash)]
 pub struct Mint {
     /// The location of the transaction in the block.
     #[cfg_attr(feature = "da-compression", compress(skip))]
@@ -67,7 +67,8 @@ pub struct Mint {
     /// Gas Price used for current block
     pub(crate) gas_price: Word,
     #[serde(skip)]
-    #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[educe(PartialEq(ignore))]
+    #[educe(Hash(ignore))]
     #[canonical(skip)]
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) metadata: Option<MintMetadata>,

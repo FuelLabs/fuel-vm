@@ -10,7 +10,7 @@ use crate::{
     UtxoId,
 };
 use alloc::vec::Vec;
-use derivative::Derivative;
+use educe::Educe;
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
 use fuel_types::{
@@ -143,8 +143,8 @@ impl CoinSpecification for Full {
 /// - [`Full`] - is used during the deserialization of the coin. It should be transformed
 ///   into [`Signed`] or [`Predicate`] sub-coin. If the `predicate` is empty, it is
 ///   [`Signed`], else [`Predicate`].
-#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
-#[derivative(Debug)]
+#[derive(Default, Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
@@ -161,16 +161,16 @@ where
     pub asset_id: AssetId,
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub witness_index: Specification::Witness,
     /// Exact amount of gas used by the predicate.
     /// If the predicate consumes different amount of gas,
     /// it's considered to be false.
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate: Specification::Predicate,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_data: Specification::PredicateData,
 }
 

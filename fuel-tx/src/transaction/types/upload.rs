@@ -19,7 +19,7 @@ use crate::{
     ValidityError,
 };
 use core::ops::Deref;
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes::WORD_SIZE,
     canonical::Serialize,
@@ -37,14 +37,14 @@ pub type Upload = ChargeableTransaction<UploadBody, UploadMetadata>;
 pub struct UploadMetadata;
 
 /// The body of the [`Upload`] transaction.
-#[derive(Clone, Default, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Default, Educe, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Upload)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub struct UploadBody {
     /// The root of the Merkle tree is created over the bytecode.
     pub root: Bytes32,

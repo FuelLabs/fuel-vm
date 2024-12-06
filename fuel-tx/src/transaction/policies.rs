@@ -323,17 +323,6 @@ impl<'de> serde::Deserialize<'de> for Policies {
                 formatter.write_str("field identifier")
             }
 
-            fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                match value {
-                    0 => Ok(Field::Bits),
-                    1 => Ok(Field::Values),
-                    _ => Ok(Field::Ignore),
-                }
-            }
-
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,

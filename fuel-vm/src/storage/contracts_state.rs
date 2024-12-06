@@ -10,7 +10,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use derivative::Derivative;
+use educe::Educe;
 
 #[cfg(feature = "random")]
 use rand::{
@@ -44,11 +44,11 @@ double_key!(
 );
 
 /// Storage type for contract state
-#[derive(Derivative, Clone, PartialEq, Eq, Hash)]
-#[derivative(Debug)]
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ContractsStateData(
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] pub Vec<u8>,
+    #[educe(Debug(method(fmt_truncated_hex::<16>)))] pub Vec<u8>,
 );
 
 // TODO: Remove fixed size default when adding support for dynamic storage

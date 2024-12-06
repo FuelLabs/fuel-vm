@@ -16,7 +16,7 @@ use crate::{
     TransactionRepr,
     ValidityError,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes::WORD_SIZE,
     canonical::Serialize,
@@ -95,14 +95,14 @@ impl UpgradeMetadata {
 /// The types describe the purpose of the upgrade performed by the [`Upgrade`]
 /// transaction.
 #[derive(
-    Copy, Clone, Derivative, strum_macros::EnumCount, serde::Serialize, serde::Deserialize,
+    Copy, Clone, Educe, strum_macros::EnumCount, serde::Serialize, serde::Deserialize,
 )]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub enum UpgradePurpose {
     /// The upgrade is performed to change the consensus parameters.
     ConsensusParameters {
@@ -125,14 +125,14 @@ pub enum UpgradePurpose {
 }
 
 /// The body of the [`Upgrade`] transaction.
-#[derive(Clone, Derivative, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Educe, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(
     feature = "da-compression",
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 #[canonical(prefix = TransactionRepr::Upgrade)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub struct UpgradeBody {
     /// The purpose of the upgrade.
     pub(crate) purpose: UpgradePurpose,

@@ -1037,20 +1037,18 @@ where
 
             if in_call {
                 // Only reverts should terminate execution from a call context
-                if let ExecuteState::Revert(r) = state {
-                    return Ok(ProgramState::Revert(r));
+                match state {
+                    ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
+                    ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
+                    _ => {}
                 }
             } else {
                 match state {
                     ExecuteState::Return(r) => return Ok(ProgramState::Return(r)),
-
                     ExecuteState::ReturnData(d) => return Ok(ProgramState::ReturnData(d)),
-
                     ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
-
-                    ExecuteState::Proceed => (),
-
                     ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
+                    ExecuteState::Proceed => {}
                 }
             }
         }

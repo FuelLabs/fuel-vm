@@ -109,6 +109,7 @@ where
             balances: self.balances,
             panic_context: self.panic_context,
             profiler: self.profiler,
+            trace: self.trace,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
         }
@@ -199,6 +200,7 @@ where
             balances: self.balances,
             panic_context: self.panic_context,
             profiler: self.profiler,
+            trace: self.trace,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
         }

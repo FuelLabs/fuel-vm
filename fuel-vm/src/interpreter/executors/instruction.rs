@@ -80,8 +80,15 @@ where
             }
         }
 
-        self.instruction_inner(raw.into())
-            .map_err(|e| InterpreterError::from_runtime(e, raw.into()))
+        let result = self
+            .instruction_inner(raw.into())
+            .map_err(|e| InterpreterError::from_runtime(e, raw.into()));
+
+        if !matches!(result, Err(_) | Ok(ExecuteState::DebugEvent(_))) {
+            self.record_trace_after_instruction();
+        }
+
+        result
     }
 
     fn instruction_inner(

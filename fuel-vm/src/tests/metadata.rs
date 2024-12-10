@@ -555,7 +555,6 @@ fn get_transaction_fields() {
     );
     let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
 
-    // Maybe use predicates to check create context?
     // TODO GTFArgs::InputCoinTxPointer
     // TODO GTFArgs::InputContractTxPointer
 
@@ -1023,6 +1022,7 @@ fn get__create_specific_transaction_fields__success() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let mut client = MemoryClient::default();
 
+    // Given
     let salt = Salt::new([1; 32]);
     let storage_slots = vec![
         StorageSlot::new(Bytes32::new([0; 32]), Bytes32::new([0; 32])),
@@ -1039,29 +1039,37 @@ fn get__create_specific_transaction_fields__success() {
     let mut tx = TransactionBuilder::create(bytecode.into(), salt, storage_slots);
     tx.add_fee_input();
     tx.add_contract_created();
+
+    // When
+    #[rustfmt::skip]
     let predicate_code = vec![
         op::gtf_args(0x10, 0x00, GTFArgs::CreateBytecodeWitnessIndex),
         op::movi(0x11, 0x00),
         op::eq(0x20, 0x10, 0x11),
+
         // Store the bytecode pointer for later use
         op::gtf_args(0x13, 0x10, GTFArgs::TxWitnessAtIndex),
         // Skip the length of the bytecode
         op::addi(0x13, 0x13, 0x08),
+
         op::gtf_args(0x10, 0x00, GTFArgs::CreateStorageSlotsCount),
         op::movi(0x11, 0x02),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
+
         op::gtf_args(0x10, 0x00, GTFArgs::CreateSalt),
         op::movi(0x11, 0x20),
         // Salt is at the start of the bytecode which start at value stored in 0x13
         op::meq(0x10, 0x10, 0x13, 0x11),
         op::and(0x20, 0x20, 0x10),
+
         op::gtf_args(0x10, 0x01, GTFArgs::CreateStorageSlotAtIndex),
         op::movi(0x11, StorageSlot::SLOT_SIZE as Immediate18),
         // Increase bytecode pointer by 32 bytes to pass the salt
         op::addi(0x13, 0x13, 0x20),
         op::meq(0x10, 0x10, 0x13, 0x11),
         op::and(0x20, 0x20, 0x10),
+
         op::gtf_args(0x10, 0x00, GTFArgs::OutputContractCreatedStateRoot),
         op::movi(0x11, 0x20),
         // Increase bytecode pointer by SLOTSIZE bytes to pass the storage slot written
@@ -1069,6 +1077,7 @@ fn get__create_specific_transaction_fields__success() {
         op::addi(0x13, 0x13, StorageSlot::SLOT_SIZE as Immediate12),
         op::meq(0x10, 0x10, 0x13, 0x11),
         op::and(0x20, 0x20, 0x10),
+
         op::ret(0x20),
     ]
     .into_iter()
@@ -1102,9 +1111,10 @@ fn get__create_specific_transaction_fields__success() {
         &EmptyStorage,
     )
     .unwrap();
-    dbg!("estimation done");
+
     let tx = tx
         .into_checked(BlockHeight::new(0), &consensus_params)
         .unwrap();
-    dbg!(client.deploy(tx.clone()));
+    // Then
+    client.deploy(tx).unwrap();
 }

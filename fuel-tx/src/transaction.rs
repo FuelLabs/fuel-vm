@@ -1099,6 +1099,9 @@ pub mod field {
         }
 
         fn proof_set_offset_static() -> usize;
+
+        /// Returns the offset to the `Bytes32` at `idx` index, if any.
+        fn proof_set_offset_at(&self, idx: usize) -> Option<usize>;
     }
 }
 

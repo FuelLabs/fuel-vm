@@ -32,6 +32,7 @@ use fuel_tx::{
         StorageSlots,
         SubsectionIndex,
         SubsectionsNumber,
+        UpgradePurpose,
     },
     policies::PolicyType,
     Blob,
@@ -610,6 +611,10 @@ impl<Tx> GTFInput<'_, Tx> {
                     ) as Word,
 
                     // Upgrade
+                    (ExecutableTxType::Upgrade(upgrade), GTFArgs::UpgradePurpose) => {
+                        ofs.saturating_add(upgrade.upgrade_purpose_offset()) as Word
+                    }
+
                     _ => return Err(PanicReason::InvalidMetadataIdentifier.into()),
                 }
             }

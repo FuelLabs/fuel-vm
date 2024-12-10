@@ -3,13 +3,16 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use consensus_parameters::gas::GasCostsValuesV5;
 
 use crate::{
+    checked_transaction::EstimatePredicates,
     consts::*,
     interpreter::{
         InterpreterParams,
         NotSupportedEcal,
     },
+    storage::predicate::EmptyStorage,
 };
 use fuel_asm::{
     op,
@@ -356,6 +359,7 @@ fn get_metadata_tx_start() {
     }
 }
 
+#[allow(deprecated)]
 #[test]
 fn get_transaction_fields() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -552,17 +556,20 @@ fn get_transaction_fields() {
     let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
 
     // Maybe use predicates to check create context?
-    // TODO GTFArgs::CreateBytecodeLength
-    // TODO GTFArgs::CreateBytecodeWitnessIndex
-    // TODO GTFArgs::CreateStorageSlotsCount
-    // TODO GTFArgs::CreateSalt
-    // TODO GTFArgs::CreateStorageSlotAtIndex
-    // TODO GTFArgs::OutputContractCreatedContractId
-    // TODO GTFArgs::OutputContractCreatedStateRoot
-
-    // blocked by https://github.com/FuelLabs/fuel-vm/issues/59
     // TODO GTFArgs::InputCoinTxPointer
     // TODO GTFArgs::InputContractTxPointer
+
+    // TODO GTFArgs::UploadRoot
+    // TODO GTFArgs::UploadWitnessIndex
+    // TODO GTFArgs::UploadSubsectionIndex
+    // TODO GTFArgs::UploadSubsectionsCount
+    // TODO GTFArgs::UploadProofSetCount
+    // TODO GTFArgs::UploadProofSetAtIndex
+
+    // TODO GTFArgs::BlobId
+    // TODO GTFArgs::BlobWitnessIndex
+
+    // TODO GTFArgs::UpgradePurpose
 
     #[rustfmt::skip]
     let mut script: Vec<u8> = vec![
@@ -924,6 +931,46 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
+        op::movi(0x19, 0x00),
+        op::movi(0x11, inputs.len() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxInputsCount),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, outputs.len() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxOutputsCount),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, witnesses.len() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxWitnessesCount),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::gtf_args(0x30, 0x19, GTFArgs::ScriptData),
+        op::movi(0x19, 0x00),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxInputAtIndex),
+        op::movi(0x11, cases[0].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxOutputAtIndex),
+        op::movi(0x11, cases[1].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x01),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxWitnessAtIndex),
+        op::movi(0x11, cases[2].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
         op::log(0x20, 0x00, 0x00, 0x00),
         op::ret(0x00)
     ].into_iter().collect();
@@ -963,4 +1010,101 @@ fn get_transaction_fields() {
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
     assert!(success);
+}
+
+#[allow(deprecated)]
+#[allow(unused_must_use)]
+#[test]
+fn get__create_specific_transaction_fields__success() {
+    // TODO GTFArgs::OutputContractCreatedContractId
+    const PREDICATE_COUNT: u64 = 1;
+    const MAX_PREDICATE_GAS: u64 = 1_000_000;
+    const MAX_TX_GAS: u64 = MAX_PREDICATE_GAS * PREDICATE_COUNT;
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let mut client = MemoryClient::default();
+
+    let salt = Salt::new([1; 32]);
+    let storage_slots = vec![
+        StorageSlot::new(Bytes32::new([0; 32]), Bytes32::new([0; 32])),
+        StorageSlot::new(Bytes32::new([2; 32]), Bytes32::new([3; 32])),
+    ];
+    // Write the elements we want to check into the bytecode
+    // so that they are available in the predicate memory
+    // doesn't work for the contract_id because changing the bytecode would change the
+    // contract_id
+    let mut bytecode = Vec::new();
+    bytecode.extend(salt.to_bytes());
+    bytecode.extend(storage_slots[1].to_bytes());
+    bytecode.extend(Contract::initial_state_root(storage_slots.iter()).iter());
+    let mut tx = TransactionBuilder::create(bytecode.into(), salt, storage_slots);
+    tx.add_fee_input();
+    tx.add_contract_created();
+    let predicate_code = vec![
+        op::gtf_args(0x10, 0x00, GTFArgs::CreateBytecodeWitnessIndex),
+        op::movi(0x11, 0x00),
+        op::eq(0x20, 0x10, 0x11),
+        // Store the bytecode pointer for later use
+        op::gtf_args(0x13, 0x10, GTFArgs::TxWitnessAtIndex),
+        // Skip the length of the bytecode
+        op::addi(0x13, 0x13, 0x08),
+        op::gtf_args(0x10, 0x00, GTFArgs::CreateStorageSlotsCount),
+        op::movi(0x11, 0x02),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::CreateSalt),
+        op::movi(0x11, 0x20),
+        // Salt is at the start of the bytecode which start at value stored in 0x13
+        op::meq(0x10, 0x10, 0x13, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x01, GTFArgs::CreateStorageSlotAtIndex),
+        op::movi(0x11, StorageSlot::SLOT_SIZE as Immediate18),
+        // Increase bytecode pointer by 32 bytes to pass the salt
+        op::addi(0x13, 0x13, 0x20),
+        op::meq(0x10, 0x10, 0x13, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::OutputContractCreatedStateRoot),
+        op::movi(0x11, 0x20),
+        // Increase bytecode pointer by SLOTSIZE bytes to pass the storage slot written
+        // in bytecode
+        op::addi(0x13, 0x13, StorageSlot::SLOT_SIZE as Immediate12),
+        op::meq(0x10, 0x10, 0x13, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::ret(0x20),
+    ]
+    .into_iter()
+    .collect();
+    let predicate_owner: Address = Input::predicate_owner(&predicate_code);
+    tx.add_input(Input::coin_predicate(
+        rng.gen(),
+        predicate_owner,
+        rng.gen(),
+        *tx.get_params().base_asset_id(),
+        rng.gen(),
+        0,
+        predicate_code,
+        vec![],
+    ));
+    let tx_param = TxParameters::default().with_max_gas_per_tx(MAX_TX_GAS);
+    let mut tx = tx.finalize();
+    let gas_costs = GasCosts::new(GasCostsValuesV5::free().into());
+    let predicate_param =
+        PredicateParameters::default().with_max_gas_per_predicate(MAX_PREDICATE_GAS);
+    let fee_param = FeeParameters::default().with_gas_per_byte(0);
+
+    let mut consensus_params = ConsensusParameters::standard();
+    consensus_params.set_gas_costs(gas_costs.clone());
+    consensus_params.set_predicate_params(predicate_param);
+    consensus_params.set_tx_params(tx_param);
+    consensus_params.set_fee_params(fee_param);
+    tx.estimate_predicates(
+        &consensus_params.clone().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .unwrap();
+    dbg!("estimation done");
+    let tx = tx
+        .into_checked(BlockHeight::new(0), &consensus_params)
+        .unwrap();
+    dbg!(client.deploy(tx.clone()));
 }

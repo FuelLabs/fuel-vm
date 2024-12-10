@@ -287,14 +287,8 @@ crate::enum_try_from! {
         /// Set `$rA` to `tx.witnessIndex`
         BlobWitnessIndex = 0x701,
 
-        /// Set `$rA` to `tx.purpose.root` if `tx.purpose.type == StateTransition`
-        UpgradeStateTransitionRoot = 0x800,
-
-        /// Set `$rA` to `tx.purpose.witnessIndex` if `tx.purpose.type == ConsensusParameters`
-        UpgradeConsensusParametersWitnessIndex = 0x801,
-
-        /// Set `$rA` to `Memory address of tx.purpose.checksum` if `tx.purpose.type == ConsensusParameters`
-        UpgradeConsensusParametersChecksum = 0x802,
+        /// Set `$rA` to `Memory address of tx.purpose`
+        UpgradePurpose = 0x800,
 
         /// Set `$rA` to `tx.inputsCount`
         TxInputsCount = 0x900,
@@ -410,6 +404,21 @@ fn encode_gtf_args() {
         GTFArgs::PolicyMaturity,
         GTFArgs::PolicyExpiration,
         GTFArgs::PolicyMaxFee,
+        GTFArgs::UploadRoot,
+        GTFArgs::UploadWitnessIndex,
+        GTFArgs::UploadSubsectionIndex,
+        GTFArgs::UploadSubsectionsCount,
+        GTFArgs::UploadProofSetCount,
+        GTFArgs::UploadProofSetAtIndex,
+        GTFArgs::BlobId,
+        GTFArgs::BlobWitnessIndex,
+        GTFArgs::UpgradePurpose,
+        GTFArgs::TxInputsCount,
+        GTFArgs::TxOutputsCount,
+        GTFArgs::TxWitnessesCount,
+        GTFArgs::TxInputAtIndex,
+        GTFArgs::TxOutputAtIndex,
+        GTFArgs::TxWitnessAtIndex,
     ];
 
     args.into_iter().for_each(|a| {

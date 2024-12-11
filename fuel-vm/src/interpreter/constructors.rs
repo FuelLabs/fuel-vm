@@ -81,6 +81,7 @@ where
             context: Context::default(),
             balances: RuntimeBalances::default(),
             profiler: Profiler::default(),
+            trace: None,
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,

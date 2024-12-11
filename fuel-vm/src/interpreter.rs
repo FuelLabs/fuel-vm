@@ -17,6 +17,7 @@ use core::{
     mem,
     ops::Index,
 };
+use trace::ExecutionTracer;
 
 use fuel_asm::{
     Flags,
@@ -67,6 +68,7 @@ mod memory;
 mod metadata;
 mod post_execution;
 mod receipts;
+pub mod trace;
 
 mod debug;
 mod ecal;
@@ -86,6 +88,7 @@ pub use memory::{
     Memory,
     MemoryInstance,
     MemoryRange,
+    MemorySliceChange,
 };
 
 use crate::checked_transaction::{
@@ -132,6 +135,8 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     context: Context,
     balances: RuntimeBalances,
     profiler: Profiler,
+    /// `None` if the excution trace is not enabled.
+    trace: Option<ExecutionTracer<M>>,
     interpreter_params: InterpreterParams,
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.

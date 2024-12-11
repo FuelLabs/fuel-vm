@@ -39,7 +39,10 @@ use crate::error::{
     IoResult,
     RuntimeError,
 };
-use alloc::vec::Vec;
+use alloc::{
+    vec,
+    vec::Vec,
+};
 use fuel_storage::{
     Mappable,
     StorageRead,
@@ -128,6 +131,15 @@ impl MemoryInstance {
     pub fn reset(&mut self) {
         self.stack.truncate(0);
         self.hp = MEM_SIZE;
+    }
+
+    /// Make memory equal to another instance, keeping the original allocations.
+    pub fn make_equal(&mut self, other: &Self) {
+        self.stack.truncate(0);
+        self.stack.extend_from_slice(&other.stack);
+        self.hp = other.hp;
+        self.heap.truncate(0);
+        self.heap.extend_from_slice(&other.heap);
     }
 
     /// Offset of the heap section
@@ -403,6 +415,58 @@ impl MemoryInstance {
         &self.heap
     }
 
+    /// Diff of from `self` to `new` memory state.
+    /// Panics if new instance is not possible to reach from the current one,
+    /// for instance if it has smaller stack or heap allocation.
+    pub fn diff_patches(&self, new: &MemoryInstance) -> Vec<MemorySliceChange> {
+        assert!(self.stack.len() <= new.stack.len());
+        assert!(self.hp >= new.hp);
+
+        let mut changes = Vec::new();
+
+        let mut current_change: Option<MemorySliceChange> = None;
+        for (i, new_value) in new.stack.iter().copied().enumerate().take(new.hp) {
+            if self.stack.get(i).copied().unwrap_or(0) != new_value {
+                if let Some(change) = current_change.as_mut() {
+                    change.data.push(new_value);
+                } else {
+                    current_change = Some(MemorySliceChange {
+                        global_start: i,
+                        data: vec![new_value],
+                    });
+                }
+            } else if let Some(change) = current_change.take() {
+                changes.push(change);
+            }
+        }
+        if let Some(change) = current_change.take() {
+            changes.push(change);
+        }
+
+        let heap_start_diff = self.heap_offset().saturating_sub(new.heap_offset());
+        for (i, new_value) in new.heap.iter().copied().enumerate() {
+            let global_i = new.heap_offset() + i;
+
+            if self.stack.get(i - heap_start_diff).copied().unwrap_or(0) != new_value {
+                if let Some(change) = current_change.as_mut() {
+                    change.data.push(new_value);
+                } else {
+                    current_change = Some(MemorySliceChange {
+                        global_start: global_i,
+                        data: vec![new_value],
+                    });
+                }
+            } else if let Some(change) = current_change.take() {
+                changes.push(change);
+            }
+        }
+        if let Some(change) = current_change.take() {
+            changes.push(change);
+        }
+
+        changes
+    }
+
     /// Returns a `MemoryRollbackData` that can be used to achieve the state of the
     /// `desired_memory_state` instance.
     pub fn collect_rollback_data(
@@ -499,11 +563,14 @@ fn get_changes(
     changes
 }
 
+/// Memory change at a specific location.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-struct MemorySliceChange {
-    global_start: usize,
-    data: Vec<u8>,
+pub struct MemorySliceChange {
+    /// Start address of the change. Global address.
+    pub global_start: usize,
+    /// Data that was changed.
+    pub data: Vec<u8>,
 }
 
 /// The container for the data used to rollback memory changes.

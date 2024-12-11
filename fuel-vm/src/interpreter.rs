@@ -88,6 +88,7 @@ pub use memory::{
     Memory,
     MemoryInstance,
     MemoryRange,
+    MemorySliceChange,
 };
 
 use crate::checked_transaction::{

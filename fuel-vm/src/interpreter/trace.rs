@@ -5,7 +5,7 @@ use fuel_asm::Word;
 use alloc::vec::Vec;
 
 use super::{
-    memory::MemoryRollbackData,
+    memory::MemorySliceChange,
     Interpreter,
     Memory,
     VM_REGISTER_COUNT,
@@ -13,6 +13,7 @@ use super::{
 
 /// When to record a new snapshot
 #[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Trigger {
     /// Capture state after an instruction adds a new receipt
     OnReceipt,
@@ -39,7 +40,7 @@ pub struct Frame {
     #[cfg_attr(feature = "serde", serde(with = "serde_big_array::BigArray"))]
     pub registers: [Word; VM_REGISTER_COUNT],
     /// Memory delta from the previous snapshot
-    pub memory_diff: Option<MemoryRollbackData>,
+    pub memory_diff: Vec<MemorySliceChange>,
     /// How many of the receipts have been added by now
     pub receipt_count: usize,
 }
@@ -78,10 +79,11 @@ where
             let memory_diff = trace
                 .previous_memory
                 .as_ref()
-                .collect_rollback_data(self.memory.as_ref());
-            if let Some(diff) = memory_diff.as_ref() {
-                trace.previous_memory.as_mut().rollback(&diff);
-            }
+                .diff_patches(self.memory.as_ref());
+            trace
+                .previous_memory
+                .as_mut()
+                .make_equal(self.memory.as_ref());
 
             trace.frames.push(Frame {
                 memory_diff,

@@ -500,6 +500,7 @@ fn get_changes(
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 struct MemorySliceChange {
     global_start: usize,
     data: Vec<u8>,
@@ -507,6 +508,7 @@ struct MemorySliceChange {
 
 /// The container for the data used to rollback memory changes.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MemoryRollbackData {
     /// Desired stack pointer.
     sp: usize,

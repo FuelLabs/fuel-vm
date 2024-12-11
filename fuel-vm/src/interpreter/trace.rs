@@ -2,6 +2,8 @@
 
 use fuel_asm::Word;
 
+use alloc::vec::Vec;
+
 use super::{
     memory::MemoryRollbackData,
     Interpreter,
@@ -9,6 +11,7 @@ use super::{
     VM_REGISTER_COUNT,
 };
 
+/// When to record a new snapshot
 #[derive(Debug, Clone, Copy)]
 pub enum Trigger {
     /// Capture state after an instruction adds a new receipt
@@ -19,7 +22,7 @@ pub enum Trigger {
 
 /// Used to capture an execution trace
 #[derive(Debug, Clone)]
-pub struct ExecutionTrace<M> {
+pub struct ExecutionTracer<M> {
     /// When should we take a new snapshot, i.e. insert a frame?
     trigger: Trigger,
     /// Append-only set of frames
@@ -30,13 +33,15 @@ pub struct ExecutionTrace<M> {
 
 /// Snapshot of the execution state, with some delta compression applied
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Frame {
     /// Registers at this point
-    registers: [Word; VM_REGISTER_COUNT],
+    #[serde(with = "serde_big_array::BigArray")]
+    pub registers: [Word; VM_REGISTER_COUNT],
     /// Memory delta from the previous snapshot
-    memory_diff: Option<MemoryRollbackData>,
+    pub memory_diff: Option<MemoryRollbackData>,
     /// How many of the receipts have been added by now
-    receipt_count: usize,
+    pub receipt_count: usize,
 }
 
 impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
@@ -46,7 +51,7 @@ where
     /// This is called after each instruction, and it should record a new snapshot
     /// if `trigger` condition is met.
     pub fn with_trace_recording(mut self, trigger: Trigger, memory: M) -> Self {
-        self.trace = Some(ExecutionTrace {
+        self.trace = Some(ExecutionTracer {
             trigger,
             frames: Vec::new(),
             previous_memory: memory,

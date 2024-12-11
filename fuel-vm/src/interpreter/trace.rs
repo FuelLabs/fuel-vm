@@ -36,7 +36,7 @@ pub struct ExecutionTracer<M> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Frame {
     /// Registers at this point
-    #[serde(with = "serde_big_array::BigArray")]
+    #[cfg_attr(feature = "serde", serde(with = "serde_big_array::BigArray"))]
     pub registers: [Word; VM_REGISTER_COUNT],
     /// Memory delta from the previous snapshot
     pub memory_diff: Option<MemoryRollbackData>,

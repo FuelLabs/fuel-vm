@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- [881](https://github.com/FuelLabs/fuel-vm/pull/881): Support for capturing execution traces.
+
 ### Fixed
 - [879](https://github.com/FuelLabs/fuel-vm/pull/879): Debugger state wasn't propagated in contract contexts.
 - [878](https://github.com/FuelLabs/fuel-vm/pull/878): Fix the transaction de/serialization that wasn't backward compatible with the addition of the new policy.

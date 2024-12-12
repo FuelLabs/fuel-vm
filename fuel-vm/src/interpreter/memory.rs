@@ -58,6 +58,9 @@ mod impl_tests;
 mod allocation_tests;
 
 #[cfg(test)]
+mod diff_tests;
+
+#[cfg(test)]
 mod stack_tests;
 
 /// The trait for the memory.
@@ -419,40 +422,19 @@ impl MemoryInstance {
     /// Panics if new instance is not possible to reach from the current one,
     /// for instance if it has smaller stack or heap allocation.
     pub fn diff_patches(&self, new: &MemoryInstance) -> Vec<MemorySliceChange> {
-        assert!(self.stack.len() <= new.stack.len());
-        assert!(self.hp >= new.hp);
-
         let mut changes = Vec::new();
-
         let mut current_change: Option<MemorySliceChange> = None;
-        for (i, new_value) in new.stack.iter().copied().enumerate().take(new.hp) {
-            if self.stack.get(i).copied().unwrap_or(0) != new_value {
+
+        for i in 0..MEM_SIZE {
+            let [old_value] = self.read_bytes(i).unwrap_or([0]);
+            let [new_value] = new.read_bytes(i).unwrap_or([0]);
+
+            if old_value != new_value {
                 if let Some(change) = current_change.as_mut() {
                     change.data.push(new_value);
                 } else {
                     current_change = Some(MemorySliceChange {
                         global_start: i,
-                        data: vec![new_value],
-                    });
-                }
-            } else if let Some(change) = current_change.take() {
-                changes.push(change);
-            }
-        }
-        if let Some(change) = current_change.take() {
-            changes.push(change);
-        }
-
-        let heap_start_diff = self.heap_offset().saturating_sub(new.heap_offset());
-        for (i, new_value) in new.heap.iter().copied().enumerate() {
-            let global_i = new.heap_offset() + i;
-
-            if self.stack.get(i - heap_start_diff).copied().unwrap_or(0) != new_value {
-                if let Some(change) = current_change.as_mut() {
-                    change.data.push(new_value);
-                } else {
-                    current_change = Some(MemorySliceChange {
-                        global_start: global_i,
                         data: vec![new_value],
                     });
                 }
@@ -564,7 +546,7 @@ fn get_changes(
 }
 
 /// Memory change at a specific location.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MemorySliceChange {
     /// Start address of the change. Global address.

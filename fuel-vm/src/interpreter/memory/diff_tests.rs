@@ -1,7 +1,5 @@
 #![allow(clippy::cast_possible_truncation)] // test code
 
-use proptest::prelude::*;
-
 use crate::{
     consts::{
         MEM_SIZE,

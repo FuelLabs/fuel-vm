@@ -44,6 +44,8 @@ use core::ops::{
     DerefMut,
 };
 
+use super::blob_data::BlobData;
+
 /// When this trait is implemented, the underlying interpreter is guaranteed to
 /// have full functionality
 pub trait InterpreterStorage:
@@ -54,6 +56,9 @@ pub trait InterpreterStorage:
     + StorageSize<ContractsState, Error = Self::DataError>
     + StorageRead<ContractsState, Error = Self::DataError>
     + StorageMutate<UploadedBytecodes, Error = Self::DataError>
+    + StorageWrite<BlobData, Error = Self::DataError>
+    + StorageSize<BlobData, Error = Self::DataError>
+    + StorageRead<BlobData, Error = Self::DataError>
     + ContractsAssetsStorage<Error = Self::DataError>
 {
     /// Error implementation for reasons unspecified in the protocol.
@@ -156,15 +161,6 @@ pub trait InterpreterStorage:
         id: &ContractId,
     ) -> Result<Option<usize>, Self::DataError> {
         StorageSize::<ContractsRawCode>::size_of_value(self, id)
-    }
-
-    /// Read contract bytes from storage into the buffer.
-    fn read_contract(
-        &self,
-        id: &ContractId,
-        writer: &mut [u8],
-    ) -> Result<Option<Word>, Self::DataError> {
-        Ok(StorageRead::<ContractsRawCode>::read(self, id, writer)?.map(|r| r as Word))
     }
 
     /// Append a contract to the chain, provided its identifier.
@@ -360,14 +356,6 @@ where
         id: &ContractId,
     ) -> Result<Option<usize>, Self::DataError> {
         <S as InterpreterStorage>::storage_contract_size(self.deref(), id)
-    }
-
-    fn read_contract(
-        &self,
-        id: &ContractId,
-        writer: &mut [u8],
-    ) -> Result<Option<Word>, Self::DataError> {
-        <S as InterpreterStorage>::read_contract(self.deref(), id, writer)
     }
 
     fn contract_state_range(

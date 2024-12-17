@@ -23,7 +23,7 @@ use crate::{
     ValidityError,
     Witness,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes,
     canonical::Serialize,
@@ -42,25 +42,67 @@ pub struct ChargeableMetadata<Body> {
     pub body: Body,
 }
 
-#[derive(Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg(feature = "da-compression")]
+use fuel_compression::Compressible;
+
+#[cfg(feature = "da-compression")]
+pub trait BodyConstraints:
+    for<'a> Compressible<
+    Compressed: core::fmt::Debug
+                    + PartialEq
+                    + Clone
+                    + serde::Serialize
+                    + serde::Deserialize<'a>,
+>
+{
+}
+
+#[cfg(feature = "da-compression")]
+impl<T> BodyConstraints for T where
+    T: for<'a> Compressible<
+        Compressed: core::fmt::Debug
+                        + PartialEq
+                        + Clone
+                        + serde::Serialize
+                        + serde::Deserialize<'a>,
+    >
+{
+}
+
+#[cfg(not(feature = "da-compression"))]
+pub trait BodyConstraints {}
+#[cfg(not(feature = "da-compression"))]
+impl<T> BodyConstraints for T {}
+
+#[derive(Clone, Educe)]
+#[educe(Eq, PartialEq, Hash, Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
+#[cfg_attr(feature = "da-compression", compress(discard(MetadataBody)))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
-pub struct ChargeableTransaction<Body, MetadataBody> {
+pub struct ChargeableTransaction<Body, MetadataBody>
+where
+    Body: BodyConstraints,
+{
     pub(crate) body: Body,
     pub(crate) policies: Policies,
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
-    #[cfg_attr(feature = "serde", serde(skip))]
-    #[derivative(PartialEq = "ignore", Hash = "ignore")]
+    #[serde(skip)]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    #[educe(PartialEq(ignore))]
+    #[educe(Hash(ignore))]
     #[canonical(skip)]
     pub(crate) metadata: Option<ChargeableMetadata<MetadataBody>>,
 }
 
 impl<Body, MetadataBody> Default for ChargeableTransaction<Body, MetadataBody>
 where
-    Body: Default,
+    Body: BodyConstraints + Default,
 {
     fn default() -> Self {
         Self {
@@ -76,7 +118,10 @@ where
     }
 }
 
-impl<Body, MetadataBody> ChargeableTransaction<Body, MetadataBody> {
+impl<Body, MetadataBody> ChargeableTransaction<Body, MetadataBody>
+where
+    Body: BodyConstraints,
+{
     pub fn metadata(&self) -> &Option<ChargeableMetadata<MetadataBody>> {
         &self.metadata
     }
@@ -84,7 +129,7 @@ impl<Body, MetadataBody> ChargeableTransaction<Body, MetadataBody> {
 
 impl<Body, MetadataBody> PrepareSign for ChargeableTransaction<Body, MetadataBody>
 where
-    Body: PrepareSign,
+    Body: BodyConstraints + PrepareSign,
     Self: ChargeableBody<Body>,
 {
     fn prepare_sign(&mut self) {
@@ -96,7 +141,7 @@ where
 
 impl<Body, MetadataBody> UniqueIdentifier for ChargeableTransaction<Body, MetadataBody>
 where
-    Body: PrepareSign,
+    Body: BodyConstraints + PrepareSign,
     Self: Clone,
     Self: ChargeableBody<Body>,
     Self: fuel_types::canonical::Serialize,
@@ -131,7 +176,7 @@ pub(crate) trait UniqueFormatValidityChecks {
 impl<Body, MetadataBody> FormatValidityChecks
     for ChargeableTransaction<Body, MetadataBody>
 where
-    Body: PrepareSign,
+    Body: BodyConstraints + PrepareSign,
     Self: Clone,
     Self: ChargeableBody<Body>,
     Self: fuel_types::canonical::Serialize,
@@ -172,6 +217,7 @@ mod field {
 
     impl<Body, MetadataBody> PoliciesField for ChargeableTransaction<Body, MetadataBody>
     where
+        Body: BodyConstraints,
         Self: ChargeableBody<Body>,
     {
         #[inline(always)]
@@ -192,6 +238,7 @@ mod field {
 
     impl<Body, MetadataBody> Inputs for ChargeableTransaction<Body, MetadataBody>
     where
+        Body: BodyConstraints,
         Self: ChargeableBody<Body>,
     {
         #[inline(always)]
@@ -275,6 +322,7 @@ mod field {
 
     impl<Body, MetadataBody> Outputs for ChargeableTransaction<Body, MetadataBody>
     where
+        Body: BodyConstraints,
         Self: ChargeableBody<Body>,
     {
         #[inline(always)]
@@ -338,6 +386,7 @@ mod field {
 
     impl<Body, MetadataBody> Witnesses for ChargeableTransaction<Body, MetadataBody>
     where
+        Body: BodyConstraints,
         Self: ChargeableBody<Body>,
     {
         #[inline(always)]

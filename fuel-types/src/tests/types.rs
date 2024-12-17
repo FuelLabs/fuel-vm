@@ -52,6 +52,7 @@ fn from_slice_unchecked_safety() {
         check_consistency!(Address, rng, bytes);
         check_consistency!(AssetId, rng, bytes);
         check_consistency!(ContractId, rng, bytes);
+        check_consistency!(TxId, rng, bytes);
         check_consistency!(Bytes4, rng, bytes);
         check_consistency!(Bytes8, rng, bytes);
         check_consistency!(Bytes20, rng, bytes);
@@ -124,6 +125,7 @@ fn hex_encoding() {
     encode_decode::<Address>(rng.gen());
     encode_decode::<AssetId>(rng.gen());
     encode_decode::<ContractId>(rng.gen());
+    encode_decode::<TxId>(rng.gen());
     encode_decode::<Bytes4>(rng.gen());
     encode_decode::<Bytes8>(rng.gen());
     encode_decode::<Bytes20>(rng.gen());
@@ -141,6 +143,7 @@ fn test_key_serde() {
     let adr: Address = rng.gen();
     let ast_id: AssetId = rng.gen();
     let contract_id: ContractId = rng.gen();
+    let tx_id: TxId = rng.gen();
     let bytes4: Bytes4 = rng.gen();
     let bytes8: Bytes8 = rng.gen();
     let bytes20: Bytes20 = rng.gen();
@@ -165,6 +168,11 @@ fn test_key_serde() {
     let contract_id_t: ContractId =
         bincode::deserialize(&contract_id_t).expect("Failed to deserialize ContractId");
     assert_eq!(contract_id, contract_id_t);
+
+    let tx_id_t = bincode::serialize(&tx_id).expect("Failed to serialize TxId");
+    let tx_id_t: TxId =
+        bincode::deserialize(&tx_id_t).expect("Failed to deserialize TxId");
+    assert_eq!(tx_id, tx_id_t);
 
     let bytes4_t = bincode::serialize(&bytes4).expect("Failed to serialize Bytes4");
     let bytes4_t: Bytes4 =
@@ -226,6 +234,11 @@ fn test_key_types_hex_serialization() {
     let contract_id_to_string = serde_json::to_string(&contract_id)
         .expect("serde_json::to_string failed on ContractId");
     assert_eq!(format!("\"{contract_id}\""), contract_id_to_string);
+
+    let tx_id: TxId = rng.gen();
+    let tx_id_to_string =
+        serde_json::to_string(&tx_id).expect("serde_json::to_string failed on TxId");
+    assert_eq!(format!("\"{tx_id}\""), tx_id_to_string);
 
     let bytes4: Bytes4 = rng.gen();
     let bytes4_to_string =

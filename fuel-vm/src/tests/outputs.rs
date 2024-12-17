@@ -166,6 +166,7 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         context.get_gas_costs().to_owned(),
         *context.get_base_asset_id(),
         context.get_block_gas_limit(),
+        context.get_block_transaction_size_limit(),
         *context.get_privileged_address(),
     );
     let create = create

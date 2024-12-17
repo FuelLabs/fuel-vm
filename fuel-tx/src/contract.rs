@@ -4,7 +4,7 @@ use crate::{
     ValidityError,
 };
 
-use derivative::Derivative;
+use educe::Educe;
 use fuel_crypto::Hasher;
 use fuel_merkle::{
     binary::root_calculator::MerkleRootCalculator as BinaryMerkleTree,
@@ -34,14 +34,16 @@ const LEAF_SIZE: usize = 16 * 1024;
 const PADDING_BYTE: u8 = 0u8;
 const MULTIPLE: usize = 8;
 
-#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
-#[derivative(Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(Default, Clone, PartialEq, Eq, Hash, Educe)]
+#[educe(Debug)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    fuel_types::canonical::Deserialize,
+    fuel_types::canonical::Serialize,
+)]
 /// Deployable representation of a contract code.
-pub struct Contract(
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))] Vec<u8>,
-);
+pub struct Contract(#[educe(Debug(method(fmt_truncated_hex::<16>)))] Vec<u8>);
 
 impl Contract {
     /// The `ContractId` of the contract with empty bytecode, zero salt, and empty state

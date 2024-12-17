@@ -52,6 +52,7 @@ fn valid_upload_transaction() -> TransactionBuilder<Upload> {
         predicate(),
         vec![],
     ));
+    builder.expiration(u32::MAX.into());
 
     builder
 }
@@ -169,6 +170,39 @@ fn maturity() {
 }
 
 #[test]
+fn upload__check__success_if_expiration_met() {
+    // Given
+    let block_height: BlockHeight = 1000.into();
+    let success_block_height = block_height.succ().unwrap();
+    let tx = valid_upload_transaction()
+        .expiration(success_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Ok(()), result);
+}
+
+#[test]
+fn upload__check__valid_expiration_policy() {
+    let block_height: BlockHeight = 1000.into();
+    let failing_block_height = block_height.pred().unwrap();
+
+    // Given
+    let tx = valid_upload_transaction()
+        .expiration(failing_block_height)
+        .finalize_as_transaction();
+
+    // When
+    let result = tx.check(block_height, &test_params());
+
+    // Then
+    assert_eq!(Err(ValidityError::TransactionExpiration), result);
+}
+
+#[test]
 fn check__not_set_witness_limit_success() {
     // Given
     let block_height = 1000.into();
@@ -228,7 +262,7 @@ fn check__set_witness_limit_less_than_witness_data_size_fails() {
 #[test]
 fn check__no_max_fee_fails() {
     let block_height = 1000.into();
-    let mut tx = valid_upload_transaction().add_random_fee_input().finalize();
+    let mut tx = valid_upload_transaction().add_fee_input().finalize();
 
     // Given
     tx.policies_mut().set(PolicyType::MaxFee, None);

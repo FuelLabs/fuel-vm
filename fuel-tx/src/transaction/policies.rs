@@ -1,4 +1,9 @@
-use core::ops::Deref;
+use alloc::vec::Vec;
+use core::{
+    fmt,
+    marker::PhantomData,
+    ops::Deref,
+};
 use fuel_types::{
     canonical::{
         Deserialize,
@@ -19,11 +24,12 @@ use rand::{
     },
     Rng,
 };
+use serde::ser::SerializeStruct;
 
 bitflags::bitflags! {
     /// See https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/policy.md#policy
     #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub struct PoliciesBits: u32 {
         /// If set, the gas price is present in the policies.
         const Tip = 1 << 0;
@@ -33,6 +39,33 @@ bitflags::bitflags! {
         const Maturity = 1 << 2;
         /// If set, the max fee is present in the policies.
         const MaxFee = 1 << 3;
+        /// If set, the expiration is present in the policies.
+        const Expiration = 1 << 4;
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for PoliciesBits {
+    type Compressed = u32;
+}
+
+#[cfg(feature = "da-compression")]
+impl<Ctx> fuel_compression::CompressibleBy<Ctx> for PoliciesBits
+where
+    Ctx: fuel_compression::ContextError,
+{
+    async fn compress_with(&self, _: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+        Ok(self.bits())
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl<Ctx> fuel_compression::DecompressibleBy<Ctx> for PoliciesBits
+where
+    Ctx: fuel_compression::ContextError,
+{
+    async fn decompress_with(c: Self::Compressed, _: &Ctx) -> Result<Self, Ctx::Error> {
+        Ok(Self::from_bits_truncate(c))
     }
 }
 
@@ -47,13 +80,15 @@ bitflags::bitflags! {
     Hash,
     strum_macros::EnumCount,
     strum_macros::EnumIter,
+    serde::Serialize,
+    serde::Deserialize,
 )]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PolicyType {
     Tip,
     WitnessLimit,
     Maturity,
     MaxFee,
+    Expiration,
 }
 
 impl PolicyType {
@@ -63,6 +98,7 @@ impl PolicyType {
             PolicyType::WitnessLimit => 1,
             PolicyType::Maturity => 2,
             PolicyType::MaxFee => 3,
+            PolicyType::Expiration => 4,
         }
     }
 
@@ -72,6 +108,7 @@ impl PolicyType {
             PolicyType::WitnessLimit => PoliciesBits::WitnessLimit,
             PolicyType::Maturity => PoliciesBits::Maturity,
             PolicyType::MaxFee => PoliciesBits::MaxFee,
+            PolicyType::Expiration => PoliciesBits::Expiration,
         }
     }
 }
@@ -81,7 +118,10 @@ pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as us
 
 /// Container for managing policies.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Policies {
     /// A bitmask that indicates what policies are set.
@@ -129,6 +169,12 @@ impl Policies {
     /// Sets the `maturity` policy.
     pub fn with_maturity(mut self, maturity: BlockHeight) -> Self {
         self.set(PolicyType::Maturity, Some(*maturity.deref() as u64));
+        self
+    }
+
+    /// Sets the `expiration` policy.
+    pub fn with_expiration(mut self, expiration: BlockHeight) -> Self {
+        self.set(PolicyType::Expiration, Some(*expiration.deref() as u64));
         self
     }
 
@@ -186,6 +232,12 @@ impl Policies {
             }
         }
 
+        if let Some(expiration) = self.get(PolicyType::Expiration) {
+            if expiration > u32::MAX as u64 {
+                return false;
+            }
+        }
+
         true
     }
 
@@ -202,6 +254,284 @@ impl Policies {
             }
         }
         values
+    }
+}
+
+// This serde is manually implemented because of the `values` field format.
+// Serialization of the `values` field :
+// 1. Always write the 4 elements for the policies `Maturity, MaxFee, Tip, WitnessLimit`,
+//    even if they are not set for backward compatibility.
+// 2. For the remaining, write the value only if the policy is set.
+impl serde::Serialize for Policies {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("Policies", 2)?;
+        state.serialize_field("bits", &self.bits)?;
+        // For the `values` field, we always write the 4 elements for the first 4 policies
+        // and then write the value only if the policy is set.
+
+        // Previous behavior
+        if self.bits.intersection(PoliciesBits::all())
+            == self.bits.intersection(
+                PoliciesBits::Maturity
+                    .union(PoliciesBits::MaxFee)
+                    .union(PoliciesBits::Tip)
+                    .union(PoliciesBits::WitnessLimit),
+            )
+        {
+            let first_four_values: [Word; 4] =
+                self.values[..4].try_into().map_err(|_| {
+                    serde::ser::Error::custom("The first 4 values should be present")
+                })?;
+            state.serialize_field("values", &first_four_values)?;
+        // New backward compatible behavior
+        } else {
+            let mut values = Vec::new();
+            for (value, bit) in self.values.iter().zip(PoliciesBits::all().iter()) {
+                if self.bits.contains(bit) {
+                    values.push(*value);
+                }
+            }
+            state.serialize_field("values", &values)?;
+        }
+        state.end()
+    }
+}
+
+// Most of the code is copy-paste from the auto-generated code
+// by `serde::Deserialize` derive macro with small modifications to support
+// backward compatibility.
+//
+// See description of the https://github.com/FuelLabs/fuel-vm/pull/878.
+impl<'de> serde::Deserialize<'de> for Policies {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        enum Field {
+            Bits,
+            Values,
+            Ignore,
+        }
+        struct FieldVisitor;
+        impl<'de> serde::de::Visitor<'de> for FieldVisitor {
+            type Value = Field;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("field identifier")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    "bits" => Ok(Field::Bits),
+                    "values" => Ok(Field::Values),
+                    _ => Ok(Field::Ignore),
+                }
+            }
+
+            fn visit_bytes<E>(self, value: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match value {
+                    b"bits" => Ok(Field::Bits),
+                    b"values" => Ok(Field::Values),
+                    _ => Ok(Field::Ignore),
+                }
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+        struct StructVisitor<'de> {
+            marker: PhantomData<Policies>,
+            lifetime: PhantomData<&'de ()>,
+        }
+        impl<'de> serde::de::Visitor<'de> for StructVisitor<'de> {
+            type Value = Policies;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("struct Policies")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                let bits = match seq.next_element::<PoliciesBits>()? {
+                    Some(bits) => bits,
+                    None => {
+                        return Err(serde::de::Error::invalid_length(
+                            0,
+                            &"struct Policies with 2 elements",
+                        ))
+                    }
+                };
+                // For the `values` field, we always write the 4 elements for the first 4
+                // policies and then write the value only if the policy is
+                // set.
+                // Previous behavior
+                if bits.intersection(PoliciesBits::all())
+                    == bits.intersection(
+                        PoliciesBits::Maturity
+                            .union(PoliciesBits::MaxFee)
+                            .union(PoliciesBits::Tip)
+                            .union(PoliciesBits::WitnessLimit),
+                    )
+                {
+                    let decoded_values: [Word; 4] =
+                        match seq.next_element::<[Word; 4]>()? {
+                            Some(values) => values,
+                            None => {
+                                return Err(serde::de::Error::invalid_length(
+                                    1,
+                                    &"struct Policies with 2 elements",
+                                ))
+                            }
+                        };
+                    let mut values: [Word; POLICIES_NUMBER] = [0; POLICIES_NUMBER];
+                    values[..4].copy_from_slice(&decoded_values);
+                    Ok(Policies { bits, values })
+                // New backward compatible behavior
+                } else {
+                    let decoded_values = match seq.next_element::<Vec<Word>>()? {
+                        Some(values) => values,
+                        None => {
+                            return Err(serde::de::Error::invalid_length(
+                                1,
+                                &"struct Policies with 2 elements",
+                            ))
+                        }
+                    };
+                    let mut values: [Word; POLICIES_NUMBER] = [0; POLICIES_NUMBER];
+                    let mut decoded_index = 0;
+                    for (index, bit) in PoliciesBits::all().iter().enumerate() {
+                        if bits.contains(bit) {
+                            values[index] =
+                                *decoded_values
+                                    .get(decoded_index)
+                                    .ok_or(serde::de::Error::custom(
+                                    "The values array isn't synchronized with the bits",
+                                ))?;
+                            decoded_index = decoded_index.checked_add(1).ok_or(
+                                serde::de::Error::custom(
+                                    "Too many values in the values array",
+                                ),
+                            )?;
+                        }
+                    }
+                    if decoded_index != decoded_values.len() {
+                        return Err(serde::de::Error::custom(
+                            "The values array isn't synchronized with the bits",
+                        ));
+                    }
+                    Ok(Policies { bits, values })
+                }
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut bits: Option<PoliciesBits> = None;
+                let mut values = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Bits => {
+                            if bits.is_some() {
+                                return Err(serde::de::Error::duplicate_field("bits"));
+                            }
+                            bits = Some(map.next_value()?);
+                        }
+                        Field::Values => {
+                            if values.is_some() {
+                                return Err(serde::de::Error::duplicate_field("values"));
+                            }
+                            let Some(bits) = bits else {
+                                return Err(serde::de::Error::custom(
+                                    "bits field should be set before values",
+                                ));
+                            };
+                            // For the `values` field, we always write the 4 elements for
+                            // the first 4 policies and then
+                            // write the value only if the policy is
+                            // set.
+                            // Previous behavior
+                            if bits.intersection(PoliciesBits::all())
+                                == bits.intersection(
+                                    PoliciesBits::Maturity
+                                        .union(PoliciesBits::MaxFee)
+                                        .union(PoliciesBits::Tip)
+                                        .union(PoliciesBits::WitnessLimit),
+                                )
+                            {
+                                let decoded_values: [Word; 4] =
+                                    map.next_value::<[Word; 4]>()?;
+                                let mut tmp_values: [Word; POLICIES_NUMBER] =
+                                    [0; POLICIES_NUMBER];
+                                tmp_values[..4].copy_from_slice(&decoded_values);
+                                values = Some(tmp_values);
+                            // New backward compatible behavior
+                            } else {
+                                let decoded_values = map.next_value::<Vec<Word>>()?;
+                                let mut tmp_values: [Word; POLICIES_NUMBER] =
+                                    [0; POLICIES_NUMBER];
+                                let mut decoded_index = 0;
+                                for (index, bit) in PoliciesBits::all().iter().enumerate()
+                                {
+                                    if bits.contains(bit) {
+                                        tmp_values[index] =
+                                                *decoded_values
+                                                    .get(decoded_index)
+                                                    .ok_or(serde::de::Error::custom(
+                                                    "The values array isn't synchronized with the bits",
+                                                ))?;
+                                        decoded_index = decoded_index
+                                            .checked_add(1)
+                                            .ok_or(serde::de::Error::custom(
+                                                "Too many values in the values array",
+                                            ))?;
+                                    }
+                                }
+                                if decoded_index != decoded_values.len() {
+                                    return Err(serde::de::Error::custom(
+                                            "The values array isn't synchronized with the bits",
+                                        ));
+                                }
+                                values = Some(tmp_values);
+                            }
+                        }
+                        Field::Ignore => {
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                    }
+                }
+                let bits = bits.ok_or_else(|| serde::de::Error::missing_field("bits"))?;
+                let values =
+                    values.ok_or_else(|| serde::de::Error::missing_field("values"))?;
+                Ok(Policies { bits, values })
+            }
+        }
+        const FIELDS: &[&str] = &["bits", "values"];
+        serde::Deserializer::deserialize_struct(
+            deserializer,
+            "Policies",
+            FIELDS,
+            StructVisitor {
+                marker: PhantomData::<Policies>,
+                lifetime: PhantomData,
+            },
+        )
     }
 }
 
@@ -253,6 +583,12 @@ impl Deserialize for Policies {
             }
         }
 
+        if let Some(expiration) = self.get(PolicyType::Expiration) {
+            if expiration > u32::MAX as u64 {
+                return Err(Error::Unknown("The expiration in more than `u32::MAX`"));
+            }
+        }
+
         Ok(())
     }
 }
@@ -269,9 +605,14 @@ impl Distribution<Policies> for Standard {
             values: Policies::values_for_bitmask(bits, values),
         };
 
-        if policies.get(PolicyType::Maturity).is_some() {
+        if policies.is_set(PolicyType::Maturity) {
             let maturity: u32 = rng.gen();
             policies.set(PolicyType::Maturity, Some(maturity as u64));
+        }
+
+        if policies.is_set(PolicyType::Expiration) {
+            let expiration: u32 = rng.gen();
+            policies.set(PolicyType::Expiration, Some(expiration as u64));
         }
 
         policies
@@ -296,7 +637,6 @@ pub mod typescript {
             Policies::default()
         }
 
-        #[cfg(feature = "serde")]
         #[wasm_bindgen(js_name = toJSON)]
         pub fn to_json(&self) -> String {
             serde_json::to_string(&self).expect("unable to json format")
@@ -325,7 +665,8 @@ pub mod typescript {
 #[test]
 fn values_for_bitmask_produces_expected_values() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
-    const VALUES: [Word; POLICIES_NUMBER] = [0x1000001, 0x2000001, 0x3000001, 0x4000001];
+    const VALUES: [Word; POLICIES_NUMBER] =
+        [0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001];
 
     // Given
     let mut set = hashbrown::HashSet::new();
@@ -344,7 +685,8 @@ fn values_for_bitmask_produces_expected_values() {
 #[test]
 fn canonical_serialization_deserialization_for_any_combination_of_values_works() {
     const MAX_BITMASK: u32 = 1 << POLICIES_NUMBER;
-    const VALUES: [Word; POLICIES_NUMBER] = [0x1000001, 0x2000001, 0x3000001, 0x4000001];
+    const VALUES: [Word; POLICIES_NUMBER] =
+        [0x1000001, 0x2000001, 0x3000001, 0x4000001, 0x5000001];
 
     for bitmask in 0..MAX_BITMASK {
         let bits =
@@ -382,4 +724,117 @@ fn canonical_serialization_deserialization_for_any_combination_of_values_works()
                 + bitmask.count_ones() as usize * Word::MIN.size())
         );
     }
+}
+
+#[test]
+fn serde_de_serialization_is_backward_compatible() {
+    use serde_test::{
+        assert_tokens,
+        Configure,
+        Token,
+    };
+
+    // Given
+    let policies = Policies {
+        bits: PoliciesBits::Maturity.union(PoliciesBits::MaxFee),
+        values: [0, 0, 20, 10, 0],
+    };
+
+    assert_tokens(
+        // When
+        &policies.compact(),
+        // Then
+        &[
+            Token::Struct {
+                name: "Policies",
+                len: 2,
+            },
+            Token::Str("bits"),
+            Token::NewtypeStruct {
+                name: "PoliciesBits",
+            },
+            Token::U32(12),
+            Token::Str("values"),
+            Token::Tuple { len: 4 },
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(20),
+            Token::U64(10),
+            Token::TupleEnd,
+            Token::StructEnd,
+        ],
+    );
+}
+
+#[test]
+fn serde_deserialization_empty_use_backward_compatibility() {
+    use serde_test::{
+        assert_tokens,
+        Configure,
+        Token,
+    };
+
+    // Given
+    let policies = Policies::new();
+
+    assert_tokens(
+        // When
+        &policies.compact(),
+        // Then
+        &[
+            Token::Struct {
+                name: "Policies",
+                len: 2,
+            },
+            Token::Str("bits"),
+            Token::NewtypeStruct {
+                name: "PoliciesBits",
+            },
+            Token::U32(0),
+            Token::Str("values"),
+            Token::Tuple { len: 4 },
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(0),
+            Token::TupleEnd,
+            Token::StructEnd,
+        ],
+    );
+}
+
+#[test]
+fn serde_deserialization_new_format() {
+    use serde_test::{
+        assert_tokens,
+        Configure,
+        Token,
+    };
+
+    // Given
+    let policies = Policies {
+        bits: PoliciesBits::Maturity.union(PoliciesBits::Expiration),
+        values: [0, 0, 20, 0, 10],
+    };
+
+    assert_tokens(
+        &policies.compact(),
+        &[
+            Token::Struct {
+                name: "Policies",
+                len: 2,
+            },
+            Token::Str("bits"),
+            Token::NewtypeStruct {
+                name: "PoliciesBits",
+            },
+            Token::U32(20),
+            Token::Str("values"),
+            Token::Seq { len: Some(2) },
+            Token::U64(20),
+            Token::U64(10),
+            Token::SeqEnd,
+            Token::StructEnd,
+        ],
+    );
 }

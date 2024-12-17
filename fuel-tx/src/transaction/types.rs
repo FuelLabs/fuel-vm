@@ -1,3 +1,4 @@
+mod blob;
 mod chargeable_transaction;
 mod create;
 pub mod input;
@@ -10,6 +11,12 @@ mod upload;
 mod utxo_id;
 mod witness;
 
+pub use blob::{
+    Blob,
+    BlobBody,
+    BlobIdExt,
+    BlobMetadata,
+};
 pub use chargeable_transaction::{
     ChargeableMetadata,
     ChargeableTransaction,
@@ -23,6 +30,7 @@ pub use mint::Mint;
 pub use script::{
     Script,
     ScriptBody,
+    ScriptCode,
 };
 pub use storage::StorageSlot;
 pub use upgrade::{
@@ -39,6 +47,12 @@ pub use upload::{
 };
 pub use utxo_id::UtxoId;
 pub use witness::Witness;
+
+#[cfg(feature = "da-compression")]
+pub use self::{
+    mint::CompressedMint,
+    utxo_id::CompressedUtxoId,
+};
 
 pub fn compute_transaction_id<T: fuel_types::canonical::Serialize>(
     chain_id: &fuel_types::ChainId,

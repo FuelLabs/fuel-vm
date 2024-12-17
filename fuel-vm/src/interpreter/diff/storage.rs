@@ -8,12 +8,15 @@ use fuel_storage::{
 };
 use fuel_tx::ConsensusParameters;
 use fuel_types::{
+    BlobId,
     BlockHeight,
     Bytes32,
     ContractId,
 };
 
 use crate::storage::{
+    BlobBytes,
+    BlobData,
     ContractsAssetKey,
     ContractsAssetsStorage,
     ContractsStateData,
@@ -36,6 +39,7 @@ pub(super) enum StorageDelta {
     Assets(MappableDelta<ContractsAssetKey, u64>),
     RawCode(MappableDelta<ContractId, Contract>),
     UploadedBytecode(MappableDelta<Bytes32, UploadedBytecode>),
+    BlobData(MappableDelta<BlobId, BlobBytes>),
 }
 
 /// The set of states that are recorded.
@@ -45,6 +49,7 @@ pub(super) enum StorageState {
     Assets(MappableState<ContractsAssetKey, u64>),
     RawCode(MappableState<ContractId, Contract>),
     UploadedBytecode(MappableState<Bytes32, UploadedBytecode>),
+    BlobData(MappableState<BlobId, BlobBytes>),
 }
 
 #[derive(Debug)]
@@ -126,7 +131,11 @@ where
             from: HashMap::new(),
             to: HashMap::new(),
         };
-        let mut uploaded_bytecode = Delta {
+        let mut uploaded_bytecode: Delta<HashMap<Bytes32, &UploadedBytecode>> = Delta {
+            from: HashMap::new(),
+            to: HashMap::new(),
+        };
+        let mut blob_data = Delta {
             from: HashMap::new(),
             to: HashMap::new(),
         };
@@ -145,6 +154,9 @@ where
                 StorageDelta::UploadedBytecode(delta) => {
                     mappable_delta_to_hashmap(&mut uploaded_bytecode, delta)
                 }
+                StorageDelta::BlobData(delta) => {
+                    mappable_delta_to_hashmap(&mut blob_data, delta)
+                }
             }
         }
         storage_state_to_changes(&mut diff, contracts_state, StorageState::State);
@@ -155,6 +167,7 @@ where
             uploaded_bytecode,
             StorageState::UploadedBytecode,
         );
+        storage_state_to_changes(&mut diff, blob_data, StorageState::BlobData);
         diff
     }
 }
@@ -236,6 +249,16 @@ where
                                 &mut self.storage,
                                 key,
                                 value,
+                            )
+                            .unwrap();
+                        }
+                    }
+                    StorageState::BlobData(MappableState { key, value }) => {
+                        if let Some(value) = value {
+                            StorageMutate::<BlobData>::insert(
+                                &mut self.storage,
+                                key,
+                                value.as_ref(),
                             )
                             .unwrap();
                         }
@@ -346,9 +369,10 @@ where
     fn read(
         &self,
         key: &<Type as Mappable>::Key,
+        offset: usize,
         buf: &mut [u8],
     ) -> Result<Option<usize>, Self::Error> {
-        <S as StorageRead<Type>>::read(&self.0, key, buf)
+        <S as StorageRead<Type>>::read(&self.0, key, offset, buf)
     }
 
     fn read_alloc(
@@ -557,6 +581,19 @@ impl StorageType for UploadedBytecodes {
     }
 }
 
+impl StorageType for BlobData {
+    fn record_replace(
+        key: &BlobId,
+        value: &[u8],
+        existing: Option<BlobBytes>,
+    ) -> StorageDelta {
+        StorageDelta::BlobData(MappableDelta::Replace(*key, value.into(), existing))
+    }
+
+    fn record_take(key: &BlobId, value: BlobBytes) -> StorageDelta {
+        StorageDelta::BlobData(MappableDelta::Take(*key, value))
+    }
+}
 impl<S> Record<S>
 where
     S: InterpreterStorage,

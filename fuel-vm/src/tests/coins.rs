@@ -24,7 +24,6 @@ use fuel_tx::{
     Output,
     PanicReason,
     Receipt,
-    ScriptExecutionResult,
 };
 use fuel_types::canonical::Serialize;
 
@@ -35,6 +34,8 @@ use crate::{
     tests::test_helpers::set_full_word,
     util::test_helpers::find_change,
 };
+
+use super::test_helpers::RunResult;
 
 fn run(mut test_context: TestBuilder, call_contract_id: ContractId) -> Vec<Receipt> {
     let script_ops = vec![
@@ -58,36 +59,6 @@ fn run(mut test_context: TestBuilder, call_contract_id: ContractId) -> Vec<Recei
         .receipts()
         .to_vec()
 }
-
-/// `value_extractor` is called only on success
-fn extract_result<T>(
-    receipts: &[Receipt],
-    value_extractor: fn(&[Receipt]) -> Option<T>,
-) -> RunResult<T> {
-    let Receipt::ScriptResult { result, .. } = receipts.last().unwrap() else {
-        unreachable!("No script result");
-    };
-
-    match *result {
-        ScriptExecutionResult::Success => match value_extractor(receipts) {
-            Some(v) => RunResult::Success(v),
-            None => RunResult::UnableToExtractValue,
-        },
-        ScriptExecutionResult::Revert => RunResult::Revert,
-        ScriptExecutionResult::Panic => RunResult::Panic({
-            let Receipt::Panic { reason, .. } = receipts[receipts.len() - 2] else {
-                unreachable!("No panic receipt");
-            };
-            *reason.reason()
-        }),
-        ScriptExecutionResult::GenericFailure(value) => RunResult::GenericFailure(value),
-    }
-}
-
-fn extract_novalue(receipts: &[Receipt]) -> RunResult<()> {
-    extract_result(receipts, |_| Some(()))
-}
-
 fn first_log(receipts: &[Receipt]) -> Option<Word> {
     receipts
         .iter()
@@ -106,30 +77,6 @@ fn first_tro(receipts: &[Receipt]) -> Option<Word> {
             _ => None,
         })
         .next()
-}
-
-#[derive(Debug, PartialEq)]
-enum RunResult<T> {
-    Success(T),
-    UnableToExtractValue,
-    Revert,
-    Panic(PanicReason),
-    GenericFailure(u64),
-}
-impl<T> RunResult<T> {
-    fn is_ok(&self) -> bool {
-        matches!(self, RunResult::Success(_))
-    }
-
-    fn map<F: FnOnce(T) -> R, R>(self, f: F) -> RunResult<R> {
-        match self {
-            RunResult::Success(v) => RunResult::Success(f(v)),
-            RunResult::UnableToExtractValue => RunResult::UnableToExtractValue,
-            RunResult::Revert => RunResult::Revert,
-            RunResult::Panic(r) => RunResult::Panic(r),
-            RunResult::GenericFailure(v) => RunResult::GenericFailure(v),
-        }
-    }
 }
 
 const REG_DATA_PTR: u8 = 0x3f;
@@ -177,7 +124,7 @@ fn bal_external(amount: Word, helper: Word, bal_instr: Instruction) -> RunResult
         .contract_output(&contract_id)
         .execute();
 
-    extract_result(result.receipts(), first_log)
+    RunResult::extract(result.receipts(), first_log)
 }
 
 #[test_case(0, 0, op::bal(0x20, RegId::HP, REG_DATA_PTR) => RunResult::Success(0); "Works correctly with balance 0")]
@@ -216,7 +163,7 @@ fn mint_and_bal(
 
     let mut test_context = TestBuilder::new(1234u64);
     let contract_id = test_context.setup_contract(ops, None, None).contract_id;
-    extract_result(&run(test_context, contract_id), first_log)
+    RunResult::extract(&run(test_context, contract_id), first_log)
 }
 
 #[rstest]
@@ -250,7 +197,10 @@ fn mint_burn_bounds<R: Into<u8>>(
     let contract_id = test_context
         .setup_contract(ops, Some((AssetId::zeroed(), Word::MAX - helper)), None) // Ensure enough but not too much balance
         .contract_id;
-    assert_eq!(extract_novalue(&run(test_context, contract_id)), result);
+    assert_eq!(
+        RunResult::extract_novalue(&run(test_context, contract_id)),
+        result
+    );
 }
 
 type MintOrBurnOpcode = fn(RegId, RegId) -> Instruction;
@@ -286,7 +236,7 @@ fn mint_burn_single_sequence(seq: Vec<(MintOrBurnOpcode, Word, u8)>) -> RunResul
 
     let mut test_context = TestBuilder::new(1234u64);
     let contract_id = test_context.setup_contract(ops, None, None).contract_id;
-    extract_novalue(&run(test_context, contract_id))
+    RunResult::extract_novalue(&run(test_context, contract_id))
 }
 
 enum MintOrBurn {
@@ -344,7 +294,7 @@ fn mint_burn_many_calls_sequence(seq: Vec<MintOrBurn>) -> RunResult<Word> {
             .receipts()
             .to_vec();
 
-        let result = extract_novalue(&receipts);
+        let result = RunResult::extract_novalue(&receipts);
         if !result.is_ok() {
             return result.map(|_| unreachable!());
         }
@@ -416,7 +366,7 @@ fn transfer_to_contract_external(
         .into_inner();
 
     let change = find_change(tx.outputs().to_vec(), asset_id);
-    let result = extract_novalue(&receipts);
+    let result = RunResult::extract_novalue(&receipts);
     if !result.is_ok() {
         assert_eq!(change, balance, "Revert should not change balance")
     }
@@ -517,7 +467,7 @@ fn transfer_to_contract_internal(
         .contract_output(&other_contract)
         .execute();
 
-    extract_novalue(result.receipts()).map(|()| {
+    RunResult::extract_novalue(result.receipts()).map(|()| {
         (
             test_context.get_contract_balance(&this_contract, &asset_id),
             test_context.get_contract_balance(&other_contract, &asset_id),
@@ -589,7 +539,7 @@ fn transfer_to_contract_bounds(
         .contract_output(&this_contract)
         .execute();
 
-    extract_novalue(result.receipts())
+    RunResult::extract_novalue(result.receipts())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -678,7 +628,7 @@ fn transfer_to_output(
     }
 
     let (_, tx, receipts) = builder.execute().into_inner();
-    let result = extract_result(&receipts, first_tro);
+    let result = RunResult::extract(&receipts, first_tro);
 
     if let Some(Output::Variable {
         to: var_to,
@@ -789,7 +739,7 @@ fn transfer_to_output_bounds(
         .variable_output(asset_id)
         .execute();
 
-    extract_novalue(result.receipts())
+    RunResult::extract_novalue(result.receipts())
 }
 
 // Calls script -> src -> dst
@@ -899,7 +849,7 @@ fn call_forwarding(
         .execute()
         .into_inner();
 
-    let result = extract_novalue(&receipts);
+    let result = RunResult::extract_novalue(&receipts);
     let change = find_change(tx.outputs().to_vec(), asset_id);
     (
         (

@@ -774,8 +774,8 @@ where
 
             Instruction::LDC(ldc) => {
                 // We charge for the gas inside of the `load_contract_code` function.
-                let (a, b, c) = ldc.unpack();
-                self.load_contract_code(r!(a), r!(b), r!(c))?;
+                let (a, b, c, mode) = ldc.unpack();
+                self.load_contract_code(r!(a), r!(b), r!(c), mode)?;
             }
 
             Instruction::LOG(log) => {
@@ -845,9 +845,16 @@ where
             }
 
             Instruction::ED19(ed19) => {
-                self.gas_charge(self.gas_costs().ed19())?;
-                let (a, b, c) = ed19.unpack();
-                self.ed25519_verify(r!(a), r!(b), r!(c))?;
+                let (a, b, c, len) = ed19.unpack();
+                let mut len = r!(len);
+
+                // Backwards compatibility with old contracts
+                if len == 0 {
+                    len = 32;
+                }
+
+                self.dependent_gas_charge(self.gas_costs().ed19(), len)?;
+                self.ed25519_verify(r!(a), r!(b), r!(c), len)?;
             }
 
             Instruction::K256(k256) => {
@@ -897,6 +904,34 @@ where
             Instruction::ECAL(ecal) => {
                 let (a, b, c, d) = ecal.unpack();
                 self.external_call(a, b, c, d)?;
+            }
+
+            Instruction::BSIZ(bsiz) => {
+                // We charge for this inside the function.
+                let (a, b) = bsiz.unpack();
+                self.blob_size(a.into(), r!(b))?;
+            }
+
+            Instruction::BLDD(bldd) => {
+                // We charge for this inside the function.
+                let (a, b, c, d) = bldd.unpack();
+                self.blob_load_data(r!(a), r!(b), r!(c), r!(d))?;
+            }
+
+            Instruction::ECOP(ecop) => {
+                self.gas_charge(self.gas_costs().ecop().map_err(PanicReason::from)?)?;
+                let (a, b, c, d) = ecop.unpack();
+                self.ec_operation(r!(a), r!(b), r!(c), r!(d))?;
+            }
+
+            Instruction::EPAR(epar) => {
+                let (a, b, c, d) = epar.unpack();
+                let len = r!(c);
+                self.dependent_gas_charge(
+                    self.gas_costs().epar().map_err(PanicReason::from)?,
+                    len,
+                )?;
+                self.ec_pairing(a.into(), r!(b), len, r!(d))?;
             }
         }
 

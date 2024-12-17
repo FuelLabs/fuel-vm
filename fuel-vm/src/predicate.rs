@@ -48,6 +48,7 @@ impl RuntimePredicate {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 #[cfg(test)]
 mod tests {
     use alloc::{
@@ -68,11 +69,27 @@ mod tests {
     };
 
     use crate::{
-        checked_transaction::CheckPredicateParams,
+        checked_transaction::{
+            CheckPredicateParams,
+            EstimatePredicates,
+        },
+        constraints::reg_key::{
+            HP,
+            IS,
+            ONE,
+            SSP,
+            ZERO,
+        },
         error::PredicateVerificationFailed,
         interpreter::InterpreterParams,
-        prelude::*,
-        storage::PredicateStorage,
+        prelude::{
+            predicates::check_predicates,
+            *,
+        },
+        storage::{
+            predicate::empty_predicate_storage,
+            BlobData,
+        },
     };
 
     #[test]
@@ -128,7 +145,7 @@ mod tests {
         for i in inputs {
             let tx = TransactionBuilder::script(vec![], vec![])
                 .add_input(i)
-                .add_random_fee_input()
+                .add_fee_input()
                 .finalize_checked_basic(height);
 
             // assert invalid idx wont panic
@@ -147,7 +164,7 @@ mod tests {
 
             let mut interpreter = Interpreter::<_, _, _>::with_storage(
                 MemoryInstance::new(),
-                PredicateStorage,
+                empty_predicate_storage(),
                 InterpreterParams::default(),
             );
 
@@ -180,16 +197,29 @@ mod tests {
         }
     }
 
-    /// Verifies the runtime predicate validation rules outlined in the spec are actually
-    /// validated https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#predicate-verification
-    #[test]
-    fn inputs_are_validated() {
+    fn assert_inputs_are_validated_for_predicates(
+        inputs: Vec<(
+            Vec<Instruction>,
+            bool,
+            Result<(), PredicateVerificationFailed>,
+        )>,
+        blob: Vec<Instruction>,
+    ) {
         let rng = &mut StdRng::seed_from_u64(2322u64);
 
         let height = 1.into();
         let predicate_data =
             b"If you think it's simple, then you have misunderstood the problem."
                 .to_vec();
+
+        let mut storage = MemoryStorage::new(Default::default(), Default::default());
+
+        let blob_id = BlobId::zeroed();
+        let blob: Vec<u8> = blob.into_iter().collect();
+        storage
+            .storage_as_mut::<BlobData>()
+            .insert(&blob_id, &blob)
+            .unwrap();
 
         macro_rules! predicate_input {
             ($predicate:expr) => {{
@@ -202,7 +232,7 @@ mod tests {
                         rng.gen(),
                         rng.gen(),
                         rng.gen(),
-                        15,
+                        0,
                         predicate.clone(),
                         predicate_data.clone(),
                     ),
@@ -211,7 +241,7 @@ mod tests {
                         owner,
                         rng.gen(),
                         rng.gen(),
-                        15,
+                        0,
                         predicate.clone(),
                         predicate_data.clone(),
                     ),
@@ -220,7 +250,7 @@ mod tests {
                         owner,
                         rng.gen(),
                         rng.gen(),
-                        15,
+                        0,
                         vec![rng.gen(); rng.gen_range(1..100)],
                         predicate.clone(),
                         predicate_data.clone(),
@@ -229,31 +259,163 @@ mod tests {
             }};
         }
 
+        for (i, (input_predicate, correct_gas, expected)) in
+            inputs.into_iter().enumerate()
+        {
+            let input_group = predicate_input!(input_predicate);
+            for mut input in input_group {
+                if !correct_gas {
+                    input.set_predicate_gas_used(1234);
+                }
+
+                let mut script = TransactionBuilder::script(
+                    [op::ret(0x01)].into_iter().collect(),
+                    vec![],
+                )
+                .add_input(input)
+                .add_fee_input()
+                .finalize();
+
+                if correct_gas {
+                    script
+                        .estimate_predicates(
+                            &CheckPredicateParams::default(),
+                            MemoryInstance::new(),
+                            &storage,
+                        )
+                        .unwrap();
+                }
+
+                let tx = script
+                    .into_checked_basic(height, &Default::default())
+                    .unwrap();
+
+                let result = check_predicates(
+                    &tx,
+                    &CheckPredicateParams::default(),
+                    MemoryInstance::new(),
+                    &storage,
+                );
+
+                assert_eq!(result.map(|_| ()), expected, "failed at input {}", i);
+            }
+        }
+    }
+
+    /// Verifies the runtime predicate validation rules outlined in the spec are actually
+    /// validated https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/index.md#predicate-verification
+    #[test]
+    fn inputs_are_validated_for_good_predicate_inputs() {
+        const CORRECT_GAS: bool = true;
+        let good_blob = vec![op::noop(), op::ret(0x01)];
+
         let inputs = vec![
             (
                 // A valid predicate
-                predicate_input!(vec![
+                vec![
                     op::addi(0x10, 0x00, 0x01),
                     op::addi(0x10, 0x10, 0x01),
                     op::ret(0x01),
-                ]),
+                ],
+                CORRECT_GAS,
                 Ok(()),
             ),
             (
+                // Use `LDC` with mode `1` to load the blob into the predicate.
+                vec![
+                    // Allocate 32 byte on the heap.
+                    op::movi(0x10, 32),
+                    op::aloc(0x10),
+                    // This will be our zeroed blob id
+                    op::move_(0x10, HP),
+                    // Store the size of the blob
+                    op::bsiz(0x11, 0x10),
+                    // Store start of the blob code
+                    op::move_(0x12, SSP),
+                    // Subtract the start of the code from the end of the code
+                    op::sub(0x12, 0x12, IS),
+                    // Divide the code by the instruction size to get the number of
+                    // instructions
+                    op::divi(0x12, 0x12, Instruction::SIZE as u16),
+                    // Load the blob by `0x10` ID with the `0x11` size
+                    op::ldc(0x10, ZERO, 0x11, 1),
+                    // Jump to a new code location
+                    op::jmp(0x12),
+                ],
+                CORRECT_GAS,
+                Ok(()),
+            ),
+            (
+                // Use `LDC` with mode `2` to load the part of the predicate from the
+                // transaction.
+                vec![
+                    // Skip the return opcodes. One of two opcodes is a good opcode that
+                    // returns `0x1`. This opcode is our source for the `LDC`
+                    // opcode. We will copy return good opcode to the end
+                    // of the `ssp` via `LDC`. And jump there to
+                    // return `true` from the predicate.
+                    op::jmpf(ZERO, 2),
+                    // Bad return opcode that we want to skip.
+                    op::ret(0x0),
+                    // Good return opcode that we want to use for the `LDC`.
+                    op::ret(0x1),
+                    // Take the start of the code and move it for 2 opcodes to get the
+                    // desired opcode to copy.
+                    op::move_(0x10, IS),
+                    // We don't need to copy `jmpf` and bad `ret` opcodes via `LDC`.
+                    op::addi(0x10, 0x10, 2 * Instruction::SIZE as u16),
+                    // Store end of the code
+                    op::move_(0x12, SSP),
+                    // Subtract the start of the code from the end of the code
+                    op::sub(0x12, 0x12, IS),
+                    // Divide the code by the instruction size to get the number of
+                    // instructions
+                    op::divi(0x12, 0x12, Instruction::SIZE as u16),
+                    // We want to load only on good `ret` opcode.
+                    op::movi(0x11, Instruction::SIZE as u32),
+                    // Load the code from the memory address `0x10` with the `0x11` size
+                    op::ldc(0x10, ZERO, 0x11, 2),
+                    // Jump to a new code location
+                    op::jmp(0x12),
+                ],
+                CORRECT_GAS,
+                Ok(()),
+            ),
+        ];
+
+        assert_inputs_are_validated_for_predicates(inputs, good_blob)
+    }
+
+    #[test]
+    fn inputs_are_validated_for_bad_predicate_inputs() {
+        const CORRECT_GAS: bool = true;
+        const INCORRECT_GAS: bool = false;
+
+        let bad_blob = vec![op::noop(), op::ret(0x00)];
+
+        let inputs = vec![
+            (
                 // A valid predicate, but gas amount mismatches
-                predicate_input!(vec![op::ret(0x01),]),
+                vec![
+                    op::addi(0x10, 0x00, 0x01),
+                    op::addi(0x10, 0x10, 0x01),
+                    op::ret(0x01),
+                ],
+                INCORRECT_GAS,
                 Err(PredicateVerificationFailed::GasMismatch),
             ),
             (
                 // Returning an invalid value
-                predicate_input!(vec![op::ret(0x0)]),
+                vec![op::ret(0x0)],
+                CORRECT_GAS,
                 Err(PredicateVerificationFailed::Panic(
                     PanicReason::PredicateReturnedNonOne,
                 )),
             ),
             (
                 // Using a contract instruction
-                predicate_input!(vec![op::time(0x20, 0x1), op::ret(0x1)]),
+                vec![op::time(0x20, 0x1), op::ret(0x1)],
+                CORRECT_GAS,
                 Err(PredicateVerificationFailed::PanicInstruction(
                     PanicInstruction::error(
                         PanicReason::ContractInstructionNotAllowed,
@@ -262,32 +424,83 @@ mod tests {
                 )),
             ),
             (
-                // PC exceeding predicate bounds
-                predicate_input!(vec![op::ji(0x100), op::ret(0x1)]),
+                // Using a contract instruction
+                vec![op::ldc(ONE, ONE, ONE, 0)],
+                CORRECT_GAS,
+                Err(PredicateVerificationFailed::PanicInstruction(
+                    PanicInstruction::error(
+                        PanicReason::ContractInstructionNotAllowed,
+                        op::ldc(ONE, ONE, ONE, 0).into(),
+                    ),
+                )),
+            ),
+            (
+                // Use `LDC` with mode `1` to load the blob into the predicate.
+                vec![
+                    // Allocate 32 byte on the heap.
+                    op::movi(0x10, 32),
+                    op::aloc(0x10),
+                    // This will be our zeroed blob id
+                    op::move_(0x10, HP),
+                    // Store the size of the blob
+                    op::bsiz(0x11, 0x10),
+                    // Store start of the blob code
+                    op::move_(0x12, SSP),
+                    // Subtract the start of the code from the end of the code
+                    op::sub(0x12, 0x12, IS),
+                    // Divide the code by the instruction size to get the number of
+                    // instructions
+                    op::divi(0x12, 0x12, Instruction::SIZE as u16),
+                    // Load the blob by `0x10` ID with the `0x11` size
+                    op::ldc(0x10, ZERO, 0x11, 1),
+                    // Jump to a new code location
+                    op::jmp(0x12),
+                ],
+                CORRECT_GAS,
                 Err(PredicateVerificationFailed::Panic(
-                    PanicReason::MemoryOverflow,
+                    PanicReason::PredicateReturnedNonOne,
+                )),
+            ),
+            (
+                // Use `LDC` with mode `2` to load the part of the predicate from the
+                // transaction.
+                vec![
+                    // Skip the return opcodes. One of two opcodes is a bad opcode that
+                    // returns `0x0`. This opcode is our source for the `LDC`
+                    // opcode. We will copy return bad opcode to the end
+                    // of the `ssp` via `LDC`. And jump there to
+                    // return `false` from the predicate adn fail.
+                    op::jmpf(ZERO, 2),
+                    // Good return opcode that we want to skip.
+                    op::ret(0x1),
+                    // Bad return opcode that we want to use for the `LDC`.
+                    op::ret(0x0),
+                    // Take the start of the code and move it for 2 opcodes to get the
+                    // desired opcode to copy.
+                    op::move_(0x10, IS),
+                    // We don't need to copy `jmpf` and bad `ret` opcodes via `LDC`.
+                    op::addi(0x10, 0x10, 2 * Instruction::SIZE as u16),
+                    // Store end of the code
+                    op::move_(0x12, SSP),
+                    // Subtract the start of the code from the end of the code
+                    op::sub(0x12, 0x12, IS),
+                    // Divide the code by the instruction size to get the number of
+                    // instructions
+                    op::divi(0x12, 0x12, Instruction::SIZE as u16),
+                    // We want to load only on bad `ret` opcode.
+                    op::movi(0x11, Instruction::SIZE as u32),
+                    // Load the code from the memory address `0x10` with the `0x11` size
+                    op::ldc(0x10, ZERO, 0x11, 2),
+                    // Jump to a new code location
+                    op::jmp(0x12),
+                ],
+                CORRECT_GAS,
+                Err(PredicateVerificationFailed::Panic(
+                    PanicReason::PredicateReturnedNonOne,
                 )),
             ),
         ];
 
-        for (input_group, expected) in inputs {
-            for input in input_group {
-                let tx = TransactionBuilder::script(
-                    [op::ret(0x01)].into_iter().collect(),
-                    vec![],
-                )
-                .add_input(input)
-                .add_random_fee_input()
-                .finalize_checked_basic(height);
-
-                let result = Interpreter::check_predicates(
-                    &tx,
-                    &CheckPredicateParams::default(),
-                    MemoryInstance::new(),
-                );
-
-                assert_eq!(result.map(|_| ()), expected);
-            }
-        }
+        assert_inputs_are_validated_for_predicates(inputs, bad_blob)
     }
 }

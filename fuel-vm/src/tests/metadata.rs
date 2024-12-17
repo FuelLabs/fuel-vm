@@ -86,7 +86,7 @@ fn metadata() {
 
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
@@ -135,7 +135,7 @@ fn metadata() {
     let contract_call = contract.id(&salt, &contract_root, &state_root);
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
@@ -199,7 +199,7 @@ fn metadata() {
         .add_input(inputs[1].clone())
         .add_output(outputs[0])
         .add_output(outputs[1])
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
@@ -261,7 +261,7 @@ fn get_metadata_chain_id() {
     let script = TransactionBuilder::script(get_chain_id.into_iter().collect(), vec![])
         .script_gas_limit(gas_limit)
         .with_chain_id(chain_id)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
         .unwrap();
@@ -296,7 +296,7 @@ fn get_metadata_base_asset_id() {
         vec![],
     )
     .script_gas_limit(gas_limit)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &params)
     .unwrap();
@@ -334,7 +334,7 @@ fn get_metadata_tx_start() {
         vec![],
     )
     .script_gas_limit(gas_limit)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &ConsensusParameters::default())
     .unwrap();
@@ -369,6 +369,7 @@ fn get_transaction_fields() {
     let gas_limit = 10_000_000;
     let maturity = 50.into();
     let height = 122.into();
+    let expiration = 123.into();
     let input = 10_000_000;
 
     let tx_params = TxParameters::default();
@@ -441,6 +442,7 @@ fn get_transaction_fields() {
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .maturity(maturity)
+        .expiration(expiration)
         .with_gas_costs(gas_costs)
         .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
@@ -599,6 +601,12 @@ fn get_transaction_fields() {
         op::movi(0x19, 0x00),
         op::movi(0x11, *maturity as Immediate18),
         op::gtf_args(0x10, 0x19, GTFArgs::PolicyMaturity),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, *expiration as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::PolicyExpiration),
         op::eq(0x10, 0x10, 0x11),
         op::and(0x20, 0x20, 0x10),
 
@@ -943,6 +951,7 @@ fn get_transaction_fields() {
     let tx = builder
         .tip(tip)
         .maturity(maturity)
+        .expiration(expiration)
         .script_gas_limit(gas_limit)
         .witness_limit(witness_limit)
         .max_fee_limit(max_fee_limit)

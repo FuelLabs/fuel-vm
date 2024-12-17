@@ -16,6 +16,12 @@ use fuel_types::{
 use test_case::test_case;
 
 use crate::{
+    constraints::reg_key::{
+        Reg,
+        RegMut,
+        HP,
+        SP,
+    },
     consts::*,
     storage::MemoryStorage,
 };
@@ -26,21 +32,21 @@ use super::*;
 fn identity() {
     let a = Interpreter::<_, _, Script>::without_storage();
     let b = Interpreter::<_, _, Script>::without_storage();
-    let diff = a.diff(&b);
+    let diff = a.rollback_to(&b);
     assert!(diff.changes.is_empty());
     assert_eq!(a, b);
 }
 
 #[test]
 fn reset_vm_state() {
-    let a = Interpreter::<_, _, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
-    b.set_gas(1_000_000);
-    b.instruction(op::addi(0x10, 0x11, 1)).unwrap();
-    let diff: Diff<InitialVmState> = a.diff(&b).into();
-    assert_ne!(a, b);
-    b.reset_vm_state(&diff);
-    assert_eq!(a, b);
+    let desired = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    latest.set_gas(1_000_000);
+    latest.instruction(op::addi(0x10, 0x11, 1)).unwrap();
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    assert_ne!(desired, latest);
+    latest.reset_vm_state(&diff);
+    assert_eq!(desired, latest);
 }
 
 use crate::interpreter::InterpreterParams;
@@ -49,35 +55,35 @@ use crate::interpreter::InterpreterParams;
 fn record_and_invert_storage() {
     let arb_gas_price = 1;
     let interpreter_params =
-        InterpreterParams::new(arb_gas_price, &ConsensusParameters::standard());
+        InterpreterParams::new(arb_gas_price, ConsensusParameters::standard());
 
-    let a = Interpreter::<_, _, Script>::with_storage(
+    let desired = Interpreter::<_, _, Script>::with_storage(
         crate::interpreter::MemoryInstance::new(),
         Record::new(MemoryStorage::default()),
         interpreter_params.clone(),
     );
-    let mut b = Interpreter::<_, _, Script>::with_storage(
+    let mut latest = Interpreter::<_, _, Script>::with_storage(
         crate::interpreter::MemoryInstance::new(),
         Record::new(MemoryStorage::default()),
         interpreter_params,
     );
 
     <Record<_> as StorageMutate<ContractsAssets>>::insert(
-        &mut b.storage,
+        &mut latest.storage,
         &(&ContractId::default(), &AssetId::default()).into(),
         &1u64,
     )
     .unwrap();
-    b.set_gas(1_000_000);
-    b.instruction(op::addi(0x10, 0x11, 1)).unwrap();
+    latest.set_gas(1_000_000);
+    latest.instruction(op::addi(0x10, 0x11, 1)).unwrap();
 
-    let storage_diff: Diff<InitialVmState> = b.storage_diff().into();
-    let mut diff: Diff<InitialVmState> = a.diff(&b).into();
+    let storage_diff: Diff<InitialVmState> = latest.storage_diff().into();
+    let mut diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
     diff.changes.extend(storage_diff.changes);
 
-    assert_ne!(a, b);
-    b.reset_vm_state(&diff);
-    assert_eq!(a, b);
+    assert_ne!(desired, latest);
+    latest.reset_vm_state(&diff);
+    assert_eq!(desired, latest);
 
     let c = Interpreter::<_, _, Script>::with_memory_storage();
     let mut d = Interpreter::<_, _, Script>::with_memory_storage();
@@ -98,8 +104,8 @@ fn record_and_invert_storage() {
 
 #[test]
 fn reset_vm_state_frame() {
-    let a = Interpreter::<_, _, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
+    let desired = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
     let frame = CallFrame::new(
         Default::default(),
         Default::default(),
@@ -109,17 +115,17 @@ fn reset_vm_state_frame() {
         Default::default(),
     )
     .unwrap();
-    b.frames.push(frame);
-    assert_ne!(a.frames, b.frames);
-    let diff: Diff<InitialVmState> = a.diff(&b).into();
-    b.reset_vm_state(&diff);
-    assert_eq!(a.frames, b.frames);
+    latest.frames.push(frame);
+    assert_ne!(desired.frames, latest.frames);
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    latest.reset_vm_state(&diff);
+    assert_eq!(desired.frames, latest.frames);
 }
 
 #[test]
 fn reset_vm_state_receipts() {
-    let a = Interpreter::<_, _, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
+    let desired = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
     let receipt = Receipt::call(
         Default::default(),
         Default::default(),
@@ -131,11 +137,11 @@ fn reset_vm_state_receipts() {
         Default::default(),
         Default::default(),
     );
-    b.receipts.push(receipt).expect("not full");
-    assert_ne!(a.receipts, b.receipts);
-    let diff: Diff<InitialVmState> = a.diff(&b).into();
-    b.reset_vm_state(&diff);
-    assert_eq!(a.receipts, b.receipts);
+    latest.receipts.push(receipt).expect("not full");
+    assert_ne!(desired.receipts, latest.receipts);
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    latest.reset_vm_state(&diff);
+    assert_eq!(desired.receipts, latest.receipts);
 }
 
 #[test_case(&[], &[] => it empty)]
@@ -216,28 +222,75 @@ fn test_invert_map(v: &[(u32, u32)], key: u32, value: Option<u32>) -> Vec<(u32, 
 }
 
 #[test]
-fn reset_vm_memory() {
-    let mut a = Interpreter::<_, _, Script>::with_memory_storage();
-    a.memory_mut().grow_stack(132).unwrap();
-    let mut b = a.clone();
-    b.memory_mut()[100..132].copy_from_slice(&[1u8; 32]);
-    let diff: Diff<InitialVmState> = a.diff(&b).into();
-    assert_ne!(a, b);
-    b.reset_vm_state(&diff);
-    assert_eq!(a, b);
+fn reset_vm_memory_grow_stack() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    let desired = latest.clone();
+    latest.memory_mut().grow_stack(132).unwrap();
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
+}
+
+#[test]
+fn reset_vm_memory_grow_heap() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    let desired = latest.clone();
+    let sp = 0;
+    let mut hp = MEM_SIZE as u64;
+    latest
+        .memory_mut()
+        .grow_heap_by(Reg::<SP>::new(&sp), RegMut::<HP>::new(&mut hp), 132)
+        .unwrap();
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
+}
+
+#[test]
+fn reset_vm_memory_range_write_stack() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    latest.memory_mut().grow_stack(132).unwrap();
+    let desired = latest.clone();
+    latest.memory_mut()[100..132].copy_from_slice(&[1u8; 32]);
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
+}
+
+#[test]
+fn reset_vm_memory_range_write_heap() {
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    let sp = 0;
+    let mut hp = MEM_SIZE as u64;
+    latest
+        .memory_mut()
+        .grow_heap_by(Reg::<SP>::new(&sp), RegMut::<HP>::new(&mut hp), 132)
+        .unwrap();
+    let desired = latest.clone();
+    latest.memory_mut()[MEM_SIZE - 32..MEM_SIZE].copy_from_slice(&[1u8; 32]);
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    assert_ne!(latest, desired);
+    latest.reset_vm_state(&diff);
+    assert_eq!(latest, desired);
 }
 
 #[test]
 fn reset_vm_txns() {
     use fuel_tx::field::Outputs;
-    let a = Interpreter::<_, _, Script>::with_memory_storage();
-    let mut b = Interpreter::<_, _, Script>::with_memory_storage();
-    b.tx.outputs_mut().push(fuel_tx::Output::ContractCreated {
-        contract_id: Default::default(),
-        state_root: Default::default(),
-    });
-    let diff: Diff<InitialVmState> = a.diff(&b).into();
-    assert_ne!(a, b);
-    b.reset_vm_state(&diff);
-    assert_eq!(a, b);
+    let desired = Interpreter::<_, _, Script>::with_memory_storage();
+    let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
+    latest
+        .tx
+        .outputs_mut()
+        .push(fuel_tx::Output::ContractCreated {
+            contract_id: Default::default(),
+            state_root: Default::default(),
+        });
+    let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
+    assert_ne!(desired, latest);
+    latest.reset_vm_state(&diff);
+    assert_eq!(desired, latest);
 }

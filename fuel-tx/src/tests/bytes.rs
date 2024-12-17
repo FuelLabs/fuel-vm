@@ -31,7 +31,6 @@ use rand::{
     SeedableRng,
 };
 use std::fmt;
-use strum::IntoEnumIterator;
 
 pub fn assert_encoding_correct<T>(data: &[T])
 where
@@ -158,7 +157,7 @@ fn output() {
 fn receipt() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let mut receipts = vec![
+    let receipts = vec![
         Receipt::call(
             rng.gen(),
             rng.gen(),
@@ -216,7 +215,7 @@ fn receipt() {
         Receipt::panic(
             rng.gen(),
             PanicInstruction::error(
-                PanicReason::ContractNotInInputs,
+                PanicReason::UnknownPanicReason,
                 op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
             ),
             rng.gen(),
@@ -241,18 +240,6 @@ fn receipt() {
         Receipt::mint(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
         Receipt::burn(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
     ];
-
-    for panic_reason in PanicReason::iter() {
-        receipts.push(Receipt::panic(
-            rng.gen(),
-            PanicInstruction::error(
-                panic_reason,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
-            ),
-            rng.gen(),
-            rng.gen(),
-        ));
-    }
 
     assert_encoding_correct(&receipts);
 }
@@ -395,6 +382,7 @@ fn transaction_serde_serialization_deserialization() {
             },
             Policies::new()
                 .with_tip(Word::MAX >> 1)
+                .with_expiration((u32::MAX >> 2).into())
                 .with_maturity((u32::MAX >> 3).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
@@ -410,6 +398,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -424,6 +413,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -438,6 +428,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -451,6 +442,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
@@ -464,6 +456,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -477,6 +470,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -490,6 +484,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -509,6 +504,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
@@ -526,6 +522,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -543,6 +540,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -560,6 +558,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -579,6 +578,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
@@ -596,6 +596,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -613,6 +614,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
@@ -630,6 +632,7 @@ fn transaction_serde_serialization_deserialization() {
             Policies::new()
                 .with_tip(Word::MAX >> 1)
                 .with_maturity((u32::MAX >> 3).into())
+                .with_expiration((u32::MAX >> 2).into())
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],

@@ -11,11 +11,14 @@ use crate::{
         NotSupportedEcal,
     },
     state::StateTransitionRef,
-    storage::MemoryStorage,
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
     transactor::Transactor,
 };
-use core::convert::Infallible;
 use fuel_tx::{
+    Blob,
     Create,
     FeeParameters,
     GasCosts,
@@ -102,7 +105,7 @@ where
     pub fn deploy(
         &mut self,
         tx: Checked<Create>,
-    ) -> Result<Create, InterpreterError<Infallible>> {
+    ) -> Result<Create, InterpreterError<MemoryStorageError>> {
         self.transactor.deploy(tx)
     }
 
@@ -110,13 +113,18 @@ where
     pub fn upgrade(
         &mut self,
         tx: Checked<Upgrade>,
-    ) -> Result<Upgrade, InterpreterError<Infallible>> {
+    ) -> Result<Upgrade, InterpreterError<MemoryStorageError>> {
         self.transactor.upgrade(tx)
     }
 
     /// Executes `Upload` transaction.
     pub fn upload(&mut self, tx: Checked<Upload>) -> Option<Upload> {
         self.transactor.upload(tx).ok()
+    }
+
+    /// Executes `Blob` transaction.
+    pub fn blob(&mut self, tx: Checked<Blob>) -> Option<Blob> {
+        self.transactor.blob(tx).ok()
     }
 
     /// Execute a transaction.

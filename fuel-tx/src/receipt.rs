@@ -1,6 +1,6 @@
 use crate::Output;
 use alloc::vec::Vec;
-use derivative::Derivative;
+use educe::Educe;
 use fuel_asm::PanicInstruction;
 use fuel_crypto::Hasher;
 use fuel_types::{
@@ -24,10 +24,8 @@ mod script_result;
 use crate::input::message::compute_message_id;
 pub use script_result::ScriptExecutionResult;
 
-#[derive(Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Deserialize, Serialize)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[derive(Clone, Educe, serde::Serialize, serde::Deserialize, Deserialize, Serialize)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub enum Receipt {
     Call {
         id: ContractId,
@@ -55,8 +53,9 @@ pub enum Receipt {
         digest: Bytes32,
         pc: Word,
         is: Word,
-        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
-        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[educe(Debug(method("fmt_option_truncated_hex::<16>")))]
+        #[educe(PartialEq(ignore))]
+        #[educe(Hash(ignore))]
         #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
@@ -66,7 +65,8 @@ pub enum Receipt {
         reason: PanicInstruction,
         pc: Word,
         is: Word,
-        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[educe(PartialEq(ignore))]
+        #[educe(Hash(ignore))]
         #[canonical(skip)]
         contract_id: Option<ContractId>,
     },
@@ -97,8 +97,9 @@ pub enum Receipt {
         digest: Bytes32,
         pc: Word,
         is: Word,
-        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
-        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[educe(Debug(method("fmt_option_truncated_hex::<16>")))]
+        #[educe(PartialEq(ignore))]
+        #[educe(Hash(ignore))]
         #[canonical(skip)]
         data: Option<Vec<u8>>,
     },
@@ -133,8 +134,9 @@ pub enum Receipt {
         nonce: Nonce,
         len: Word,
         digest: Bytes32,
-        #[derivative(Debug(format_with = "fmt_option_truncated_hex::<16>"))]
-        #[derivative(PartialEq = "ignore", Hash = "ignore")]
+        #[educe(Debug(method("fmt_option_truncated_hex::<16>")))]
+        #[educe(PartialEq(ignore))]
+        #[educe(Hash(ignore))]
         #[canonical(skip)]
         data: Option<Vec<u8>>,
     },

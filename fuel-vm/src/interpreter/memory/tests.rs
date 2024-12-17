@@ -7,6 +7,7 @@ use super::*;
 use crate::{
     interpreter::InterpreterParams,
     prelude::*,
+    storage::ContractsRawCode,
 };
 use fuel_asm::op;
 use fuel_tx::ConsensusParameters;
@@ -28,7 +29,7 @@ fn memcopy() {
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
         .script_gas_limit(100_000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
 
     let tx = tx
@@ -38,6 +39,7 @@ fn memcopy() {
             zero_gas_price,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .unwrap();
 
@@ -97,7 +99,7 @@ fn stack_alloc_ownership() {
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
@@ -105,6 +107,7 @@ fn stack_alloc_ownership() {
             gas_price,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .unwrap();
     vm.init_script(tx).expect("Failed to init VM");
@@ -268,20 +271,31 @@ fn test_mem_write(
 #[test_case(1, 2, 1, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
 #[test_case(1, 2, 2, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
 #[test_case(1, 2, 3, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
-fn test_copy_from_slice_zero_fill(
+fn test_copy_from_storage_zero_fill(
     addr: usize,
     len: usize,
-    src_offset: usize,
+    src_offset: Word,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
+    let contract_id = ContractId::zeroed();
+    let contract = Contract::from(src_data);
+    let contract_size = src_data.len();
+    let mut storage = MemoryStorage::default();
+    storage
+        .storage_contract_insert(&contract_id, &contract)
+        .unwrap();
+
     let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();
-    let r = copy_from_slice_zero_fill(
+    let r = copy_from_storage_zero_fill::<ContractsRawCode, _>(
         &mut memory,
         OwnershipRegisters::test_full_stack(),
-        src_data,
-        addr,
+        &storage,
+        addr as Word,
+        len as Word,
+        &contract_id,
         src_offset,
-        len,
+        contract_size,
+        PanicReason::ContractNotFound,
     )
     .is_ok();
     let memory: [u8; 5] = memory[..5].try_into().unwrap();

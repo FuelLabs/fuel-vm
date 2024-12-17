@@ -2,7 +2,10 @@
 
 use crate::{
     call::CallFrame,
-    checked_transaction::CheckPredicateParams,
+    checked_transaction::{
+        BlobCheckedMetadata,
+        CheckPredicateParams,
+    },
     constraints::reg_key::*,
     consts::*,
     context::Context,
@@ -21,6 +24,7 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field,
+    Blob,
     Chargeable,
     Create,
     Executable,
@@ -47,6 +51,7 @@ use fuel_types::{
 
 mod alu;
 mod balances;
+mod blob;
 mod blockchain;
 mod constructors;
 pub mod contract;
@@ -76,6 +81,7 @@ pub use ecal::{
     EcalHandler,
     PredicateErrorEcal,
 };
+pub use executors::predicates;
 pub use memory::{
     Memory,
     MemoryInstance,
@@ -417,6 +423,16 @@ pub trait ExecutableTransaction:
         None
     }
 
+    /// Casts the `Self` transaction into `&Blob` if any.
+    fn as_blob(&self) -> Option<&Blob> {
+        None
+    }
+
+    /// Casts the `Self` transaction into `&mut Blob` if any.
+    fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        None
+    }
+
     /// Returns the type of the transaction like `Transaction::Create` or
     /// `Transaction::Script`.
     fn transaction_type() -> Word;
@@ -578,6 +594,20 @@ impl ExecutableTransaction for Upload {
     }
 }
 
+impl ExecutableTransaction for Blob {
+    fn as_blob(&self) -> Option<&Blob> {
+        Some(self)
+    }
+
+    fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        Some(self)
+    }
+
+    fn transaction_type() -> Word {
+        TransactionRepr::Blob as Word
+    }
+}
+
 /// The initial balances of the transaction.
 #[derive(Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub struct InitialBalances {
@@ -621,6 +651,15 @@ impl CheckedMetadata for UpgradeCheckedMetadata {
 }
 
 impl CheckedMetadata for UploadCheckedMetadata {
+    fn balances(&self) -> InitialBalances {
+        InitialBalances {
+            non_retryable: self.free_balances.clone(),
+            retryable: None,
+        }
+    }
+}
+
+impl CheckedMetadata for BlobCheckedMetadata {
     fn balances(&self) -> InitialBalances {
         InitialBalances {
             non_retryable: self.free_balances.clone(),

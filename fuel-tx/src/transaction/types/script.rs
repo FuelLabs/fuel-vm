@@ -1,3 +1,8 @@
+use core::ops::{
+    Deref,
+    DerefMut,
+};
+
 use crate::{
     field::WitnessLimit,
     transaction::{
@@ -24,7 +29,7 @@ use crate::{
     TransactionRepr,
     ValidityError,
 };
-use derivative::Derivative;
+use educe::Educe;
 use fuel_types::{
     bytes,
     bytes::WORD_SIZE,
@@ -45,17 +50,80 @@ pub struct ScriptMetadata {
     pub script_data_offset: usize,
 }
 
-#[derive(Clone, Derivative)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Clone, Default, Educe, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[educe(Eq, PartialEq, Hash, Debug)]
+pub struct ScriptCode {
+    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
+    pub bytes: Vec<u8>,
+}
+
+impl From<Vec<u8>> for ScriptCode {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self { bytes }
+    }
+}
+
+impl From<&[u8]> for ScriptCode {
+    fn from(bytes: &[u8]) -> Self {
+        Self {
+            bytes: bytes.to_vec(),
+        }
+    }
+}
+
+impl AsRef<[u8]> for ScriptCode {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+impl AsMut<[u8]> for ScriptCode {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.bytes
+    }
+}
+
+impl Deref for ScriptCode {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bytes
+    }
+}
+
+impl DerefMut for ScriptCode {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.bytes
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for ScriptCode {
+    type Compressed = fuel_compression::RegistryKey;
+}
+
+#[derive(
+    Clone,
+    Educe,
+    serde::Serialize,
+    serde::Deserialize,
+    fuel_types::canonical::Deserialize,
+    fuel_types::canonical::Serialize,
+)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
 #[canonical(prefix = TransactionRepr::Script)]
-#[derivative(Eq, PartialEq, Hash, Debug)]
+#[educe(Eq, PartialEq, Hash, Debug)]
 pub struct ScriptBody {
     pub(crate) script_gas_limit: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub(crate) receipts_root: Bytes32,
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
-    pub(crate) script: Vec<u8>,
-    #[derivative(Debug(format_with = "fmt_truncated_hex::<16>"))]
+    pub(crate) script: ScriptCode,
+    #[educe(Debug(method(fmt_truncated_hex::<16>)))]
     pub(crate) script_data: Vec<u8>,
 }
 
@@ -69,7 +137,7 @@ impl Default for ScriptBody {
         Self {
             script_gas_limit: Default::default(),
             receipts_root: Default::default(),
-            script,
+            script: script.into(),
             script_data: Default::default(),
         }
     }

@@ -48,7 +48,7 @@ fn main() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx")
@@ -56,6 +56,7 @@ fn main() {
             0,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .expect("Failed to finalize tx");
 

@@ -1,4 +1,5 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
+#![allow(non_snake_case)]
 
 use futures as _;
 use ntest as _;
@@ -9,6 +10,7 @@ mod test_helpers;
 
 mod alu;
 mod backtrace;
+mod blob;
 mod blockchain;
 mod cgas;
 mod code_coverage;

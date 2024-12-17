@@ -25,6 +25,7 @@ use crate::{
     storage::InterpreterStorage,
 };
 use fuel_tx::{
+    Blob,
     Create,
     FeeParameters,
     GasCosts,
@@ -213,7 +214,7 @@ where
         let fee_params = self.interpreter.fee_params();
 
         let ready = checked
-            .into_ready(gas_price, gas_costs, fee_params)
+            .into_ready(gas_price, gas_costs, fee_params, None)
             .map_err(InterpreterError::CheckError)?;
 
         self.deploy_ready_tx(ready)
@@ -237,7 +238,7 @@ where
         let fee_params = self.interpreter.fee_params();
 
         let ready = checked
-            .into_ready(gas_price, gas_costs, fee_params)
+            .into_ready(gas_price, gas_costs, fee_params, None)
             .map_err(InterpreterError::CheckError)?;
 
         self.execute_ready_upgrade_tx(ready)
@@ -261,7 +262,7 @@ where
         let fee_params = self.interpreter.fee_params();
 
         let ready = checked
-            .into_ready(gas_price, gas_costs, fee_params)
+            .into_ready(gas_price, gas_costs, fee_params, None)
             .map_err(InterpreterError::CheckError)?;
 
         self.execute_ready_upload_tx(ready)
@@ -273,6 +274,30 @@ where
         ready_tx: Ready<Upload>,
     ) -> Result<Upload, InterpreterError<S::DataError>> {
         self.interpreter.upload(ready_tx)
+    }
+
+    /// Executes `Blob` checked transactions.
+    pub fn blob(
+        &mut self,
+        checked: Checked<Blob>,
+    ) -> Result<Blob, InterpreterError<S::DataError>> {
+        let gas_price = self.interpreter.gas_price();
+        let gas_costs = self.interpreter.gas_costs();
+        let fee_params = self.interpreter.fee_params();
+
+        let ready = checked
+            .into_ready(gas_price, gas_costs, fee_params, None)
+            .map_err(InterpreterError::CheckError)?;
+
+        self.execute_ready_blob_tx(ready)
+    }
+
+    /// Executes a `Ready` transaction directly instead of letting `Transactor` construct
+    pub fn execute_ready_blob_tx(
+        &mut self,
+        ready_tx: Ready<Blob>,
+    ) -> Result<Blob, InterpreterError<S::DataError>> {
+        self.interpreter.blob(ready_tx)
     }
 }
 
@@ -289,9 +314,10 @@ where
         let gas_price = self.interpreter.gas_price();
         let gas_costs = self.interpreter.gas_costs();
         let fee_params = self.interpreter.fee_params();
+        let block_height = self.interpreter.context().block_height();
 
         match tx
-            .into_ready(gas_price, gas_costs, fee_params)
+            .into_ready(gas_price, gas_costs, fee_params, block_height)
             .map_err(InterpreterError::CheckError)
         {
             Ok(ready_tx) => self.transact_ready_tx(ready_tx),

@@ -124,7 +124,7 @@ mod state_transition {
         let gas_price = 0;
         client.set_gas_price(gas_price);
         let tx = valid_transaction(state_transition_hash)
-            .into_ready(gas_price, &GasCosts::default(), &Default::default())
+            .into_ready(gas_price, &GasCosts::default(), &Default::default(), None)
             .expect("failed to generate ready tx");
 
         // When
@@ -154,7 +154,7 @@ mod state_transition {
         let gas_price = 1;
         client.set_gas_price(gas_price);
         let tx = valid_transaction(state_transition_hash)
-            .into_ready(gas_price, &GasCosts::default(), &Default::default())
+            .into_ready(gas_price, &GasCosts::default(), &Default::default(), None)
             .expect("failed to generate ready tx");
 
         // When
@@ -341,7 +341,7 @@ mod consensus_parameters {
         let gas_price = 0;
         client.set_gas_price(gas_price);
         let tx = valid_transaction()
-            .into_ready(gas_price, &GasCosts::default(), &Default::default())
+            .into_ready(gas_price, &GasCosts::default(), &Default::default(), None)
             .expect("failed to generate ready tx");
 
         // When
@@ -370,7 +370,7 @@ mod consensus_parameters {
         let gas_price = 1;
         client.set_gas_price(gas_price);
         let tx = valid_transaction()
-            .into_ready(gas_price, &GasCosts::default(), &Default::default())
+            .into_ready(gas_price, &GasCosts::default(), &Default::default(), None)
             .expect("failed to generate ready tx");
 
         // When

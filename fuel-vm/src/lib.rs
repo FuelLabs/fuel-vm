@@ -19,6 +19,7 @@ pub extern crate alloc;
 extern crate core;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
+
 #[cfg(test)]
 use criterion as _;
 
@@ -69,6 +70,9 @@ pub mod profiler {
 #[doc(no_inline)]
 pub use fuel_asm;
 #[doc(no_inline)]
+#[cfg(feature = "da-compression")]
+pub use fuel_compression;
+#[doc(no_inline)]
 pub use fuel_crypto;
 #[doc(no_inline)]
 pub use fuel_merkle;
@@ -113,6 +117,7 @@ pub mod prelude {
     pub use fuel_types::{
         Address,
         AssetId,
+        BlobId,
         Bytes32,
         Bytes4,
         Bytes64,
@@ -141,6 +146,7 @@ pub mod prelude {
             RuntimeError,
         },
         interpreter::{
+            predicates,
             ExecutableTransaction,
             Interpreter,
             Memory,
@@ -156,8 +162,8 @@ pub mod prelude {
             StateTransitionRef,
         },
         storage::{
+            predicate::PredicateStorage,
             InterpreterStorage,
-            PredicateStorage,
         },
         transactor::Transactor,
     };

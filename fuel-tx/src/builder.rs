@@ -5,6 +5,7 @@ use crate::{
         field::{
             self,
             BytecodeWitnessIndex,
+            Expiration,
             Maturity,
             Tip,
             Witnesses,
@@ -14,6 +15,8 @@ use crate::{
         Executable,
         Script,
     },
+    Blob,
+    BlobBody,
     ConsensusParameters,
     ContractParameters,
     CreateMetadata,
@@ -65,6 +68,11 @@ use fuel_types::{
     Nonce,
     Salt,
     Word,
+};
+#[cfg(feature = "rand")]
+use rand::{
+    rngs::StdRng,
+    Rng,
 };
 
 pub trait BuildableAloc
@@ -129,7 +137,7 @@ impl TransactionBuilder<Script> {
             body: ScriptBody {
                 script_gas_limit: Default::default(),
                 receipts_root: Default::default(),
-                script,
+                script: script.into(),
                 script_data,
             },
             policies: Policies::new().with_max_fee(0),
@@ -199,6 +207,20 @@ impl TransactionBuilder<Upgrade> {
 impl TransactionBuilder<Upload> {
     pub fn upload(body: UploadBody) -> Self {
         let tx = Upload {
+            body,
+            policies: Policies::new().with_max_fee(0),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            metadata: None,
+        };
+        Self::with_tx(tx)
+    }
+}
+
+impl TransactionBuilder<Blob> {
+    pub fn blob(body: BlobBody) -> Self {
+        let tx = Blob {
             body,
             policies: Policies::new().with_max_fee(0),
             inputs: Default::default(),
@@ -355,6 +377,12 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+    pub fn expiration(&mut self, expiration: BlockHeight) -> &mut Self {
+        self.tx.set_expiration(expiration);
+
+        self
+    }
+
     pub fn witness_limit(&mut self, witness_limit: Word) -> &mut Self {
         self.tx.set_witness_limit(witness_limit);
 
@@ -392,7 +420,18 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     #[cfg(feature = "rand")]
-    pub fn add_random_fee_input(&mut self) -> &mut Self {
+    pub fn add_random_fee_input(&mut self, rng: &mut StdRng) -> &mut Self {
+        self.add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            u32::MAX as u64,
+            *self.params.base_asset_id(),
+            Default::default(),
+        )
+    }
+
+    #[cfg(feature = "rand")]
+    pub fn add_fee_input(&mut self) -> &mut Self {
         use rand::{
             Rng,
             SeedableRng,

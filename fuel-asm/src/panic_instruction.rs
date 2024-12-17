@@ -11,9 +11,9 @@ use crate::{
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 /// Describe a panic reason with the instruction that generated it
 pub struct PanicInstruction {
+    #[canonical(skip)]
     reason: PanicReason,
     instruction: RawInstruction,
 }
@@ -113,5 +113,24 @@ impl From<Word> for PanicInstruction {
             reason,
             instruction,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::op;
+    use fuel_types::canonical::Serialize;
+
+    #[test]
+    fn canonical_serialization_ignores_panic_reason() {
+        let revert_panic_instruction =
+            PanicInstruction::error(PanicReason::Revert, op::noop().into());
+        let out_of_gas_panic_instruction =
+            PanicInstruction::error(PanicReason::OutOfGas, op::noop().into());
+        assert_eq!(
+            revert_panic_instruction.to_bytes(),
+            out_of_gas_panic_instruction.to_bytes()
+        );
     }
 }

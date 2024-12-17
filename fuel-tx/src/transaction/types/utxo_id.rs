@@ -19,13 +19,41 @@ use rand::{
 /// Identification of unspend transaction output.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    fuel_types::canonical::Deserialize,
+    fuel_types::canonical::Serialize,
+)]
 pub struct UtxoId {
     /// transaction id
     tx_id: TxId,
     /// output index
     output_index: u16,
+}
+
+#[cfg(feature = "da-compression")]
+#[derive(
+    Debug,
+    Default,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+pub struct CompressedUtxoId {
+    pub tx_pointer: crate::TxPointer,
+    pub output_index: u16,
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for UtxoId {
+    type Compressed = CompressedUtxoId;
 }
 
 impl UtxoId {

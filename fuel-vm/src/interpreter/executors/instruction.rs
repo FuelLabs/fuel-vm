@@ -11,6 +11,7 @@ use crate::{
             JumpArgs,
             JumpMode,
         },
+        trace::ExecutionTraceHooks,
         EcalHandler,
         ExecutableTransaction,
         Interpreter,
@@ -32,12 +33,13 @@ use fuel_types::Word;
 
 use core::ops::Div;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks,
 {
     /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
@@ -80,12 +82,21 @@ where
             }
         }
 
+        Trace::before_instruction::<M, S, Tx, Ecal, Trace>(self);
+
         let result = self
             .instruction_inner(raw.into())
             .map_err(|e| InterpreterError::from_runtime(e, raw.into()));
 
-        if !matches!(result, Err(_) | Ok(ExecuteState::DebugEvent(_))) {
-            self.record_trace_after_instruction();
+        if match result {
+            Ok(ExecuteState::DebugEvent(_)) => false,
+            Ok(_) => true,
+            Err(InterpreterError::PanicInstruction(_) | InterpreterError::Panic(_)) => {
+                true
+            }
+            Err(_) => false,
+        } {
+            Trace::after_instruction::<M, S, Tx, Ecal, Trace>(self);
         }
 
         result

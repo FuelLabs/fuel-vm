@@ -1,6 +1,7 @@
 use crate::{
     error::InterpreterError,
     interpreter::{
+        trace::ExecutionTraceHooks,
         EcalHandler,
         ExecutableTransaction,
         Interpreter,
@@ -10,12 +11,13 @@ use crate::{
     storage::InterpreterStorage,
 };
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks,
 {
     /// Continue the execution from a previously interrupted program flow.
     pub fn resume(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {

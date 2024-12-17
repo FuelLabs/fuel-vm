@@ -9,12 +9,14 @@ use crate::{
     },
     error::InterpreterError,
     interpreter::{
+        trace::ExecutionTraceHooks,
         CheckedMetadata,
         EcalHandler,
         ExecutableTransaction,
         Interpreter,
         InterpreterParams,
         Memory,
+        NoTrace,
         NotSupportedEcal,
     },
     state::{
@@ -46,25 +48,26 @@ use crate::interpreter::MemoryInstance;
 /// builder`.
 ///
 /// Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
-pub struct Transactor<M, S, Tx, Ecal = NotSupportedEcal>
+pub struct Transactor<M, S, Tx, Ecal = NotSupportedEcal, Trace = NoTrace>
 where
     S: InterpreterStorage,
 {
-    interpreter: Interpreter<M, S, Tx, Ecal>,
+    interpreter: Interpreter<M, S, Tx, Ecal, Trace>,
     program_state: Option<ProgramState>,
     error: Option<InterpreterError<S::DataError>>,
 }
 
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Transactor<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    Trace: Default,
 {
     /// Transactor constructor
     pub fn new(memory: M, storage: S, interpreter_params: InterpreterParams) -> Self {
         Self {
-            interpreter: Interpreter::<M, S, Tx, Ecal>::with_storage(
+            interpreter: Interpreter::<M, S, Tx, Ecal, Trace>::with_storage(
                 memory,
                 storage,
                 interpreter_params,
@@ -74,11 +77,12 @@ where
         }
     }
 }
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Transactor<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks,
 {
     /// State transition representation after the execution of a transaction.
     ///
@@ -149,7 +153,7 @@ where
     }
 
     /// Gets the interpreter.
-    pub fn interpreter(&self) -> &Interpreter<M, S, Tx, Ecal> {
+    pub fn interpreter(&self) -> &Interpreter<M, S, Tx, Ecal, Trace> {
         &self.interpreter
     }
 
@@ -175,7 +179,7 @@ where
     }
 }
 
-impl<M, S, Ecal> Transactor<M, S, Script, Ecal>
+impl<M, S, Ecal, Trace> Transactor<M, S, Script, Ecal, Trace>
 where
     M: Memory,
     S: InterpreterStorage,
@@ -200,7 +204,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Transactor<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -301,13 +305,14 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Transactor<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks,
 {
     /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
@@ -345,12 +350,13 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> From<Interpreter<M, S, Tx, Ecal>> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> From<Interpreter<M, S, Tx, Ecal, Trace>>
+    for Transactor<M, S, Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    fn from(interpreter: Interpreter<M, S, Tx, Ecal>) -> Self {
+    fn from(interpreter: Interpreter<M, S, Tx, Ecal, Trace>) -> Self {
         let program_state = None;
         let error = None;
 
@@ -362,28 +368,31 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> From<Transactor<M, S, Tx, Ecal>> for Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> From<Transactor<M, S, Tx, Ecal, Trace>>
+    for Interpreter<M, S, Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    fn from(transactor: Transactor<M, S, Tx, Ecal>) -> Self {
+    fn from(transactor: Transactor<M, S, Tx, Ecal, Trace>) -> Self {
         transactor.interpreter
     }
 }
 
-impl<M, S, Tx, Ecal> AsRef<Interpreter<M, S, Tx, Ecal>> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> AsRef<Interpreter<M, S, Tx, Ecal, Trace>>
+    for Transactor<M, S, Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks,
 {
-    fn as_ref(&self) -> &Interpreter<M, S, Tx, Ecal> {
+    fn as_ref(&self) -> &Interpreter<M, S, Tx, Ecal, Trace> {
         &self.interpreter
     }
 }
 
-impl<M, S, Tx, Ecal> AsRef<S> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> AsRef<S> for Transactor<M, S, Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -393,7 +402,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> AsMut<S> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> AsMut<S> for Transactor<M, S, Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -404,11 +413,12 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<S, Tx, Ecal> Default for Transactor<MemoryInstance, S, Tx, Ecal>
+impl<S, Tx, Ecal, Trace> Default for Transactor<MemoryInstance, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    Trace: Default,
 {
     fn default() -> Self {
         Self::new(

@@ -1,6 +1,7 @@
 use crate::{
     error::PredicateVerificationFailed,
     interpreter::{
+        trace::ExecutionTraceHooks,
         EcalHandler,
         Memory,
     },
@@ -18,12 +19,13 @@ use crate::{
 use crate::storage::predicate::PredicateStorageRequirements;
 use fuel_asm::PanicReason;
 
-impl<M, Tx, Ecal, S> Interpreter<M, PredicateStorage<S>, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, PredicateStorage<S>, Tx, Ecal, Trace>
 where
     M: Memory,
+    S: PredicateStorageRequirements,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    S: PredicateStorageRequirements,
+    Trace: ExecutionTraceHooks,
 {
     /// Verify a predicate that has been initialized already
     pub(crate) fn verify_predicate(

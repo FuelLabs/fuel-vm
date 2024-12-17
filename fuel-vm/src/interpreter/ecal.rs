@@ -30,8 +30,8 @@ where
     const INC_PC: bool = true;
 
     /// ECAL opcode handler
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, Trace>(
+        vm: &mut Interpreter<M, S, Tx, Self, Trace>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -43,8 +43,8 @@ where
 
 /// Default ECAL opcode handler function, which just errors immediately.
 impl EcalHandler for NotSupportedEcal {
-    fn ecal<M, S, Tx>(
-        _: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, Trace>(
+        _: &mut Interpreter<M, S, Tx, Self, Trace>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -60,8 +60,8 @@ pub struct PredicateErrorEcal;
 
 /// ECAL is not allowed in predicates
 impl EcalHandler for PredicateErrorEcal {
-    fn ecal<M, S, Tx>(
-        _vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, Trace>(
+        _vm: &mut Interpreter<M, S, Tx, Self, Trace>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -71,7 +71,7 @@ impl EcalHandler for PredicateErrorEcal {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     Ecal: EcalHandler,
@@ -94,7 +94,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     Ecal: EcalHandler,
 {

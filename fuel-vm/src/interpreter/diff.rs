@@ -52,7 +52,7 @@ use super::{
 use crate::interpreter::memory::MemoryRollbackData;
 use storage::*;
 
-mod storage;
+pub(crate) mod storage;
 
 #[cfg(test)]
 mod tests;
@@ -293,7 +293,7 @@ where
         .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
 {
@@ -363,7 +363,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
 {
@@ -444,7 +444,7 @@ fn invert_receipts_ctx(ctx: &mut ReceiptsCtx, value: &VecState<Option<Receipt>>)
     invert_vec(ctx_mut.receipts_mut(), value);
 }
 
-impl<M, S, Tx, Ecal> PartialEq for Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> PartialEq for Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     Tx: PartialEq,

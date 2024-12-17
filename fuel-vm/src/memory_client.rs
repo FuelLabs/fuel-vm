@@ -8,6 +8,7 @@ use crate::{
         EcalHandler,
         InterpreterParams,
         Memory,
+        NoTrace,
         NotSupportedEcal,
     },
     state::StateTransitionRef,
@@ -33,8 +34,8 @@ use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<M, Ecal = NotSupportedEcal> {
-    transactor: Transactor<M, MemoryStorage, Script, Ecal>,
+pub struct MemoryClient<M, Ecal = NotSupportedEcal, Trace = NoTrace> {
+    transactor: Transactor<M, MemoryStorage, Script, Ecal, Trace>,
 }
 
 #[cfg(any(test, feature = "test-helpers"))]

@@ -14,6 +14,7 @@ use crate::{
         PredicateVerificationFailed,
     },
     interpreter::{
+        trace::ExecutionTraceHooks,
         CheckedMetadata,
         EcalHandler,
         ExecutableTransaction,
@@ -496,7 +497,7 @@ pub mod predicates {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -563,7 +564,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -666,7 +667,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -775,7 +776,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -830,12 +831,13 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -1062,13 +1064,14 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks,
 {
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
@@ -1101,7 +1104,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -1133,7 +1136,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -1165,7 +1168,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -1197,7 +1200,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
 {
@@ -1229,7 +1232,7 @@ where
     }
 }
 
-impl<M, S: InterpreterStorage, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S: InterpreterStorage, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace> {
     fn verify_ready_tx<Tx2: IntoChecked>(
         &self,
         tx: &Ready<Tx2>,

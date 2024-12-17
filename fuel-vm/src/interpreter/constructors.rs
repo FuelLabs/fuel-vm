@@ -1,14 +1,15 @@
 //! Exposed constructors API for the [`Interpreter`]
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
+use super::{
+    trace::ExecutionTraceHooks,
+    Interpreter,
+    RuntimeBalances,
+};
 #[cfg(any(test, feature = "test-helpers"))]
 use super::{
     ExecutableTransaction,
     MemoryInstance,
-};
-use super::{
-    Interpreter,
-    RuntimeBalances,
 };
 use crate::{
     consts::*,
@@ -33,10 +34,11 @@ use crate::{
     storage::MemoryStorage,
 };
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     Tx: Default,
     Ecal: Default,
+    Trace: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -52,9 +54,10 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     Tx: Default,
+    Trace: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -81,7 +84,7 @@ where
             context: Context::default(),
             balances: RuntimeBalances::default(),
             profiler: Profiler::default(),
-            trace: None,
+            trace: Trace::default(),
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,
@@ -89,7 +92,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace> {
     /// Sets a profiler for the VM
     #[cfg(feature = "profile-any")]
     pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
@@ -102,14 +105,15 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<S, Tx, Ecal> Default for Interpreter<MemoryInstance, S, Tx, Ecal>
+impl<S, Tx, Ecal, Trace> Default for Interpreter<MemoryInstance, S, Tx, Ecal, Trace>
 where
     S: Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    Trace: Default,
 {
     fn default() -> Self {
-        Interpreter::<_, S, Tx, Ecal>::with_storage(
+        Interpreter::<_, S, Tx, Ecal, Trace>::with_storage(
             MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),
@@ -118,10 +122,11 @@ where
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<Tx, Ecal> Interpreter<MemoryInstance, (), Tx, Ecal>
+impl<Tx, Ecal, Trace> Interpreter<MemoryInstance, (), Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    Trace: ExecutionTraceHooks + Default,
 {
     /// Create a new interpreter without a storage backend.
     ///
@@ -132,10 +137,11 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal, Trace> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    Trace: ExecutionTraceHooks + Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///
@@ -146,16 +152,17 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal, Trace> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, Trace>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    Trace: ExecutionTraceHooks + Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///
     /// It will have full capabilities.
     pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
-        Interpreter::<_, MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
+        Interpreter::<_, MemoryStorage, Tx, Ecal, Trace>::with_storage_and_ecal(
             MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),

@@ -17,7 +17,6 @@ use core::{
     mem,
     ops::Index,
 };
-use trace::ExecutionTracer;
 
 use fuel_asm::{
     Flags,
@@ -112,6 +111,10 @@ use self::receipts::ReceiptsCtx;
 #[derive(Debug, Copy, Clone, Default)]
 pub struct NotSupportedEcal;
 
+/// Execution tracer is disabled.
+#[derive(Debug, Copy, Clone, Default)]
+pub struct NoTrace;
+
 /// VM interpreter.
 ///
 /// The internal state of the VM isn't expose because the intended usage is to
@@ -121,7 +124,7 @@ pub struct NotSupportedEcal;
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
+pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, Trace = NoTrace> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: M,
     frames: Vec<CallFrame>,
@@ -135,8 +138,7 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     context: Context,
     balances: RuntimeBalances,
     profiler: Profiler,
-    /// `None` if the excution trace is not enabled.
-    trace: Option<ExecutionTracer<M>>,
+    trace: Trace,
     interpreter_params: InterpreterParams,
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
@@ -215,21 +217,21 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<M: Memory, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: Memory, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace> {
     /// Returns the current state of the VM memory
     pub fn memory(&self) -> &MemoryInstance {
         self.memory.as_ref()
     }
 }
 
-impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: AsMut<MemoryInstance>, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace> {
     /// Returns mutable access to the vm memory
     pub fn memory_mut(&mut self) -> &mut MemoryInstance {
         self.memory.as_mut()
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
@@ -361,13 +363,13 @@ fn current_location(
     InstructionLocation::new(current_contract, offset)
 }
 
-impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, Trace> AsRef<S> for Interpreter<M, S, Tx, Ecal, Trace> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, Trace> AsMut<S> for Interpreter<M, S, Tx, Ecal, Trace> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }

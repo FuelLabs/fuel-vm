@@ -40,8 +40,8 @@ fn attempt_ecal_without_handler() {
 pub struct NoopEcal;
 
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, Trace>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, Trace>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -88,8 +88,8 @@ pub struct SumProdEcal;
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, Trace>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, Trace>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -169,8 +169,8 @@ impl ::fuel_vm::interpreter::EcalHandler for ComplexEcal {
     const INC_PC: bool = false;
 
     /// Ecal meant for testing cornercase behavior of the handler.
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, Trace>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, Trace>,
         a: RegId,
         _b: RegId,
         _c: RegId,

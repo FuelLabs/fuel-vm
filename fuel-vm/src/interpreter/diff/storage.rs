@@ -84,7 +84,7 @@ pub struct Record<S>(pub(super) S, pub(super) Vec<StorageDelta>)
 where
     S: InterpreterStorage;
 
-impl<M, S, Tx, Ecal> Interpreter<M, Record<S>, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, Record<S>, Tx, Ecal, Trace>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -92,7 +92,7 @@ where
     /// Remove the [`Recording`] wrapper from the storage.
     /// Recording storage changes has an overhead so it's
     /// useful to be able to remove it once the diff is generated.
-    pub fn remove_recording(self) -> Interpreter<M, S, Tx, Ecal> {
+    pub fn remove_recording(self) -> Interpreter<M, S, Tx, Ecal, Trace> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -173,7 +173,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
     S: InterpreterStorage,
@@ -183,7 +183,7 @@ where
     /// record any changes this VM makes to it's storage.
     /// Recording storage changes has an overhead so should
     /// be used in production.
-    pub fn add_recording(self) -> Interpreter<M, Record<S>, Tx, Ecal> {
+    pub fn add_recording(self) -> Interpreter<M, Record<S>, Tx, Ecal, Trace> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,

@@ -541,9 +541,9 @@ pub mod test_helpers {
                 .expect("Expected vm execution to be successful");
         }
 
-        fn execute_tx_inner<M, Tx, Ecal>(
+        fn execute_tx_inner<M, Tx, Ecal, Trace>(
             &mut self,
-            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal>,
+            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal, Trace>,
             checked: Checked<Tx>,
         ) -> anyhow::Result<StateTransition<Tx>>
         where
@@ -551,6 +551,7 @@ pub mod test_helpers {
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
+            Trace: crate::interpreter::trace::ExecutionTraceHooks,
         {
             self.storage.set_block_height(self.block_height);
 

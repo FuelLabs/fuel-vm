@@ -1,105 +1,37 @@
 //! Execution traces
 
-use fuel_asm::Word;
-
-use alloc::vec::Vec;
-
 use super::{
-    memory::MemorySliceChange,
     Interpreter,
-    Memory,
-    VM_REGISTER_COUNT,
+    NoTrace,
 };
 
-/// When to record a new snapshot
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum Trigger {
-    /// Capture state after an instruction adds a new receipt
-    OnReceipt,
-    /// Capture state after each instruction
-    OnInstruction,
-}
-
-/// Used to capture an execution trace
-#[derive(Debug, Clone)]
-pub struct ExecutionTracer<M> {
-    /// When should we take a new snapshot, i.e. insert a frame?
-    trigger: Trigger,
-    /// Append-only set of frames
-    frames: Vec<Frame>,
-    /// Memory at the time of the previous snapshot
-    previous_memory: M,
-}
-
-/// Snapshot of the execution state, with some delta compression applied
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Frame {
-    /// Registers at this point
-    #[cfg_attr(feature = "serde", serde(with = "serde_big_array::BigArray"))]
-    pub registers: [Word; VM_REGISTER_COUNT],
-    /// Memory delta from the previous snapshot
-    pub memory_diff: Vec<MemorySliceChange>,
-    /// How many of the receipts have been added by now
-    pub receipt_count: usize,
-}
-
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+/// Hooks called at specific points during the execution.
+/// Can be used to inspect the state of the VM.
+/// Mutable access to the vm is provided so that the state of the tracer itself can be
+/// modified.
+pub trait ExecutionTraceHooks: Clone
 where
-    M: Memory,
+    Self: Sized,
 {
-    /// This is called after each instruction, and it should record a new snapshot
-    /// if `trigger` condition is met.
-    pub fn with_trace_recording(mut self, trigger: Trigger, memory: M) -> Self {
-        self.trace = Some(ExecutionTracer {
-            trigger,
-            frames: Vec::new(),
-            previous_memory: memory,
-        });
-        self
+    /// Runs before each instruction
+    fn after_instruction<M, S, Tx, Ecal, Trace>(
+        vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
+    );
+    /// Runs after each instruction, unless that instruction enters a debugger pause
+    /// state, or causes a non-well-formed panic.
+    fn before_instruction<M, S, Tx, Ecal, Trace>(
+        vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
+    );
+}
+
+impl ExecutionTraceHooks for NoTrace {
+    fn after_instruction<M, S, Tx, Ecal, Trace>(
+        _vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
+    ) {
     }
 
-    /// This is called after each instruction, and it should record a new snapshot
-    /// if `trigger` condition is met.
-    pub(crate) fn record_trace_after_instruction(&mut self) {
-        let Some(trace) = self.trace.as_mut() else {
-            return; // Trace disabled
-        };
-
-        let take_snapshot = match trace.trigger {
-            Trigger::OnReceipt => {
-                trace.frames.last().map(|s| s.receipt_count).unwrap_or(0)
-                    < self.receipts.len()
-            }
-            Trigger::OnInstruction => true,
-        };
-
-        if take_snapshot {
-            let memory_diff = trace
-                .previous_memory
-                .as_ref()
-                .diff_patches(self.memory.as_ref());
-            trace
-                .previous_memory
-                .as_mut()
-                .make_equal(self.memory.as_ref());
-
-            trace.frames.push(Frame {
-                memory_diff,
-                registers: self.registers,
-                receipt_count: self.receipts.len(),
-            })
-        }
-    }
-
-    /// Get trace frames at the current moment.
-    /// Mostly useful after the execution.
-    pub fn trace_frames(&self) -> &[Frame] {
-        if let Some(trace) = self.trace.as_ref() {
-            &trace.frames
-        } else {
-            &[]
-        }
+    fn before_instruction<M, S, Tx, Ecal, Trace>(
+        _vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
+    ) {
     }
 }

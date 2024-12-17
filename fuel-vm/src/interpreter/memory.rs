@@ -418,37 +418,6 @@ impl MemoryInstance {
         &self.heap
     }
 
-    /// Diff of from `self` to `new` memory state.
-    /// Panics if new instance is not possible to reach from the current one,
-    /// for instance if it has smaller stack or heap allocation.
-    pub fn diff_patches(&self, new: &MemoryInstance) -> Vec<MemorySliceChange> {
-        let mut changes = Vec::new();
-        let mut current_change: Option<MemorySliceChange> = None;
-
-        for i in 0..MEM_SIZE {
-            let [old_value] = self.read_bytes(i).unwrap_or([0]);
-            let [new_value] = new.read_bytes(i).unwrap_or([0]);
-
-            if old_value != new_value {
-                if let Some(change) = current_change.as_mut() {
-                    change.data.push(new_value);
-                } else {
-                    current_change = Some(MemorySliceChange {
-                        global_start: i,
-                        data: vec![new_value],
-                    });
-                }
-            } else if let Some(change) = current_change.take() {
-                changes.push(change);
-            }
-        }
-        if let Some(change) = current_change.take() {
-            changes.push(change);
-        }
-
-        changes
-    }
-
     /// Returns a `MemoryRollbackData` that can be used to achieve the state of the
     /// `desired_memory_state` instance.
     pub fn collect_rollback_data(
@@ -701,7 +670,7 @@ impl MemoryRange {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
 where
     M: Memory,
 {
@@ -1097,7 +1066,9 @@ pub struct OwnershipRegisters {
 }
 
 impl OwnershipRegisters {
-    pub(crate) fn new<M, S, Tx, Ecal>(vm: &Interpreter<M, S, Tx, Ecal>) -> Self {
+    pub(crate) fn new<M, S, Tx, Ecal, Trace>(
+        vm: &Interpreter<M, S, Tx, Ecal, Trace>,
+    ) -> Self {
         let prev_hp = vm
             .frames
             .last()

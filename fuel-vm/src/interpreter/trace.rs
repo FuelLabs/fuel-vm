@@ -19,25 +19,15 @@ where
     fn before_instruction<M, S, Tx, Ecal, Trace>(
         vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
     ) where
-        M: Memory;
+        M: Memory {}
     /// Runs before each instruction
     fn after_instruction<M, S, Tx, Ecal, Trace>(
         vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
     ) where
-        M: Memory;
+        M: Memory {}
 }
 
-impl ExecutionTraceHooks for NoTrace {
-    fn before_instruction<M, S, Tx, Ecal, Trace>(
-        _vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
-    ) {
-    }
-
-    fn after_instruction<M, S, Tx, Ecal, Trace>(
-        _vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
-    ) {
-    }
-}
+impl ExecutionTraceHooks for NoTrace {}
 
 impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace> {
     /// Replace trace hook type and state with a new one, discarding the old one.

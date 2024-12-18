@@ -5,6 +5,7 @@ use crate::{
     checked_transaction::Checked,
     error::InterpreterError,
     interpreter::{
+        trace::ExecutionTraceHooks,
         EcalHandler,
         InterpreterParams,
         Memory,
@@ -49,19 +50,19 @@ impl Default for MemoryClient<MemoryInstance> {
     }
 }
 
-impl<M, Ecal: EcalHandler> AsRef<MemoryStorage> for MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler, Trace> AsRef<MemoryStorage> for MemoryClient<M, Ecal, Trace> {
     fn as_ref(&self) -> &MemoryStorage {
         self.transactor.as_ref()
     }
 }
 
-impl<M, Ecal: EcalHandler> AsMut<MemoryStorage> for MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler, Trace> AsMut<MemoryStorage> for MemoryClient<M, Ecal, Trace> {
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()
     }
 }
 
-impl<M, Ecal: EcalHandler + Default> MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler + Default, Trace: Default> MemoryClient<M, Ecal, Trace> {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(
         memory: M,
@@ -74,16 +75,19 @@ impl<M, Ecal: EcalHandler + Default> MemoryClient<M, Ecal> {
     }
 }
 
-impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler, Trace> MemoryClient<M, Ecal, Trace> {
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<M, MemoryStorage, Script, Ecal>) -> Self {
+    pub fn from_txtor(
+        transactor: Transactor<M, MemoryStorage, Script, Ecal, Trace>,
+    ) -> Self {
         Self { transactor }
     }
 }
 
-impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal>
+impl<M, Ecal: EcalHandler, Trace> MemoryClient<M, Ecal, Trace>
 where
     M: Memory,
+    Trace: ExecutionTraceHooks,
 {
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.
@@ -180,10 +184,10 @@ where
     }
 }
 
-impl<M, Ecal: EcalHandler> From<MemoryClient<M, Ecal>>
-    for Transactor<M, MemoryStorage, Script, Ecal>
+impl<M, Ecal: EcalHandler, Trace> From<MemoryClient<M, Ecal, Trace>>
+    for Transactor<M, MemoryStorage, Script, Ecal, Trace>
 {
-    fn from(client: MemoryClient<M, Ecal>) -> Self {
+    fn from(client: MemoryClient<M, Ecal, Trace>) -> Self {
         client.transactor
     }
 }

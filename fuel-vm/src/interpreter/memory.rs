@@ -39,10 +39,7 @@ use crate::error::{
     IoResult,
     RuntimeError,
 };
-use alloc::{
-    vec,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use fuel_storage::{
     Mappable,
     StorageRead,
@@ -56,9 +53,6 @@ mod impl_tests;
 
 #[cfg(test)]
 mod allocation_tests;
-
-#[cfg(test)]
-mod diff_tests;
 
 #[cfg(test)]
 mod stack_tests;

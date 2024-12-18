@@ -187,7 +187,7 @@ pub mod test_helpers {
         max_fee_limit: Word,
         script_gas_limit: Word,
         builder: TransactionBuilder<Script>,
-        storage: MemoryStorage,
+        pub storage: MemoryStorage,
         block_height: BlockHeight,
         consensus_params: ConsensusParameters,
     }

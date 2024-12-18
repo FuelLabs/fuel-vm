@@ -33,6 +33,7 @@ mod profile_gas;
 mod receipts;
 mod serde_profile;
 mod spec;
+mod trace;
 mod upgrade;
 mod upload;
 mod validation;

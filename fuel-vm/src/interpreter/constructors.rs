@@ -1,15 +1,15 @@
 //! Exposed constructors API for the [`Interpreter`]
 #![allow(clippy::default_constructed_unit_structs)] // need for ::default() depends on cfg
 
-use super::{
-    trace::ExecutionTraceHooks,
-    Interpreter,
-    RuntimeBalances,
-};
 #[cfg(any(test, feature = "test-helpers"))]
 use super::{
+    trace::ExecutionTraceHooks,
     ExecutableTransaction,
     MemoryInstance,
+};
+use super::{
+    Interpreter,
+    RuntimeBalances,
 };
 use crate::{
     consts::*,

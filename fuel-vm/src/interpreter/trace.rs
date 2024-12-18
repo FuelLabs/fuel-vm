@@ -39,10 +39,7 @@ impl ExecutionTraceHooks for NoTrace {
     }
 }
 
-impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace>
-where
-    Trace: ExecutionTraceHooks,
-{
+impl<M, S, Tx, Ecal, Trace> Interpreter<M, S, Tx, Ecal, Trace> {
     /// Replace trace hook type and state with a new one, discarding the old one.
     pub fn with_trace_hooks<NewTrace>(
         self,

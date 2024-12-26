@@ -23,9 +23,16 @@ impl Node {
     }
 
     /// Returns `None` if the leaf cannot be created due to incorrect position.
-    pub fn create_leaf(index: u64, data: &[u8]) -> Option<Self> {
+    pub fn create_leaf(
+        index: u64,
+        data: &[u8],
+        precompute_hash: Option<Bytes32>,
+    ) -> Option<Self> {
         let position = Position::from_leaf_index(index)?;
-        let hash = leaf_sum(data);
+        let hash = match precompute_hash {
+            Some(hash) => hash,
+            None => leaf_sum(data),
+        };
         Some(Self { position, hash })
     }
 

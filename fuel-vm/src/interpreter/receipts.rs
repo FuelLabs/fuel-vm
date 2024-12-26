@@ -52,7 +52,7 @@ impl ReceiptsCtx {
             return Err(PanicReason::TooManyReceipts.into())
         }
 
-        self.receipts_tree.push(receipt.to_bytes().as_slice());
+        self.receipts_tree.push(receipt.to_bytes().as_slice(), None);
         self.receipts.push(receipt);
         Ok(())
     }
@@ -88,7 +88,7 @@ impl ReceiptsCtx {
     fn recalculate_root(&mut self) {
         self.receipts_tree = MerkleTree::new();
         for receipt in &self.receipts {
-            self.receipts_tree.push(receipt.to_bytes().as_slice())
+            self.receipts_tree.push(receipt.to_bytes().as_slice(), None)
         }
     }
 }

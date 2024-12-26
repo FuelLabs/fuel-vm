@@ -10,7 +10,7 @@ where
     I: Iterator<Item = L> + ExactSizeIterator,
 {
     let mut tree = MerkleTree::new();
-    leaves.for_each(|l| tree.push(l.as_ref()));
+    leaves.for_each(|l| tree.push(l.as_ref(), None));
     tree.root().into()
 }
 

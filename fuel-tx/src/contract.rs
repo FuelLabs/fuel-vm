@@ -82,12 +82,12 @@ impl Contract {
             // bytes.
             let len = leaf.len();
             if len == LEAF_SIZE || len % MULTIPLE == 0 {
-                tree.push(leaf);
+                tree.push(leaf, None);
             } else {
                 let padding_size = len.next_multiple_of(MULTIPLE);
                 let mut padded_leaf = [PADDING_BYTE; LEAF_SIZE];
                 padded_leaf[0..len].clone_from_slice(leaf);
-                tree.push(padded_leaf[..padding_size].as_ref());
+                tree.push(padded_leaf[..padding_size].as_ref(), None);
             }
         });
 
@@ -304,7 +304,7 @@ mod tests {
             if sz > 0 {
                 let mut padded_leaf = vec![PADDING_BYTE; sz];
                 padded_leaf[0..code_len].clone_from_slice(&code);
-                tree.push(&padded_leaf);
+                tree.push(&padded_leaf, None);
             }
             tree.root().into()
         };
@@ -335,9 +335,9 @@ mod tests {
             let mut tree = BinaryMerkleTree::new();
 
             let leaves = code.chunks(LEAF_SIZE).collect::<Vec<_>>();
-            tree.push(leaves[0]);
-            tree.push(leaves[1]);
-            tree.push(leaves[2]);
+            tree.push(leaves[0], None);
+            tree.push(leaves[1], None);
+            tree.push(leaves[2], None);
 
             // Push partial leaf with manual padding.
             // We start by generating an n-byte array, where n is the code
@@ -348,7 +348,7 @@ mod tests {
             if sz > 0 {
                 let mut padded_leaf = vec![PADDING_BYTE; sz];
                 padded_leaf[0..partial_leaf_size].clone_from_slice(leaves[3]);
-                tree.push(&padded_leaf);
+                tree.push(&padded_leaf, None);
             }
             tree.root().into()
         };

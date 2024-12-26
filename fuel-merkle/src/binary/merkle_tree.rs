@@ -301,7 +301,7 @@ where
     /// This code might modify the storage, and then return an error.
     /// TODO: fix this issue
     pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
-        let new_node = Node::create_leaf(self.leaves_count, data)
+        let new_node = Node::create_leaf(self.leaves_count, data, None)
             .ok_or(MerkleTreeError::TooLarge)?;
 
         // u64 cannot overflow, as memory is finite

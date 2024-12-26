@@ -75,8 +75,9 @@ impl MerkleRootCalculator {
     /// Push a new leaf node.
     /// Panics if the tree would be too large to compute the root for.
     /// In practice this never occurs, as you'd run out of memory first.
-    pub fn push(&mut self, data: &[u8]) {
-        let node = Node::create_leaf(0, data).expect("Zero is a valid index for a leaf");
+    pub fn push(&mut self, data: &[u8], precompute_hash: Option<Bytes32>) {
+        let node = Node::create_leaf(0, data, precompute_hash)
+            .expect("Zero is a valid index for a leaf");
         self.push_with_callback::<_, Infallible>(node, |_| Ok(()))
             .expect("Tree too large");
     }
@@ -105,7 +106,7 @@ impl MerkleRootCalculator {
         let mut calculator = MerkleRootCalculator::new();
 
         for data in iterator {
-            calculator.push(data.as_ref());
+            calculator.push(data.as_ref(), None);
         }
 
         calculator.root()
@@ -140,7 +141,7 @@ mod test {
         let data = &TEST_DATA[0..1]; // 1 leaf
         for datum in data.iter() {
             tree.push(datum);
-            calculate_root.push(datum)
+            calculate_root.push(datum, None)
         }
 
         assert_eq!(tree.root(), calculate_root.root());
@@ -154,7 +155,7 @@ mod test {
         let data = &TEST_DATA[0..7];
         for datum in data.iter() {
             tree.push(datum);
-            calculate_root.push(datum)
+            calculate_root.push(datum, None)
         }
         assert_eq!(tree.root(), calculate_root.root());
     }
@@ -167,7 +168,7 @@ mod test {
         for value in 0..10000u64 {
             let data = value.to_le_bytes();
             tree.push(&data);
-            calculate_root.push(&data);
+            calculate_root.push(&data, None);
         }
 
         assert_eq!(tree.root(), calculate_root.root());
@@ -195,7 +196,7 @@ mod test {
 
         let data = &TEST_DATA[0..7];
         for datum in data.iter() {
-            calculator.push(datum);
+            calculator.push(datum, None);
         }
         let json = serde_json::to_string(&calculator).unwrap();
 

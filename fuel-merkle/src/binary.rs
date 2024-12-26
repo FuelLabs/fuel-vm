@@ -4,7 +4,7 @@ mod node;
 mod primitive;
 mod verify;
 
-pub(crate) use hash::{
+pub use hash::{
     empty_sum,
     leaf_sum,
     node_sum,

@@ -469,7 +469,7 @@ mod tests {
                     // returns `0x0`. This opcode is our source for the `LDC`
                     // opcode. We will copy return bad opcode to the end
                     // of the `ssp` via `LDC`. And jump there to
-                    // return `false` from the predicate adn fail.
+                    // return `false` from the predicate and fail.
                     op::jmpf(ZERO, 2),
                     // Good return opcode that we want to skip.
                     op::ret(0x1),

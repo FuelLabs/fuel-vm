@@ -40,7 +40,7 @@ impl ReceiptsCtx {
         }
 
         // Last two slots can be only used for ending the script,
-        // with a script result optinally preceded by a panic
+        // with a script result optimally preceded by a panic
         if (self.receipts.len() == Self::MAX_RECEIPTS - 1
             && !matches!(receipt, Receipt::ScriptResult { .. }))
             || (self.receipts.len() == Self::MAX_RECEIPTS - 2

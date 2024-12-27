@@ -2571,7 +2571,7 @@ fn ldcv1__fails_when_blob_size_overflows() {
 }
 
 #[test]
-fn ldcv1__fails_wehn_blob_id_ends_beyond_max_ram() {
+fn ldcv1__fails_when_blob_id_ends_beyond_max_ram() {
     // Then deploy another contract that attempts to read the first one
     let reg_a = 0x20;
     let reg_b = 0x21;

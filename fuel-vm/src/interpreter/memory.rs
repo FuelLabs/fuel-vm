@@ -565,7 +565,7 @@ impl IndexMut<Range<usize>> for MemoryInstance {
 }
 
 /// Used to handle `Word` to `usize` conversions for memory addresses,
-/// as well as checking that the resulting value is withing the VM ram boundaries.
+/// as well as checking that the resulting value is within the VM ram boundaries.
 pub trait ToAddr {
     /// Converts a value to `usize` used for memory addresses.
     /// Returns `Err` with `MemoryOverflow` if the resulting value does't fit in the VM

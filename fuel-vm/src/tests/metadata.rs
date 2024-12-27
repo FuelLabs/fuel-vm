@@ -576,7 +576,7 @@ fn get_transaction_fields() {
         op::and(0x20, 0x20, 0x10),
 
         op::gtf_args(0x10, RegId::ZERO, GTFArgs::TxLength),
-        op::movi(0x11, 100), // Tx lenght is too complicated to backpatch
+        op::movi(0x11, 100), // Tx length is too complicated to backpatch
         op::gt(0x10, 0x10, 0x11), // so just make sure it's over some arbitrary number
         op::and(0x20, 0x20, 0x10),
         op::movi(0x11, 10_000), // and

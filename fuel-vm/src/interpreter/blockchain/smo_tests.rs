@@ -182,7 +182,7 @@ impl Default for Input {
         initial_balance: 20,
         ..Default::default()
     } => matches Ok(Output { external_balance: 0, internal_balance: 20, .. })
-    ; "spend all coins succesfully from external context"
+    ; "spend all coins successfully from external context"
 )]
 #[test_case(
     Input {

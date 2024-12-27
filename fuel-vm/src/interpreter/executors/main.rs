@@ -109,7 +109,7 @@ use fuel_types::{
     Word,
 };
 
-/// Predicates were checked succesfully
+/// Predicates were checked successfully
 #[derive(Debug, Clone, Copy)]
 pub struct PredicatesChecked {
     gas_used: Word,

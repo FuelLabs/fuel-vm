@@ -123,7 +123,7 @@ impl<T> RunResult<T> {
     }
 
     /// Extract the value from the receipts, using the provided extractor function
-    /// to get even more data about successfull runs.
+    /// to get even more data about successful runs.
     pub fn extract(
         receipts: &[Receipt],
         value_extractor: fn(&[Receipt]) -> Option<T>,

@@ -83,7 +83,6 @@ std = [
     "fuel-asm/std",
     "fuel-tx/std",
     "itertools/use_std",
-    "bn/default",
     "sha3/std",
 ]
 alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-crypto/alloc"]

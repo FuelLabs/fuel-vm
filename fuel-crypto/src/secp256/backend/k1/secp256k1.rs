@@ -10,6 +10,7 @@ use crate::{
     },
     Error,
 };
+use std::sync::OnceLock;
 
 use secp256k1::{
     ecdsa::{
@@ -27,8 +28,10 @@ use rand::{
     RngCore,
 };
 
-lazy_static::lazy_static! {
-    static ref CONTEXT: Secp256k1<secp256k1::All> = Secp256k1::new();
+fn get_context() -> &'static Secp256k1<secp256k1::All> {
+    static CONTEXT: OnceLock<Secp256k1<secp256k1::All>> = OnceLock::new();
+
+    CONTEXT.get_or_init(Secp256k1::new)
 }
 
 /// Generates a random secret key
@@ -40,7 +43,7 @@ pub fn random_secret(rng: &mut (impl CryptoRng + RngCore)) -> SecretKey {
 /// Derives the public key from a given secret key
 pub fn public_key(secret: &SecretKey) -> PublicKey {
     let sk: secp256k1::SecretKey = secret.into();
-    let vk = secp256k1::PublicKey::from_secret_key(&CONTEXT, &sk);
+    let vk = secp256k1::PublicKey::from_secret_key(get_context(), &sk);
     vk.into()
 }
 
@@ -49,7 +52,7 @@ pub fn public_key(secret: &SecretKey) -> PublicKey {
 /// The compression scheme is described in
 /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/protocol/cryptographic-primitives.md>
 pub fn sign(secret: &SecretKey, message: &Message) -> [u8; 64] {
-    let signature = CONTEXT.sign_ecdsa_recoverable(&message.into(), &secret.into());
+    let signature = get_context().sign_ecdsa_recoverable(&message.into(), &secret.into());
     let (recovery_id, signature) = signature.serialize_compact();
 
     // encode_signature cannot panic as we don't generate reduced-x recovery ids.
@@ -67,7 +70,7 @@ pub fn recover(signature: [u8; 64], message: &Message) -> Result<PublicKey, Erro
     let (signature, recovery_id) = decode_signature(signature);
     let recoverable = RecoverableSignature::from_compact(&signature, recovery_id.into())
         .map_err(|_| Error::InvalidSignature)?;
-    let vk = CONTEXT
+    let vk = get_context()
         .recover_ecdsa(&message.into(), &recoverable)
         .map_err(|_| Error::InvalidSignature)?;
     Ok(PublicKey::from(vk))
@@ -89,7 +92,7 @@ pub fn verify(
     let vk = secp256k1::PublicKey::from_slice(&prefixed_public_key)
         .map_err(|_| Error::InvalidPublicKey)?;
 
-    CONTEXT
+    get_context()
         .verify_ecdsa(&message.into(), &signature, &vk)
         .map_err(|_| Error::InvalidSignature)?;
     Ok(())

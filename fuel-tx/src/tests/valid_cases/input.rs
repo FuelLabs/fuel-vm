@@ -564,7 +564,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         0,
         generate_bytes(rng),
     );
-    let message_id = message_input.message_id().unwrap();
+    let nonce = message_input.nonce().cloned().unwrap();
     let fee = Input::coin_signed(
         rng.gen(),
         rng.gen(),
@@ -587,7 +587,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         )
         .expect_err("Expected checkable failure");
 
-    assert_eq!(err, ValidityError::DuplicateMessageInputId { message_id });
+    assert_eq!(err, ValidityError::DuplicateMessageInputId { nonce });
 }
 
 #[test]

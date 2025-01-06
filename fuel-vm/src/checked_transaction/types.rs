@@ -76,6 +76,8 @@ pub mod create {
         ConsensusParameters,
         Create,
         FormatValidityChecks,
+        TxId,
+        UniqueIdentifier,
     };
     use fuel_types::{
         AssetId,
@@ -104,16 +106,24 @@ pub mod create {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Checked<Self>, (TxId, CheckError)> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.precompute(&chain_id)
+                .map_err(|(id, e)| (id, e.into()))?;
+            // SAFETY: The `id` is always present in the `metadata` after success
+            // `precompute`.
+            let id = self.cached_id().expect(
+                "The `id` is always present in the `metadata` after success `precompute`",
+            );
+            self.check_without_signatures(block_height, consensus_params)
+                .map_err(|e| (id, e.into()))?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
+            } = initial_free_balances(&self, consensus_params.base_asset_id())
+                .map_err(|e| (id, e.into()))?;
             debug_assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionInputContainsMessageData` above"
@@ -146,6 +156,8 @@ pub mod mint {
         ConsensusParameters,
         FormatValidityChecks,
         Mint,
+        TxId,
+        UniqueIdentifier,
     };
     use fuel_types::BlockHeight;
 
@@ -156,10 +168,15 @@ pub mod mint {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Checked<Self>, (TxId, CheckError)> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.precompute(&chain_id)
+                .map_err(|(id, e)| (id, e.into()))?;
+            let id = self.cached_id().expect(
+                "The `id` is always present in the `metadata` after success `precompute`",
+            );
+            self.check_without_signatures(block_height, consensus_params)
+                .map_err(|e| (id, e.into()))?;
 
             Ok(Checked::basic(self, ()))
         }
@@ -187,6 +204,8 @@ pub mod script {
         ConsensusParameters,
         FormatValidityChecks,
         Script,
+        TxId,
+        UniqueIdentifier,
     };
     use fuel_types::{
         AssetId,
@@ -217,16 +236,22 @@ pub mod script {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Checked<Self>, (TxId, CheckError)> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.precompute(&chain_id)
+                .map_err(|(id, e)| (id, e.into()))?;
+            let id = self.cached_id().expect(
+                "The `id` is always present in the `metadata` after success `precompute`",
+            );
+            self.check_without_signatures(block_height, consensus_params)
+                .map_err(|e| (id, e.into()))?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
+            } = initial_free_balances(&self, consensus_params.base_asset_id())
+                .map_err(|e| (id, e.into()))?;
 
             let metadata = CheckedMetadata {
                 base_asset_id: *consensus_params.base_asset_id(),
@@ -266,6 +291,8 @@ pub mod upgrade {
         Chargeable,
         ConsensusParameters,
         FormatValidityChecks,
+        TxId,
+        UniqueIdentifier,
         Upgrade,
     };
     use fuel_types::{
@@ -295,16 +322,22 @@ pub mod upgrade {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Checked<Self>, (TxId, CheckError)> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.precompute(&chain_id)
+                .map_err(|(id, e)| (id, e.into()))?;
+            let id = self.cached_id().expect(
+                "The `id` is always present in the `metadata` after success `precompute`",
+            );
+            self.check_without_signatures(block_height, consensus_params)
+                .map_err(|e| (id, e.into()))?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
+            } = initial_free_balances(&self, consensus_params.base_asset_id())
+                .map_err(|e| (id, e.into()))?;
             debug_assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionInputContainsMessageData` above"
@@ -344,6 +377,8 @@ pub mod upload {
         Chargeable,
         ConsensusParameters,
         FormatValidityChecks,
+        TxId,
+        UniqueIdentifier,
         Upload,
     };
     use fuel_types::{
@@ -373,16 +408,22 @@ pub mod upload {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Checked<Self>, (TxId, CheckError)> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.precompute(&chain_id)
+                .map_err(|(id, e)| (id, e.into()))?;
+            let id = self.cached_id().expect(
+                "The `id` is always present in the `metadata` after success `precompute`",
+            );
+            self.check_without_signatures(block_height, consensus_params)
+                .map_err(|e| (id, e.into()))?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
+            } = initial_free_balances(&self, consensus_params.base_asset_id())
+                .map_err(|e| (id, e.into()))?;
             debug_assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionInputContainsMessageData` above"
@@ -424,6 +465,8 @@ pub mod blob {
         Chargeable,
         ConsensusParameters,
         FormatValidityChecks,
+        TxId,
+        UniqueIdentifier,
     };
     use fuel_types::BlockHeight;
 
@@ -449,16 +492,22 @@ pub mod blob {
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
-        ) -> Result<Checked<Self>, CheckError> {
+        ) -> Result<Checked<Self>, (TxId, CheckError)> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
-            self.check_without_signatures(block_height, consensus_params)?;
+            self.precompute(&chain_id)
+                .map_err(|(id, e)| (id, e.into()))?;
+            let id = self.cached_id().expect(
+                "The `id` is always present in the `metadata` after success `precompute`",
+            );
+            self.check_without_signatures(block_height, consensus_params)
+                .map_err(|e| (id, e.into()))?;
 
             // validate fees and compute free balances
             let AvailableBalances {
                 non_retryable_balances,
                 retryable_balance,
-            } = initial_free_balances(&self, consensus_params.base_asset_id())?;
+            } = initial_free_balances(&self, consensus_params.base_asset_id())
+                .map_err(|e| (id, e.into()))?;
             debug_assert_eq!(
                 retryable_balance, 0,
                 "The `check_without_signatures` should return `TransactionInputContainsMessageData` above"

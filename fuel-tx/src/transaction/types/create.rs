@@ -21,6 +21,8 @@ use crate::{
     PrepareSign,
     StorageSlot,
     TransactionRepr,
+    TxId,
+    UniqueIdentifier,
     ValidityError,
 };
 use derivative::Derivative;
@@ -262,11 +264,12 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), (TxId, ValidityError)> {
         self.metadata = None;
+        let id = self.id(chain_id);
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id)?,
-            body: CreateMetadata::compute(self)?,
+            common: CommonMetadata::compute(self, id).map_err(|e| (id, e))?,
+            body: CreateMetadata::compute(self).map_err(|e| (id, e))?,
         });
         Ok(())
     }

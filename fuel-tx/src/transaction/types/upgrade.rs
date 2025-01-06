@@ -14,6 +14,8 @@ use crate::{
     Input,
     Output,
     TransactionRepr,
+    TxId,
+    UniqueIdentifier,
     ValidityError,
 };
 use derivative::Derivative;
@@ -271,11 +273,12 @@ impl crate::Cacheable for Upgrade {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), (TxId, ValidityError)> {
         self.metadata = None;
+        let id = self.id(chain_id);
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id)?,
-            body: UpgradeMetadata::compute(self)?,
+            common: CommonMetadata::compute(self, id).map_err(|e| (id, e))?,
+            body: UpgradeMetadata::compute(self).map_err(|e| (id, e))?,
         });
         Ok(())
     }

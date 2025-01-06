@@ -292,7 +292,7 @@ pub enum CheckError {
 }
 
 /// Performs checks for a transaction
-pub trait IntoChecked: FormatValidityChecks + Sized {
+pub trait IntoChecked: FormatValidityChecks + UniqueIdentifier + Sized {
     /// Metadata produced during the check.
     type Metadata: Sized;
 
@@ -301,7 +301,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError>
+    ) -> Result<Checked<Self>, (TxId, CheckError)>
     where
         Checked<Self>: CheckPredicates,
     {
@@ -321,14 +321,17 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         consensus_params: &ConsensusParameters,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-    ) -> Result<Checked<Self>, CheckError>
+    ) -> Result<Checked<Self>, (TxId, CheckError)>
     where
         Checked<Self>: CheckPredicates,
     {
         let check_predicate_params = consensus_params.into();
-        self.into_checked_basic(block_height, consensus_params)?
-            .check_signatures(&consensus_params.chain_id())?
+        let tx = self.into_checked_basic(block_height, consensus_params)?;
+        let id = tx.id();
+        tx.check_signatures(&consensus_params.chain_id())
+            .map_err(|e| (id, e))?
             .check_predicates(&check_predicate_params, memory, storage)
+            .map_err(|e| (id, e))
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -336,7 +339,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError>;
+    ) -> Result<Checked<Self>, (TxId, CheckError)>;
 }
 
 /// The parameters needed for checking a predicate
@@ -860,7 +863,7 @@ impl IntoChecked for Transaction {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError> {
+    ) -> Result<Checked<Self>, (TxId, CheckError)> {
         match self {
             Self::Script(tx) => {
                 let (transaction, metadata) = tx
@@ -1049,7 +1052,7 @@ mod tests {
 
         // then
         assert!(matches!(
-            err,
+            err.1,
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
                 expected: _,
                 provided: 0
@@ -1091,7 +1094,7 @@ mod tests {
 
         // then
         assert!(matches!(
-            err,
+            err.1,
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
                 expected: _,
                 provided: 0
@@ -1644,7 +1647,7 @@ mod tests {
 
         // assert that tx without base input assets fails
         assert!(matches!(
-            err,
+            err.1,
             CheckError::Validity(ValidityError::InputInvalidSignature { .. })
         ));
     }
@@ -1732,7 +1735,7 @@ mod tests {
             .expect_err("overflow expected");
 
         // then
-        let provided = match err {
+        let provided = match err.1 {
             CheckError::Validity(ValidityError::InsufficientFeeAmount {
                 provided,
                 ..
@@ -1913,7 +1916,7 @@ mod tests {
                 expected: input_amount + 1,
                 provided: input_amount,
             }),
-            checked
+            checked.1
         );
     }
 

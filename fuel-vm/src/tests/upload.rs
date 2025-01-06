@@ -280,10 +280,8 @@ fn check__fails_when_subsection_index_more_than_total_number() {
 
     // Then
     assert_eq!(
-        result,
-        Err(CheckError::Validity(
-            ValidityError::TransactionUploadRootVerificationFailed
-        ))
+        result.expect_err("expected error").1,
+        CheckError::Validity(ValidityError::TransactionUploadRootVerificationFailed)
     );
 }
 
@@ -307,10 +305,8 @@ fn check__fails_when_total_number_is_zero() {
 
     // Then
     assert_eq!(
-        result,
-        Err(CheckError::Validity(
-            ValidityError::TransactionUploadRootVerificationFailed
-        ))
+        result.expect_err("expected error").1,
+        CheckError::Validity(ValidityError::TransactionUploadRootVerificationFailed)
     );
 }
 

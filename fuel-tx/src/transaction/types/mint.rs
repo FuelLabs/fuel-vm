@@ -10,6 +10,7 @@ use crate::{
     },
     ConsensusParameters,
     TransactionRepr,
+    TxId,
     TxPointer,
     ValidityError,
 };
@@ -125,7 +126,7 @@ impl crate::Cacheable for Mint {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), (TxId, ValidityError)> {
         self.metadata = None;
         self.metadata = Some(MintMetadata::compute(self, chain_id));
         Ok(())

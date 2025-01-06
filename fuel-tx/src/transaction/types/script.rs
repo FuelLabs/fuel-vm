@@ -27,6 +27,8 @@ use crate::{
     GasCosts,
     Output,
     TransactionRepr,
+    TxId,
+    UniqueIdentifier,
     ValidityError,
 };
 use derivative::Derivative;
@@ -210,10 +212,11 @@ impl crate::Cacheable for Script {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), (TxId, ValidityError)> {
         self.metadata = None;
+        let id = self.id(chain_id);
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id)?,
+            common: CommonMetadata::compute(self, id).map_err(|e| (id, e))?,
             body: ScriptMetadata {
                 script_data_offset: self.script_data_offset(),
             },

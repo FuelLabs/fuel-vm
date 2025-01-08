@@ -2,7 +2,10 @@ use core::mem::MaybeUninit;
 
 use crate::common::Bytes32;
 
-use jmt::storage::Node as JmtNode;
+use jmt::storage::{
+    Node as JmtNode,
+    NodeKey,
+};
 
 /// ** Child representation in internal node: **
 /// | Allocation | Data                       |
@@ -254,5 +257,72 @@ impl From<JmtNode> for Wrapped<Primitive> {
                 panic!("Cannot convert Null node to Primitive")
             }
         }
+    }
+}
+
+impl From<NodeKey> for Wrapped<PrimitiveKey> {
+    fn from(node_key: NodeKey) -> Self {
+        let version = node_key.version();
+        let jmt_nibble_path = node_key.nibble_path();
+        let mut num_nibbles: u8 = 0;
+
+        // Avoid initialization for performance purposes
+        let mut nibble_path: [MaybeUninit<u8>; 32] = [MaybeUninit::uninit(); 32];
+        let mut current_byte_index = 0;
+        let mut should_shift = true;
+        for nibble in jmt_nibble_path.nibbles() {
+            let mut nibble_as_u8: u8 = nibble.into();
+
+            // If should_shift == true then we are writing into an unitiliazied area of
+            // the array
+            if should_shift == true {
+                // Safety: we access uninitialized memory for writing only.
+                unsafe {
+                    nibble_as_u8 = nibble_as_u8 << 4;
+                    nibble_path[current_byte_index]
+                        .as_mut_ptr()
+                        .write(nibble_as_u8);
+                }
+                // Do not advence the byte index
+                should_shift = false;
+            // In this case, the byte at the current_byte_index has been initialized
+            // already, hence we can fetch it from the array.
+            } else {
+                let previous_nibble =
+                    // Safety: the memory has been initialized in the previous iteration of the loop
+                    unsafe { nibble_path[current_byte_index].assume_init() };
+                let combined_nibble = previous_nibble | nibble_as_u8;
+                // Safety: we access uninitialized memory for writing only.
+                unsafe {
+                    nibble_path[current_byte_index]
+                        .as_mut_ptr()
+                        .write(combined_nibble);
+                }
+                current_byte_index += 1;
+                should_shift = true;
+            }
+            num_nibbles += 1;
+        }
+        // If should_shift == true then current_byte_index has been updated at the last
+        // iteration of the loop above and it points to uninitialized memory.
+        // Otherwise current_byte_index has been initialised at the last iteration of the
+        // loop and the first byte of uninitialised memory in the array is at
+        // current_byte_index + 1.
+        if should_shift == false {
+            current_byte_index += 1
+        }
+
+        for i in current_byte_index..size_of::<Bytes32>() {
+            // Safety: We access uninitialized memory for writing only.
+            unsafe {
+                nibble_path[i].as_mut_ptr().write(0);
+            }
+        }
+
+        // Safety: all the bytes in the nibble_path array have been initialized, and the
+        // memory layout of u8 is the same as MaybeUninit<u8>
+        let nibble_path: Bytes32 = unsafe { std::mem::transmute(nibble_path) };
+
+        Wrapped((version, num_nibbles, nibble_path))
     }
 }

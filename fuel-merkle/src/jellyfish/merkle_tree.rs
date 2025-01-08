@@ -1,4 +1,8 @@
-use super::primitive::Primitive as JmtPrimitive;
+use super::primitive::{
+    Primitive as JmtPrimitive,
+    PrimitiveKey,
+    Wrapped,
+};
 use crate::{
     binary::{
         empty_sum,
@@ -60,7 +64,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 
 #[derive(Debug, Clone)]
 pub struct MerkleTree<TableType, StorageType> {
-    storage: StorageType,
+    storage: core::cell::RefCell<StorageType>,
     nodes: MerkleRootCalculator,
     leaves_count: u64,
     phantom_table: PhantomData<TableType>,
@@ -69,7 +73,7 @@ pub struct MerkleTree<TableType, StorageType> {
 impl<TableType, StorageType> TreeWriter for MerkleTree<TableType, StorageType>
 where
     TableType:
-        Mappable<Key = (u64, Bytes32), Value = JmtPrimitive, OwnedValue = JmtPrimitive>,
+        Mappable<Key = PrimitiveKey, Value = JmtPrimitive, OwnedValue = JmtPrimitive>,
     StorageType: StorageMutate<TableType>,
 {
     fn write_node_batch(
@@ -77,12 +81,45 @@ where
         node_batch: &jmt::storage::NodeBatch,
     ) -> anyhow::Result<()> {
         for (key, node) in node_batch.nodes() {
+            let primitive_key: Wrapped<PrimitiveKey> = key.into();
+            let primitive_node: Wrapped<JmtPrimitive> = node.into();
             self.storage
-                .insert()
+                // TODO: We need to check that mutable access to the storage is exclusive
+                // If not, RefCell<Storage> will need to be replaced with Mutex<Storage>
+                .borrow_mut()
+                .insert(&primitive_key.0, &primitive_node.0)
                 .map_err(|_err| anyhow::anyhow!("Storage Error"))?;
         }
 
         Ok(())
+    }
+}
+
+impl<TableType, StorageType> TreeReader for MerkleTree<TableType, StorageType>
+where
+    TableType:
+        Mappable<Key = PrimitiveKey, Value = JmtPrimitive, OwnedValue = JmtPrimitive>,
+    StorageType: StorageInspect<TableType>,
+{
+    fn get_node_option(
+        &self,
+        node_key: &jmt::storage::NodeKey,
+    ) -> anyhow::Result<Option<jmt::storage::Node>> {
+        todo!()
+    }
+
+    fn get_value_option(
+        &self,
+        max_version: jmt::Version,
+        key_hash: jmt::KeyHash,
+    ) -> anyhow::Result<Option<jmt::OwnedValue>> {
+        todo!()
+    }
+
+    fn get_rightmost_leaf(
+        &self,
+    ) -> anyhow::Result<Option<(jmt::storage::NodeKey, jmt::storage::LeafNode)>> {
+        todo!()
     }
 }
 

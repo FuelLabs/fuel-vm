@@ -157,9 +157,9 @@ impl PrimitiveView for Primitive {
 
 // Primitive is a primitive type, hence we cannot implement foreign traits.
 // We need to wrap it in a newtype to implement the From trait.
-pub struct Wrapped<T>(T);
+pub struct Wrapped<T>(pub T);
 
-impl From<JmtNode> for Wrapped<Primitive> {
+impl From<&JmtNode> for Wrapped<Primitive> {
     fn from(node: JmtNode) -> Self {
         match node {
             JmtNode::Internal(internal) => {
@@ -222,10 +222,10 @@ impl From<JmtNode> for Wrapped<Primitive> {
 
                 // TODO: We use the terminology key_hash from JMT, but this should
                 // actually be the storage slot
-                let key_hash = leaf.key_hash().0;
+                let value = leaf.key_hash().0;
 
                 unsafe {
-                    value_array[0].as_mut_ptr().write((version, key_hash));
+                    value_array[0].as_mut_ptr().write((version, value));
                 }
 
                 for i in 1..16 {
@@ -260,8 +260,8 @@ impl From<JmtNode> for Wrapped<Primitive> {
     }
 }
 
-impl From<NodeKey> for Wrapped<PrimitiveKey> {
-    fn from(node_key: NodeKey) -> Self {
+impl From<&NodeKey> for Wrapped<PrimitiveKey> {
+    fn from(node_key: &NodeKey) -> Self {
         let version = node_key.version();
         let jmt_nibble_path = node_key.nibble_path();
         let mut num_nibbles: u8 = 0;

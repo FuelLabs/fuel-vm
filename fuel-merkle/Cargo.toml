@@ -11,11 +11,13 @@ repository = { workspace = true }
 description = "Fuel Merkle tree libraries."
 
 [dependencies]
+anyhow = { version = "1.0", default-features = false }
 derive_more = { version = "0.99", default-features = false, features = ["display"] }
 digest = { version = "0.10", default-features = false }
 fuel-storage = { workspace = true, default-features = false }
 hashbrown = "0.13"
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
+jmt = { version = "0.11.0" }
 serde = { version = "1.0", default-features = false, optional = true }
 sha2 = { version = "0.10", default-features = false }
 

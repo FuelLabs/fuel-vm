@@ -3,6 +3,7 @@ use core::mem::MaybeUninit;
 use crate::common::Bytes32;
 
 use jmt::storage::{
+    LeafNode,
     Node as JmtNode,
     NodeKey,
 };
@@ -19,7 +20,7 @@ pub type ChildPrimitive = (u64, Bytes32);
 
 pub trait ChildPrimitiveTrait {
     fn version(&self) -> u64;
-    fn key_hash(&self) -> &Bytes32;
+    fn value(&self) -> &Bytes32;
 }
 
 impl ChildPrimitiveTrait for ChildPrimitive {
@@ -27,7 +28,7 @@ impl ChildPrimitiveTrait for ChildPrimitive {
         self.0
     }
 
-    fn key_hash(&self) -> &Bytes32 {
+    fn value(&self) -> &Bytes32 {
         &self.1
     }
 }
@@ -138,7 +139,7 @@ impl PrimitiveView for Primitive {
     }
 
     fn value(&self) -> Option<Bytes32> {
-        self.6.get(0).map(|child| *child.key_hash())
+        self.6.get(0).map(|child| *child.value())
     }
 
     fn children(&self) -> Option<[ChildPrimitive; 16]> {
@@ -160,7 +161,7 @@ impl PrimitiveView for Primitive {
 pub struct Wrapped<T>(pub T);
 
 impl From<&JmtNode> for Wrapped<Primitive> {
-    fn from(node: JmtNode) -> Self {
+    fn from(node: &JmtNode) -> Self {
         match node {
             JmtNode::Internal(internal) => {
                 let prefix: u8 = 0x01;
@@ -173,7 +174,7 @@ impl From<&JmtNode> for Wrapped<Primitive> {
                     [MaybeUninit::uninit(); 16];
                 let mut current_index: usize = 0;
 
-                internal.children_sorted().for_each(|(nibble, child)| {
+                internal.children_sorted().for_each(|(_nibble, child)| {
                     // Safety: the nibble is guaranteed to be less than 16
                     // https://github.com/penumbra-zone/jmt/blob/d6e9199de78939287c62fc61fb38ea38ff4bac67/src/types/nibble.rs#L26
                     let version = child.version;
@@ -215,6 +216,7 @@ impl From<&JmtNode> for Wrapped<Primitive> {
                 let num_nibbles = 0;
                 let version = 0;
                 let key_hash = Bytes32::default();
+                let value_hash = leaf.key_hash();
                 let mut value_array: [MaybeUninit<ChildPrimitive>; 16] =
                     [MaybeUninit::uninit(); 16];
                 let unused_children_bitmap = 0;
@@ -256,6 +258,30 @@ impl From<&JmtNode> for Wrapped<Primitive> {
             {
                 panic!("Cannot convert Null node to Primitive")
             }
+        }
+    }
+}
+
+impl From<Wrapped<Primitive>> for JmtNode {
+    fn from(primitive: Wrapped<Primitive>) -> Self {
+        let primitive = primitive.0;
+        match primitive.prefix() {
+            // Leaf node
+            0x00 => {
+                let value = primitive.value().unwrap();
+                let leaf_node = LeafNode::new(value);
+                JmtNode::Leaf(value)
+            }
+            // Internal node
+            0x01 => {
+                let children = primitive.children().unwrap();
+                let mut internal = JmtNode::InternalDefault;
+                for child in children.iter() {
+                    internal.insert(child.version(), child.key_hash().clone());
+                }
+                internal
+            }
+            _ => panic!("Invalid prefix"),
         }
     }
 }

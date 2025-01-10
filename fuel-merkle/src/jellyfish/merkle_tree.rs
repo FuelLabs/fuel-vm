@@ -20,12 +20,16 @@ use crate::{
     },
 };
 
-use alloc::vec::Vec;
+use alloc::{
+    sync::Arc,
+    vec::Vec,
+};
 use core::{
     convert::Infallible,
     marker::PhantomData,
+    sync::atomic::AtomicU64,
 };
-use spin::RwLock;
+use spin::rwlock::RwLock;
 
 use super::root_calculator::{
     MerkleRootCalculator,
@@ -73,8 +77,8 @@ pub struct MerkleTreeStorage<
     StorageType,
 > {
     storage: alloc::sync::Arc<RwLock<StorageType>>,
-    nodes: MerkleRootCalculator,
-    leaves_count: u64,
+    // Todo: remove as not needed
+    leaves_count: alloc::sync::Arc<AtomicU64>,
     phantom_table: PhantomData<(
         NodeTableType,
         ValueTableType,
@@ -182,16 +186,27 @@ where
             for ((version, key_hash), value) in node_batch.values() {
                 match value {
                     None => {
-                        StorageMutate::<ValueTableType>::remove(&mut *storage, key_hash)
-                            .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?;
+                        let old = StorageMutate::<ValueTableType>::take(
+                            &mut *storage,
+                            key_hash,
+                        )
+                        .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?;
+                        if old.is_some() {
+                            self.leaves_count
+                                .fetch_sub(1, core::sync::atomic::Ordering::Release);
+                        }
                     }
                     Some(value) => {
-                        StorageMutate::<ValueTableType>::replace(
+                        let old = StorageMutate::<ValueTableType>::replace(
                             &mut *storage,
                             key_hash,
                             &(*version, value.clone()),
                         )
                         .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?;
+                        if old.is_none() {
+                            self.leaves_count
+                                .fetch_add(1, core::sync::atomic::Ordering::Release);
+                        }
                     }
                 }
             }
@@ -371,8 +386,21 @@ where
         JellyfishMerkleTree::new(&self)
     }
 
+    pub const fn empty_root() -> &'static Bytes32 {
+        // TODO:  Check right value for the root of the empthy tree
+        empty_sum()
+    }
+
+    pub fn storage_read(&self) -> spin::RwLockReadGuard<StorageType> {
+        self.storage.read()
+    }
+
+    pub fn storage_write(&self) -> spin::RwLockWriteGuard<StorageType> {
+        self.storage.write()
+    }
+
     // TODO: What to do with errors?
-    fn root(&self) -> Bytes32 {
+    pub fn root(&self) -> Bytes32 {
         // We need to know the version of the root node.
 
         let version = self
@@ -381,378 +409,53 @@ where
             .unwrap_or_default();
 
         self.as_jmt()
-            .get_root_hash(u64::MAX)
-            .map(|root_hash| root_hash.0)
-            .unwrap_or_default()
-    }
-
-    pub const fn empty_root() -> &'static Bytes32 {
-        empty_sum()
-    }
-}
-
-struct MerkleTree<
-    'a,
-    NodeTableType,
-    ValueTableType,
-    RightmostLeafTableType,
-    LatestRootVersionTableType,
-    StorageType,
-> {
-    storage: MerkleTreeStorage<
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-        StorageType,
-    >,
-    jellyfish: Sha256Jmt<
-        'a,
-        MerkleTreeStorage<
-            NodeTableType,
-            ValueTableType,
-            RightmostLeafTableType,
-            LatestRootVersionTableType,
-            StorageType,
-        >,
-    >,
-    _phantom: PhantomData<(NodeTableType, ValueTableType, RightmostLeafTableType)>,
-}
-
-impl<
-        'a,
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-        StorageType,
-    >
-    MerkleTree<
-        'a,
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-        StorageType,
-    >
-where
-    NodeTableType: Mappable<
-        Key = NodeKey,
-        Value = jmt::storage::Node,
-        OwnedValue = jmt::storage::Node,
-    >,
-    ValueTableType: Mappable<
-        Key = jmt::KeyHash,
-        Value = (jmt::Version, jmt::OwnedValue),
-        OwnedValue = (jmt::Version, jmt::OwnedValue),
-    >,
-    RightmostLeafTableType: Mappable<
-        Key = (),
-        Value = (jmt::KeyHash, jmt::storage::NodeKey),
-        OwnedValue = (jmt::KeyHash, jmt::storage::NodeKey),
-    >,
-    LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
-    StorageType: StorageInspect<NodeTableType>
-        + StorageInspect<ValueTableType>
-        + StorageInspect<RightmostLeafTableType>
-        + StorageInspect<LatestRootVersionTableType>,
-{
-    // TODO: Check the right value for an empty root
-    pub const fn empty_root() -> &'static Bytes32 {
-        empty_sum()
-    }
-
-    pub fn root(&self) -> Bytes32 {
-        let version = self.storage.get_latest_root_version().unwrap_or(None);
-        // We need to know the version of the root node.
-        self.jellyfish
-            .get_root_hash(u64::MAX)
+            .get_root_hash(version)
             .map(|root_hash| root_hash.0)
             .unwrap_or_default()
     }
 
     pub fn leaves_count(&self) -> u64 {
         self.leaves_count
+            .load(core::sync::atomic::Ordering::Acquire)
     }
 
-    /// The root node is generated by joining all MMR peaks, where a peak is
-    /// defined as the head of a balanced subtree. A tree can be composed of a
-    /// single balanced subtree, in which case the tree is itself balanced, or
-    /// several balanced subtrees, in which case the tree is imbalanced. Only
-    /// nodes at the head of a balanced tree are persisted in storage; any node,
-    /// including the root node, whose child is an imbalanced child subtree will
-    /// not be saved in persistent storage. This is because node data for such
-    /// nodes is liable to change as more leaves are pushed to the tree.
-    /// Instead, intermediate nodes must be held in a temporary storage space.
-    ///
-    /// When calling `root_node`, callees must pass a mutable reference to a
-    /// temporary storage space that will be used to hold any intermediate nodes
-    /// that are created during root node calculation. At the end of the method
-    /// call, this temporary storage space will contain all intermediate nodes
-    /// not held in persistent storage, and these nodes will be available to the
-    /// callee.
-    ///
-    /// Returns `None` if the tree is empty, and the root node otherwise.
-    fn root_node<E>(
-        &self,
-        scratch_storage: &mut StorageMap<NodesTable>,
-    ) -> Result<Option<Node>, MerkleTreeError<E>> {
-        let mut nodes = self.nodes.stack().iter().rev();
-        let Some(mut head) = nodes.next().cloned() else {
-            return Ok(None); // Empty tree
-        };
-
-        for node in nodes {
-            let parent = node
-                .position()
-                .parent()
-                .map_err(|_| MerkleTreeError::TooLarge)?;
-            head = Node::create_node(parent, node, &head);
-            StorageMutateInfallible::insert(
-                scratch_storage,
-                &head.key(),
-                &(&head).into(),
-            );
-        }
-
-        Ok(Some(head))
-    }
-}
-
-impl<
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        StorageType,
-        StorageError,
-    > MerkleTree<NodeTableType, ValueTableType, RightmostLeafTableType, StorageType>
-where
-    TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageInspect<TableType, Error = StorageError>,
-{
     pub fn new(storage: StorageType) -> Self {
+        let storage = Arc::new(RwLock::new(storage));
         Self {
             storage,
-            nodes: MerkleRootCalculator::new(),
-            leaves_count: 0,
+            // TODO: Remove this, as it is not accurate and not needed
+            leaves_count: Arc::new(AtomicU64::new(0)),
             phantom_table: Default::default(),
         }
     }
 
-    /// A binary Merkle tree can be built from a collection of Merkle Mountain
-    /// Range (MMR) peaks. The MMR structure can be accurately defined by the
-    /// number of leaves in the leaf row.
-    ///
-    /// Consider a binary Merkle tree with seven leaves, producing the following
-    /// MMR structure:
-    ///
-    /// ```text
-    ///       03
-    ///      /  \
-    ///     /    \
-    ///   01      05      09
-    ///  /  \    /  \    /  \
-    /// 00  02  04  06  08  10  12
-    /// ```
-    ///
-    /// We observe that the tree has three peaks at positions `03`, `09`, and
-    /// `12`. These peak positions are recorded in the order that they appear,
-    /// reading left to right in the tree structure, and only descend in height.
-    /// These peak positions communicate everything needed to determine the
-    /// remaining internal nodes building upwards to the root position:
-    ///
-    /// ```text
-    ///            07
-    ///           /  \
-    ///          /    \
-    ///         /      \
-    ///        /        \
-    ///       /          \
-    ///      /            \
-    ///    03              11
-    ///   /  \            /  \
-    /// ...  ...         /    \
-    ///                09      \
-    ///               /  \      \
-    ///             ...  ...    12
-    /// ```
-    ///
-    /// No additional intermediate nodes or leaves are required to calculate
-    /// the root position.
-    ///
-    /// The positions of the MMR peaks can be deterministically calculated as a
-    /// function of `n + 1` where `n` is the number of leaves in the tree. By
-    /// appending an additional leaf node to the tree, we generate a new tree
-    /// structure with additional internal nodes (N.B.: this may also change the
-    /// root position if the tree is already balanced).
-    ///
-    /// In our example, we add an additional leaf at leaf index `7` (in-order
-    /// index `14`):
-    ///
-    /// ```text
-    ///            07
-    ///           /  \
-    ///          /    \
-    ///         /      \
-    ///        /        \
-    ///       /          \
-    ///      /            \
-    ///    03              11
-    ///   /  \            /  \
-    /// ...  ...         /    \
-    ///                09      13
-    ///               /  \    /  \
-    ///             ...  ... 12  14
-    /// ```
-    ///
-    /// We observe that the path from the root position to our new leaf position
-    /// yields a set of side positions that includes our original peak
-    /// positions (see [Path Iterator](crate::common::path_iterator::PathIter)):
-    ///
-    /// | Path position | Side position |
-    /// |---------------|---------------|
-    /// |            07 |            07 |
-    /// |            11 |            03 |
-    /// |            13 |            09 |
-    /// |            14 |            12 |
-    ///
-    /// By excluding the root position `07`, we have established the set of
-    /// side positions `03`, `09`, and `12`, matching our set of MMR peaks.
-    pub fn load(
-        storage: StorageType,
-        leaves_count: u64,
-    ) -> Result<Self, MerkleTreeError<StorageError>> {
-        let mut nodes = Vec::new();
-        let peaks = peak_positions(leaves_count).ok_or(MerkleTreeError::TooLarge)?;
-        for peak in peaks.iter() {
-            let key = peak.in_order_index();
-            let node = storage
-                .get(&key)?
-                .ok_or(MerkleTreeError::LoadError(key))?
-                .into_owned()
-                .into();
-            nodes.push(node);
-        }
+    pub fn from_set<B, I, D>(mut storage: StorageType, set: I) -> anyhow::Result<Self>
+    where
+        I: Iterator<Item = (B, D)>,
+        B: Into<Bytes32>,
+        D: AsRef<[u8]>,
+    {
+        let mut tree = Self::new(storage);
+        let jmt = tree.as_jmt();
+        // We assume that we are constructing a new Merkle Tree, hence the version is set
+        // at 0
+        // value_set: impl IntoIterator<Item = (KeyHash, Option<OwnedValue>)>,
 
-        Ok(Self {
-            storage,
-            nodes: MerkleRootCalculator::new_with_stack(nodes),
-            leaves_count,
-            phantom_table: Default::default(),
-        })
-    }
+        let version = 0;
+        let update_batch = set.map(|(key, data)| {
+            let key_hash = jmt::KeyHash(key.into());
+            // Sad, but jmt requires an owned value
+            let value = data.as_ref().to_vec();
+            (key_hash, Some(value))
+        });
+        // This writes the values into the tree cache. This function returns the tree updates that 
+        // must be written into storage
+        let (root_hash, updates) = jmt.put_value_set(update_batch, version)
+            .map_err(|e| anyhow::anyhow!("Error updating tree: {:?}", e))?;
+        let node_updates = updates.node_batch;
+        <StorageType as TreeWriter>::write_node_batch(&sstorage, &node_updates)?;
 
-    pub fn prove(
-        &self,
-        proof_index: u64,
-    ) -> Result<(Bytes32, ProofSet), MerkleTreeError<StorageError>> {
-        if proof_index >= self.leaves_count {
-            return Err(MerkleTreeError::InvalidProofIndex(proof_index))
-        }
-
-        let root_position = root_position(self.leaves_count)
-            .expect("This tree is too large, but push should have prevented this");
-        let leaf_position = Position::from_leaf_index(proof_index)
-            .expect("leaves_count is valid, and this is less than leaves_count");
-        let (_, mut side_positions): (Vec<_>, Vec<_>) = root_position
-            .path(&leaf_position, self.leaves_count)
-            .iter()
-            .unzip();
-        side_positions.reverse(); // Reorder side positions from leaf to root.
-        side_positions.pop(); // The last side position is the root; remove it.
-
-        // Allocate scratch storage to store temporary nodes when building the
-        // root.
-        let mut scratch_storage = StorageMap::<NodesTable>::new();
-        let root_node = self
-            .root_node(&mut scratch_storage)?
-            .expect("Root node must be present, as leaves_count is nonzero");
-
-        // Get side nodes. First, we check the scratch storage. If the side node
-        // is not found in scratch storage, we then check main storage. Finally,
-        // if the side node is not found in main storage, we exit with a load
-        // error.
-        let mut proof_set = ProofSet::new();
-        for side_position in side_positions {
-            let key = side_position.in_order_index();
-            let primitive = StorageInspectInfallible::get(&scratch_storage, &key)
-                .or(StorageInspect::get(&self.storage, &key)?)
-                .ok_or(MerkleTreeError::LoadError(key))?
-                .into_owned();
-            let node = Node::from(primitive);
-            proof_set.push(*node.hash());
-        }
-
-        let root = *root_node.hash();
-        Ok((root, proof_set))
-    }
-
-    pub fn reset(&mut self) {
-        self.nodes.clear();
-    }
-}
-
-impl<TableType, StorageType, StorageError> MerkleTree<TableType, StorageType>
-where
-    TableType: Mappable<Key = u64, Value = Primitive, OwnedValue = Primitive>,
-    StorageType: StorageMutate<TableType, Error = StorageError>,
-{
-    /// Adds a new leaf node to the tree.
-    /// # WARNING
-    /// This code might modify the storage, and then return an error.
-    /// TODO: fix this issue
-    pub fn push(&mut self, data: &[u8]) -> Result<(), MerkleTreeError<StorageError>> {
-        let new_node = Node::create_leaf(self.leaves_count, data)
-            .ok_or(MerkleTreeError::TooLarge)?;
-
-        // u64 cannot overflow, as memory is finite
-        #[allow(clippy::arithmetic_side_effects)]
-        {
-            self.leaves_count += 1;
-        }
-
-        self.nodes
-            .push_with_callback(new_node, |node| {
-                self.storage
-                    .insert(&node.key(), &node.into())
-                    .map_err(MerkleTreeError::StorageError)
-                    .map(|_| ())
-            })
-            .map_err(|err| match err {
-                NodeStackPushError::Callback(err) => err,
-                NodeStackPushError::TooLarge => MerkleTreeError::TooLarge,
-            })
-    }
-}
-
-/// Calculcate root position from leaf count.
-/// Returns `None` if the tree is too large.
-fn root_position(leaves_count: u64) -> Option<Position> {
-    // The root position of a tree will always have an in-order index equal
-    // to N' - 1, where N is the leaves count and N' is N rounded (or equal)
-    // to the next power of 2.
-    #[allow(clippy::arithmetic_side_effects)] // next_power_of_two() > 0
-    Some(Position::from_in_order_index(
-        leaves_count.checked_add(1)?.next_power_of_two() - 1,
-    ))
-}
-
-/// Calculcate peak positons for given leaf count.
-/// Returns `None` if the tree is too large.
-fn peak_positions(leaves_count: u64) -> Option<Vec<Position>> {
-    let leaf_position = Position::from_leaf_index(leaves_count)?;
-    let root_position = root_position(leaves_count)?;
-
-    // Checked by root_position
-    #[allow(clippy::arithmetic_side_effects)]
-    let next_leaves_count = leaves_count + 1;
-
-    let mut peaks_itr = root_position.path(&leaf_position, next_leaves_count).iter();
-    peaks_itr.next(); // Omit the root
-
-    let (_, peaks): (Vec<_>, Vec<_>) = peaks_itr.unzip();
-
-    Some(peaks)
+        Ok(tree)
 }
 
 #[cfg(test)]

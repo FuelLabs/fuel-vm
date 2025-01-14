@@ -344,7 +344,10 @@ impl MerkleTree {
 #[cfg(test)]
 mod test {
     use crate::sparse::MerkleTreeKey;
-    use jellyfish::hash::empty_sum;
+    use jellyfish::{
+        hash::empty_sum,
+        merkle_tree::EMPTY_ROOT,
+    };
     use sha2::Sha256;
 
     use super::*;
@@ -354,7 +357,7 @@ mod test {
         let tree = MerkleTree::new();
 
         let root = tree.root();
-        assert_eq!(root, empty_sum().clone());
+        assert_eq!(root, EMPTY_ROOT);
     }
 
     #[test]
@@ -391,5 +394,22 @@ mod test {
         let expected_leaf_node =
             jmt::storage::LeafNode::new(value_key_hash.clone(), preimage_value_hash);
         assert_eq!(leaf_node, &expected_leaf_node);
+    }
+
+    #[test]
+    fn adding_and_removing_key_value_pair_gives_the_empty_root() {
+        let mut tree = MerkleTree::new();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let data = b"data";
+        tree.update(merkle_tree_key, data);
+        tree.delete(merkle_tree_key);
+        let first_root = tree.root();
+        assert_eq!(first_root, EMPTY_ROOT);
+        tree.update(merkle_tree_key, data);
+        tree.delete(merkle_tree_key);
+        println!("{:?}", tree.tree.storage.read());
+        let second_root = tree.root();
+        assert_eq!(second_root, EMPTY_ROOT);
     }
 }

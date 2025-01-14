@@ -1,5 +1,4 @@
 use crate::{
-    binary::empty_sum,
     common::Bytes32,
     sparse::MerkleTreeKey,
     storage::{
@@ -51,10 +50,21 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
     }
 }
 
+// Obtained by creating a tree with a single leaf, removing that leaf, and then getting
+// the tree node.
+pub const EMPTY_ROOT: Bytes32 = [
+    83, 80, 65, 82, 83, 69, 95, 77, 69, 82, 75, 76, 69, 95, 80, 76, 65, 67, 69, 72, 79,
+    76, 68, 69, 82, 95, 72, 65, 83, 72, 95, 95,
+];
+
 #[derive(Debug, Clone)]
 pub struct MerkleTreeStorage<
     NodeTableType,
     ValueTableType,
+    // TODO: RightmostLeafTableType is used only when the in JellyFishMerkleTreeRestore,
+    // which we do not use.
+    // This should be removed, as currently the rightmost leaf is not updated correctly
+    // when nodes are removed.
     RightmostLeafTableType,
     LatestRootVersionTableType,
     StorageType,
@@ -379,8 +389,7 @@ where
     }
 
     pub const fn empty_root() -> &'static Bytes32 {
-        // TODO:  Check right value for the root of the empthy tree
-        empty_sum()
+        &EMPTY_ROOT
     }
 
     pub fn storage_read(&self) -> spin::RwLockReadGuard<StorageType> {

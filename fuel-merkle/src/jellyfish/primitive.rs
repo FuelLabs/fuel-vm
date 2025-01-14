@@ -117,7 +117,7 @@ pub trait PrimitiveView {
     }
 
     fn child_hash(&self, index: usize) -> Option<Bytes32> {
-        self.child(index).map(|child| *child.key_hash())
+        self.child(index).map(|child| *child.value())
     }
 }
 
@@ -258,30 +258,6 @@ impl From<&JmtNode> for Wrapped<Primitive> {
             {
                 panic!("Cannot convert Null node to Primitive")
             }
-        }
-    }
-}
-
-impl From<Wrapped<Primitive>> for JmtNode {
-    fn from(primitive: Wrapped<Primitive>) -> Self {
-        let primitive = primitive.0;
-        match primitive.prefix() {
-            // Leaf node
-            0x00 => {
-                let value = primitive.value().unwrap();
-                let leaf_node = LeafNode::new(value);
-                JmtNode::Leaf(value)
-            }
-            // Internal node
-            0x01 => {
-                let children = primitive.children().unwrap();
-                let mut internal = JmtNode::InternalDefault;
-                for child in children.iter() {
-                    internal.insert(child.version(), child.key_hash().clone());
-                }
-                internal
-            }
-            _ => panic!("Invalid prefix"),
         }
     }
 }

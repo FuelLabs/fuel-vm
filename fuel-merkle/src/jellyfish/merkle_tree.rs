@@ -1,23 +1,11 @@
 use crate::{
-    binary::{
-        empty_sum,
-        in_memory::NodesTable,
-        Node,
-        Primitive,
-    },
-    common::{
-        Bytes32,
-        Position,
-        ProofSet,
-        StorageMap,
-    },
+    binary::empty_sum,
+    common::Bytes32,
     sparse::MerkleTreeKey,
     storage::{
         Mappable,
         StorageInspect,
-        StorageInspectInfallible,
         StorageMutate,
-        StorageMutateInfallible,
     },
 };
 
@@ -26,16 +14,10 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    convert::Infallible,
     marker::PhantomData,
     sync::atomic::AtomicU64,
 };
 use spin::rwlock::RwLock;
-
-use super::root_calculator::{
-    MerkleRootCalculator,
-    NodeStackPushError,
-};
 
 use jmt::{
     storage::{
@@ -77,7 +59,7 @@ pub struct MerkleTreeStorage<
     LatestRootVersionTableType,
     StorageType,
 > {
-    storage: alloc::sync::Arc<RwLock<StorageType>>,
+    pub(crate) storage: alloc::sync::Arc<RwLock<StorageType>>,
     // Todo: remove as not needed
     leaves_count: alloc::sync::Arc<AtomicU64>,
     phantom_table: PhantomData<(
@@ -404,15 +386,25 @@ where
     pub fn root(&self) -> Bytes32 {
         // We need to know the version of the root node.
 
-        let version = self
-            .get_latest_root_version()
-            .unwrap_or_default()
-            .unwrap_or_default();
+        let Some(version) = self.get_latest_root_version().unwrap_or_default() else {
+            return *Self::empty_root();
+        };
 
         self.as_jmt()
             .get_root_hash(version)
             .map(|root_hash| root_hash.0)
             .unwrap_or_default()
+    }
+
+    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
+        let merkle_tree = Self::new(storage);
+        let root_from_storage = merkle_tree.root();
+        //
+        if *root == root_from_storage {
+            Ok(merkle_tree)
+        } else {
+            Err(anyhow::anyhow!("Root hash mismatch"))
+        }
     }
 
     pub fn leaves_count(&self) -> u64 {
@@ -430,7 +422,7 @@ where
         }
     }
 
-    pub fn from_set<B, I, D>(mut storage: StorageType, set: I) -> anyhow::Result<Self>
+    pub fn from_set<B, I, D>(storage: StorageType, set: I) -> anyhow::Result<Self>
     where
         I: Iterator<Item = (B, D)>,
         B: Into<Bytes32>,
@@ -478,13 +470,18 @@ where
         let version = self
             .get_latest_root_version()
             .unwrap_or_default()
-            .unwrap_or_default();
+            .unwrap_or_default()
+            .saturating_add(1);
         let update_batch = [(key_hash, value); 1];
         let (_root_hash, updates) = self.as_jmt().put_value_set(update_batch, version)?;
         // TODO: Figure out what to do with stale node indexes
         let node_updates = updates.node_batch;
         <Self as TreeWriter>::write_node_batch(&self, &node_updates);
         return Ok(())
+    }
+
+    pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), anyhow::Error> {
+        self.update(key, &[])
     }
 }
 

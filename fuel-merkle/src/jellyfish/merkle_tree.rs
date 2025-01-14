@@ -11,6 +11,7 @@ use crate::{
         ProofSet,
         StorageMap,
     },
+    sparse::MerkleTreeKey,
     storage::{
         Mappable,
         StorageInspect,
@@ -368,10 +369,10 @@ where
         OwnedValue = (jmt::KeyHash, jmt::storage::NodeKey),
     >,
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
-    StorageType: StorageInspect<NodeTableType>
-        + StorageInspect<ValueTableType>
-        + StorageInspect<RightmostLeafTableType>
-        + StorageInspect<LatestRootVersionTableType>,
+    StorageType: StorageMutate<NodeTableType>
+        + StorageMutate<ValueTableType>
+        + StorageMutate<RightmostLeafTableType>
+        + StorageMutate<LatestRootVersionTableType>,
 {
     fn get_latest_root_version(&self) -> anyhow::Result<Option<u64>> {
         let storage = self.storage.read();
@@ -435,7 +436,7 @@ where
         B: Into<Bytes32>,
         D: AsRef<[u8]>,
     {
-        let mut tree = Self::new(storage);
+        let tree = Self::new(storage);
         let jmt = tree.as_jmt();
         // We assume that we are constructing a new Merkle Tree, hence the version is set
         // at 0
@@ -448,14 +449,43 @@ where
             let value = data.as_ref().to_vec();
             (key_hash, Some(value))
         });
-        // This writes the values into the tree cache. This function returns the tree updates that 
-        // must be written into storage
-        let (root_hash, updates) = jmt.put_value_set(update_batch, version)
+        // This writes the values into the tree cache. This function returns the tree
+        // updates that must be written into storage
+        let (_root_hash, updates) = jmt
+            .put_value_set(update_batch, version)
             .map_err(|e| anyhow::anyhow!("Error updating tree: {:?}", e))?;
+        // TODO: Should we check the stale node indexes as well?
         let node_updates = updates.node_batch;
-        <StorageType as TreeWriter>::write_node_batch(&sstorage, &node_updates)?;
+        <Self as TreeWriter>::write_node_batch(&tree, &node_updates)?;
 
         Ok(tree)
+    }
+
+    pub fn update(
+        &mut self,
+        key: MerkleTreeKey,
+        data: &[u8],
+    ) -> Result<(), anyhow::Error> {
+        let key_hash = jmt::KeyHash(*key);
+        // If data.is_empty() we remove the value from the jmt
+        let value = if data.is_empty() {
+            None
+        } else {
+            Some(data.to_vec())
+        };
+        // TODO : We could update version once per block, but here we
+        // update version for each update operation.
+        let version = self
+            .get_latest_root_version()
+            .unwrap_or_default()
+            .unwrap_or_default();
+        let update_batch = [(key_hash, value); 1];
+        let (_root_hash, updates) = self.as_jmt().put_value_set(update_batch, version)?;
+        // TODO: Figure out what to do with stale node indexes
+        let node_updates = updates.node_batch;
+        <Self as TreeWriter>::write_node_batch(&self, &node_updates);
+        return Ok(())
+    }
 }
 
 #[cfg(test)]

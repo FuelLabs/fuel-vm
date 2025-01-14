@@ -47,18 +47,6 @@ impl Mappable for ValuesTable {
 
 #[derive(Debug, Clone)]
 
-/// Auxiliary table that stores information about the rightmost leaf in the tree.
-pub struct RightmostLeafTable;
-
-impl Mappable for RightmostLeafTable {
-    type Key = Self::OwnedKey;
-    type OwnedKey = ();
-    type OwnedValue = (jmt::KeyHash, jmt::storage::NodeKey);
-    type Value = Self::OwnedValue;
-}
-
-#[derive(Debug, Clone)]
-
 /// Auxiliary table that stores the latest version of the tree.
 pub struct LatestRootVersionTable;
 
@@ -73,7 +61,6 @@ impl Mappable for LatestRootVersionTable {
 pub struct Storage {
     pub nodes: StorageMap<NodesTable>,
     pub values: StorageMap<ValuesTable>,
-    pub rightmost_leaf: Option<<RightmostLeafTable as Mappable>::OwnedValue>,
     pub latest_root_version: Option<<LatestRootVersionTable as Mappable>::OwnedValue>,
 }
 
@@ -114,32 +101,6 @@ impl StorageInspect<ValuesTable> for Storage {
         key: &<ValuesTable as Mappable>::Key,
     ) -> Result<bool, Self::Error> {
         self.values.storage::<ValuesTable>().contains_key(key)
-    }
-}
-
-impl StorageInspect<RightmostLeafTable> for Storage {
-    type Error = core::convert::Infallible;
-
-    fn get(
-        &self,
-        _key: &<RightmostLeafTable as Mappable>::Key,
-    ) -> Result<
-        Option<std::borrow::Cow<<RightmostLeafTable as Mappable>::OwnedValue>>,
-        Self::Error,
-    > {
-        let rightmost_leaf = &self.rightmost_leaf;
-        if let Some(rightmost_leaf) = rightmost_leaf {
-            Ok(Some(Cow::Borrowed(rightmost_leaf)))
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn contains_key(
-        &self,
-        _key: &<RightmostLeafTable as Mappable>::Key,
-    ) -> Result<bool, Self::Error> {
-        Ok(self.rightmost_leaf.is_some())
     }
 }
 
@@ -203,25 +164,6 @@ impl StorageMutate<ValuesTable> for Storage {
     }
 }
 
-impl StorageMutate<RightmostLeafTable> for Storage {
-    fn replace(
-        &mut self,
-        _key: &<RightmostLeafTable as Mappable>::Key,
-        value: &<RightmostLeafTable as Mappable>::Value,
-    ) -> Result<Option<<RightmostLeafTable as Mappable>::OwnedValue>, Self::Error> {
-        let old_value = self.rightmost_leaf.take();
-        self.rightmost_leaf = Some(value.clone());
-        Ok(old_value)
-    }
-
-    fn take(
-        &mut self,
-        _key: &<RightmostLeafTable as Mappable>::Key,
-    ) -> Result<Option<<RightmostLeafTable as Mappable>::OwnedValue>, Self::Error> {
-        Ok(self.rightmost_leaf.take())
-    }
-}
-
 impl StorageMutate<LatestRootVersionTable> for Storage {
     fn replace(
         &mut self,
@@ -245,13 +187,7 @@ impl StorageMutate<LatestRootVersionTable> for Storage {
 
 #[derive(Clone)]
 pub struct MerkleTree {
-    tree: MerkleTreeStorage<
-        NodesTable,
-        ValuesTable,
-        RightmostLeafTable,
-        LatestRootVersionTable,
-        Storage,
-    >,
+    tree: MerkleTreeStorage<NodesTable, ValuesTable, LatestRootVersionTable, Storage>,
 }
 
 impl MerkleTree {
@@ -372,8 +308,6 @@ mod test {
         let values = storage.values.inner();
         // The version has been updated:
         assert_eq!(storage.latest_root_version.unwrap(), 1);
-        // The rightmost leaf has been updated:
-        assert!(storage.rightmost_leaf.is_some());
         // The root has been updated:
         assert!(&tree.root() != empty_sum());
         // There is exactly one node in the tree

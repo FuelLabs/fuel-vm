@@ -51,7 +51,7 @@ impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
 }
 
 // Obtained by creating a tree with a single leaf, removing that leaf, and then getting
-// the tree node.
+// the tree root.
 pub const EMPTY_ROOT: Bytes32 = [
     83, 80, 65, 82, 83, 69, 95, 77, 69, 82, 75, 76, 69, 95, 80, 76, 65, 67, 69, 72, 79,
     76, 68, 69, 82, 95, 72, 65, 83, 72, 95, 95,
@@ -61,36 +61,20 @@ pub const EMPTY_ROOT: Bytes32 = [
 pub struct MerkleTreeStorage<
     NodeTableType,
     ValueTableType,
-    // TODO: RightmostLeafTableType is used only when the in JellyFishMerkleTreeRestore,
-    // which we do not use.
-    // This should be removed, as currently the rightmost leaf is not updated correctly
-    // when nodes are removed.
-    RightmostLeafTableType,
     LatestRootVersionTableType,
     StorageType,
 > {
     pub(crate) storage: alloc::sync::Arc<RwLock<StorageType>>,
     // Todo: remove as not needed
     leaves_count: alloc::sync::Arc<AtomicU64>,
-    phantom_table: PhantomData<(
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-    )>,
+    phantom_table:
+        PhantomData<(NodeTableType, ValueTableType, LatestRootVersionTableType)>,
 }
 
-impl<
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-        StorageType,
-    > TreeWriter
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> TreeWriter
     for MerkleTreeStorage<
         NodeTableType,
         ValueTableType,
-        RightmostLeafTableType,
         LatestRootVersionTableType,
         StorageType,
     >
@@ -105,15 +89,9 @@ where
         Value = (jmt::Version, jmt::OwnedValue),
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
-    RightmostLeafTableType: Mappable<
-        Key = (),
-        Value = (jmt::KeyHash, jmt::storage::NodeKey),
-        OwnedValue = (jmt::KeyHash, jmt::storage::NodeKey),
-    >,
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
     StorageType: StorageMutate<NodeTableType>
         + StorageMutate<ValueTableType>
-        + StorageMutate<RightmostLeafTableType>
         + StorageMutate<LatestRootVersionTableType>,
 {
     fn write_node_batch(
@@ -150,41 +128,6 @@ where
                 }
             }
 
-            // need to update the rightmost leaf
-            match node {
-                jmt::storage::Node::Leaf(leaf) => {
-                    // update the preimage table
-                    let rightmost_leaf =
-                        StorageInspect::<RightmostLeafTableType>::get(&*storage, &())
-                            .map_err(|_e| {
-                                anyhow::anyhow!("Rightmost leaf read storage error")
-                            })?;
-
-                    if let Some(key_with_node) = rightmost_leaf {
-                        if leaf.key_hash() >= key_with_node.0 {
-                            StorageMutate::<RightmostLeafTableType>::insert(
-                                &mut *storage,
-                                &(),
-                                &(leaf.key_hash(), key.clone()),
-                            )
-                            .map_err(|_e| {
-                                anyhow::anyhow!("Rightmost leaf write storage error")
-                            })?;
-                        }
-                    } else {
-                        StorageMutate::<RightmostLeafTableType>::insert(
-                            &mut *storage,
-                            &(),
-                            &(leaf.key_hash(), key.clone()),
-                        )
-                        .map_err(|_e| {
-                            anyhow::anyhow!("Rightmost leaf write storage error")
-                        })?;
-                    }
-                }
-                _ => {}
-            };
-
             for ((version, key_hash), value) in node_batch.values() {
                 match value {
                     None => {
@@ -218,17 +161,10 @@ where
     }
 }
 
-impl<
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-        StorageType,
-    > TreeReader
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> TreeReader
     for MerkleTreeStorage<
         NodeTableType,
         ValueTableType,
-        RightmostLeafTableType,
         LatestRootVersionTableType,
         StorageType,
     >
@@ -243,14 +179,7 @@ where
         Value = (jmt::Version, jmt::OwnedValue),
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
-    RightmostLeafTableType: Mappable<
-        Key = (),
-        Value = (jmt::KeyHash, jmt::storage::NodeKey),
-        OwnedValue = (jmt::KeyHash, jmt::storage::NodeKey),
-    >,
-    StorageType: StorageInspect<NodeTableType>
-        + StorageInspect<ValueTableType>
-        + StorageInspect<RightmostLeafTableType>,
+    StorageType: StorageInspect<NodeTableType> + StorageInspect<ValueTableType>,
 {
     fn get_node_option(
         &self,
@@ -285,39 +214,16 @@ where
     fn get_rightmost_leaf(
         &self,
     ) -> anyhow::Result<Option<(NodeKey, jmt::storage::LeafNode)>> {
-        let storage = self.storage.read();
-        let Some((_key_hash, node_key)) =
-            StorageInspect::<RightmostLeafTableType>::get(&*storage, &())
-                .map_err(|_e| anyhow::anyhow!("Rightmost leaf storage error"))?
-                .map(|v| v.into_owned())
-        else {
-            return Ok(None)
-        };
-
-        let leaf = StorageInspect::<NodeTableType>::get(&*storage, &node_key)
-            .map_err(|e| anyhow::anyhow!("Node storage error"))?
-            .map(|v| v.into_owned());
-
-        match leaf {
-            Some(jmt::storage::Node::Leaf(leaf)) => Ok(Some((node_key, leaf))),
-            _ => Err(anyhow::anyhow!(
-                "Consistency error: node stored for rightmost leaf is not a leaf node"
-            )),
-        }
+        unimplemented!(
+            "Righmost leaf is used only when restoring the tree, which we do not support"
+        )
     }
 }
 
-impl<
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-        StorageType,
-    > HasPreimage
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> HasPreimage
     for MerkleTreeStorage<
         NodeTableType,
         ValueTableType,
-        RightmostLeafTableType,
         LatestRootVersionTableType,
         StorageType,
     >
@@ -339,17 +245,10 @@ where
     }
 }
 
-impl<
-        NodeTableType,
-        ValueTableType,
-        RightmostLeafTableType,
-        LatestRootVersionTableType,
-        StorageType,
-    >
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
     MerkleTreeStorage<
         NodeTableType,
         ValueTableType,
-        RightmostLeafTableType,
         LatestRootVersionTableType,
         StorageType,
     >
@@ -364,19 +263,13 @@ where
         Value = (jmt::Version, jmt::OwnedValue),
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
-    RightmostLeafTableType: Mappable<
-        Key = (),
-        Value = (jmt::KeyHash, jmt::storage::NodeKey),
-        OwnedValue = (jmt::KeyHash, jmt::storage::NodeKey),
-    >,
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
     StorageType: StorageMutate<NodeTableType>
         + StorageMutate<ValueTableType>
-        + StorageMutate<RightmostLeafTableType>
         + StorageMutate<LatestRootVersionTableType>,
 {
     fn get_latest_root_version(&self) -> anyhow::Result<Option<u64>> {
-        let storage = self.storage.read();
+        let storage = self.storage_read();
         let version = StorageInspect::<LatestRootVersionTableType>::get(&*storage, &())
             .map_err(|_e| anyhow::anyhow!("Latest root version storage error"))?
             .map(|v| *v);
@@ -494,7 +387,14 @@ where
         let (_root_hash, updates) = self.as_jmt().put_value_set(update_batch, version)?;
         // TODO: Figure out what to do with stale node indexes
         let node_updates = updates.node_batch;
-        <Self as TreeWriter>::write_node_batch(&self, &node_updates);
+        <Self as TreeWriter>::write_node_batch(&self, &node_updates)?;
+        let stale_nodes = updates.stale_node_index_batch;
+        let mut storage_write_guard = self.storage_write();
+        for stale_node_index in stale_nodes {
+            let node_key = stale_node_index.node_key;
+            StorageMutate::<NodeTableType>::remove(&mut *storage_write_guard, &node_key)
+                .map_err(|_e| anyhow::anyhow!("Error removing node"))?;
+        }
         return Ok(())
     }
 

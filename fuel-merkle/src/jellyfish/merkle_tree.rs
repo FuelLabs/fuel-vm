@@ -12,10 +12,7 @@ use alloc::{
     sync::Arc,
     vec::Vec,
 };
-use core::{
-    marker::PhantomData,
-    sync::atomic::AtomicU64,
-};
+use core::marker::PhantomData;
 use spin::rwlock::RwLock;
 
 use jmt::{
@@ -65,8 +62,6 @@ pub struct MerkleTreeStorage<
     StorageType,
 > {
     pub(crate) storage: alloc::sync::Arc<RwLock<StorageType>>,
-    // Todo: remove as not needed
-    leaves_count: alloc::sync::Arc<AtomicU64>,
     phantom_table:
         PhantomData<(NodeTableType, ValueTableType, LatestRootVersionTableType)>,
 }
@@ -131,27 +126,19 @@ where
             for ((version, key_hash), value) in node_batch.values() {
                 match value {
                     None => {
-                        let old = StorageMutate::<ValueTableType>::take(
+                        let _old = StorageMutate::<ValueTableType>::take(
                             &mut *storage,
                             key_hash,
                         )
                         .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?;
-                        if old.is_some() {
-                            self.leaves_count
-                                .fetch_sub(1, core::sync::atomic::Ordering::Release);
-                        }
                     }
                     Some(value) => {
-                        let old = StorageMutate::<ValueTableType>::replace(
+                        let _old = StorageMutate::<ValueTableType>::replace(
                             &mut *storage,
                             key_hash,
                             &(*version, value.clone()),
                         )
                         .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?;
-                        if old.is_none() {
-                            self.leaves_count
-                                .fetch_add(1, core::sync::atomic::Ordering::Release);
-                        }
                     }
                 }
             }
@@ -307,7 +294,7 @@ where
             .unwrap_or_default()
     }
 
-    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
+    pub fn _load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
         let merkle_tree = Self::new(storage);
         let root_from_storage = merkle_tree.root();
         //
@@ -318,17 +305,11 @@ where
         }
     }
 
-    pub fn leaves_count(&self) -> u64 {
-        self.leaves_count
-            .load(core::sync::atomic::Ordering::Acquire)
-    }
-
     pub fn new(storage: StorageType) -> Self {
         let storage = Arc::new(RwLock::new(storage));
         Self {
             storage,
             // TODO: Remove this, as it is not accurate and not needed
-            leaves_count: Arc::new(AtomicU64::new(0)),
             phantom_table: Default::default(),
         }
     }

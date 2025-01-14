@@ -4,19 +4,13 @@ use fuel_storage::{
     StorageInspect,
     StorageMutate,
 };
-use jmt::storage;
 
 use crate::jellyfish::merkle_tree::MerkleTreeStorage;
 
 use crate::{
     common::{
         Bytes32,
-        ProofSet,
         StorageMap,
-    },
-    jellyfish::{
-        self,
-        Primitive,
     },
     sparse::MerkleTreeKey,
     storage::Mappable,
@@ -279,10 +273,9 @@ impl MerkleTree {
 
 #[cfg(test)]
 mod test {
-    use crate::sparse::MerkleTreeKey;
-    use jellyfish::{
-        hash::empty_sum,
-        merkle_tree::EMPTY_ROOT,
+    use crate::{
+        jellyfish::merkle_tree::EMPTY_ROOT,
+        sparse::MerkleTreeKey,
     };
     use sha2::Sha256;
 
@@ -309,7 +302,7 @@ mod test {
         // The version has been updated:
         assert_eq!(storage.latest_root_version.unwrap(), 1);
         // The root has been updated:
-        assert!(&tree.root() != empty_sum());
+        assert!(tree.root() != EMPTY_ROOT);
         // There is exactly one node in the tree
         assert_eq!(nodes.len(), 1);
         // There is exactly one value in the tree

@@ -343,13 +343,11 @@ impl MerkleTree {
 
 #[cfg(test)]
 mod test {
+    use crate::sparse::MerkleTreeKey;
+    use jellyfish::hash::empty_sum;
+    use sha2::Sha256;
+
     use super::*;
-    use binary::{
-        empty_sum,
-        leaf_sum,
-        node_sum,
-    };
-    use fuel_merkle_test_helpers::TEST_DATA;
 
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {
@@ -360,188 +358,38 @@ mod test {
     }
 
     #[test]
-    fn root_returns_the_merkle_root_for_1_leaf() {
+    fn adding_key_value_pair_works() {
         let mut tree = MerkleTree::new();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let data = b"data";
+        tree.update(merkle_tree_key, data);
+        let storage = tree.tree.storage.read();
+        let nodes = storage.nodes.inner();
+        let values = storage.values.inner();
+        // The version has been updated:
+        assert_eq!(storage.latest_root_version.unwrap(), 1);
+        // The rightmost leaf has been updated:
+        assert!(storage.rightmost_leaf.is_some());
+        // The root has been updated:
+        assert!(&tree.root() != empty_sum());
+        // There is exactly one node in the tree
+        assert_eq!(nodes.len(), 1);
+        // There is exactly one value in the tree
+        assert_eq!(values.len(), 1);
+        let node = nodes.iter().next().unwrap();
+        // The only node is a leaf
+        let jmt::storage::Node::Leaf(leaf_node) = node.1 else {
+            panic!("Not a leaf node");
+        };
 
-        let data = &TEST_DATA[0..1]; // 1 leaf
-        for datum in data.iter() {
-            tree.push(datum);
-        }
-
-        let leaf_0 = leaf_sum(data[0]);
-
-        let root = tree.root();
-        assert_eq!(root, leaf_0);
-    }
-
-    #[test]
-    fn root_returns_the_merkle_root_for_7_leaves() {
-        let mut tree = MerkleTree::new();
-
-        let data = &TEST_DATA[0..7]; // 7 leaves
-        for datum in data.iter() {
-            tree.push(datum);
-        }
-
-        //               07
-        //              /  \
-        //             /    \
-        //            /      \
-        //           /        \
-        //          /          \
-        //         /            \
-        //       03              11
-        //      /  \            /  \
-        //     /    \          /    \
-        //   01      05      09      \
-        //  /  \    /  \    /  \      \
-        // 00  02  04  06  08  10     12
-        // 00  01  02  03  04  05     06
-
-        let leaf_0 = leaf_sum(data[0]);
-        let leaf_1 = leaf_sum(data[1]);
-        let leaf_2 = leaf_sum(data[2]);
-        let leaf_3 = leaf_sum(data[3]);
-        let leaf_4 = leaf_sum(data[4]);
-        let leaf_5 = leaf_sum(data[5]);
-        let leaf_6 = leaf_sum(data[6]);
-
-        let node_1 = node_sum(&leaf_0, &leaf_1);
-        let node_5 = node_sum(&leaf_2, &leaf_3);
-        let node_3 = node_sum(&node_1, &node_5);
-        let node_9 = node_sum(&leaf_4, &leaf_5);
-        let node_11 = node_sum(&node_9, &leaf_6);
-        let node_7 = node_sum(&node_3, &node_11);
-
-        let root = tree.root();
-        assert_eq!(root, node_7);
-    }
-
-    #[test]
-    fn prove_returns_none_for_0_leaves() {
-        let tree = MerkleTree::new();
-
-        let proof = tree.prove(0);
-        assert!(proof.is_none());
-    }
-
-    #[test]
-    fn prove_returns_none_when_index_is_greater_than_number_of_leaves() {
-        let mut tree = MerkleTree::new();
-
-        let data = &TEST_DATA[0..5]; // 5 leaves
-        for datum in data.iter() {
-            tree.push(datum);
-        }
-
-        let proof = tree.prove(10);
-        assert!(proof.is_none());
-    }
-
-    #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_1_leaf() {
-        let mut tree = MerkleTree::new();
-
-        let data = &TEST_DATA[0..1]; // 1 leaf
-        for datum in data.iter() {
-            tree.push(datum);
-        }
-
-        let leaf_0 = leaf_sum(data[0]);
-
-        {
-            let (root, proof_set) = tree.prove(0).unwrap();
-            assert_eq!(root, leaf_0);
-            assert!(proof_set.is_empty());
-        }
-    }
-
-    #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_7_leaves() {
-        let mut tree = MerkleTree::new();
-
-        let data = &TEST_DATA[0..7]; // 7 leaves
-        for datum in data.iter() {
-            tree.push(datum);
-        }
-
-        //               07
-        //              /  \
-        //             /    \
-        //            /      \
-        //           /        \
-        //          /          \
-        //         /            \
-        //       03              11
-        //      /  \            /  \
-        //     /    \          /    \
-        //   01      05      09      \
-        //  /  \    /  \    /  \      \
-        // 00  02  04  06  08  10     12
-        // 00  01  02  03  04  05     06
-
-        let leaf_0 = leaf_sum(data[0]);
-        let leaf_1 = leaf_sum(data[1]);
-        let leaf_2 = leaf_sum(data[2]);
-        let leaf_3 = leaf_sum(data[3]);
-        let leaf_4 = leaf_sum(data[4]);
-        let leaf_5 = leaf_sum(data[5]);
-        let leaf_6 = leaf_sum(data[6]);
-
-        let node_1 = node_sum(&leaf_0, &leaf_1);
-        let node_5 = node_sum(&leaf_2, &leaf_3);
-        let node_3 = node_sum(&node_1, &node_5);
-        let node_9 = node_sum(&leaf_4, &leaf_5);
-        let node_11 = node_sum(&node_9, &leaf_6);
-        let node_7 = node_sum(&node_3, &node_11);
-
-        {
-            let (root, proof_set) = tree.prove(0).unwrap();
-            assert_eq!(root, node_7);
-            assert_eq!(proof_set[0], leaf_1);
-            assert_eq!(proof_set[1], node_5);
-            assert_eq!(proof_set[2], node_11);
-        }
-        {
-            let (root, proof_set) = tree.prove(1).unwrap();
-            assert_eq!(root, node_7);
-            assert_eq!(proof_set[0], leaf_0);
-            assert_eq!(proof_set[1], node_5);
-            assert_eq!(proof_set[2], node_11);
-        }
-        {
-            let (root, proof_set) = tree.prove(2).unwrap();
-            assert_eq!(root, node_7);
-            assert_eq!(proof_set[0], leaf_3);
-            assert_eq!(proof_set[1], node_1);
-            assert_eq!(proof_set[2], node_11);
-        }
-        {
-            let (root, proof_set) = tree.prove(3).unwrap();
-            assert_eq!(root, node_7);
-            assert_eq!(proof_set[0], leaf_2);
-            assert_eq!(proof_set[1], node_1);
-            assert_eq!(proof_set[2], node_11);
-        }
-        {
-            let (root, proof_set) = tree.prove(4).unwrap();
-            assert_eq!(root, node_7);
-            assert_eq!(proof_set[0], leaf_5);
-            assert_eq!(proof_set[1], leaf_6);
-            assert_eq!(proof_set[2], node_3);
-        }
-        {
-            let (root, proof_set) = tree.prove(5).unwrap();
-            assert_eq!(root, node_7);
-            assert_eq!(proof_set[0], leaf_4);
-            assert_eq!(proof_set[1], leaf_6);
-            assert_eq!(proof_set[2], node_3);
-        }
-        {
-            let (root, proof_set) = tree.prove(6).unwrap();
-            assert_eq!(root, node_7);
-            assert_eq!(proof_set[0], node_9);
-            assert_eq!(proof_set[1], node_3);
-        }
+        let value = values.iter().next().unwrap();
+        let (value_key_hash, (_version, preimage)) = value;
+        // The key_hash of the leaf node is the same as the key_hash of the value
+        assert_eq!(value_key_hash, &leaf_node.key_hash());
+        let preimage_value_hash = jmt::ValueHash::with::<Sha256>(preimage);
+        let expected_leaf_node =
+            jmt::storage::LeafNode::new(value_key_hash.clone(), preimage_value_hash);
+        assert_eq!(leaf_node, &expected_leaf_node);
     }
 }

@@ -302,7 +302,7 @@ mod test {
         // The version has been updated:
         assert_eq!(storage.latest_root_version.unwrap(), 1);
         // The root has been updated:
-        assert!(tree.root() != EMPTY_ROOT);
+        assert_ne!(tree.root(), EMPTY_ROOT);
         // There is exactly one node in the tree
         assert_eq!(nodes.len(), 1);
         // There is exactly one value in the tree
@@ -338,5 +338,32 @@ mod test {
         println!("{:?}", tree.tree.storage.read());
         let second_root = tree.root();
         assert_eq!(second_root, EMPTY_ROOT);
+    }
+
+    #[test]
+    fn updating_key_with_same_value_does_not_change_root() {
+        let mut tree = MerkleTree::new();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let data = b"data";
+        tree.update(merkle_tree_key, data);
+        let first_root = tree.root();
+        tree.update(merkle_tree_key, data);
+        let second_root = tree.root();
+        assert_eq!(first_root, second_root);
+    }
+
+    #[test]
+    fn updating_key_with_two_values_changes_root() {
+        let mut tree = MerkleTree::new();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let data1 = b"data1";
+        let data2 = b"data2";
+        tree.update(merkle_tree_key, data1);
+        let first_root = tree.root();
+        tree.update(merkle_tree_key, data2);
+        let second_root = tree.root();
+        assert_ne!(first_root, second_root);
     }
 }

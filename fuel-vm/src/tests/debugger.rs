@@ -1,7 +1,22 @@
-use fuel_asm::{op, RegId};
-use fuel_tx::{ConsensusParameters, Finalizable, GasCosts, Script, TransactionBuilder};
+use fuel_asm::{
+    op,
+    RegId,
+};
+use fuel_tx::{
+    ConsensusParameters,
+    Finalizable,
+    GasCosts,
+    Script,
+    TransactionBuilder,
+};
 
-use crate::{prelude::{Interpreter, IntoChecked}, state::ProgramState};
+use crate::{
+    prelude::{
+        Interpreter,
+        IntoChecked,
+    },
+    state::ProgramState,
+};
 
 #[test]
 fn receipts_are_produced_correctly_with_stepping() {
@@ -13,7 +28,7 @@ fn receipts_are_produced_correctly_with_stepping() {
     .into_iter()
     .collect();
 
-    let params = ConsensusParameters::standard();    
+    let params = ConsensusParameters::standard();
     let tx = TransactionBuilder::script(script, Vec::new())
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
@@ -33,15 +48,17 @@ fn receipts_are_produced_correctly_with_stepping() {
     let mut t = *vm.transact(tx).expect("panicked").state();
     loop {
         match t {
-            ProgramState::Return(_) |
-            ProgramState::ReturnData(_) |
-            ProgramState::Revert(_) => {
+            ProgramState::Return(_)
+            | ProgramState::ReturnData(_)
+            | ProgramState::Revert(_) => {
                 break;
             }
             ProgramState::RunProgram(_) => {
                 t = vm.resume().expect("panicked");
             }
-            ProgramState::VerifyPredicate(_) => unreachable!("no predicates in this test"),
+            ProgramState::VerifyPredicate(_) => {
+                unreachable!("no predicates in this test")
+            }
         }
     }
     let receipts_with_debugger = vm.receipts();

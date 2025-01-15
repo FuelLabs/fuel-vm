@@ -233,7 +233,11 @@ async fn recover_tx_id_predicate() {
         // parallel version
         let mut tx_for_async = tx.clone();
         tx_for_async
-            .estimate_predicates_async::<TokioWithRayon>(&check_params, &DummyPool)
+            .estimate_predicates_async::<TokioWithRayon>(
+                &check_params,
+                &DummyPool,
+                &crate::storage::predicate::EmptyStorage,
+            )
             .await
             .expect("Should estimate predicate successfully");
 

@@ -54,6 +54,11 @@ pub const EMPTY_ROOT: Bytes32 = [
     76, 68, 69, 82, 95, 72, 65, 83, 72, 95, 95,
 ];
 
+pub enum MerkleProof {
+    Inclusion(jmt::proof::SparseMerkleProof<sha2::Sha256>),
+    Exclusion(jmt::ExclusionProof<sha2::Sha256>),
+}
+
 #[derive(Debug, Clone)]
 pub struct MerkleTreeStorage<
     NodeTableType,
@@ -328,7 +333,10 @@ where
 
         let version = 0;
         let update_batch = set.map(|(key, data)| {
-            let key_hash = jmt::KeyHash(key.into());
+            // We are forced to hash again to be consistent with ics23 proofs, which are
+            // the only exposed proofs that support non-existence in the jmt
+            // crate
+            let key_hash = jmt::KeyHash::with::<sha2::Sha256>(key.into());
             // Sad, but jmt requires an owned value
             let value = data.as_ref().to_vec();
             (key_hash, Some(value))
@@ -350,7 +358,7 @@ where
         key: MerkleTreeKey,
         data: &[u8],
     ) -> Result<(), anyhow::Error> {
-        let key_hash = jmt::KeyHash(*key);
+        let key_hash = jmt::KeyHash::with::<sha2::Sha256>(*key);
         // If data.is_empty() we remove the value from the jmt
         let value = if data.is_empty() {
             None
@@ -381,6 +389,30 @@ where
 
     pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), anyhow::Error> {
         self.update(key, &[])
+    }
+
+    pub fn generate_proof(
+        &self,
+        key: &MerkleTreeKey,
+    ) -> Result<MerkleProof, anyhow::Error> {
+        let jmt = self.as_jmt();
+        let key_hash = jmt::KeyHash::with::<sha2::Sha256>(**key);
+        let version = self
+            .get_latest_root_version()
+            .unwrap_or_default()
+            .unwrap_or_default();
+        let res = jmt.get_with_exclusion_proof(key_hash, version);
+        match res {
+            Ok(Ok((_value, inclusion_proof))) => {
+                let proof = MerkleProof::Inclusion(inclusion_proof);
+                Ok(proof)
+            }
+            Ok(Err(exclusion_proof)) => {
+                let proof = MerkleProof::Exclusion(exclusion_proof);
+                Ok(proof)
+            }
+            Err(e) => return Err(anyhow::anyhow!("Error generating proof: {:?}", e)),
+        }
     }
 }
 

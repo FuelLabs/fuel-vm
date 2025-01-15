@@ -354,7 +354,7 @@ mod test {
     }
 
     #[test]
-    fn updating_key_with_two_values_changes_root() {
+    fn updating_same_key_changes_root() {
         let mut tree = MerkleTree::new();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);

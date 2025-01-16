@@ -2,6 +2,9 @@
 pub mod in_memory;
 
 /// Integration of jmt::JellyfishMerkleTree with the Storage traits.
+pub mod jmt_integration;
+
+/// StorageTrait backed Jellyfish Merkle Tree implementation
 pub mod merkle_tree;
 
 pub use merkle_tree::MerkleTreeError;

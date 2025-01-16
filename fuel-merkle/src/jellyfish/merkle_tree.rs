@@ -8,21 +8,18 @@ use crate::{
     },
 };
 
-use alloc::{
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::sync::Arc;
 use core::marker::PhantomData;
-use spin::rwlock::RwLock;
+use spin::{
+    rwlock::RwLock,
+    RwLockReadGuard,
+    RwLockWriteGuard,
+};
 
 use jmt::{
     storage::{
-        HasPreimage,
-        LeafNode as JmtLeafNode,
         Node as JmtNode,
-        NodeBatch as JmtNodeBatch,
         NodeKey as JmtNodeKey,
-        TreeReader,
         TreeWriter,
     },
     JellyfishMerkleTree,
@@ -60,92 +57,58 @@ pub struct JellyfishMerkleTreeStorage<
     LatestRootVersionTableType,
     StorageType,
 > {
-    inner: alloc::sync::Arc<RwLock<StorageType>>,
+    inner: Arc<RwLock<StorageType>>,
     phantom_table:
         PhantomData<(NodeTableType, ValueTableType, LatestRootVersionTableType)>,
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> TreeWriter
-    for JellyfishMerkleTreeStorage<
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+    JellyfishMerkleTreeStorage<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+    >
+{
+    pub const fn empty_root() -> &'static Bytes32 {
+        &EMPTY_ROOT
+    }
+
+    pub fn storage_read(&self) -> RwLockReadGuard<StorageType> {
+        self.inner.read()
+    }
+
+    pub fn storage_write(&self) -> RwLockWriteGuard<StorageType> {
+        self.inner.write()
+    }
+}
+
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+    JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
     >
 where
-    NodeTableType: Mappable<Key = JmtNodeKey, Value = JmtNode, OwnedValue = JmtNode>,
-    ValueTableType: Mappable<
-        Key = jmt::KeyHash,
-        Value = (jmt::Version, jmt::OwnedValue),
-        OwnedValue = (jmt::Version, jmt::OwnedValue),
-    >,
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
-    StorageType: StorageMutate<NodeTableType>
-        + StorageMutate<ValueTableType>
-        + StorageMutate<LatestRootVersionTableType>,
+    StorageType: StorageInspect<LatestRootVersionTableType>,
 {
-    fn write_node_batch(&self, node_batch: &JmtNodeBatch) -> anyhow::Result<()> {
-        for (key, node) in node_batch.nodes() {
-            let mut storage = self.inner
-                // TODO: We need to check that mutable access to the storage is exclusive
-                // If not, RefCell<Storage> will need to be replaced with RwLock<Storage>
-                .write();
-            <StorageType as StorageMutate<NodeTableType>>::insert(
-                &mut *storage,
-                key,
-                node,
-            )
-            .map_err(|_err| anyhow::anyhow!("Node table write Storage Error"))?;
-            if key.nibble_path().is_empty() {
-                // If the nibble path is empty, we are updating the root node.
-                // We must also update the latest root version
-                let newer_version = <StorageType as StorageInspect<
-                    LatestRootVersionTableType,
-                >>::get(&*storage, &())
-                .map_err(|_e| anyhow::anyhow!("Latest root version read storage error"))?
-                .map(|v| *v)
-                .filter(|v| *v >= key.version());
-                // To check: it should never be the case that this check fails
-                if newer_version.is_none() {
-                    StorageMutate::<LatestRootVersionTableType>::insert(
-                        &mut *storage,
-                        &(),
-                        &key.version(),
-                    )
-                    .map_err(|_e| {
-                        anyhow::anyhow!("Latest root version write storage error")
-                    })?;
-                }
-            }
+    fn get_latest_root_version(&self) -> anyhow::Result<Option<u64>> {
+        let storage = self.storage_read();
+        let version = <StorageType as StorageInspect<LatestRootVersionTableType>>::get(
+            &*storage,
+            &(),
+        )
+        .map_err(|_e| anyhow::anyhow!("Latest root version storage error"))?
+        .map(|v| *v);
 
-            for ((version, key_hash), value) in node_batch.values() {
-                match value {
-                    None => {
-                        let _old = <StorageType as StorageMutate<ValueTableType>>::take(
-                            &mut *storage,
-                            key_hash,
-                        )
-                        .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?;
-                    }
-                    Some(value) => {
-                        let _old =
-                            <StorageType as StorageMutate<ValueTableType>>::replace(
-                                &mut *storage,
-                                key_hash,
-                                &(*version, value.clone()),
-                            )
-                            .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?;
-                    }
-                }
-            }
-        }
-
-        Ok(())
+        Ok(version)
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> TreeReader
-    for JellyfishMerkleTreeStorage<
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+    JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
@@ -160,65 +123,91 @@ where
     >,
     StorageType: StorageInspect<NodeTableType> + StorageInspect<ValueTableType>,
 {
-    fn get_node_option(&self, node_key: &JmtNodeKey) -> anyhow::Result<Option<JmtNode>> {
-        let storage = self.inner.read();
-        let get_result =
-            <StorageType as StorageInspect<NodeTableType>>::get(&*storage, node_key)
-                .map_err(|_e| anyhow::anyhow!("Storage Error"))?;
-        let node = get_result.map(|node| node.into_owned());
-
-        Ok(node)
-    }
-
-    fn get_value_option(
-        &self,
-        max_version: jmt::Version,
-        key_hash: jmt::KeyHash,
-    ) -> anyhow::Result<Option<jmt::OwnedValue>> {
-        let storage = self.inner.read();
-        let Some(value) =
-            <StorageType as StorageInspect<ValueTableType>>::get(&*storage, &key_hash)
-                .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?
-                .filter(|v| v.0 <= max_version)
-                .map(|v| v.into_owned().1)
-        else {
-            return Ok(None)
-        };
-        // Retrieve current version of key
-
-        return Ok(Some(value))
-    }
-
-    fn get_rightmost_leaf(&self) -> anyhow::Result<Option<(JmtNodeKey, JmtLeafNode)>> {
-        unimplemented!(
-            "Righmost leaf is used only when restoring the tree, which we do not support"
-        )
+    // Requires TreeReader + HasPreimage
+    // TreeReader requires StorageInspect<NodeTableType> and
+    // StorageInspect<ValueTableType> HasPreimage requires
+    // StorageInspect<ValueTableType>
+    fn as_jmt<'a>(&'a self) -> Sha256Jmt<'a, Self> {
+        JellyfishMerkleTree::new(&self)
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> HasPreimage
-    for JellyfishMerkleTreeStorage<
+impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+    JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
     >
 where
+    NodeTableType: Mappable<Key = JmtNodeKey, Value = JmtNode, OwnedValue = JmtNode>,
     ValueTableType: Mappable<
         Key = jmt::KeyHash,
         Value = (jmt::Version, jmt::OwnedValue),
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
-    StorageType: StorageInspect<ValueTableType>,
+    LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
+    StorageType: StorageInspect<NodeTableType>
+        + StorageInspect<ValueTableType>
+        + StorageInspect<LatestRootVersionTableType>,
 {
-    fn preimage(&self, key_hash: jmt::KeyHash) -> anyhow::Result<Option<Vec<u8>>> {
-        let storage = self.inner.read();
-        let preimage =
-            <StorageType as StorageInspect<ValueTableType>>::get(&*storage, &key_hash)
-                .map_err(|_e| anyhow::anyhow!("Preimage storage error"))?
-                .map(|v| v.into_owned().1);
+    // TODO: What to do with errors?
+    // get_latest_root_version() requires StorageInspect<LatestRootVersionTableType>
+    // as_jmt() requires TreeReader, which requires StorageInspect<NodeTableType> and
+    // StorageInspect<ValueTableType>. Therefore this function requires
+    // StorageInspect<LatestRootVersionTableType>, StorageInspect<NodeTableType>, and
+    // StorageInspect<ValueTableType>.
+    pub fn root(&self) -> anyhow::Result<Bytes32> {
+        // We need to know the version of the root node.
+        let version = self
+            .get_latest_root_version()?
+            .ok_or(anyhow::anyhow!("Error getting latest root version"))?;
 
-        Ok(preimage)
+        self.as_jmt()
+            .get_root_hash(version)
+            .map(|root_hash| root_hash.0)
+    }
+
+    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
+        let inner = Arc::new(RwLock::new(storage));
+        let merkle_tree = Self {
+            inner,
+            phantom_table: PhantomData,
+        };
+        // If the storage is not initialized, this function will fail.
+        // TODO: This should be tested.
+        let root_from_storage = merkle_tree.root()?;
+        //
+        if *root == root_from_storage {
+            Ok(merkle_tree)
+        } else {
+            Err(anyhow::anyhow!("Root hash mismatch"))
+        }
+    }
+
+    pub fn generate_proof(
+        &self,
+        key: &MerkleTreeKey,
+    ) -> Result<MerkleProof, anyhow::Error> {
+        let jmt = self.as_jmt();
+        let key_hash = jmt::KeyHash(**key);
+        let version = self
+            .get_latest_root_version()
+            .unwrap_or_default()
+            .unwrap_or_default();
+        let (value_vec, proof) = jmt.get_with_proof(key_hash, version)?;
+        let proof = match value_vec {
+            Some(value) => MerkleProof::Inclusion(InclusionProof {
+                proof,
+                key: key_hash,
+                value,
+            }),
+            None => MerkleProof::Exclusion(ExclusionProof {
+                proof,
+                key: key_hash,
+            }),
+        };
+        Ok(proof)
     }
 }
 
@@ -241,64 +230,14 @@ where
         + StorageMutate<ValueTableType>
         + StorageMutate<LatestRootVersionTableType>,
 {
-    fn get_latest_root_version(&self) -> anyhow::Result<Option<u64>> {
-        let storage = self.storage_read();
-        let version = <StorageType as StorageInspect<LatestRootVersionTableType>>::get(
-            &*storage,
-            &(),
-        )
-        .map_err(|_e| anyhow::anyhow!("Latest root version storage error"))?
-        .map(|v| *v);
-
-        Ok(version)
-    }
-
-    fn as_jmt<'a>(&'a self) -> Sha256Jmt<'a, Self> {
-        JellyfishMerkleTree::new(&self)
-    }
-
-    pub const fn empty_root() -> &'static Bytes32 {
-        &EMPTY_ROOT
-    }
-
-    pub fn storage_read(&self) -> spin::RwLockReadGuard<StorageType> {
-        self.inner.read()
-    }
-
-    pub fn storage_write(&self) -> spin::RwLockWriteGuard<StorageType> {
-        self.inner.write()
-    }
-
-    // TODO: What to do with errors?
-    pub fn root(&self) -> anyhow::Result<Bytes32> {
-        // We need to know the version of the root node.
-        let version = self
-            .get_latest_root_version()?
-            .ok_or(anyhow::anyhow!("Error getting latest root version"))?;
-
-        self.as_jmt()
-            .get_root_hash(version)
-            .map(|root_hash| root_hash.0)
-    }
-
-    pub fn _load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
-        // TODO: Refactor, as new will now add an empty root
-        let merkle_tree = Self::new(storage)?;
-        let root_from_storage = merkle_tree.root()?;
-        //
-        if *root == root_from_storage {
-            Ok(merkle_tree)
-        } else {
-            Err(anyhow::anyhow!("Root hash mismatch"))
-        }
-    }
-
+    // Because we insert and remove a node, we need to have StorageType:
+    // StorageMutate<NodeTableType> + StorageMutate<ValueTableType> +
+    // StorageMutate<LatestRootVersionTableType>
     pub fn new(storage: StorageType) -> anyhow::Result<Self> {
         let inner = Arc::new(RwLock::new(storage));
         let mut tree = Self {
             inner,
-            // TODO: Remove this, as it is not accurate and not needed
-            phantom_table: Default::default(),
+            phantom_table: PhantomData,
         };
         // Inclusion and Exclusion proof require that the root is set, hence we add it
         // here. Jmt does not make the constructor for `NibblePath` accessible, so
@@ -320,17 +259,15 @@ where
     {
         let tree = Self::new(storage)?;
         let jmt = tree.as_jmt();
-        // We assume that we are constructing a new Merkle Tree, hence the version is set
-        // at 0
-        // value_set: impl IntoIterator<Item = (KeyHash, Option<OwnedValue>)>,
-
-        let version = 0;
+        // We assume that we are constructing a new Merkle Tree.
+        // We start from version 2 to be consistent with the version obtained
+        // when returning a new tree.
+        // TODO: Change Self::new so that the initial version of a new tree is 0.
+        let version = 2;
         let update_batch = set.map(|(key, data)| {
-            // We are forced to hash again to be consistent with ics23 proofs, which are
-            // the only exposed proofs that support non-existence in the jmt
-            // crate
-            let key_hash = jmt::KeyHash::with::<sha2::Sha256>(key.into());
+            let key_hash = jmt::KeyHash(key.into());
             // Sad, but jmt requires an owned value
+            // TODO: We should consider forking jmt to allow for borrowed values
             let value = data.as_ref().to_vec();
             (key_hash, Some(value))
         });
@@ -346,12 +283,14 @@ where
         Ok(tree)
     }
 
+    // TODO: We should have a corresponding function to batch udpates and increment the
+    // version only once
     pub fn update(
         &mut self,
         key: MerkleTreeKey,
         data: &[u8],
     ) -> Result<(), anyhow::Error> {
-        let key_hash = jmt::KeyHash::with::<sha2::Sha256>(*key);
+        let key_hash = jmt::KeyHash(*key);
         // If data.is_empty() we remove the value from the jmt
         let value = if data.is_empty() {
             None
@@ -382,30 +321,5 @@ where
 
     pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), anyhow::Error> {
         self.update(key, &[])
-    }
-
-    pub fn generate_proof(
-        &self,
-        key: &MerkleTreeKey,
-    ) -> Result<MerkleProof, anyhow::Error> {
-        let jmt = self.as_jmt();
-        let key_hash = jmt::KeyHash::with::<sha2::Sha256>(**key);
-        let version = self
-            .get_latest_root_version()
-            .unwrap_or_default()
-            .unwrap_or_default();
-        let (value_vec, proof) = jmt.get_with_proof(key_hash, version)?;
-        let proof = match value_vec {
-            Some(value) => MerkleProof::Inclusion(InclusionProof {
-                proof,
-                key: key_hash,
-                value,
-            }),
-            None => MerkleProof::Exclusion(ExclusionProof {
-                proof,
-                key: key_hash,
-            }),
-        };
-        Ok(proof)
     }
 }

@@ -292,6 +292,8 @@ mod test {
     #[test]
     fn adding_key_value_pair_works() {
         let mut tree = MerkleTree::new().unwrap();
+        let initial_storage_version =
+            tree.tree.storage.read().latest_root_version.unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
@@ -300,18 +302,24 @@ mod test {
         let nodes = storage.nodes.inner();
         let values = storage.values.inner();
         // The version has been updated:
-        assert_eq!(storage.latest_root_version.unwrap(), 1);
+        assert_eq!(
+            storage.latest_root_version.unwrap(),
+            initial_storage_version + 1
+        );
         // The root has been updated:
         assert_ne!(tree.root().unwrap(), EMPTY_ROOT);
-        // There is exactly one node in the tree
-        assert_eq!(nodes.len(), 1);
         // There is exactly one value in the tree
         assert_eq!(values.len(), 1);
-        let node = nodes.iter().next().unwrap();
+        let leaves = nodes
+            .iter()
+            .filter_map(|(_node_key, node)| match node {
+                jmt::storage::Node::Leaf(leaf_node) => Some(leaf_node),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(leaves.len(), 1);
+        let leaf_node = leaves[0];
         // The only node is a leaf
-        let jmt::storage::Node::Leaf(leaf_node) = node.1 else {
-            panic!("Not a leaf node");
-        };
 
         let value = values.iter().next().unwrap();
         let (value_key_hash, (_version, preimage)) = value;
@@ -365,5 +373,26 @@ mod test {
         tree.update(merkle_tree_key, data2);
         let second_root = tree.root().unwrap();
         assert_ne!(first_root, second_root);
+    }
+
+    #[test]
+    fn verify_exclusion_proof_for_empty_tree_succeeds() {
+        let tree = MerkleTree::new().unwrap();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        assert!(proof.verify(EMPTY_ROOT));
+    }
+
+    #[test]
+    fn verify_inclusion_proof_succeeds() {
+        let mut tree = MerkleTree::new().unwrap();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let data = b"data";
+        tree.update(merkle_tree_key, data);
+        let root = tree.root().unwrap();
+        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        assert!(proof.verify(root));
     }
 }

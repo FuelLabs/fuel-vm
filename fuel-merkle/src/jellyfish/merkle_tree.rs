@@ -56,18 +56,40 @@ pub const EMPTY_ROOT: Bytes32 = [
 
 pub struct InclusionProof {
     proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
-    key: jmt::storage::NodeKey,
-    value: [u8; 32],
+    key: jmt::KeyHash,
+    value: Vec<u8>,
 }
 
 pub struct ExclusionProof {
     proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
-    key: jmt::storage::NodeKey,
+    key: jmt::KeyHash,
 }
 
 pub enum MerkleProof {
     Inclusion(InclusionProof),
     Exclusion(ExclusionProof),
+}
+
+impl MerkleProof {
+    pub fn verify(&self, root_hash: Bytes32) -> bool {
+        match self {
+            MerkleProof::Inclusion(inclusion_proof) => {
+                let root_hash = jmt::RootHash(root_hash);
+                let key = inclusion_proof.key;
+                let value = &inclusion_proof.value;
+                let proof = &inclusion_proof.proof;
+
+                proof.verify_existence(root_hash, key, value).is_ok()
+            }
+            MerkleProof::Exclusion(exclusion_proof) => {
+                let root_hash = jmt::RootHash(root_hash);
+                let key = exclusion_proof.key;
+                let proof = &exclusion_proof.proof;
+
+                proof.verify_nonexistence(root_hash, key).is_ok()
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -409,6 +431,31 @@ where
 
     pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), anyhow::Error> {
         self.update(key, &[])
+    }
+
+    pub fn generate_proof(
+        &self,
+        key: &MerkleTreeKey,
+    ) -> Result<MerkleProof, anyhow::Error> {
+        let jmt = self.as_jmt();
+        let key_hash = jmt::KeyHash::with::<sha2::Sha256>(**key);
+        let version = self
+            .get_latest_root_version()
+            .unwrap_or_default()
+            .unwrap_or_default();
+        let (value_vec, proof) = jmt.get_with_proof(key_hash, version)?;
+        let proof = match value_vec {
+            Some(value) => MerkleProof::Inclusion(InclusionProof {
+                proof,
+                key: key_hash,
+                value,
+            }),
+            None => MerkleProof::Exclusion(ExclusionProof {
+                proof,
+                key: key_hash,
+            }),
+        };
+        Ok(proof)
     }
 }
 

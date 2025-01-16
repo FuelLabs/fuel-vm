@@ -218,7 +218,7 @@ impl MerkleTree {
     /// not incur the overhead of storage writes. This can be helpful when we
     /// know all the key-values in the set upfront and we will not need to
     /// update the set in the future.
-    pub fn root_from_set<I, D>(set: I) -> Bytes32
+    pub fn root_from_set<I, D>(set: I) -> anyhow::Result<Bytes32>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
@@ -237,13 +237,13 @@ impl MerkleTree {
     /// for batch operations later in the process.
     pub fn nodes_from_set<I, D>(
         set: I,
-    ) -> (Bytes32, Vec<(jmt::storage::NibblePath, jmt::storage::Node)>)
+    ) -> anyhow::Result<(Bytes32, Vec<(jmt::storage::NibblePath, jmt::storage::Node)>)>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
     {
         let tree = Self::from_set(set);
-        let root = tree.root();
+        let root = tree.root()?;
         let storage_read_guard = tree.tree.storage.read();
         let nodes = storage_read_guard
             .nodes
@@ -251,7 +251,7 @@ impl MerkleTree {
             .iter()
             .map(|(k, v)| (k.nibble_path().clone(), v.clone()))
             .collect();
-        (root, nodes)
+        Ok((root, nodes))
     }
 
     pub fn update(&mut self, key: MerkleTreeKey, data: &[u8]) {
@@ -262,7 +262,7 @@ impl MerkleTree {
         let _ = self.tree.delete(key);
     }
 
-    pub fn root(&self) -> Bytes32 {
+    pub fn root(&self) -> anyhow::Result<Bytes32> {
         self.tree.root()
     }
 
@@ -285,7 +285,7 @@ mod test {
     fn root_returns_the_empty_root_for_0_leaves() {
         let tree = MerkleTree::new().unwrap();
 
-        let root = tree.root();
+        let root = tree.root().unwrap();
         assert_eq!(root, EMPTY_ROOT);
     }
 
@@ -302,7 +302,7 @@ mod test {
         // The version has been updated:
         assert_eq!(storage.latest_root_version.unwrap(), 1);
         // The root has been updated:
-        assert_ne!(tree.root(), EMPTY_ROOT);
+        assert_ne!(tree.root().unwrap(), EMPTY_ROOT);
         // There is exactly one node in the tree
         assert_eq!(nodes.len(), 1);
         // There is exactly one value in the tree
@@ -331,12 +331,12 @@ mod test {
         let data = b"data";
         tree.update(merkle_tree_key, data);
         tree.delete(merkle_tree_key);
-        let first_root = tree.root();
+        let first_root = tree.root().unwrap();
         assert_eq!(first_root, EMPTY_ROOT);
         tree.update(merkle_tree_key, data);
         tree.delete(merkle_tree_key);
         println!("{:?}", tree.tree.storage.read());
-        let second_root = tree.root();
+        let second_root = tree.root().unwrap();
         assert_eq!(second_root, EMPTY_ROOT);
     }
 
@@ -347,9 +347,9 @@ mod test {
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
         tree.update(merkle_tree_key, data);
-        let first_root = tree.root();
+        let first_root = tree.root().unwrap();
         tree.update(merkle_tree_key, data);
-        let second_root = tree.root();
+        let second_root = tree.root().unwrap();
         assert_eq!(first_root, second_root);
     }
 
@@ -361,9 +361,9 @@ mod test {
         let data1 = b"data1";
         let data2 = b"data2";
         tree.update(merkle_tree_key, data1);
-        let first_root = tree.root();
+        let first_root = tree.root().unwrap();
         tree.update(merkle_tree_key, data2);
-        let second_root = tree.root();
+        let second_root = tree.root().unwrap();
         assert_ne!(first_root, second_root);
     }
 }

@@ -297,23 +297,21 @@ where
     }
 
     // TODO: What to do with errors?
-    pub fn root(&self) -> Bytes32 {
+    pub fn root(&self) -> anyhow::Result<Bytes32> {
         // We need to know the version of the root node.
-
-        let Some(version) = self.get_latest_root_version().unwrap_or_default() else {
-            return *Self::empty_root();
-        };
+        let version = self
+            .get_latest_root_version()?
+            .ok_or(anyhow::anyhow!("Error getting latest root version"))?;
 
         self.as_jmt()
             .get_root_hash(version)
             .map(|root_hash| root_hash.0)
-            .unwrap_or_default()
     }
 
     pub fn _load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
         // TODO: Refactor, as new will now add an empty root
         let merkle_tree = Self::new(storage)?;
-        let root_from_storage = merkle_tree.root();
+        let root_from_storage = merkle_tree.root()?;
         //
         if *root == root_from_storage {
             Ok(merkle_tree)

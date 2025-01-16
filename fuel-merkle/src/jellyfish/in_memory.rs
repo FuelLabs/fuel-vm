@@ -5,7 +5,7 @@ use fuel_storage::{
     StorageMutate,
 };
 
-use crate::jellyfish::merkle_tree::MerkleTreeStorage;
+use crate::jellyfish::merkle_tree::JellyfishMerkleTreeStorage;
 
 use crate::{
     common::{
@@ -181,14 +181,19 @@ impl StorageMutate<LatestRootVersionTable> for Storage {
 
 #[derive(Clone)]
 pub struct MerkleTree {
-    tree: MerkleTreeStorage<NodesTable, ValuesTable, LatestRootVersionTable, Storage>,
+    storage: JellyfishMerkleTreeStorage<
+        NodesTable,
+        ValuesTable,
+        LatestRootVersionTable,
+        Storage,
+    >,
 }
 
 impl MerkleTree {
     pub fn new() -> anyhow::Result<Self> {
         let storage = Storage::default();
         Ok(Self {
-            tree: MerkleTreeStorage::new(storage)?,
+            storage: JellyfishMerkleTreeStorage::new(storage)?,
         })
     }
 
@@ -205,9 +210,9 @@ impl MerkleTree {
         D: AsRef<[u8]>,
     {
         let storage = Storage::default();
-        let tree = MerkleTreeStorage::from_set(storage, set)
+        let storage = JellyfishMerkleTreeStorage::from_set(storage, set)
             .expect("`Storage` can't return error");
-        Self { tree }
+        Self { storage }
     }
 
     /// Calculate the sparse Merkle root from a set of key-value pairs. This is
@@ -227,14 +232,6 @@ impl MerkleTree {
         tree.root()
     }
 
-    /// Calculate the sparse Merkle root as well as all nodes in the Merkle tree
-    /// from a set of key-value pairs. This is similar to constructing a new
-    /// tree from a set of key-value pairs using [from_set](Self::from_set),
-    /// except this method returns only the root and the list of leaves and
-    /// nodes in the tree; it does not return a sparse Merkle tree instance.
-    /// This can be helpful when we know all the key-values in the set upfront
-    /// and we need to defer storage writes, such as expensive database inserts,
-    /// for batch operations later in the process.
     pub fn nodes_from_set<I, D>(
         set: I,
     ) -> anyhow::Result<(Bytes32, Vec<(jmt::storage::NibblePath, jmt::storage::Node)>)>
@@ -244,7 +241,7 @@ impl MerkleTree {
     {
         let tree = Self::from_set(set);
         let root = tree.root()?;
-        let storage_read_guard = tree.tree.storage.read();
+        let storage_read_guard = tree.storage.storage.read();
         let nodes = storage_read_guard
             .nodes
             .inner()
@@ -255,20 +252,16 @@ impl MerkleTree {
     }
 
     pub fn update(&mut self, key: MerkleTreeKey, data: &[u8]) {
-        let _ = self.tree.update(key, data);
+        let _ = self.storage.update(key, data);
     }
 
     pub fn delete(&mut self, key: MerkleTreeKey) {
-        let _ = self.tree.delete(key);
+        let _ = self.storage.delete(key);
     }
 
     pub fn root(&self) -> anyhow::Result<Bytes32> {
-        self.tree.root()
+        self.storage.root()
     }
-
-    // pub fn generate_proof(&self, key: &MerkleTreeKey) -> Option<Proof> {
-    //    self.tree.generate_proof(key).ok()
-    //}
 }
 
 #[cfg(test)]
@@ -293,12 +286,12 @@ mod test {
     fn adding_key_value_pair_works() {
         let mut tree = MerkleTree::new().unwrap();
         let initial_storage_version =
-            tree.tree.storage.read().latest_root_version.unwrap();
+            tree.storage.storage.read().latest_root_version.unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
         tree.update(merkle_tree_key, data);
-        let storage = tree.tree.storage.read();
+        let storage = tree.storage.storage.read();
         let nodes = storage.nodes.inner();
         let values = storage.values.inner();
         // The version has been updated:
@@ -343,7 +336,6 @@ mod test {
         assert_eq!(first_root, EMPTY_ROOT);
         tree.update(merkle_tree_key, data);
         tree.delete(merkle_tree_key);
-        println!("{:?}", tree.tree.storage.read());
         let second_root = tree.root().unwrap();
         assert_eq!(second_root, EMPTY_ROOT);
     }
@@ -380,7 +372,7 @@ mod test {
         let tree = MerkleTree::new().unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
-        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        let proof = tree.storage.generate_proof(&merkle_tree_key).unwrap();
         assert!(proof.is_exclusion_proof());
         assert!(proof.verify(EMPTY_ROOT));
     }
@@ -393,7 +385,7 @@ mod test {
         let data = b"data";
         tree.update(merkle_tree_key, data);
         let root = tree.root().unwrap();
-        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        let proof = tree.storage.generate_proof(&merkle_tree_key).unwrap();
         assert!(proof.is_inclusion_proof());
         assert!(proof.verify(root));
     }
@@ -405,7 +397,7 @@ mod test {
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
         tree.update(merkle_tree_key, data);
-        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        let proof = tree.storage.generate_proof(&merkle_tree_key).unwrap();
         assert!(proof.is_inclusion_proof());
 
         let empty_tree = MerkleTree::new().unwrap();
@@ -421,7 +413,7 @@ mod test {
         let data = b"data";
         tree.update(merkle_tree_key, data);
         let root = tree.root().unwrap();
-        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        let proof = tree.storage.generate_proof(&merkle_tree_key).unwrap();
         assert!(proof.is_inclusion_proof());
         let tampered_proof = match proof {
             crate::jellyfish::merkle_tree::MerkleProof::Inclusion(inclusion_proof) => {
@@ -458,7 +450,7 @@ mod test {
         }
         let root = tree.root().unwrap();
         for (key, _value) in updates {
-            let proof = tree.tree.generate_proof(&key).unwrap();
+            let proof = tree.storage.generate_proof(&key).unwrap();
             assert!(proof.is_inclusion_proof());
             assert!(proof.verify(root));
         }
@@ -471,7 +463,7 @@ mod test {
             })
             .collect();
         for key in non_existing_keys {
-            let proof = tree.tree.generate_proof(&key).unwrap();
+            let proof = tree.storage.generate_proof(&key).unwrap();
             assert!(proof.is_exclusion_proof());
             assert!(proof.verify(root));
         }

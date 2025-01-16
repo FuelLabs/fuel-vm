@@ -381,6 +381,7 @@ mod test {
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        assert!(proof.is_exclusion_proof());
         assert!(proof.verify(EMPTY_ROOT));
     }
 
@@ -393,6 +394,86 @@ mod test {
         tree.update(merkle_tree_key, data);
         let root = tree.root().unwrap();
         let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        assert!(proof.is_inclusion_proof());
         assert!(proof.verify(root));
+    }
+
+    #[test]
+    fn verify_inclusion_on_empty_tree_fails() {
+        let mut tree = MerkleTree::new().unwrap();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let data = b"data";
+        tree.update(merkle_tree_key, data);
+        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        assert!(proof.is_inclusion_proof());
+
+        let empty_tree = MerkleTree::new().unwrap();
+        let empty_root = empty_tree.root().unwrap();
+        assert!(!proof.verify(empty_root));
+    }
+
+    #[test]
+    fn verify_wrong_value_for_key_fails() {
+        let mut tree = MerkleTree::new().unwrap();
+        let raw_key = b"key";
+        let merkle_tree_key = MerkleTreeKey::new(raw_key);
+        let data = b"data";
+        tree.update(merkle_tree_key, data);
+        let root = tree.root().unwrap();
+        let proof = tree.tree.generate_proof(&merkle_tree_key).unwrap();
+        assert!(proof.is_inclusion_proof());
+        let tampered_proof = match proof {
+            crate::jellyfish::merkle_tree::MerkleProof::Inclusion(inclusion_proof) => {
+                crate::jellyfish::merkle_tree::MerkleProof::Inclusion(
+                    crate::jellyfish::merkle_tree::InclusionProof {
+                        value: b"Wrong value".to_vec(),
+                        ..inclusion_proof
+                    },
+                )
+            }
+            crate::jellyfish::merkle_tree::MerkleProof::Exclusion(_exclusion_proof) => {
+                panic!("It's an inclusion proof")
+            }
+        };
+        assert!(!tampered_proof.verify(root));
+    }
+
+    #[test]
+    fn verify_multiple_updates() {
+        let num_updates = 1000;
+        let mut tree = MerkleTree::new().unwrap();
+        let updates: Vec<_> = (0..num_updates)
+            .map(|i| {
+                let raw_key = format!("key{}", i);
+                let raw_key = raw_key.as_bytes();
+                let merkle_tree_key = MerkleTreeKey::new(raw_key);
+
+                let data = format!("data{}", i);
+                (merkle_tree_key, data)
+            })
+            .collect();
+        for (key, value) in updates.iter() {
+            tree.update(*key, value.as_bytes());
+        }
+        let root = tree.root().unwrap();
+        for (key, _value) in updates {
+            let proof = tree.tree.generate_proof(&key).unwrap();
+            assert!(proof.is_inclusion_proof());
+            assert!(proof.verify(root));
+        }
+        // Generate proof for several non-existing nodes
+        let non_existing_keys: Vec<_> = (0..num_updates)
+            .map(|i| {
+                let raw_key = format!("non-existing-key{}", i);
+                let raw_key = raw_key.as_bytes();
+                MerkleTreeKey::new(raw_key)
+            })
+            .collect();
+        for key in non_existing_keys {
+            let proof = tree.tree.generate_proof(&key).unwrap();
+            assert!(proof.is_exclusion_proof());
+            assert!(proof.verify(root));
+        }
     }
 }

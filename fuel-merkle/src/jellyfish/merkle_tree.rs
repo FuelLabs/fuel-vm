@@ -54,15 +54,16 @@ pub const EMPTY_ROOT: Bytes32 = [
     76, 68, 69, 82, 95, 72, 65, 83, 72, 95, 95,
 ];
 
+// Give crate access to fields for testing tampering with proofs
 pub struct InclusionProof {
-    proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
-    key: jmt::KeyHash,
-    value: Vec<u8>,
+    pub(crate) proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
+    pub(crate) key: jmt::KeyHash,
+    pub(crate) value: Vec<u8>,
 }
 
 pub struct ExclusionProof {
-    proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
-    key: jmt::KeyHash,
+    pub(crate) proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
+    pub(crate) key: jmt::KeyHash,
 }
 
 pub enum MerkleProof {
@@ -88,6 +89,20 @@ impl MerkleProof {
 
                 proof.verify_nonexistence(root_hash, key).is_ok()
             }
+        }
+    }
+
+    pub fn is_inclusion_proof(&self) -> bool {
+        match self {
+            MerkleProof::Inclusion(_) => true,
+            MerkleProof::Exclusion(_) => false,
+        }
+    }
+
+    pub fn is_exclusion_proof(&self) -> bool {
+        match self {
+            MerkleProof::Inclusion(_) => false,
+            MerkleProof::Exclusion(_) => true,
         }
     }
 }

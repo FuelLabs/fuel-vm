@@ -267,10 +267,12 @@ impl MerkleTree {
 #[cfg(test)]
 mod test {
     use crate::{
-        jellyfish::merkle_tree::{
-            InclusionProof,
-            MerkleProof,
-            EMPTY_ROOT,
+        jellyfish::{
+            merkle_tree::EMPTY_ROOT,
+            proof::{
+                InclusionProof,
+                MerkleProof,
+            },
         },
         sparse::MerkleTreeKey,
     };
@@ -427,7 +429,7 @@ mod test {
                     ..inclusion_proof
                 })
             }
-            crate::jellyfish::merkle_tree::MerkleProof::Exclusion(_exclusion_proof) => {
+            MerkleProof::Exclusion(_exclusion_proof) => {
                 panic!("It's an inclusion proof")
             }
         };

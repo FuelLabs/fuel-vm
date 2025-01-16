@@ -16,7 +16,6 @@ use core::marker::PhantomData;
 use spin::rwlock::RwLock;
 
 use jmt::{
-    proof::SparseMerkleProof,
     storage::{
         HasPreimage,
         LeafNode as JmtLeafNode,
@@ -28,6 +27,12 @@ use jmt::{
     },
     JellyfishMerkleTree,
     Sha256Jmt,
+};
+
+use crate::jellyfish::proof::{
+    ExclusionProof,
+    InclusionProof,
+    MerkleProof,
 };
 
 #[derive(Debug, Clone, derive_more::Display, PartialEq, Eq)]
@@ -47,59 +52,6 @@ pub const EMPTY_ROOT: Bytes32 = [
     83, 80, 65, 82, 83, 69, 95, 77, 69, 82, 75, 76, 69, 95, 80, 76, 65, 67, 69, 72, 79,
     76, 68, 69, 82, 95, 72, 65, 83, 72, 95, 95,
 ];
-
-// Give crate access to fields for testing tampering with proofs
-pub struct InclusionProof {
-    pub(crate) proof: SparseMerkleProof<sha2::Sha256>,
-    pub(crate) key: jmt::KeyHash,
-    pub(crate) value: jmt::OwnedValue,
-}
-
-pub struct ExclusionProof {
-    pub(crate) proof: SparseMerkleProof<sha2::Sha256>,
-    pub(crate) key: jmt::KeyHash,
-}
-
-pub enum MerkleProof {
-    Inclusion(InclusionProof),
-    Exclusion(ExclusionProof),
-}
-
-impl MerkleProof {
-    pub fn verify(&self, root_hash: Bytes32) -> bool {
-        match self {
-            MerkleProof::Inclusion(inclusion_proof) => {
-                let root_hash = jmt::RootHash(root_hash);
-                let key = inclusion_proof.key;
-                let value = &inclusion_proof.value;
-                let proof = &inclusion_proof.proof;
-
-                proof.verify_existence(root_hash, key, value).is_ok()
-            }
-            MerkleProof::Exclusion(exclusion_proof) => {
-                let root_hash = jmt::RootHash(root_hash);
-                let key = exclusion_proof.key;
-                let proof = &exclusion_proof.proof;
-
-                proof.verify_nonexistence(root_hash, key).is_ok()
-            }
-        }
-    }
-
-    pub fn is_inclusion_proof(&self) -> bool {
-        match self {
-            MerkleProof::Inclusion(_) => true,
-            MerkleProof::Exclusion(_) => false,
-        }
-    }
-
-    pub fn is_exclusion_proof(&self) -> bool {
-        match self {
-            MerkleProof::Inclusion(_) => false,
-            MerkleProof::Exclusion(_) => true,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct JellyfishMerkleTreeStorage<

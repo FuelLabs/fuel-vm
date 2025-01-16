@@ -278,7 +278,7 @@ impl crate::Cacheable for Upload {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(ChargeableMetadata {
             common: CommonMetadata::compute(self, chain_id)?,

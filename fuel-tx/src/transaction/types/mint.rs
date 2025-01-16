@@ -32,7 +32,7 @@ pub(crate) struct MintMetadata {
 }
 
 impl MintMetadata {
-    fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Self
+    fn compute<Tx>(tx: &Tx, chain_id: ChainId) -> Self
     where
         Tx: crate::UniqueIdentifier,
     {
@@ -75,7 +75,7 @@ pub struct Mint {
 }
 
 impl crate::UniqueIdentifier for Mint {
-    fn id(&self, chain_id: &ChainId) -> Bytes32 {
+    fn id(&self, chain_id: ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
             return id;
         }
@@ -93,7 +93,7 @@ impl crate::UniqueIdentifier for Mint {
 }
 
 impl FormatValidityChecks for Mint {
-    fn check_signatures(&self, _: &ChainId) -> Result<(), ValidityError> {
+    fn check_signatures(&self, _: ChainId) -> Result<(), ValidityError> {
         Ok(())
     }
 
@@ -126,7 +126,7 @@ impl crate::Cacheable for Mint {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: ChainId) -> Result<(), ValidityError> {
         self.metadata = None;
         self.metadata = Some(MintMetadata::compute(self, chain_id));
         Ok(())

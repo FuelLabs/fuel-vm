@@ -518,9 +518,9 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         self.sign_keys
             .iter()
-            .for_each(|(k, _)| tx.sign_inputs(k, &self.get_chain_id()));
+            .for_each(|(k, _)| tx.sign_inputs(k, self.get_chain_id()));
 
-        tx.precompute(&self.get_chain_id())
+        tx.precompute(self.get_chain_id())
             .expect("Should be able to calculate cache");
 
         tx
@@ -529,7 +529,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     pub fn finalize_without_signature_inner(&self) -> Tx {
         let mut tx = self.tx.clone();
 
-        tx.precompute(&self.get_chain_id())
+        tx.precompute(self.get_chain_id())
             .expect("Should be able to calculate cache");
 
         tx
@@ -552,7 +552,7 @@ pub trait Finalizable<Tx> {
 impl Finalizable<Mint> for TransactionBuilder<Mint> {
     fn finalize(&self) -> Mint {
         let mut tx = self.tx.clone();
-        tx.precompute(&self.get_chain_id())
+        tx.precompute(self.get_chain_id())
             .expect("Should be able to calculate cache");
         tx
     }

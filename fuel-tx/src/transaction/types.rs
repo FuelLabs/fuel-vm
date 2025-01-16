@@ -55,7 +55,7 @@ pub use self::{
 };
 
 pub fn compute_transaction_id<T: fuel_types::canonical::Serialize>(
-    chain_id: &fuel_types::ChainId,
+    chain_id: fuel_types::ChainId,
     tx: &mut T,
 ) -> crate::TxId {
     let mut hasher = fuel_crypto::Hasher::default();

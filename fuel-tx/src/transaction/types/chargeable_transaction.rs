@@ -146,7 +146,7 @@ where
     Self: ChargeableBody<Body>,
     Self: fuel_types::canonical::Serialize,
 {
-    fn id(&self, chain_id: &ChainId) -> Bytes32 {
+    fn id(&self, chain_id: ChainId) -> Bytes32 {
         if let Some(id) = self.cached_id() {
             return id;
         }
@@ -183,7 +183,7 @@ where
     Self: Chargeable,
     Self: UniqueFormatValidityChecks,
 {
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn check_signatures(&self, chain_id: ChainId) -> Result<(), ValidityError> {
         let id = self.id(chain_id);
 
         // There will be at most len(witnesses) signatures to cache

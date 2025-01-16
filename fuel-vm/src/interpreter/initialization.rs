@@ -104,7 +104,7 @@ where
             }};
         }
 
-        push_stack!(&*self.transaction().id(&self.chain_id()));
+        push_stack!(&*self.transaction().id(self.chain_id()));
 
         let base_asset_id = self.interpreter_params.base_asset_id;
         push_stack!(&*base_asset_id);

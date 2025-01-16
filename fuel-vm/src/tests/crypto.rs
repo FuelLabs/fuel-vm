@@ -149,7 +149,7 @@ fn ecrecover_tx_id() {
         .add_fee_input()
         .finalize();
 
-    tx.sign_inputs(&secret, &chain_id);
+    tx.sign_inputs(&secret, chain_id);
 
     let consensus_params = ConsensusParameters::standard_with_id(chain_id);
     let tx = tx.into_checked(height, &consensus_params).unwrap();

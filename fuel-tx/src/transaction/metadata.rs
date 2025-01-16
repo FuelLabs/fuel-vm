@@ -19,7 +19,7 @@ pub trait Cacheable {
     fn is_computed(&self) -> bool;
 
     /// Computes the cache for the entity.
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError>;
+    fn precompute(&mut self, chain_id: ChainId) -> Result<(), ValidityError>;
 }
 
 impl Cacheable for super::Transaction {
@@ -34,7 +34,7 @@ impl Cacheable for super::Transaction {
         }
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: ChainId) -> Result<(), ValidityError> {
         match self {
             Self::Script(tx) => tx.precompute(chain_id),
             Self::Create(tx) => tx.precompute(chain_id),
@@ -62,7 +62,7 @@ pub struct CommonMetadata {
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     /// Returns `None` if the transaction is invalid.
-    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Result<Self, ValidityError>
+    pub fn compute<Tx>(tx: &Tx, chain_id: ChainId) -> Result<Self, ValidityError>
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,

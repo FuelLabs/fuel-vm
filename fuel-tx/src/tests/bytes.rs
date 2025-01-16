@@ -850,7 +850,7 @@ fn script_input_coin_data_offset() {
                         );
 
                         let mut tx_p = tx.clone();
-                        tx_p.precompute(&Default::default())
+                        tx_p.precompute(Default::default())
                             .expect("Should be able to calculate cache");
 
                         let bytes = tx.to_bytes();
@@ -961,7 +961,7 @@ fn upgrade_input_coin_data_offset() {
                 .unwrap();
 
                 let mut tx_p = tx.clone();
-                tx_p.precompute(&Default::default())
+                tx_p.precompute(Default::default())
                     .expect("Should be able to calculate cache");
 
                 let bytes = tx.to_bytes();
@@ -1056,7 +1056,7 @@ fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
 
                 // WHen
                 let mut tx_p = tx.clone();
-                tx_p.precompute(&Default::default())
+                tx_p.precompute(Default::default())
                     .expect("Should be able to calculate cache");
 
                 // Then

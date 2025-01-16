@@ -127,7 +127,7 @@ impl<Tx: IntoChecked> Checked<Tx> {
     }
 
     /// Performs check of signatures, if not yet done.
-    pub fn check_signatures(mut self, chain_id: &ChainId) -> Result<Self, CheckError> {
+    pub fn check_signatures(mut self, chain_id: ChainId) -> Result<Self, CheckError> {
         if !self.checks_bitmask.contains(Checks::Signatures) {
             self.transaction.check_signatures(chain_id)?;
             self.checks_bitmask.insert(Checks::Signatures);
@@ -335,7 +335,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     {
         let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
-            .check_signatures(&consensus_params.chain_id())?
+            .check_signatures(consensus_params.chain_id())?
             .check_predicates(&check_predicate_params, memory, storage)
     }
 
@@ -1955,7 +1955,7 @@ mod tests {
             )
             .unwrap()
             // Sets Checks::Signatures
-            .check_signatures(&chain_id)
+            .check_signatures(chain_id)
             .unwrap();
 
         assert!(checked

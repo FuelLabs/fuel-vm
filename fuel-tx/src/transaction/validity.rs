@@ -252,14 +252,14 @@ pub trait FormatValidityChecks {
         consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
         self.check_without_signatures(block_height, consensus_params)?;
-        self.check_signatures(&consensus_params.chain_id())?;
+        self.check_signatures(consensus_params.chain_id())?;
 
         Ok(())
     }
 
     /// Validates that all required signatures are set in the transaction and that they
     /// are valid.
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError>;
+    fn check_signatures(&self, chain_id: ChainId) -> Result<(), ValidityError>;
 
     /// Validates the transactions according to rules from the specification:
     /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/transaction.md>
@@ -271,7 +271,7 @@ pub trait FormatValidityChecks {
 }
 
 impl FormatValidityChecks for Transaction {
-    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn check_signatures(&self, chain_id: ChainId) -> Result<(), ValidityError> {
         match self {
             Self::Script(tx) => tx.check_signatures(chain_id),
             Self::Create(tx) => tx.check_signatures(chain_id),

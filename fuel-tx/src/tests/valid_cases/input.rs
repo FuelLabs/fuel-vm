@@ -32,7 +32,7 @@ fn input_coin_message_signature() {
 
         fn check_inputs<Tx: Buildable>(tx: Tx) -> Result<(), ValidityError> {
             let chain_id = ChainId::default();
-            let txhash = tx.id(&chain_id);
+            let txhash = tx.id(chain_id);
             let outputs = tx.outputs();
             let witnesses = tx.witnesses();
 
@@ -75,8 +75,8 @@ fn input_coin_message_signature() {
 
             let chain_id = ChainId::default();
 
-            tx.sign_inputs(&secret, &chain_id);
-            keys.iter().for_each(|sk| tx.sign_inputs(sk, &chain_id));
+            tx.sign_inputs(&secret, chain_id);
+            keys.iter().for_each(|sk| tx.sign_inputs(sk, chain_id));
 
             check_inputs(tx)
         }

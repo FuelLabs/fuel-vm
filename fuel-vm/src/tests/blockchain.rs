@@ -1806,7 +1806,7 @@ fn smo_instruction_works() {
             tx.metadata().non_retryable_balances[&AssetId::BASE];
         let retryable_balance: u64 = tx.metadata().retryable_balance.into();
 
-        let txid = tx.transaction().id(&ChainId::default());
+        let txid = tx.transaction().id(ChainId::default());
         let receipts = client.transact(tx);
 
         let success = receipts.iter().any(|r| {

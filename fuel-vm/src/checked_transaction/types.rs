@@ -106,7 +106,7 @@ pub mod create {
             consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
+            self.precompute(chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
@@ -158,7 +158,7 @@ pub mod mint {
             consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
+            self.precompute(chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
 
             Ok(Checked::basic(self, ()))
@@ -219,7 +219,7 @@ pub mod script {
             consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
+            self.precompute(chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
@@ -297,7 +297,7 @@ pub mod upgrade {
             consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
+            self.precompute(chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
@@ -375,7 +375,7 @@ pub mod upload {
             consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
+            self.precompute(chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances
@@ -451,7 +451,7 @@ pub mod blob {
             consensus_params: &ConsensusParameters,
         ) -> Result<Checked<Self>, CheckError> {
             let chain_id = consensus_params.chain_id();
-            self.precompute(&chain_id)?;
+            self.precompute(chain_id)?;
             self.check_without_signatures(block_height, consensus_params)?;
 
             // validate fees and compute free balances

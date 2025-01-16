@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Breaking
+- [890](https://github.com/FuelLabs/fuel-vm/pull/890): Copy `ChainId` wherever possible, breaking changes to compute transaction id.
+
 ## [Version 0.59.1]
 
 ### Fixed

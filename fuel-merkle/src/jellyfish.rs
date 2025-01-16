@@ -8,6 +8,9 @@ mod error;
 
 pub use error::MerkleTreeError;
 
+/// Inclusion and exclusion proofs for the Jellyfish Merkle Tree.
+pub mod proof;
+
 // Re-export dependencies from the jmt crate necessary for defining implementations
 // of the Mappable trait required by the JellyfishMerkleTree integration.
 pub use jmt;

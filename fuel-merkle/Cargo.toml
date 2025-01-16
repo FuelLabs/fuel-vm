@@ -17,7 +17,7 @@ digest = { version = "0.10", default-features = false }
 fuel-storage = { workspace = true, default-features = false }
 hashbrown = "0.13"
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
-jmt = { git = "https://github.com/acerone85/jmt.git", rev = "8ddb49ae249fdafd40fb23d598ae19025e0e842d" }
+jmt = { version = "0.11.0" }
 serde = { version = "1.0", default-features = false, optional = true }
 sha2 = { version = "0.10", default-features = false }
 spin = { version = "0.9.8" }

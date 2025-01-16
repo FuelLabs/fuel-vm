@@ -185,11 +185,11 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
-    pub fn new() -> Self {
+    pub fn new() -> anyhow::Result<Self> {
         let storage = Storage::default();
-        Self {
-            tree: MerkleTreeStorage::new(storage),
-        }
+        Ok(Self {
+            tree: MerkleTreeStorage::new(storage)?,
+        })
     }
 
     /// Build a sparse Merkle tree from a set of key-value pairs. This is
@@ -283,7 +283,7 @@ mod test {
 
     #[test]
     fn root_returns_the_empty_root_for_0_leaves() {
-        let tree = MerkleTree::new();
+        let tree = MerkleTree::new().unwrap();
 
         let root = tree.root();
         assert_eq!(root, EMPTY_ROOT);
@@ -291,7 +291,7 @@ mod test {
 
     #[test]
     fn adding_key_value_pair_works() {
-        let mut tree = MerkleTree::new();
+        let mut tree = MerkleTree::new().unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
@@ -325,7 +325,7 @@ mod test {
 
     #[test]
     fn adding_and_removing_key_value_pair_gives_the_empty_root() {
-        let mut tree = MerkleTree::new();
+        let mut tree = MerkleTree::new().unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
@@ -342,7 +342,7 @@ mod test {
 
     #[test]
     fn updating_key_with_same_value_does_not_change_root() {
-        let mut tree = MerkleTree::new();
+        let mut tree = MerkleTree::new().unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
@@ -355,7 +355,7 @@ mod test {
 
     #[test]
     fn updating_same_key_changes_root() {
-        let mut tree = MerkleTree::new();
+        let mut tree = MerkleTree::new().unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data1 = b"data1";

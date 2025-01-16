@@ -54,9 +54,20 @@ pub const EMPTY_ROOT: Bytes32 = [
     76, 68, 69, 82, 95, 72, 65, 83, 72, 95, 95,
 ];
 
+pub struct InclusionProof {
+    proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
+    key: jmt::storage::NodeKey,
+    value: [u8; 32],
+}
+
+pub struct ExclusionProof {
+    proof: jmt::proof::SparseMerkleProof<sha2::Sha256>,
+    key: jmt::storage::NodeKey,
+}
+
 pub enum MerkleProof {
-    Inclusion(jmt::proof::SparseMerkleProof<sha2::Sha256>),
-    Exclusion(jmt::ExclusionProof<sha2::Sha256>),
+    Inclusion(InclusionProof),
+    Exclusion(ExclusionProof),
 }
 
 #[derive(Debug, Clone)]
@@ -300,7 +311,8 @@ where
     }
 
     pub fn _load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
-        let merkle_tree = Self::new(storage);
+        // TODO: Refactor, as new will now add an empty root
+        let merkle_tree = Self::new(storage)?;
         let root_from_storage = merkle_tree.root();
         //
         if *root == root_from_storage {
@@ -310,13 +322,23 @@ where
         }
     }
 
-    pub fn new(storage: StorageType) -> Self {
+    pub fn new(storage: StorageType) -> anyhow::Result<Self> {
         let storage = Arc::new(RwLock::new(storage));
-        Self {
+        let mut tree = Self {
             storage,
             // TODO: Remove this, as it is not accurate and not needed
             phantom_table: Default::default(),
-        }
+        };
+        // Inclusion and Exclusion proof require that the root is set, hence we add it
+        // here. Jmt does not make the constructor for `NibblePath` accessible, so
+        // we add and remove a node instead.
+        // TODO: Find a way to set the root without adding and deleting a node
+        let mock_key = MerkleTreeKey::new(Bytes32::default());
+        let mock_value = vec![0u8];
+        tree.update(mock_key, &mock_value)?;
+        tree.delete(mock_key)?;
+
+        Ok(tree)
     }
 
     pub fn from_set<B, I, D>(storage: StorageType, set: I) -> anyhow::Result<Self>
@@ -325,7 +347,7 @@ where
         B: Into<Bytes32>,
         D: AsRef<[u8]>,
     {
-        let tree = Self::new(storage);
+        let tree = Self::new(storage)?;
         let jmt = tree.as_jmt();
         // We assume that we are constructing a new Merkle Tree, hence the version is set
         // at 0
@@ -389,30 +411,6 @@ where
 
     pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), anyhow::Error> {
         self.update(key, &[])
-    }
-
-    pub fn generate_proof(
-        &self,
-        key: &MerkleTreeKey,
-    ) -> Result<MerkleProof, anyhow::Error> {
-        let jmt = self.as_jmt();
-        let key_hash = jmt::KeyHash::with::<sha2::Sha256>(**key);
-        let version = self
-            .get_latest_root_version()
-            .unwrap_or_default()
-            .unwrap_or_default();
-        let res = jmt.get_with_exclusion_proof(key_hash, version);
-        match res {
-            Ok(Ok((_value, inclusion_proof))) => {
-                let proof = MerkleProof::Inclusion(inclusion_proof);
-                Ok(proof)
-            }
-            Ok(Err(exclusion_proof)) => {
-                let proof = MerkleProof::Exclusion(exclusion_proof);
-                Ok(proof)
-            }
-            Err(e) => return Err(anyhow::anyhow!("Error generating proof: {:?}", e)),
-        }
     }
 }
 

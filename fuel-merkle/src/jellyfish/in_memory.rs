@@ -7,6 +7,12 @@ use fuel_storage::{
 
 use crate::jellyfish::merkle_tree::JellyfishMerkleTreeStorage;
 
+use jmt::storage::{
+    NibblePath,
+    Node as JmtNode,
+    NodeKey as JmtNodeKey,
+};
+
 use crate::{
     common::{
         Bytes32,
@@ -24,8 +30,8 @@ pub struct NodesTable;
 
 impl Mappable for NodesTable {
     type Key = Self::OwnedKey;
-    type OwnedKey = jmt::storage::NodeKey;
-    type OwnedValue = jmt::storage::Node;
+    type OwnedKey = JmtNodeKey;
+    type OwnedValue = JmtNode;
     type Value = Self::OwnedValue;
 }
 /// The table of the Binary Merkle Tree's values.
@@ -64,8 +70,7 @@ impl StorageInspect<NodesTable> for Storage {
     fn get(
         &self,
         key: &<NodesTable as Mappable>::Key,
-    ) -> Result<Option<std::borrow::Cow<<NodesTable as Mappable>::OwnedValue>>, Self::Error>
-    {
+    ) -> Result<Option<Cow<<NodesTable as Mappable>::OwnedValue>>, Self::Error> {
         self.nodes.storage::<NodesTable>().get(key)
     }
 
@@ -83,10 +88,7 @@ impl StorageInspect<ValuesTable> for Storage {
     fn get(
         &self,
         key: &<ValuesTable as Mappable>::Key,
-    ) -> Result<
-        Option<std::borrow::Cow<<ValuesTable as Mappable>::OwnedValue>>,
-        Self::Error,
-    > {
+    ) -> Result<Option<Cow<<ValuesTable as Mappable>::OwnedValue>>, Self::Error> {
         self.values.storage::<ValuesTable>().get(key)
     }
 
@@ -104,10 +106,8 @@ impl StorageInspect<LatestRootVersionTable> for Storage {
     fn get(
         &self,
         _key: &<LatestRootVersionTable as Mappable>::Key,
-    ) -> Result<
-        Option<std::borrow::Cow<<LatestRootVersionTable as Mappable>::OwnedValue>>,
-        Self::Error,
-    > {
+    ) -> Result<Option<Cow<<LatestRootVersionTable as Mappable>::OwnedValue>>, Self::Error>
+    {
         let latest_root_version = &self.latest_root_version;
         if let Some(latest_root_version) = latest_root_version {
             Ok(Some(Cow::Borrowed(latest_root_version)))
@@ -234,7 +234,7 @@ impl MerkleTree {
 
     pub fn nodes_from_set<I, D>(
         set: I,
-    ) -> anyhow::Result<(Bytes32, Vec<(jmt::storage::NibblePath, jmt::storage::Node)>)>
+    ) -> anyhow::Result<(Bytes32, Vec<(NibblePath, JmtNode)>)>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
@@ -267,9 +267,14 @@ impl MerkleTree {
 #[cfg(test)]
 mod test {
     use crate::{
-        jellyfish::merkle_tree::EMPTY_ROOT,
+        jellyfish::merkle_tree::{
+            InclusionProof,
+            MerkleProof,
+            EMPTY_ROOT,
+        },
         sparse::MerkleTreeKey,
     };
+    use jmt::storage::LeafNode as JmtLeafNode;
     use sha2::Sha256;
 
     use super::*;
@@ -306,7 +311,7 @@ mod test {
         let leaves = nodes
             .iter()
             .filter_map(|(_node_key, node)| match node {
-                jmt::storage::Node::Leaf(leaf_node) => Some(leaf_node),
+                JmtNode::Leaf(leaf_node) => Some(leaf_node),
                 _ => None,
             })
             .collect::<Vec<_>>();
@@ -320,7 +325,7 @@ mod test {
         assert_eq!(value_key_hash, &leaf_node.key_hash());
         let preimage_value_hash = jmt::ValueHash::with::<Sha256>(preimage);
         let expected_leaf_node =
-            jmt::storage::LeafNode::new(value_key_hash.clone(), preimage_value_hash);
+            JmtLeafNode::new(value_key_hash.clone(), preimage_value_hash);
         assert_eq!(leaf_node, &expected_leaf_node);
     }
 
@@ -416,13 +421,11 @@ mod test {
         let proof = tree.storage.generate_proof(&merkle_tree_key).unwrap();
         assert!(proof.is_inclusion_proof());
         let tampered_proof = match proof {
-            crate::jellyfish::merkle_tree::MerkleProof::Inclusion(inclusion_proof) => {
-                crate::jellyfish::merkle_tree::MerkleProof::Inclusion(
-                    crate::jellyfish::merkle_tree::InclusionProof {
-                        value: b"Wrong value".to_vec(),
-                        ..inclusion_proof
-                    },
-                )
+            MerkleProof::Inclusion(inclusion_proof) => {
+                MerkleProof::Inclusion(InclusionProof {
+                    value: b"Wrong value".to_vec(),
+                    ..inclusion_proof
+                })
             }
             crate::jellyfish::merkle_tree::MerkleProof::Exclusion(_exclusion_proof) => {
                 panic!("It's an inclusion proof")

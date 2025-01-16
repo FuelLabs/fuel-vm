@@ -14,6 +14,7 @@ extern crate alloc;
 
 pub mod binary;
 pub mod common;
+pub mod jellyfish;
 pub mod sparse;
 pub mod storage;
 

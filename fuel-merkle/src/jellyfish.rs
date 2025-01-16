@@ -7,7 +7,9 @@ pub mod jmt_integration;
 /// StorageTrait backed Jellyfish Merkle Tree implementation
 pub mod merkle_tree;
 
-pub use merkle_tree::MerkleTreeError;
+mod error;
+
+pub use error::MerkleTreeError;
 
 /// Inclusion and exclusion proofs for the Jellyfish Merkle Tree.
 pub mod proof;

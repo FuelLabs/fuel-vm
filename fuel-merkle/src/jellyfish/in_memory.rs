@@ -1,3 +1,5 @@
+use core::convert::Infallible;
+
 use fuel_storage::{
     StorageAsMut as _,
     StorageAsRef,
@@ -23,6 +25,8 @@ use crate::{
 };
 
 use alloc::borrow::Cow;
+
+use super::MerkleTreeError;
 
 /// The table of the JellyFish Merkle Tree's nodes.
 #[derive(Debug, Clone)]
@@ -65,7 +69,7 @@ pub struct Storage {
 }
 
 impl StorageInspect<NodesTable> for Storage {
-    type Error = core::convert::Infallible;
+    type Error = Infallible;
 
     fn get(
         &self,
@@ -83,7 +87,7 @@ impl StorageInspect<NodesTable> for Storage {
 }
 
 impl StorageInspect<ValuesTable> for Storage {
-    type Error = core::convert::Infallible;
+    type Error = Infallible;
 
     fn get(
         &self,
@@ -101,7 +105,7 @@ impl StorageInspect<ValuesTable> for Storage {
 }
 
 impl StorageInspect<LatestRootVersionTable> for Storage {
-    type Error = core::convert::Infallible;
+    type Error = Infallible;
 
     fn get(
         &self,
@@ -186,11 +190,12 @@ pub struct MerkleTree {
         ValuesTable,
         LatestRootVersionTable,
         Storage,
+        Infallible,
     >,
 }
 
 impl MerkleTree {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new() -> Result<Self, MerkleTreeError<Infallible>> {
         let storage = Storage::default();
         Ok(Self {
             storage: JellyfishMerkleTreeStorage::new(storage)?,
@@ -223,7 +228,7 @@ impl MerkleTree {
     /// not incur the overhead of storage writes. This can be helpful when we
     /// know all the key-values in the set upfront and we will not need to
     /// update the set in the future.
-    pub fn root_from_set<I, D>(set: I) -> anyhow::Result<Bytes32>
+    pub fn root_from_set<I, D>(set: I) -> Result<Bytes32, MerkleTreeError<Infallible>>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
@@ -234,7 +239,7 @@ impl MerkleTree {
 
     pub fn nodes_from_set<I, D>(
         set: I,
-    ) -> anyhow::Result<(Bytes32, Vec<(NibblePath, JmtNode)>)>
+    ) -> Result<(Bytes32, Vec<(NibblePath, JmtNode)>), MerkleTreeError<Infallible>>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
@@ -259,7 +264,7 @@ impl MerkleTree {
         let _ = self.storage.delete(key);
     }
 
-    pub fn root(&self) -> anyhow::Result<Bytes32> {
+    pub fn root(&self) -> Result<Bytes32, MerkleTreeError<Infallible>> {
         self.storage.root()
     }
 }

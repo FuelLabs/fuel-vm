@@ -18,12 +18,19 @@ use jmt::storage::{
 
 use super::merkle_tree::JellyfishMerkleTreeStorage;
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> TreeWriter
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    > TreeWriter
     for JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 where
     NodeTableType: Mappable<Key = JmtNodeKey, Value = JmtNode, OwnedValue = JmtNode>,
@@ -33,9 +40,9 @@ where
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
-    StorageType: StorageMutate<NodeTableType>
-        + StorageMutate<ValueTableType>
-        + StorageMutate<LatestRootVersionTableType>,
+    StorageType: StorageMutate<NodeTableType, Error = StorageError>
+        + StorageMutate<ValueTableType, Error = StorageError>
+        + StorageMutate<LatestRootVersionTableType, Error = StorageError>,
 {
     fn write_node_batch(&self, node_batch: &JmtNodeBatch) -> anyhow::Result<()> {
         for (key, node) in node_batch.nodes() {
@@ -95,12 +102,19 @@ where
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> TreeReader
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    > TreeReader
     for JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 where
     NodeTableType: Mappable<Key = JmtNodeKey, Value = JmtNode, OwnedValue = JmtNode>,
@@ -109,7 +123,8 @@ where
         Value = (jmt::Version, jmt::OwnedValue),
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
-    StorageType: StorageInspect<NodeTableType> + StorageInspect<ValueTableType>,
+    StorageType: StorageInspect<NodeTableType, Error = StorageError>
+        + StorageInspect<ValueTableType, Error = StorageError>,
 {
     fn get_node_option(&self, node_key: &JmtNodeKey) -> anyhow::Result<Option<JmtNode>> {
         let storage = self.storage_read();
@@ -147,12 +162,19 @@ where
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType> HasPreimage
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    > HasPreimage
     for JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 where
     ValueTableType: Mappable<
@@ -160,7 +182,7 @@ where
         Value = (jmt::Version, jmt::OwnedValue),
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
-    StorageType: StorageInspect<ValueTableType>,
+    StorageType: StorageInspect<ValueTableType, Error = StorageError>,
 {
     fn preimage(&self, key_hash: jmt::KeyHash) -> anyhow::Result<Option<Vec<u8>>> {
         let storage = self.storage_read();

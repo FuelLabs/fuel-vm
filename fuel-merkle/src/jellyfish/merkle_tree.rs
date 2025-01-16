@@ -32,17 +32,7 @@ use crate::jellyfish::proof::{
     MerkleProof,
 };
 
-#[derive(Debug, Clone, derive_more::Display, PartialEq, Eq)]
-pub enum MerkleTreeError<StorageError> {
-    #[display(fmt = "{}", _0)]
-    StorageError(StorageError),
-}
-
-impl<StorageError> From<StorageError> for MerkleTreeError<StorageError> {
-    fn from(err: StorageError) -> MerkleTreeError<StorageError> {
-        MerkleTreeError::StorageError(err)
-    }
-}
+use crate::jellyfish::error::MerkleTreeError;
 
 // Obtained by creating an empty tree.
 pub const EMPTY_ROOT: Bytes32 = [
@@ -56,18 +46,30 @@ pub struct JellyfishMerkleTreeStorage<
     ValueTableType,
     LatestRootVersionTableType,
     StorageType,
+    StorageError,
 > {
     inner: Arc<RwLock<StorageType>>,
-    phantom_table:
-        PhantomData<(NodeTableType, ValueTableType, LatestRootVersionTableType)>,
+    phantom_table: PhantomData<(
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageError,
+    )>,
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    >
     JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 {
     pub const fn empty_root() -> &'static Bytes32 {
@@ -83,36 +85,51 @@ impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    >
     JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 where
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
-    StorageType: StorageInspect<LatestRootVersionTableType>,
+    StorageType: StorageInspect<LatestRootVersionTableType, Error = StorageError>,
 {
-    fn get_latest_root_version(&self) -> anyhow::Result<Option<u64>> {
+    fn get_latest_root_version(
+        &self,
+    ) -> Result<Option<u64>, MerkleTreeError<StorageType::Error>> {
         let storage = self.storage_read();
         let version = <StorageType as StorageInspect<LatestRootVersionTableType>>::get(
             &*storage,
             &(),
-        )
-        .map_err(|_e| anyhow::anyhow!("Latest root version storage error"))?
+        )?
         .map(|v| *v);
 
         Ok(version)
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    >
     JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 where
     NodeTableType: Mappable<Key = JmtNodeKey, Value = JmtNode, OwnedValue = JmtNode>,
@@ -121,7 +138,8 @@ where
         Value = (jmt::Version, jmt::OwnedValue),
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
-    StorageType: StorageInspect<NodeTableType> + StorageInspect<ValueTableType>,
+    StorageType: StorageInspect<NodeTableType, Error = StorageError>
+        + StorageInspect<ValueTableType, Error = StorageError>,
 {
     // Requires TreeReader + HasPreimage
     // TreeReader requires StorageInspect<NodeTableType> and
@@ -132,12 +150,19 @@ where
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    >
     JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 where
     NodeTableType: Mappable<Key = JmtNodeKey, Value = JmtNode, OwnedValue = JmtNode>,
@@ -147,28 +172,31 @@ where
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
-    StorageType: StorageInspect<NodeTableType>
-        + StorageInspect<ValueTableType>
-        + StorageInspect<LatestRootVersionTableType>,
+    StorageType: StorageInspect<NodeTableType, Error = StorageError>
+        + StorageInspect<ValueTableType, Error = StorageError>
+        + StorageInspect<LatestRootVersionTableType, Error = StorageError>,
 {
-    // TODO: What to do with errors?
     // get_latest_root_version() requires StorageInspect<LatestRootVersionTableType>
     // as_jmt() requires TreeReader, which requires StorageInspect<NodeTableType> and
     // StorageInspect<ValueTableType>. Therefore this function requires
     // StorageInspect<LatestRootVersionTableType>, StorageInspect<NodeTableType>, and
     // StorageInspect<ValueTableType>.
-    pub fn root(&self) -> anyhow::Result<Bytes32> {
+    pub fn root(&self) -> Result<Bytes32, MerkleTreeError<StorageError>> {
         // We need to know the version of the root node.
         let version = self
             .get_latest_root_version()?
-            .ok_or(anyhow::anyhow!("Error getting latest root version"))?;
+            .ok_or(MerkleTreeError::NoVersion)?;
 
         self.as_jmt()
             .get_root_hash(version)
+            .map_err(MerkleTreeError::JmtError)
             .map(|root_hash| root_hash.0)
     }
 
-    pub fn load(storage: StorageType, root: &Bytes32) -> Result<Self, anyhow::Error> {
+    pub fn load(
+        storage: StorageType,
+        root: &Bytes32,
+    ) -> Result<Self, MerkleTreeError<StorageError>> {
         let inner = Arc::new(RwLock::new(storage));
         let merkle_tree = Self {
             inner,
@@ -181,21 +209,23 @@ where
         if *root == root_from_storage {
             Ok(merkle_tree)
         } else {
-            Err(anyhow::anyhow!("Root hash mismatch"))
+            Err(MerkleTreeError::RootHashMismatch(*root, root_from_storage))
         }
     }
 
     pub fn generate_proof(
         &self,
         key: &MerkleTreeKey,
-    ) -> Result<MerkleProof, anyhow::Error> {
+    ) -> Result<MerkleProof, MerkleTreeError<StorageError>> {
         let jmt = self.as_jmt();
         let key_hash = jmt::KeyHash(**key);
         let version = self
             .get_latest_root_version()
             .unwrap_or_default()
             .unwrap_or_default();
-        let (value_vec, proof) = jmt.get_with_proof(key_hash, version)?;
+        let (value_vec, proof) = jmt
+            .get_with_proof(key_hash, version)
+            .map_err(MerkleTreeError::JmtError)?;
         let proof = match value_vec {
             Some(value) => MerkleProof::Inclusion(InclusionProof {
                 proof,
@@ -211,12 +241,19 @@ where
     }
 }
 
-impl<NodeTableType, ValueTableType, LatestRootVersionTableType, StorageType>
+impl<
+        NodeTableType,
+        ValueTableType,
+        LatestRootVersionTableType,
+        StorageType,
+        StorageError,
+    >
     JellyfishMerkleTreeStorage<
         NodeTableType,
         ValueTableType,
         LatestRootVersionTableType,
         StorageType,
+        StorageError,
     >
 where
     NodeTableType: Mappable<Key = JmtNodeKey, Value = JmtNode, OwnedValue = JmtNode>,
@@ -226,15 +263,21 @@ where
         OwnedValue = (jmt::Version, jmt::OwnedValue),
     >,
     LatestRootVersionTableType: Mappable<Key = (), Value = u64, OwnedValue = u64>,
-    StorageType: StorageMutate<NodeTableType>
-        + StorageMutate<ValueTableType>
-        + StorageMutate<LatestRootVersionTableType>,
+    StorageType: StorageMutate<NodeTableType, Error = StorageError>
+        + StorageMutate<ValueTableType, Error = StorageError>
+        + StorageMutate<LatestRootVersionTableType, Error = StorageError>,
 {
     // Because we insert and remove a node, we need to have StorageType:
     // StorageMutate<NodeTableType> + StorageMutate<ValueTableType> +
     // StorageMutate<LatestRootVersionTableType>
-    pub fn new(storage: StorageType) -> anyhow::Result<Self> {
+    pub fn new(storage: StorageType) -> Result<Self, MerkleTreeError<StorageError>> {
         let inner = Arc::new(RwLock::new(storage));
+        // Set the initial version of the tree to 0
+        <StorageType as StorageMutate<LatestRootVersionTableType>>::insert(
+            &mut *inner.write(),
+            &(),
+            &0,
+        )?;
         let mut tree = Self {
             inner,
             phantom_table: PhantomData,
@@ -251,7 +294,10 @@ where
         Ok(tree)
     }
 
-    pub fn from_set<B, I, D>(storage: StorageType, set: I) -> anyhow::Result<Self>
+    pub fn from_set<B, I, D>(
+        storage: StorageType,
+        set: I,
+    ) -> Result<Self, MerkleTreeError<StorageError>>
     where
         I: Iterator<Item = (B, D)>,
         B: Into<Bytes32>,
@@ -275,10 +321,11 @@ where
         // updates that must be written into storage
         let (_root_hash, updates) = jmt
             .put_value_set(update_batch, version)
-            .map_err(|e| anyhow::anyhow!("Error updating tree: {:?}", e))?;
+            .map_err(MerkleTreeError::JmtError)?;
         // TODO: Should we check the stale node indexes as well?
         let node_updates = updates.node_batch;
-        <Self as TreeWriter>::write_node_batch(&tree, &node_updates)?;
+        <Self as TreeWriter>::write_node_batch(&tree, &node_updates)
+            .map_err(MerkleTreeError::TreeWriterError)?;
 
         Ok(tree)
     }
@@ -289,7 +336,7 @@ where
         &mut self,
         key: MerkleTreeKey,
         data: &[u8],
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         let key_hash = jmt::KeyHash(*key);
         // If data.is_empty() we remove the value from the jmt
         let value = if data.is_empty() {
@@ -300,26 +347,31 @@ where
         // TODO : We could update version once per block, but here we
         // update version for each update operation.
         let version = self
-            .get_latest_root_version()
-            .unwrap_or_default()
-            .unwrap_or_default()
+            .get_latest_root_version()?
+            .ok_or(MerkleTreeError::NoVersion)?
             .saturating_add(1);
         let update_batch = [(key_hash, value); 1];
-        let (_root_hash, updates) = self.as_jmt().put_value_set(update_batch, version)?;
+        let (_root_hash, updates) = self
+            .as_jmt()
+            .put_value_set(update_batch, version)
+            .map_err(MerkleTreeError::JmtError)?;
         // TODO: Figure out what to do with stale node indexes
         let node_updates = updates.node_batch;
-        <Self as TreeWriter>::write_node_batch(&self, &node_updates)?;
+        <Self as TreeWriter>::write_node_batch(&self, &node_updates)
+            .map_err(MerkleTreeError::TreeWriterError)?;
         let stale_nodes = updates.stale_node_index_batch;
         let mut storage_write_guard = self.storage_write();
         for stale_node_index in stale_nodes {
             let node_key = stale_node_index.node_key;
-            StorageMutate::<NodeTableType>::remove(&mut *storage_write_guard, &node_key)
-                .map_err(|_e| anyhow::anyhow!("Error removing node"))?;
+            StorageMutate::<NodeTableType>::remove(&mut *storage_write_guard, &node_key)?;
         }
         return Ok(())
     }
 
-    pub fn delete(&mut self, key: MerkleTreeKey) -> Result<(), anyhow::Error> {
+    pub fn delete(
+        &mut self,
+        key: MerkleTreeKey,
+    ) -> Result<(), MerkleTreeError<StorageError>> {
         self.update(key, &[])
     }
 }

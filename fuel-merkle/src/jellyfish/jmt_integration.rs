@@ -1,15 +1,10 @@
-use core::marker::PhantomData;
-
 use crate::storage::{
     Mappable,
     StorageInspect,
     StorageMutate,
 };
 
-use alloc::{
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 
 use jmt::storage::{
     HasPreimage,
@@ -20,52 +15,8 @@ use jmt::storage::{
     TreeReader,
     TreeWriter,
 };
-use spin::{
-    RwLock,
-    RwLockReadGuard,
-    RwLockWriteGuard,
-};
 
-#[derive(Debug, Clone)]
-pub struct JellyfishMerkleTreeStorage<
-    NodeTableType,
-    ValueTableType,
-    LatestRootVersionTableType,
-    StorageType,
-    StorageError,
-> {
-    inner: Arc<RwLock<StorageType>>,
-    phantom_table: PhantomData<(
-        NodeTableType,
-        ValueTableType,
-        LatestRootVersionTableType,
-        StorageError,
-    )>,
-}
-
-impl<
-        NodeTableType,
-        ValueTableType,
-        LatestRootVersionTableType,
-        StorageType,
-        StorageError,
-    >
-    JellyfishMerkleTreeStorage<
-        NodeTableType,
-        ValueTableType,
-        LatestRootVersionTableType,
-        StorageType,
-        StorageError,
-    >
-{
-    pub fn storage_read(&self) -> RwLockReadGuard<StorageType> {
-        self.inner.read()
-    }
-
-    pub fn storage_write(&self) -> RwLockWriteGuard<StorageType> {
-        self.inner.write()
-    }
-}
+use super::merkle_tree::JellyfishMerkleTreeStorage;
 
 impl<
         NodeTableType,

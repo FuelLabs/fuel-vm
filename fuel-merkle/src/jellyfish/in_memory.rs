@@ -241,7 +241,7 @@ impl MerkleTree {
     {
         let tree = Self::from_set(set);
         let root = tree.root()?;
-        let storage_read_guard = tree.storage.storage.read();
+        let storage_read_guard = tree.storage.storage_read();
         let nodes = storage_read_guard
             .nodes
             .inner()
@@ -286,12 +286,12 @@ mod test {
     fn adding_key_value_pair_works() {
         let mut tree = MerkleTree::new().unwrap();
         let initial_storage_version =
-            tree.storage.storage.read().latest_root_version.unwrap();
+            tree.storage.storage_read().latest_root_version.unwrap();
         let raw_key = b"key";
         let merkle_tree_key = MerkleTreeKey::new(raw_key);
         let data = b"data";
         tree.update(merkle_tree_key, data);
-        let storage = tree.storage.storage.read();
+        let storage = tree.storage.storage_read();
         let nodes = storage.nodes.inner();
         let values = storage.values.inner();
         // The version has been updated:

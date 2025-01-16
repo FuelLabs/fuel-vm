@@ -108,7 +108,7 @@ pub struct JellyfishMerkleTreeStorage<
     LatestRootVersionTableType,
     StorageType,
 > {
-    pub(crate) storage: alloc::sync::Arc<RwLock<StorageType>>,
+    inner: alloc::sync::Arc<RwLock<StorageType>>,
     phantom_table:
         PhantomData<(NodeTableType, ValueTableType, LatestRootVersionTableType)>,
 }
@@ -134,7 +134,7 @@ where
 {
     fn write_node_batch(&self, node_batch: &JmtNodeBatch) -> anyhow::Result<()> {
         for (key, node) in node_batch.nodes() {
-            let mut storage = self.storage
+            let mut storage = self.inner
                 // TODO: We need to check that mutable access to the storage is exclusive
                 // If not, RefCell<Storage> will need to be replaced with RwLock<Storage>
                 .write();
@@ -209,7 +209,7 @@ where
     StorageType: StorageInspect<NodeTableType> + StorageInspect<ValueTableType>,
 {
     fn get_node_option(&self, node_key: &JmtNodeKey) -> anyhow::Result<Option<JmtNode>> {
-        let storage = self.storage.read();
+        let storage = self.inner.read();
         let get_result =
             <StorageType as StorageInspect<NodeTableType>>::get(&*storage, node_key)
                 .map_err(|_e| anyhow::anyhow!("Storage Error"))?;
@@ -223,7 +223,7 @@ where
         max_version: jmt::Version,
         key_hash: jmt::KeyHash,
     ) -> anyhow::Result<Option<jmt::OwnedValue>> {
-        let storage = self.storage.read();
+        let storage = self.inner.read();
         let Some(value) =
             <StorageType as StorageInspect<ValueTableType>>::get(&*storage, &key_hash)
                 .map_err(|_e| anyhow::anyhow!("Version Storage Error"))?
@@ -260,7 +260,7 @@ where
     StorageType: StorageInspect<ValueTableType>,
 {
     fn preimage(&self, key_hash: jmt::KeyHash) -> anyhow::Result<Option<Vec<u8>>> {
-        let storage = self.storage.read();
+        let storage = self.inner.read();
         let preimage =
             <StorageType as StorageInspect<ValueTableType>>::get(&*storage, &key_hash)
                 .map_err(|_e| anyhow::anyhow!("Preimage storage error"))?
@@ -310,11 +310,11 @@ where
     }
 
     pub fn storage_read(&self) -> spin::RwLockReadGuard<StorageType> {
-        self.storage.read()
+        self.inner.read()
     }
 
     pub fn storage_write(&self) -> spin::RwLockWriteGuard<StorageType> {
-        self.storage.write()
+        self.inner.write()
     }
 
     // TODO: What to do with errors?
@@ -342,9 +342,9 @@ where
     }
 
     pub fn new(storage: StorageType) -> anyhow::Result<Self> {
-        let storage = Arc::new(RwLock::new(storage));
+        let inner = Arc::new(RwLock::new(storage));
         let mut tree = Self {
-            storage,
+            inner,
             // TODO: Remove this, as it is not accurate and not needed
             phantom_table: Default::default(),
         };

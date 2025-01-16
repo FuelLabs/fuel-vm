@@ -44,6 +44,10 @@ where
     pub fn len(&self) -> usize {
         self.map.len()
     }
+
+    pub(crate) fn inner(&self) -> &HashMap<Type::OwnedKey, Type::OwnedValue> {
+        &self.map
+    }
 }
 
 impl<Type> StorageInspect<Type> for StorageMap<Type>

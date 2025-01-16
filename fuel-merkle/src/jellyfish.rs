@@ -1,3 +1,6 @@
+/// In Memory implementation of a Jellyfish Merkle Tree.
+pub mod in_memory;
+
 /// Integration of jmt::JellyfishMerkleTree with the Storage traits.
 pub mod jmt_integration;
 

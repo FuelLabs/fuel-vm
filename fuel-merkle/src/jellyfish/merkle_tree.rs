@@ -288,7 +288,7 @@ where
         // we add and remove a node instead.
         // TODO: Find a way to set the root without adding and deleting a node
         let mock_key = MerkleTreeKey::new(Bytes32::default());
-        let mock_value = vec![0u8];
+        let mock_value = alloc::vec![0u8];
         tree.update(mock_key, &mock_value)?;
         tree.delete(mock_key)?;
 

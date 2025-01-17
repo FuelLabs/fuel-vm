@@ -24,7 +24,10 @@ use crate::{
     storage::Mappable,
 };
 
-use alloc::borrow::Cow;
+use alloc::{
+    borrow::Cow,
+    vec::Vec,
+};
 
 use super::MerkleTreeError;
 

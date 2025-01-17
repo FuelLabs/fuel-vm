@@ -152,7 +152,7 @@ where
         };
         // Retrieve current version of key
 
-        return Ok(Some(value))
+        Ok(Some(value))
     }
 
     fn get_rightmost_leaf(&self) -> anyhow::Result<Option<(JmtNodeKey, JmtLeafNode)>> {

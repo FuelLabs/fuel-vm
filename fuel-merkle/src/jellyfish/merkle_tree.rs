@@ -145,8 +145,8 @@ where
     // TreeReader requires StorageInspect<NodeTableType> and
     // StorageInspect<ValueTableType> HasPreimage requires
     // StorageInspect<ValueTableType>
-    fn as_jmt<'a>(&'a self) -> Sha256Jmt<'a, Self> {
-        JellyfishMerkleTree::new(&self)
+    fn as_jmt(&self) -> Sha256Jmt<'_, Self> {
+        JellyfishMerkleTree::new(self)
     }
 }
 
@@ -357,7 +357,7 @@ where
             .map_err(MerkleTreeError::JmtError)?;
         // TODO: Figure out what to do with stale node indexes
         let node_updates = updates.node_batch;
-        <Self as TreeWriter>::write_node_batch(&self, &node_updates)
+        <Self as TreeWriter>::write_node_batch(self, &node_updates)
             .map_err(MerkleTreeError::TreeWriterError)?;
         let stale_nodes = updates.stale_node_index_batch;
         let mut storage_write_guard = self.storage_write();
@@ -365,7 +365,7 @@ where
             let node_key = stale_node_index.node_key;
             StorageMutate::<NodeTableType>::remove(&mut *storage_write_guard, &node_key)?;
         }
-        return Ok(())
+        Ok(())
     }
 
     pub fn delete(

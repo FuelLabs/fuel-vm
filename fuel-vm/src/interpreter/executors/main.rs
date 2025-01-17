@@ -126,7 +126,7 @@ enum PredicateRunKind<'a, Tx> {
     Estimating(&'a mut Tx),
 }
 
-impl<'a, Tx> PredicateRunKind<'a, Tx> {
+impl<Tx> PredicateRunKind<'_, Tx> {
     fn tx(&self) -> &Tx {
         match self {
             PredicateRunKind::Verifying(tx) => tx,

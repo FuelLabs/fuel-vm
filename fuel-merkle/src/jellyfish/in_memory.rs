@@ -28,6 +28,8 @@ use alloc::borrow::Cow;
 
 use super::MerkleTreeError;
 
+pub type InMemoryStorageResult<T> = core::result::Result<T, MerkleTreeError<Infallible>>;
+
 /// The table of the JellyFish Merkle Tree's nodes.
 #[derive(Debug, Clone)]
 pub struct NodesTable;
@@ -170,7 +172,7 @@ impl StorageMutate<LatestRootVersionTable> for Storage {
     ) -> Result<Option<<LatestRootVersionTable as Mappable>::OwnedValue>, Self::Error>
     {
         let old_value = self.latest_root_version.take();
-        self.latest_root_version = Some(value.clone());
+        self.latest_root_version = Some(*value);
         Ok(old_value)
     }
 
@@ -195,7 +197,7 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
-    pub fn new() -> Result<Self, MerkleTreeError<Infallible>> {
+    pub fn new() -> InMemoryStorageResult<Self> {
         let storage = Storage::default();
         Ok(Self {
             storage: JellyfishMerkleTreeStorage::new(storage)?,
@@ -228,7 +230,7 @@ impl MerkleTree {
     /// not incur the overhead of storage writes. This can be helpful when we
     /// know all the key-values in the set upfront and we will not need to
     /// update the set in the future.
-    pub fn root_from_set<I, D>(set: I) -> Result<Bytes32, MerkleTreeError<Infallible>>
+    pub fn root_from_set<I, D>(set: I) -> InMemoryStorageResult<Bytes32>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
@@ -239,7 +241,7 @@ impl MerkleTree {
 
     pub fn nodes_from_set<I, D>(
         set: I,
-    ) -> Result<(Bytes32, Vec<(NibblePath, JmtNode)>), MerkleTreeError<Infallible>>
+    ) -> InMemoryStorageResult<(Bytes32, Vec<(NibblePath, JmtNode)>)>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
@@ -264,7 +266,7 @@ impl MerkleTree {
         let _ = self.storage.delete(key);
     }
 
-    pub fn root(&self) -> Result<Bytes32, MerkleTreeError<Infallible>> {
+    pub fn root(&self) -> InMemoryStorageResult<Bytes32> {
         self.storage.root()
     }
 }
@@ -331,8 +333,7 @@ mod test {
         // The key_hash of the leaf node is the same as the key_hash of the value
         assert_eq!(value_key_hash, &leaf_node.key_hash());
         let preimage_value_hash = jmt::ValueHash::with::<Sha256>(preimage);
-        let expected_leaf_node =
-            JmtLeafNode::new(value_key_hash.clone(), preimage_value_hash);
+        let expected_leaf_node = JmtLeafNode::new(*value_key_hash, preimage_value_hash);
         assert_eq!(leaf_node, &expected_leaf_node);
     }
 

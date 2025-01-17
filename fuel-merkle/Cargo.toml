@@ -17,10 +17,10 @@ digest = { version = "0.10", default-features = false }
 fuel-storage = { workspace = true, default-features = false }
 hashbrown = "0.13"
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
-jmt = { version = "0.11.0" }
+jmt = { version = "0.11.0", default-features = false, features = ["sha2"] }
 serde = { version = "1.0", default-features = false, optional = true }
 sha2 = { version = "0.10", default-features = false }
-spin = { version = "0.9.8" }
+spin = { version = "0.9.8", default-features = false, features = ["rwlock"] }
 
 [dev-dependencies]
 criterion = { workspace = true }

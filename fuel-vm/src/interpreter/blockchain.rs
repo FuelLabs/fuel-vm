@@ -573,7 +573,7 @@ struct LoadContractCodeCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> LoadContractCodeCtx<'vm, S>
+impl<S> LoadContractCodeCtx<'_, S>
 where
     S: InterpreterStorage,
 {
@@ -874,7 +874,7 @@ struct BurnCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> BurnCtx<'vm, S>
+impl<S> BurnCtx<'_, S>
 where
     S: ContractsAssetsStorage,
 {
@@ -914,7 +914,7 @@ struct MintCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> MintCtx<'vm, S>
+impl<S> MintCtx<'_, S>
 where
     S: ContractsAssetsStorage,
 {
@@ -969,7 +969,7 @@ struct CodeCopyCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> CodeCopyCtx<'vm, S>
+impl<S> CodeCopyCtx<'_, S>
 where
     S: InterpreterStorage,
 {
@@ -1081,7 +1081,7 @@ struct CodeRootCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> CodeRootCtx<'vm, S> {
+impl<S> CodeRootCtx<'_, S> {
     pub(crate) fn code_root(mut self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
@@ -1133,7 +1133,7 @@ struct CodeSizeCtx<'vm, S> {
     is: Reg<'vm, IS>,
 }
 
-impl<'vm, S> CodeSizeCtx<'vm, S> {
+impl<S> CodeSizeCtx<'_, S> {
     pub(crate) fn code_size(
         mut self,
         result: &mut Word,

@@ -28,7 +28,7 @@ datatest-stable = "0.2"
 fuel-merkle-test-helpers = { path = "test-helpers" }
 hex = "0.4"
 proptest = "1.4"
-proptest-derive = "0.4"
+proptest-derive = "0.5.1"
 rand = "0.8"
 serde_json = "1.0"
 serde_yaml = "0.9"

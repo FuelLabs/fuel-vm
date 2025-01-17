@@ -8,12 +8,13 @@ use crate::{
     },
 };
 
-use alloc::sync::Arc;
-use core::marker::PhantomData;
-use spin::{
-    rwlock::RwLock,
-    RwLockReadGuard,
-    RwLockWriteGuard,
+use core::{
+    cell::{
+        Ref,
+        RefCell,
+        RefMut,
+    },
+    marker::PhantomData,
 };
 
 use jmt::{
@@ -48,7 +49,7 @@ pub struct JellyfishMerkleTreeStorage<
     StorageType,
     StorageError,
 > {
-    inner: Arc<RwLock<StorageType>>,
+    inner: RefCell<StorageType>,
     phantom_table: PhantomData<(
         NodeTableType,
         ValueTableType,
@@ -76,12 +77,12 @@ impl<
         &EMPTY_ROOT
     }
 
-    pub fn storage_read(&self) -> RwLockReadGuard<StorageType> {
-        self.inner.read()
+    pub fn storage_read(&self) -> Ref<StorageType> {
+        self.inner.borrow()
     }
 
-    pub fn storage_write(&self) -> RwLockWriteGuard<StorageType> {
-        self.inner.write()
+    pub fn storage_write(&self) -> RefMut<StorageType> {
+        self.inner.borrow_mut()
     }
 }
 
@@ -197,7 +198,7 @@ where
         storage: StorageType,
         root: &Bytes32,
     ) -> Result<Self, MerkleTreeError<StorageError>> {
-        let inner = Arc::new(RwLock::new(storage));
+        let inner = RefCell::new(storage);
         let merkle_tree = Self {
             inner,
             phantom_table: PhantomData,
@@ -271,10 +272,10 @@ where
     // StorageMutate<NodeTableType> + StorageMutate<ValueTableType> +
     // StorageMutate<LatestRootVersionTableType>
     pub fn new(storage: StorageType) -> Result<Self, MerkleTreeError<StorageError>> {
-        let inner = Arc::new(RwLock::new(storage));
+        let inner = RefCell::new(storage);
         // Set the initial version of the tree to 0
         <StorageType as StorageMutate<LatestRootVersionTableType>>::insert(
-            &mut *inner.write(),
+            &mut *inner.borrow_mut(),
             &(),
             &0,
         )?;

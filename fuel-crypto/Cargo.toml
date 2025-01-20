@@ -37,7 +37,7 @@ default = ["fuel-types/default", "std"]
 alloc = ["rand?/alloc", "secp256k1?/alloc", "fuel-types/alloc"]
 random = ["fuel-types/random", "rand"]
 serde = ["dep:serde", "fuel-types/serde"]
-std = ["alloc", "coins-bip32", "secp256k1", "coins-bip39", "fuel-types/std", "rand?/std_rng", "serde?/default",  "k256/std", "ed25519-dalek/std", "sha2/std", "p256/std", "ecdsa/std"]
+std = ["alloc", "coins-bip32", "secp256k1", "coins-bip39", "fuel-types/std", "rand?/std_rng", "serde?/default", "k256/std", "ed25519-dalek/std", "sha2/std", "p256/std", "ecdsa/std"]
 test-helpers = []
 
 [lints.rust]

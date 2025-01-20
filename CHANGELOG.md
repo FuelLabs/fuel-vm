@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
+
 ### Fixed
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889): Debugger breakpoint caused receipts to be produced incorrectly.
 

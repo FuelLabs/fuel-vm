@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Breaking
+- [897](https://github.com/FuelLabs/fuel-vm/pull/897): Return `TxId` when error in checking of transactions. From: `CheckError` to `(TxId, CheckError)`.
+
 ### Fixed
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889): Debugger breakpoint caused receipts to be produced incorrectly.
 

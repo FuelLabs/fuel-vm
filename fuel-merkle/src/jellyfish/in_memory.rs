@@ -244,7 +244,7 @@ impl MerkleTree {
 
     pub fn nodes_from_set<I, D>(
         set: I,
-    ) -> InMemoryStorageResult<(Bytes32, Vec<(NibblePath, JmtNode)>)>
+    ) -> InMemoryStorageResult<(Bytes32, Vec<(JmtNodeKey, JmtNode)>)>
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
@@ -256,7 +256,7 @@ impl MerkleTree {
             .nodes
             .inner()
             .iter()
-            .map(|(k, v)| (k.nibble_path().clone(), v.clone()))
+            .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
         Ok((root, nodes))
     }

@@ -334,7 +334,7 @@ where
         B: Into<Bytes32>,
         D: AsRef<[u8]>,
     {
-        let tree = Self::new(storage)?;
+        let tree = Self::load_no_check(storage)?;
         let jmt = tree.as_jmt();
         // We assume that we are constructing a new Merkle Tree.
         // We start from version 2 to be consistent with the version obtained

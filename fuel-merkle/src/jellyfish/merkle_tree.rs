@@ -214,6 +214,16 @@ where
         }
     }
 
+    pub fn load_no_check(
+        storage: StorageType,
+    ) -> Result<Self, MerkleTreeError<StorageError>> {
+        let inner = RefCell::new(storage);
+        Ok(Self {
+            inner,
+            phantom_table: PhantomData,
+        })
+    }
+
     pub fn generate_proof(
         &self,
         key: &MerkleTreeKey,

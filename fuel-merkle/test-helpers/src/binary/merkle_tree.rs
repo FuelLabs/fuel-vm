@@ -23,6 +23,14 @@ impl MerkleTree {
         Self::default()
     }
 
+    pub fn new_from_existing_leafs(leafs: Vec<Data>) -> Self {
+        let mut mt = Self::new();
+        for leaf in leafs {
+            mt.push_inner(leaf);
+        }
+        mt
+    }
+
     pub fn set_proof_index(&mut self, proof_index: u64) {
         if self.head().is_some() {
             panic!("Cannot change the proof index after adding a leaf!");
@@ -50,11 +58,15 @@ impl MerkleTree {
     }
 
     pub fn push(&mut self, data: &[u8]) {
+        self.push_inner(leaf_sum(data));
+    }
+
+    fn push_inner(&mut self, data: Data) {
         if self.leaves_count == self.proof_index {
-            self.proof_set.push(leaf_sum(data));
+            self.proof_set.push(data);
         }
 
-        let node = Self::create_node(self.head.take(), 0, leaf_sum(data));
+        let node = Self::create_node(self.head.take(), 0, data);
         self.head = Some(node);
         self.join_all_subtrees();
 
@@ -416,5 +428,35 @@ mod test {
         let mt = MerkleTree::new();
         let (_root, proof_set) = mt.prove();
         assert!(proof_set.is_empty());
+    }
+
+    #[test]
+    fn new_from_existing_leafs_creates_a_merkle_tree_from_existing_leafs() {
+        let data = &TEST_DATA[0..5]; // 5 leaves
+        let leafs = data.iter().map(|d| leaf_sum(d)).collect();
+        let mt = MerkleTree::new_from_existing_leafs(leafs);
+
+        //          N4
+        //         /  \
+        //       N3    \
+        //      /  \    \
+        //     /    \    \
+        //   N1      N2   \
+        //  /  \    /  \   \
+        // L1  L2  L3  L4  L5
+
+        let leaf_1 = leaf_sum(data[0]);
+        let leaf_2 = leaf_sum(data[1]);
+        let leaf_3 = leaf_sum(data[2]);
+        let leaf_4 = leaf_sum(data[3]);
+        let leaf_5 = leaf_sum(data[4]);
+
+        let node_1 = node_sum(&leaf_1, &leaf_2);
+        let node_2 = node_sum(&leaf_3, &leaf_4);
+        let node_3 = node_sum(&node_1, &node_2);
+        let node_4 = node_sum(&node_3, &leaf_5);
+
+        let expected_root = node_4;
+        assert_eq!(mt.root(), expected_root);
     }
 }

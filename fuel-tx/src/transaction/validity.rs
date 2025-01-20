@@ -431,10 +431,10 @@ where
         return Err(ValidityError::DuplicateInputContractId { contract_id });
     }
 
-    // Check for duplicated input message id
-    let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
-    if let Some(message_id) = next_duplicate(duplicated_message_id) {
-        return Err(ValidityError::DuplicateMessageInputId { message_id });
+    // Check for duplicated input nonce
+    let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
+    if let Some(nonce) = next_duplicate(duplicated_nonce).copied() {
+        return Err(ValidityError::DuplicateMessageInputId { nonce });
     }
 
     // Validate the inputs without checking signature

@@ -2,7 +2,7 @@ use crate::UtxoId;
 use fuel_types::{
     AssetId,
     ContractId,
-    MessageId,
+    Nonce,
 };
 
 /// The error returned during the checking of the transaction's validity rules.
@@ -50,7 +50,7 @@ pub enum ValidityError {
         utxo_id: UtxoId,
     },
     DuplicateMessageInputId {
-        message_id: MessageId,
+        nonce: Nonce,
     },
     DuplicateInputContractId {
         contract_id: ContractId,

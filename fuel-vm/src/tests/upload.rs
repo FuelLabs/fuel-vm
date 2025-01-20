@@ -276,14 +276,14 @@ fn check__fails_when_subsection_index_more_than_total_number() {
         vec![],
         vec![],
     )
-    .into_checked_basic(Default::default(), &Default::default());
+    .into_checked_basic(Default::default(), &Default::default())
+    .expect_err("Should fail to generate checked tx")
+    .1;
 
     // Then
     assert_eq!(
         result,
-        Err(CheckError::Validity(
-            ValidityError::TransactionUploadRootVerificationFailed
-        ))
+        CheckError::Validity(ValidityError::TransactionUploadRootVerificationFailed)
     );
 }
 
@@ -303,14 +303,14 @@ fn check__fails_when_total_number_is_zero() {
         vec![],
         vec![],
     )
-    .into_checked_basic(Default::default(), &Default::default());
+    .into_checked_basic(Default::default(), &Default::default())
+    .expect_err("Should fail to generate checked tx")
+    .1;
 
     // Then
     assert_eq!(
         result,
-        Err(CheckError::Validity(
-            ValidityError::TransactionUploadRootVerificationFailed
-        ))
+        CheckError::Validity(ValidityError::TransactionUploadRootVerificationFailed)
     );
 }
 

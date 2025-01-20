@@ -295,6 +295,26 @@ where
         Ok(tree)
     }
 
+    pub fn load_use_global_root(
+        storage: StorageType,
+    ) -> Result<Self, MerkleTreeError<StorageError>> {
+        let latest_version = <StorageType as StorageInspect<
+            LatestRootVersionTableType,
+        >>::get(&storage, &())?
+        .map(|v| *v);
+
+        match latest_version {
+            Some(_latest_version) => {
+                let inner = RefCell::new(storage);
+                Ok(Self {
+                    inner,
+                    phantom_table: PhantomData,
+                })
+            }
+            None => Self::new(storage),
+        }
+    }
+
     pub fn from_set<B, I, D>(
         storage: StorageType,
         set: I,

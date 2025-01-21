@@ -434,7 +434,7 @@ where
     // Check for duplicated input nonce
     let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
     if let Some(nonce) = next_duplicate(duplicated_nonce).copied() {
-        return Err(ValidityError::DuplicateMessageInputId { nonce });
+        return Err(ValidityError::DuplicateInputNonce { nonce });
     }
 
     // Validate the inputs without checking signature

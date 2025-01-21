@@ -49,7 +49,7 @@ pub enum ValidityError {
     DuplicateInputUtxoId {
         utxo_id: UtxoId,
     },
-    DuplicateMessageInputId {
+    DuplicateInputNonce {
         nonce: Nonce,
     },
     DuplicateInputContractId {

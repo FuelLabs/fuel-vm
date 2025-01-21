@@ -587,7 +587,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         )
         .expect_err("Expected checkable failure");
 
-    assert_eq!(err, ValidityError::DuplicateMessageInputId { nonce });
+    assert_eq!(err, ValidityError::DuplicateInputNonce { nonce });
 }
 
 #[test]

@@ -28,8 +28,9 @@ use rand::{
     RngCore,
 };
 
+static CONTEXT: OnceLock<Secp256k1<secp256k1::All>> = OnceLock::new();
+
 fn get_context() -> &'static Secp256k1<secp256k1::All> {
-    static CONTEXT: OnceLock<Secp256k1<secp256k1::All>> = OnceLock::new();
     CONTEXT.get_or_init(Secp256k1::new)
 }
 

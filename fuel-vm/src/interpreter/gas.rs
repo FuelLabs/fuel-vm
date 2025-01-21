@@ -157,7 +157,7 @@ pub(crate) struct ProfileGas<'a> {
     pub profiler: &'a mut Profiler,
 }
 
-impl<'a> ProfileGas<'a> {
+impl ProfileGas<'_> {
     #[allow(unused_variables)]
     pub(crate) fn profile(&mut self, cgas: Reg<CGAS>, gas: Word) {
         #[cfg(feature = "profile-coverage")]

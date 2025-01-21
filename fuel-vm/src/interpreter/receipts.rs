@@ -153,7 +153,7 @@ impl<'a> ReceiptsCtxMut<'a> {
     }
 }
 
-impl<'a> Drop for ReceiptsCtxMut<'a> {
+impl Drop for ReceiptsCtxMut<'_> {
     fn drop(&mut self) {
         // The receipts may have been modified; recalculate the root
         self.receipts_ctx.recalculate_root()

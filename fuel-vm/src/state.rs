@@ -203,7 +203,7 @@ impl<'a, Tx> From<&'a StateTransition<Tx>> for StateTransitionRef<'a, Tx> {
     }
 }
 
-impl<'a, Tx: Clone> From<StateTransitionRef<'a, Tx>> for StateTransition<Tx> {
+impl<Tx: Clone> From<StateTransitionRef<'_, Tx>> for StateTransition<Tx> {
     fn from(t: StateTransitionRef<Tx>) -> StateTransition<Tx> {
         StateTransition {
             state: *t.state(),

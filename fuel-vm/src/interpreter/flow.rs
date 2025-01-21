@@ -437,7 +437,7 @@ struct PrepareCallUnusedRegisters<'a> {
     retl: Reg<'a, RETL>,
 }
 
-impl<'a> PrepareCallRegisters<'a> {
+impl PrepareCallRegisters<'_> {
     fn copy_registers(&self) -> [Word; VM_REGISTER_COUNT] {
         copy_registers(&self.into(), &self.program_registers)
     }
@@ -459,7 +459,7 @@ struct PrepareCallCtx<'vm, S> {
     profiler: &'vm mut Profiler,
 }
 
-impl<'vm, S> PrepareCallCtx<'vm, S>
+impl<S> PrepareCallCtx<'_, S>
 where
     S: InterpreterStorage,
 {

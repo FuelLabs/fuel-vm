@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [901](https://github.com/FuelLabs/fuel-vm/pull/901): Add `Display` implementation to `Receipt` enum.
+
 ### Fixed
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889): Debugger breakpoint caused receipts to be produced incorrectly.
 

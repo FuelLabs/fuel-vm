@@ -17,6 +17,7 @@ mod code_coverage;
 mod coins;
 mod contract;
 mod crypto;
+mod debugger;
 mod encoding;
 mod external;
 mod flow;

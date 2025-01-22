@@ -53,6 +53,7 @@ use alloc::vec::Vec;
 use fuel_asm::{
     Imm06,
     PanicReason,
+    RegId,
 };
 use fuel_storage::StorageSize;
 use fuel_tx::{
@@ -72,7 +73,6 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
-    RegisterId,
     Word,
 };
 
@@ -253,7 +253,7 @@ where
         )
     }
 
-    pub(crate) fn block_height(&mut self, ra: RegisterId) -> IoResult<(), S::DataError> {
+    pub(crate) fn block_height(&mut self, ra: RegId) -> IoResult<(), S::DataError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         Ok(block_height(&self.context, pc, result)?)
@@ -301,11 +301,7 @@ where
         .code_root(a, b)
     }
 
-    pub(crate) fn code_size(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-    ) -> IoResult<(), S::DataError> {
+    pub(crate) fn code_size(&mut self, ra: RegId, b: Word) -> IoResult<(), S::DataError> {
         let gas_cost = self.gas_costs().csiz();
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `code_size`.
@@ -340,7 +336,7 @@ where
     pub(crate) fn state_clear_qword(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
         let contract_id = self.internal_contract();
@@ -359,8 +355,8 @@ where
 
     pub(crate) fn state_read_word(
         &mut self,
-        ra: RegisterId,
-        rb: RegisterId,
+        ra: RegId,
+        rb: RegId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
         let (SystemRegisters { fp, pc, .. }, mut w) =
@@ -393,7 +389,7 @@ where
     pub(crate) fn state_read_qword(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
@@ -428,7 +424,7 @@ where
     pub(crate) fn state_write_word(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
         let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
@@ -473,7 +469,7 @@ where
     pub(crate) fn state_write_qword(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
@@ -515,11 +511,7 @@ where
         )
     }
 
-    pub(crate) fn timestamp(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-    ) -> IoResult<(), S::DataError> {
+    pub(crate) fn timestamp(&mut self, ra: RegId, b: Word) -> IoResult<(), S::DataError> {
         let block_height = self.get_block_height()?;
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];

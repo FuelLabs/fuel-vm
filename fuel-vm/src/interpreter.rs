@@ -130,6 +130,7 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     storage: S,
     debugger: Debugger,
     context: Context,
+    is_predicate: bool,
     balances: RuntimeBalances,
     profiler: Profiler,
     interpreter_params: InterpreterParams,

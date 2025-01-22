@@ -18,7 +18,6 @@ use fuel_asm::{
 };
 use fuel_types::{
     fmt_truncated_hex,
-    RegisterId,
     Word,
 };
 
@@ -391,7 +390,6 @@ impl MemoryInstance {
 
     /// Memory access to the raw stack buffer.
     /// Note that for efficiency reasons this might not match sp value.
-    #[cfg(any(test, feature = "test-helpers"))]
     pub fn stack_raw(&self) -> &[u8] {
         &self.stack
     }
@@ -726,23 +724,13 @@ where
         )
     }
 
-    pub(crate) fn load_byte(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Word,
-    ) -> SimpleResult<()> {
+    pub(crate) fn load_byte(&mut self, ra: RegId, b: Word, c: Word) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_byte(self.memory.as_ref(), pc, result, b, c)
     }
 
-    pub(crate) fn load_word(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Imm12,
-    ) -> SimpleResult<()> {
+    pub(crate) fn load_word(&mut self, ra: RegId, b: Word, c: Imm12) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_word(self.memory.as_ref(), pc, result, b, c)
@@ -804,7 +792,7 @@ where
 
     pub(crate) fn memeq(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
         d: Word,

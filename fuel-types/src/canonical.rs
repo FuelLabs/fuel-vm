@@ -481,7 +481,7 @@ impl Output for Vec<u8> {
     }
 }
 
-impl<'a> Output for &'a mut [u8] {
+impl Output for &'_ mut [u8] {
     fn write(&mut self, from: &[u8]) -> Result<(), Error> {
         if from.len() > self.len() {
             return Err(Error::BufferIsTooShort)
@@ -498,7 +498,7 @@ impl<'a> Output for &'a mut [u8] {
     }
 }
 
-impl<'a> Input for &'a [u8] {
+impl Input for &'_ [u8] {
     fn remaining(&mut self) -> usize {
         self.len()
     }

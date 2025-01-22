@@ -85,6 +85,7 @@ std = [
     "fuel-asm/std",
     "fuel-tx/std",
     "itertools/use_std",
+    "sha3/std"
 ]
 alloc = ["fuel-asm/alloc", "fuel-tx/alloc", "fuel-crypto/alloc"]
 profile-gas = ["profile-any"]

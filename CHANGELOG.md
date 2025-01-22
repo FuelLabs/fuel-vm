@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [900](https://github.com/FuelLabs/fuel-vm/pull/900): Change the error variant `DuplicateMessageInputId` to `DuplicateInputNonce` which now contains a nonce instead of `MessageId` for performance improvements.
 
 ### Fixed
+- [895](https://github.com/FuelLabs/fuel-vm/pull/895): Fix elided lifetimes compilation warnings that became errors after the release of rust 1.83.0. 
+- [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889): Debugger breakpoint caused receipts to be produced incorrectly.
 
 ## [Version 0.59.1]

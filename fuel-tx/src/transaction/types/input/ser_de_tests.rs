@@ -60,3 +60,50 @@ fn test_input_serialization() {
     let input2 = Input::from_bytes(&bytes).unwrap();
     assert_eq!(input, input2);
 }
+
+#[cfg(feature = "u32-tx-pointer")]
+#[test]
+fn tx_with_coin_input() {
+    use crate::TransactionBuilder;
+
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .tip(1)
+        .maturity(123.into())
+        .expiration(456.into())
+        .max_fee_limit(1000000)
+        .add_input(Input::CoinSigned(CoinSigned {
+            utxo_id: UtxoId::new([1u8; 32].into(), 2),
+            owner: [2u8; 32].into(),
+            amount: 11,
+            asset_id: [5u8; 32].into(),
+            tx_pointer: TxPointer::new(46.into(), u32::MAX.into()),
+            witness_index: 4,
+            predicate_gas_used: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
+        }))
+        .finalize_as_transaction();
+
+    let bytes_u32 = postcard::to_allocvec(&tx).unwrap();
+    
+    let tx = TransactionBuilder::script(vec![], vec![])
+        .tip(1)
+        .maturity(123.into())
+        .expiration(456.into())
+        .max_fee_limit(1000000)
+        .add_input(Input::CoinSigned(CoinSigned {
+            utxo_id: UtxoId::new([1u8; 32].into(), 2),
+            owner: [2u8; 32].into(),
+            amount: 11,
+            asset_id: [5u8; 32].into(),
+            tx_pointer: TxPointer::new(46.into(), u16::MAX.into()),
+            witness_index: 4,
+            predicate_gas_used: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
+        }))
+        .finalize_as_transaction();
+    let bytes_u16 = postcard::to_allocvec(&tx).unwrap();
+
+    assert_eq!(bytes_u32.len(), bytes_u16.len() + 2);
+}

@@ -102,7 +102,7 @@ pub mod create {
     impl IntoChecked for Create {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_checked_basic_with_id(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
@@ -162,7 +162,7 @@ pub mod mint {
     impl IntoChecked for Mint {
         type Metadata = ();
 
-        fn into_checked_basic(
+        fn into_checked_basic_with_id(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
@@ -230,7 +230,7 @@ pub mod script {
     impl IntoChecked for Script {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_checked_basic_with_id(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
@@ -316,7 +316,7 @@ pub mod upgrade {
     impl IntoChecked for Upgrade {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_checked_basic_with_id(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
@@ -402,7 +402,7 @@ pub mod upload {
     impl IntoChecked for Upload {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_checked_basic_with_id(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,
@@ -486,7 +486,7 @@ pub mod blob {
     impl IntoChecked for Blob {
         type Metadata = CheckedMetadata;
 
-        fn into_checked_basic(
+        fn into_checked_basic_with_id(
             mut self,
             block_height: BlockHeight,
             consensus_params: &ConsensusParameters,

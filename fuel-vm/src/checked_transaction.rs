@@ -309,7 +309,7 @@ pub trait IntoChecked: FormatValidityChecks + UniqueIdentifier + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, (TxId, CheckError)>
+    ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
@@ -329,21 +329,27 @@ pub trait IntoChecked: FormatValidityChecks + UniqueIdentifier + Sized {
         consensus_params: &ConsensusParameters,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-    ) -> Result<Checked<Self>, (TxId, CheckError)>
+    ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
         let check_predicate_params = consensus_params.into();
-        let tx = self.into_checked_basic(block_height, consensus_params)?;
-        let id = tx.id();
-        tx.check_signatures(&consensus_params.chain_id())
-            .map_err(|e| (id, e))?
+        self.into_checked_basic(block_height, consensus_params)?
+            .check_signatures(&consensus_params.chain_id())?
             .check_predicates(&check_predicate_params, memory, storage)
-            .map_err(|e| (id, e))
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
     fn into_checked_basic(
+        self,
+        block_height: BlockHeight,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<Checked<Self>, CheckError> {
+        self.into_checked_basic_with_id(block_height, consensus_params).map_err(|(_, err)| err)
+    }
+
+    /// Similar to `into_checked_basic` but keep the id in case of error.
+    fn into_checked_basic_with_id(
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
@@ -867,7 +873,7 @@ impl From<<Blob as IntoChecked>::Metadata> for CheckedMetadata {
 impl IntoChecked for Transaction {
     type Metadata = CheckedMetadata;
 
-    fn into_checked_basic(
+    fn into_checked_basic_with_id(
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
@@ -875,37 +881,37 @@ impl IntoChecked for Transaction {
         match self {
             Self::Script(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Create(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Mint(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Upgrade(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Upload(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Blob(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
@@ -1056,8 +1062,7 @@ mod tests {
 
         let err = tx
             .into_checked(Default::default(), &ConsensusParameters::standard())
-            .expect_err("Expected valid transaction")
-            .1;
+            .expect_err("Expected valid transaction");
 
         // then
         assert!(matches!(
@@ -1099,8 +1104,7 @@ mod tests {
 
         let err = tx
             .into_checked(Default::default(), &ConsensusParameters::standard())
-            .expect_err("Expected valid transaction")
-            .1;
+            .expect_err("Expected valid transaction");
 
         // then
         assert!(matches!(
@@ -1653,8 +1657,7 @@ mod tests {
 
         let err = tx
             .into_checked(Default::default(), &ConsensusParameters::standard())
-            .expect_err("Expected invalid transaction")
-            .1;
+            .expect_err("Expected invalid transaction");
 
         // assert that tx without base input assets fails
         assert!(matches!(
@@ -1743,8 +1746,7 @@ mod tests {
         // when
         let err = transaction
             .into_checked(Default::default(), &consensus_params)
-            .expect_err("overflow expected")
-            .1;
+            .expect_err("overflow expected");
 
         // then
         let provided = match err {
@@ -1921,8 +1923,7 @@ mod tests {
 
         let checked = tx
             .into_checked(Default::default(), &ConsensusParameters::standard())
-            .expect_err("Expected valid transaction")
-            .1;
+            .expect_err("Expected valid transaction");
 
         assert_eq!(
             CheckError::Validity(ValidityError::InsufficientInputAmount {

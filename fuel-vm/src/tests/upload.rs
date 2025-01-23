@@ -277,8 +277,7 @@ fn check__fails_when_subsection_index_more_than_total_number() {
         vec![],
     )
     .into_checked_basic(Default::default(), &Default::default())
-    .expect_err("Should fail to generate checked tx")
-    .1;
+    .expect_err("Should fail to generate checked tx");
 
     // Then
     assert_eq!(
@@ -304,8 +303,7 @@ fn check__fails_when_total_number_is_zero() {
         vec![],
     )
     .into_checked_basic(Default::default(), &Default::default())
-    .expect_err("Should fail to generate checked tx")
-    .1;
+    .expect_err("Should fail to generate checked tx");
 
     // Then
     assert_eq!(

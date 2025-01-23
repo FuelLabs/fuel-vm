@@ -185,7 +185,7 @@ struct ContractBalanceCtx<'vm, S> {
     input_contracts: InputContracts<'vm>,
 }
 
-impl<'vm, S> ContractBalanceCtx<'vm, S> {
+impl<S> ContractBalanceCtx<'_, S> {
     pub(crate) fn contract_balance(
         mut self,
         result: &mut Word,
@@ -225,7 +225,7 @@ struct TransferCtx<'vm, S, Tx> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
+impl<S, Tx> TransferCtx<'_, S, Tx> {
     /// In Fuel specs:
     /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
     /// $rA -> recipient_contract_id_offset

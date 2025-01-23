@@ -38,7 +38,7 @@ impl serde::Serialize for InstructionLocation {
 struct InstructionLocationVisitor;
 
 #[cfg(feature = "serde")]
-impl<'de> serde::de::Visitor<'de> for InstructionLocationVisitor {
+impl serde::de::Visitor<'_> for InstructionLocationVisitor {
     type Value = InstructionLocation;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

@@ -32,7 +32,7 @@ impl TryFrom<ecdsa::RecoveryId> for RecoveryId {
 #[cfg(feature = "std")]
 impl From<RecoveryId> for secp256k1::ecdsa::RecoveryId {
     fn from(recid: RecoveryId) -> Self {
-        secp256k1::ecdsa::RecoveryId::from_i32(recid.is_y_odd as i32)
+        secp256k1::ecdsa::RecoveryId::try_from(recid.is_y_odd as i32)
             .expect("0 and 1 are always valid recovery ids")
     }
 }
@@ -42,7 +42,7 @@ impl TryFrom<secp256k1::ecdsa::RecoveryId> for RecoveryId {
     type Error = ();
 
     fn try_from(recid: secp256k1::ecdsa::RecoveryId) -> Result<Self, Self::Error> {
-        match recid.to_i32() {
+        match i32::from(recid) {
             0 => Ok(Self { is_y_odd: false }),
             1 => Ok(Self { is_y_odd: true }),
             _ => Err(()),

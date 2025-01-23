@@ -100,14 +100,14 @@ impl<'a, const INDEX: u8> From<RegMut<'a, INDEX>> for Reg<'a, INDEX> {
     }
 }
 
-impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
+impl<const INDEX: u8> RegMut<'_, INDEX> {
     /// Re-borrow the register as an immutable reference.
     pub fn as_ref(&self) -> Reg<INDEX> {
         Reg(self.0)
     }
 }
 
-impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
+impl<const INDEX: u8> RegMut<'_, INDEX> {
     /// Re-borrow the register as a mutable reference.
     pub fn as_mut(&mut self) -> RegMut<INDEX> {
         RegMut(self.0)
@@ -262,7 +262,7 @@ pub(crate) fn copy_registers(
     out
 }
 
-impl<'r> ProgramRegisters<'r> {
+impl ProgramRegisters<'_> {
     /// Get two mutable references to program registers.
     /// Note they cannot be the same register.
     pub fn get_mut_two(
@@ -416,7 +416,7 @@ pub(crate) enum ProgramRegistersSegment {
     High,
 }
 
-impl<'r> ProgramRegisters<'r> {
+impl ProgramRegisters<'_> {
     /// Returns the registers corresponding to the segment, always 24 elements.
     pub(crate) fn segment(&self, segment: ProgramRegistersSegment) -> &[Word] {
         match segment {

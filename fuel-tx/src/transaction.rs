@@ -984,13 +984,13 @@ pub mod field {
         pub(crate) storage_slots: &'a mut Vec<StorageSlot>,
     }
 
-    impl<'a> AsMut<Vec<StorageSlot>> for StorageSlotRef<'a> {
+    impl AsMut<Vec<StorageSlot>> for StorageSlotRef<'_> {
         fn as_mut(&mut self) -> &mut Vec<StorageSlot> {
             self.storage_slots
         }
     }
 
-    impl<'a> Deref for StorageSlotRef<'a> {
+    impl Deref for StorageSlotRef<'_> {
         type Target = [StorageSlot];
 
         fn deref(&self) -> &Self::Target {
@@ -998,14 +998,14 @@ pub mod field {
         }
     }
 
-    impl<'a> DerefMut for StorageSlotRef<'a> {
+    impl DerefMut for StorageSlotRef<'_> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             self.storage_slots.deref_mut()
         }
     }
 
     /// Ensure the storage slots are sorted after being set
-    impl<'a> Drop for StorageSlotRef<'a> {
+    impl Drop for StorageSlotRef<'_> {
         fn drop(&mut self) {
             self.storage_slots.sort()
         }

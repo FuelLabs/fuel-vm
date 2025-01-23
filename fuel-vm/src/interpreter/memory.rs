@@ -390,6 +390,7 @@ impl MemoryInstance {
 
     /// Memory access to the raw stack buffer.
     /// Note that for efficiency reasons this might not match sp value.
+    #[cfg(any(test, feature = "test-helpers"))]
     pub fn stack_raw(&self) -> &[u8] {
         &self.stack
     }

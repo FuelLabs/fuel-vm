@@ -345,7 +345,8 @@ pub trait IntoChecked: FormatValidityChecks + UniqueIdentifier + Sized {
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
     ) -> Result<Checked<Self>, CheckError> {
-        self.into_checked_basic_with_id(block_height, consensus_params).map_err(|(_, err)| err)
+        self.into_checked_basic_with_id(block_height, consensus_params)
+            .map_err(|(_, err)| err)
     }
 
     /// Similar to `into_checked_basic` but keep the id in case of error.

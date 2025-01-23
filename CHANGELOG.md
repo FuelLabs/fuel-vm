@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- [897](https://github.com/FuelLabs/fuel-vm/pull/897): Add new method in `IntoChecked` trait `into_checked_basic_with_id` which allow to keep the id even in case of error.
+
 ### Breaking
-- [897](https://github.com/FuelLabs/fuel-vm/pull/897): Return `TxId` when error in checking of transactions. From: `CheckError` to `(TxId, CheckError)`.
+- [897](https://github.com/FuelLabs/fuel-vm/pull/897): Return `TxId` when error in precompute of transactions. From: `ValidityError` to `(TxId, ValidityError)`.
 
 ### Fixed
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889): Debugger breakpoint caused receipts to be produced incorrectly.

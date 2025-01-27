@@ -86,7 +86,11 @@ impl fmt::Display for TxPointer {
 #[cfg(feature = "u32-tx-pointer")]
 impl fmt::LowerHex for TxPointer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:08x}{:08x}", self.block_height, self.tx_index)
+        if self.tx_index > u16::MAX.into() {
+            write!(f, "{:08x}{:08x}", self.block_height, self.tx_index)
+        } else {
+            write!(f, "{:08x}{:04x}", self.block_height, self.tx_index)
+        }
     }
 }
 
@@ -100,7 +104,11 @@ impl fmt::LowerHex for TxPointer {
 #[cfg(feature = "u32-tx-pointer")]
 impl fmt::UpperHex for TxPointer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{:08X}{:08X}", self.block_height, self.tx_index)
+        if self.tx_index > u16::MAX.into() {
+            write!(f, "{:08X}{:08X}", self.block_height, self.tx_index)
+        } else {
+            write!(f, "{:08X}{:04X}", self.block_height, self.tx_index)
+        }
     }
 }
 
@@ -117,18 +125,22 @@ impl str::FromStr for TxPointer {
     #[cfg(feature = "u32-tx-pointer")]
     /// TxPointer is encoded as 16 hex characters:
     /// - 8 characters for block height
-    /// - 8 characters for tx index
+    /// - 4 or 8 characters for tx index (old version used 4 characters (u16::MAX))
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         const ERR: &str = "Invalid encoded byte in TxPointer";
 
-        if s.len() != 16 || !s.is_char_boundary(8) {
+        if (s.len() != 16 && s.len() != 12) || !s.is_char_boundary(8) {
             return Err(ERR)
         }
 
         let (block_height, tx_index) = s.split_at(8);
 
         let block_height = u32::from_str_radix(block_height, 16).map_err(|_| ERR)?;
-        let tx_index = u32::from_str_radix(tx_index, 16).map_err(|_| ERR)?;
+        let tx_index = match tx_index.len() {
+            4 => u16::from_str_radix(tx_index, 16).map_err(|_| ERR)?.into(),
+            8 => u32::from_str_radix(tx_index, 16).map_err(|_| ERR)?,
+            _ => return Err(ERR),
+        };
 
         Ok(Self::new(block_height.into(), tx_index))
     }

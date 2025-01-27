@@ -32,16 +32,16 @@ impl MerkleRootCalculator {
         Self { stack }
     }
 
-    pub fn new_from_existing_leafs(leaf_hashes: Vec<Bytes32>) -> Self {
+    pub fn new_from_existing_leaves(leaf_hashes: Vec<Bytes32>) -> Self {
         let mut calculator = Self::new();
         for leaf in leaf_hashes {
             calculator
                 .push_with_callback::<_, Infallible>(
                     Node::create_leaf_with_hash(0, leaf)
-                        .expect("Zero is a valid index for a leaf"),
+                        .expect("Zero is a valid index for a leaf; qed"),
                     |_| Ok(()),
                 )
-                .expect("Tree too large");
+                .expect("Tree too large; qed");
         }
         calculator
     }
@@ -211,7 +211,7 @@ mod test {
         let data = &TEST_DATA[0..7];
         let root = calculate_root.root_from_iterator(data.iter());
 
-        let new_calculate_root = MerkleRootCalculator::new_from_existing_leafs(
+        let new_calculate_root = MerkleRootCalculator::new_from_existing_leaves(
             data.iter().map(|d| leaf_sum(d)).collect(),
         );
         assert_eq!(new_calculate_root.root(), root);

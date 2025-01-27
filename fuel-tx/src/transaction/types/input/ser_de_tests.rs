@@ -66,7 +66,8 @@ fn test_input_serialization() {
 fn tx_with_coin_input() {
     use crate::TransactionBuilder;
 
-    let tx = TransactionBuilder::script(vec![], vec![])
+    // Given
+    let tx_u32 = TransactionBuilder::script(vec![], vec![])
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
@@ -84,9 +85,7 @@ fn tx_with_coin_input() {
         }))
         .finalize_as_transaction();
 
-    let bytes_u32 = postcard::to_allocvec(&tx).unwrap();
-
-    let tx = TransactionBuilder::script(vec![], vec![])
+    let tx_u16 = TransactionBuilder::script(vec![], vec![])
         .tip(1)
         .maturity(123.into())
         .expiration(456.into())
@@ -103,7 +102,31 @@ fn tx_with_coin_input() {
             predicate_data: Empty::new(),
         }))
         .finalize_as_transaction();
-    let bytes_u16 = postcard::to_allocvec(&tx).unwrap();
 
+    // When
+    let bytes_u32 = postcard::to_allocvec(&tx_u32).unwrap();
+    let bytes_u16 = postcard::to_allocvec(&tx_u16).unwrap();
+
+    // Then
     assert_eq!(bytes_u32.len(), bytes_u16.len() + 2);
+}
+
+#[cfg(feature = "u32-tx-pointer")]
+#[test]
+fn decode_tx_pointer_from_u16() {
+    use fuel_types::BlockHeight;
+
+    // Given (arbitrary big number)
+    let old_version_pointer: (BlockHeight, u16) =
+        (BlockHeight::from(123), u16::MAX - 3489);
+    let bytes = postcard::to_allocvec(&old_version_pointer).unwrap();
+
+    // When
+    let new_version_pointer: TxPointer = postcard::from_bytes(&bytes).unwrap();
+
+    // Then
+    assert_eq!(
+        new_version_pointer,
+        TxPointer::new(123.into(), (u16::MAX - 3489).into())
+    );
 }

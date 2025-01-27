@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [899](https://github.com/FuelLabs/fuel-vm/pull/899): Add a feature that propose `u32` `tx_pointer` instead of `u16` in `fuel-tx` and `fuel-vm`.
 
+### Breaking
+- [900](https://github.com/FuelLabs/fuel-vm/pull/900): Change the error variant `DuplicateMessageInputId` to `DuplicateInputNonce` which now contains a nonce instead of `MessageId` for performance improvements.
+
 ### Fixed
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Fix elided lifetimes compilation warnings that became errors after the release of rust 1.83.0. 
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 

@@ -239,7 +239,7 @@ fn fmt_encode_decode() {
 fn fmt_encode_decode_u32() {
     use core::str::FromStr;
 
-    let cases = vec![(83473, 3829)];
+    let cases = vec![(83473, u32::from(u16::MAX) + 478930)];
 
     for (block_height, tx_index) in cases {
         let tx_pointer = TxPointer::new(block_height.into(), tx_index);
@@ -249,6 +249,35 @@ fn fmt_encode_decode_u32() {
 
         assert_eq!(lower, format!("{block_height:08x}{tx_index:08x}"));
         assert_eq!(upper, format!("{block_height:08X}{tx_index:08X}"));
+
+        let x = TxPointer::from_str(&lower).expect("failed to decode from str");
+        assert_eq!(tx_pointer, x);
+
+        let x = TxPointer::from_str(&upper).expect("failed to decode from str");
+        assert_eq!(tx_pointer, x);
+
+        let bytes = tx_pointer.clone().to_bytes();
+        let tx_pointer_p = TxPointer::from_bytes(&bytes).expect("failed to deserialize");
+
+        assert_eq!(tx_pointer, tx_pointer_p);
+    }
+}
+
+#[cfg(feature = "u32-tx-pointer")]
+#[test]
+fn fmt_backward_compatibility_u32() {
+    use core::str::FromStr;
+
+    let cases = vec![(83473, 647)];
+
+    for (block_height, tx_index) in cases {
+        let tx_pointer = TxPointer::new(block_height.into(), tx_index);
+
+        let lower = format!("{tx_pointer:x}");
+        let upper = format!("{tx_pointer:X}");
+
+        assert_eq!(lower, format!("{block_height:08x}{tx_index:04x}"));
+        assert_eq!(upper, format!("{block_height:08X}{tx_index:04X}"));
 
         let x = TxPointer::from_str(&lower).expect("failed to decode from str");
         assert_eq!(tx_pointer, x);

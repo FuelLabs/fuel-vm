@@ -26,6 +26,7 @@ use criterion as _;
 pub mod backtrace;
 pub mod call;
 pub mod checked_transaction;
+pub mod immutable_transaction;
 pub mod constraints;
 pub mod consts;
 pub mod context;

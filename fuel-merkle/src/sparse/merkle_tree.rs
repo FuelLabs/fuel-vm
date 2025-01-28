@@ -89,7 +89,7 @@ impl MerkleTreeKey {
         use digest::Digest;
         let mut hash = sha2::Sha256::new();
         hash.update(storage_key.as_ref());
-        let hash = hash.finalize().into();
+        let hash: [u8; 32] = hash.finalize().into();
 
         Self(hash)
     }

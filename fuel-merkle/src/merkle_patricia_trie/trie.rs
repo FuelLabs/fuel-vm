@@ -1,7 +1,6 @@
 use core::marker::PhantomData;
 
 use alloy_trie::nodes::{
-    BranchNode,
     RlpNode,
     TrieNode,
 };
@@ -9,24 +8,28 @@ use alloy_trie::nodes::{
 use alloy_primitives::B256;
 use fuel_storage::{
     Mappable,
-    StorageInspect,
     StorageMutate,
 };
-use nybbles::Nibbles;
+use nybbles::{
+    self as _,
+    Nibbles,
+};
 
-use crate::common::Bytes32;
+use alloc::sync::Arc;
 
 pub struct Trie<Storage, NodesTable> {
-    storage: Storage,
-    root: B256,
+    #[allow(unused)]
+    storage: Arc<Storage>,
+    #[allow(unused)]
+    root: RlpNode,
     _phantom: PhantomData<NodesTable>,
 }
 
 impl<Storage, NodesTableType> Trie<Storage, NodesTableType> {
     pub fn new(storage: Storage) -> Self {
         Self {
-            storage,
-            root: B256::ZERO,
+            storage: Arc::new(storage),
+            root: RlpNode::default(),
             _phantom: PhantomData,
         }
     }
@@ -37,18 +40,29 @@ where
     StorageType: StorageMutate<NodesTableType, Error = anyhow::Error>,
     NodesTableType: Mappable<Key = RlpNode, Value = TrieNode, OwnedValue = TrieNode>,
 {
+    fn iter<'a>(
+        &self,
+        nibbles: &'a Nibbles,
+    ) -> NodeIterator<'a, StorageType, NodesTableType> {
+        NodeIterator {
+            nibbles_left: nibbles,
+            current_node: Some(self.root.clone()),
+            storage: self.storage.clone(),
+            _marker: PhantomData,
+        }
+    }
 }
 
 // Iterator for traversing a trie node with respect to a Nibble path
-struct NodeIterator<'a, StorageType, NodesTableType> {
+pub struct NodeIterator<'a, StorageType, NodesTableType> {
     nibbles_left: &'a [u8],
     current_node: Option<RlpNode>,
-    storage: StorageType,
+    storage: Arc<StorageType>,
     _marker: PhantomData<NodesTableType>,
 }
 
-impl<'a, StorageType, NodesTableType> Iterator
-    for NodeIterator<'a, StorageType, NodesTableType>
+impl<StorageType, NodesTableType> Iterator
+    for NodeIterator<'_, StorageType, NodesTableType>
 where
     StorageType: StorageMutate<NodesTableType, Error = anyhow::Error>,
     NodesTableType: Mappable<Key = RlpNode, Value = TrieNode, OwnedValue = TrieNode>,
@@ -56,9 +70,7 @@ where
     type Item = anyhow::Result<TrieNode>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let Some(current_rlp_node) = self.current_node.take() else {
-            return None
-        };
+        let current_rlp_node = self.current_node.take()?;
         let node = self.storage.get(&current_rlp_node);
         match node {
             Err(e) => Some(Err(e)),
@@ -106,7 +118,7 @@ where
                             self.current_node = None;
                         }
                     }
-                    TrieNode::Leaf(leaf_node) => {
+                    TrieNode::Leaf(_leaf_node) => {
                         self.nibbles_left = &[];
                         self.current_node = None;
                     }

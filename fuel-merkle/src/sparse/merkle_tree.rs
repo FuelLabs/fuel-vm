@@ -129,12 +129,6 @@ impl From<MerkleTreeKey> for Bytes32 {
     }
 }
 
-impl AsRef<[u8]> for MerkleTreeKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
 impl AsRef<Bytes32> for MerkleTreeKey {
     fn as_ref(&self) -> &Bytes32 {
         &self.0
@@ -449,7 +443,7 @@ where
             self.path_set(key.as_ref())?;
 
         match path_nodes.first() {
-            Some(node) if *node.leaf_key() == key.as_ref() => {
+            Some(node) if *node.leaf_key() == *key.as_ref() => {
                 self.delete_with_path_set(path_nodes.as_slice(), side_nodes.as_slice())?;
             }
             _ => {}

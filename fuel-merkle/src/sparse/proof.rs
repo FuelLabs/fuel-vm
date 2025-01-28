@@ -131,7 +131,7 @@ impl ExclusionProof {
         let Self { proof_set, leaf } = self;
 
         if let ExclusionLeaf::Leaf(data) = leaf {
-            if data.leaf_key == key.as_ref() {
+            if data.leaf_key == *key.as_ref() {
                 return false;
             }
         }

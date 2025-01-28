@@ -11,17 +11,17 @@ repository = { workspace = true }
 description = "Fuel Merkle tree libraries."
 
 [dependencies]
+alloy-primitives = { version = "0.8.19" }
+alloy-trie = { version = "0.7" }
+anyhow = { version = "1.0", default-features = false }
 derive_more = { version = "0.99", default-features = false, features = ["display"] }
 digest = { version = "0.10", default-features = false }
 fuel-storage = { workspace = true, default-features = false }
 hashbrown = "0.13"
 hex = { version = "0.4", default-features = false, features = ["alloc"] }
+nybbles = { version = "0.3.4" }
 serde = { version = "1.0", default-features = false, optional = true }
 sha2 = { version = "0.10", default-features = false }
-alloy-trie = { version = "0.7" }
-alloy-primitives = { version = "0.8.19" }
-anyhow = { version = "1.0", default-features = false}
-nybbles = { version = "0.3.4" }
 
 [dev-dependencies]
 criterion = { workspace = true }

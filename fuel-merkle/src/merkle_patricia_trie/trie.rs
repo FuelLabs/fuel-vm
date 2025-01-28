@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 
 use alloy_trie::nodes::{
+    LeafNode,
     RlpNode,
     TrieNode,
 };
@@ -16,6 +17,8 @@ use nybbles::{
 };
 
 use alloc::sync::Arc;
+
+use crate::common::Bytes32;
 
 pub struct Trie<Storage, NodesTable> {
     #[allow(unused)]
@@ -40,7 +43,7 @@ where
     StorageType: StorageMutate<NodesTableType, Error = anyhow::Error>,
     NodesTableType: Mappable<Key = RlpNode, Value = TrieNode, OwnedValue = TrieNode>,
 {
-    fn iter<'a>(
+    pub fn iter<'a>(
         &self,
         nibbles: &'a Nibbles,
     ) -> NodeIterator<'a, StorageType, NodesTableType> {
@@ -50,6 +53,25 @@ where
             storage: self.storage.clone(),
             _marker: PhantomData,
         }
+    }
+
+    pub fn add_leaf(&mut self, key: Bytes32, value: Bytes32) -> anyhow::Result<()> {
+        // convert the key and value to nibbles
+        let key_nibbles = Nibbles::unpack(&key);
+
+        let nibbles_ref = &key_nibbles;
+        // Now we traverse the nibble path in the trie to find the place where to
+        // insert the leaf.
+        // We must keep track of the node traversed because they will need to be updated
+        // in the storage.
+        // TODO: Cache updates and flush when inserting a set of values
+        let node_iterator = self.iter(nibbles_ref);
+
+        // Create the leaf node to add
+        let leaf_node = TrieNode::Leaf(LeafNode::new(key_nibbles, value.to_vec()));
+        let mut buf = Vec::with_capacity(33);
+        let leaf_rlp_node: RlpNode = leaf_node.rlp(&mut buf);
+        Ok(())
     }
 }
 

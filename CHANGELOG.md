@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
+- [897](https://github.com/FuelLabs/fuel-vm/pull/897): Add new method in `IntoChecked` trait `into_checked_basic_with_id` which allow to keep the id even in case of error.
 
 ### Breaking
 - [900](https://github.com/FuelLabs/fuel-vm/pull/900): Change the error variant `DuplicateMessageInputId` to `DuplicateInputNonce` which now contains a nonce instead of `MessageId` for performance improvements.
+- [897](https://github.com/FuelLabs/fuel-vm/pull/897): Return `TxId` when error in precompute of transactions. From: `ValidityError` to `(TxId, ValidityError)`.
 
 ### Fixed
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Fix elided lifetimes compilation warnings that became errors after the release of rust 1.83.0. 

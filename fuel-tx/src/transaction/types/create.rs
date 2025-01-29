@@ -21,6 +21,7 @@ use crate::{
     PrepareSign,
     StorageSlot,
     TransactionRepr,
+    TxId,
     ValidityError,
 };
 use educe::Educe;
@@ -262,11 +263,14 @@ impl crate::Cacheable for Create {
         self.metadata.is_some()
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), (TxId, ValidityError)> {
         self.metadata = None;
+        let common_metadata = CommonMetadata::compute(self, chain_id)?;
+        let body_metadata =
+            CreateMetadata::compute(self).map_err(|e| (common_metadata.id, e))?;
         self.metadata = Some(ChargeableMetadata {
-            common: CommonMetadata::compute(self, chain_id)?,
-            body: CreateMetadata::compute(self)?,
+            common: common_metadata,
+            body: body_metadata,
         });
         Ok(())
     }

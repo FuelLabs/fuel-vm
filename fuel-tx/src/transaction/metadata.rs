@@ -11,6 +11,8 @@ use crate::{
     ValidityError,
 };
 
+use super::TxId;
+
 /// Entity support metadata computation to cache results.
 pub trait Cacheable {
     /// The cache is already computed.
@@ -19,7 +21,7 @@ pub trait Cacheable {
     fn is_computed(&self) -> bool;
 
     /// Computes the cache for the entity.
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError>;
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), (TxId, ValidityError)>;
 }
 
 impl Cacheable for super::Transaction {
@@ -34,7 +36,7 @@ impl Cacheable for super::Transaction {
         }
     }
 
-    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), (TxId, ValidityError)> {
         match self {
             Self::Script(tx) => tx.precompute(chain_id),
             Self::Create(tx) => tx.precompute(chain_id),
@@ -62,7 +64,7 @@ pub struct CommonMetadata {
 impl CommonMetadata {
     /// Computes the `Metadata` for the `tx` transaction.
     /// Returns `None` if the transaction is invalid.
-    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Result<Self, ValidityError>
+    pub fn compute<Tx>(tx: &Tx, chain_id: &ChainId) -> Result<Self, (TxId, ValidityError)>
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,
@@ -86,7 +88,7 @@ impl CommonMetadata {
             let i = offset;
             offset = offset
                 .checked_add(input.size())
-                .ok_or(ValidityError::SerializedInputTooLarge { index })?;
+                .ok_or((id, ValidityError::SerializedInputTooLarge { index }))?;
             inputs_offset_at.push(i);
         }
 
@@ -96,7 +98,7 @@ impl CommonMetadata {
             let i = offset;
             offset = offset
                 .checked_add(output.size())
-                .ok_or(ValidityError::SerializedOutputTooLarge { index })?;
+                .ok_or((id, ValidityError::SerializedOutputTooLarge { index }))?;
             outputs_offset_at.push(i);
         }
 
@@ -106,7 +108,7 @@ impl CommonMetadata {
             let i = offset;
             offset = offset
                 .checked_add(witnesses.size())
-                .ok_or(ValidityError::SerializedWitnessTooLarge { index })?;
+                .ok_or((id, ValidityError::SerializedWitnessTooLarge { index }))?;
             witnesses_offset_at.push(i);
         }
 

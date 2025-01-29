@@ -128,6 +128,7 @@ pub mod test_helpers {
         RegId,
     };
     use fuel_tx::{
+        consensus_parameters::GasPriceMetadata,
         field::{
             Outputs,
             ReceiptsRoot,
@@ -407,6 +408,10 @@ pub mod test_helpers {
 
         pub fn get_privileged_address(&self) -> &Address {
             self.consensus_params.privileged_address()
+        }
+
+        pub fn get_gas_price_metadata(&self) -> GasPriceMetadata {
+            self.consensus_params.gas_price_metadata()
         }
 
         pub fn get_chain_id(&self) -> ChainId {

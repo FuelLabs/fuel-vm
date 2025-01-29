@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- [899](https://github.com/FuelLabs/fuel-vm/pull/899): Add a feature that propose `u32` `tx_pointer` instead of `u16` in `fuel-tx` and `fuel-vm`.
 - [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
 
 ### Breaking

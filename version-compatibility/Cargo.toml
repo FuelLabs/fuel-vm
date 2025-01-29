@@ -7,5 +7,6 @@ publish = false
 
 [dev-dependencies]
 fuel-tx-0-58-2 = { package = "fuel-tx", version = "0.58.2", features = ["random", "test-helpers"] }
+fuel-tx-0-59-1 = { package = "fuel-tx", version = "0.59.1", features = ["random", "test-helpers"] }
 latest-fuel-tx = { package = "fuel-tx", path = "../fuel-tx", features = ["random", "test-helpers"] }
 postcard = { version = "1.0", features = ["use-std"] }

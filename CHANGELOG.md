@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
 - [897](https://github.com/FuelLabs/fuel-vm/pull/897): Add new method in `IntoChecked` trait `into_checked_basic_with_id` which allow to keep the id even in case of error.
 
 ### Breaking

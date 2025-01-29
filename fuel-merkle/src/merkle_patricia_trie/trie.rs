@@ -1,6 +1,7 @@
 use core::marker::PhantomData;
 
 use alloy_trie::nodes::{
+    ExtensionNode,
     LeafNode,
     RlpNode,
     TrieNode,
@@ -9,6 +10,7 @@ use alloy_trie::nodes::{
 use alloy_primitives::B256;
 use fuel_storage::{
     Mappable,
+    StorageAsMut,
     StorageMutate,
 };
 use nybbles::{
@@ -22,7 +24,7 @@ use crate::common::Bytes32;
 
 pub struct Trie<Storage, NodesTable> {
     #[allow(unused)]
-    storage: Arc<Storage>,
+    storage: Storage,
     #[allow(unused)]
     root: RlpNode,
     _phantom: PhantomData<NodesTable>,
@@ -31,7 +33,7 @@ pub struct Trie<Storage, NodesTable> {
 impl<Storage, NodesTableType> Trie<Storage, NodesTableType> {
     pub fn new(storage: Storage) -> Self {
         Self {
-            storage: Arc::new(storage),
+            storage,
             root: RlpNode::default(),
             _phantom: PhantomData,
         }
@@ -46,13 +48,36 @@ where
     pub fn iter<'a>(
         &self,
         nibbles: &'a Nibbles,
-    ) -> NodeIterator<'a, StorageType, NodesTableType> {
+    ) -> NodeIterator<'a, '_, StorageType, NodesTableType> {
         NodeIterator {
             nibbles_left: nibbles,
             current_node: Some(self.root.clone()),
-            storage: self.storage.clone(),
+            storage: &self.storage,
             _marker: PhantomData,
         }
+    }
+
+    fn make_linear_path_to_leaf(
+        &mut self,
+        nibbles: Nibbles,
+        key: Bytes32,
+        value: Bytes32,
+    ) -> anyhow::Result<()> {
+        let key_nibbles = Nibbles::unpack(key);
+        // Create a new leaf node
+        let leaf_node = TrieNode::Leaf(LeafNode::new(key_nibbles, value.to_vec()));
+        let mut buf = Vec::with_capacity(33);
+        let leaf_rlp_node: RlpNode = leaf_node.rlp(&mut buf);
+
+        // Create a new extension node
+        let extension_node =
+            TrieNode::Extension(ExtensionNode::new(nibbles, leaf_rlp_node.clone()));
+        let mut buf = Vec::with_capacity(33);
+        let extension_rlp_node: RlpNode = extension_node.rlp(&mut buf);
+        self.storage.insert(&extension_rlp_node, &extension_node)?;
+        self.storage.insert(&leaf_rlp_node, &leaf_node)?;
+
+        Ok(())
     }
 
     pub fn add_leaf(&mut self, key: Bytes32, value: Bytes32) -> anyhow::Result<()> {
@@ -62,11 +87,68 @@ where
         let nibbles_ref = &key_nibbles;
         // Now we traverse the nibble path in the trie to find the place where to
         // insert the leaf.
-        // We must keep track of the node traversed because they will need to be updated
-        // in the storage.
-        // TODO: Cache updates and flush when inserting a set of values
-        let node_iterator = self.iter(nibbles_ref);
+        // We must keep track of the nodes traversed because they will need to be updated
+        // in the storage. We will insert them in a stack
+        let mut node_iterator = self.iter(nibbles_ref);
+        let mut nodes_in_path = Vec::new();
 
+        // Looping instead of using for syntax or iterator transformers
+        // to avoid having to give away ownership of the iterator.
+        loop {
+            let Some(node) = node_iterator.next() else {
+                break
+            };
+            let node = node?;
+            nodes_in_path.push(node);
+        }
+
+        // Check the nibbles that are left to iterate.
+        let nibbles_left = node_iterator.nibbles_left();
+        // We require that the tree contains at least the
+        let last_node = nodes_in_path.pop().unwrap_or(TrieNode::EmptyRoot);
+        match last_node {
+            TrieNode::EmptyRoot => {
+                // The tree is empty:
+                //                     | EmptyRoot |
+                //
+                // We create an extension node with the nibbles left, pointing to a new
+                // leaf node with the required key and value.
+                //                     | Extension                     |
+                //                     | key: [ 0xN1, ..., 0xN63]      |
+                //                                    |
+                //                                    |
+                //                                    V
+                //                     | Leaf (key, value)             |
+                //
+                // and pointing to the leaf node. The node becomes the new root of the
+                // tree.
+                todo!()
+            }
+            TrieNode::Branch(branch_node) => {
+                // The last node is a branch node.
+                // If there are no nibbles left, we return an error
+                // Otherwise, we mus update
+                // Next, we update the pointer to the child at the selected position as
+                // follows: If there is no nibble left in the path (after
+                // looking at the first one), then we create a leaf.
+                // Otherwise, we create an extension node with the path left, pointing
+                // to a new leaf node.
+                todo!()
+            }
+            TrieNode::Extension(extension_node) => {
+                // If the last node in the path is an extension node, then we must check
+                // the common prefix between the nibbles left in the path,
+                // and the nibbles referenced by the extension node.
+                // Note that there must be at least one nibble on which the paths differ,
+                // otherwise the iterator would have moved to the next
+                // node. In this case, we create a new extension node with the common
+                // prefix, pointing to a branch node. The branch node has two children:
+                todo!()
+            }
+            TrieNode::Leaf(leaf_node) => todo!(),
+        }
+
+        // We check the last
         // Create the leaf node to add
         let leaf_node = TrieNode::Leaf(LeafNode::new(key_nibbles, value.to_vec()));
         let mut buf = Vec::with_capacity(33);
@@ -76,15 +158,21 @@ where
 }
 
 // Iterator for traversing a trie node with respect to a Nibble path
-pub struct NodeIterator<'a, StorageType, NodesTableType> {
+pub struct NodeIterator<'a, 'b, StorageType, NodesTableType> {
     nibbles_left: &'a [u8],
     current_node: Option<RlpNode>,
-    storage: Arc<StorageType>,
+    storage: &'b StorageType,
     _marker: PhantomData<NodesTableType>,
 }
 
+impl<StorageType, NodesTableType> NodeIterator<'_, '_, StorageType, NodesTableType> {
+    pub fn nibbles_left(&self) -> Nibbles {
+        Nibbles::from_nibbles(self.nibbles_left)
+    }
+}
+
 impl<StorageType, NodesTableType> Iterator
-    for NodeIterator<'_, StorageType, NodesTableType>
+    for NodeIterator<'_, '_, StorageType, NodesTableType>
 where
     StorageType: StorageMutate<NodesTableType, Error = anyhow::Error>,
     NodesTableType: Mappable<Key = RlpNode, Value = TrieNode, OwnedValue = TrieNode>,
@@ -103,7 +191,9 @@ where
                     TrieNode::EmptyRoot => {
                         // This can happen if we have the whole tree is empty.
                         // There is no next node in the path
-                        self.nibbles_left = &[];
+                        // We do not update the nibbles left. This is useful
+                        // when inserting a new node, as we can use the nibbles left
+                        // ti identify the path to the node to be inserted.
                         self.current_node = None;
                     }
                     TrieNode::Branch(branch_node) => {
@@ -136,12 +226,15 @@ where
                                 &self.nibbles_left[extension_node_nibbles.len()..];
                             self.current_node = Some(extension_node.child.clone());
                         } else {
-                            self.nibbles_left = &[];
+                            // Do not update the nibbles left, as this information
+                            // is needed when inserting a new leaf.
+
                             self.current_node = None;
                         }
                     }
                     TrieNode::Leaf(_leaf_node) => {
-                        self.nibbles_left = &[];
+                        // Do not update the nibbles left, although in this case
+                        // it should be the empty slice.
                         self.current_node = None;
                     }
                 };

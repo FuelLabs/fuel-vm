@@ -139,6 +139,7 @@ where
         gas_limit: Word,
     ) -> Result<(), InterpreterError<S::DataError>> {
         self.context = context;
+        self.is_predicate = true;
         let initial_balances: InitialBalances = Default::default();
         let runtime_balances = initial_balances.clone().try_into()?;
 
@@ -176,6 +177,7 @@ where
         let block_height = self.storage.block_height().map_err(RuntimeError::Storage)?;
 
         self.context = Context::Script { block_height };
+        self.is_predicate = false;
 
         let (_, checked) = ready_tx.decompose();
         let (tx, metadata): (Tx, Tx::Metadata) = checked.into();

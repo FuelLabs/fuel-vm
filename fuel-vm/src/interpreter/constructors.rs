@@ -79,6 +79,7 @@ where
             storage,
             debugger: Debugger::default(),
             context: Context::default(),
+            is_predicate: false,
             balances: RuntimeBalances::default(),
             profiler: Profiler::default(),
             interpreter_params,

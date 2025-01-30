@@ -40,7 +40,7 @@ use crate::{
 };
 use fuel_asm::{
     PanicReason,
-    RegisterId,
+    RegId,
     Word,
 };
 use fuel_storage::StorageSize;
@@ -64,7 +64,7 @@ where
 {
     pub(crate) fn contract_balance(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {

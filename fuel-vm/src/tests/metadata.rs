@@ -1096,17 +1096,15 @@ fn get__create_specific_transaction_fields__success() {
 
     predicate_code.extend(instructions_contract_id);
 
-    predicate_code.extend(
-        vec![
-            op::gtf_args(0x10, 0x00, GTFArgs::OutputContractCreatedContractId),
-            op::movi(0x12, 0x20),
-            // instructions_contract_id saved the value in a memory starting at value of
-            // `0x11`
-            op::meq(0x10, 0x10, 0x11, 0x12),
-            op::and(0x20, 0x20, 0x10),
-            op::ret(0x20),
-        ],
-    );
+    predicate_code.extend(vec![
+        op::gtf_args(0x10, 0x00, GTFArgs::OutputContractCreatedContractId),
+        op::movi(0x12, 0x20),
+        // instructions_contract_id saved the value in a memory starting at value of
+        // `0x11`
+        op::meq(0x10, 0x10, 0x11, 0x12),
+        op::and(0x20, 0x20, 0x10),
+        op::ret(0x20),
+    ]);
 
     let predicate_code = predicate_code.into_iter().collect();
 
@@ -1157,8 +1155,7 @@ fn get__upload_specific_transaction_fields__success() {
     let mut client = MemoryClient::default();
 
     // Given
-    let subsection =
-        UploadSubsection::split_bytecode(&[1; 10], 1).unwrap()[0].clone();
+    let subsection = UploadSubsection::split_bytecode(&[1; 10], 1).unwrap()[0].clone();
     let mut tx = TransactionBuilder::upload(UploadBody {
         root: subsection.root,
         witness_index: 0,
@@ -1170,39 +1167,35 @@ fn get__upload_specific_transaction_fields__success() {
     tx.add_fee_input();
 
     let instructions_root = alloc_bytearray(0x11, subsection.root.into());
-    let instructions_proof =
-        alloc_bytearray(0x11, subsection.proof_set[1].into());
+    let instructions_proof = alloc_bytearray(0x11, subsection.proof_set[1].into());
     // When
     #[rustfmt::skip]
     let mut predicate_code = vec![
         op::gtf_args(0x10, 0x00, GTFArgs::UploadRoot),
     ];
     predicate_code.extend(instructions_root);
-    predicate_code.extend(
-        vec![
-            op::meq(0x20, 0x10, 0x11, 0x20),
-            op::gtf_args(0x10, 0x00, GTFArgs::UploadWitnessIndex),
-            op::movi(0x11, 0x00),
-            op::eq(0x10, 0x10, 0x11),
-            op::and(0x20, 0x20, 0x10),
-            op::gtf_args(0x10, 0x00, GTFArgs::UploadSubsectionIndex),
-            op::movi(0x11, subsection.subsection_index as u32),
-            op::eq(0x10, 0x10, 0x11),
-            op::and(0x20, 0x20, 0x10),
-            op::gtf_args(0x10, 0x00, GTFArgs::UploadSubsectionsCount),
-            op::movi(0x11, subsection.subsections_number as u32),
-            op::eq(0x10, 0x10, 0x11),
-            op::and(0x20, 0x20, 0x10),
-            op::gtf_args(0x10, 0x00, GTFArgs::UploadProofSetCount),
-            op::movi(0x11, subsection.proof_set.len() as u32),
-            op::eq(0x10, 0x10, 0x11),
-            op::and(0x20, 0x20, 0x10),
-            op::gtf_args(0x10, 0x01, GTFArgs::UploadProofSetAtIndex),
-        ],
-    );
+    predicate_code.extend(vec![
+        op::meq(0x20, 0x10, 0x11, 0x20),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadWitnessIndex),
+        op::movi(0x11, 0x00),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadSubsectionIndex),
+        op::movi(0x11, subsection.subsection_index as u32),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadSubsectionsCount),
+        op::movi(0x11, subsection.subsections_number as u32),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadProofSetCount),
+        op::movi(0x11, subsection.proof_set.len() as u32),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x01, GTFArgs::UploadProofSetAtIndex),
+    ]);
     predicate_code.extend(instructions_proof);
-    predicate_code
-        .extend(vec![op::meq(0x20, 0x10, 0x11, 0x20), op::ret(0x20)]);
+    predicate_code.extend(vec![op::meq(0x20, 0x10, 0x11, 0x20), op::ret(0x20)]);
 
     let predicate_code = predicate_code.into_iter().collect();
 
@@ -1268,16 +1261,14 @@ fn get__blob_specific_transaction_fields__success() {
         op::gtf_args(0x10, 0x00, GTFArgs::BlobId),
     ];
     predicate_code.extend(blob_instructions);
-    predicate_code.extend(
-        vec![
-            op::meq(0x20, 0x10, 0x11, 0x20),
-            op::gtf_args(0x10, 0x00, GTFArgs::BlobWitnessIndex),
-            op::movi(0x11, 0x00),
-            op::eq(0x10, 0x10, 0x11),
-            op::and(0x20, 0x20, 0x10),
-            op::ret(0x20),
-        ],
-    );
+    predicate_code.extend(vec![
+        op::meq(0x20, 0x10, 0x11, 0x20),
+        op::gtf_args(0x10, 0x00, GTFArgs::BlobWitnessIndex),
+        op::movi(0x11, 0x00),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::ret(0x20),
+    ]);
 
     let predicate_code = predicate_code.into_iter().collect();
 
@@ -1353,8 +1344,7 @@ fn get__upgrade_specific_transaction_fields__success() {
         op::gtf_args(0x10, 0x00, GTFArgs::UpgradePurpose),
     ];
     predicate_code.extend(state_transition_instructions);
-    predicate_code
-        .extend(vec![op::meq(0x20, 0x10, 0x11, 0x20), op::ret(0x20)]);
+    predicate_code.extend(vec![op::meq(0x20, 0x10, 0x11, 0x20), op::ret(0x20)]);
 
     let predicate_code = predicate_code.into_iter().collect();
 

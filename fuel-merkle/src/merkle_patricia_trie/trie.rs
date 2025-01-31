@@ -1,10 +1,14 @@
 use core::marker::PhantomData;
 
-use alloy_trie::nodes::{
-    ExtensionNode,
-    LeafNode,
-    RlpNode,
-    TrieNode,
+use alloy_trie::{
+    nodes::{
+        BranchNode,
+        ExtensionNode,
+        LeafNode,
+        RlpNode,
+        TrieNode,
+    },
+    TrieMask,
 };
 
 use alloy_primitives::B256;
@@ -57,27 +61,213 @@ where
         }
     }
 
-    fn make_linear_path_to_leaf(
-        &mut self,
-        nibbles: Nibbles,
-        key: Bytes32,
-        value: Bytes32,
-    ) -> anyhow::Result<()> {
+    fn store_leaf(&mut self, key: Bytes32, value: Bytes32) -> anyhow::Result<RlpNode> {
         let key_nibbles = Nibbles::unpack(key);
         // Create a new leaf node
         let leaf_node = TrieNode::Leaf(LeafNode::new(key_nibbles, value.to_vec()));
         let mut buf = Vec::with_capacity(33);
         let leaf_rlp_node: RlpNode = leaf_node.rlp(&mut buf);
-
-        // Create a new extension node
-        let extension_node =
-            TrieNode::Extension(ExtensionNode::new(nibbles, leaf_rlp_node.clone()));
-        let mut buf = Vec::with_capacity(33);
-        let extension_rlp_node: RlpNode = extension_node.rlp(&mut buf);
-        self.storage.insert(&extension_rlp_node, &extension_node)?;
         self.storage.insert(&leaf_rlp_node, &leaf_node)?;
 
-        Ok(())
+        Ok(leaf_rlp_node)
+    }
+
+    // Helper function to create an extension node
+    // pointing to a newly created node.
+    fn make_linear_path_to_rlp_node(
+        &mut self,
+        nibbles: Nibbles,
+        rlp_node: RlpNode,
+    ) -> anyhow::Result<RlpNode> {
+        if nibbles.as_slice().is_empty() {
+            Ok(rlp_node)
+        } else {
+            let extension_node =
+                TrieNode::Extension(ExtensionNode::new(nibbles, rlp_node.clone()));
+            let mut buf = Vec::with_capacity(33);
+            let extension_rlp_node: RlpNode = extension_node.rlp(&mut buf);
+            self.storage.insert(&extension_rlp_node, &extension_node)?;
+            Ok(extension_rlp_node)
+        }
+    }
+
+    // When inserting a new leaf node, in the case we have finished traversing the trie
+    // and we have nibbles left to traverse, we must create a new extension node with the
+    // remaining nibbles followed by a leaf node.
+    fn make_linear_path_to_leaf(
+        &mut self,
+        nibbles: Nibbles,
+        key: Bytes32,
+        value: Bytes32,
+    ) -> anyhow::Result<RlpNode> {
+        let leaf_rlp_node = self.store_leaf(key, value)?;
+
+        self.make_linear_path_to_rlp_node(nibbles, leaf_rlp_node)
+    }
+
+    // If we reached an extension node that cannot be fully traversed (i.e. the nibbles
+    // left in the path are not a prefix of the nibbles in the extension node, we
+    // must:
+    // 1. Create a new extension node with the common prefix between the extension node
+    //    and the nibbles left,
+    // 2. Create a new branch node to which the extension node created in step 1 points
+    //    to,
+    // 3. Create two new pairs of extension and leaf nodes, one for the key and value that
+    //    we are inserting, and one for the key and value that the extension node was
+    //    pointing to.
+
+    fn branch_from_extension_node(
+        &mut self,
+        extension_node: ExtensionNode,
+        nibbles: Nibbles,
+        node_to_connect: RlpNode,
+    ) -> anyhow::Result<RlpNode> {
+        let common_prefix_length = extension_node.key.common_prefix_length(&nibbles);
+        // If the common prefix is the same as the extension node key, then we must update
+        // the child of the extension node. Because in our case the a leaf always
+        // has 64 nibbles for the key, the child of the extension node cannot be a
+        // branch node.
+        if common_prefix_length == extension_node.key.as_slice().len() {
+            // Replace the leaf node. We can use make_linear_path_to_leaf to create the
+            // new leaf and extesion node, and insert them in the storage.
+            // Additionally, we must remove the old extension node from the storage.
+            let new_extension_rlp_node =
+                self.make_linear_path_to_rlp_node(nibbles, node_to_connect)?;
+            let mut buf = Vec::with_capacity(33);
+            let old_extension_node = TrieNode::Extension(extension_node);
+            let old_extension_rlp_node = old_extension_node.rlp(&mut buf);
+            let old_extension_node_from_storage =
+                self.storage.take(&old_extension_rlp_node)?;
+            debug_assert_eq!(old_extension_node_from_storage, Some(old_extension_node));
+            Ok(new_extension_rlp_node)
+        } else {
+            // The common prefix is not the same as the extension node key.
+            // The extension node nibble and the input path nibble have the following
+            // structure:
+            // extension_node.key = [C0, ..., Ck, K0, K1, ..., Kl]
+            // nibbles            = [C0, ..., Ck, N0, N1, ..., Nm]
+            // In this case we can proceed as follows:
+            // 1. Create a new extension Ext0 node with nibbles K1, ... , Kl, pointing to
+            // the child of the previous extension node,
+            // 2. Create a new extension node Ext1 with nibles N1, ... , Nm, pointing to
+            // `node_to_connect`,
+            // 3. Create a new branch node B for the common prefix, with two children:
+            // - The first child at nibble K0 is the extension node Ext0,
+            // - Then second child at nibble N0 is the extension node Ext1.
+            // 4. Create an extension node with the common prefix [C0, ..., Ck],
+            // pointing to the branch node B created in step 3.
+            // 5. Remove the original extension node from the storage.
+            let common_prefix = nibbles.slice(0..common_prefix_length);
+
+            // 1. Create a new extension Ext0 node with nibbles K1, ... , Kl, pointing to
+            // the child of the previous extension node,
+
+            // SAFETY: This is safe because we checked that common_prefix_length is less
+            // than the length of the extension node.
+            let first_diverging_nibble_existing_path =
+                extension_node.key[common_prefix_length];
+            let other_diverging_nibbles_existing_path =
+                extension_node.key.slice(common_prefix_length + 1..);
+            let suffix_extension_node_existing_path_rlp = self
+                .make_linear_path_to_rlp_node(
+                    other_diverging_nibbles_existing_path,
+                    extension_node.child.clone(),
+                )?;
+            // 2. Create a new extension node Ext1 with nibles N1, ... , Nm, pointing to
+            // `node_to_connect`.
+
+            // In theory it is possible that the length of the common prefix is the same
+            // as the length of the input nibbles. However, this case is not possible
+            // in practice, because the input nibbles are the nibbles left while
+            // traversing a path from the root node to a leaf node. If the
+            // extension node nibbles are longer than the input nibble, this
+            // means that the trie as a logical height that is greater than
+            // the length of the (logical) path from a node to the leaf. This
+            // is not possible in a Merkle Patricia Trie.
+            let Some(first_diverging_nibble_new_path) = nibbles.get(common_prefix_length)
+            else {
+                return Err(anyhow::anyhow!(
+                    "Found a logical path that is longer than the trie height"
+                ));
+            };
+            // SAFETY: We have checked that there is a nibble at index
+            // common_prefix_length, hence slicing at the range below won't
+            // panic
+            let other_diverging_nibbles_new_path =
+                nibbles.slice(common_prefix_length + 1..);
+
+            let suffix_extension_node_new_path_rlp = self.make_linear_path_to_rlp_node(
+                other_diverging_nibbles_new_path,
+                node_to_connect,
+            )?;
+
+            // 3. Create a new branch node B for the common prefix
+            // TODO: This is slow, we iterate through the nibble values twice
+            let mut branch_node = BranchNode::default();
+            self.add_child_to_branch_node(
+                &mut branch_node,
+                first_diverging_nibble_existing_path,
+                suffix_extension_node_existing_path_rlp,
+            );
+
+            self.add_child_to_branch_node(
+                &mut branch_node,
+                *first_diverging_nibble_new_path,
+                suffix_extension_node_new_path_rlp,
+            );
+
+            let branch_node = TrieNode::Branch(branch_node);
+            let mut buf = Vec::with_capacity(33);
+            let branch_node_rlp = branch_node.rlp(&mut buf);
+            self.storage.insert(&branch_node_rlp, &branch_node)?;
+
+            // 4. Create an extension node with the common prefix [C0, ..., Ck],
+            // pointing to the branch node B created in step 3.
+            let new_extension_node_rlp =
+                self.make_linear_path_to_rlp_node(common_prefix, branch_node_rlp)?;
+
+            // 5. Remove the original extension node from the storage.
+            let mut buf = Vec::with_capacity(33);
+            let old_extension_node = TrieNode::Extension(extension_node);
+            let old_extension_node_rlp = old_extension_node.rlp(&mut buf);
+            let old_extension_node_from_storage =
+                self.storage.take(&old_extension_node_rlp)?;
+            debug_assert_eq!(old_extension_node_from_storage, Some(old_extension_node));
+            Ok(new_extension_node_rlp)
+        }
+    }
+
+    fn expand_branch_node(&self, branch_node: &BranchNode) -> [Option<RlpNode>; 16] {
+        let mut children = [const { None }; 16];
+        for (nibble, child) in branch_node.as_ref().children() {
+            children[usize::from(nibble) as usize] = child.cloned();
+        }
+        children
+    }
+
+    fn collapse_to_branch_node(&self, children: [Option<RlpNode>; 16]) -> BranchNode {
+        let mut branch_node = BranchNode::default();
+        let mut trie_mask = TrieMask::default();
+        children.iter().enumerate().for_each(|(i, child)| {
+            if let Some(child) = child {
+                branch_node.stack.push(child.clone());
+                trie_mask.set_bit(i as u8);
+            }
+        });
+
+        branch_node
+    }
+
+    fn add_child_to_branch_node(
+        &self,
+        branch_node: &mut BranchNode,
+        nibble: u8,
+        child: RlpNode,
+    ) {
+        let mut rlp_vector = self.expand_branch_node(branch_node);
+        rlp_vector[usize::from(nibble)] = Some(child);
+        let new_branch_node = self.collapse_to_branch_node(rlp_vector);
+        *branch_node = new_branch_node;
     }
 
     pub fn add_leaf(&mut self, key: Bytes32, value: Bytes32) -> anyhow::Result<()> {

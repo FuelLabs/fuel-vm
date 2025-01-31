@@ -160,6 +160,14 @@ enum_from! {
         InvalidEllipticCurvePoint = 0x3b,
         /// Given input contract does not exist.
         InputContractDoesNotExist = 0x3c,
+        /// Invalid transaction type.
+        InvalidTransactionType = 0x3d,
+        /// Storage slot in Create not found
+        StorageSlotsNotFound = 0x3e,
+        /// Proof in Upload not found
+        ProofInUploadNotFound = 0x3f,
+        /// Invalid purpose type in Upgrade
+        InvalidUpgradePurposeType = 0x40,
     }
 }
 

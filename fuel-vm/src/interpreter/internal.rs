@@ -148,6 +148,7 @@ pub(crate) fn set_flag(
     Ok(inc_pc(pc)?)
 }
 
+#[inline(always)]
 pub(crate) fn inc_pc(mut pc: RegMut<PC>) -> Result<(), PanicReason> {
     pc.checked_add(Instruction::SIZE as Word)
         .ok_or(PanicReason::MemoryOverflow)

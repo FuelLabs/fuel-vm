@@ -138,6 +138,11 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
     ecal_state: Ecal,
+    #[cfg(feature = "measure-opcodes")]
+    clock: quanta::Clock,
+    #[cfg(feature = "measure-opcodes")]
+    /// Opcodes execution times.
+    pub opcode_times: [(core::time::Duration, u64); 255],
 }
 
 /// Interpreter parameters

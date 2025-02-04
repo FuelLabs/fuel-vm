@@ -85,6 +85,10 @@ where
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,
+            #[cfg(feature = "measure-opcodes")]
+            clock: quanta::Clock::new(),
+            #[cfg(feature = "measure-opcodes")]
+            opcode_times: [(core::time::Duration::new(0, 0), 0); 255],
         }
     }
 }

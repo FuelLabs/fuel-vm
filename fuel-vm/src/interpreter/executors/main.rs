@@ -791,11 +791,13 @@ where
         let blob_data = blob
             .witnesses()
             .get(*blob.bytecode_witness_index() as usize)
-            .ok_or(InterpreterError::Bug(Bug::new(
-                // It shouldn't be possible since `Checked<Blob>` guarantees
-                // the existence of the witness.
-                BugVariant::WitnessIndexOutOfBounds,
-            )))?;
+            .ok_or_else(|| {
+                InterpreterError::Bug(Bug::new(
+                    // It shouldn't be possible since `Checked<Blob>` guarantees
+                    // the existence of the witness.
+                    BugVariant::WitnessIndexOutOfBounds,
+                ))
+            })?;
 
         let blob_id = blob.blob_id();
 

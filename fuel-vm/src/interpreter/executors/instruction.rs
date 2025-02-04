@@ -87,16 +87,27 @@ where
         &mut self,
         raw: [u8; 4],
     ) -> IoResult<ExecuteState, S::DataError> {
+        #[cfg(feature = "measure-opcodes")]
+        let start = self.clock.raw();
         let instruction = Instruction::try_from(raw)
             .map_err(|_| RuntimeError::from(PanicReason::InvalidInstruction))?;
+        #[cfg(feature = "measure-opcodes")]
+        let opcode = instruction.opcode() as usize;
 
-        // TODO additional branch that might be optimized after
-        // https://github.com/FuelLabs/fuel-asm/issues/68
-        if self.is_predicate() && !instruction.opcode().is_predicate_allowed() {
-            return Err(PanicReason::ContractInstructionNotAllowed.into())
+        // // TODO additional branch that might be optimized after
+        // // https://github.com/FuelLabs/fuel-asm/issues/68
+        // if self.is_predicate() && !instruction.opcode().is_predicate_allowed() {
+        //     return Err(PanicReason::ContractInstructionNotAllowed.into())
+        // }
+
+        let result = instruction.execute(self);
+        #[cfg(feature = "measure-opcodes")]
+        {
+            let end = self.clock.raw();
+            self.opcode_times[opcode].0 += self.clock.delta(start, end);
+            self.opcode_times[opcode].1 += 1;
         }
-
-        instruction.execute(self)
+        result
     }
 }
 

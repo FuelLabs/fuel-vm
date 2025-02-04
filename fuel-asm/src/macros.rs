@@ -1232,6 +1232,7 @@ macro_rules! impl_instructions {
 
         impl core::convert::TryFrom<[u8; 4]> for Instruction {
             type Error = InvalidOpcode;
+            #[inline(always)]
             fn try_from([op, a, b, c]: [u8; 4]) -> Result<Self, Self::Error> {
                 let op = match op {
                     $(

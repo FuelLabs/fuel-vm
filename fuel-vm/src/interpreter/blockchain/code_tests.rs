@@ -52,7 +52,6 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         context: &Context::Script {
             block_height: Default::default(),
         },
-        profiler: &mut Profiler::default(),
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),

@@ -41,17 +41,9 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let current_contract = self.contract_id();
-        let SystemRegisters {
-            pc, ggas, cgas, is, ..
-        } = split_registers(&mut self.registers).0;
-        let profiler = ProfileGas {
-            pc: pc.as_ref(),
-            is: is.as_ref(),
-            current_contract,
-            profiler: &mut self.profiler,
-        };
-        dependent_gas_charge(cgas, ggas, profiler, gas_cost, arg)
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
+        let cost = gas_cost.resolve(arg);
+        gas_charge_inner(cgas, ggas, cost)
     }
 
     pub(crate) fn dependent_gas_charge_without_base(
@@ -59,17 +51,9 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let current_contract = self.contract_id();
-        let SystemRegisters {
-            pc, ggas, cgas, is, ..
-        } = split_registers(&mut self.registers).0;
-        let profiler = ProfileGas {
-            pc: pc.as_ref(),
-            is: is.as_ref(),
-            current_contract,
-            profiler: &mut self.profiler,
-        };
-        dependent_gas_charge_without_base(cgas, ggas, profiler, gas_cost, arg)
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
+        let cost = gas_cost.resolve_without_base(arg);
+        gas_charge_inner(cgas, ggas, cost)
     }
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
@@ -92,24 +76,10 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
 pub(crate) fn dependent_gas_charge_without_base(
     mut cgas: RegMut<CGAS>,
     ggas: RegMut<GGAS>,
-    mut profiler: ProfileGas<'_>,
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
     let cost = gas_cost.resolve_without_base(arg);
-    profiler.profile(cgas.as_ref(), cost);
-    gas_charge_inner(cgas.as_mut(), ggas, cost)
-}
-
-pub(crate) fn dependent_gas_charge(
-    mut cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    mut profiler: ProfileGas<'_>,
-    gas_cost: DependentCost,
-    arg: Word,
-) -> SimpleResult<()> {
-    let cost = gas_cost.resolve(arg);
-    profiler.profile(cgas.as_ref(), cost);
     gas_charge_inner(cgas.as_mut(), ggas, cost)
 }
 

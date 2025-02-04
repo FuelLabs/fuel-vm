@@ -70,7 +70,7 @@ pub struct MemoryInstance {
     heap: Vec<u8>,
     /// Lowest allowed heap address, i.e. hp register value.
     /// This is needed since we can allocate extra heap for performance reasons.
-    hp: usize,
+    hp: Word,
 }
 
 impl Default for MemoryInstance {
@@ -84,8 +84,8 @@ impl fmt::Debug for MemoryInstance {
         write!(f, "Memory {{ stack: ")?;
         fmt_truncated_hex::<16>(&self.stack, f)?;
         write!(f, ", heap: ")?;
-        let off = self.hp.saturating_sub(self.heap_offset());
-        fmt_truncated_hex::<16>(&self.heap[off..], f)?;
+        let off = self.hp.saturating_sub(self.heap_offset() as Word);
+        fmt_truncated_hex::<16>(&self.heap[off as usize..], f)?;
         write!(f, ", hp: {} }}", self.hp)
     }
 }
@@ -95,9 +95,9 @@ impl PartialEq for MemoryInstance {
     #[allow(clippy::arithmetic_side_effects)] // Safety: hp is kept valid everywhere
     fn eq(&self, other: &Self) -> bool {
         self.stack == other.stack && self.hp == other.hp && {
-            let self_hs = self.hp - self.heap_offset();
-            let other_hs = other.hp - other.heap_offset();
-            self.heap[self_hs..] == other.heap[other_hs..]
+            let self_hs = self.hp - self.heap_offset() as Word;
+            let other_hs = other.hp - other.heap_offset() as Word;
+            self.heap[self_hs as usize..] == other.heap[other_hs as usize..]
         }
     }
 }
@@ -119,14 +119,14 @@ impl MemoryInstance {
         Self {
             stack: Vec::new(),
             heap: Vec::new(),
-            hp: MEM_SIZE,
+            hp: VM_MAX_RAM,
         }
     }
 
     /// Resets memory to initial state, keeping the original allocations.
     pub fn reset(&mut self) {
         self.stack.truncate(0);
-        self.hp = MEM_SIZE;
+        self.hp = VM_MAX_RAM;
     }
 
     /// Offset of the heap section
@@ -139,15 +139,13 @@ impl MemoryInstance {
         if new_sp > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow);
         }
-        #[allow(clippy::cast_possible_truncation)] // Safety: VM_MAX_RAM is usize
-        let new_sp = new_sp as usize;
 
-        if new_sp > self.stack.len() {
+        if new_sp > self.stack.len() as Word {
             if new_sp > self.hp {
                 return Err(PanicReason::MemoryGrowthOverlap)
             }
 
-            self.stack.resize(new_sp, 0);
+            self.stack.resize(new_sp as usize, 0);
         }
         Ok(())
     }
@@ -164,43 +162,42 @@ impl MemoryInstance {
             "HP register changed without memory update"
         );
 
-        let amount = usize::try_from(amount).map_err(|_| PanicReason::MemoryOverflow)?;
         let new_hp = self
             .hp
             .checked_sub(amount)
             .ok_or(PanicReason::MemoryOverflow)?;
 
-        if (new_hp as Word) < *sp_reg {
+        if new_hp < *sp_reg {
             return Err(PanicReason::MemoryGrowthOverlap)
         }
 
         #[allow(clippy::arithmetic_side_effects)] // Safety: self.hp is in heap
-        let new_len = MEM_SIZE - new_hp;
+        let new_len = VM_MAX_RAM - new_hp;
 
         #[allow(clippy::arithmetic_side_effects)] // Safety: self.hp is in heap
-        if self.heap.len() >= new_len {
+        if self.heap.len() as Word >= new_len {
             // No need to reallocate, but we need to zero the new space
             // in case it was used before a memory reset.
-            let start = new_hp - self.heap_offset();
-            let end = self.hp - self.heap_offset();
+            let start = new_hp as usize - self.heap_offset();
+            let end = self.hp as usize - self.heap_offset();
             self.heap[start..end].fill(0);
         } else {
             // Reallocation is needed.
             // To reduce frequent reallocations, allocate at least 256 bytes at once.
             // After that, double the allocation every time.
-            let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);
+            let cap = new_len.next_power_of_two().clamp(256, VM_MAX_RAM);
             let old_len = self.heap.len();
-            let prefix_zeroes = cap - old_len;
-            self.heap.resize(cap, 0);
-            self.heap.copy_within(..old_len, prefix_zeroes);
-            self.heap[..prefix_zeroes].fill(0);
+            let prefix_zeroes = cap - old_len as Word;
+            self.heap.resize(cap as usize, 0);
+            self.heap.copy_within(..old_len, prefix_zeroes as usize);
+            self.heap[..prefix_zeroes as usize].fill(0);
         }
 
         self.hp = new_hp;
         *hp_reg = new_hp as Word;
 
         // If heap enters region where stack has been, truncate the stack
-        self.stack.truncate(new_hp);
+        self.stack.truncate(new_hp as usize);
 
         Ok(())
     }
@@ -211,26 +208,18 @@ impl MemoryInstance {
         addr: A,
         count: B,
     ) -> Result<MemoryRange, PanicReason> {
-        let start = addr.to_addr()?;
-        let len = count.to_addr()?;
+        let start = addr.to_addr();
+        let len = count.to_addr();
         let end = start.saturating_add(len);
-        if end > MEM_SIZE {
+        if end > VM_MAX_RAM {
             return Err(PanicReason::MemoryOverflow)
         }
 
-        if end <= self.stack.len() || start >= self.hp {
-            Ok(MemoryRange(start..end))
+        if end <= self.stack.len() as Word || start >= self.hp {
+            Ok(MemoryRange(start as usize..end as usize))
         } else {
             Err(PanicReason::UninitalizedMemoryAccess)
         }
-    }
-
-    /// Verify a constant-sized memory range.
-    pub fn verify_const<A: ToAddr, const C: usize>(
-        &self,
-        addr: A,
-    ) -> Result<MemoryRange, PanicReason> {
-        self.verify(addr, C)
     }
 
     /// Returns a reference to memory for reading, if possible.
@@ -240,16 +229,19 @@ impl MemoryInstance {
         addr: A,
         count: C,
     ) -> Result<&[u8], PanicReason> {
-        let range = self.verify(addr, count)?;
-
-        if range.end() <= self.stack.len() {
-            Ok(&self.stack[range.usizes()])
-        } else if range.start() >= self.heap_offset() {
-            let start = range.start() - self.heap_offset();
-            let end = range.end() - self.heap_offset();
-            Ok(&self.heap[start..end])
-        } else {
-            unreachable!("Range was verified to be valid")
+        match self.verify(addr, count) {
+            Ok(range) => {
+                if range.end() <= self.stack.len() {
+                    Ok(&self.stack[range.usizes()])
+                } else if range.start() >= self.heap_offset() {
+                    let start = range.start() - self.heap_offset();
+                    let end = range.end() - self.heap_offset();
+                    Ok(&self.heap[start..end])
+                } else {
+                    unreachable!("Range was verified to be valid")
+                }
+            }
+            Err(err) => Err(err),
         }
     }
 
@@ -271,15 +263,19 @@ impl MemoryInstance {
         addr: A,
         len: B,
     ) -> Result<&mut [u8], PanicReason> {
-        let range = self.verify(addr, len)?;
-        if range.end() <= self.stack.len() {
-            Ok(&mut self.stack[range.usizes()])
-        } else if range.start() >= self.heap_offset() {
-            let start = range.start() - self.heap_offset();
-            let end = range.end() - self.heap_offset();
-            Ok(&mut self.heap[start..end])
-        } else {
-            unreachable!("Range was verified to be valid")
+        match self.verify(addr, len) {
+            Ok(range) => {
+                if range.end() <= self.stack.len() {
+                    Ok(&mut self.stack[range.usizes()])
+                } else if range.start() >= self.heap_offset() {
+                    let start = range.start() - self.heap_offset();
+                    let end = range.end() - self.heap_offset();
+                    Ok(&mut self.heap[start..end])
+                } else {
+                    unreachable!("Range was verified to be valid")
+                }
+            }
+            Err(err) => Err(err),
         }
     }
 
@@ -301,9 +297,15 @@ impl MemoryInstance {
         addr: A,
         len: C,
     ) -> Result<&mut [u8], PanicReason> {
-        let range = self.verify(addr, len)?;
-        owner.verify_ownership(&range)?;
-        self.write_noownerchecks(range.start(), range.len())
+        match self.verify(addr, len) {
+            Ok(range) => {
+                if let Err(err) = owner.verify_ownership(&range) {
+                    return Err(err)
+                }
+                self.write_noownerchecks(range.start(), range.len())
+            }
+            Err(err) => Err(err),
+        }
     }
 
     /// Writes a constant-sized byte array to memory, checking for ownership.
@@ -318,8 +320,6 @@ impl MemoryInstance {
     }
 
     /// Copies the memory from `src` to `dst` verifying ownership.
-    #[inline]
-    #[track_caller]
     pub fn memcopy(
         &mut self,
         dst: Word,
@@ -424,15 +424,15 @@ impl MemoryInstance {
             get_changes(&self.stack[..sp], &desired_memory_state.stack[..sp], 0);
 
         let heap_start = hp
-            .checked_sub(self.heap_offset())
+            .checked_sub(self.heap_offset() as Word)
             .expect("Memory is invalid, hp is out of bounds");
-        let heap = &self.heap[heap_start..];
+        let heap = &self.heap[heap_start as usize..];
         let desired_heap_start = hp
-            .checked_sub(desired_memory_state.heap_offset())
+            .checked_sub(desired_memory_state.heap_offset() as Word)
             .expect("Memory is invalid, hp is out of bounds");
-        let desired_heap = &desired_memory_state.heap[desired_heap_start..];
+        let desired_heap = &desired_memory_state.heap[desired_heap_start as usize..];
 
-        let heap_changes = get_changes(heap, desired_heap, hp);
+        let heap_changes = get_changes(heap, desired_heap, hp as usize);
 
         Some(MemoryRollbackData {
             sp,
@@ -510,7 +510,7 @@ pub struct MemoryRollbackData {
     /// Desired stack pointer.
     sp: usize,
     /// Desired heap pointer. Desired heap pointer can't be less than the current one.
-    hp: usize,
+    hp: Word,
     /// Changes to the stack to achieve the desired state of the stack.
     stack_changes: Vec<MemorySliceChange>,
     /// Changes to the heap to achieve the desired state of the heap.
@@ -569,34 +569,29 @@ pub trait ToAddr {
     /// Converts a value to `usize` used for memory addresses.
     /// Returns `Err` with `MemoryOverflow` if the resulting value does't fit in the VM
     /// memory. This can be used for both addresses and offsets.
-    fn to_addr(self) -> Result<usize, PanicReason>;
+    fn to_addr(self) -> Word;
 }
 
 impl ToAddr for usize {
-    fn to_addr(self) -> Result<usize, PanicReason> {
-        if self > MEM_SIZE {
-            return Err(PanicReason::MemoryOverflow)
-        }
-        Ok(self)
+    fn to_addr(self) -> Word {
+        self as Word
     }
 }
 
 impl ToAddr for Word {
-    fn to_addr(self) -> Result<usize, PanicReason> {
-        let value = usize::try_from(self).map_err(|_| PanicReason::MemoryOverflow)?;
-        value.to_addr()
+    fn to_addr(self) -> Word {
+        self
     }
 }
 
 #[cfg(feature = "test-helpers")]
 /// Implemented for `i32` to allow integer literals. Panics on negative values.
 impl ToAddr for i32 {
-    fn to_addr(self) -> Result<usize, PanicReason> {
+    fn to_addr(self) -> Word {
         if self < 0 {
             panic!("Negative memory address");
         }
-        let value = usize::try_from(self).map_err(|_| PanicReason::MemoryOverflow)?;
-        value.to_addr()
+        self as Word
     }
 }
 

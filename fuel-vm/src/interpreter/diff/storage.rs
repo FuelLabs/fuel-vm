@@ -112,6 +112,10 @@ where
             profiler: self.profiler,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
+            #[cfg(feature = "measure-opcodes")]
+            clock: self.clock,
+            #[cfg(feature = "measure-opcodes")]
+            opcode_times: self.opcode_times,
         }
     }
 
@@ -203,6 +207,10 @@ where
             profiler: self.profiler,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
+            #[cfg(feature = "measure-opcodes")]
+            clock: self.clock,
+            #[cfg(feature = "measure-opcodes")]
+            opcode_times: self.opcode_times,
         }
     }
 

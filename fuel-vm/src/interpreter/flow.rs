@@ -485,16 +485,9 @@ where
             .checked_add(code_size_padded)
             .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
-        let profiler = ProfileGas {
-            pc: self.registers.system_registers.pc.as_ref(),
-            is: self.registers.system_registers.is.as_ref(),
-            current_contract: self.current_contract,
-            profiler: self.profiler,
-        };
         dependent_gas_charge_without_base(
             self.registers.system_registers.cgas.as_mut(),
             self.registers.system_registers.ggas.as_mut(),
-            profiler,
             self.gas_cost,
             code_size_padded as Word,
         )?;

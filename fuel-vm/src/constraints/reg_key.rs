@@ -362,6 +362,7 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
 impl TryFrom<RegId> for WriteRegKey {
     type Error = PanicReason;
 
+    #[inline(always)]
     fn try_from(r: RegId) -> Result<Self, Self::Error> {
         Self::new(r)
     }

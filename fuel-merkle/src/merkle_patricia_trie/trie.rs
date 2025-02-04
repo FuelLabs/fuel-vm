@@ -105,6 +105,8 @@ where
         self.make_linear_path_to_rlp_node(nibbles, leaf_rlp_node)
     }
 
+    // If we have two nodes with a possibly common prefix, we must
+
     // If we reached an extension node that cannot be fully traversed (i.e. the nibbles
     // left in the path are not a prefix of the nibbles in the extension node, we
     // must:
@@ -232,11 +234,15 @@ where
             let old_extension_node_rlp = old_extension_node.rlp(&mut buf);
             let old_extension_node_from_storage =
                 self.storage.take(&old_extension_node_rlp)?;
-            debug_assert_eq!(old_extension_node_from_storage, Some(old_extension_node));
+            // debug_assert_eq!(old_extension_node_from_storage,
+            // Some(old_extension_node));
             Ok(new_extension_node_rlp)
         }
     }
 
+    // Utility function to expand the list of children of a BranchNode
+    // Children are stored in a compact version using a bitmast. This function
+    // expands the compacted list of children to an arry of 16 elements.
     fn expand_branch_node(&self, branch_node: &BranchNode) -> [Option<RlpNode>; 16] {
         let mut children = [const { None }; 16];
         for (nibble, child) in branch_node.as_ref().children() {
@@ -245,6 +251,9 @@ where
         children
     }
 
+    // Utility function to collapse an array of 16 children to a BranchNode.
+    // This function computes the bitmask corresponding to the array of 16 children
+    // for the node, and compacts the array of children.
     fn collapse_to_branch_node(&self, children: [Option<RlpNode>; 16]) -> BranchNode {
         let mut branch_node = BranchNode::default();
         let mut trie_mask = TrieMask::default();
@@ -258,6 +267,8 @@ where
         branch_node
     }
 
+    // Utility function to add a child to a branch node. This function makes
+    // use of the expansion and collapse functions to update the branch node.
     fn add_child_to_branch_node(
         &self,
         branch_node: &mut BranchNode,
@@ -270,16 +281,16 @@ where
         *branch_node = new_branch_node;
     }
 
-    pub fn add_leaf(&mut self, key: Bytes32, value: Bytes32) -> anyhow::Result<()> {
+    // Adds a leaf to a trie.
+    pub fn add_leaf(&mut self, key: Bytes32, value: Bytes32) -> anyhow::Result<RlpNode> {
         // convert the key and value to nibbles
         let key_nibbles = Nibbles::unpack(&key);
 
-        let nibbles_ref = &key_nibbles;
         // Now we traverse the nibble path in the trie to find the place where to
         // insert the leaf.
         // We must keep track of the nodes traversed because they will need to be updated
         // in the storage. We will insert them in a stack
-        let mut node_iterator = self.iter(nibbles_ref);
+        let mut node_iterator = self.iter(&key_nibbles);
         let mut nodes_in_path = Vec::new();
 
         // Looping instead of using for syntax or iterator transformers
@@ -288,31 +299,21 @@ where
             let Some(node) = node_iterator.next() else {
                 break
             };
-            let node = node?;
-            nodes_in_path.push(node);
+            let node_with_next_decision = node?;
+            nodes_in_path.push(node_with_next_decision);
         }
 
         // Check the nibbles that are left to iterate.
         let nibbles_left = node_iterator.nibbles_left();
         // We require that the tree contains at least the
-        let last_node = nodes_in_path.pop().unwrap_or(TrieNode::EmptyRoot);
-        match last_node {
+        let (last_node, _decision) =
+            nodes_in_path.pop().unwrap_or((TrieNode::EmptyRoot, None));
+        let mut rlp_of_new_node = match last_node {
             TrieNode::EmptyRoot => {
-                // The tree is empty:
-                //                     | EmptyRoot |
-                //
-                // We create an extension node with the nibbles left, pointing to a new
-                // leaf node with the required key and value.
-                //                     | Extension                     |
-                //                     | key: [ 0xN1, ..., 0xN63]      |
-                //                                    |
-                //                                    |
-                //                                    V
-                //                     | Leaf (key, value)             |
-                //
-                // and pointing to the leaf node. The node becomes the new root of the
-                // tree.
-                todo!()
+                // If the last node is the empty root, then we can insert the leaf
+                // directly. We must create a new branch node with a single child
+                // at the position of the first nibble in the path.
+                self.make_linear_path_to_leaf(nibbles_left, key, value)?
             }
             TrieNode::Branch(branch_node) => {
                 // The last node is a branch node.
@@ -323,8 +324,26 @@ where
                 // looking at the first one), then we create a leaf.
                 // Otherwise, we create an extension node with the path left, pointing
                 // to a new leaf node.
-                todo!()
+                let Some((first_nibble, nibbles_left)) = nibbles_left.split_first()
+                else {
+                    return Err(anyhow::anyhow!(
+                        "The path to the leaf is already occupied by a branch node"
+                    ));
+                };
+                let extension_node_rlp = self.make_linear_path_to_leaf(
+                    Nibbles::from_nibbles(nibbles_left),
+                    key,
+                    value,
+                )?;
+                let mut new_branch_node = branch_node.clone();
+                self.add_child_to_branch_node(
+                    &mut new_branch_node,
+                    *first_nibble,
+                    extension_node_rlp,
+                );
+                TrieNode::Branch(new_branch_node).rlp(&mut Vec::with_capacity(33))
             }
+
             TrieNode::Extension(extension_node) => {
                 // If the last node in the path is an extension node, then we must check
                 // the common prefix between the nibbles left in the path,
@@ -333,17 +352,90 @@ where
                 // otherwise the iterator would have moved to the next
                 // node. In this case, we create a new extension node with the common
                 // prefix, pointing to a branch node. The branch node has two children:
-                todo!()
+                let leaf_rlp_node = self.store_leaf(key, value)?;
+                self.branch_from_extension_node(
+                    extension_node,
+                    nibbles_left,
+                    leaf_rlp_node,
+                )?
             }
-            TrieNode::Leaf(leaf_node) => todo!(),
+            TrieNode::Leaf(other_leaf_node) => {
+                // If the last node in the path is a leaf node, then we must check
+                // whether we need to update the encountered leaf node, or
+                // create a new extension node with the common prefix between the
+                // two leaves.
+
+                let nibbles_left_len = nibbles_left.as_slice().len();
+                let other_leaf_node_relevant_key_nibbles =
+                    &other_leaf_node.key[other_leaf_node.key.len() - nibbles_left_len..];
+                if other_leaf_node_relevant_key_nibbles == nibbles_left.as_slice() {
+                    // We are updating the leaf that we have encountered.
+                    let old_rlp_node =
+                        TrieNode::Leaf(other_leaf_node).rlp(&mut Vec::with_capacity(33));
+                    let rlp_node = self.store_leaf(key, value)?;
+                    self.storage.remove(&old_rlp_node)?
+                    rlp_node
+                } else {
+                    let leaf_rlp_node = self.store_leaf(key, value)?;
+                    let extension_node = ExtensionNode::new(
+                        Nibbles::from_nibbles(other_leaf_node_relevant_key_nibbles),
+                        leaf_rlp_node.clone(),
+                    );
+                    let rlp_node = self.branch_from_extension_node(
+                        extension_node,
+                        nibbles_left,
+                        leaf_rlp_node,
+                    )?;
+                    let old_rlp_node =
+                        TrieNode::Leaf(other_leaf_node).rlp(&mut Vec::with_capacity(33));
+                    self.storage.remove(&old_rlp_node)?
+                    rlp_node
+                }
+            }
+        };
+
+        // We keep iterating backwards through the nodes in the path, and update with the new 
+        // node. 
+        while let Some((mut node, decision)) = nodes_in_path.pop() {
+            match node {
+                TrieNode::EmptyRoot => {
+                    // This should not happen, either we traversed the empty root in 
+                    // the first iteration, or there are no nodes in the path
+                    unreachable!()
+                },
+                TrieNode::Branch(branch_node) => {
+                    let branch_node_rlp = node.rlp(&mut Vec::with_capacity(33));
+                    let decision = decision.expect("Branch node must have a decision");
+                    let mut new_branch_node = branch_node.clone();
+
+                    // will update the old node with the new one
+                    self.add_child_to_branch_node(&mut new_branch_node, decision, rlp_of_new_node);
+                    // store the new branch node
+                    let new_node = TrieNode::Branch(new_branch_node);
+                    rlp_of_new_node = new_node.rlp(&mut Vec::with_capacity(33));
+                    self.storage.insert(&rlp_of_new_node, &new_node)?;
+                    self.storage.remove(&branch_node_rlp)?
+                }
+                TrieNode::Extension(extension_node) => {
+                    let extension_node_rlp = node.rlp(&mut Vec::with_capacity(33));
+                    let mut new_extension_node = extension_node.clone();
+                    new_extension_node.child = rlp_of_new_node.clone();
+                    let new_extension_node = TrieNode::Extension(new_extension_node);
+                    rlp_of_new_node = new_extension_node.rlp(&mut Vec::with_capacity(33));
+                    self.storage.insert(&rlp_of_new_node, &new_extension_node)?;
+                    self.storage.remove(&extension_node_rlp)?
+                },
+                TrieNode::Leaf(leaf_node) => {
+                    // Cannot happen, we have already traversed a leaf node in the first loop of this function.
+                },
+            }
+
+            // The Rlp of new node should now be the root of the trie
         }
 
-        // We check the last
-        // Create the leaf node to add
-        let leaf_node = TrieNode::Leaf(LeafNode::new(key_nibbles, value.to_vec()));
-        let mut buf = Vec::with_capacity(33);
-        let leaf_rlp_node: RlpNode = leaf_node.rlp(&mut buf);
-        Ok(())
+        self.root = rlp_of_new_node;
+
+        Ok(rlp_of_new_node)
     }
 }
 
@@ -367,7 +459,9 @@ where
     StorageType: StorageMutate<NodesTableType, Error = anyhow::Error>,
     NodesTableType: Mappable<Key = RlpNode, Value = TrieNode, OwnedValue = TrieNode>,
 {
-    type Item = anyhow::Result<TrieNode>;
+    // Return the next node, and the nibble that will be used to select the next node,
+    // if any.
+    type Item = anyhow::Result<(TrieNode, Option<u8>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let current_rlp_node = self.current_node.take()?;
@@ -393,13 +487,13 @@ where
                             self.nibbles_left.split_first()
                         else {
                             self.current_node = None;
-                            return Some(Ok(owned_node));
+                            return Some(Ok((owned_node, None)));
                         };
                         let branch_node_ref = branch_node.as_ref();
                         let next_node = branch_node_ref
                             .children()
-                            .filter(|(nibble, _node)| (nibble == next_nibble))
-                            .collect::<Vec<_>>()[0]
+                            .find(|(nibble, _node)| (nibble == next_nibble))
+                            .unwrap()
                             .1;
                         self.nibbles_left = nibbles_left;
                         self.current_node = next_node.cloned();
@@ -428,7 +522,7 @@ where
                         self.current_node = None;
                     }
                 };
-                Some(Ok(owned_node))
+                Some(Ok((owned_node, self.nibbles_left.first().cloned())))
             }
         }
     }

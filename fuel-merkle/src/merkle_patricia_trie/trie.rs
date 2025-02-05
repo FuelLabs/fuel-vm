@@ -11,18 +11,14 @@ use alloy_trie::{
     TrieMask,
 };
 
-use alloy_primitives::B256;
 use fuel_storage::{
     Mappable,
-    StorageAsMut,
     StorageMutate,
 };
 use nybbles::{
     self as _,
     Nibbles,
 };
-
-use alloc::sync::Arc;
 
 use crate::common::Bytes32;
 
@@ -232,7 +228,7 @@ where
             let mut buf = Vec::with_capacity(33);
             let old_extension_node = TrieNode::Extension(extension_node);
             let old_extension_node_rlp = old_extension_node.rlp(&mut buf);
-            let old_extension_node_from_storage =
+            let _old_extension_node_from_storage =
                 self.storage.take(&old_extension_node_rlp)?;
             // debug_assert_eq!(old_extension_node_from_storage,
             // Some(old_extension_node));
@@ -396,7 +392,7 @@ where
 
         // We keep iterating backwards through the nodes in the path, and update with the
         // new node.
-        while let Some((mut node, decision)) = nodes_in_path.pop() {
+        while let Some((ref node, decision)) = nodes_in_path.pop() {
             match node {
                 TrieNode::EmptyRoot => {
                     // This should not happen, either we traversed the empty root in
@@ -429,7 +425,7 @@ where
                     self.storage.insert(&rlp_of_new_node, &new_extension_node)?;
                     self.storage.remove(&extension_node_rlp)?
                 }
-                TrieNode::Leaf(leaf_node) => {
+                TrieNode::Leaf(_leaf_node) => {
                     // Cannot happen, we have already traversed a leaf node in the first
                     // loop of this function.
                 }
@@ -438,7 +434,7 @@ where
             // The Rlp of new node should now be the root of the trie
         }
 
-        self.root = rlp_of_new_node;
+        self.root = rlp_of_new_node.clone();
 
         Ok(rlp_of_new_node)
     }

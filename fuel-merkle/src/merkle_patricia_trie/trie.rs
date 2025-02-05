@@ -398,6 +398,19 @@ where
         branch_node
     }
 
+    fn delete_child_from_branch_node(
+        &self,
+        branch_node: &mut BranchNode,
+        nibble: u8,
+    ) -> anyhow::Result<RlpNode> {
+        debug_assert!(branch_node.as_ref().state_mask.count_ones() > 1);
+        let mut rlp_vector = self.expand_branch_node(branch_node);
+        rlp_vector[usize::from(nibble)] = None;
+        let new_branch_node = self.collapse_to_branch_node(rlp_vector);
+        *branch_node = new_branch_node;
+        Ok(TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33)))
+    }
+
     // Utility function to add a child to a branch node. This function makes
     // use of the expansion and collapse functions to update the branch node.
     fn add_child_to_branch_node(
@@ -405,11 +418,12 @@ where
         branch_node: &mut BranchNode,
         nibble: u8,
         child: RlpNode,
-    ) {
+    ) -> RlpNode {
         let mut rlp_vector = self.expand_branch_node(branch_node);
         rlp_vector[usize::from(nibble)] = Some(child);
         let new_branch_node = self.collapse_to_branch_node(rlp_vector);
         *branch_node = new_branch_node;
+        TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33))
     }
 
     // Adds a leaf to a trie.
@@ -572,6 +586,225 @@ where
         self.root = rlp_of_new_node.clone();
 
         Ok(rlp_of_new_node)
+    }
+
+    fn delete_leaf(&mut self, key: &Nibbles) -> anyhow::Result<RlpNode> {
+        // The deletion process is performed in 4 different stages
+        enum Stage {
+            // At PreDeletion stage we check if there is a leaf at the key given in
+            // input, eventually removing it from the db and moving to the
+            // in-progress stage
+            PreDeletion,
+            // When deletion is in progress, we traverse the path to the leaf deleted in
+            // reverse order:
+            // * any extension node (at most 1) in this stage is removed,
+            // * branch nodes with 2 children are updated to point to the remaining
+            //   child,
+            // and converted to an extension node. In this case we proceed to the
+            // JoinExtensionNodes stage
+            // * branch nodes with more than 2 children are updated to remove the child
+            //   at the
+            // nibble corresponding to the decision taken when traversing the path. In
+            // this case we can skip the JoinExtensionNodes stage and
+            // proceed to the PostDeletion stage. In this stage we keep
+            // track of the depth of the current node in the tree, as
+            // it is useful in case we need to create an extension node from a leaf.
+            InProgress(u8),
+            // In the JoinExtensionNodes stage, we check whether the next node in the
+            // reverse path is an extension node, and join it with the
+            // current node if it is the case. Otherwise, we move to the
+            // PostDeletion stage
+            JoinExtensionNodes(RlpNode),
+            // In the PostDeletion stage, we simply update the nodes in the path to
+            // reflect the changes made in the previous stages.
+            PostDeletion(RlpNode),
+        }
+
+        if key.len() != 64 {
+            return Err(anyhow::anyhow!("Key must have 64 nibbles"));
+        }
+
+        // Traverse the path to the leaf node to be deleted
+
+        let mut node_iterator = self.iter(key);
+        let mut nodes_in_path = Vec::new();
+        loop {
+            let Some(node) = node_iterator.next() else {
+                break
+            };
+            let node_with_next_decision = node?;
+            nodes_in_path.push(node_with_next_decision);
+        }
+
+        let mut stage = Stage::PreDeletion;
+        while let Some((node, decision)) = nodes_in_path.pop() {
+            let node_rlp = node.rlp(&mut Vec::with_capacity(33));
+
+            match stage {
+                Stage::PreDeletion => match node {
+                    TrieNode::EmptyRoot
+                    | TrieNode::Branch(_)
+                    | TrieNode::Extension(_) => return Ok(self.root.clone()),
+                    TrieNode::Leaf(ref _leaf_node) => {
+                        self.storage.remove(&node_rlp)?;
+                        stage = Stage::InProgress(63);
+                    }
+                },
+                Stage::InProgress(depth) => {
+                    match node {
+                        TrieNode::EmptyRoot | TrieNode::Leaf(_) => {
+                            // Cannot happen, we have traversed a leaf already
+                            anyhow::bail!("Empty root node in the path")
+                        }
+                        TrieNode::Extension(ref extension_node) => {
+                            // Remove the extension node
+                            self.storage.remove(&node_rlp)?;
+                            let key_len: u8 = extension_node.key.len().try_into()?;
+                            let depth = depth.saturating_sub(key_len);
+                            stage = Stage::InProgress(depth);
+                        }
+                        TrieNode::Branch(branch_node) => {
+                            let Some(decision) = decision else {
+                                anyhow::bail!("Branch node must have a decision");
+                            };
+                            let branch_node_ref = branch_node.as_ref();
+                            let siblings_of_node_being_deleted = branch_node_ref
+                                .children()
+                                .filter(|(nibble, _)| nibble != &decision)
+                                .collect::<Vec<_>>();
+                            let Some((first_sibling, other_siblings)) =
+                                siblings_of_node_being_deleted.split_first()
+                            else {
+                                anyhow::bail!("Branch node with a single child");
+                            };
+                            let should_transform_into_extension_node =
+                                other_siblings.is_empty();
+
+                            if should_transform_into_extension_node {
+                                let (nibble, _node) = first_sibling;
+                                let new_extension_node_rlp = self
+                                    .branch_to_extension_node(
+                                        branch_node.clone(),
+                                        *nibble,
+                                        depth,
+                                    )?;
+                                self.storage.remove(&node_rlp)?;
+                                stage = Stage::JoinExtensionNodes(new_extension_node_rlp);
+                            } else {
+                                let mut new_branch_node = branch_node.clone();
+                                let new_branch_node_rlp = self
+                                    .delete_child_from_branch_node(
+                                        &mut new_branch_node,
+                                        decision,
+                                    )?;
+                                self.storage.remove(&node_rlp)?;
+                                self.storage.insert(
+                                    &new_branch_node_rlp,
+                                    &TrieNode::Branch(new_branch_node),
+                                )?;
+                                stage = Stage::PostDeletion(new_branch_node_rlp);
+                            }
+                        }
+                    }
+                }
+                Stage::JoinExtensionNodes(rlp_node) => {
+                    match node {
+                        TrieNode::EmptyRoot | TrieNode::Leaf(_) => {
+                            // Cannot happen, we have traversed a leaf already
+                            anyhow::bail!("Empty root node in the path")
+                        }
+                        TrieNode::Branch(branch_node) => {
+                            let Some(decision) = decision else {
+                                anyhow::bail!("Branch node must have a decision");
+                            };
+                            // simply update the branch node to point to the new extension
+                            // node, move to the PostDeletion
+                            // stage
+                            let mut new_branch_node = branch_node.clone();
+                            let new_branch_node_rlp = self.add_child_to_branch_node(
+                                &mut new_branch_node,
+                                decision,
+                                rlp_node,
+                            );
+                            self.storage.remove(&node_rlp)?;
+                            self.storage.insert(
+                                &new_branch_node_rlp,
+                                &TrieNode::Branch(new_branch_node),
+                            )?;
+                            stage = Stage::PostDeletion(new_branch_node_rlp);
+                        }
+                        TrieNode::Extension(extension_node) => {
+                            // We can be in this case only if the current rlpNode refers
+                            // to an extension node. In this
+                            // case we join the two extension nodes,
+                            let new_extension_node_rlp =
+                                self.join_extension_nodes(extension_node)?;
+                            self.storage.remove(&node_rlp)?;
+
+                            stage = Stage::PostDeletion(new_extension_node_rlp);
+                        }
+                    }
+                }
+                Stage::PostDeletion(rlp_node) => {
+                    match node {
+                        TrieNode::EmptyRoot | TrieNode::Leaf(_) => {
+                            // Cannot happen, we have traversed a leaf already
+                            anyhow::bail!("Empty root node in the path")
+                        }
+                        TrieNode::Branch(branch_node) => {
+                            let Some(decision) = decision else {
+                                anyhow::bail!("Branch node must have a decision");
+                            };
+                            let mut new_branch_node = branch_node.clone();
+                            let new_branch_node_rlp = self.add_child_to_branch_node(
+                                &mut new_branch_node,
+                                decision,
+                                rlp_node,
+                            );
+                            self.storage.remove(&node_rlp)?;
+                            self.storage.insert(
+                                &new_branch_node_rlp,
+                                &TrieNode::Branch(new_branch_node),
+                            )?;
+                            stage = Stage::PostDeletion(new_branch_node_rlp);
+                        }
+                        TrieNode::Extension(extension_node) => {
+                            let mut new_extension_node = extension_node.clone();
+                            new_extension_node.child = rlp_node;
+                            let new_extension_node_rlp =
+                                TrieNode::Extension(new_extension_node)
+                                    .rlp(&mut Vec::with_capacity(33));
+
+                            self.storage.remove(&node_rlp)?;
+                            self.storage.insert(
+                                &new_extension_node_rlp,
+                                &TrieNode::Extension(extension_node),
+                            )?;
+                            stage = Stage::PostDeletion(new_extension_node_rlp);
+                        }
+                    }
+                }
+            }
+        }
+
+        match stage {
+            Stage::PreDeletion => {
+                anyhow::bail!("Can't be in predeletion stage.")
+            }
+            Stage::InProgress(_) => {
+                // We traversed all the nodes in the path, keeping deleting nodes.
+                // The tree is now empty.
+                self.storage.insert(
+                    &TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33)),
+                    &TrieNode::EmptyRoot,
+                )?;
+                self.root = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
+            }
+            Stage::PostDeletion(rlp_node) | Stage::JoinExtensionNodes(rlp_node) => {
+                self.root = rlp_node;
+            }
+        }
+        Ok(self.root.clone())
     }
 }
 

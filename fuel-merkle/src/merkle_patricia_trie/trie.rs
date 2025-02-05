@@ -373,7 +373,7 @@ where
                     let old_rlp_node =
                         TrieNode::Leaf(other_leaf_node).rlp(&mut Vec::with_capacity(33));
                     let rlp_node = self.store_leaf(key, value)?;
-                    self.storage.remove(&old_rlp_node)?
+                    self.storage.remove(&old_rlp_node)?;
                     rlp_node
                 } else {
                     let leaf_rlp_node = self.store_leaf(key, value)?;
@@ -388,28 +388,32 @@ where
                     )?;
                     let old_rlp_node =
                         TrieNode::Leaf(other_leaf_node).rlp(&mut Vec::with_capacity(33));
-                    self.storage.remove(&old_rlp_node)?
+                    self.storage.remove(&old_rlp_node)?;
                     rlp_node
                 }
             }
         };
 
-        // We keep iterating backwards through the nodes in the path, and update with the new 
-        // node. 
+        // We keep iterating backwards through the nodes in the path, and update with the
+        // new node.
         while let Some((mut node, decision)) = nodes_in_path.pop() {
             match node {
                 TrieNode::EmptyRoot => {
-                    // This should not happen, either we traversed the empty root in 
+                    // This should not happen, either we traversed the empty root in
                     // the first iteration, or there are no nodes in the path
                     unreachable!()
-                },
+                }
                 TrieNode::Branch(branch_node) => {
                     let branch_node_rlp = node.rlp(&mut Vec::with_capacity(33));
                     let decision = decision.expect("Branch node must have a decision");
                     let mut new_branch_node = branch_node.clone();
 
                     // will update the old node with the new one
-                    self.add_child_to_branch_node(&mut new_branch_node, decision, rlp_of_new_node);
+                    self.add_child_to_branch_node(
+                        &mut new_branch_node,
+                        decision,
+                        rlp_of_new_node,
+                    );
                     // store the new branch node
                     let new_node = TrieNode::Branch(new_branch_node);
                     rlp_of_new_node = new_node.rlp(&mut Vec::with_capacity(33));
@@ -424,10 +428,11 @@ where
                     rlp_of_new_node = new_extension_node.rlp(&mut Vec::with_capacity(33));
                     self.storage.insert(&rlp_of_new_node, &new_extension_node)?;
                     self.storage.remove(&extension_node_rlp)?
-                },
+                }
                 TrieNode::Leaf(leaf_node) => {
-                    // Cannot happen, we have already traversed a leaf node in the first loop of this function.
-                },
+                    // Cannot happen, we have already traversed a leaf node in the first
+                    // loop of this function.
+                }
             }
 
             // The Rlp of new node should now be the root of the trie

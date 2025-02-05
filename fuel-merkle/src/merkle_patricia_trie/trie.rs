@@ -68,6 +68,141 @@ where
         Ok(leaf_rlp_node)
     }
 
+    // To be called when an extension node points to a branch node with a single child.
+    fn join_extension_nodes(
+        &mut self,
+        extension_node: ExtensionNode,
+    ) -> anyhow::Result<RlpNode> {
+        let prefix_nibbles = extension_node.as_ref().key;
+        let connected_node_rlp = extension_node.clone().child;
+        let connected_node = self.storage.get(&connected_node_rlp)?.ok_or_else(|| {
+            anyhow::anyhow!("Node referenced by extension node not found in storage")
+        })?;
+
+        let TrieNode::Extension(connected_extension_node) = connected_node.as_ref()
+        else {
+            return Err(anyhow::anyhow!(
+                "Extension node must point to another extension node"
+            ));
+        };
+        let suffix_nibbles = connected_extension_node.as_ref().key;
+        let nibbles = prefix_nibbles.join(suffix_nibbles);
+        let new_extension_node =
+            ExtensionNode::new(nibbles, connected_extension_node.child.clone());
+
+        let new_extension_node_rlp = TrieNode::Extension(new_extension_node.clone())
+            .rlp(&mut Vec::with_capacity(33));
+        self.storage.insert(
+            &new_extension_node_rlp,
+            &TrieNode::Extension(new_extension_node.clone()),
+        )?;
+        let old_extension_node_rlp =
+            TrieNode::Extension(extension_node).rlp(&mut Vec::with_capacity(33));
+        self.storage.remove(&old_extension_node_rlp)?;
+        self.storage.remove(&connected_node_rlp)?;
+
+        Ok(new_extension_node_rlp)
+    }
+
+    // Helper function to remove a branch node and replace it with an extension node.
+    // To be used only if the branch node has one child at `nibble` position.
+    fn branch_to_extension_node(
+        &mut self,
+        branch_node: BranchNode,
+        nibble: u8,
+        depth: u8, /* Maximum 64, needed to know the suffix of a leaf that will be
+                    * used to create an extension node. */
+    ) -> anyhow::Result<RlpNode> {
+        let branch_node_rlp =
+            TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33));
+        let expanded_branch_node = self.expand_branch_node(&branch_node);
+        debug_assert_eq!(
+            expanded_branch_node
+                .iter()
+                .filter(|child| child.is_some())
+                .count(),
+            1
+        );
+        debug_assert!(expanded_branch_node[usize::from(nibble)].is_some(),);
+        let Some(node_to_connect_rlp) = expanded_branch_node
+            .get(usize::from(nibble))
+            .into_iter()
+            .flatten()
+            .next()
+        else {
+            anyhow::bail!(
+                "Branch node has no child at selected nibble position {}",
+                nibble
+            )
+        };
+
+        let node_to_connect =
+            self.storage.get(&node_to_connect_rlp)?.ok_or_else(|| {
+                anyhow::anyhow!("Node referenced by branch node not found in storage")
+            })?;
+
+        match node_to_connect.as_ref() {
+            TrieNode::Branch(_branch_node) => {
+                // If the node to connect is a branch node, we can create a new extension
+                // node with a single nibble pointing to it.
+                // (We could also have a branch node with a single child, need to check
+                // what actual MPTs do in this case)
+                let new_extension_node = ExtensionNode::new(
+                    Nibbles::from_nibbles([nibble]),
+                    node_to_connect_rlp.clone(),
+                );
+                let new_node = TrieNode::Extension(new_extension_node);
+                let new_rlp_node = new_node.rlp(&mut Vec::with_capacity(33));
+                self.storage.insert(&new_rlp_node, &new_node)?;
+                self.storage.remove(&branch_node_rlp)?;
+                Ok(new_rlp_node)
+            }
+            TrieNode::Extension(extension_node) => {
+                // If the node to connect is an extension node, we can create a new
+                // extension node with the nibbles of the extension node
+                // prefixed with the nibble we are connecting
+                // to, and pointing to the child of the extension node.
+                let raw_nibbles: Vec<u8> = [nibble]
+                    .iter()
+                    .chain(extension_node.key.as_ref().iter())
+                    .copied()
+                    .collect();
+                let new_extension_node = ExtensionNode::new(
+                    Nibbles::from_nibbles(raw_nibbles),
+                    extension_node.child.clone(),
+                );
+                let new_node = TrieNode::Extension(new_extension_node);
+                let new_rlp_node = new_node.rlp(&mut Vec::with_capacity(33));
+                self.storage.insert(&new_rlp_node, &new_node)?;
+                self.storage.remove(&branch_node_rlp)?;
+                Ok(new_rlp_node)
+            }
+            TrieNode::Leaf(leaf_node) => {
+                // If the node to connect is a leaf node, we can create a new extension
+                // node with the nibble we are connecting to, and the
+                // remaining part of the key of the leaf node, pointing to the leaf node.
+                let key_suffix_for_extension_node = &leaf_node.key[usize::from(depth)..];
+                let raw_nibbles: Vec<u8> = [nibble]
+                    .iter()
+                    .chain(key_suffix_for_extension_node.iter())
+                    .copied()
+                    .collect();
+                let new_extension_node = ExtensionNode::new(
+                    Nibbles::from_nibbles(raw_nibbles),
+                    node_to_connect_rlp.clone(),
+                );
+                let new_node = TrieNode::Extension(new_extension_node);
+                let new_rlp_node = new_node.rlp(&mut Vec::with_capacity(33));
+                self.storage.insert(&new_rlp_node, &new_node)?;
+                self.storage.remove(&branch_node_rlp)?;
+                Ok(new_rlp_node)
+            }
+            TrieNode::EmptyRoot => {
+                unreachable!()
+            }
+        }
+    }
+
     // Helper function to create an extension node
     // pointing to a newly created node.
     fn make_linear_path_to_rlp_node(

@@ -451,16 +451,18 @@ where
         // Check the nibbles that are left to iterate.
         let nibbles_left = node_iterator.nibbles_left();
         // We require that the tree contains at least the
-        let (last_node, _decision) =
-            nodes_in_path.pop().unwrap_or((TrieNode::EmptyRoot, None));
-        let mut rlp_of_new_node = match last_node {
-            TrieNode::EmptyRoot => {
+        let last_traversed_node =
+            nodes_in_path.pop().unwrap_or(TraversedNode::EmptyRoot(
+                TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33)),
+            ));
+        let mut rlp_of_new_node = match last_traversed_node {
+            TraversedNode::EmptyRoot(_node_rlp) => {
                 // If the last node is the empty root, then we can insert the leaf
                 // directly. We must create a new branch node with a single child
                 // at the position of the first nibble in the path.
                 self.make_linear_path_to_leaf(nibbles_left, key, value)?
             }
-            TrieNode::Branch(branch_node) => {
+            TraversedNode::Branch(branch_node_rlp, branch_node, decision) => {
                 // The last node is a branch node.
                 // If there are no nibbles left, we return an error
                 // Otherwise, we mus update
@@ -489,7 +491,7 @@ where
                 TrieNode::Branch(new_branch_node).rlp(&mut Vec::with_capacity(33))
             }
 
-            TrieNode::Extension(extension_node) => {
+            TraversedNode::Extension(extension_node_rlp, extension_node) => {
                 // If the last node in the path is an extension node, then we must check
                 // the common prefix between the nibbles left in the path,
                 // and the nibbles referenced by the extension node.
@@ -504,7 +506,7 @@ where
                     leaf_rlp_node,
                 )?
             }
-            TrieNode::Leaf(other_leaf_node) => {
+            TraversedNode::Leaf(other_leaf_node_rlp, other_leaf_node) => {
                 // If the last node in the path is a leaf node, then we must check
                 // whether we need to update the encountered leaf node, or
                 // create a new extension node with the common prefix between the
@@ -541,16 +543,14 @@ where
 
         // We keep iterating backwards through the nodes in the path, and update with the
         // new node.
-        while let Some((ref node, decision)) = nodes_in_path.pop() {
-            match node {
-                TrieNode::EmptyRoot => {
+        while let Some(traversed_node) = nodes_in_path.pop() {
+            match traversed_node {
+                TraversedNode::EmptyRoot(_) => {
                     // This should not happen, either we traversed the empty root in
                     // the first iteration, or there are no nodes in the path
                     unreachable!()
                 }
-                TrieNode::Branch(branch_node) => {
-                    let branch_node_rlp = node.rlp(&mut Vec::with_capacity(33));
-                    let decision = decision.expect("Branch node must have a decision");
+                TraversedNode::Branch(branch_node_rlp, branch_node, decision) => {
                     let mut new_branch_node = branch_node.clone();
 
                     // will update the old node with the new one
@@ -565,8 +565,7 @@ where
                     self.storage.insert(&rlp_of_new_node, &new_node)?;
                     self.storage.remove(&branch_node_rlp)?
                 }
-                TrieNode::Extension(extension_node) => {
-                    let extension_node_rlp = node.rlp(&mut Vec::with_capacity(33));
+                TraversedNode::Extension(extension_node_rlp, extension_node) => {
                     let mut new_extension_node = extension_node.clone();
                     new_extension_node.child = rlp_of_new_node.clone();
                     let new_extension_node = TrieNode::Extension(new_extension_node);
@@ -574,9 +573,10 @@ where
                     self.storage.insert(&rlp_of_new_node, &new_extension_node)?;
                     self.storage.remove(&extension_node_rlp)?
                 }
-                TrieNode::Leaf(_leaf_node) => {
+                TraversedNode::Leaf(_leaf_node_rlp, _leaf_node) => {
                     // Cannot happen, we have already traversed a leaf node in the first
                     // loop of this function.
+                    unreachable!()
                 }
             }
 
@@ -637,36 +637,38 @@ where
         }
 
         let mut stage = Stage::PreDeletion;
-        while let Some((node, decision)) = nodes_in_path.pop() {
-            let node_rlp = node.rlp(&mut Vec::with_capacity(33));
-
+        while let Some(traversed_node) = nodes_in_path.pop() {
             match stage {
-                Stage::PreDeletion => match node {
-                    TrieNode::EmptyRoot
-                    | TrieNode::Branch(_)
-                    | TrieNode::Extension(_) => return Ok(self.root.clone()),
-                    TrieNode::Leaf(ref _leaf_node) => {
-                        self.storage.remove(&node_rlp)?;
+                Stage::PreDeletion => match traversed_node {
+                    TraversedNode::EmptyRoot(_)
+                    | TraversedNode::Branch(_, _, _)
+                    | TraversedNode::Extension(_, _) => return Ok(self.root.clone()),
+                    TraversedNode::Leaf(ref leaf_node_rlp, ref _leaf_node) => {
+                        self.storage.remove(leaf_node_rlp)?;
                         stage = Stage::InProgress(63);
                     }
                 },
                 Stage::InProgress(depth) => {
-                    match node {
-                        TrieNode::EmptyRoot | TrieNode::Leaf(_) => {
+                    match traversed_node {
+                        TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already
                             anyhow::bail!("Empty root node in the path")
                         }
-                        TrieNode::Extension(ref extension_node) => {
+                        TraversedNode::Extension(
+                            ref extension_node_rlp,
+                            ref extension_node,
+                        ) => {
                             // Remove the extension node
-                            self.storage.remove(&node_rlp)?;
+                            self.storage.remove(extension_node_rlp)?;
                             let key_len: u8 = extension_node.key.len().try_into()?;
                             let depth = depth.saturating_sub(key_len);
                             stage = Stage::InProgress(depth);
                         }
-                        TrieNode::Branch(branch_node) => {
-                            let Some(decision) = decision else {
-                                anyhow::bail!("Branch node must have a decision");
-                            };
+                        TraversedNode::Branch(
+                            ref branch_node_rlp,
+                            branch_node,
+                            decision,
+                        ) => {
                             let branch_node_ref = branch_node.as_ref();
                             let siblings_of_node_being_deleted = branch_node_ref
                                 .children()
@@ -688,7 +690,7 @@ where
                                         *nibble,
                                         depth,
                                     )?;
-                                self.storage.remove(&node_rlp)?;
+                                self.storage.remove(branch_node_rlp)?;
                                 stage = Stage::JoinExtensionNodes(new_extension_node_rlp);
                             } else {
                                 let mut new_branch_node = branch_node.clone();
@@ -697,7 +699,7 @@ where
                                         &mut new_branch_node,
                                         decision,
                                     )?;
-                                self.storage.remove(&node_rlp)?;
+                                self.storage.remove(branch_node_rlp)?;
                                 self.storage.insert(
                                     &new_branch_node_rlp,
                                     &TrieNode::Branch(new_branch_node),
@@ -708,15 +710,16 @@ where
                     }
                 }
                 Stage::JoinExtensionNodes(rlp_node) => {
-                    match node {
-                        TrieNode::EmptyRoot | TrieNode::Leaf(_) => {
+                    match traversed_node {
+                        TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already
                             anyhow::bail!("Empty root node in the path")
                         }
-                        TrieNode::Branch(branch_node) => {
-                            let Some(decision) = decision else {
-                                anyhow::bail!("Branch node must have a decision");
-                            };
+                        TraversedNode::Branch(
+                            ref branch_node_rlp,
+                            branch_node,
+                            decision,
+                        ) => {
                             // simply update the branch node to point to the new extension
                             // node, move to the PostDeletion
                             // stage
@@ -726,56 +729,63 @@ where
                                 decision,
                                 rlp_node,
                             );
-                            self.storage.remove(&node_rlp)?;
+                            self.storage.remove(branch_node_rlp)?;
                             self.storage.insert(
                                 &new_branch_node_rlp,
                                 &TrieNode::Branch(new_branch_node),
                             )?;
                             stage = Stage::PostDeletion(new_branch_node_rlp);
                         }
-                        TrieNode::Extension(extension_node) => {
+                        TraversedNode::Extension(
+                            ref extension_node_rlp,
+                            extension_node,
+                        ) => {
                             // We can be in this case only if the current rlpNode refers
                             // to an extension node. In this
                             // case we join the two extension nodes,
                             let new_extension_node_rlp =
                                 self.join_extension_nodes(extension_node)?;
-                            self.storage.remove(&node_rlp)?;
+                            self.storage.remove(extension_node_rlp)?;
 
                             stage = Stage::PostDeletion(new_extension_node_rlp);
                         }
                     }
                 }
                 Stage::PostDeletion(rlp_node) => {
-                    match node {
-                        TrieNode::EmptyRoot | TrieNode::Leaf(_) => {
+                    match traversed_node {
+                        TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already
                             anyhow::bail!("Empty root node in the path")
                         }
-                        TrieNode::Branch(branch_node) => {
-                            let Some(decision) = decision else {
-                                anyhow::bail!("Branch node must have a decision");
-                            };
+                        TraversedNode::Branch(
+                            ref branch_node_rlp,
+                            branch_node,
+                            decision,
+                        ) => {
                             let mut new_branch_node = branch_node.clone();
                             let new_branch_node_rlp = self.add_child_to_branch_node(
                                 &mut new_branch_node,
                                 decision,
                                 rlp_node,
                             );
-                            self.storage.remove(&node_rlp)?;
+                            self.storage.remove(branch_node_rlp)?;
                             self.storage.insert(
                                 &new_branch_node_rlp,
                                 &TrieNode::Branch(new_branch_node),
                             )?;
                             stage = Stage::PostDeletion(new_branch_node_rlp);
                         }
-                        TrieNode::Extension(extension_node) => {
+                        TraversedNode::Extension(
+                            ref extension_node_rlp,
+                            extension_node,
+                        ) => {
                             let mut new_extension_node = extension_node.clone();
                             new_extension_node.child = rlp_node;
                             let new_extension_node_rlp =
                                 TrieNode::Extension(new_extension_node)
                                     .rlp(&mut Vec::with_capacity(33));
 
-                            self.storage.remove(&node_rlp)?;
+                            self.storage.remove(extension_node_rlp)?;
                             self.storage.insert(
                                 &new_extension_node_rlp,
                                 &TrieNode::Extension(extension_node),
@@ -822,6 +832,13 @@ impl<StorageType, NodesTableType> NodeIterator<'_, '_, StorageType, NodesTableTy
     }
 }
 
+pub enum TraversedNode {
+    EmptyRoot(RlpNode),
+    Leaf(RlpNode, LeafNode),
+    Branch(RlpNode, BranchNode, u8),
+    Extension(RlpNode, ExtensionNode),
+}
+
 impl<StorageType, NodesTableType> Iterator
     for NodeIterator<'_, '_, StorageType, NodesTableType>
 where
@@ -830,14 +847,17 @@ where
 {
     // Return the next node, and the nibble that will be used to select the next node,
     // if any.
-    type Item = anyhow::Result<(TrieNode, Option<u8>)>;
+    type Item = anyhow::Result<TraversedNode>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let current_rlp_node = self.current_node.take()?;
         let node = self.storage.get(&current_rlp_node);
         match node {
             Err(e) => Some(Err(e)),
-            Ok(None) => Some(Err(anyhow::anyhow!("Node referenced but not found"))),
+            Ok(None) => Some(Err(anyhow::anyhow!(
+                "Node {:?} referenced but not found",
+                current_rlp_node
+            ))),
             Ok(Some(node)) => {
                 let owned_node = node.into_owned();
                 match &owned_node {
@@ -848,6 +868,7 @@ where
                         // when inserting a new node, as we can use the nibbles left
                         // ti identify the path to the node to be inserted.
                         self.current_node = None;
+                        Some(Ok(TraversedNode::EmptyRoot(current_rlp_node)))
                     }
                     TrieNode::Branch(branch_node) => {
                         // Branch node: we can look at the first nibble, and
@@ -856,7 +877,9 @@ where
                             self.nibbles_left.split_first()
                         else {
                             self.current_node = None;
-                            return Some(Ok((owned_node, None)));
+                            return Some(Err(anyhow::anyhow!(
+                                "Branch node at the end of path, no nibbles left"
+                            )));
                         };
                         let branch_node_ref = branch_node.as_ref();
                         let next_node = branch_node_ref
@@ -866,6 +889,11 @@ where
                             .1;
                         self.nibbles_left = nibbles_left;
                         self.current_node = next_node.cloned();
+                        Some(Ok(TraversedNode::Branch(
+                            current_rlp_node,
+                            branch_node.clone(),
+                            *next_nibble,
+                        )))
                     }
                     TrieNode::Extension(extension_node) => {
                         // Check if the nibbles left are a prefix of the extension node
@@ -883,15 +911,19 @@ where
                             // is needed when inserting a new leaf.
 
                             self.current_node = None;
-                        }
+                        };
+                        Some(Ok(TraversedNode::Extension(
+                            current_rlp_node,
+                            extension_node.clone(),
+                        )))
                     }
-                    TrieNode::Leaf(_leaf_node) => {
+                    TrieNode::Leaf(leaf_node) => {
                         // Do not update the nibbles left, although in this case
                         // it should be the empty slice.
                         self.current_node = None;
+                        Some(Ok(TraversedNode::Leaf(current_rlp_node, leaf_node.clone())))
                     }
-                };
-                Some(Ok((owned_node, self.nibbles_left.first().cloned())))
+                }
             }
         }
     }

@@ -253,11 +253,7 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
-    fn write_bytes(
-        &mut self,
-        key: &ContractId,
-        buf: &[u8],
-    ) -> Result<(), Self::Error> {
+    fn write_bytes(&mut self, key: &ContractId, buf: &[u8]) -> Result<(), Self::Error> {
         self.memory.contracts.insert(*key, Contract::from(buf));
         Ok(())
     }
@@ -293,24 +289,20 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
         offset: usize,
         buf: &mut [u8],
     ) -> Result<bool, Self::Error> {
-        if let Some(c) = self.memory
-                    .contracts
-            .get(key)
+        if let Some(c) = self.memory.contracts.get(key) {
+            let contract_len = c.as_ref().len();
+            let start = offset;
+            let end = offset.saturating_add(buf.len());
+            // We need to handle the case where the offset is greater than the length
+            // of the contract In this case we follow the same
+            // approach as `copy_from_slice_zero_fill`
+            if end > contract_len {
+                return Err(MemoryStorageError::OffsetOutOfBounds(end, contract_len));
+            }
 
-            {
-             let contract_len = c.as_ref().len();
-             let start = offset;
-             let end = offset.saturating_add(buf.len());
-             // We need to handle the case where the offset is greater than the length
-             // of the contract In this case we follow the same
-             // approach as `copy_from_slice_zero_fill`
-             if end > contract_len {
-                 return Err(MemoryStorageError::OffsetOutOfBounds(end, contract_len));
-             }
-     
-             let starting_from_offset = &c.as_ref()[start..end];
-             buf[..].copy_from_slice(starting_from_offset);
-             Ok(true)
+            let starting_from_offset = &c.as_ref()[start..end];
+            buf[..].copy_from_slice(starting_from_offset);
+            Ok(true)
         } else {
             Ok(false)
         }
@@ -490,29 +482,26 @@ impl StorageRead<ContractsState> for MemoryStorage {
         offset: usize,
         buf: &mut [u8],
     ) -> Result<bool, Self::Error> {
-        if let Some(data) = self.memory
-            .contract_state
-            .get(key) {
-
-                let contract_state_len = data.as_ref().len();
-                // We need to handle the case where the offset is greater than the length
-                // of the serialized ContractState. In this case we follow
-                // the same approach as `copy_from_slice_zero_fill` and
-                // fill the input buffer with zeros.
-                if offset > contract_state_len {
-                    return Err(MemoryStorageError::OffsetOutOfBounds(
-                        offset,
-                        contract_state_len,
-                    ));
-                }
-                let starting_from_offset = &data.as_ref()[offset..];
-                let len = buf.len().min(starting_from_offset.len());
-                buf[..len].copy_from_slice(&starting_from_offset[..len]);
-                buf[len..].fill(0);
-                Ok(true)
-            } else {
-                Ok(false)
+        if let Some(data) = self.memory.contract_state.get(key) {
+            let contract_state_len = data.as_ref().len();
+            // We need to handle the case where the offset is greater than the length
+            // of the serialized ContractState. In this case we follow
+            // the same approach as `copy_from_slice_zero_fill` and
+            // fill the input buffer with zeros.
+            if offset > contract_state_len {
+                return Err(MemoryStorageError::OffsetOutOfBounds(
+                    offset,
+                    contract_state_len,
+                ));
             }
+            let starting_from_offset = &data.as_ref()[offset..];
+            let len = buf.len().min(starting_from_offset.len());
+            buf[..len].copy_from_slice(&starting_from_offset[..len]);
+            buf[len..].fill(0);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn read_alloc(
@@ -543,26 +532,24 @@ impl StorageRead<BlobData> for MemoryStorage {
         offset: usize,
         buf: &mut [u8],
     ) -> Result<bool, Self::Error> {
-        if let Some(data) = self.memory
-            .blobs
-            .get(key) {
-                let blob_len = data.as_ref().len();
-                let start = offset;
-                let end = offset.saturating_add(buf.len());
-                // We need to handle the case where the offset is greater than the length
-                // of the serialized ContractState. In this case we follow
-                // the same approach as `copy_from_slice_zero_fill` and
-                // fill the input buffer with zeros.
-                if end > blob_len {
-                    return Err(MemoryStorageError::OffsetOutOfBounds(offset, blob_len));
-                }
-    
-                let starting_from_offset = &data.as_ref()[start..end];
-                buf[..].copy_from_slice(starting_from_offset);
-                Ok(true)
-            } else {
-                Ok(false)
+        if let Some(data) = self.memory.blobs.get(key) {
+            let blob_len = data.as_ref().len();
+            let start = offset;
+            let end = offset.saturating_add(buf.len());
+            // We need to handle the case where the offset is greater than the length
+            // of the serialized ContractState. In this case we follow
+            // the same approach as `copy_from_slice_zero_fill` and
+            // fill the input buffer with zeros.
+            if end > blob_len {
+                return Err(MemoryStorageError::OffsetOutOfBounds(offset, blob_len));
             }
+
+            let starting_from_offset = &data.as_ref()[start..end];
+            buf[..].copy_from_slice(starting_from_offset);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn read_alloc(

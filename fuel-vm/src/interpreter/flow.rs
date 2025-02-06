@@ -639,9 +639,10 @@ where
     if !storage
         .storage::<ContractsRawCode>()
         .read(contract, 0, dst)
-        .map_err(RuntimeError::Storage)? {
-            return Err(PanicReason::ContractNotFound.into());
-        }
+        .map_err(RuntimeError::Storage)?
+    {
+        return Err(PanicReason::ContractNotFound.into());
+    }
     Ok(())
 }
 

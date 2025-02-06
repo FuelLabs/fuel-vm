@@ -273,11 +273,7 @@ where
     T: StorageWrite<Type>,
 {
     #[inline(always)]
-    pub fn write_bytes(
-        &mut self,
-        key: &Type::Key,
-        buf: &[u8],
-    ) -> Result<(), T::Error> {
+    pub fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<(), T::Error> {
         StorageWrite::write_bytes(self.0, key, buf)
     }
 

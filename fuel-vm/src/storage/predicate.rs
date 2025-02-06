@@ -139,12 +139,7 @@ impl StorageSize<BlobData> for EmptyStorage {
 }
 
 impl StorageRead<BlobData> for EmptyStorage {
-    fn read(
-        &self,
-        _: &BlobId,
-        _: usize,
-        _: &mut [u8],
-    ) -> Result<bool, Self::Error> {
+    fn read(&self, _: &BlobId, _: usize, _: &mut [u8]) -> Result<bool, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 

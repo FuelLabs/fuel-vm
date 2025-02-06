@@ -99,7 +99,7 @@ impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageR
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         <T as StorageRead<Type>>::read(self, key, offset, buf)
     }
 
@@ -119,7 +119,7 @@ impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageR
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         <T as StorageRead<Type>>::read(self, key, offset, buf)
     }
 
@@ -132,7 +132,7 @@ impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageR
 }
 
 impl<T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type> for &'_ mut T {
-    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
+    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<(), Self::Error> {
         <T as StorageWrite<Type>>::write_bytes(self, key, buf)
     }
 
@@ -140,7 +140,7 @@ impl<T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type> for &'_ 
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         <T as StorageWrite<Type>>::replace_bytes(self, key, buf)
     }
 
@@ -197,7 +197,7 @@ impl<T: StorageRead<Type>, Type: Mappable> StorageRef<'_, T, Type> {
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, T::Error> {
+    ) -> Result<bool, T::Error> {
         self.0.read(key, offset, buf)
     }
 
@@ -277,7 +277,7 @@ where
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<usize, T::Error> {
+    ) -> Result<(), T::Error> {
         StorageWrite::write_bytes(self.0, key, buf)
     }
 
@@ -286,7 +286,7 @@ where
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), T::Error>
+    ) -> Result<Option<Vec<u8>>, T::Error>
     where
         T: StorageSize<Type>,
     {

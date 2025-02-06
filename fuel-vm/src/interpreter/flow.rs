@@ -636,14 +636,12 @@ fn read_contract<S>(
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
 {
-    let bytes_read = storage
+    if !storage
         .storage::<ContractsRawCode>()
         .read(contract, 0, dst)
-        .map_err(RuntimeError::Storage)?
-        .ok_or(PanicReason::ContractNotFound)?;
-    if bytes_read != dst.len() {
-        return Err(PanicReason::ContractMismatch.into())
-    }
+        .map_err(RuntimeError::Storage)? {
+            return Err(PanicReason::ContractNotFound.into());
+        }
     Ok(())
 }
 

@@ -80,7 +80,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
 }
 
 pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
-    tx: &mut Tx,
+    tx: &Tx,
     memory: &mut MemoryInstance,
     tx_offset: usize,
     idx: usize,
@@ -89,8 +89,8 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
         .ok_or(PanicReason::OutputNotFound)?;
     let mut mem = memory.write_noownerchecks(range.start, range.len())?;
     let output = tx
-        .outputs_mut()
-        .get_mut(idx)
+        .outputs()
+        .get(idx)
         .expect("Invalid output index; checked above");
     output
         .encode(&mut mem)

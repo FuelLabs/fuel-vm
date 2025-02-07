@@ -29,7 +29,7 @@ use super::nodes_iterator::{
 
 pub struct Trie<Storage, NodesTable> {
     #[allow(unused)]
-    storage: Storage,
+    pub(crate) storage: Storage,
     #[allow(unused)]
     root: RlpNode,
     _phantom: PhantomData<NodesTable>,
@@ -467,7 +467,7 @@ where
                 // at the position of the first nibble in the path.
                 self.make_linear_path_to_leaf(nibbles_left, key, value)?
             }
-            TraversedNode::Branch(branch_node_rlp, branch_node, decision) => {
+            TraversedNode::Branch(_branch_node_rlp, branch_node, _decision) => {
                 // The last node is a branch node.
                 // If there are no nibbles left, we return an error
                 // Otherwise, we mus update
@@ -496,7 +496,7 @@ where
                 TrieNode::Branch(new_branch_node).rlp(&mut Vec::with_capacity(33))
             }
 
-            TraversedNode::Extension(extension_node_rlp, extension_node) => {
+            TraversedNode::Extension(_extension_node_rlp, extension_node) => {
                 // If the last node in the path is an extension node, then we must check
                 // the common prefix between the nibbles left in the path,
                 // and the nibbles referenced by the extension node.
@@ -511,7 +511,7 @@ where
                     leaf_rlp_node,
                 )?
             }
-            TraversedNode::Leaf(other_leaf_node_rlp, other_leaf_node) => {
+            TraversedNode::Leaf(_other_leaf_node_rlp, other_leaf_node) => {
                 // If the last node in the path is a leaf node, then we must check
                 // whether we need to update the encountered leaf node, or
                 // create a new extension node with the common prefix between the

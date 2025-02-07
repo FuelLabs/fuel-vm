@@ -115,8 +115,6 @@ where
         &mut self,
         branch_node: BranchNode,
         nibble: u8,
-        depth: u8, /* Maximum 64, needed to know the suffix of a leaf that will be
-                    * used to create an extension node. */
     ) -> anyhow::Result<RlpNode> {
         let branch_node_rlp =
             TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33));
@@ -186,14 +184,16 @@ where
                 // If the node to connect is a leaf node, we can create a new extension
                 // node with the nibble we are connecting to, and the
                 // remaining part of the key of the leaf node, pointing to the leaf node.
-                let key_suffix_for_extension_node = &leaf_node.key[usize::from(depth)..];
-                let raw_nibbles: Vec<u8> = [nibble]
-                    .iter()
-                    .chain(key_suffix_for_extension_node.iter())
-                    .copied()
-                    .collect();
+                // let key_suffix_for_extension_node =
+                // &leaf_node.key[usize::from(depth)..];
+                // let raw_nibbles: Vec<u8> = [nibble]
+                //    .iter()
+                //    .chain(key_suffix_for_extension_node.iter())
+                //    .copied()
+                //    .collect();
                 let new_extension_node = ExtensionNode::new(
-                    Nibbles::from_nibbles(raw_nibbles),
+                    // Nibbles::from_nibbles(raw_nibbles),
+                    Nibbles::from_nibbles(&[nibble]),
                     node_to_connect_rlp.clone(),
                 );
                 let new_node = TrieNode::Extension(new_extension_node);
@@ -611,10 +611,8 @@ where
             //   at the
             // nibble corresponding to the decision taken when traversing the path. In
             // this case we can skip the JoinExtensionNodes stage and
-            // proceed to the PostDeletion stage. In this stage we keep
-            // track of the depth of the current node in the tree, as
-            // it is useful in case we need to create an extension node from a leaf.
-            InProgress(u8),
+            // proceed to the PostDeletion stage.
+            InProgress,
             // In the JoinExtensionNodes stage, we check whether the next node in the
             // reverse path is an extension node, and join it with the
             // current node if it is the case. Otherwise, we move to the
@@ -650,10 +648,10 @@ where
                     | TraversedNode::Extension(_, _) => return Ok(self.root.clone()),
                     TraversedNode::Leaf(ref leaf_node_rlp, ref _leaf_node) => {
                         self.storage.remove(leaf_node_rlp)?;
-                        stage = Stage::InProgress(63);
+                        stage = Stage::InProgress;
                     }
                 },
-                Stage::InProgress(depth) => {
+                Stage::InProgress => {
                     match traversed_node {
                         TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already
@@ -666,8 +664,7 @@ where
                             // Remove the extension node
                             self.storage.remove(extension_node_rlp)?;
                             let key_len: u8 = extension_node.key.len().try_into()?;
-                            let depth = depth.saturating_sub(key_len);
-                            stage = Stage::InProgress(depth);
+                            stage = Stage::InProgress;
                         }
                         TraversedNode::Branch(
                             ref branch_node_rlp,
@@ -693,7 +690,6 @@ where
                                     .branch_to_extension_node(
                                         branch_node.clone(),
                                         *nibble,
-                                        depth,
                                     )?;
                                 self.storage.remove(branch_node_rlp)?;
                                 stage = Stage::JoinExtensionNodes(new_extension_node_rlp);
@@ -806,7 +802,7 @@ where
             Stage::PreDeletion => {
                 anyhow::bail!("Can't be in predeletion stage.")
             }
-            Stage::InProgress(_) => {
+            Stage::InProgress => {
                 // We traversed all the nodes in the path, keeping deleting nodes.
                 // The tree is now empty.
                 self.storage.insert(

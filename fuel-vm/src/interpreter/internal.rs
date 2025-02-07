@@ -43,7 +43,7 @@ where
 {
     pub(crate) fn update_memory_output(&mut self, idx: usize) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
-        update_memory_output(&mut self.tx, self.memory.as_mut(), tx_offset, idx)
+        update_memory_output(&self.tx, self.memory.as_mut(), tx_offset, idx)
     }
 }
 

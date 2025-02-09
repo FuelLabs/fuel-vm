@@ -371,7 +371,7 @@ where
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         <S as StorageRead<Type>>::read(&self.0, key, offset, buf)
     }
 
@@ -418,7 +418,7 @@ where
     S: StorageWrite<Type>,
     S: InterpreterStorage,
 {
-    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
+    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<(), Self::Error> {
         <S as StorageWrite<Type>>::write_bytes(&mut self.0, key, buf)
     }
 
@@ -426,7 +426,7 @@ where
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         <S as StorageWrite<Type>>::replace_bytes(&mut self.0, key, buf)
     }
 

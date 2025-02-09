@@ -121,18 +121,18 @@ pub trait StorageSize<Type: Mappable>: StorageInspect<Type> {
 /// This trait should skip any deserialization and simply copy the raw bytes.
 pub trait StorageRead<Type: Mappable>: StorageInspect<Type> + StorageSize<Type> {
     /// Read the value stored at the given key into the provided buffer if the value
-    /// exists.
+    /// exists. Errors if the buffer cannot be filled completely, or if attempting
+    /// to read past the end of the value.
     ///
     /// Does not perform any deserialization.
     ///
-    /// Returns None if the value does not exist.
-    /// Otherwise, returns the number of bytes read.
+    /// Returns `Ok(true)` if the value does exist, and `Ok(false)` otherwise.
     fn read(
         &self,
         key: &Type::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error>;
+    ) -> Result<bool, Self::Error>;
 
     /// Same as `read` but allocates a new buffer and returns it.
     ///
@@ -151,21 +151,19 @@ pub trait StorageWrite<Type: Mappable>: StorageMutate<Type> {
     /// Write the bytes to the given key from the provided buffer.
     ///
     /// Does not perform any serialization.
-    ///
-    /// Returns the number of bytes written.
-    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error>;
+    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<(), Self::Error>;
 
     /// Write the bytes to the given key from the provided buffer and
     /// return the previous bytes if it existed.
     ///
     /// Does not perform any serialization.
     ///
-    /// Returns the number of bytes written and the previous value if it existed.
+    /// Returns the previous value if it existed.
     fn replace_bytes(
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>;
+    ) -> Result<Option<Vec<u8>>, Self::Error>;
 
     /// Removes a bytes from the storage and returning it without deserializing it.
     fn take_bytes(&mut self, key: &Type::Key) -> Result<Option<Vec<u8>>, Self::Error>;

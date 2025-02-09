@@ -958,7 +958,7 @@ where
     pub(crate) fn run_program(
         &mut self,
     ) -> Result<ProgramState, InterpreterError<S::DataError>> {
-        let Some(script) = self.transaction().as_script() else {
+        let Some(script) = self.tx.as_script() else {
             unreachable!("Only `Script` transactions can be executed inside of the VM")
         };
         let gas_limit = *script.script_gas_limit();
@@ -1045,7 +1045,11 @@ where
             gas_price,
         )?;
         self.update_transaction_outputs()?;
-        *self.tx.as_script_mut().unwrap().receipts_root_mut() = self.receipts.root();
+
+        let Some(script) = self.tx.as_script_mut() else {
+            unreachable!("This is checked to hold in the beginning of this function");
+        };
+        *script.receipts_root_mut() = self.receipts.root();
 
         Ok(state)
     }

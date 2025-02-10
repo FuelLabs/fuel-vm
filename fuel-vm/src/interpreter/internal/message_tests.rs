@@ -61,7 +61,7 @@ fn test_update_memory_output(tx_offset: usize) -> SimpleResult<MemoryInstance> {
     *tx.policies_mut() = Policies::default();
     *tx.outputs_mut() = vec![Output::default()];
     let mut memory: MemoryInstance = vec![0; MEM_SIZE].try_into().unwrap();
-    update_memory_output(&mut tx, &mut memory, tx_offset, 0).map(|_| memory)
+    update_memory_output(&tx, &mut memory, tx_offset, 0).map(|_| memory)
 }
 
 fn check_memory(result: MemoryInstance, expected: &[(usize, Vec<u8>)]) {

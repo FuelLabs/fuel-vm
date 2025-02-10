@@ -6,11 +6,11 @@ mod verify;
 
 pub(crate) use hash::{
     empty_sum,
-    leaf_sum,
     node_sum,
 };
 pub(crate) use node::Node;
 
+pub use hash::leaf_sum;
 pub use merkle_tree::{
     MerkleTree,
     MerkleTreeError,

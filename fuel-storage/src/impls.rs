@@ -15,8 +15,23 @@ use alloc::{
     vec::Vec,
 };
 
-impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type>
-    for &'a T
+impl<T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type> for &'_ T {
+    type Error = T::Error;
+
+    fn get(
+        &self,
+        key: &Type::Key,
+    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, Self::Error> {
+        <T as StorageInspect<Type>>::get(self, key)
+    }
+
+    fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {
+        <T as StorageInspect<Type>>::contains_key(self, key)
+    }
+}
+
+impl<T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type>
+    for &'_ mut T
 {
     type Error = T::Error;
 
@@ -32,26 +47,7 @@ impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type>
     }
 }
 
-impl<'a, T: StorageInspect<Type> + ?Sized, Type: Mappable> StorageInspect<Type>
-    for &'a mut T
-{
-    type Error = T::Error;
-
-    fn get(
-        &self,
-        key: &Type::Key,
-    ) -> Result<Option<Cow<'_, Type::OwnedValue>>, Self::Error> {
-        <T as StorageInspect<Type>>::get(self, key)
-    }
-
-    fn contains_key(&self, key: &Type::Key) -> Result<bool, Self::Error> {
-        <T as StorageInspect<Type>>::contains_key(self, key)
-    }
-}
-
-impl<'a, T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type>
-    for &'a mut T
-{
+impl<T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type> for &'_ mut T {
     fn insert(
         &mut self,
         key: &Type::Key,
@@ -77,7 +73,7 @@ impl<'a, T: StorageMutate<Type> + ?Sized, Type: Mappable> StorageMutate<Type>
     }
 }
 
-impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'a T {
+impl<T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'_ T {
     fn size_of_value(
         &self,
         key: &<Type as Mappable>::Key,
@@ -86,7 +82,7 @@ impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'
     }
 }
 
-impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'a mut T {
+impl<T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'_ mut T {
     fn size_of_value(
         &self,
         key: &<Type as Mappable>::Key,
@@ -95,15 +91,15 @@ impl<'a, T: StorageSize<Type> + ?Sized, Type: Mappable> StorageSize<Type> for &'
     }
 }
 
-impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
-    StorageRead<Type> for &'a T
+impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageRead<Type>
+    for &'_ T
 {
     fn read(
         &self,
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         <T as StorageRead<Type>>::read(self, key, offset, buf)
     }
 
@@ -115,15 +111,15 @@ impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
     }
 }
 
-impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
-    StorageRead<Type> for &'a mut T
+impl<T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable> StorageRead<Type>
+    for &'_ mut T
 {
     fn read(
         &self,
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         <T as StorageRead<Type>>::read(self, key, offset, buf)
     }
 
@@ -135,10 +131,8 @@ impl<'a, T: StorageRead<Type> + StorageSize<Type> + ?Sized, Type: Mappable>
     }
 }
 
-impl<'a, T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type>
-    for &'a mut T
-{
-    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
+impl<T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type> for &'_ mut T {
+    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<(), Self::Error> {
         <T as StorageWrite<Type>>::write_bytes(self, key, buf)
     }
 
@@ -146,7 +140,7 @@ impl<'a, T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type>
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         <T as StorageWrite<Type>>::replace_bytes(self, key, buf)
     }
 
@@ -155,16 +149,16 @@ impl<'a, T: StorageWrite<Type> + ?Sized, Type: Mappable> StorageWrite<Type>
     }
 }
 
-impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable>
-    MerkleRootStorage<Key, Type> for &'a T
+impl<T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable>
+    MerkleRootStorage<Key, Type> for &'_ T
 {
     fn root(&self, key: &Key) -> Result<MerkleRoot, Self::Error> {
         <T as MerkleRootStorage<Key, Type>>::root(self, key)
     }
 }
 
-impl<'a, T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable>
-    MerkleRootStorage<Key, Type> for &'a mut T
+impl<T: MerkleRootStorage<Key, Type> + ?Sized, Key, Type: Mappable>
+    MerkleRootStorage<Key, Type> for &'_ mut T
 {
     fn root(&self, key: &Key) -> Result<MerkleRoot, Self::Error> {
         <T as MerkleRootStorage<Key, Type>>::root(self, key)
@@ -186,7 +180,7 @@ impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageRef<'a, T, Type> {
     }
 }
 
-impl<'a, T, Type: Mappable> StorageRef<'a, T, Type> {
+impl<T, Type: Mappable> StorageRef<'_, T, Type> {
     #[inline(always)]
     pub fn root<Key>(self, key: &Key) -> Result<MerkleRoot, T::Error>
     where
@@ -196,14 +190,14 @@ impl<'a, T, Type: Mappable> StorageRef<'a, T, Type> {
     }
 }
 
-impl<'a, T: StorageRead<Type>, Type: Mappable> StorageRef<'a, T, Type> {
+impl<T: StorageRead<Type>, Type: Mappable> StorageRef<'_, T, Type> {
     #[inline(always)]
     pub fn read(
         &self,
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, T::Error> {
+    ) -> Result<bool, T::Error> {
         self.0.read(key, offset, buf)
     }
 
@@ -233,7 +227,7 @@ impl<'a, T: StorageInspect<Type>, Type: Mappable> StorageMut<'a, T, Type> {
     }
 }
 
-impl<'a, T, Type> StorageMut<'a, T, Type>
+impl<T, Type> StorageMut<'_, T, Type>
 where
     T: StorageMutate<Type>,
     Type: Mappable,
@@ -263,7 +257,7 @@ where
     }
 }
 
-impl<'a, T, Type: Mappable> StorageMut<'a, T, Type> {
+impl<T, Type: Mappable> StorageMut<'_, T, Type> {
     #[inline(always)]
     pub fn root<Key>(self, key: &Key) -> Result<MerkleRoot, T::Error>
     where
@@ -273,17 +267,13 @@ impl<'a, T, Type: Mappable> StorageMut<'a, T, Type> {
     }
 }
 
-impl<'a, T, Type> StorageMut<'a, T, Type>
+impl<T, Type> StorageMut<'_, T, Type>
 where
     Type: Mappable,
     T: StorageWrite<Type>,
 {
     #[inline(always)]
-    pub fn write_bytes(
-        &mut self,
-        key: &Type::Key,
-        buf: &[u8],
-    ) -> Result<usize, T::Error> {
+    pub fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<(), T::Error> {
         StorageWrite::write_bytes(self.0, key, buf)
     }
 
@@ -292,7 +282,7 @@ where
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), T::Error>
+    ) -> Result<Option<Vec<u8>>, T::Error>
     where
         T: StorageSize<Type>,
     {

@@ -32,6 +32,20 @@ impl MerkleRootCalculator {
         Self { stack }
     }
 
+    pub fn new_from_existing_leaves(leaf_hashes: impl Iterator<Item = Bytes32>) -> Self {
+        let mut calculator = Self::new();
+        leaf_hashes.for_each(|leaf| {
+            calculator
+                .push_with_callback::<_, Infallible>(
+                    Node::create_leaf_with_hash(0, leaf)
+                        .expect("Zero is a valid index for a leaf; qed"),
+                    |_| Ok(()),
+                )
+                .expect("Tree too large; qed");
+        });
+        calculator
+    }
+
     pub fn clear(&mut self) {
         self.stack.clear();
     }
@@ -119,7 +133,10 @@ impl MerkleRootCalculator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::binary::in_memory::MerkleTree;
+    use crate::binary::{
+        in_memory::MerkleTree,
+        leaf_sum,
+    };
     use fuel_merkle_test_helpers::TEST_DATA;
     #[cfg(test)]
     use serde_json as _;
@@ -186,6 +203,18 @@ mod test {
         let root = calculate_root.root_from_iterator(data.iter());
 
         assert_eq!(tree.root(), root);
+    }
+
+    #[test]
+    fn root_returns_the_merkle_root_correct_new_existing() {
+        let calculate_root = MerkleRootCalculator::new();
+        let data = &TEST_DATA[0..7];
+        let root = calculate_root.root_from_iterator(data.iter());
+
+        let new_calculate_root = MerkleRootCalculator::new_from_existing_leaves(
+            data.iter().map(|d| leaf_sum(d)),
+        );
+        assert_eq!(new_calculate_root.root(), root);
     }
 
     #[test]

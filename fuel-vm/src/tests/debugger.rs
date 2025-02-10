@@ -8,6 +8,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
+    field::ReceiptsRoot,
     ConsensusParameters,
     Finalizable,
     GasCosts,
@@ -47,6 +48,7 @@ fn receipts_are_produced_correctly_with_stepping() {
     let mut vm = Interpreter::<_, _, Script>::with_memory_storage();
     vm.transact(tx.clone()).expect("panicked");
     let receipts_without_debugger = vm.receipts().to_vec();
+    let receipts_root_without_debugger = vm.transaction().receipts_root();
 
     let mut vm = Interpreter::<_, _, Script>::with_memory_storage();
     vm.set_single_stepping(true);
@@ -67,6 +69,8 @@ fn receipts_are_produced_correctly_with_stepping() {
         }
     }
     let receipts_with_debugger = vm.receipts();
+    let receipts_root_with_debugger = vm.transaction().receipts_root();
 
     assert_eq!(receipts_without_debugger, receipts_with_debugger);
+    assert_eq!(receipts_root_without_debugger, receipts_root_with_debugger);
 }

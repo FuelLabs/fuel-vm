@@ -159,24 +159,32 @@ pub enum Receipt {
 impl core::fmt::Display for Receipt {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Receipt::Call { id, .. } => write!(f, "Call({})", id),
-            Receipt::Return { id, .. } => write!(f, "Return({})", id),
-            Receipt::ReturnData { id, .. } => write!(f, "ReturnData({})", id),
-            Receipt::Panic { id, .. } => write!(f, "Panic({})", id),
-            Receipt::Revert { id, .. } => write!(f, "Revert({})", id),
-            Receipt::Log { id, .. } => write!(f, "Log({})", id),
-            Receipt::LogData { id, .. } => write!(f, "LogData({})", id),
-            Receipt::Transfer { id, .. } => write!(f, "Transfer({})", id),
-            Receipt::TransferOut { id, .. } => write!(f, "TransferOut({})", id),
+            Receipt::Call { id, .. } => write!(f, "Call(id={})", id),
+            Receipt::Return { id, .. } => write!(f, "Return(id={})", id),
+            Receipt::ReturnData { id, .. } => write!(f, "ReturnData(id={})", id),
+            Receipt::Panic { id, .. } => write!(f, "Panic(id={})", id),
+            Receipt::Revert { id, .. } => write!(f, "Revert(id={})", id),
+            Receipt::Log { id, .. } => write!(f, "Log(id={})", id),
+            Receipt::LogData { id, .. } => write!(f, "LogData(id={})", id),
+            Receipt::Transfer { id, .. } => write!(f, "Transfer(id={})", id),
+            Receipt::TransferOut { id, .. } => write!(f, "TransferOut(id={})", id),
             Receipt::ScriptResult { result, gas_used } => {
-                write!(f, "ScriptResult({:?}, {})", result, gas_used)
+                write!(
+                    f,
+                    "ScriptResult(result={:?}, gas_used={})",
+                    result, gas_used
+                )
             }
             Receipt::MessageOut {
                 sender,
                 recipient,
                 amount,
                 ..
-            } => write!(f, "MessageOut({} -> {} : {})", sender, recipient, amount),
+            } => write!(
+                f,
+                "MessageOut(sender={}, recipient={}, amount={})",
+                sender, recipient, amount
+            ),
             Receipt::Mint {
                 sub_id,
                 contract_id,

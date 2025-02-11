@@ -162,7 +162,9 @@ impl core::fmt::Display for Receipt {
             Receipt::Call { id, .. } => write!(f, "Call(id={})", id),
             Receipt::Return { id, .. } => write!(f, "Return(id={})", id),
             Receipt::ReturnData { id, .. } => write!(f, "ReturnData(id={})", id),
-            Receipt::Panic { id, .. } => write!(f, "Panic(id={})", id),
+            Receipt::Panic { id, reason, .. } => {
+                write!(f, "Panic(id={}, reason={:?})", id, reason.reason())
+            }
             Receipt::Revert { id, .. } => write!(f, "Revert(id={})", id),
             Receipt::Log { id, .. } => write!(f, "Log(id={})", id),
             Receipt::LogData { id, .. } => write!(f, "LogData(id={})", id),

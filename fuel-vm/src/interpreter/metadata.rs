@@ -1,6 +1,7 @@
 use super::{
     internal::inc_pc,
     ExecutableTransaction,
+    ExecutableTxType,
     Interpreter,
     Memory,
 };
@@ -12,7 +13,6 @@ use crate::{
     convert,
     error::SimpleResult,
 };
-
 use fuel_asm::{
     GMArgs,
     GTFArgs,
@@ -35,16 +35,10 @@ use fuel_tx::{
         UpgradePurpose,
     },
     policies::PolicyType,
-    Blob,
-    Create,
     Input,
     InputRepr,
     Output,
     OutputRepr,
-    Script,
-    TransactionRepr,
-    Upgrade,
-    Upload,
     UtxoId,
 };
 use fuel_types::{
@@ -178,7 +172,7 @@ impl<Tx> GTFInput<'_, Tx> {
         // for the field that's above VM_MAX_RAM.
 
         let a = match args {
-            GTFArgs::Type => Tx::transaction_type(),
+            GTFArgs::Type => Tx::transaction_type() as Word,
 
             // General
             GTFArgs::ScriptGasLimit => tx
@@ -535,9 +529,7 @@ impl<Tx> GTFInput<'_, Tx> {
             // If it is not any above commands, it is something specific to the
             // transaction type.
             specific_args => {
-                let tx_type = ExecutableTxType::from_executable(tx)?;
-
-                match (tx_type, specific_args) {
+                match (tx.executable_type(), specific_args) {
                     // Script
                     (ExecutableTxType::Script(script), GTFArgs::ScriptLength) => {
                         script.script().len() as Word
@@ -624,45 +616,5 @@ impl<Tx> GTFInput<'_, Tx> {
 
         inc_pc(self.pc)?;
         Ok(())
-    }
-}
-
-/// Internal enum to be able to match on the transaction type of an executable
-/// transaction.
-enum ExecutableTxType<'a> {
-    Script(&'a Script),
-    Create(&'a Create),
-    Blob(&'a Blob),
-    Upgrade(&'a Upgrade),
-    Upload(&'a Upload),
-}
-
-impl<'a> ExecutableTxType<'a> {
-    /// Converts a transaction that implements `ExecutableTransaction` into an
-    /// `ExecutableTxType`.
-    fn from_executable<Tx>(tx: &'a Tx) -> Result<Self, PanicReason>
-    where
-        Tx: ExecutableTransaction,
-    {
-        let tx_type: TransactionRepr =
-            <Tx as ExecutableTransaction>::transaction_type().try_into()?;
-        match tx_type {
-            TransactionRepr::Script => Ok(ExecutableTxType::Script(
-                tx.as_script().ok_or(PanicReason::InvalidTransactionType)?,
-            )),
-            TransactionRepr::Create => Ok(ExecutableTxType::Create(
-                tx.as_create().ok_or(PanicReason::InvalidTransactionType)?,
-            )),
-            TransactionRepr::Blob => Ok(ExecutableTxType::Blob(
-                tx.as_blob().ok_or(PanicReason::InvalidTransactionType)?,
-            )),
-            TransactionRepr::Upgrade => Ok(ExecutableTxType::Upgrade(
-                tx.as_upgrade().ok_or(PanicReason::InvalidTransactionType)?,
-            )),
-            TransactionRepr::Upload => Ok(ExecutableTxType::Upload(
-                tx.as_upload().ok_or(PanicReason::InvalidTransactionType)?,
-            )),
-            TransactionRepr::Mint => Err(PanicReason::InvalidTransactionType),
-        }
     }
 }

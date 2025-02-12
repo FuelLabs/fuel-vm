@@ -82,6 +82,9 @@ fn can_split_writes(a: usize, b: usize) -> Option<(Word, Word)> {
             .unwrap();
     let s = VM_REGISTER_SYSTEM_COUNT;
     let mut reg = ProgramRegisters(&mut reg);
-    reg.get_mut_two(WriteRegKey(s + a), WriteRegKey(s + b))
-        .map(|(a, b)| (*a, *b))
+    reg.get_mut_two(
+        WriteRegKey(RegId::new((s + a) as u8)),
+        WriteRegKey(RegId::new((s + b) as u8)),
+    )
+    .map(|(a, b)| (*a, *b))
 }

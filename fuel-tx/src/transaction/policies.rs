@@ -118,10 +118,6 @@ pub const POLICIES_NUMBER: usize = PoliciesBits::all().bits().count_ones() as us
 
 /// Container for managing policies.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "da-compression",
-    derive(fuel_compression::Compress, fuel_compression::Decompress)
-)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Policies {
     /// A bitmask that indicates what policies are set.
@@ -532,6 +528,31 @@ impl<'de> serde::Deserialize<'de> for Policies {
                 lifetime: PhantomData,
             },
         )
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl fuel_compression::Compressible for Policies {
+    type Compressed = Policies;
+}
+
+#[cfg(feature = "da-compression")]
+impl<Ctx> fuel_compression::CompressibleBy<Ctx> for Policies
+where
+    Ctx: fuel_compression::ContextError,
+{
+    async fn compress_with(&self, _: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
+        Ok(*self)
+    }
+}
+
+#[cfg(feature = "da-compression")]
+impl<Ctx> fuel_compression::DecompressibleBy<Ctx> for Policies
+where
+    Ctx: fuel_compression::ContextError,
+{
+    async fn decompress_with(c: Self::Compressed, _: &Ctx) -> Result<Self, Ctx::Error> {
+        Ok(c)
     }
 }
 

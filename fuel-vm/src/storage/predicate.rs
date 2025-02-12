@@ -139,12 +139,7 @@ impl StorageSize<BlobData> for EmptyStorage {
 }
 
 impl StorageRead<BlobData> for EmptyStorage {
-    fn read(
-        &self,
-        _: &BlobId,
-        _: usize,
-        _: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    fn read(&self, _: &BlobId, _: usize, _: &mut [u8]) -> Result<bool, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -248,7 +243,7 @@ impl<D> StorageRead<ContractsRawCode> for PredicateStorage<D> {
         _key: &<ContractsRawCode as Mappable>::Key,
         _offset: usize,
         _buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -265,7 +260,7 @@ impl<D> StorageWrite<ContractsRawCode> for PredicateStorage<D> {
         &mut self,
         _key: &<ContractsRawCode as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<usize, Self::Error> {
+    ) -> Result<(), Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -273,7 +268,7 @@ impl<D> StorageWrite<ContractsRawCode> for PredicateStorage<D> {
         &mut self,
         _key: &<ContractsRawCode as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -300,7 +295,7 @@ impl<D> StorageRead<ContractsState> for PredicateStorage<D> {
         _key: &<ContractsState as Mappable>::Key,
         _offset: usize,
         _buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -317,7 +312,7 @@ impl<D> StorageWrite<ContractsState> for PredicateStorage<D> {
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<usize, Self::Error> {
+    ) -> Result<(), Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -325,7 +320,7 @@ impl<D> StorageWrite<ContractsState> for PredicateStorage<D> {
         &mut self,
         _key: &<ContractsState as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -359,7 +354,7 @@ where
         key: &<BlobData as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         StorageRead::<BlobData>::read(&self.storage, key, offset, buf)
             .map_err(|e| Self::Error::StorageError(D::storage_error_to_string(e)))
     }
@@ -381,7 +376,7 @@ where
         &mut self,
         _key: &<BlobData as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<usize, Self::Error> {
+    ) -> Result<(), Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 
@@ -389,7 +384,7 @@ where
         &mut self,
         _key: &<BlobData as Mappable>::Key,
         _buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         Err(Self::Error::UnsupportedStorageOperation)
     }
 

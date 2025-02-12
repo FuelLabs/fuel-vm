@@ -10,14 +10,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
 - [882](https://github.com/FuelLabs/fuel-vm/pull/882): Add a lot of new `GTFArgs` including generic ones that will replace old tx type specific.
+- [909](https://github.com/FuelLabs/fuel-vm/pull/909): Add the `remove_recovery_id()` to `Signature`.
 
 ### Breaking
 - [900](https://github.com/FuelLabs/fuel-vm/pull/900): Change the error variant `DuplicateMessageInputId` to `DuplicateInputNonce` which now contains a nonce instead of `MessageId` for performance improvements.
+- [907](https://github.com/FuelLabs/fuel-vm/pull/907): `StorageRead` and `StorageWrite` traits no longer return the number of bytes written. They already required that the whole buffer is used, but now this is reflected in signature and documentation as well.
 
 ### Fixed
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Fix elided lifetimes compilation warnings that became errors after the release of rust 1.83.0. 
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 
-- [889](https://github.com/FuelLabs/fuel-vm/pull/889): Debugger breakpoint caused receipts to be produced incorrectly.
+- [889](https://github.com/FuelLabs/fuel-vm/pull/889) and [908](https://github.com/FuelLabs/fuel-vm/pull/908): Debugger breakpoint caused receipts to be produced incorrectly.
 - [903](https://github.com/FuelLabs/fuel-vm/pull/903): Fixed warning being emitted when using packages with Node@22+.
 
 ## [Version 0.59.1]

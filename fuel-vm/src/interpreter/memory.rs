@@ -1023,6 +1023,272 @@ pub(crate) fn memcopy(
     Ok(inc_pc(pc)?)
 }
 
+#[cfg(feature = "experimental")]
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+fn slices_equal_neon(a: &[u8], b: &[u8]) -> bool {
+    use std::arch::aarch64::*;
+
+    if a.len() != b.len() {
+        return false;
+    }
+
+    let len = a.len();
+    let mut i = 0;
+    const CHUNK: usize = 96;
+
+    // if the slices are small, we don't need to
+    // use SIMD instructions due to overhead
+    if a.len() < CHUNK {
+        return slices_equal_fallback(a, b);
+    }
+
+    unsafe {
+        while i + CHUNK <= len {
+            let mut cmp =
+                vceqq_u8(vld1q_u8(a.as_ptr().add(i)), vld1q_u8(b.as_ptr().add(i)));
+
+            cmp = vandq_u8(
+                cmp,
+                vceqq_u8(
+                    vld1q_u8(a.as_ptr().add(i + 16)),
+                    vld1q_u8(b.as_ptr().add(i + 16)),
+                ),
+            );
+            cmp = vandq_u8(
+                cmp,
+                vceqq_u8(
+                    vld1q_u8(a.as_ptr().add(i + 32)),
+                    vld1q_u8(b.as_ptr().add(i + 32)),
+                ),
+            );
+            cmp = vandq_u8(
+                cmp,
+                vceqq_u8(
+                    vld1q_u8(a.as_ptr().add(i + 48)),
+                    vld1q_u8(b.as_ptr().add(i + 48)),
+                ),
+            );
+            cmp = vandq_u8(
+                cmp,
+                vceqq_u8(
+                    vld1q_u8(a.as_ptr().add(i + 64)),
+                    vld1q_u8(b.as_ptr().add(i + 64)),
+                ),
+            );
+            cmp = vandq_u8(
+                cmp,
+                vceqq_u8(
+                    vld1q_u8(a.as_ptr().add(i + 80)),
+                    vld1q_u8(b.as_ptr().add(i + 80)),
+                ),
+            );
+
+            if vmaxvq_u8(cmp) != 0xFF {
+                return false;
+            }
+
+            i += CHUNK;
+        }
+
+        // Scalar comparison for the remainder
+        a[i..] == b[i..]
+    }
+}
+
+#[cfg(feature = "experimental")]
+#[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+fn slices_equal_avx2(a: &[u8], b: &[u8]) -> bool {
+    use std::arch::x86_64::*;
+
+    if a.len() != b.len() {
+        return false;
+    }
+
+    let len = a.len();
+    let mut i = 0;
+    const CHUNK: usize = 256;
+
+    // if the slices are small, we don't need to
+    // use SIMD instructions due to overhead
+    if a.len() < CHUNK {
+        return slices_equal_fallback(a, b);
+    }
+
+    unsafe {
+        let mut aggregate_mask_a = -1i32;
+        let mut aggregate_mask_b = -1i32;
+        let mut aggregate_mask_c = -1i32;
+        let mut aggregate_mask_d = -1i32;
+        let mut aggregate_mask_a_b = -1i32;
+        let mut aggregate_mask_c_d = -1i32;
+
+        while i + CHUNK <= len {
+            let simd_a1 = _mm256_loadu_si256(a.as_ptr().add(i) as *const _);
+            let simd_b1 = _mm256_loadu_si256(b.as_ptr().add(i) as *const _);
+
+            let simd_a2 = _mm256_loadu_si256(a.as_ptr().add(i + 32) as *const _);
+            let simd_b2 = _mm256_loadu_si256(b.as_ptr().add(i + 32) as *const _);
+
+            let simd_a3 = _mm256_loadu_si256(a.as_ptr().add(i + 64) as *const _);
+            let simd_b3 = _mm256_loadu_si256(b.as_ptr().add(i + 64) as *const _);
+
+            let simd_a4 = _mm256_loadu_si256(a.as_ptr().add(i + 96) as *const _);
+            let simd_b4 = _mm256_loadu_si256(b.as_ptr().add(i + 96) as *const _);
+
+            let simd_a5 = _mm256_loadu_si256(a.as_ptr().add(i + 128) as *const _);
+            let simd_b5 = _mm256_loadu_si256(b.as_ptr().add(i + 128) as *const _);
+
+            let simd_a6 = _mm256_loadu_si256(a.as_ptr().add(i + 160) as *const _);
+            let simd_b6 = _mm256_loadu_si256(b.as_ptr().add(i + 160) as *const _);
+
+            let simd_a7 = _mm256_loadu_si256(a.as_ptr().add(i + 192) as *const _);
+            let simd_b7 = _mm256_loadu_si256(b.as_ptr().add(i + 192) as *const _);
+
+            let simd_a8 = _mm256_loadu_si256(a.as_ptr().add(i + 224) as *const _);
+            let simd_b8 = _mm256_loadu_si256(b.as_ptr().add(i + 224) as *const _);
+
+            let cmp1 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a1, simd_b1));
+            let cmp2 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a2, simd_b2));
+            let cmp3 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a3, simd_b3));
+            let cmp4 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a4, simd_b4));
+            let cmp5 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a5, simd_b5));
+            let cmp6 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a6, simd_b6));
+            let cmp7 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a7, simd_b7));
+            let cmp8 = _mm256_movemask_epi8(_mm256_cmpeq_epi8(simd_a8, simd_b8));
+
+            aggregate_mask_a &= cmp1 & cmp2;
+            aggregate_mask_b &= cmp3 & cmp4;
+            aggregate_mask_c &= cmp5 & cmp6;
+            aggregate_mask_d &= cmp7 & cmp8;
+
+            aggregate_mask_a_b &= aggregate_mask_a & aggregate_mask_b;
+            aggregate_mask_c_d &= aggregate_mask_c & aggregate_mask_d;
+
+            if aggregate_mask_a_b & aggregate_mask_c_d != -1i32 {
+                return false;
+            }
+
+            i += CHUNK;
+        }
+
+        a[i..] == b[i..]
+    }
+}
+
+#[cfg(feature = "experimental")]
+#[cfg(all(target_arch = "x86_64", target_feature = "avx512f"))]
+fn slices_equal_avx512(a: &[u8], b: &[u8]) -> bool {
+    use std::arch::x86_64::*;
+
+    if a.len() != b.len() {
+        return false;
+    }
+
+    let len = a.len();
+    let mut i = 0;
+    const CHUNK: usize = 512;
+
+    // if the slices are small, we don't need to
+    // use SIMD instructions due to overhead
+    if a.len() < CHUNK {
+        return slices_equal_fallback(a, b);
+    }
+
+    unsafe {
+        while i + CHUNK <= len {
+            let simd_a1 = _mm512_loadu_si512(a.as_ptr().add(i) as *const _);
+            let simd_b1 = _mm512_loadu_si512(b.as_ptr().add(i) as *const _);
+
+            let simd_a2 = _mm512_loadu_si512(a.as_ptr().add(i + 64) as *const _);
+            let simd_b2 = _mm512_loadu_si512(b.as_ptr().add(i + 64) as *const _);
+
+            let simd_a3 = _mm512_loadu_si512(a.as_ptr().add(i + 128) as *const _);
+            let simd_b3 = _mm512_loadu_si512(b.as_ptr().add(i + 128) as *const _);
+
+            let simd_a4 = _mm512_loadu_si512(a.as_ptr().add(i + 192) as *const _);
+            let simd_b4 = _mm512_loadu_si512(b.as_ptr().add(i + 192) as *const _);
+
+            let simd_a5 = _mm512_loadu_si512(a.as_ptr().add(i + 256) as *const _);
+            let simd_b5 = _mm512_loadu_si512(b.as_ptr().add(i + 256) as *const _);
+
+            let simd_a6 = _mm512_loadu_si512(a.as_ptr().add(i + 320) as *const _);
+            let simd_b6 = _mm512_loadu_si512(b.as_ptr().add(i + 320) as *const _);
+
+            let simd_a7 = _mm512_loadu_si512(a.as_ptr().add(i + 384) as *const _);
+            let simd_b7 = _mm512_loadu_si512(b.as_ptr().add(i + 384) as *const _);
+
+            let simd_a8 = _mm512_loadu_si512(a.as_ptr().add(i + 448) as *const _);
+            let simd_b8 = _mm512_loadu_si512(b.as_ptr().add(i + 448) as *const _);
+
+            let cmp1 = _mm512_cmpeq_epi8_mask(simd_a1, simd_b1);
+            let cmp2 = _mm512_cmpeq_epi8_mask(simd_a2, simd_b2);
+            let cmp3 = _mm512_cmpeq_epi8_mask(simd_a3, simd_b3);
+            let cmp4 = _mm512_cmpeq_epi8_mask(simd_a4, simd_b4);
+            let cmp5 = _mm512_cmpeq_epi8_mask(simd_a5, simd_b5);
+            let cmp6 = _mm512_cmpeq_epi8_mask(simd_a6, simd_b6);
+            let cmp7 = _mm512_cmpeq_epi8_mask(simd_a7, simd_b7);
+            let cmp8 = _mm512_cmpeq_epi8_mask(simd_a8, simd_b8);
+
+            let cmp1_2 = cmp1 & cmp2;
+            let cmp3_4 = cmp3 & cmp4;
+            let cmp5_6 = cmp5 & cmp6;
+            let cmp7_8 = cmp7 & cmp8;
+
+            let cmp1_4 = cmp1_2 & cmp3_4;
+            let cmp5_8 = cmp5_6 & cmp7_8;
+
+            let full_cmp = cmp1_4 & cmp5_8;
+
+            if full_cmp != u64::MAX {
+                return false;
+            }
+
+            i += CHUNK_SIZE;
+        }
+
+        a[i..] == b[i..]
+    }
+}
+
+#[inline]
+fn slices_equal_fallback(a: &[u8], b: &[u8]) -> bool {
+    a == b
+}
+
+#[inline]
+fn slice_eq(a: &[u8], b: &[u8]) -> bool {
+    #[cfg(feature = "experimental")]
+    {
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx512f"))]
+        {
+            return slices_equal_avx512(a, b);
+        }
+        #[cfg(all(target_arch = "x86_64", target_feature = "avx2"))]
+        {
+            return slices_equal_avx2(a, b);
+        }
+        #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+        {
+            return slices_equal_neon(a, b);
+        }
+
+        #[allow(unreachable_code)]
+        slices_equal_fallback(a, b)
+    }
+    #[cfg(not(feature = "experimental"))]
+    {
+        slices_equal_fallback(a, b)
+    }
+}
+
+#[test]
+fn slice_eq_test() {
+    let a = [1u8; 20000];
+    let b = [1u8; 20000];
+
+    assert!(slice_eq(&a, &b));
+}
+
 pub(crate) fn memeq(
     memory: &mut MemoryInstance,
     result: &mut Word,
@@ -1031,7 +1297,9 @@ pub(crate) fn memeq(
     c: Word,
     d: Word,
 ) -> SimpleResult<()> {
-    *result = (memory.read(b, d)? == memory.read(c, d)?) as Word;
+    let range_a = memory.read(b, d)?;
+    let range_b = memory.read(c, d)?;
+    *result = slice_eq(range_a, range_b) as Word;
     Ok(inc_pc(pc)?)
 }
 

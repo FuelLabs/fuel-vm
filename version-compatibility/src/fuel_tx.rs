@@ -26,7 +26,6 @@ fn release_0_58_2_can_deserialize_latest() {
     let _ = latest_tx.expect("Deserialization failed");
 }
 
-
 #[cfg(feature = "da-compression")]
 mod da_compression {
     use std::convert::Infallible;
@@ -192,7 +191,7 @@ mod da_compression {
         let mut context = TestContext;
         let tx = latest_fuel_tx::Transaction::default_test_tx();
         let tx_0_58_2 = fuel_tx_0_58_2::Transaction::default_test_tx();
-       
+
         // When
         let tx = tx.compress_with(&mut context).await.unwrap();
         let bytes_latest = postcard::to_allocvec(&tx).unwrap();

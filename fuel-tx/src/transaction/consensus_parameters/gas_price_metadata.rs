@@ -1,7 +1,13 @@
 use core::num::NonZeroU64;
 
+/// Versioned gas price metadata.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-pub struct GasPriceMetadata {
+pub enum GasPriceMetadata {
+    V1(GasPriceMetadataV1),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct GasPriceMetadataV1 {
     pub new_exec_gas_price: u64,
     pub min_exec_gas_price: u64,
     pub exec_gas_price_change_percent: u16,
@@ -22,7 +28,7 @@ pub struct GasPriceMetadata {
 
 impl Default for GasPriceMetadata {
     fn default() -> Self {
-        Self {
+        Self::V1(GasPriceMetadataV1 {
             new_exec_gas_price: 100,
             min_exec_gas_price: 0,
             exec_gas_price_change_percent: 10,
@@ -37,6 +43,6 @@ impl Default for GasPriceMetadata {
             capped_range_size: 0,
             decrease_range_size: 0,
             block_activity_threshold: 0,
-        }
+        })
     }
 }

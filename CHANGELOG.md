@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+- [910](https://github.com/FuelLabs/fuel-vm/pull/910): Fix serialization/deserialization of `Policies` in compressed transactions to be backward compatible.
+
 ## [Version 0.59.1]
 
 ### Fixed

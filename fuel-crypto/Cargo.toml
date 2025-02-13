@@ -31,6 +31,7 @@ bincode = { workspace = true }
 criterion = { workspace = true }
 fuel-crypto = { path = ".", features = ["random", "test-helpers"] }
 sha2 = "0.10"
+test-case = "3.3"
 
 [features]
 default = ["fuel-types/default", "std"]

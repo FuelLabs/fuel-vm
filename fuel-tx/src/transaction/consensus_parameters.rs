@@ -206,7 +206,7 @@ impl ConsensusParameters {
                 // In V1 and V2 there was no limit on the transaction size. For the sake
                 // of backwards compatibility we allow for a largest limit
                 // possible.
-                u64::MAX
+                u16::MAX as u64
             }
             Self::V3(params) => params.block_max_transactions,
         }

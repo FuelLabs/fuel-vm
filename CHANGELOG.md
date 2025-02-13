@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889) and [908](https://github.com/FuelLabs/fuel-vm/pull/908): Debugger breakpoint caused receipts to be produced incorrectly.
 - [903](https://github.com/FuelLabs/fuel-vm/pull/903): Fixed warning being emitted when using packages with Node@22+.
+- [912](https://github.com/FuelLabs/fuel-vm/pull/912): Fix serialization/deserialization of `Policies` in compressed transactions to be backward compatible.
 
 ## [Version 0.59.1]
 

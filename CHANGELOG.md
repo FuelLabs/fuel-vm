@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- [901](https://github.com/FuelLabs/fuel-vm/pull/901): Add `Display` implementation to `Receipt` enum.
 - [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
 - [882](https://github.com/FuelLabs/fuel-vm/pull/882): Add a lot of new `GTFArgs` including generic ones that will replace old tx type specific.
 - [909](https://github.com/FuelLabs/fuel-vm/pull/909): Add the `remove_recovery_id()` to `Signature`.

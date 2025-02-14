@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - [901](https://github.com/FuelLabs/fuel-vm/pull/901): Add `Display` implementation to `Receipt` enum.
 - [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
+- [882](https://github.com/FuelLabs/fuel-vm/pull/882): Add a lot of new `GTFArgs` including generic ones that will replace old tx type specific.
 - [909](https://github.com/FuelLabs/fuel-vm/pull/909): Add the `remove_recovery_id()` to `Signature`.
 
 ### Breaking
@@ -21,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889) and [908](https://github.com/FuelLabs/fuel-vm/pull/908): Debugger breakpoint caused receipts to be produced incorrectly.
 - [903](https://github.com/FuelLabs/fuel-vm/pull/903): Fixed warning being emitted when using packages with Node@22+.
+- [912](https://github.com/FuelLabs/fuel-vm/pull/912): Fix serialization/deserialization of `Policies` in compressed transactions to be backward compatible.
 
 ## [Version 0.59.1]
 

@@ -3,12 +3,18 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use consensus_parameters::gas::GasCostsValuesV5;
 
 use crate::{
+    checked_transaction::EstimatePredicates,
     consts::*,
     interpreter::{
         InterpreterParams,
         NotSupportedEcal,
+    },
+    storage::{
+        predicate::EmptyStorage,
+        UploadedBytecode,
     },
 };
 use fuel_asm::{
@@ -49,6 +55,19 @@ use crate::prelude::{
     GasCosts,
     *,
 };
+
+/// Allocates a byte array from heap and initializes it. Then points `reg` to it.
+fn alloc_bytearray<const S: usize>(reg: u8, v: [u8; S]) -> Vec<Instruction> {
+    let mut ops = vec![op::movi(reg, S as u32), op::aloc(reg)];
+    for (i, b) in v.iter().enumerate() {
+        if *b != 0 {
+            ops.push(op::movi(reg, *b as u32));
+            ops.push(op::sb(RegId::HP, reg, i as u16));
+        }
+    }
+    ops.push(op::move_(reg, RegId::HP));
+    ops
+}
 
 #[test]
 fn metadata() {
@@ -356,6 +375,7 @@ fn get_metadata_tx_start() {
     }
 }
 
+#[allow(deprecated)]
 #[test]
 fn get_transaction_fields() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -541,6 +561,8 @@ fn get_transaction_fields() {
         witnesses[1].as_ref().to_vec(), // 23 - WitnessData
         outputs[3].asset_id().unwrap().to_vec(), // 24 - OutputCoinAssetId
         outputs[3].to().unwrap().to_vec(), // 25 - OutputCoinTo
+        inputs[1].tx_pointer().unwrap().clone().to_bytes(), // 26 - InputCoinTxPointer
+        inputs[2].tx_pointer().unwrap().clone().to_bytes() // 27 - InputContractTxPointer
     ];
 
     // hardcoded metadata of script len so it can be checked at runtime
@@ -550,19 +572,6 @@ fn get_transaction_fields() {
         bytes::padded_len_usize(script_reserved_words).unwrap_or(usize::MAX),
     );
     let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
-
-    // Maybe use predicates to check create context?
-    // TODO GTFArgs::CreateBytecodeLength
-    // TODO GTFArgs::CreateBytecodeWitnessIndex
-    // TODO GTFArgs::CreateStorageSlotsCount
-    // TODO GTFArgs::CreateSalt
-    // TODO GTFArgs::CreateStorageSlotAtIndex
-    // TODO GTFArgs::OutputContractCreatedContractId
-    // TODO GTFArgs::OutputContractCreatedStateRoot
-
-    // blocked by https://github.com/FuelLabs/fuel-vm/issues/59
-    // TODO GTFArgs::InputCoinTxPointer
-    // TODO GTFArgs::InputContractTxPointer
 
     #[rustfmt::skip]
     let mut script: Vec<u8> = vec![
@@ -924,6 +933,53 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
+        op::movi(0x19, 0x00),
+        op::movi(0x11, inputs.len() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxInputsCount),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, outputs.len() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxOutputsCount),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::movi(0x11, witnesses.len() as Immediate18),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxWitnessesCount),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::gtf_args(0x30, 0x19, GTFArgs::ScriptData),
+        op::movi(0x19, 0x00),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxInputAtIndex),
+        op::movi(0x11, cases[0].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x00),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxOutputAtIndex),
+        op::movi(0x11, cases[1].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x01),
+        op::gtf_args(0x10, 0x19, GTFArgs::TxWitnessAtIndex),
+        op::movi(0x11, cases[2].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::movi(0x19, 0x01),
+        op::gtf_args(0x10, 0x19, GTFArgs::InputCoinTxPointer),
+        op::movi(0x11, cases[26].len() as Immediate18),
+        op::meq(0x10, 0x10, 0x30, 0x11),
+        op::add(0x30, 0x30, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
         op::log(0x20, 0x00, 0x00, 0x00),
         op::ret(0x00)
     ].into_iter().collect();
@@ -963,4 +1019,370 @@ fn get_transaction_fields() {
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
 
     assert!(success);
+}
+
+#[test]
+fn get__create_specific_transaction_fields__success() {
+    const PREDICATE_COUNT: u64 = 1;
+    const MAX_PREDICATE_GAS: u64 = 1_000_000;
+    const MAX_TX_GAS: u64 = MAX_PREDICATE_GAS * PREDICATE_COUNT;
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let mut client = MemoryClient::default();
+
+    // Given
+    let salt = Salt::new([1; 32]);
+    let storage_slots = vec![
+        StorageSlot::new(Bytes32::new([0; 32]), Bytes32::new([0; 32])),
+        StorageSlot::new(Bytes32::new([2; 32]), Bytes32::new([3; 32])),
+    ];
+    // Write the elements we want to check into the bytecode
+    // so that they are available in the predicate memory
+    // doesn't work for the contract_id because changing the bytecode would change the
+    // contract_id
+    let mut bytecode = Vec::new();
+    bytecode.extend(salt.to_bytes());
+    bytecode.extend(storage_slots[1].to_bytes());
+    bytecode.extend(Contract::initial_state_root(storage_slots.iter()).iter());
+    let mut tx = TransactionBuilder::create(bytecode.into(), salt, storage_slots);
+    tx.add_fee_input();
+    tx.add_contract_created();
+
+    let instructions_contract_id = alloc_bytearray::<32>(
+        0x11,
+        hex::decode("54dcc5dbe7dc3ff267b6a9147c358a38f8b7ac61160769458fdcf53f751be37f")
+            .unwrap()
+            .try_into()
+            .unwrap(),
+    );
+    // When
+    #[rustfmt::skip]
+    let mut predicate_code = vec![
+        op::gtf_args(0x10, 0x00, GTFArgs::CreateBytecodeWitnessIndex),
+        op::movi(0x11, 0x00),
+        op::eq(0x20, 0x10, 0x11),
+
+        // Store the bytecode pointer for later use
+        op::gtf_args(0x13, 0x10, GTFArgs::TxWitnessAtIndex),
+        // Skip the length of the bytecode
+        op::addi(0x13, 0x13, 0x08),
+
+        op::gtf_args(0x10, 0x00, GTFArgs::CreateStorageSlotsCount),
+        op::movi(0x11, 0x02),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::gtf_args(0x10, 0x00, GTFArgs::CreateSalt),
+        op::movi(0x11, 0x20),
+        // Salt is at the start of the bytecode which start at value stored in 0x13
+        op::meq(0x10, 0x10, 0x13, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::gtf_args(0x10, 0x01, GTFArgs::CreateStorageSlotAtIndex),
+        op::movi(0x11, StorageSlot::SLOT_SIZE as Immediate18),
+        // Increase bytecode pointer by 32 bytes to pass the salt
+        op::addi(0x13, 0x13, 0x20),
+        op::meq(0x10, 0x10, 0x13, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+        op::gtf_args(0x10, 0x00, GTFArgs::OutputContractCreatedStateRoot),
+        op::movi(0x11, 0x20),
+        // Increase bytecode pointer by SLOT_SIZE bytes to pass the storage slot written
+        // in bytecode
+        op::addi(0x13, 0x13, StorageSlot::SLOT_SIZE as Immediate12),
+        op::meq(0x10, 0x10, 0x13, 0x11),
+        op::and(0x20, 0x20, 0x10),
+
+    ];
+
+    predicate_code.extend(instructions_contract_id);
+
+    predicate_code.extend(vec![
+        op::gtf_args(0x10, 0x00, GTFArgs::OutputContractCreatedContractId),
+        op::movi(0x12, 0x20),
+        // instructions_contract_id saved the value in a memory starting at value of
+        // `0x11`
+        op::meq(0x10, 0x10, 0x11, 0x12),
+        op::and(0x20, 0x20, 0x10),
+        op::ret(0x20),
+    ]);
+
+    let predicate_code = predicate_code.into_iter().collect();
+
+    let predicate_owner: Address = Input::predicate_owner(&predicate_code);
+    tx.add_input(Input::coin_predicate(
+        rng.gen(),
+        predicate_owner,
+        rng.gen(),
+        *tx.get_params().base_asset_id(),
+        rng.gen(),
+        0,
+        predicate_code,
+        vec![],
+    ));
+    let tx_param = TxParameters::default().with_max_gas_per_tx(MAX_TX_GAS);
+    let mut tx = tx.finalize();
+    let gas_costs = GasCosts::new(GasCostsValuesV5::free().into());
+    let predicate_param =
+        PredicateParameters::default().with_max_gas_per_predicate(MAX_PREDICATE_GAS);
+    let fee_param = FeeParameters::default().with_gas_per_byte(0);
+
+    let mut consensus_params = ConsensusParameters::standard();
+    consensus_params.set_gas_costs(gas_costs.clone());
+    consensus_params.set_predicate_params(predicate_param);
+    consensus_params.set_tx_params(tx_param);
+    consensus_params.set_fee_params(fee_param);
+    tx.estimate_predicates(
+        &consensus_params.clone().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .unwrap();
+
+    let tx = tx
+        .into_checked(BlockHeight::new(0), &consensus_params)
+        .unwrap();
+
+    // Then
+    client.deploy(tx).unwrap();
+}
+
+#[test]
+fn get__upload_specific_transaction_fields__success() {
+    const PREDICATE_COUNT: u64 = 1;
+    const MAX_PREDICATE_GAS: u64 = 1_000_000;
+    const MAX_TX_GAS: u64 = MAX_PREDICATE_GAS * PREDICATE_COUNT;
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let mut client = MemoryClient::default();
+
+    // Given
+    let subsection = UploadSubsection::split_bytecode(&[1; 10], 1).unwrap()[0].clone();
+    let mut tx = TransactionBuilder::upload(UploadBody {
+        root: subsection.root,
+        witness_index: 0,
+        subsection_index: subsection.subsection_index,
+        subsections_number: subsection.subsections_number,
+        proof_set: subsection.proof_set.clone(),
+    });
+    tx.add_witness(subsection.subsection.into());
+    tx.add_fee_input();
+
+    let instructions_root = alloc_bytearray(0x11, subsection.root.into());
+    let instructions_proof = alloc_bytearray(0x11, subsection.proof_set[1].into());
+    // When
+    #[rustfmt::skip]
+    let mut predicate_code = vec![
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadRoot),
+    ];
+    predicate_code.extend(instructions_root);
+    predicate_code.extend(vec![
+        op::meq(0x20, 0x10, 0x11, 0x20),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadWitnessIndex),
+        op::movi(0x11, 0x00),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadSubsectionIndex),
+        op::movi(0x11, subsection.subsection_index as u32),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadSubsectionsCount),
+        op::movi(0x11, subsection.subsections_number as u32),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x00, GTFArgs::UploadProofSetCount),
+        op::movi(0x11, subsection.proof_set.len() as u32),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::gtf_args(0x10, 0x01, GTFArgs::UploadProofSetAtIndex),
+    ]);
+    predicate_code.extend(instructions_proof);
+    predicate_code.extend(vec![op::meq(0x20, 0x10, 0x11, 0x20), op::ret(0x20)]);
+
+    let predicate_code = predicate_code.into_iter().collect();
+
+    let predicate_owner: Address = Input::predicate_owner(&predicate_code);
+    tx.add_input(Input::coin_predicate(
+        rng.gen(),
+        predicate_owner,
+        rng.gen(),
+        *tx.get_params().base_asset_id(),
+        rng.gen(),
+        0,
+        predicate_code,
+        vec![],
+    ));
+    let tx_param = TxParameters::default().with_max_gas_per_tx(MAX_TX_GAS);
+    let mut tx = tx.finalize();
+    let gas_costs = GasCosts::new(GasCostsValuesV5::free().into());
+    let predicate_param =
+        PredicateParameters::default().with_max_gas_per_predicate(MAX_PREDICATE_GAS);
+    let fee_param = FeeParameters::default().with_gas_per_byte(0);
+
+    let mut consensus_params = ConsensusParameters::standard();
+    consensus_params.set_gas_costs(gas_costs.clone());
+    consensus_params.set_predicate_params(predicate_param);
+    consensus_params.set_tx_params(tx_param);
+    consensus_params.set_fee_params(fee_param);
+    tx.estimate_predicates(
+        &consensus_params.clone().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .unwrap();
+
+    let tx = tx
+        .into_checked(BlockHeight::new(0), &consensus_params)
+        .unwrap();
+
+    // Then
+    client.upload(tx).unwrap();
+}
+
+#[test]
+fn get__blob_specific_transaction_fields__success() {
+    const PREDICATE_COUNT: u64 = 1;
+    const MAX_PREDICATE_GAS: u64 = 1_000_000;
+    const MAX_TX_GAS: u64 = MAX_PREDICATE_GAS * PREDICATE_COUNT;
+    let rng = &mut StdRng::seed_from_u64(8586);
+    let mut client = MemoryClient::default();
+
+    // Given
+    let id = BlobId::compute(&[1; 100]);
+    let mut tx = TransactionBuilder::blob(BlobBody {
+        id,
+        witness_index: 0,
+    });
+    tx.add_witness(vec![1; 100].into());
+    tx.add_fee_input();
+
+    // When
+    let blob_instructions = alloc_bytearray(0x11, id.into());
+    #[rustfmt::skip]
+    let mut predicate_code = vec![
+        op::gtf_args(0x10, 0x00, GTFArgs::BlobId),
+    ];
+    predicate_code.extend(blob_instructions);
+    predicate_code.extend(vec![
+        op::meq(0x20, 0x10, 0x11, 0x20),
+        op::gtf_args(0x10, 0x00, GTFArgs::BlobWitnessIndex),
+        op::movi(0x11, 0x00),
+        op::eq(0x10, 0x10, 0x11),
+        op::and(0x20, 0x20, 0x10),
+        op::ret(0x20),
+    ]);
+
+    let predicate_code = predicate_code.into_iter().collect();
+
+    let predicate_owner: Address = Input::predicate_owner(&predicate_code);
+    tx.add_input(Input::coin_predicate(
+        rng.gen(),
+        predicate_owner,
+        rng.gen(),
+        *tx.get_params().base_asset_id(),
+        rng.gen(),
+        0,
+        predicate_code,
+        vec![],
+    ));
+    let tx_param = TxParameters::default().with_max_gas_per_tx(MAX_TX_GAS);
+    let mut tx = tx.finalize();
+    let gas_costs = GasCosts::new(GasCostsValuesV5::free().into());
+    let predicate_param =
+        PredicateParameters::default().with_max_gas_per_predicate(MAX_PREDICATE_GAS);
+    let fee_param = FeeParameters::default().with_gas_per_byte(0);
+
+    let mut consensus_params = ConsensusParameters::standard();
+    consensus_params.set_gas_costs(gas_costs.clone());
+    consensus_params.set_predicate_params(predicate_param);
+    consensus_params.set_tx_params(tx_param);
+    consensus_params.set_fee_params(fee_param);
+    tx.estimate_predicates(
+        &consensus_params.clone().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .unwrap();
+
+    let tx = tx
+        .into_checked(BlockHeight::new(0), &consensus_params)
+        .unwrap();
+
+    // Then
+    client.blob(tx).unwrap();
+}
+
+fn valid_storage(hash: Bytes32, bytecode: Vec<u8>) -> MemoryStorage {
+    let mut storage = MemoryStorage::default();
+    storage.set_state_transition_version(123);
+    storage
+        .state_transition_bytecodes_mut()
+        .insert(hash, UploadedBytecode::Completed(bytecode));
+
+    storage
+}
+
+#[test]
+fn get__upgrade_specific_transaction_fields__success() {
+    const PREDICATE_COUNT: u64 = 1;
+    const MAX_PREDICATE_GAS: u64 = 1_000_000;
+    const MAX_TX_GAS: u64 = MAX_PREDICATE_GAS * PREDICATE_COUNT;
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    // Given
+    let root = Bytes32::from([1; 32]);
+    let mut client: MemoryClient<MemoryInstance> = MemoryClient::new(
+        MemoryInstance::default(),
+        valid_storage(root, vec![]),
+        InterpreterParams::default(),
+    );
+    let mut tx = TransactionBuilder::upgrade(UpgradePurpose::StateTransition { root });
+    tx.add_fee_input();
+
+    // When
+    let state_transition_instructions = alloc_bytearray(0x11, root.into());
+    #[rustfmt::skip]
+    let mut predicate_code = vec![
+        op::gtf_args(0x10, 0x00, GTFArgs::UpgradePurpose),
+    ];
+    predicate_code.extend(state_transition_instructions);
+    predicate_code.extend(vec![op::meq(0x20, 0x10, 0x11, 0x20), op::ret(0x20)]);
+
+    let predicate_code = predicate_code.into_iter().collect();
+
+    let predicate_owner: Address = Input::predicate_owner(&predicate_code);
+    tx.add_input(Input::coin_predicate(
+        rng.gen(),
+        predicate_owner,
+        rng.gen(),
+        *tx.get_params().base_asset_id(),
+        rng.gen(),
+        0,
+        predicate_code,
+        vec![],
+    ));
+    let tx_param = TxParameters::default().with_max_gas_per_tx(MAX_TX_GAS);
+    let mut tx = tx.finalize();
+    let gas_costs = GasCosts::new(GasCostsValuesV5::free().into());
+    let predicate_param =
+        PredicateParameters::default().with_max_gas_per_predicate(MAX_PREDICATE_GAS);
+    let fee_param = FeeParameters::default().with_gas_per_byte(0);
+
+    let mut consensus_params = ConsensusParameters::standard();
+    consensus_params.set_gas_costs(gas_costs.clone());
+    consensus_params.set_predicate_params(predicate_param);
+    consensus_params.set_tx_params(tx_param);
+    consensus_params.set_fee_params(fee_param);
+    consensus_params.set_privileged_address(predicate_owner);
+    tx.estimate_predicates(
+        &consensus_params.clone().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .unwrap();
+
+    let tx = tx
+        .into_checked(BlockHeight::new(0), &consensus_params)
+        .unwrap();
+
+    // Then
+    client.upgrade(tx).unwrap();
 }

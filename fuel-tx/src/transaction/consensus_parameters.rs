@@ -506,7 +506,7 @@ pub struct ConsensusParametersV3 {
     /// The privileged address(user or predicate) that can perform permissioned
     /// operations(like upgrading the network).
     pub privileged_address: Address,
-    gas_price_metadata: GasPriceMetadata,
+    pub gas_price_metadata: GasPriceMetadata,
 }
 
 #[cfg(feature = "test-helpers")]

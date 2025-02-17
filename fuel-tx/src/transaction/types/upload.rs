@@ -389,6 +389,18 @@ mod field {
                 + WORD_SIZE, // Witnesses size
             )
         }
+
+        #[inline(always)]
+        fn proof_set_offset_at(&self, idx: usize) -> Option<usize> {
+            if idx < self.body.proof_set.len() {
+                Some(
+                    Self::proof_set_offset_static()
+                        .checked_add(idx.checked_mul(Bytes32::LEN)?)?,
+                )
+            } else {
+                None
+            }
+        }
     }
 
     impl ChargeableBody<UploadBody> for Upload {

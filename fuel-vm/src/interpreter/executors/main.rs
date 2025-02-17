@@ -909,6 +909,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upgrade) = self.tx.as_upgrade_mut() {
             Self::upgrade_inner(
@@ -920,6 +921,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upload) = self.tx.as_upload_mut() {
             Self::upload_inner(
@@ -931,6 +933,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(blob) = self.tx.as_blob_mut() {
             Self::blob_inner(
@@ -942,13 +945,12 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else {
-            // `Interpreter` supports only `Create` and `Script` transactions. It is not
-            // `Create` -> it is `Script`.
+            // This must be a `Script`.
             self.run_program()?
         };
-        self.update_transaction_outputs()?;
 
         Ok(state)
     }
@@ -956,7 +958,7 @@ where
     pub(crate) fn run_program(
         &mut self,
     ) -> Result<ProgramState, InterpreterError<S::DataError>> {
-        let Some(script) = self.transaction().as_script() else {
+        let Some(script) = self.tx.as_script() else {
             unreachable!("Only `Script` transactions can be executed inside of the VM")
         };
         let gas_limit = *script.script_gas_limit();
@@ -1042,15 +1044,14 @@ where
             &self.balances,
             gas_price,
         )?;
+        self.update_transaction_outputs()?;
+
+        let Some(script) = self.tx.as_script_mut() else {
+            unreachable!("This is checked to hold in the beginning of this function");
+        };
+        *script.receipts_root_mut() = self.receipts.root();
 
         Ok(state)
-    }
-
-    /// Update tx fields after execution
-    pub(crate) fn post_execute(&mut self) {
-        if let Some(script) = self.tx.as_script_mut() {
-            *script.receipts_root_mut() = self.receipts.root();
-        }
     }
 }
 
@@ -1073,7 +1074,6 @@ where
         self.verify_ready_tx(&tx)?;
 
         let state_result = self.init_script(tx).and_then(|_| self.run());
-        self.post_execute();
 
         #[cfg(feature = "profile-any")]
         {

@@ -368,6 +368,20 @@ impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
     }
 }
 
+/// Enum of executable transactions.
+pub enum ExecutableTxType<'a> {
+    /// Reference to the `Script` transaction.
+    Script(&'a Script),
+    /// Reference to the `Create` transaction.
+    Create(&'a Create),
+    /// Reference to the `Blob` transaction.
+    Blob(&'a Blob),
+    /// Reference to the `Upgrade` transaction.
+    Upgrade(&'a Upgrade),
+    /// Reference to the `Upload` transaction.
+    Upload(&'a Upload),
+}
+
 /// The definition of the executable transaction supported by the `Interpreter`.
 pub trait ExecutableTransaction:
     Default
@@ -433,9 +447,11 @@ pub trait ExecutableTransaction:
         None
     }
 
-    /// Returns the type of the transaction like `Transaction::Create` or
-    /// `Transaction::Script`.
-    fn transaction_type() -> Word;
+    /// Returns `TransactionRepr` type associated with transaction.
+    fn transaction_type() -> TransactionRepr;
+
+    /// Returns `ExecutableTxType` type associated with transaction.
+    fn executable_type(&self) -> ExecutableTxType;
 
     /// Replaces the `Output::Variable` with the `output`(should be also
     /// `Output::Variable`) by the `idx` index.
@@ -547,8 +563,12 @@ impl ExecutableTransaction for Create {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Create as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Create
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Create(self)
     }
 }
 
@@ -561,8 +581,12 @@ impl ExecutableTransaction for Script {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Script as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Script
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Script(self)
     }
 }
 
@@ -575,8 +599,12 @@ impl ExecutableTransaction for Upgrade {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Upgrade as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Upgrade
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Upgrade(self)
     }
 }
 
@@ -589,8 +617,12 @@ impl ExecutableTransaction for Upload {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Upload as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Upload
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Upload(self)
     }
 }
 
@@ -603,8 +635,12 @@ impl ExecutableTransaction for Blob {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Blob as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Blob
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Blob(self)
     }
 }
 

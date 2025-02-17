@@ -28,7 +28,7 @@ fn release_0_58_2_can_deserialize_latest() {
 
 #[test]
 fn latest_can_deserialize_previous_tx_pointer() {
-    for idx in 0..u16::MAX {
+    for idx in 0..=u16::MAX {
         // Given
         let tx_pointer = fuel_tx_0_59_1::TxPointer::new(1u32.into(), idx);
         let expected = latest_fuel_tx::TxPointer::new(1u32.into(), idx.into());

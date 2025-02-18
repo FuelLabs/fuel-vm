@@ -2,7 +2,7 @@ import init from './{{NAME_UNDERSCORED}}.js'
 import wasm from './{{NAME_UNDERSCORED}}_bg.wasm'
 
 export async function initWasm () {
-  return await init(wasm());
+  return await init({ module_or_path: wasm() });
 }
 
 /**

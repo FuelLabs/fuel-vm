@@ -20,7 +20,6 @@ use crate::{
         gas::{
             dependent_gas_charge_without_base,
             gas_charge,
-            ProfileGas,
         },
         internal::{
             current_contract,
@@ -42,7 +41,6 @@ use crate::{
         Bug,
         BugVariant,
     },
-    profiler::Profiler,
     storage::{
         ContractsAssetsStorage,
         ContractsRawCode,
@@ -391,7 +389,6 @@ where
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             current_contract,
-            profiler: &mut self.profiler,
         }
         .prepare_call()
     }
@@ -456,7 +453,6 @@ struct PrepareCallCtx<'vm, S> {
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
-    profiler: &'vm mut Profiler,
 }
 
 impl<S> PrepareCallCtx<'_, S>
@@ -485,16 +481,9 @@ where
             .checked_add(code_size_padded)
             .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
-        let profiler = ProfileGas {
-            pc: self.registers.system_registers.pc.as_ref(),
-            is: self.registers.system_registers.is.as_ref(),
-            current_contract: self.current_contract,
-            profiler: self.profiler,
-        };
         dependent_gas_charge_without_base(
             self.registers.system_registers.cgas.as_mut(),
             self.registers.system_registers.ggas.as_mut(),
-            profiler,
             self.gas_cost,
             code_size_padded as Word,
         )?;
@@ -528,16 +517,9 @@ where
 
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
-            let profiler = ProfileGas {
-                pc: self.registers.system_registers.pc.as_ref(),
-                is: self.registers.system_registers.is.as_ref(),
-                current_contract: self.current_contract,
-                profiler: self.profiler,
-            };
             gas_charge(
                 self.registers.system_registers.cgas.as_mut(),
                 self.registers.system_registers.ggas.as_mut(),
-                profiler,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;

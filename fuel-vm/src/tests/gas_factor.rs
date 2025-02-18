@@ -14,6 +14,7 @@ use fuel_tx::{
     ConsensusParameters,
     FeeParameters,
 };
+use std::panic;
 
 #[test]
 fn gas_factor_rounds_correctly() {
@@ -47,8 +48,6 @@ fn gas_factor_rounds_correctly() {
         .into_ready(gas_price, &gas_costs, &fee_params, None)
         .unwrap();
 
-    let profiler = GasProfiler::default();
-
     let mut consensus_params = ConsensusParameters::standard();
     consensus_params.set_gas_costs(gas_costs);
     consensus_params.set_fee_params(fee_params);
@@ -63,7 +62,6 @@ fn gas_factor_rounds_correctly() {
     );
     let gas_costs = interpreter.gas_costs().clone();
     let res = interpreter
-        .with_profiler(profiler.clone())
         .transact(transaction)
         .expect("failed to execute transaction");
     let change = res
@@ -78,11 +76,13 @@ fn gas_factor_rounds_correctly() {
 
     let initial_balance = input - res.tx().max_fee_limit();
 
-    let gas_used = profiler.total_gas();
+    let Receipt::ScriptResult { gas_used, .. } = res.receipts().last().unwrap() else {
+        panic!("expected script result receipt");
+    };
 
     let refund = res
         .tx()
-        .refund_fee(&gas_costs, &fee_params, gas_used, gas_price)
+        .refund_fee(&gas_costs, &fee_params, *gas_used, gas_price)
         .expect("failed to calculate refund");
 
     assert_eq!(*change, initial_balance + refund);

@@ -67,7 +67,6 @@ fn test_state_read_word(
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     memory[0..ContractId::LEN].copy_from_slice(&[3u8; ContractId::LEN][..]);
     memory[32..64].copy_from_slice(&[4u8; 32][..]);
-    let is = 4;
     let mut cgas = 1000;
     let mut ggas = 1000;
     let mut pc = 4;
@@ -91,13 +90,10 @@ fn test_state_read_word(
         let input = StateWriteWordCtx {
             storage: &mut storage,
             memory: &mut memory,
-            context: &context,
-            profiler: &mut Profiler::default(),
+            context: &context,            
             new_storage_gas_per_byte: 1,
-            current_contract: None,
             cgas: RegMut::new(&mut cgas),
             ggas: RegMut::new(&mut ggas),
-            is: Reg::new(&is),
             fp: Reg::new(&fp),
             pc: RegMut::new(&mut pc),
         };
@@ -149,7 +145,6 @@ fn test_state_write_word(
         }
     };
 
-    let is = 4;
     let mut cgas = 1000;
     let mut ggas = 1000;
 
@@ -161,13 +156,10 @@ fn test_state_write_word(
         let input = StateWriteWordCtx {
             storage: &mut storage,
             memory: &mut memory,
-            context: &context,
-            profiler: &mut Profiler::default(),
+            context: &context,            
             new_storage_gas_per_byte: 1,
-            current_contract: None,
             cgas: RegMut::new(&mut cgas),
             ggas: RegMut::new(&mut ggas),
-            is: Reg::new(&is),
             fp: Reg::new(&fp),
             pc: RegMut::new(&mut pc),
         };
@@ -180,11 +172,8 @@ fn test_state_write_word(
         memory: &mut memory,
         context: &context,
         new_storage_gas_per_byte: 1,
-        current_contract: None,
-        profiler: &mut Profiler::default(),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
-        is: Reg::new(&is),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
     };

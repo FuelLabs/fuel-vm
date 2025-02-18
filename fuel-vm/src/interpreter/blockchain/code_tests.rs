@@ -23,7 +23,6 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
     let mut sp = 1000;
     let hp = VM_MAX_RAM;
     let fp = 0;
-    let is = 0;
 
     let contract_id = ContractId::from([4u8; 32]);
 
@@ -52,7 +51,7 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         context: &Context::Script {
             block_height: Default::default(),
         },
-        profiler: &mut Profiler::default(),
+        
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
@@ -61,7 +60,6 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         sp: RegMut::new(&mut sp),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
         hp: Reg::new(&hp),
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
@@ -81,7 +79,6 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
     let mut ssp = 1000;
     let mut sp = 1000;
     let fp = 32;
-    let is = 0;
     let hp = VM_MAX_RAM;
 
     let contract_id = ContractId::from([4u8; 32]);
@@ -111,7 +108,7 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
         context: &Context::Call {
             block_height: Default::default(),
         },
-        profiler: &mut Profiler::default(),
+        
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
@@ -121,7 +118,6 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
         hp: Reg::new(&hp),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
@@ -138,7 +134,6 @@ fn test_code_copy() -> IoResult<(), MemoryStorageError> {
     let mut cgas = 1000;
     let mut ggas = 1000;
     let mut pc = 4;
-    let is = 0;
 
     let contract_id = ContractId::from([4u8; 32]);
 
@@ -165,8 +160,6 @@ fn test_code_copy() -> IoResult<(), MemoryStorageError> {
         storage: &storage,
         memory: &mut memory,
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
-        profiler: &mut Profiler::default(),
-        current_contract: None,
         owner: OwnershipRegisters {
             sp: 1000,
             ssp: 1000,
@@ -177,7 +170,6 @@ fn test_code_copy() -> IoResult<(), MemoryStorageError> {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
     };
     input.code_copy(dest_mem_address, contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);

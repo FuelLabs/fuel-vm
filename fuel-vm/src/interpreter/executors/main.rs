@@ -1075,15 +1075,6 @@ where
 
         let state_result = self.init_script(tx).and_then(|_| self.run());
 
-        #[cfg(feature = "profile-any")]
-        {
-            let r = match &state_result {
-                Ok(state) => Ok(state),
-                Err(err) => Err(err.erase_generics()),
-            };
-            self.profiler.on_transaction(r);
-        }
-
         let state = state_result?;
         Ok(StateTransitionRef::new(
             state,

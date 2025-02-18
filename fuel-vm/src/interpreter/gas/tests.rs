@@ -104,19 +104,10 @@ fn test_dependent_gas_charge(input: DepGasChargeInput) -> SimpleResult<GasCharge
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    let pc = 0;
-    let is = 0;
-    let profiler = ProfileGas {
-        pc: Reg::new(&pc),
-        is: Reg::new(&is),
-        current_contract: None,
-        profiler: &mut Profiler::default(),
-    };
 
     dependent_gas_charge(
         cgas.as_mut(),
         ggas.as_mut(),
-        profiler,
         gas_cost,
         dependent_factor,
     )
@@ -177,20 +168,11 @@ fn test_dependent_gas_charge_wihtout_base(
         mut ggas,
         dependent_factor,
     } = input;
-    let pc = 0;
-    let is = 0;
-    let profiler = ProfileGas {
-        pc: Reg::new(&pc),
-        is: Reg::new(&is),
-        current_contract: None,
-        profiler: &mut Profiler::default(),
-    };
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
     dependent_gas_charge_without_base(
         cgas.as_mut(),
         ggas.as_mut(),
-        profiler,
         gas_cost,
         dependent_factor,
     )

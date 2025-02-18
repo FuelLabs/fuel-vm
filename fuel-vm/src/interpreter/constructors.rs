@@ -22,11 +22,6 @@ use crate::{
 
 use alloc::vec;
 
-#[cfg(feature = "profile-any")]
-use crate::profiler::ProfileReceiver;
-
-use crate::profiler::Profiler;
-
 #[cfg(feature = "test-helpers")]
 use crate::{
     interpreter::EcalHandler,
@@ -80,23 +75,11 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
-            profiler: Profiler::default(),
+            
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,
         }
-    }
-}
-
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
-    /// Sets a profiler for the VM
-    #[cfg(feature = "profile-any")]
-    pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
-    where
-        P: ProfileReceiver + Send + Sync + 'static,
-    {
-        self.profiler.set_receiver(alloc::boxed::Box::new(receiver));
-        self
     }
 }
 

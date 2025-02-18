@@ -449,7 +449,7 @@ where
     M: Memory,
     Tx: PartialEq,
 {
-    /// Does not compare storage, debugger or profiler
+    /// Does not compare storage or debugger
     fn eq(&self, other: &Self) -> bool {
         self.registers == other.registers
             && self.memory.as_ref() == other.memory.as_ref()

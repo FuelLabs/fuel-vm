@@ -71,11 +71,6 @@ mod receipts;
 mod debug;
 mod ecal;
 
-use crate::profiler::Profiler;
-
-#[cfg(feature = "profile-gas")]
-use crate::profiler::InstructionLocation;
-
 pub use balances::RuntimeBalances;
 pub use ecal::{
     EcalHandler,
@@ -131,7 +126,6 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     debugger: Debugger,
     context: Context,
     balances: RuntimeBalances,
-    profiler: Profiler,
     interpreter_params: InterpreterParams,
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
@@ -320,16 +314,6 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
     pub fn receipts_mut(&mut self) -> &mut ReceiptsCtx {
         &mut self.receipts
     }
-
-    pub(crate) fn contract_id(&self) -> Option<ContractId> {
-        self.frames.last().map(|frame| *frame.to())
-    }
-
-    /// Reference to the underlying profiler
-    #[cfg(feature = "profile-any")]
-    pub const fn profiler(&self) -> &Profiler {
-        &self.profiler
-    }
 }
 
 pub(crate) fn flags(flag: Reg<FLAG>) -> Flags {
@@ -342,18 +326,6 @@ pub(crate) fn is_wrapping(flag: Reg<FLAG>) -> bool {
 
 pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
     flags(flag).contains(Flags::UNSAFEMATH)
-}
-
-#[cfg(feature = "profile-gas")]
-fn current_location(
-    current_contract: Option<ContractId>,
-    pc: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::PC }>,
-    is: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::IS }>,
-) -> InstructionLocation {
-    // Safety: pc should always be above is, but fallback to zero here for weird cases,
-    //         as the profiling code should be robust against regards cases like this.
-    let offset = (*pc).saturating_sub(*is);
-    InstructionLocation::new(current_contract, offset)
 }
 
 impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {

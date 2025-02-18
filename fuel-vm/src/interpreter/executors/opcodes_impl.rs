@@ -39,15 +39,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().add())?;
+        interpreter.gas_charge(interpreter.gas_costs().add())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_capture_overflow(
+        interpreter.alu_capture_overflow(
             a,
             u128::overflowing_add,
-            interpriter.registers[b].into(),
-            interpriter.registers[c].into(),
+            interpreter.registers[b].into(),
+            interpreter.registers[c].into(),
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -62,14 +62,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().addi())?;
+        interpreter.gas_charge(interpreter.gas_costs().addi())?;
         let (a, b, imm) = self.unpack();
-        interpriter.alu_capture_overflow(
+        interpreter.alu_capture_overflow(
             a,
             u128::overflowing_add,
-            interpriter.registers[b].into(),
+            interpreter.registers[b].into(),
             imm.into(),
         )?;
         Ok(ExecuteState::Proceed)
@@ -85,11 +85,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().and())?;
+        interpreter.gas_charge(interpreter.gas_costs().and())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_set(a, interpriter.registers[b] & interpriter.registers[c])?;
+        interpreter.alu_set(a, interpreter.registers[b] & interpreter.registers[c])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -103,11 +103,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().andi())?;
+        interpreter.gas_charge(interpreter.gas_costs().andi())?;
         let (a, b, imm) = self.unpack();
-        interpriter.alu_set(a, interpriter.registers[b] & Word::from(imm))?;
+        interpreter.alu_set(a, interpreter.registers[b] & Word::from(imm))?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -121,12 +121,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().div())?;
+        interpreter.gas_charge(interpreter.gas_costs().div())?;
         let (a, b, c) = self.unpack();
-        let c = interpriter.registers[c];
-        interpriter.alu_error(a, Word::div, interpriter.registers[b], c, c == 0)?;
+        let c = interpreter.registers[c];
+        interpreter.alu_error(a, Word::div, interpreter.registers[b], c, c == 0)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -140,12 +140,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().divi())?;
+        interpreter.gas_charge(interpreter.gas_costs().divi())?;
         let (a, b, imm) = self.unpack();
         let imm = Word::from(imm);
-        interpriter.alu_error(a, Word::div, interpriter.registers[b], imm, imm == 0)?;
+        interpreter.alu_error(a, Word::div, interpreter.registers[b], imm, imm == 0)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -159,13 +159,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().eq_())?;
+        interpreter.gas_charge(interpreter.gas_costs().eq_())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_set(
+        interpreter.alu_set(
             a,
-            (interpriter.registers[b] == interpriter.registers[c]) as Word,
+            (interpreter.registers[b] == interpreter.registers[c]) as Word,
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -180,15 +180,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().exp())?;
+        interpreter.gas_charge(interpreter.gas_costs().exp())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_boolean_overflow(
+        interpreter.alu_boolean_overflow(
             a,
             alu::exp,
-            interpriter.registers[b],
-            interpriter.registers[c],
+            interpreter.registers[b],
+            interpreter.registers[c],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -203,15 +203,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().expi())?;
+        interpreter.gas_charge(interpreter.gas_costs().expi())?;
         let (a, b, imm) = self.unpack();
         let expo = u32::from(imm);
-        interpriter.alu_boolean_overflow(
+        interpreter.alu_boolean_overflow(
             a,
             Word::overflowing_pow,
-            interpriter.registers[b],
+            interpreter.registers[b],
             expo,
         )?;
         Ok(ExecuteState::Proceed)
@@ -227,13 +227,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().gt())?;
+        interpreter.gas_charge(interpreter.gas_costs().gt())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_set(
+        interpreter.alu_set(
             a,
-            (interpriter.registers[b] > interpriter.registers[c]) as Word,
+            (interpreter.registers[b] > interpreter.registers[c]) as Word,
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -248,13 +248,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().lt())?;
+        interpreter.gas_charge(interpreter.gas_costs().lt())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_set(
+        interpreter.alu_set(
             a,
-            (interpriter.registers[b] < interpriter.registers[c]) as Word,
+            (interpreter.registers[b] < interpreter.registers[c]) as Word,
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -269,16 +269,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wdcm())?;
+        interpreter.gas_charge(interpreter.gas_costs().wdcm())?;
         let (a, b, c, imm) = self.unpack();
         let args = wideint::CompareArgs::from_imm(imm)
             .ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_cmp_u128(
+        interpreter.alu_wideint_cmp_u128(
             a,
-            interpriter.registers[b],
-            interpriter.registers[c],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -294,16 +294,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wqcm())?;
+        interpreter.gas_charge(interpreter.gas_costs().wqcm())?;
         let (a, b, c, imm) = self.unpack();
         let args = wideint::CompareArgs::from_imm(imm)
             .ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_cmp_u256(
+        interpreter.alu_wideint_cmp_u256(
             a,
-            interpriter.registers[b],
-            interpriter.registers[c],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -319,16 +319,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wdop())?;
+        interpreter.gas_charge(interpreter.gas_costs().wdop())?;
         let (a, b, c, imm) = self.unpack();
         let args =
             wideint::MathArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_op_u128(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.alu_wideint_op_u128(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -344,16 +344,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wqop())?;
+        interpreter.gas_charge(interpreter.gas_costs().wqop())?;
         let (a, b, c, imm) = self.unpack();
         let args =
             wideint::MathArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_op_u256(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.alu_wideint_op_u256(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -369,16 +369,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wdml())?;
+        interpreter.gas_charge(interpreter.gas_costs().wdml())?;
         let (a, b, c, imm) = self.unpack();
         let args =
             wideint::MulArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_mul_u128(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.alu_wideint_mul_u128(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -394,16 +394,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wqml())?;
+        interpreter.gas_charge(interpreter.gas_costs().wqml())?;
         let (a, b, c, imm) = self.unpack();
         let args =
             wideint::MulArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_mul_u256(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.alu_wideint_mul_u256(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -419,16 +419,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wddv())?;
+        interpreter.gas_charge(interpreter.gas_costs().wddv())?;
         let (a, b, c, imm) = self.unpack();
         let args =
             wideint::DivArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_div_u128(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.alu_wideint_div_u128(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -444,16 +444,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wqdv())?;
+        interpreter.gas_charge(interpreter.gas_costs().wqdv())?;
         let (a, b, c, imm) = self.unpack();
         let args =
             wideint::DivArgs::from_imm(imm).ok_or(PanicReason::InvalidImmediateValue)?;
-        interpriter.alu_wideint_div_u256(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.alu_wideint_div_u256(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             args,
         )?;
         Ok(ExecuteState::Proceed)
@@ -469,15 +469,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wdmd())?;
+        interpreter.gas_charge(interpreter.gas_costs().wdmd())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.alu_wideint_muldiv_u128(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.alu_wideint_muldiv_u128(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -492,15 +492,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wqmd())?;
+        interpreter.gas_charge(interpreter.gas_costs().wqmd())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.alu_wideint_muldiv_u256(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.alu_wideint_muldiv_u256(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -515,15 +515,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wdam())?;
+        interpreter.gas_charge(interpreter.gas_costs().wdam())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.alu_wideint_addmod_u128(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.alu_wideint_addmod_u128(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -537,15 +537,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wqam())?;
+        interpreter.gas_charge(interpreter.gas_costs().wqam())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.alu_wideint_addmod_u256(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.alu_wideint_addmod_u256(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -559,15 +559,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wdmm())?;
+        interpreter.gas_charge(interpreter.gas_costs().wdmm())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.alu_wideint_mulmod_u128(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.alu_wideint_mulmod_u128(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -581,15 +581,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().wqmm())?;
+        interpreter.gas_charge(interpreter.gas_costs().wqmm())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.alu_wideint_mulmod_u256(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.alu_wideint_mulmod_u256(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -604,12 +604,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().mlog())?;
+        interpreter.gas_charge(interpreter.gas_costs().mlog())?;
         let (a, b, c) = self.unpack();
-        let (lhs, rhs) = (interpriter.registers[b], interpriter.registers[c]);
-        interpriter.alu_error(
+        let (lhs, rhs) = (interpreter.registers[b], interpreter.registers[c]);
+        interpreter.alu_error(
             a,
             |l, r| {
                 l.checked_ilog(r)
@@ -633,15 +633,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().mod_op())?;
+        interpreter.gas_charge(interpreter.gas_costs().mod_op())?;
         let (a, b, c) = self.unpack();
-        let rhs = interpriter.registers[c];
-        interpriter.alu_error(
+        let rhs = interpreter.registers[c];
+        interpreter.alu_error(
             a,
             Word::wrapping_rem,
-            interpriter.registers[b],
+            interpreter.registers[b],
             rhs,
             rhs == 0,
         )?;
@@ -658,15 +658,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().modi())?;
+        interpreter.gas_charge(interpreter.gas_costs().modi())?;
         let (a, b, imm) = self.unpack();
         let rhs = Word::from(imm);
-        interpriter.alu_error(
+        interpreter.alu_error(
             a,
             Word::wrapping_rem,
-            interpriter.registers[b],
+            interpreter.registers[b],
             rhs,
             rhs == 0,
         )?;
@@ -683,11 +683,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().move_op())?;
+        interpreter.gas_charge(interpreter.gas_costs().move_op())?;
         let (a, b) = self.unpack();
-        interpriter.alu_set(a, interpriter.registers[b])?;
+        interpreter.alu_set(a, interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -701,11 +701,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().movi())?;
+        interpreter.gas_charge(interpreter.gas_costs().movi())?;
         let (a, imm) = self.unpack();
-        interpriter.alu_set(a, Word::from(imm))?;
+        interpreter.alu_set(a, Word::from(imm))?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -719,12 +719,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().mroo())?;
+        interpreter.gas_charge(interpreter.gas_costs().mroo())?;
         let (a, b, c) = self.unpack();
-        let (lhs, rhs) = (interpriter.registers[b], interpriter.registers[c]);
-        interpriter.alu_error(
+        let (lhs, rhs) = (interpreter.registers[b], interpreter.registers[c]);
+        interpreter.alu_error(
             a,
             |l, r| {
                 checked_nth_root(l, r)
@@ -748,15 +748,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().mul())?;
+        interpreter.gas_charge(interpreter.gas_costs().mul())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_capture_overflow(
+        interpreter.alu_capture_overflow(
             a,
             u128::overflowing_mul,
-            interpriter.registers[b].into(),
-            interpriter.registers[c].into(),
+            interpreter.registers[b].into(),
+            interpreter.registers[c].into(),
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -771,14 +771,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().muli())?;
+        interpreter.gas_charge(interpreter.gas_costs().muli())?;
         let (a, b, imm) = self.unpack();
-        interpriter.alu_capture_overflow(
+        interpreter.alu_capture_overflow(
             a,
             u128::overflowing_mul,
-            interpriter.registers[b].into(),
+            interpreter.registers[b].into(),
             imm.into(),
         )?;
         Ok(ExecuteState::Proceed)
@@ -794,15 +794,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().mldv())?;
+        interpreter.gas_charge(interpreter.gas_costs().mldv())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.alu_muldiv(
+        interpreter.alu_muldiv(
             a,
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -817,10 +817,10 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().noop())?;
-        interpriter.alu_clear()?;
+        interpreter.gas_charge(interpreter.gas_costs().noop())?;
+        interpreter.alu_clear()?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -834,11 +834,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().not())?;
+        interpreter.gas_charge(interpreter.gas_costs().not())?;
         let (a, b) = self.unpack();
-        interpriter.alu_set(a, !interpriter.registers[b])?;
+        interpreter.alu_set(a, !interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -852,11 +852,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().or())?;
+        interpreter.gas_charge(interpreter.gas_costs().or())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_set(a, interpriter.registers[b] | interpriter.registers[c])?;
+        interpreter.alu_set(a, interpreter.registers[b] | interpreter.registers[c])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -870,11 +870,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().ori())?;
+        interpreter.gas_charge(interpreter.gas_costs().ori())?;
         let (a, b, imm) = self.unpack();
-        interpriter.alu_set(a, interpriter.registers[b] | Word::from(imm))?;
+        interpreter.alu_set(a, interpreter.registers[b] | Word::from(imm))?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -888,15 +888,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().sll())?;
+        interpreter.gas_charge(interpreter.gas_costs().sll())?;
         let (a, b, c) = self.unpack();
 
-        interpriter.alu_set(
+        interpreter.alu_set(
             a,
-            if let Ok(c) = interpriter.registers[c].try_into() {
-                Word::checked_shl(interpriter.registers[b], c).unwrap_or_default()
+            if let Ok(c) = interpreter.registers[c].try_into() {
+                Word::checked_shl(interpreter.registers[b], c).unwrap_or_default()
             } else {
                 0
             },
@@ -914,14 +914,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().slli())?;
+        interpreter.gas_charge(interpreter.gas_costs().slli())?;
         let (a, b, imm) = self.unpack();
         let rhs = u32::from(imm);
-        interpriter.alu_set(
+        interpreter.alu_set(
             a,
-            interpriter.registers[b]
+            interpreter.registers[b]
                 .checked_shl(rhs)
                 .unwrap_or_default(),
         )?;
@@ -938,14 +938,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().srl())?;
+        interpreter.gas_charge(interpreter.gas_costs().srl())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_set(
+        interpreter.alu_set(
             a,
-            if let Ok(c) = interpriter.registers[c].try_into() {
-                Word::checked_shr(interpriter.registers[b], c).unwrap_or_default()
+            if let Ok(c) = interpreter.registers[c].try_into() {
+                Word::checked_shr(interpreter.registers[b], c).unwrap_or_default()
             } else {
                 0
             },
@@ -963,14 +963,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().srli())?;
+        interpreter.gas_charge(interpreter.gas_costs().srli())?;
         let (a, b, imm) = self.unpack();
         let rhs = u32::from(imm);
-        interpriter.alu_set(
+        interpreter.alu_set(
             a,
-            interpriter.registers[b]
+            interpreter.registers[b]
                 .checked_shr(rhs)
                 .unwrap_or_default(),
         )?;
@@ -987,15 +987,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().sub())?;
+        interpreter.gas_charge(interpreter.gas_costs().sub())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_capture_overflow(
+        interpreter.alu_capture_overflow(
             a,
             u128::overflowing_sub,
-            interpriter.registers[b].into(),
-            interpriter.registers[c].into(),
+            interpreter.registers[b].into(),
+            interpreter.registers[c].into(),
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1010,14 +1010,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().subi())?;
+        interpreter.gas_charge(interpreter.gas_costs().subi())?;
         let (a, b, imm) = self.unpack();
-        interpriter.alu_capture_overflow(
+        interpreter.alu_capture_overflow(
             a,
             u128::overflowing_sub,
-            interpriter.registers[b].into(),
+            interpreter.registers[b].into(),
             imm.into(),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1033,11 +1033,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().xor())?;
+        interpreter.gas_charge(interpreter.gas_costs().xor())?;
         let (a, b, c) = self.unpack();
-        interpriter.alu_set(a, interpriter.registers[b] ^ interpriter.registers[c])?;
+        interpreter.alu_set(a, interpreter.registers[b] ^ interpreter.registers[c])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1051,11 +1051,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().xori())?;
+        interpreter.gas_charge(interpreter.gas_costs().xori())?;
         let (a, b, imm) = self.unpack();
-        interpriter.alu_set(a, interpriter.registers[b] ^ Word::from(imm))?;
+        interpreter.alu_set(a, interpreter.registers[b] ^ Word::from(imm))?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1069,11 +1069,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().ji())?;
+        interpreter.gas_charge(interpreter.gas_costs().ji())?;
         let imm = self.unpack();
-        interpriter.jump(JumpArgs::new(JumpMode::Absolute).to_address(imm.into()))?;
+        interpreter.jump(JumpArgs::new(JumpMode::Absolute).to_address(imm.into()))?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1087,13 +1087,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jnei())?;
+        interpreter.gas_charge(interpreter.gas_costs().jnei())?;
         let (a, b, imm) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::Absolute)
-                .with_condition(interpriter.registers[a] != interpriter.registers[b])
+                .with_condition(interpreter.registers[a] != interpreter.registers[b])
                 .to_address(imm.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1109,13 +1109,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jnzi())?;
+        interpreter.gas_charge(interpreter.gas_costs().jnzi())?;
         let (a, imm) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::Absolute)
-                .with_condition(interpriter.registers[a] != 0)
+                .with_condition(interpreter.registers[a] != 0)
                 .to_address(imm.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1131,12 +1131,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jmp())?;
+        interpreter.gas_charge(interpreter.gas_costs().jmp())?;
         let a = self.unpack();
-        interpriter.jump(
-            JumpArgs::new(JumpMode::Absolute).to_address(interpriter.registers[a]),
+        interpreter.jump(
+            JumpArgs::new(JumpMode::Absolute).to_address(interpreter.registers[a]),
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1151,14 +1151,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jne())?;
+        interpreter.gas_charge(interpreter.gas_costs().jne())?;
         let (a, b, c) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::Absolute)
-                .with_condition(interpriter.registers[a] != interpriter.registers[b])
-                .to_address(interpriter.registers[c]),
+                .with_condition(interpreter.registers[a] != interpreter.registers[b])
+                .to_address(interpreter.registers[c]),
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1173,13 +1173,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jmpf())?;
+        interpreter.gas_charge(interpreter.gas_costs().jmpf())?;
         let (a, offset) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::RelativeForwards)
-                .to_address(interpriter.registers[a])
+                .to_address(interpreter.registers[a])
                 .plus_fixed(offset.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1195,13 +1195,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jmpb())?;
+        interpreter.gas_charge(interpreter.gas_costs().jmpb())?;
         let (a, offset) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::RelativeBackwards)
-                .to_address(interpriter.registers[a])
+                .to_address(interpreter.registers[a])
                 .plus_fixed(offset.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1217,14 +1217,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jnzf())?;
+        interpreter.gas_charge(interpreter.gas_costs().jnzf())?;
         let (a, b, offset) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::RelativeForwards)
-                .with_condition(interpriter.registers[a] != 0)
-                .to_address(interpriter.registers[b])
+                .with_condition(interpreter.registers[a] != 0)
+                .to_address(interpreter.registers[b])
                 .plus_fixed(offset.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1240,14 +1240,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jnzb())?;
+        interpreter.gas_charge(interpreter.gas_costs().jnzb())?;
         let (a, b, offset) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::RelativeBackwards)
-                .with_condition(interpriter.registers[a] != 0)
-                .to_address(interpriter.registers[b])
+                .with_condition(interpreter.registers[a] != 0)
+                .to_address(interpreter.registers[b])
                 .plus_fixed(offset.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1263,14 +1263,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jnef())?;
+        interpreter.gas_charge(interpreter.gas_costs().jnef())?;
         let (a, b, c, offset) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::RelativeForwards)
-                .with_condition(interpriter.registers[a] != interpriter.registers[b])
-                .to_address(interpriter.registers[c])
+                .with_condition(interpreter.registers[a] != interpreter.registers[b])
+                .to_address(interpreter.registers[c])
                 .plus_fixed(offset.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1286,14 +1286,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().jneb())?;
+        interpreter.gas_charge(interpreter.gas_costs().jneb())?;
         let (a, b, c, offset) = self.unpack();
-        interpriter.jump(
+        interpreter.jump(
             JumpArgs::new(JumpMode::RelativeBackwards)
-                .with_condition(interpriter.registers[a] != interpriter.registers[b])
-                .to_address(interpriter.registers[c])
+                .with_condition(interpreter.registers[a] != interpreter.registers[b])
+                .to_address(interpreter.registers[c])
                 .plus_fixed(offset.into()),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1309,12 +1309,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().ret())?;
+        interpreter.gas_charge(interpreter.gas_costs().ret())?;
         let a = self.unpack();
-        let ra = interpriter.registers[a];
-        interpriter.ret(ra)?;
+        let ra = interpreter.registers[a];
+        interpreter.ret(ra)?;
         Ok(ExecuteState::Return(ra))
     }
 }
@@ -1328,13 +1328,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
-        let len = interpriter.registers[b];
-        interpriter.dependent_gas_charge(interpriter.gas_costs().retd(), len)?;
-        Ok(interpriter
-            .ret_data(interpriter.registers[a], len)
+        let len = interpreter.registers[b];
+        interpreter.dependent_gas_charge(interpreter.gas_costs().retd(), len)?;
+        Ok(interpreter
+            .ret_data(interpreter.registers[a], len)
             .map(ExecuteState::ReturnData)?)
     }
 }
@@ -1348,12 +1348,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().rvrt())?;
+        interpreter.gas_charge(interpreter.gas_costs().rvrt())?;
         let a = self.unpack();
-        let ra = interpriter.registers[a];
-        interpriter.revert(ra)?;
+        let ra = interpreter.registers[a];
+        interpreter.revert(ra)?;
         Ok(ExecuteState::Revert(ra))
     }
 }
@@ -1367,18 +1367,18 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        interpriter.dependent_gas_charge(
-            interpriter.gas_costs().smo(),
-            interpriter.registers[c],
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().smo(),
+            interpreter.registers[c],
         )?;
-        interpriter.message_output(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.message_output(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1393,13 +1393,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let a = self.unpack();
-        let number_of_bytes = interpriter.registers[a];
-        interpriter
-            .dependent_gas_charge(interpriter.gas_costs().aloc(), number_of_bytes)?;
-        interpriter.malloc(number_of_bytes)?;
+        let number_of_bytes = interpreter.registers[a];
+        interpreter
+            .dependent_gas_charge(interpreter.gas_costs().aloc(), number_of_bytes)?;
+        interpreter.malloc(number_of_bytes)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1413,12 +1413,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let number_of_bytes = self.unpack().into();
-        interpriter
-            .dependent_gas_charge(interpriter.gas_costs().cfei(), number_of_bytes)?;
-        interpriter.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
+        interpreter
+            .dependent_gas_charge(interpreter.gas_costs().cfei(), number_of_bytes)?;
+        interpreter.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1432,13 +1432,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let a = self.unpack();
-        let number_of_bytes = interpriter.registers[a];
-        interpriter
-            .dependent_gas_charge(interpriter.gas_costs().cfe(), number_of_bytes)?;
-        interpriter.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
+        let number_of_bytes = interpreter.registers[a];
+        interpreter
+            .dependent_gas_charge(interpreter.gas_costs().cfe(), number_of_bytes)?;
+        interpreter.stack_pointer_overflow(Word::overflowing_add, number_of_bytes)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1452,11 +1452,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().cfsi())?;
+        interpreter.gas_charge(interpreter.gas_costs().cfsi())?;
         let imm = self.unpack();
-        interpriter.stack_pointer_overflow(Word::overflowing_sub, imm.into())?;
+        interpreter.stack_pointer_overflow(Word::overflowing_sub, imm.into())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1470,12 +1470,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().cfsi())?;
+        interpreter.gas_charge(interpreter.gas_costs().cfsi())?;
         let a = self.unpack();
-        interpriter
-            .stack_pointer_overflow(Word::overflowing_sub, interpriter.registers[a])?;
+        interpreter
+            .stack_pointer_overflow(Word::overflowing_sub, interpreter.registers[a])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1489,11 +1489,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().pshl())?;
+        interpreter.gas_charge(interpreter.gas_costs().pshl())?;
         let bitmask = self.unpack();
-        interpriter.push_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
+        interpreter.push_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1507,11 +1507,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().pshh())?;
+        interpreter.gas_charge(interpreter.gas_costs().pshh())?;
         let bitmask = self.unpack();
-        interpriter.push_selected_registers(ProgramRegistersSegment::High, bitmask)?;
+        interpreter.push_selected_registers(ProgramRegistersSegment::High, bitmask)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1525,11 +1525,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().popl())?;
+        interpreter.gas_charge(interpreter.gas_costs().popl())?;
         let bitmask = self.unpack();
-        interpriter.pop_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
+        interpreter.pop_selected_registers(ProgramRegistersSegment::Low, bitmask)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1543,11 +1543,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().poph())?;
+        interpreter.gas_charge(interpreter.gas_costs().poph())?;
         let bitmask = self.unpack();
-        interpriter.pop_selected_registers(ProgramRegistersSegment::High, bitmask)?;
+        interpreter.pop_selected_registers(ProgramRegistersSegment::High, bitmask)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1561,11 +1561,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().lb())?;
+        interpreter.gas_charge(interpreter.gas_costs().lb())?;
         let (a, b, imm) = self.unpack();
-        interpriter.load_byte(a, interpriter.registers[b], imm.into())?;
+        interpreter.load_byte(a, interpreter.registers[b], imm.into())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1579,11 +1579,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().lw())?;
+        interpreter.gas_charge(interpreter.gas_costs().lw())?;
         let (a, b, imm) = self.unpack();
-        interpriter.load_word(a, interpriter.registers[b], imm)?;
+        interpreter.load_word(a, interpreter.registers[b], imm)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1597,12 +1597,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
-        let len = interpriter.registers[b];
-        interpriter.dependent_gas_charge(interpriter.gas_costs().mcl(), len)?;
-        interpriter.memclear(interpriter.registers[a], len)?;
+        let len = interpreter.registers[b];
+        interpreter.dependent_gas_charge(interpreter.gas_costs().mcl(), len)?;
+        interpreter.memclear(interpreter.registers[a], len)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1616,12 +1616,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, imm) = self.unpack();
         let len = Word::from(imm);
-        interpriter.dependent_gas_charge(interpriter.gas_costs().mcli(), len)?;
-        interpriter.memclear(interpriter.registers[a], len)?;
+        interpreter.dependent_gas_charge(interpreter.gas_costs().mcli(), len)?;
+        interpreter.memclear(interpreter.registers[a], len)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1635,12 +1635,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
-        let len = interpriter.registers[c];
-        interpriter.dependent_gas_charge(interpriter.gas_costs().mcp(), len)?;
-        interpriter.memcopy(interpriter.registers[a], interpriter.registers[b], len)?;
+        let len = interpreter.registers[c];
+        interpreter.dependent_gas_charge(interpreter.gas_costs().mcp(), len)?;
+        interpreter.memcopy(interpreter.registers[a], interpreter.registers[b], len)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1654,12 +1654,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, imm) = self.unpack();
         let len = imm.into();
-        interpriter.dependent_gas_charge(interpriter.gas_costs().mcpi(), len)?;
-        interpriter.memcopy(interpriter.registers[a], interpriter.registers[b], len)?;
+        interpreter.dependent_gas_charge(interpreter.gas_costs().mcpi(), len)?;
+        interpreter.memcopy(interpreter.registers[a], interpreter.registers[b], len)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1673,12 +1673,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        let len = interpriter.registers[d];
-        interpriter.dependent_gas_charge(interpriter.gas_costs().meq(), len)?;
-        interpriter.memeq(a, interpriter.registers[b], interpriter.registers[c], len)?;
+        let len = interpreter.registers[d];
+        interpreter.dependent_gas_charge(interpreter.gas_costs().meq(), len)?;
+        interpreter.memeq(a, interpreter.registers[b], interpreter.registers[c], len)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1692,13 +1692,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().sb())?;
+        interpreter.gas_charge(interpreter.gas_costs().sb())?;
         let (a, b, imm) = self.unpack();
-        interpriter.store_byte(
-            interpriter.registers[a],
-            interpriter.registers[b],
+        interpreter.store_byte(
+            interpreter.registers[a],
+            interpreter.registers[b],
             imm.into(),
         )?;
         Ok(ExecuteState::Proceed)
@@ -1714,13 +1714,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().sw())?;
+        interpreter.gas_charge(interpreter.gas_costs().sw())?;
         let (a, b, imm) = self.unpack();
-        interpriter.store_word(
-            interpriter.registers[a],
-            interpriter.registers[b],
+        interpreter.store_word(
+            interpreter.registers[a],
+            interpreter.registers[b],
             imm,
         )?;
         Ok(ExecuteState::Proceed)
@@ -1736,14 +1736,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().bal())?;
+        interpreter.gas_charge(interpreter.gas_costs().bal())?;
         let (a, b, c) = self.unpack();
-        interpriter.contract_balance(
+        interpreter.contract_balance(
             a,
-            interpriter.registers[b],
-            interpriter.registers[c],
+            interpreter.registers[b],
+            interpreter.registers[c],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1758,11 +1758,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().bhei())?;
+        interpreter.gas_charge(interpreter.gas_costs().bhei())?;
         let a = self.unpack();
-        interpriter.block_height(a)?;
+        interpreter.block_height(a)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1776,11 +1776,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().bhsh())?;
+        interpreter.gas_charge(interpreter.gas_costs().bhsh())?;
         let (a, b) = self.unpack();
-        interpriter.block_hash(interpriter.registers[a], interpriter.registers[b])?;
+        interpreter.block_hash(interpreter.registers[a], interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1794,11 +1794,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().burn())?;
+        interpreter.gas_charge(interpreter.gas_costs().burn())?;
         let (a, b) = self.unpack();
-        interpriter.burn(interpriter.registers[a], interpriter.registers[b])?;
+        interpreter.burn(interpreter.registers[a], interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1812,13 +1812,13 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for the gas inside of the `prepare_call` function.
         let (a, b, c, d) = self.unpack();
 
         // Enter call context
-        interpriter.prepare_call(a, b, c, d)?;
+        interpreter.prepare_call(a, b, c, d)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1832,11 +1832,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().cb())?;
+        interpreter.gas_charge(interpreter.gas_costs().cb())?;
         let a = self.unpack();
-        interpriter.block_proposer(interpriter.registers[a])?;
+        interpreter.block_proposer(interpreter.registers[a])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1850,14 +1850,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        interpriter.code_copy(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.code_copy(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1872,10 +1872,10 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
-        interpriter.code_root(interpriter.registers[a], interpriter.registers[b])?;
+        interpreter.code_root(interpreter.registers[a], interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1889,11 +1889,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for the gas inside of the `code_size` function.
         let (a, b) = self.unpack();
-        interpriter.code_size(a, interpriter.registers[b])?;
+        interpreter.code_size(a, interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1907,14 +1907,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for the gas inside of the `load_contract_code` function.
         let (a, b, c, mode) = self.unpack();
-        interpriter.load_contract_code(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.load_contract_code(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             mode,
         )?;
         Ok(ExecuteState::Proceed)
@@ -1930,15 +1930,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().log())?;
+        interpreter.gas_charge(interpreter.gas_costs().log())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.log(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.log(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1953,18 +1953,18 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        interpriter.dependent_gas_charge(
-            interpriter.gas_costs().logd(),
-            interpriter.registers[d],
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().logd(),
+            interpreter.registers[d],
         )?;
-        interpriter.log_data(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.log_data(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -1979,11 +1979,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().mint())?;
+        interpreter.gas_charge(interpreter.gas_costs().mint())?;
         let (a, b) = self.unpack();
-        interpriter.mint(interpriter.registers[a], interpriter.registers[b])?;
+        interpreter.mint(interpreter.registers[a], interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1997,17 +1997,17 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
-        interpriter.dependent_gas_charge(
-            interpriter.gas_costs().scwq(),
-            interpriter.registers[c],
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().scwq(),
+            interpreter.registers[c],
         )?;
-        interpriter.state_clear_qword(
-            interpriter.registers[a],
+        interpreter.state_clear_qword(
+            interpreter.registers[a],
             b,
-            interpriter.registers[c],
+            interpreter.registers[c],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2022,11 +2022,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().srw())?;
+        interpreter.gas_charge(interpreter.gas_costs().srw())?;
         let (a, b, c) = self.unpack();
-        interpriter.state_read_word(a, b, interpriter.registers[c])?;
+        interpreter.state_read_word(a, b, interpreter.registers[c])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2040,18 +2040,18 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        interpriter.dependent_gas_charge(
-            interpriter.gas_costs().srwq(),
-            interpriter.registers[d],
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().srwq(),
+            interpreter.registers[d],
         )?;
-        interpriter.state_read_qword(
-            interpriter.registers[a],
+        interpreter.state_read_qword(
+            interpreter.registers[a],
             b,
-            interpriter.registers[c],
-            interpriter.registers[d],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2066,14 +2066,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().sww())?;
+        interpreter.gas_charge(interpreter.gas_costs().sww())?;
         let (a, b, c) = self.unpack();
-        interpriter.state_write_word(
-            interpriter.registers[a],
+        interpreter.state_write_word(
+            interpreter.registers[a],
             b,
-            interpriter.registers[c],
+            interpreter.registers[c],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2088,18 +2088,18 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        interpriter.dependent_gas_charge(
-            interpriter.gas_costs().swwq(),
-            interpriter.registers[d],
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().swwq(),
+            interpreter.registers[d],
         )?;
-        interpriter.state_write_qword(
-            interpriter.registers[a],
+        interpreter.state_write_qword(
+            interpreter.registers[a],
             b,
-            interpriter.registers[c],
-            interpriter.registers[d],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2114,11 +2114,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().time())?;
+        interpreter.gas_charge(interpreter.gas_costs().time())?;
         let (a, b) = self.unpack();
-        interpriter.timestamp(a, interpriter.registers[b])?;
+        interpreter.timestamp(a, interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2132,14 +2132,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().eck1())?;
+        interpreter.gas_charge(interpreter.gas_costs().eck1())?;
         let (a, b, c) = self.unpack();
-        interpriter.secp256k1_recover(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.secp256k1_recover(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2154,14 +2154,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().ecr1())?;
+        interpreter.gas_charge(interpreter.gas_costs().ecr1())?;
         let (a, b, c) = self.unpack();
-        interpriter.secp256r1_recover(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.secp256r1_recover(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2176,21 +2176,21 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, len) = self.unpack();
-        let mut len = interpriter.registers[len];
+        let mut len = interpreter.registers[len];
 
         // Backwards compatibility with old contracts
         if len == 0 {
             len = 32;
         }
 
-        interpriter.dependent_gas_charge(interpriter.gas_costs().ed19(), len)?;
-        interpriter.ed25519_verify(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.dependent_gas_charge(interpreter.gas_costs().ed19(), len)?;
+        interpreter.ed25519_verify(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
             len,
         )?;
         Ok(ExecuteState::Proceed)
@@ -2206,12 +2206,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
-        let len = interpriter.registers[c];
-        interpriter.dependent_gas_charge(interpriter.gas_costs().k256(), len)?;
-        interpriter.keccak256(interpriter.registers[a], interpriter.registers[b], len)?;
+        let len = interpreter.registers[c];
+        interpreter.dependent_gas_charge(interpreter.gas_costs().k256(), len)?;
+        interpreter.keccak256(interpreter.registers[a], interpreter.registers[b], len)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2225,12 +2225,12 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
-        let len = interpriter.registers[c];
-        interpriter.dependent_gas_charge(interpriter.gas_costs().s256(), len)?;
-        interpriter.sha256(interpriter.registers[a], interpriter.registers[b], len)?;
+        let len = interpreter.registers[c];
+        interpreter.dependent_gas_charge(interpreter.gas_costs().s256(), len)?;
+        interpreter.sha256(interpreter.registers[a], interpreter.registers[b], len)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2244,11 +2244,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().flag())?;
+        interpreter.gas_charge(interpreter.gas_costs().flag())?;
         let a = self.unpack();
-        interpriter.set_flag(interpriter.registers[a])?;
+        interpreter.set_flag(interpreter.registers[a])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2262,11 +2262,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().gm())?;
+        interpreter.gas_charge(interpreter.gas_costs().gm())?;
         let (a, imm) = self.unpack();
-        interpriter.metadata(a, imm.into())?;
+        interpreter.metadata(a, imm.into())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2280,11 +2280,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().gtf())?;
+        interpreter.gas_charge(interpreter.gas_costs().gtf())?;
         let (a, b, imm) = self.unpack();
-        interpriter.get_transaction_field(a, interpriter.registers[b], imm.into())?;
+        interpreter.get_transaction_field(a, interpreter.registers[b], imm.into())?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2298,14 +2298,14 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().tr())?;
+        interpreter.gas_charge(interpreter.gas_costs().tr())?;
         let (a, b, c) = self.unpack();
-        interpriter.transfer(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
+        interpreter.transfer(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2320,15 +2320,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter.gas_charge(interpriter.gas_costs().tro())?;
+        interpreter.gas_charge(interpreter.gas_costs().tro())?;
         let (a, b, c, d) = self.unpack();
-        interpriter.transfer_output(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.transfer_output(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2343,10 +2343,10 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        interpriter.external_call(a, b, c, d)?;
+        interpreter.external_call(a, b, c, d)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2360,11 +2360,11 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for this inside the function.
         let (a, b) = self.unpack();
-        interpriter.blob_size(a, interpriter.registers[b])?;
+        interpreter.blob_size(a, interpreter.registers[b])?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -2378,15 +2378,15 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for this inside the function.
         let (a, b, c, d) = self.unpack();
-        interpriter.blob_load_data(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.blob_load_data(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2401,16 +2401,16 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpriter
-            .gas_charge(interpriter.gas_costs().ecop().map_err(PanicReason::from)?)?;
+        interpreter
+            .gas_charge(interpreter.gas_costs().ecop().map_err(PanicReason::from)?)?;
         let (a, b, c, d) = self.unpack();
-        interpriter.ec_operation(
-            interpriter.registers[a],
-            interpriter.registers[b],
-            interpriter.registers[c],
-            interpriter.registers[d],
+        interpreter.ec_operation(
+            interpreter.registers[a],
+            interpreter.registers[b],
+            interpreter.registers[c],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }
@@ -2425,19 +2425,19 @@ where
 {
     fn execute(
         self,
-        interpriter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
-        let len = interpriter.registers[c];
-        interpriter.dependent_gas_charge(
-            interpriter.gas_costs().epar().map_err(PanicReason::from)?,
+        let len = interpreter.registers[c];
+        interpreter.dependent_gas_charge(
+            interpreter.gas_costs().epar().map_err(PanicReason::from)?,
             len,
         )?;
-        interpriter.ec_pairing(
+        interpreter.ec_pairing(
             a,
-            interpriter.registers[b],
+            interpreter.registers[b],
             len,
-            interpriter.registers[d],
+            interpreter.registers[d],
         )?;
         Ok(ExecuteState::Proceed)
     }

@@ -5,11 +5,16 @@ use crate::{
     prelude::*,
 };
 use core::iter;
-use std::panic;
 use fuel_asm::op;
 use fuel_tx::{
-    field::{MaxFeeLimit, Outputs}, ConsensusParameters, FeeParameters
+    field::{
+        MaxFeeLimit,
+        Outputs,
+    },
+    ConsensusParameters,
+    FeeParameters,
 };
+use std::panic;
 
 #[test]
 fn gas_factor_rounds_correctly() {

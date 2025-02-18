@@ -143,7 +143,7 @@ fn test_mint(
         context: &context,
         receipts: &mut receipts,
         memory: &mut memory,
-        
+
         new_storage_gas_per_byte: 1,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -235,7 +235,7 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        
+
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),

@@ -90,7 +90,7 @@ fn test_state_read_word(
         let input = StateWriteWordCtx {
             storage: &mut storage,
             memory: &mut memory,
-            context: &context,            
+            context: &context,
             new_storage_gas_per_byte: 1,
             cgas: RegMut::new(&mut cgas),
             ggas: RegMut::new(&mut ggas),
@@ -156,7 +156,7 @@ fn test_state_write_word(
         let input = StateWriteWordCtx {
             storage: &mut storage,
             memory: &mut memory,
-            context: &context,            
+            context: &context,
             new_storage_gas_per_byte: 1,
             cgas: RegMut::new(&mut cgas),
             ggas: RegMut::new(&mut ggas),

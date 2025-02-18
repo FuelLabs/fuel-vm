@@ -1,9 +1,7 @@
 //! This module contains logic on contract management.
 
 use super::{
-    gas::{
-        gas_charge,
-    },
+    gas::gas_charge,
     internal::{
         external_asset_id_balance_sub,
         inc_pc,
@@ -106,7 +104,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            
+
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -149,7 +147,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            
+
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -211,7 +209,7 @@ struct TransferCtx<'vm, S, Tx> {
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
-    
+
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
     input_contracts: InputContracts<'vm>,

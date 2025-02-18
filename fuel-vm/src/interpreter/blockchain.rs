@@ -184,7 +184,7 @@ where
             context: &self.context,
             memory: self.memory.as_ref(),
             receipts: &mut self.receipts,
-            
+
             new_storage_gas_per_byte,
             cgas,
             ggas,
@@ -207,12 +207,8 @@ where
         // We will charge for the contract's size in the `code_copy`.
         self.gas_charge(gas_cost.base())?;
         let owner = self.ownership_registers();
-        let (
-            SystemRegisters {
-                cgas, ggas, pc, ..
-            },
-            _,
-        ) = split_registers(&mut self.registers);
+        let (SystemRegisters { cgas, ggas, pc, .. }, _) =
+            split_registers(&mut self.registers);
         let input = CodeCopyCtx {
             memory: self.memory.as_mut(),
             input_contracts: InputContracts::new(
@@ -262,17 +258,13 @@ where
         let gas_cost = self.gas_costs().croo();
         self.gas_charge(gas_cost.base())?;
         let owner = self.ownership_registers();
-        let (
-            SystemRegisters {
-                cgas, ggas, pc, ..
-            },
-            _,
-        ) = split_registers(&mut self.registers);
+        let (SystemRegisters { cgas, ggas, pc, .. }, _) =
+            split_registers(&mut self.registers);
         CodeRootCtx {
             memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
-            
+
             input_contracts: InputContracts::new(
                 &self.input_contracts,
                 &mut self.panic_context,
@@ -294,18 +286,14 @@ where
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `code_size`.
         self.gas_charge(gas_cost.base())?;
-        let (
-            SystemRegisters {
-                cgas, ggas, pc, ..
-            },
-            mut w,
-        ) = split_registers(&mut self.registers);
+        let (SystemRegisters { cgas, ggas, pc, .. }, mut w) =
+            split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         let input = CodeSizeCtx {
             memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
-            
+
             input_contracts: InputContracts::new(
                 &self.input_contracts,
                 &mut self.panic_context,
@@ -414,11 +402,7 @@ where
         let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
         let (
             SystemRegisters {
-                cgas,
-                ggas,
-                fp,
-                pc,
-                ..
+                cgas, ggas, fp, pc, ..
             },
             mut w,
         ) = split_registers(&mut self.registers);
@@ -433,7 +417,7 @@ where
             StateWriteWordCtx {
                 storage,
                 memory: memory.as_ref(),
-                context,                
+                context,
                 new_storage_gas_per_byte,
                 cgas,
                 ggas,
@@ -455,12 +439,8 @@ where
     ) -> IoResult<(), S::DataError> {
         let new_storage_per_byte = self.gas_costs().new_storage_per_byte();
         let contract_id = self.internal_contract();
-        let (
-            SystemRegisters {
-                cgas, ggas, pc, ..
-            },
-            mut w,
-        ) = split_registers(&mut self.registers);
+        let (SystemRegisters { cgas, ggas, pc, .. }, mut w) =
+            split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateWriteQWord {
@@ -532,7 +512,7 @@ struct LoadContractCodeCtx<'vm, S> {
     contract_max_size: u64,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
-    
+
     input_contracts: InputContracts<'vm>,
     storage: &'vm S,
     gas_cost: DependentCost,
@@ -850,7 +830,7 @@ struct MintCtx<'vm, S> {
     storage: &'vm mut S,
     context: &'vm Context,
     memory: &'vm MemoryInstance,
-    
+
     receipts: &'vm mut ReceiptsCtx,
     new_storage_gas_per_byte: Word,
     cgas: RegMut<'vm, CGAS>,
@@ -999,7 +979,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
 struct CodeRootCtx<'vm, S> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
-    gas_cost: DependentCost,    
+    gas_cost: DependentCost,
     input_contracts: InputContracts<'vm>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -1042,7 +1022,7 @@ impl<S> CodeRootCtx<'_, S> {
 struct CodeSizeCtx<'vm, S> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
-    gas_cost: DependentCost,    
+    gas_cost: DependentCost,
     input_contracts: InputContracts<'vm>,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -1324,7 +1304,7 @@ struct StateWriteQWord {
 fn state_write_qword<'vm, S: InterpreterStorage>(
     contract_id: &ContractId,
     storage: &mut S,
-    memory: &MemoryInstance,    
+    memory: &MemoryInstance,
     new_storage_gas_per_byte: Word,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,

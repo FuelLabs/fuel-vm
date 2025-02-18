@@ -75,7 +75,7 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
-            
+
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,

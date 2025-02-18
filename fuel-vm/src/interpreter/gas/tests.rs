@@ -105,16 +105,12 @@ fn test_dependent_gas_charge(input: DepGasChargeInput) -> SimpleResult<GasCharge
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
 
-    dependent_gas_charge(
-        cgas.as_mut(),
-        ggas.as_mut(),
-        gas_cost,
-        dependent_factor,
+    dependent_gas_charge(cgas.as_mut(), ggas.as_mut(), gas_cost, dependent_factor).map(
+        |_| GasChargeOutput {
+            cgas: *cgas,
+            ggas: *ggas,
+        },
     )
-    .map(|_| GasChargeOutput {
-        cgas: *cgas,
-        ggas: *ggas,
-    })
 }
 
 #[test_case(

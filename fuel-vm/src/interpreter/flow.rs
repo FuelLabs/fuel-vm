@@ -389,7 +389,6 @@ where
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             current_contract,
-            
         }
         .prepare_call()
     }
@@ -454,7 +453,6 @@ struct PrepareCallCtx<'vm, S> {
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
-    
 }
 
 impl<S> PrepareCallCtx<'_, S>

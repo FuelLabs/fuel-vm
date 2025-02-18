@@ -127,7 +127,7 @@ fn test_code_root_contract_not_found() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-        
+
         input_contracts: InputContracts::new(
             &input_contracts.into_iter().collect(),
             &mut panic_context,
@@ -174,7 +174,7 @@ fn test_code_root_contract_not_in_inputs() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-        
+
         input_contracts: InputContracts::new(
             &input_contracts.into_iter().collect(),
             &mut panic_context,

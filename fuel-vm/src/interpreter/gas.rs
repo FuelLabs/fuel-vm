@@ -13,9 +13,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::DependentCost;
-use fuel_types::{
-    Word,
-};
+use fuel_types::Word;
 
 #[cfg(test)]
 mod tests;
@@ -39,9 +37,7 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let SystemRegisters {
-            ggas, cgas, ..
-        } = split_registers(&mut self.registers).0;
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
         dependent_gas_charge(cgas, ggas, gas_cost, arg)
     }
 
@@ -50,17 +46,13 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let SystemRegisters {
-            ggas, cgas, ..
-        } = split_registers(&mut self.registers).0;
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
         dependent_gas_charge_without_base(cgas, ggas, gas_cost, arg)
     }
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
     pub fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
-        let SystemRegisters {
-            ggas, cgas, ..
-        } = split_registers(&mut self.registers).0;
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
 
         gas_charge(cgas, ggas, gas)
     }
@@ -73,7 +65,7 @@ pub(crate) fn dependent_gas_charge_without_base(
     arg: Word,
 ) -> SimpleResult<()> {
     let cost = gas_cost.resolve_without_base(arg);
-    gas_charge_inner(cgas.as_mut(), ggas, cost)
+    gas_charge(cgas.as_mut(), ggas, cost)
 }
 
 pub(crate) fn dependent_gas_charge(
@@ -83,18 +75,10 @@ pub(crate) fn dependent_gas_charge(
     arg: Word,
 ) -> SimpleResult<()> {
     let cost = gas_cost.resolve(arg);
-    gas_charge_inner(cgas.as_mut(), ggas, cost)
+    gas_charge(cgas.as_mut(), ggas, cost)
 }
 
 pub(crate) fn gas_charge(
-    cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    gas: Word,
-) -> SimpleResult<()> {
-    gas_charge_inner(cgas, ggas, gas)
-}
-
-fn gas_charge_inner(
     mut cgas: RegMut<CGAS>,
     mut ggas: RegMut<GGAS>,
     gas: Word,

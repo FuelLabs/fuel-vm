@@ -6,7 +6,6 @@ use crate::{
         Bug,
         BugVariant,
     },
-    profiler::Profiler,
 };
 
 use fuel_asm::{
@@ -14,10 +13,7 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::DependentCost;
-use fuel_types::{
-    ContractId,
-    Word,
-};
+use fuel_types::Word;
 
 #[cfg(test)]
 mod tests;
@@ -41,17 +37,8 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let current_contract = self.contract_id();
-        let SystemRegisters {
-            pc, ggas, cgas, is, ..
-        } = split_registers(&mut self.registers).0;
-        let profiler = ProfileGas {
-            pc: pc.as_ref(),
-            is: is.as_ref(),
-            current_contract,
-            profiler: &mut self.profiler,
-        };
-        dependent_gas_charge(cgas, ggas, profiler, gas_cost, arg)
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
+        dependent_gas_charge(cgas, ggas, gas_cost, arg)
     }
 
     pub(crate) fn dependent_gas_charge_without_base(
@@ -59,71 +46,39 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         gas_cost: DependentCost,
         arg: Word,
     ) -> SimpleResult<()> {
-        let current_contract = self.contract_id();
-        let SystemRegisters {
-            pc, ggas, cgas, is, ..
-        } = split_registers(&mut self.registers).0;
-        let profiler = ProfileGas {
-            pc: pc.as_ref(),
-            is: is.as_ref(),
-            current_contract,
-            profiler: &mut self.profiler,
-        };
-        dependent_gas_charge_without_base(cgas, ggas, profiler, gas_cost, arg)
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
+        dependent_gas_charge_without_base(cgas, ggas, gas_cost, arg)
     }
 
     /// Do a gas charge with the given amount, panicing when running out of gas.
     pub fn gas_charge(&mut self, gas: Word) -> SimpleResult<()> {
-        let current_contract = self.contract_id();
-        let SystemRegisters {
-            pc, ggas, cgas, is, ..
-        } = split_registers(&mut self.registers).0;
+        let SystemRegisters { ggas, cgas, .. } = split_registers(&mut self.registers).0;
 
-        let profiler = ProfileGas {
-            pc: pc.as_ref(),
-            is: is.as_ref(),
-            current_contract,
-            profiler: &mut self.profiler,
-        };
-        gas_charge(cgas, ggas, profiler, gas)
+        gas_charge(cgas, ggas, gas)
     }
 }
 
 pub(crate) fn dependent_gas_charge_without_base(
     mut cgas: RegMut<CGAS>,
     ggas: RegMut<GGAS>,
-    mut profiler: ProfileGas<'_>,
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
     let cost = gas_cost.resolve_without_base(arg);
-    profiler.profile(cgas.as_ref(), cost);
-    gas_charge_inner(cgas.as_mut(), ggas, cost)
+    gas_charge(cgas.as_mut(), ggas, cost)
 }
 
 pub(crate) fn dependent_gas_charge(
     mut cgas: RegMut<CGAS>,
     ggas: RegMut<GGAS>,
-    mut profiler: ProfileGas<'_>,
     gas_cost: DependentCost,
     arg: Word,
 ) -> SimpleResult<()> {
     let cost = gas_cost.resolve(arg);
-    profiler.profile(cgas.as_ref(), cost);
-    gas_charge_inner(cgas.as_mut(), ggas, cost)
+    gas_charge(cgas.as_mut(), ggas, cost)
 }
 
 pub(crate) fn gas_charge(
-    cgas: RegMut<CGAS>,
-    ggas: RegMut<GGAS>,
-    mut profiler: ProfileGas<'_>,
-    gas: Word,
-) -> SimpleResult<()> {
-    profiler.profile(cgas.as_ref(), gas);
-    gas_charge_inner(cgas, ggas, gas)
-}
-
-fn gas_charge_inner(
     mut cgas: RegMut<CGAS>,
     mut ggas: RegMut<GGAS>,
     gas: Word,
@@ -146,33 +101,5 @@ fn gas_charge_inner(
             .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
 
         Ok(())
-    }
-}
-
-#[allow(dead_code)]
-pub(crate) struct ProfileGas<'a> {
-    pub pc: Reg<'a, PC>,
-    pub is: Reg<'a, IS>,
-    pub current_contract: Option<ContractId>,
-    pub profiler: &'a mut Profiler,
-}
-
-impl ProfileGas<'_> {
-    #[allow(unused_variables)]
-    pub(crate) fn profile(&mut self, cgas: Reg<CGAS>, gas: Word) {
-        #[cfg(feature = "profile-coverage")]
-        {
-            let location =
-                super::current_location(self.current_contract, self.pc, self.is);
-            self.profiler.set_coverage(location);
-        }
-
-        #[cfg(feature = "profile-gas")]
-        {
-            let gas_use = gas.min(*cgas);
-            let location =
-                super::current_location(self.current_contract, self.pc, self.is);
-            self.profiler.add_gas(location, gas_use);
-        }
     }
 }

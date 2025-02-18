@@ -27,11 +27,9 @@ fn test_gas_charge(input: GasChargeInput) -> SimpleResult<GasChargeOutput> {
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    gas_charge(cgas.as_mut(), ggas.as_mut(), dependent_factor).map(|_| {
-        GasChargeOutput {
-            cgas: *cgas,
-            ggas: *ggas,
-        }
+    gas_charge(cgas.as_mut(), ggas.as_mut(), dependent_factor).map(|_| GasChargeOutput {
+        cgas: *cgas,
+        ggas: *ggas,
     })
 }
 

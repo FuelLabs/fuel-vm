@@ -1,10 +1,7 @@
 //! This module contains logic on contract management.
 
 use super::{
-    gas::{
-        gas_charge,
-        ProfileGas,
-    },
+    gas::gas_charge,
     internal::{
         external_asset_id_balance_sub,
         inc_pc,
@@ -30,7 +27,6 @@ use crate::{
         receipts::ReceiptsCtx,
         InputContracts,
     },
-    prelude::Profiler,
     storage::{
         BlobData,
         ContractsAssetsStorage,
@@ -108,7 +104,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
+
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -151,7 +147,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
+
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -213,7 +209,7 @@ struct TransferCtx<'vm, S, Tx> {
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
-    profiler: &'vm mut Profiler,
+
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
     input_contracts: InputContracts<'vm>,
@@ -274,16 +270,9 @@ impl<S, Tx> TransferCtx<'_, S, Tx> {
             balance_increase(self.storage, &destination, &asset_id, amount)?;
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
-            let profiler = ProfileGas {
-                pc: self.pc.as_ref(),
-                is: self.is,
-                current_contract: internal_context,
-                profiler: self.profiler,
-            };
             gas_charge(
                 self.cgas,
                 self.ggas,
-                profiler,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;

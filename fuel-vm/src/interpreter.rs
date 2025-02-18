@@ -11,6 +11,7 @@ use crate::{
     context::Context,
     error::SimpleResult,
     state::Debugger,
+    verification,
 };
 use alloc::vec::Vec;
 use core::{
@@ -106,14 +107,20 @@ pub struct NotSupportedEcal;
 
 /// VM interpreter.
 ///
-/// The internal state of the VM isn't expose because the intended usage is to
+/// The internal state of the VM isn't exposed because the intended usage is to
 /// either inspect the resulting receipts after a transaction execution, or the
 /// resulting mutated transaction.
 ///
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
+pub struct Interpreter<
+    M,
+    S,
+    Tx = (),
+    Ecal = NotSupportedEcal,
+    OnVerifyError = verification::Panic,
+> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: M,
     frames: Vec<CallFrame>,
@@ -131,6 +138,7 @@ pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
     ecal_state: Ecal,
+    verification_state: OnVerifyError,
 }
 
 /// Interpreter parameters
@@ -204,21 +212,23 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<M: Memory, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: Memory, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError> {
     /// Returns the current state of the VM memory
     pub fn memory(&self) -> &MemoryInstance {
         self.memory.as_ref()
     }
 }
 
-impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: AsMut<MemoryInstance>, S, Tx, Ecal, OnVerifyError>
+    Interpreter<M, S, Tx, Ecal, OnVerifyError>
+{
     /// Returns mutable access to the vm memory
     pub fn memory_mut(&mut self) -> &mut MemoryInstance {
         self.memory.as_mut()
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers

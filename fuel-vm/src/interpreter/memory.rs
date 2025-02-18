@@ -649,7 +649,7 @@ impl MemoryRange {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     M: Memory,
 {
@@ -1035,7 +1035,9 @@ pub struct OwnershipRegisters {
 }
 
 impl OwnershipRegisters {
-    pub(crate) fn new<M, S, Tx, Ecal>(vm: &Interpreter<M, S, Tx, Ecal>) -> Self {
+    pub(crate) fn new<M, S, Tx, Ecal, OnVerifyError>(
+        vm: &Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+    ) -> Self {
         let prev_hp = vm
             .frames
             .last()

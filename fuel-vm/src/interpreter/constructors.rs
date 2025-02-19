@@ -28,10 +28,11 @@ use crate::{
     storage::MemoryStorage,
 };
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     Tx: Default,
     Ecal: Default,
+    OnVerifyError: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -47,9 +48,10 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     Tx: Default,
+    OnVerifyError: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -79,6 +81,7 @@ where
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,
+            verification_state: Default::default(),
         }
     }
 }

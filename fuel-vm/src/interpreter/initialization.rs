@@ -29,7 +29,7 @@ use fuel_types::Word;
 
 use crate::interpreter::CheckedMetadata;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     M: Memory,
     Tx: ExecutableTransaction,
@@ -125,7 +125,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     M: Memory,
     Tx: ExecutableTransaction,
@@ -157,7 +157,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     M: Memory,
     S: InterpreterStorage,

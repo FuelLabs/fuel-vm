@@ -166,8 +166,10 @@ impl RuntimeBalances {
 
     /// Write all assets into the start of VM stack, i.e. at $ssp.
     /// Panics if the assets cannot fit.
-    pub fn to_vm<M, S, Tx, Ecal>(self, vm: &mut Interpreter<M, S, Tx, Ecal>)
-    where
+    pub fn to_vm<M, S, Tx, Ecal, OnVerifyError>(
+        self,
+        vm: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+    ) where
         M: Memory,
         Tx: ExecutableTransaction,
     {

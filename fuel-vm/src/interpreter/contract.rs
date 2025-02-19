@@ -52,7 +52,7 @@ use fuel_types::{
     ContractId,
 };
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     M: Memory,
     S: InterpreterStorage,

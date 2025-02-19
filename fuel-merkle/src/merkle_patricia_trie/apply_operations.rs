@@ -9,10 +9,6 @@ use fuel_storage::{
     Mappable,
     StorageMutate,
 };
-use hashbrown::{
-    HashMap,
-    HashSet,
-};
 
 use alloc::vec::Vec;
 
@@ -37,21 +33,22 @@ impl Pending {
         self.to_insert.push((node, value));
     }
 
-    fn switch(&mut self, src: RlpNode, dst: RlpNode, dst_node: TrieNode) -> RlpNode {
+    pub fn merge(mut self, other: Pending) -> Pending {
+        self.to_delete.extend(other.to_delete);
+        self.to_insert.extend(other.to_insert);
+
+        self
+    }
+
+    pub fn replace(&mut self, src: RlpNode, dst: RlpNode, dst_node: TrieNode) -> RlpNode {
         self.delete(src);
         self.insert(dst.clone(), dst_node);
         dst
     }
 }
 
-trait ApplyOperations {
-    fn apply_operations(
-        &mut self,
-        src: RlpNode,
-        dst: RlpNode,
-        dst_node: TrieNode,
-        pending: Pending,
-    ) -> anyhow::Result<()>;
+pub trait ApplyOperations {
+    fn apply_operations(&mut self, pending: Pending) -> anyhow::Result<()>;
 }
 
 impl<Storage, NodesTable> ApplyOperations

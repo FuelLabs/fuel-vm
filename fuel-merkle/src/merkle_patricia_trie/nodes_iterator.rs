@@ -14,6 +14,10 @@ use fuel_storage::{
 use nybbles::Nibbles;
 
 // Iterator for traversing a trie node with respect to a Nibble path
+// The nibble path must be obtained from a leaf key, e.g. consist of
+// exactly 64 nibbles. This guarantees that we never reach a branch
+// node as the last node in the path, and we can return the nibble
+// that will be used to select a node together with a branch node.
 pub struct NodeIterator<'a, 'b, StorageType, NodesTableType> {
     pub(crate) nibbles_left: &'a [u8],
     pub(crate) current_node: Option<RlpNode>,
@@ -30,6 +34,8 @@ impl<StorageType, NodesTableType> NodeIterator<'_, '_, StorageType, NodesTableTy
 pub enum TraversedNode {
     EmptyRoot(RlpNode),
     Leaf(RlpNode, LeafNode),
+    // The branch node, the branch node itself, and the nibble that will be used to
+    // select the next node.
     Branch(RlpNode, BranchNode, u8),
     Extension(RlpNode, ExtensionNode),
 }
@@ -50,12 +56,11 @@ where
         match node {
             Err(e) => Some(Err(e)),
             Ok(None) => Some(Err(anyhow::anyhow!(
-                "Node {:?} referenced but not found",
+                "Node {:?} referenced but not present in storage",
                 current_rlp_node
             ))),
             Ok(Some(node)) => {
-                let owned_node = node.into_owned();
-                match &owned_node {
+                match node.as_ref() {
                     TrieNode::EmptyRoot => {
                         // This can happen if we have the whole tree is empty.
                         // There is no next node in the path
@@ -71,6 +76,10 @@ where
                         let Some((next_nibble, nibbles_left)) =
                             self.nibbles_left.split_first()
                         else {
+                            // Technically here we encountered a branch node that we never
+                            // return in the iterator, but I guess this is okay since this
+                            // scenario should not be possible in the current
+                            // implementation.
                             self.current_node = None;
                             return Some(Err(anyhow::anyhow!(
                                 "Branch node at the end of path, no nibbles left"
@@ -80,6 +89,7 @@ where
                         let next_node = branch_node_ref
                             .children()
                             .find(|(nibble, _node)| (nibble == next_nibble))
+                            // Guaranteed to exist because the nibble
                             .unwrap()
                             .1;
                         self.nibbles_left = nibbles_left;
@@ -104,9 +114,10 @@ where
                         } else {
                             // Do not update the nibbles left, as this information
                             // is needed when inserting a new leaf.
-
                             self.current_node = None;
                         };
+                        // We return the extension node irrespsective of whether it
+                        // can be traversed completely or not.
                         Some(Ok(TraversedNode::Extension(
                             current_rlp_node,
                             extension_node.clone(),

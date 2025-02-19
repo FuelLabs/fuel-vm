@@ -112,10 +112,7 @@ where
     }
 
     pub(crate) const fn is_predicate(&self) -> bool {
-        matches!(
-            self.context,
-            Context::PredicateEstimation { .. } | Context::PredicateVerification { .. }
-        )
+        self.context.is_predicate()
     }
 
     pub(crate) fn internal_contract(&self) -> Result<ContractId, PanicReason> {

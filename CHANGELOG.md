@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [907](https://github.com/FuelLabs/fuel-vm/pull/907): `StorageRead` and `StorageWrite` traits no longer return the number of bytes written. They already required that the whole buffer is used, but now this is reflected in signature and documentation as well.
 - [914](https://github.com/FuelLabs/fuel-vm/pull/914): The built-in profiler is removed. Use the debugger with single-stepping instead.
 
+### Changed
+- [904](https://github.com/FuelLabs/fuel-vm/pull/904): Moved the logic of each opcode into its own function. It helps so reduce the size of the `instruction_inner` function, allowing compiler to do better optimizations. The Mira swaps receive performance improvement in 16.5%.
+
 ### Fixed
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Fix elided lifetimes compilation warnings that became errors after the release of rust 1.83.0. 
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 

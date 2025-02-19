@@ -278,7 +278,7 @@ jobs:
       - publish
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
-
+    environment: npm-deploy
     steps:
       - uses: actions/checkout@v3
         with:
@@ -315,9 +315,9 @@ jobs:
       - name: Ensure NPM access
         run: npm whoami
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}
 
       - name: Publish
         run: pnpm -C .npm publish -r --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}

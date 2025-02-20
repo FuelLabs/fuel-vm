@@ -116,12 +116,34 @@ where
         Ok((new_extension_node_rlp, pending))
     }
 
+    fn get_child_node_from_storage(
+        &self,
+        branch: &BranchNode,
+        nibble: u8,
+    ) -> anyhow::Result<Option<(RlpNode, TrieNode)>> {
+        let children = Self::expand_branch_node(branch);
+        let child_rlp = children
+            .get(usize::from(nibble))
+            .and_then(|child| child.as_ref());
+
+        child_rlp
+            .map(|child_rlp| {
+                let child_node = self
+                    .storage
+                    .get(&child_rlp)?
+                    .ok_or_else(|| anyhow::anyhow!("Child node not found in storage"))?;
+                Ok((child_rlp.clone(), child_node.into_owned()))
+            })
+            .transpose()
+    }
+
     // Helper function to remove a branch node and replace it with an extension node.
     // To be used only if the branch node has one child at `nibble` position.
     fn prepare_branch_to_extension_node(
-        &self,
         branch_node: BranchNode,
         nibble: u8,
+        node_to_connect_rlp: &RlpNode,
+        node_to_connect: &TrieNode,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let branch_node_rlp =
             TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33));
@@ -134,24 +156,8 @@ where
             1
         );
         debug_assert!(expanded_branch_node[usize::from(nibble)].is_some());
-        let Some(node_to_connect_rlp) = expanded_branch_node
-            .get(usize::from(nibble))
-            .into_iter()
-            .flatten()
-            .next()
-        else {
-            anyhow::bail!(
-                "Branch node has no child at selected nibble position {}",
-                nibble
-            )
-        };
 
-        let node_to_connect =
-            self.storage.get(&node_to_connect_rlp)?.ok_or_else(|| {
-                anyhow::anyhow!("Node referenced by branch node not found in storage")
-            })?;
-
-        match node_to_connect.as_ref() {
+        match node_to_connect {
             TrieNode::Branch(_branch_node) => {
                 // If the node to connect is a branch node, we can create a new extension
                 // node with a single nibble pointing to it.
@@ -517,7 +523,7 @@ where
         // We have traversed the path in the tree. The new leaf will be
         // appended to the last node in the path. Different cases should
         // be considered according to the type of the last traversed node.
-        let (mut rlp_of_new_node, mut pending_changes) = match last_traversed_node {
+        let (mut rlp_of_new_node, pending_changes) = match last_traversed_node {
             TraversedNode::EmptyRoot(_node_rlp) => {
                 // If the last traversed node is the empty root, then we can insert the
                 // leaf directly. We must create a new branch node with a
@@ -548,7 +554,7 @@ where
                 // Make a linear path to the leaf node. This could be either a
                 // leaf node, if the nibbles left are empty, or an extension node
                 // pointing to the leaf node.
-                let (extension_or_leaf_node_rlp, mut pending) =
+                let (extension_or_leaf_node_rlp, pending) =
                     Self::make_linear_path_to_leaf(
                         Nibbles::from_nibbles(nibbles_left),
                         key,
@@ -599,8 +605,7 @@ where
                     pending.delete(old_rlp_node);
                     (rlp_node, pending)
                 } else {
-                    let (leaf_rlp_node, mut pending) =
-                        Self::prepare_store_leaf(key, value)?;
+                    let (leaf_rlp_node, pending) = Self::prepare_store_leaf(key, value)?;
                     let extension_node = ExtensionNode::new(
                         Nibbles::from_nibbles(other_leaf_node_relevant_key_nibbles),
                         leaf_rlp_node.clone(),
@@ -741,11 +746,10 @@ where
                         }
                         TraversedNode::Extension(
                             ref extension_node_rlp,
-                            ref extension_node,
+                            _extension_node,
                         ) => {
                             // Remove the extension node
                             self.storage.remove(extension_node_rlp)?;
-                            let key_len: u8 = extension_node.key.len().try_into()?;
                             stage = Stage::InProgress;
                         }
                         TraversedNode::Branch(
@@ -770,10 +774,21 @@ where
 
                             if should_transform_into_extension_node {
                                 let (nibble, _node) = first_sibling;
-                                let (new_extension_node_rlp, pending) = self
-                                    .prepare_branch_to_extension_node(
+                                let Some((child_at_nibble_rlp, child_at_nibble)) = self
+                                    .get_child_node_from_storage(
+                                    &branch_node,
+                                    *nibble,
+                                )?
+                                else {
+                                    anyhow::bail!("Child node not found in storage")
+                                };
+
+                                let (new_extension_node_rlp, pending) =
+                                    Self::prepare_branch_to_extension_node(
                                         branch_node.clone(),
                                         *nibble,
+                                        &child_at_nibble_rlp,
+                                        &child_at_nibble,
                                     )?;
                                 self.apply_operations(pending)?;
                                 stage = Stage::JoinExtensionNodes(new_extension_node_rlp);

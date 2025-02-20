@@ -13,6 +13,7 @@ use alloy_trie::{
 
 use fuel_storage::{
     Mappable,
+    StorageInspect,
     StorageMutate,
 };
 use nybbles::{
@@ -33,10 +34,9 @@ use super::{
     },
 };
 
+#[derive(Debug)]
 pub struct Trie<Storage, NodesTable> {
-    #[allow(unused)]
     pub(crate) storage: Storage,
-    #[allow(unused)]
     root: RlpNode,
     _phantom: PhantomData<NodesTable>,
 }
@@ -53,7 +53,8 @@ impl<Storage, NodesTableType> Trie<Storage, NodesTableType> {
 
 impl<StorageType, NodesTableType> Trie<StorageType, NodesTableType>
 where
-    StorageType: StorageMutate<NodesTableType, Error = anyhow::Error>,
+    StorageType: StorageInspect<NodesTableType>,
+    StorageType: StorageMutate<NodesTableType>,
     NodesTableType: Mappable<Key = RlpNode, Value = TrieNode, OwnedValue = TrieNode>,
 {
     pub fn iter<'a>(
@@ -72,11 +73,12 @@ where
     // the store.
     fn prepare_store_leaf(
         key: Bytes32,
-        value: Bytes32,
+        value: impl AsRef<[u8]>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let key_nibbles = Nibbles::unpack(key);
         // Create a new leaf node
-        let leaf_node = TrieNode::Leaf(LeafNode::new(key_nibbles, value.to_vec()));
+        let leaf_node =
+            TrieNode::Leaf(LeafNode::new(key_nibbles, Vec::from(value.as_ref())));
         let mut buf = Vec::with_capacity(33);
         let leaf_rlp_node: RlpNode = leaf_node.rlp(&mut buf);
         let mut pending = Pending::new();
@@ -130,7 +132,8 @@ where
             .map(|child_rlp| {
                 let child_node = self
                     .storage
-                    .get(&child_rlp)?
+                    .get(&child_rlp)
+                    .map_err(|_e| anyhow::anyhow!("Storage Error"))?
                     .ok_or_else(|| anyhow::anyhow!("Child node not found in storage"))?;
                 Ok((child_rlp.clone(), child_node.into_owned()))
             })
@@ -244,7 +247,7 @@ where
     fn make_linear_path_to_leaf(
         nibbles: Nibbles,
         key: Bytes32,
-        value: Bytes32,
+        value: impl AsRef<[u8]>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let (leaf_rlp_node, pending) = Self::prepare_store_leaf(key, value)?;
 
@@ -492,7 +495,11 @@ where
     }
 
     // Adds a leaf to a trie.
-    pub fn add_leaf(&mut self, key: Bytes32, value: Bytes32) -> anyhow::Result<RlpNode> {
+    pub fn add_leaf(
+        &mut self,
+        key: Bytes32,
+        value: impl AsRef<[u8]>,
+    ) -> anyhow::Result<RlpNode> {
         // convert the key and value to nibbles
         let key_nibbles = Nibbles::unpack(&key);
 
@@ -734,7 +741,12 @@ where
                     | TraversedNode::Branch(_, _, _)
                     | TraversedNode::Extension(_, _) => return Ok(self.root.clone()),
                     TraversedNode::Leaf(ref leaf_node_rlp, ref _leaf_node) => {
-                        self.storage.remove(leaf_node_rlp)?;
+                        self.storage.remove(leaf_node_rlp).map_err(|_e| {
+                            anyhow::anyhow!(
+                                "Cannot remove {:?} from storage",
+                                leaf_node_rlp
+                            )
+                        })?;
                         stage = Stage::InProgress;
                     }
                 },
@@ -749,7 +761,12 @@ where
                             _extension_node,
                         ) => {
                             // Remove the extension node
-                            self.storage.remove(extension_node_rlp)?;
+                            self.storage.remove(extension_node_rlp).map_err(|_e| {
+                                anyhow::anyhow!(
+                                    "Cannot remove {:?} from storage",
+                                    extension_node_rlp
+                                )
+                            })?;
                             stage = Stage::InProgress;
                         }
                         TraversedNode::Branch(
@@ -833,7 +850,7 @@ where
                             stage = Stage::PostDeletion(new_branch_node_rlp);
                         }
                         TraversedNode::Extension(_extension_node_rlp, extension_node) => {
-                            let connected_node = self.storage.get(&extension_node.child)?.ok_or_else(|| {
+                            let connected_node = self.storage.get(&extension_node.child).map_err(|_| anyhow::anyhow!("Cannot fetch {:?} from storage", extension_node.child))?.ok_or_else(|| {
                                 anyhow::anyhow!("Node referenced by extension node not found in storage")
                             })?;
                             let TrieNode::Extension(ref connected_node) =
@@ -902,12 +919,14 @@ where
                 anyhow::bail!("Can't be in predeletion stage.")
             }
             Stage::InProgress => {
+                let empty_node_rlp = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
                 // We traversed all the nodes in the path, keeping deleting nodes.
                 // The tree is now empty.
-                self.storage.insert(
-                    &TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33)),
-                    &TrieNode::EmptyRoot,
-                )?;
+                self.storage
+                    .insert(&empty_node_rlp, &TrieNode::EmptyRoot)
+                    .map_err(|_| {
+                        anyhow::anyhow!("Cannot insert {:?} in storage", empty_node_rlp)
+                    })?;
                 self.root = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
             }
             Stage::PostDeletion(rlp_node) | Stage::JoinExtensionNodes(rlp_node) => {

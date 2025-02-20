@@ -43,7 +43,7 @@ pub enum TraversedNode {
 impl<StorageType, NodesTableType> Iterator
     for NodeIterator<'_, '_, StorageType, NodesTableType>
 where
-    StorageType: StorageInspect<NodesTableType, Error = anyhow::Error>,
+    StorageType: StorageInspect<NodesTableType>,
     NodesTableType: Mappable<Key = RlpNode, Value = TrieNode, OwnedValue = TrieNode>,
 {
     // Return the next node, and the nibble that will be used to select the next node,
@@ -54,7 +54,10 @@ where
         let current_rlp_node = self.current_node.take()?;
         let node = self.storage.get(&current_rlp_node);
         match node {
-            Err(e) => Some(Err(e)),
+            Err(_) => Some(Err(anyhow::anyhow!(
+                "Node {:?} could not be loaded",
+                current_rlp_node
+            ))),
             Ok(None) => Some(Err(anyhow::anyhow!(
                 "Node {:?} referenced but not present in storage",
                 current_rlp_node

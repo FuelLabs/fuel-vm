@@ -11,7 +11,7 @@ use alloc::borrow::Cow;
 use hashbrown::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct StorageMap<Type, KeyConverted>
+pub struct StorageMap<Type, KeyConverted = <Type as Mappable>::OwnedKey>
 where
     Type: Mappable,
     KeyConverted: From<Type::OwnedKey>,
@@ -48,6 +48,17 @@ where
 
     pub fn len(&self) -> usize {
         self.map.len()
+    }
+}
+
+impl<Type, KeyConverted> StorageMap<Type, KeyConverted>
+where
+    Type: Mappable,
+    Type::OwnedKey: From<KeyConverted>,
+    KeyConverted: From<Type::OwnedKey> + Eq + core::hash::Hash,
+{
+    pub fn nodes(self) -> Vec<(Type::OwnedKey, Type::OwnedValue)> {
+        self.map.into_iter().map(|(k, v)| (k.into(), v)).collect()
     }
 }
 

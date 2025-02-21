@@ -1,24 +1,14 @@
 use core::borrow::Borrow;
 
 use crate::{
-    common::Bytes32,
     merkle_patricia_trie,
     sparse::{
-        self,
         proof::Proof,
         MerkleTreeKey,
-        Primitive,
     },
-    storage::{
-        Mappable,
-        StorageInspect,
-        StorageMutate,
-    },
+    storage::Mappable,
 };
-use alloc::{
-    borrow::Cow,
-    vec::Vec,
-};
+use alloc::vec::Vec;
 use alloy_trie::nodes::{
     RlpNode,
     TrieNode,
@@ -109,59 +99,15 @@ impl MerklePatriciaTrie {
         Ok(trie)
     }
 
-    /// Calculate the sparse Merkle root from a set of key-value pairs. This is
-    /// similar to constructing a new tree from a set of key-value pairs using
-    /// [from_set](Self::from_set), except this method returns only the root; it
-    /// does not write to storage nor return a sparse Merkle tree instance. It
-    /// is equivalent to calling `from_set(..)`, followed by `root()`, but does
-    /// not incur the overhead of storage writes. This can be helpful when we
-    /// know all the key-values in the set upfront and we will not need to
-    /// update the set in the future.
-    pub fn root_from_set<I, D>(set: I) -> Bytes32
+    pub fn root_from_set<I, D>(set: I) -> RlpNode
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
     {
-        #[derive(Default)]
-        struct EmptyStorage;
-
-        impl StorageInspect<NodesTable> for EmptyStorage {
-            type Error = core::convert::Infallible;
-
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
-                Ok(None)
-            }
-
-            fn contains_key(&self, _: &Bytes32) -> Result<bool, Self::Error> {
-                Ok(false)
-            }
-        }
-
-        impl StorageMutate<NodesTable> for EmptyStorage {
-            fn insert(&mut self, _: &Bytes32, _: &Primitive) -> Result<(), Self::Error> {
-                Ok(())
-            }
-
-            fn replace(
-                &mut self,
-                _: &Bytes32,
-                _: &Primitive,
-            ) -> Result<Option<Primitive>, Self::Error> {
-                Ok(None)
-            }
-
-            fn remove(&mut self, _: &Bytes32) -> Result<(), Self::Error> {
-                Ok(())
-            }
-
-            fn take(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
-                Ok(None)
-            }
-        }
-
-        let tree = sparse::MerkleTree::<NodesTable, _>::from_set(EmptyStorage, set)
-            .expect("`Storage` can't return error");
-        tree.root()
+        // TODO: Optimize this
+        let trie =
+            MerklePatriciaTrie::from_set(set).expect("`Storage` can't return error");
+        trie.trie.root()
     }
 
     /// Calculate the sparse Merkle root as well as all nodes in the Merkle tree
@@ -172,83 +118,38 @@ impl MerklePatriciaTrie {
     /// This can be helpful when we know all the key-values in the set upfront
     /// and we need to defer storage writes, such as expensive database inserts,
     /// for batch operations later in the process.
-    pub fn nodes_from_set<I, D>(set: I) -> (Bytes32, Vec<(Bytes32, Primitive)>)
+    pub fn nodes_from_set<I, D>(set: I) -> (RlpNode, Vec<(RlpNode, TrieNode)>)
     where
         I: Iterator<Item = (MerkleTreeKey, D)>,
         D: AsRef<[u8]>,
     {
-        #[derive(Default)]
-        struct VectorStorage {
-            storage: Vec<(Bytes32, Primitive)>,
-        }
+        let trie = Self::from_set(set).expect("Storage can't return error");
 
-        impl StorageInspect<NodesTable> for VectorStorage {
-            type Error = core::convert::Infallible;
-
-            fn get(&self, _: &Bytes32) -> Result<Option<Cow<Primitive>>, Self::Error> {
-                unimplemented!("Read operation is not supported")
-            }
-
-            fn contains_key(&self, _: &Bytes32) -> Result<bool, Self::Error> {
-                unimplemented!("Read operation is not supported")
-            }
-        }
-
-        impl StorageMutate<NodesTable> for VectorStorage {
-            fn insert(
-                &mut self,
-                key: &Bytes32,
-                value: &Primitive,
-            ) -> Result<(), Self::Error> {
-                self.storage.push((*key, *value));
-                Ok(())
-            }
-
-            fn replace(
-                &mut self,
-                key: &Bytes32,
-                value: &Primitive,
-            ) -> Result<Option<Primitive>, Self::Error> {
-                self.storage.push((*key, *value));
-                Ok(None)
-            }
-
-            fn remove(&mut self, _: &Bytes32) -> Result<(), Self::Error> {
-                unimplemented!("Remove operation is not supported")
-            }
-
-            fn take(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
-                unimplemented!("Take operation is not supported")
-            }
-        }
-
-        let tree =
-            sparse::MerkleTree::<NodesTable, _>::from_set(VectorStorage::default(), set)
-                .expect("`Storage` can't return error");
-        let root = tree.root();
-        let nodes = tree.into_storage().storage;
+        let root = trie.trie.root();
+        let nodes = trie.trie.storage.nodes();
 
         (root, nodes)
     }
 
     pub fn update(&mut self, key: MerkleTreeKey, data: &[u8]) {
-        let _ = self.tree.update(key, data);
+        let _ = self.trie.delete_leaf(&Nibbles::from_nibbles(key.as_ref()));
+        let _ = self.trie.add_leaf(*key, data);
     }
 
     pub fn delete(&mut self, key: MerkleTreeKey) {
-        let _ = self.tree.delete(key);
+        let _ = self.trie.delete_leaf(&Nibbles::from_nibbles(key.as_ref()));
     }
 
-    pub fn root(&self) -> Bytes32 {
-        self.tree.root()
+    pub fn root(&self) -> RlpNode {
+        self.trie.root()
     }
 
-    pub fn generate_proof(&self, key: &MerkleTreeKey) -> Option<Proof> {
-        self.tree.generate_proof(key).ok()
+    pub fn generate_proof(&self, _key: &MerkleTreeKey) -> Option<Proof> {
+        todo!()
     }
 }
 
-impl Default for MerkleTree {
+impl Default for MerklePatriciaTrie {
     fn default() -> Self {
         Self::new()
     }
@@ -256,85 +157,6 @@ impl Default for MerkleTree {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::common::sum;
-
-    fn key(data: &[u8]) -> MerkleTreeKey {
-        MerkleTreeKey::new_without_hash(sum(data))
-    }
-
     #[test]
-    fn test_empty_root() {
-        let tree = MerkleTree::new();
-        let root = tree.root();
-        let expected_root =
-            "0000000000000000000000000000000000000000000000000000000000000000";
-        assert_eq!(hex::encode(root), expected_root);
-    }
-
-    #[test]
-    fn test_update_1() {
-        let mut tree = MerkleTree::new();
-
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA");
-
-        let root = tree.root();
-        let expected_root =
-            "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
-        assert_eq!(hex::encode(root), expected_root);
-    }
-
-    #[test]
-    fn test_update_2() {
-        let mut tree = MerkleTree::new();
-
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA");
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA");
-
-        let root = tree.root();
-        let expected_root =
-            "8d0ae412ca9ca0afcb3217af8bcd5a673e798bd6fd1dfacad17711e883f494cb";
-        assert_eq!(hex::encode(root), expected_root);
-    }
-
-    #[test]
-    fn test_update_3() {
-        let mut tree = MerkleTree::new();
-
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA");
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA");
-        tree.update(key(b"\x00\x00\x00\x02"), b"DATA");
-
-        let root = tree.root();
-        let expected_root =
-            "52295e42d8de2505fdc0cc825ff9fead419cbcf540d8b30c7c4b9c9b94c268b7";
-        assert_eq!(hex::encode(root), expected_root);
-    }
-
-    #[test]
-    fn test_update_1_delete_1() {
-        let mut tree = MerkleTree::new();
-
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA");
-        tree.delete(key(b"\x00\x00\x00\x00"));
-
-        let root = tree.root();
-        let expected_root =
-            "0000000000000000000000000000000000000000000000000000000000000000";
-        assert_eq!(hex::encode(root), expected_root);
-    }
-
-    #[test]
-    fn test_update_2_delete_1() {
-        let mut tree = MerkleTree::new();
-
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA");
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA");
-        tree.delete(key(b"\x00\x00\x00\x01"));
-
-        let root = tree.root();
-        let expected_root =
-            "39f36a7cb4dfb1b46f03d044265df6a491dffc1034121bc1071a34ddce9bb14b";
-        assert_eq!(hex::encode(root), expected_root);
-    }
+    fn dummy() {}
 }

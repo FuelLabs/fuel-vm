@@ -69,6 +69,10 @@ where
         }
     }
 
+    pub fn root(&self) -> RlpNode {
+        self.root.clone()
+    }
+
     // Returns the Rlp of the node to insert, with the set of pending changes to write to
     // the store.
     fn prepare_store_leaf(

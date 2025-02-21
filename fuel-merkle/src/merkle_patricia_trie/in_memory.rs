@@ -157,6 +157,53 @@ impl Default for MerklePatriciaTrie {
 
 #[cfg(test)]
 mod test {
+    use alloy_trie::nodes::TrieNode;
+
+    use crate::sparse::MerkleTreeKey;
+
     #[test]
-    fn dummy() {}
+    fn empty_trie_returns_empty_root() {
+        let trie = super::MerklePatriciaTrie::new();
+        let root = trie.root();
+        let expected = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
+        assert_eq!(root, expected);
+    }
+
+    #[test]
+    fn add_leaf_adds_extension_node() {
+        let mut trie = super::MerklePatriciaTrie::new();
+        let key = MerkleTreeKey::new_without_hash([0; 32]);
+        trie.update(key, b"DATA");
+        let root_rlp = trie.root();
+        let nodes = trie.trie.storage.nodes();
+        // One leaf node and one extension node
+        assert_eq!(nodes.len(), 2);
+        let (extension_node_rlp, extension_node) = nodes
+            .iter()
+            .find(|(_, node)| matches!(node, TrieNode::Extension(_)))
+            .expect("Trie should have an extension node");
+
+        let (leaf_node_rlp, leaf_node) = nodes
+            .iter()
+            .find(|(_, node)| matches!(node, TrieNode::Leaf(_)))
+            .expect("Trie should have a leaf node");
+
+        let expected_extension_node_rlp = extension_node.rlp(&mut Vec::with_capacity(33));
+        let expected_leaf_node_rlp = leaf_node.rlp(&mut Vec::with_capacity(33));
+
+        assert_eq!(*extension_node_rlp, expected_extension_node_rlp);
+        assert_eq!(*leaf_node_rlp, expected_leaf_node_rlp);
+
+        let (extension_node_key, extension_node_child) = match extension_node {
+            TrieNode::Extension(node) => (&*node.key.pack(), &node.child),
+            _ => panic!("Not an extension node"),
+        };
+        assert_eq!(extension_node_key, &[0u8; 32]);
+        assert_eq!(extension_node_child, leaf_node_rlp);
+
+        assert_eq!(&root_rlp, extension_node_rlp);
+    }
+
+    #[test]
+    fn update_and_delete() {}
 }

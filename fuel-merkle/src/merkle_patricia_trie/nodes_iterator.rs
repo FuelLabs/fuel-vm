@@ -52,6 +52,14 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let current_rlp_node = self.current_node.take()?;
+        // Check if we got the empty root node, in which case we can avoid
+        // fetching it from the storage.
+        if &*current_rlp_node == &[128] {
+            self.current_node = None;
+            return Some(Ok(TraversedNode::EmptyRoot(
+                RlpNode::from_raw(&[128]).unwrap(),
+            )));
+        }
         let node = self.storage.get(&current_rlp_node);
         match node {
             Err(_) => Some(Err(anyhow::anyhow!(

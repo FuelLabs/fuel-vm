@@ -43,9 +43,10 @@ pub struct Trie<Storage, NodesTable> {
 
 impl<Storage, NodesTableType> Trie<Storage, NodesTableType> {
     pub fn new(storage: Storage) -> Self {
+        let root = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
         Self {
             storage,
-            root: RlpNode::default(),
+            root,
             _phantom: PhantomData,
         }
     }

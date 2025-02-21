@@ -1,10 +1,7 @@
 //! This module contains logic on contract management.
 
 use super::{
-    gas::{
-        gas_charge,
-        ProfileGas,
-    },
+    gas::gas_charge,
     internal::{
         external_asset_id_balance_sub,
         inc_pc,
@@ -30,7 +27,6 @@ use crate::{
         receipts::ReceiptsCtx,
         InputContracts,
     },
-    prelude::Profiler,
     storage::{
         BlobData,
         ContractsAssetsStorage,
@@ -40,7 +36,7 @@ use crate::{
 };
 use fuel_asm::{
     PanicReason,
-    RegisterId,
+    RegId,
     Word,
 };
 use fuel_storage::StorageSize;
@@ -64,7 +60,7 @@ where
 {
     pub(crate) fn contract_balance(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
@@ -108,7 +104,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
+
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -151,7 +147,7 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
+
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -185,7 +181,7 @@ struct ContractBalanceCtx<'vm, S> {
     input_contracts: InputContracts<'vm>,
 }
 
-impl<'vm, S> ContractBalanceCtx<'vm, S> {
+impl<S> ContractBalanceCtx<'_, S> {
     pub(crate) fn contract_balance(
         mut self,
         result: &mut Word,
@@ -213,7 +209,7 @@ struct TransferCtx<'vm, S, Tx> {
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
-    profiler: &'vm mut Profiler,
+
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
     input_contracts: InputContracts<'vm>,
@@ -225,7 +221,7 @@ struct TransferCtx<'vm, S, Tx> {
     pc: RegMut<'vm, PC>,
 }
 
-impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
+impl<S, Tx> TransferCtx<'_, S, Tx> {
     /// In Fuel specs:
     /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
     /// $rA -> recipient_contract_id_offset
@@ -274,16 +270,9 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             balance_increase(self.storage, &destination, &asset_id, amount)?;
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
-            let profiler = ProfileGas {
-                pc: self.pc.as_ref(),
-                is: self.is,
-                current_contract: internal_context,
-                profiler: self.profiler,
-            };
             gas_charge(
                 self.cgas,
                 self.ggas,
-                profiler,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;

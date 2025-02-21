@@ -126,7 +126,7 @@ enum PredicateRunKind<'a, Tx> {
     Estimating(&'a mut Tx),
 }
 
-impl<'a, Tx> PredicateRunKind<'a, Tx> {
+impl<Tx> PredicateRunKind<'_, Tx> {
     fn tx(&self) -> &Tx {
         match self {
             PredicateRunKind::Verifying(tx) => tx,
@@ -909,6 +909,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upgrade) = self.tx.as_upgrade_mut() {
             Self::upgrade_inner(
@@ -920,6 +921,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upload) = self.tx.as_upload_mut() {
             Self::upload_inner(
@@ -931,6 +933,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(blob) = self.tx.as_blob_mut() {
             Self::blob_inner(
@@ -942,86 +945,12 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else {
-            let gas_limit;
-            let is_empty_script;
-            if let Some(script) = self.transaction().as_script() {
-                gas_limit = *script.script_gas_limit();
-                is_empty_script = script.script().is_empty();
-            } else {
-                unreachable!(
-                    "Only `Script` transactions can be executed inside of the VM"
-                )
-            }
-
-            // TODO set tree balance
-
-            // `Interpreter` supports only `Create` and `Script` transactions. It is not
-            // `Create` -> it is `Script`.
-            let program = if !is_empty_script {
-                self.run_program()
-            } else {
-                // Return `1` as successful execution.
-                let return_val = 1;
-                self.ret(return_val)?;
-                Ok(ProgramState::Return(return_val))
-            };
-
-            let gas_used = gas_limit
-                .checked_sub(self.remaining_gas())
-                .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
-
-            // Catch VM panic and don't propagate, generating a receipt
-            let (status, program) = match program {
-                Ok(s) => {
-                    // either a revert or success
-                    let res = if let ProgramState::Revert(_) = &s {
-                        ScriptExecutionResult::Revert
-                    } else {
-                        ScriptExecutionResult::Success
-                    };
-                    (res, s)
-                }
-
-                Err(e) => match e.instruction_result() {
-                    Some(result) => {
-                        self.append_panic_receipt(result);
-
-                        (ScriptExecutionResult::Panic, ProgramState::Revert(0))
-                    }
-
-                    // This isn't a specified case of an erroneous program and should be
-                    // propagated. If applicable, OS errors will fall into this category.
-                    None => return Err(e),
-                },
-            };
-
-            let receipt = Receipt::script_result(status, gas_used);
-
-            self.receipts.push(receipt)?;
-
-            if program.is_debug() {
-                self.debugger_set_last_state(program);
-            }
-
-            let revert = matches!(program, ProgramState::Revert(_));
-            let gas_price = self.gas_price();
-            Self::finalize_outputs(
-                &mut self.tx,
-                &gas_costs,
-                &fee_params,
-                &base_asset_id,
-                revert,
-                gas_used,
-                &self.initial_balances,
-                &self.balances,
-                gas_price,
-            )?;
-
-            program
+            // This must be a `Script`.
+            self.run_program()?
         };
-        self.update_transaction_outputs()?;
 
         Ok(state)
     }
@@ -1029,36 +958,100 @@ where
     pub(crate) fn run_program(
         &mut self,
     ) -> Result<ProgramState, InterpreterError<S::DataError>> {
-        loop {
-            // Check whether the instruction will be executed in a call context
-            let in_call = !self.frames.is_empty();
+        let Some(script) = self.tx.as_script() else {
+            unreachable!("Only `Script` transactions can be executed inside of the VM")
+        };
+        let gas_limit = *script.script_gas_limit();
 
-            let state = self.execute()?;
+        let (result, state) = if script.script().is_empty() {
+            // Empty script is special-cased to simply return `1` as successful execution.
+            let return_val = 1;
+            self.ret(return_val)?;
+            (
+                ScriptExecutionResult::Success,
+                ProgramState::Return(return_val),
+            )
+        } else {
+            // TODO set tree balance
+            loop {
+                // Check whether the instruction will be executed in a call context
+                let in_call = !self.frames.is_empty();
 
-            if in_call {
-                // Only reverts should terminate execution from a call context
-                match state {
-                    ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
-                    ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
-                    _ => {}
-                }
-            } else {
-                match state {
-                    ExecuteState::Return(r) => return Ok(ProgramState::Return(r)),
-                    ExecuteState::ReturnData(d) => return Ok(ProgramState::ReturnData(d)),
-                    ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
-                    ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
-                    ExecuteState::Proceed => {}
+                match self.execute() {
+                    // Proceeding with the execution normally
+                    Ok(ExecuteState::Proceed) => continue,
+                    // Debugger events are returned directly to the caller
+                    Ok(ExecuteState::DebugEvent(d)) => {
+                        self.debugger_set_last_state(ProgramState::RunProgram(d));
+                        return Ok(ProgramState::RunProgram(d));
+                    }
+                    // Reverting terminated execution immediately
+                    Ok(ExecuteState::Revert(r)) => {
+                        break (ScriptExecutionResult::Revert, ProgramState::Revert(r))
+                    }
+                    // Returning in call context is ignored
+                    Ok(ExecuteState::Return(_) | ExecuteState::ReturnData(_))
+                        if in_call =>
+                    {
+                        continue
+                    }
+                    // In non-call context, returning terminates the execution
+                    Ok(ExecuteState::Return(r)) => {
+                        break (ScriptExecutionResult::Success, ProgramState::Return(r))
+                    }
+                    Ok(ExecuteState::ReturnData(d)) => {
+                        break (
+                            ScriptExecutionResult::Success,
+                            ProgramState::ReturnData(d),
+                        )
+                    }
+                    // Error always terminates the execution
+                    Err(e) => match e.instruction_result() {
+                        Some(result) => {
+                            self.append_panic_receipt(result);
+                            break (ScriptExecutionResult::Panic, ProgramState::Revert(0));
+                        }
+                        // This isn't a specified case of an erroneous program and should
+                        // be propagated. If applicable, OS errors
+                        // will fall into this category.
+                        // The VM state is not finalized in this case.
+                        None => return Err(e),
+                    },
                 }
             }
-        }
-    }
+        };
 
-    /// Update tx fields after execution
-    pub(crate) fn post_execute(&mut self) {
-        if let Some(script) = self.tx.as_script_mut() {
-            *script.receipts_root_mut() = self.receipts.root();
-        }
+        // Produce result receipt
+        let gas_used = gas_limit
+            .checked_sub(self.remaining_gas())
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
+        self.receipts
+            .push(Receipt::script_result(result, gas_used))?;
+
+        // Finalize the outputs
+        let fee_params = *self.fee_params();
+        let base_asset_id = *self.base_asset_id();
+        let gas_costs = self.gas_costs().clone();
+        let gas_price = self.gas_price();
+        Self::finalize_outputs(
+            &mut self.tx,
+            &gas_costs,
+            &fee_params,
+            &base_asset_id,
+            matches!(state, ProgramState::Revert(_)),
+            gas_used,
+            &self.initial_balances,
+            &self.balances,
+            gas_price,
+        )?;
+        self.update_transaction_outputs()?;
+
+        let Some(script) = self.tx.as_script_mut() else {
+            unreachable!("This is checked to hold in the beginning of this function");
+        };
+        *script.receipts_root_mut() = self.receipts.root();
+
+        Ok(state)
     }
 }
 
@@ -1081,16 +1074,6 @@ where
         self.verify_ready_tx(&tx)?;
 
         let state_result = self.init_script(tx).and_then(|_| self.run());
-        self.post_execute();
-
-        #[cfg(feature = "profile-any")]
-        {
-            let r = match &state_result {
-                Ok(state) => Ok(state),
-                Err(err) => Err(err.erase_generics()),
-            };
-            self.profiler.on_transaction(r);
-        }
 
         let state = state_result?;
         Ok(StateTransitionRef::new(

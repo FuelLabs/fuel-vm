@@ -1,6 +1,7 @@
 use super::{
     internal::inc_pc,
     ExecutableTransaction,
+    ExecutableTxType,
     Interpreter,
     Memory,
 };
@@ -12,7 +13,6 @@ use crate::{
     convert,
     error::SimpleResult,
 };
-
 use fuel_asm::{
     GMArgs,
     GTFArgs,
@@ -21,12 +21,18 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field::{
+        BlobId,
+        BytecodeRoot,
         BytecodeWitnessIndex,
+        ProofSet,
         Salt,
         Script as ScriptField,
         ScriptData,
         ScriptGasLimit,
         StorageSlots,
+        SubsectionIndex,
+        SubsectionsNumber,
+        UpgradePurpose,
     },
     policies::PolicyType,
     Input,
@@ -39,7 +45,6 @@ use fuel_types::{
     ChainId,
     Immediate12,
     Immediate18,
-    RegisterId,
     Word,
 };
 
@@ -51,11 +56,7 @@ where
     M: Memory,
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn metadata(
-        &mut self,
-        ra: RegisterId,
-        imm: Immediate18,
-    ) -> SimpleResult<()> {
+    pub(crate) fn metadata(&mut self, ra: RegId, imm: Immediate18) -> SimpleResult<()> {
         let tx_offset = self.tx_offset() as Word;
         let chain_id = self.chain_id();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
@@ -73,7 +74,7 @@ where
 
     pub(crate) fn get_transaction_field(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         imm: Immediate12,
     ) -> SimpleResult<()> {
@@ -145,6 +146,7 @@ struct GTFInput<'vm, Tx> {
 }
 
 impl<Tx> GTFInput<'_, Tx> {
+    #[allow(deprecated)]
     pub(crate) fn get_transaction_field(
         self,
         result: &mut Word,
@@ -165,7 +167,7 @@ impl<Tx> GTFInput<'_, Tx> {
         // for the field that's above VM_MAX_RAM.
 
         let a = match args {
-            GTFArgs::Type => Tx::transaction_type(),
+            GTFArgs::Type => Tx::transaction_type() as Word,
 
             // General
             GTFArgs::ScriptGasLimit => tx
@@ -193,29 +195,31 @@ impl<Tx> GTFInput<'_, Tx> {
                 .policies()
                 .get(PolicyType::MaxFee)
                 .ok_or(PanicReason::PolicyIsNotSet)?,
-            GTFArgs::ScriptInputsCount | GTFArgs::CreateInputsCount => {
-                tx.inputs().len() as Word
-            }
-            GTFArgs::ScriptOutputsCount | GTFArgs::CreateOutputsCount => {
-                tx.outputs().len() as Word
-            }
-            GTFArgs::ScriptWitnessesCount | GTFArgs::CreateWitnessesCount => {
-                tx.witnesses().len() as Word
-            }
-            GTFArgs::ScriptInputAtIndex | GTFArgs::CreateInputAtIndex => ofs
+            GTFArgs::ScriptInputsCount
+            | GTFArgs::CreateInputsCount
+            | GTFArgs::TxInputsCount => tx.inputs().len() as Word,
+            GTFArgs::ScriptOutputsCount
+            | GTFArgs::CreateOutputsCount
+            | GTFArgs::TxOutputsCount => tx.outputs().len() as Word,
+            GTFArgs::ScriptWitnessesCount
+            | GTFArgs::CreateWitnessesCount
+            | GTFArgs::TxWitnessesCount => tx.witnesses().len() as Word,
+            GTFArgs::ScriptInputAtIndex
+            | GTFArgs::CreateInputAtIndex
+            | GTFArgs::TxInputAtIndex => ofs
                 .saturating_add(tx.inputs_offset_at(b).ok_or(PanicReason::InputNotFound)?)
                 as Word,
-            GTFArgs::ScriptOutputAtIndex | GTFArgs::CreateOutputAtIndex => {
-                ofs.saturating_add(
-                    tx.outputs_offset_at(b).ok_or(PanicReason::OutputNotFound)?,
-                ) as Word
-            }
-            GTFArgs::ScriptWitnessAtIndex | GTFArgs::CreateWitnessAtIndex => {
-                ofs.saturating_add(
-                    tx.witnesses_offset_at(b)
-                        .ok_or(PanicReason::WitnessNotFound)?,
-                ) as Word
-            }
+            GTFArgs::ScriptOutputAtIndex
+            | GTFArgs::CreateOutputAtIndex
+            | GTFArgs::TxOutputAtIndex => ofs.saturating_add(
+                tx.outputs_offset_at(b).ok_or(PanicReason::OutputNotFound)?,
+            ) as Word,
+            GTFArgs::ScriptWitnessAtIndex
+            | GTFArgs::CreateWitnessAtIndex
+            | GTFArgs::TxWitnessAtIndex => ofs.saturating_add(
+                tx.witnesses_offset_at(b)
+                    .ok_or(PanicReason::WitnessNotFound)?,
+            ) as Word,
             GTFArgs::TxLength => self.tx_size,
 
             // Input
@@ -520,40 +524,84 @@ impl<Tx> GTFInput<'_, Tx> {
             // If it is not any above commands, it is something specific to the
             // transaction type.
             specific_args => {
-                let as_script = tx.as_script();
-                let as_create = tx.as_create();
-                match (as_script, as_create, specific_args) {
+                match (tx.executable_type(), specific_args) {
                     // Script
-                    (Some(script), None, GTFArgs::ScriptLength) => {
+                    (ExecutableTxType::Script(script), GTFArgs::ScriptLength) => {
                         script.script().len() as Word
                     }
-                    (Some(script), None, GTFArgs::ScriptDataLength) => {
+                    (ExecutableTxType::Script(script), GTFArgs::ScriptDataLength) => {
                         script.script_data().len() as Word
                     }
-                    (Some(script), None, GTFArgs::Script) => {
+                    (ExecutableTxType::Script(script), GTFArgs::Script) => {
                         ofs.saturating_add(script.script_offset()) as Word
                     }
-                    (Some(script), None, GTFArgs::ScriptData) => {
+                    (ExecutableTxType::Script(script), GTFArgs::ScriptData) => {
                         ofs.saturating_add(script.script_data_offset()) as Word
                     }
 
                     // Create
-                    (None, Some(create), GTFArgs::CreateBytecodeWitnessIndex) => {
-                        *create.bytecode_witness_index() as Word
-                    }
-                    (None, Some(create), GTFArgs::CreateStorageSlotsCount) => {
-                        create.storage_slots().len() as Word
-                    }
-                    (None, Some(create), GTFArgs::CreateSalt) => {
+                    (
+                        ExecutableTxType::Create(create),
+                        GTFArgs::CreateBytecodeWitnessIndex,
+                    ) => *create.bytecode_witness_index() as Word,
+                    (
+                        ExecutableTxType::Create(create),
+                        GTFArgs::CreateStorageSlotsCount,
+                    ) => create.storage_slots().len() as Word,
+                    (ExecutableTxType::Create(create), GTFArgs::CreateSalt) => {
                         ofs.saturating_add(create.salt_offset()) as Word
                     }
-                    (None, Some(create), GTFArgs::CreateStorageSlotAtIndex) => {
-                        // TODO: Maybe we need to return panic error
-                        // `StorageSlotsNotFound`?
+                    (
+                        ExecutableTxType::Create(create),
+                        GTFArgs::CreateStorageSlotAtIndex,
+                    ) => {
                         (ofs.saturating_add(
-                            create.storage_slots_offset_at(b).unwrap_or_default(),
+                            create
+                                .storage_slots_offset_at(b)
+                                .ok_or(PanicReason::StorageSlotsNotFound)?,
                         )) as Word
                     }
+
+                    // Blob
+                    (ExecutableTxType::Blob(blob), GTFArgs::BlobId) => {
+                        ofs.saturating_add(blob.blob_id_offset()) as Word
+                    }
+                    (ExecutableTxType::Blob(blob), GTFArgs::BlobWitnessIndex) => {
+                        *blob.bytecode_witness_index() as Word
+                    }
+
+                    // Upload
+                    (ExecutableTxType::Upload(upload), GTFArgs::UploadRoot) => {
+                        ofs.saturating_add(upload.bytecode_root_offset()) as Word
+                    }
+                    (ExecutableTxType::Upload(upload), GTFArgs::UploadWitnessIndex) => {
+                        *upload.bytecode_witness_index() as Word
+                    }
+                    (
+                        ExecutableTxType::Upload(upload),
+                        GTFArgs::UploadSubsectionIndex,
+                    ) => *upload.subsection_index() as Word,
+                    (
+                        ExecutableTxType::Upload(upload),
+                        GTFArgs::UploadSubsectionsCount,
+                    ) => *upload.subsections_number() as Word,
+                    (ExecutableTxType::Upload(upload), GTFArgs::UploadProofSetCount) => {
+                        upload.proof_set().len() as Word
+                    }
+                    (
+                        ExecutableTxType::Upload(upload),
+                        GTFArgs::UploadProofSetAtIndex,
+                    ) => ofs.saturating_add(
+                        upload
+                            .proof_set_offset_at(b)
+                            .ok_or(PanicReason::ProofInUploadNotFound)?,
+                    ) as Word,
+
+                    // Upgrade
+                    (ExecutableTxType::Upgrade(upgrade), GTFArgs::UpgradePurpose) => {
+                        ofs.saturating_add(upgrade.upgrade_purpose_offset()) as Word
+                    }
+
                     _ => return Err(PanicReason::InvalidMetadataIdentifier.into()),
                 }
             }

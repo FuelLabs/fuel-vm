@@ -20,7 +20,6 @@ use crate::{
         gas::{
             dependent_gas_charge_without_base,
             gas_charge,
-            ProfileGas,
         },
         internal::{
             current_contract,
@@ -42,7 +41,6 @@ use crate::{
         Bug,
         BugVariant,
     },
-    profiler::Profiler,
     storage::{
         ContractsAssetsStorage,
         ContractsRawCode,
@@ -391,7 +389,6 @@ where
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             current_contract,
-            profiler: &mut self.profiler,
         }
         .prepare_call()
     }
@@ -437,7 +434,7 @@ struct PrepareCallUnusedRegisters<'a> {
     retl: Reg<'a, RETL>,
 }
 
-impl<'a> PrepareCallRegisters<'a> {
+impl PrepareCallRegisters<'_> {
     fn copy_registers(&self) -> [Word; VM_REGISTER_COUNT] {
         copy_registers(&self.into(), &self.program_registers)
     }
@@ -456,10 +453,9 @@ struct PrepareCallCtx<'vm, S> {
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
-    profiler: &'vm mut Profiler,
 }
 
-impl<'vm, S> PrepareCallCtx<'vm, S>
+impl<S> PrepareCallCtx<'_, S>
 where
     S: InterpreterStorage,
 {
@@ -485,16 +481,9 @@ where
             .checked_add(code_size_padded)
             .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
-        let profiler = ProfileGas {
-            pc: self.registers.system_registers.pc.as_ref(),
-            is: self.registers.system_registers.is.as_ref(),
-            current_contract: self.current_contract,
-            profiler: self.profiler,
-        };
         dependent_gas_charge_without_base(
             self.registers.system_registers.cgas.as_mut(),
             self.registers.system_registers.ggas.as_mut(),
-            profiler,
             self.gas_cost,
             code_size_padded as Word,
         )?;
@@ -528,16 +517,9 @@ where
 
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
-            let profiler = ProfileGas {
-                pc: self.registers.system_registers.pc.as_ref(),
-                is: self.registers.system_registers.is.as_ref(),
-                current_contract: self.current_contract,
-                profiler: self.profiler,
-            };
             gas_charge(
                 self.registers.system_registers.cgas.as_mut(),
                 self.registers.system_registers.ggas.as_mut(),
-                profiler,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;
@@ -636,13 +618,12 @@ fn read_contract<S>(
 where
     S: StorageSize<ContractsRawCode> + StorageRead<ContractsRawCode> + StorageAsRef,
 {
-    let bytes_read = storage
+    if !storage
         .storage::<ContractsRawCode>()
         .read(contract, 0, dst)
         .map_err(RuntimeError::Storage)?
-        .ok_or(PanicReason::ContractNotFound)?;
-    if bytes_read != dst.len() {
-        return Err(PanicReason::ContractMismatch.into())
+    {
+        return Err(PanicReason::ContractNotFound.into());
     }
     Ok(())
 }

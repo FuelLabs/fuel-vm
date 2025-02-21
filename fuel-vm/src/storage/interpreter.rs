@@ -210,12 +210,11 @@ pub trait InterpreterStorage:
         key: &Bytes32,
         value: &[u8],
     ) -> Result<Option<Vec<u8>>, Self::DataError> {
-        let (_, prev) = StorageWrite::<ContractsState>::replace_bytes(
+        StorageWrite::<ContractsState>::replace_bytes(
             self,
             &(contract, key).into(),
             value,
-        )?;
-        Ok(prev)
+        )
     }
 
     /// Fetch a range of values from a key-value mapping in a contract storage.

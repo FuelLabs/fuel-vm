@@ -236,7 +236,6 @@ fn test_state_write_qword(
     }
 
     let mut result_register = 0u64;
-    let is = 0;
     let mut cgas = 10_000;
     let mut ggas = 10_000;
     let mut pc = 0;
@@ -244,12 +243,9 @@ fn test_state_write_qword(
         &Default::default(),
         &mut storage,
         &memory,
-        &mut Profiler::default(),
         1,
-        None,
         RegMut::new(&mut cgas),
         RegMut::new(&mut ggas),
-        Reg::new(&is),
         RegMut::new(&mut pc),
         &mut result_register,
         input,

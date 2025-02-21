@@ -43,7 +43,7 @@ where
 {
     pub(crate) fn update_memory_output(&mut self, idx: usize) -> SimpleResult<()> {
         let tx_offset = self.tx_offset();
-        update_memory_output(&mut self.tx, self.memory.as_mut(), tx_offset, idx)
+        update_memory_output(&self.tx, self.memory.as_mut(), tx_offset, idx)
     }
 }
 
@@ -80,7 +80,7 @@ pub(crate) fn absolute_output_mem_range<Tx: Outputs>(
 }
 
 pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
-    tx: &mut Tx,
+    tx: &Tx,
     memory: &mut MemoryInstance,
     tx_offset: usize,
     idx: usize,
@@ -89,8 +89,8 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
         .ok_or(PanicReason::OutputNotFound)?;
     let mut mem = memory.write_noownerchecks(range.start, range.len())?;
     let output = tx
-        .outputs_mut()
-        .get_mut(idx)
+        .outputs()
+        .get(idx)
         .expect("Invalid output index; checked above");
     output
         .encode(&mut mem)
@@ -112,10 +112,7 @@ where
     }
 
     pub(crate) const fn is_predicate(&self) -> bool {
-        matches!(
-            self.context,
-            Context::PredicateEstimation { .. } | Context::PredicateVerification { .. }
-        )
+        self.context.is_predicate()
     }
 
     pub(crate) fn internal_contract(&self) -> Result<ContractId, PanicReason> {

@@ -1,5 +1,5 @@
 use fuel_asm::{
-    RegisterId,
+    RegId,
     Word,
 };
 use fuel_tx::PanicReason;
@@ -35,7 +35,7 @@ where
 {
     pub(crate) fn blob_size(
         &mut self,
-        dst: RegisterId,
+        dst: RegId,
         blob_id_ptr: Word,
     ) -> IoResult<(), S::DataError> {
         let gas_cost = self

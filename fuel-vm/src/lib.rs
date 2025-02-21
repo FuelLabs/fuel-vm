@@ -42,29 +42,8 @@ pub mod storage;
 pub mod transactor;
 pub mod util;
 
-#[cfg(feature = "profile-any")]
-pub mod profiler;
-
 #[cfg(test)]
 mod tests;
-
-#[cfg(not(feature = "profile-any"))]
-/// Placeholder
-pub mod profiler {
-    use crate::constraints::InstructionLocation;
-
-    /// Placeholder profiler.
-    #[derive(Default, Debug, Clone)]
-    pub struct Profiler;
-
-    impl Profiler {
-        /// Set the current coverage location.
-        pub fn set_coverage(&mut self, _location: InstructionLocation) {}
-
-        /// Add gas to the current coverage location.
-        pub fn add_gas(&mut self, _location: InstructionLocation, _gas_use: u64) {}
-    }
-}
 
 // Fully re-export fuel dependencies
 #[doc(no_inline)]
@@ -182,26 +161,5 @@ pub mod prelude {
         memory_client::MemoryClient,
         storage::MemoryStorage,
         util::test_helpers::TestBuilder,
-    };
-
-    #[cfg(all(
-        feature = "profile-gas",
-        feature = "std",
-        any(test, feature = "test-helpers")
-    ))]
-    pub use crate::util::gas_profiling::GasProfiler;
-
-    pub use crate::profiler::Profiler;
-    #[cfg(feature = "profile-any")]
-    pub use crate::profiler::{
-        CoverageProfilingData,
-        GasProfilingData,
-        InstructionLocation,
-        PerLocationIter,
-        PerLocationKeys,
-        PerLocationValues,
-        ProfileReceiver,
-        ProfilingData,
-        StderrReceiver,
     };
 }

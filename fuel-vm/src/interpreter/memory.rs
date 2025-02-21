@@ -18,7 +18,6 @@ use fuel_asm::{
 };
 use fuel_types::{
     fmt_truncated_hex,
-    RegisterId,
     Word,
 };
 
@@ -726,23 +725,13 @@ where
         )
     }
 
-    pub(crate) fn load_byte(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Word,
-    ) -> SimpleResult<()> {
+    pub(crate) fn load_byte(&mut self, ra: RegId, b: Word, c: Word) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_byte(self.memory.as_ref(), pc, result, b, c)
     }
 
-    pub(crate) fn load_word(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-        c: Imm12,
-    ) -> SimpleResult<()> {
+    pub(crate) fn load_word(&mut self, ra: RegId, b: Word, c: Imm12) -> SimpleResult<()> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         load_word(self.memory.as_ref(), pc, result, b, c)
@@ -804,7 +793,7 @@ where
 
     pub(crate) fn memeq(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
         d: Word,
@@ -1147,7 +1136,7 @@ pub(crate) fn copy_from_storage_zero_fill<M, S>(
     src_id: &M::Key,
     src_offset: u64,
     src_len: usize,
-    no_found_error: PanicReason,
+    not_found_error: PanicReason,
 ) -> IoResult<(), S::Error>
 where
     M: Mappable,
@@ -1164,11 +1153,12 @@ where
         let src_read_length = src_read_length.min(write_buffer.len());
 
         let (src_read_buffer, _) = write_buffer.split_at_mut(src_read_length);
-        storage
+        let found = storage
             .read(src_id, src_offset as usize, src_read_buffer)
-            .transpose()
-            .ok_or(no_found_error)?
             .map_err(RuntimeError::Storage)?;
+        if !found {
+            return Err(not_found_error.into());
+        }
 
         empty_offset = src_read_length;
     }

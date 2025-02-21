@@ -29,6 +29,12 @@ impl Node {
         Some(Self { position, hash })
     }
 
+    /// Returns `None` if the leaf cannot be created due to incorrect position.
+    pub fn create_leaf_with_hash(index: u64, hash: Bytes32) -> Option<Self> {
+        let position = Position::from_leaf_index(index)?;
+        Some(Self { position, hash })
+    }
+
     /// Creates a new node with the given children.
     pub fn create_node(
         position: Position,

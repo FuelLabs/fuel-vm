@@ -31,6 +31,7 @@ impl<StorageType, NodesTableType> NodeIterator<'_, '_, StorageType, NodesTableTy
     }
 }
 
+#[derive(Debug)]
 pub enum TraversedNode {
     EmptyRoot(RlpNode),
     Leaf(RlpNode, LeafNode),
@@ -52,9 +53,11 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         let current_rlp_node = self.current_node.take()?;
+        println!("Iterator - current_rlp_node: {:?}", current_rlp_node);
         // Check if we got the empty root node, in which case we can avoid
         // fetching it from the storage.
         if &*current_rlp_node == &[128] {
+            println!("Iterator - Empty root node found");
             self.current_node = None;
             return Some(Ok(TraversedNode::EmptyRoot(
                 RlpNode::from_raw(&[128]).unwrap(),
@@ -62,15 +65,22 @@ where
         }
         let node = self.storage.get(&current_rlp_node);
         match node {
-            Err(_) => Some(Err(anyhow::anyhow!(
-                "Node {:?} could not be loaded",
-                current_rlp_node
-            ))),
-            Ok(None) => Some(Err(anyhow::anyhow!(
-                "Node {:?} referenced but not present in storage",
-                current_rlp_node
-            ))),
+            Err(e) => {
+                println!("Error while fetching node from storage");
+                Some(Err(anyhow::anyhow!(
+                    "Node {:?} could not be loaded",
+                    current_rlp_node
+                )))
+            }
+            Ok(None) => {
+                println!("Node not found in storage");
+                Some(Err(anyhow::anyhow!(
+                    "Node {:?} referenced but not present in storage",
+                    current_rlp_node
+                )))
+            }
             Ok(Some(node)) => {
+                println!("Node found in strorage: {:?}", node.as_ref());
                 match node.as_ref() {
                     TrieNode::EmptyRoot => {
                         // This can happen if we have the whole tree is empty.

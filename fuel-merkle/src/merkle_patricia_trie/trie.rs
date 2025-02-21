@@ -719,7 +719,9 @@ where
             PostDeletion(RlpNode),
         }
 
+        println!("Deleting leaf with key {:?}", key);
         if key.len() != 64 {
+            println!("key does not have 64 nibbles: {}", key.len());
             return Err(anyhow::anyhow!("Key must have 64 nibbles"));
         }
 
@@ -728,10 +730,18 @@ where
         let mut node_iterator = self.iter(key);
         let mut nodes_in_path = Vec::new();
         loop {
+            println!("Retrieveing next node in path");
             let Some(node) = node_iterator.next() else {
                 break
             };
+            if node.is_err() {
+                println!("Error while traversing path to leaf");
+            }
             let node_with_next_decision = node?;
+            println!(
+                "While traversing path to leaf: {:?}",
+                node_with_next_decision
+            );
             nodes_in_path.push(node_with_next_decision);
         }
 

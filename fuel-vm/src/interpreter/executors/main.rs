@@ -135,7 +135,7 @@ impl<Tx> PredicateRunKind<'_, Tx> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PredicateAction {
     Verifying,
     Estimating { available_gas: Word },
@@ -366,27 +366,29 @@ pub mod predicates {
     where
         Tx: ExecutableTransaction,
     {
-        match &tx.inputs()[index] {
-            Input::CoinPredicate(CoinPredicate {
-                owner: address,
-                predicate,
-                ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                recipient: address,
-                predicate,
-                ..
-            })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate,
-                recipient: address,
-                ..
-            }) => {
-                if !Input::is_predicate_owner_valid(address, &**predicate) {
-                    return (0, Err(PredicateVerificationFailed::InvalidOwner));
+        if predicate_action == PredicateAction::Verifying {
+            match &tx.inputs()[index] {
+                Input::CoinPredicate(CoinPredicate {
+                    owner: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    recipient: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    predicate,
+                    recipient: address,
+                    ..
+                }) => {
+                    if !Input::is_predicate_owner_valid(address, &**predicate) {
+                        return (0, Err(PredicateVerificationFailed::InvalidOwner));
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
 
         let zero_gas_price = 0;

@@ -16,7 +16,7 @@ where
     Type: Mappable,
     KeyConverted: From<Type::OwnedKey>,
 {
-    map: HashMap<KeyConverted, Type::OwnedValue>,
+    pub(crate) map: HashMap<KeyConverted, Type::OwnedValue>,
     _key_converted: core::marker::PhantomData<KeyConverted>,
 }
 
@@ -55,10 +55,14 @@ impl<Type, KeyConverted> StorageMap<Type, KeyConverted>
 where
     Type: Mappable,
     Type::OwnedKey: From<KeyConverted>,
-    KeyConverted: From<Type::OwnedKey> + Eq + core::hash::Hash,
+    KeyConverted: From<Type::OwnedKey> + Clone + Eq + core::hash::Hash,
 {
-    pub fn nodes(self) -> Vec<(Type::OwnedKey, Type::OwnedValue)> {
-        self.map.into_iter().map(|(k, v)| (k.into(), v)).collect()
+    pub fn nodes(&self) -> Vec<(Type::OwnedKey, Type::OwnedValue)> {
+        self.map
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k.into(), v))
+            .collect()
     }
 }
 

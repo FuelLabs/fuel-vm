@@ -65,7 +65,7 @@ where
         }
         let node = self.storage.get(&current_rlp_node);
         match node {
-            Err(e) => {
+            Err(_e) => {
                 println!("Error while fetching node from storage");
                 Some(Err(anyhow::anyhow!(
                     "Node {:?} could not be loaded",

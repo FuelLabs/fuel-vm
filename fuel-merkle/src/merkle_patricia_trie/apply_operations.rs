@@ -12,6 +12,7 @@ use fuel_storage::{
 
 use alloc::vec::Vec;
 
+#[derive(Debug, Clone)]
 pub struct Pending {
     to_delete: Vec<RlpNode>,
     to_insert: Vec<(RlpNode, TrieNode)>,

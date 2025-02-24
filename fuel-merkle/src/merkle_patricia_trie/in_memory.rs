@@ -159,7 +159,10 @@ impl Default for MerklePatriciaTrie {
 mod test {
     use alloy_trie::nodes::TrieNode;
 
-    use crate::sparse::MerkleTreeKey;
+    use crate::{
+        merkle_patricia_trie::in_memory::WrappedRlpNode,
+        sparse::MerkleTreeKey,
+    };
 
     #[test]
     fn empty_trie_returns_empty_root() {
@@ -219,5 +222,82 @@ mod test {
         assert_eq!(storage_root_rlp, &root_rlp);
         assert_eq!(storage_root, &TrieNode::EmptyRoot);
         assert_eq!(root_rlp, expected_root);
+    }
+
+    #[test]
+    fn add_two_nodes_with_branch_node_at_root() {
+        let mut trie = super::MerklePatriciaTrie::new();
+        let key1 = MerkleTreeKey::new_without_hash([0; 32]);
+        let key2 = MerkleTreeKey::new_without_hash([17; 32]);
+        trie.update(key1, b"DATA1");
+        trie.update(key2, b"DATA2");
+        let root_rlp = trie.root();
+        let storage = trie.trie.storage;
+        let nodes = storage.nodes();
+        // One branch node,  two extension nodes, and two leaf nodes
+        assert_eq!(nodes.len(), 5);
+
+        let num_branch_nodes = nodes
+            .iter()
+            .filter(|(_, node)| matches!(node, TrieNode::Branch(_)))
+            .count();
+
+        assert_eq!(num_branch_nodes, 1);
+
+        let (branch_node_rlp, branch_node) = nodes
+            .iter()
+            .find(|(_, node)| matches!(node, TrieNode::Branch(_)))
+            .expect("Trie should have a branch node");
+
+        assert_eq!(branch_node_rlp, &root_rlp);
+        let TrieNode::Branch(branch_node) = branch_node else {
+            unreachable!()
+        };
+        let branch_node_ref = branch_node.as_ref();
+        let mut children = branch_node_ref
+            .children()
+            .filter_map(|(nibble, node)| node.map(|node| (nibble, node)));
+        let Some((nibble_0, extension_node_0_rlp)) = children.next() else {
+            panic!("No child node")
+        };
+        let Some(TrieNode::Extension(extension_node_0)) = storage
+            .map
+            .get(&WrappedRlpNode(extension_node_0_rlp.clone()))
+        else {
+            panic!("Extension node not in storage")
+        };
+        let leaf_0_rlp = &extension_node_0.child;
+        let Some(TrieNode::Leaf(leaf_0)) =
+            storage.map.get(&WrappedRlpNode(leaf_0_rlp.clone()))
+        else {
+            panic!("Leaf node not in storage")
+        };
+
+        // Extension node 0 should have only 63 bits set
+        assert_eq!(nibble_0, 0);
+        assert_eq!(extension_node_0.key.as_ref(), &[0u8; 63]);
+        assert_eq!(leaf_0.value, b"DATA1");
+
+        let Some((nibble_1, extension_node_1_rlp)) = children.next() else {
+            panic!("No child node")
+        };
+        assert_eq!(nibble_1, 1);
+        let Some(TrieNode::Extension(extension_node_1)) = storage
+            .map
+            .get(&WrappedRlpNode(extension_node_1_rlp.clone()))
+        else {
+            panic!("Extension node not in storage")
+        };
+        let leaf_1_rlp = &extension_node_1.child;
+        let Some(TrieNode::Leaf(leaf_1)) =
+            storage.map.get(&WrappedRlpNode(leaf_1_rlp.clone()))
+        else {
+            panic!("Leaf node not in storage")
+        };
+
+        // Extension node 0 should have only 63 bits set
+        assert_eq!(nibble_1, 1);
+        assert_eq!(extension_node_1.key.as_ref(), &[1u8; 63]);
+        assert_eq!(leaf_1.value, b"DATA2");
     }
 }

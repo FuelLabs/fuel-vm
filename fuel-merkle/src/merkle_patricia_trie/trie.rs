@@ -273,28 +273,37 @@ where
     //    we are inserting, and one for the key and value that the extension node was
     //    pointing to.
     fn prepare_branch_from_extension_node(
+        extension_node_rlp: RlpNode,
         extension_node: ExtensionNode,
         nibbles: Nibbles,
         node_to_connect: RlpNode,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let common_prefix_length = extension_node.key.common_prefix_length(&nibbles);
+        println!(
+            "Splitting the extension node {:?} into a branch node, at length {}",
+            extension_node_rlp, common_prefix_length
+        );
+
         // If the common prefix is the same as the extension node key, then we must update
         // the child of the extension node. Because in our case a leaf always
         // has 64 nibbles for the key, the child of the extension node cannot be a
         // branch node.
+        // TODO: Can this case happen at all? The iterator should have moved to the leaf
+        // node if the prefix is the same.
         if common_prefix_length == extension_node.key.as_slice().len() {
             // Replace the leaf node. We can use make_linear_path_to_leaf to create the
             // new leaf and extesion node, and insert them in the storage.
             // Additionally, we must remove the old extension node from the storage.
             let (new_extension_rlp_node, mut pending) =
                 Self::prepare_linear_path_to_rlp_node(nibbles, node_to_connect)?;
-            let mut buf = Vec::with_capacity(33);
-            let old_extension_node = TrieNode::Extension(extension_node);
-            let old_extension_rlp_node = old_extension_node.rlp(&mut buf);
-            pending.delete(old_extension_rlp_node);
+            pending.delete(extension_node_rlp);
 
             Ok((new_extension_rlp_node, pending))
         } else {
+            println!(
+                "Extension node and new node diverge at nibble {}",
+                common_prefix_length
+            );
             // The common prefix is not the same as the extension node key.
             // The extension node nibble and the input path nibble have the following
             // structure:
@@ -312,7 +321,7 @@ where
             // pointing to the branch node B created in step 3.
             // 5. Mark the original extension node for deletion.
             let common_prefix = nibbles.slice(0..common_prefix_length);
-
+            println!("Common prefix: {:?}", common_prefix);
             // 1. Create a new extension Ext0 node with nibbles K1, ... , Kl, pointing to
             // the child of the previous extension node,
 
@@ -320,12 +329,16 @@ where
             // than the length of the extension node.
             let first_diverging_nibble_existing_path =
                 extension_node.key[common_prefix_length];
+            println!(
+                "diverging nibble in extension node: {}",
+                first_diverging_nibble_existing_path
+            );
             let other_diverging_nibbles_existing_path =
                 extension_node.key.slice(common_prefix_length + 1..);
             let (suffix_extension_node_existing_path_rlp, first_extension_node_pending) =
                 Self::prepare_linear_path_to_rlp_node(
                     other_diverging_nibbles_existing_path,
-                    extension_node.child.clone(),
+                    extension_node.child,
                 )?;
             // 2. Create a new extension node Ext1 with nibles N1, ... , Nm, pointing to
             // `node_to_connect`.
@@ -341,7 +354,7 @@ where
             let Some(first_diverging_nibble_new_path) = nibbles.get(common_prefix_length)
             else {
                 return Err(anyhow::anyhow!(
-                    "Found a logical path that is longer than the trie height"
+                    "Found a path that is longer than the trie logical height"
                 ));
             };
             // SAFETY: We have checked that there is a nibble at index
@@ -359,6 +372,7 @@ where
             let mut pending =
                 first_extension_node_pending.merge(second_extension_node_pending);
 
+            println!("Extension nodes created: pending operations {:?}", pending);
             // 3. Create a new branch node B for the common prefix
             // TODO: This is slow, we iterate through the nibble values twice
             let mut branch_node = BranchNode::default();
@@ -378,6 +392,10 @@ where
             let mut buf = Vec::with_capacity(33);
             let branch_node_rlp = branch_node.rlp(&mut buf);
 
+            println!(
+                "Branch node to insert in pending changes: {:?}",
+                branch_node
+            );
             pending.insert(branch_node_rlp.clone(), branch_node);
 
             // 4. Create an extension node with the common prefix [C0, ..., Ck],
@@ -388,10 +406,7 @@ where
             let mut pending = pending.merge(new_extension_node_pending);
 
             // 5. Mark the original extension node from the storage.
-            let mut buf = Vec::with_capacity(33);
-            let old_extension_node = TrieNode::Extension(extension_node);
-            let old_extension_node_rlp = old_extension_node.rlp(&mut buf);
-            pending.delete(old_extension_node_rlp);
+            pending.delete(extension_node_rlp);
             Ok((new_extension_node_rlp, pending))
         }
     }
@@ -419,7 +434,7 @@ where
                 trie_mask.set_bit(i as u8);
             }
         });
-
+        branch_node.state_mask = trie_mask;
         branch_node
     }
 
@@ -583,7 +598,7 @@ where
                 (new_branch_node_rlp, pending.merge(other_pending))
             }
 
-            TraversedNode::Extension(_extension_node_rlp, extension_node) => {
+            TraversedNode::Extension(extension_node_rlp, extension_node) => {
                 // If the last node in the path is an extension node, then we must check
                 // the common prefix between the nibbles left in the path,
                 // and the nibbles referenced by the extension node.
@@ -594,46 +609,25 @@ where
                 let (leaf_rlp_node, pending) = Self::prepare_store_leaf(key, value)?;
                 let (branch_rlp_node, other_pending) =
                     Self::prepare_branch_from_extension_node(
+                        extension_node_rlp,
                         extension_node,
                         nibbles_left,
                         leaf_rlp_node,
                     )?;
                 (branch_rlp_node, pending.merge(other_pending))
             }
-            TraversedNode::Leaf(_other_leaf_node_rlp, other_leaf_node) => {
-                // If the last node in the path is a leaf node, then we must check
-                // whether we need to update the encountered leaf node, or
-                // create a new extension node with the common prefix between the
-                // two leaves.
+            TraversedNode::Leaf(old_leaf_node_rlp, other_leaf_node) => {
+                // If the last node in the path is a leaf node,
+                // there are no nibbles left in the path and we must update
+                // the leaf value.
 
                 let nibbles_left_len = nibbles_left.as_slice().len();
-                let other_leaf_node_relevant_key_nibbles =
-                    &other_leaf_node.key[other_leaf_node.key.len() - nibbles_left_len..];
-                if other_leaf_node_relevant_key_nibbles == nibbles_left.as_slice() {
-                    // We are updating the leaf that we have encountered.
-                    let old_rlp_node =
-                        TrieNode::Leaf(other_leaf_node).rlp(&mut Vec::with_capacity(33));
-                    let (rlp_node, mut pending) = Self::prepare_store_leaf(key, value)?;
-                    pending.delete(old_rlp_node);
-                    (rlp_node, pending)
-                } else {
-                    let (leaf_rlp_node, pending) = Self::prepare_store_leaf(key, value)?;
-                    let extension_node = ExtensionNode::new(
-                        Nibbles::from_nibbles(other_leaf_node_relevant_key_nibbles),
-                        leaf_rlp_node.clone(),
-                    );
-                    let (rlp_node, other_pending) =
-                        Self::prepare_branch_from_extension_node(
-                            extension_node,
-                            nibbles_left,
-                            leaf_rlp_node,
-                        )?;
-                    let mut pending = pending.merge(other_pending);
-                    let old_rlp_node =
-                        TrieNode::Leaf(other_leaf_node).rlp(&mut Vec::with_capacity(33));
-                    pending.delete(old_rlp_node);
-                    (rlp_node, pending)
-                }
+                debug_assert_eq!(nibbles_left_len, 0);
+                debug_assert_eq!(key, other_leaf_node.key.pack().as_ref());
+
+                let (rlp_node, mut pending) = Self::prepare_store_leaf(key, value)?;
+                pending.delete(old_leaf_node_rlp);
+                (rlp_node, pending)
             }
         };
 

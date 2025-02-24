@@ -569,30 +569,19 @@ where
                 // looking at the first one), then we create a leaf.
                 // Otherwise, we create an extension node with the path left, pointing
                 // to a new leaf node.
-                let Some((first_nibble, nibbles_left)) = nibbles_left.split_first()
-                else {
-                    return Err(anyhow::anyhow!(
-                        "The path to the leaf is already occupied by a branch node"
-                    ));
-                };
                 // Check that the decision made by the iterator is indeed consistent with
                 // the first nibble in the reamining path.
-                debug_assert_eq!(decision, *first_nibble);
                 // Make a linear path to the leaf node. This could be either a
                 // leaf node, if the nibbles left are empty, or an extension node
                 // pointing to the leaf node.
                 let (extension_or_leaf_node_rlp, pending) =
-                    Self::make_linear_path_to_leaf(
-                        Nibbles::from_nibbles(nibbles_left),
-                        key,
-                        value,
-                    )?;
+                    Self::make_linear_path_to_leaf(nibbles_left, key, value)?;
                 let mut new_branch_node = branch_node.clone();
                 let (new_branch_node_rlp, other_pending) =
                     Self::prepare_add_child_to_branch_node(
                         branch_node_rlp,
                         &mut new_branch_node,
-                        *first_nibble,
+                        decision,
                         extension_or_leaf_node_rlp,
                     );
                 (new_branch_node_rlp, pending.merge(other_pending))

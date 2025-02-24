@@ -110,7 +110,7 @@ where
                         let next_node = branch_node_ref
                             .children()
                             .find(|(nibble, _node)| (nibble == next_nibble))
-                            // Guaranteed to exist because the nibble
+                            // Guaranteed to exist because the nibble is less than 0xF
                             .unwrap()
                             .1;
                         self.nibbles_left = nibbles_left;

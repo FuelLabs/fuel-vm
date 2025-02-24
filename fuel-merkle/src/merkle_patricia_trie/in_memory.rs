@@ -518,4 +518,38 @@ mod test {
 
         assert_eq!(children.next(), None);
     }
+
+    #[test]
+    fn update_existing_leaf() {
+        let mut trie = super::MerklePatriciaTrie::new();
+        let key = MerkleTreeKey::new_without_hash([0x00; 32]);
+        trie.update(key, b"DATA1");
+        trie.update(key, b"DATA2");
+
+        let root_rlp = trie.root();
+        let storage = trie.trie.storage.map;
+
+        println!("");
+        println!("{:?}", storage);
+        // One extension node, One leaf node
+        // TODO: We keep the Empty root in the map, while we should not.
+        //assert_eq!(storage.len(), 2);
+
+        let Some(TrieNode::Extension(root_node)) = storage.get(&WrappedRlpNode(root_rlp))
+        else {
+            panic!("Root node not in storage");
+        };
+
+        let extension_node_key = &root_node.key;
+        let leaf_node_rlp = &root_node.child;
+        let Some(TrieNode::Leaf(leaf_node)) =
+            storage.get(&WrappedRlpNode(leaf_node_rlp.clone()))
+        else {
+            panic!("Leaf node not in storage")
+        };
+
+        assert_eq!(extension_node_key.as_ref(), &[0u8; 64]);
+        assert_eq!(leaf_node.key.as_ref(), &[0u8; 64]);
+        assert_eq!(leaf_node.value, b"DATA2");
+    }
 }

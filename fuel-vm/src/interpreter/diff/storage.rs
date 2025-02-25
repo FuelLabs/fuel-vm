@@ -110,7 +110,7 @@ where
             panic_context: self.panic_context,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
-            verification_state: self.verification_state,
+            verifier: self.verifier,
         }
     }
 
@@ -172,7 +172,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
@@ -182,7 +182,7 @@ where
     /// record any changes this VM makes to it's storage.
     /// Recording storage changes has an overhead so should
     /// be used in production.
-    pub fn add_recording(self) -> Interpreter<M, Record<S>, Tx, Ecal, OnVerifyError> {
+    pub fn add_recording(self) -> Interpreter<M, Record<S>, Tx, Ecal, V> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -200,7 +200,7 @@ where
             panic_context: self.panic_context,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
-            verification_state: self.verification_state,
+            verifier: self.verifier,
         }
     }
 

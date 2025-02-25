@@ -117,13 +117,7 @@ pub struct NotSupportedEcal;
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<
-    M,
-    S,
-    Tx = (),
-    Ecal = NotSupportedEcal,
-    OnVerifyError = verification::Panic,
-> {
+pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification::Panic> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: M,
     frames: Vec<CallFrame>,
@@ -141,7 +135,7 @@ pub struct Interpreter<
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
     ecal_state: Ecal,
-    verification_state: OnVerifyError,
+    verifier: V,
 }
 
 /// Interpreter parameters
@@ -215,23 +209,21 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<M: Memory, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError> {
+impl<M: Memory, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Returns the current state of the VM memory
     pub fn memory(&self) -> &MemoryInstance {
         self.memory.as_ref()
     }
 }
 
-impl<M: AsMut<MemoryInstance>, S, Tx, Ecal, OnVerifyError>
-    Interpreter<M, S, Tx, Ecal, OnVerifyError>
-{
+impl<M: AsMut<MemoryInstance>, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Returns mutable access to the vm memory
     pub fn memory_mut(&mut self) -> &mut MemoryInstance {
         self.memory.as_mut()
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError> {
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
@@ -329,8 +321,8 @@ impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError> {
     }
 
     /// Get verificatio state
-    pub fn verification_state(&self) -> &OnVerifyError {
-        &self.verification_state
+    pub fn verifier(&self) -> &V {
+        &self.verifier
     }
 }
 
@@ -346,17 +338,13 @@ pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
     flags(flag).contains(Flags::UNSAFEMATH)
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> AsRef<S>
-    for Interpreter<M, S, Tx, Ecal, OnVerifyError>
-{
+impl<M, S, Tx, Ecal, V> AsRef<S> for Interpreter<M, S, Tx, Ecal, V> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> AsMut<S>
-    for Interpreter<M, S, Tx, Ecal, OnVerifyError>
-{
+impl<M, S, Tx, Ecal, V> AsMut<S> for Interpreter<M, S, Tx, Ecal, V> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }

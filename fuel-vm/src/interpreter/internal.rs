@@ -36,7 +36,7 @@ mod message_tests;
 #[cfg(test)]
 mod tests;
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
@@ -98,7 +98,7 @@ pub(crate) fn update_memory_output<Tx: ExecutableTransaction>(
     Ok(())
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
 {

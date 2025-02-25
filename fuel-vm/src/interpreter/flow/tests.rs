@@ -388,7 +388,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageE
         receipts: &mut receipts,
         frames: &mut frames,
         current_contract,
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.prepare_call().map(|_| Output {

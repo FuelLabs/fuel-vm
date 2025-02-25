@@ -19,7 +19,7 @@ use fuel_types::Word;
 mod muldiv;
 mod wideint;
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
 {

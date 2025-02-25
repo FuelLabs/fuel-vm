@@ -58,12 +58,12 @@ use fuel_types::{
     ContractId,
 };
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     pub(crate) fn contract_balance(
         &mut self,
@@ -79,7 +79,7 @@ where
             pc,
             input_contracts: &self.input_contracts,
             panic_context: &mut self.panic_context,
-            verifier_state: &mut self.verification_state,
+            verifier: &mut self.verifier,
             _phantom: Default::default(),
         };
         input.contract_balance(result, b, c)?;
@@ -121,7 +121,7 @@ where
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
-            verifier_state: &mut self.verification_state,
+            verifier: &mut self.verifier,
             _phantom: Default::default(),
         };
         input.transfer(a, b, c)
@@ -163,7 +163,7 @@ where
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
-            verifier_state: &mut self.verification_state,
+            verifier: &mut self.verifier,
             _phantom: Default::default(),
         };
         input.transfer_output(a, b, c, d)
@@ -179,19 +179,17 @@ where
     }
 }
 
-struct ContractBalanceCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
+struct ContractBalanceCtx<'vm, M, S, Tx, Ecal, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
     input_contracts: &'vm BTreeSet<ContractId>,
     panic_context: &'vm mut PanicContext,
-    verifier_state: &'vm mut OnVerifyError,
+    verifier: &'vm mut V,
     _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError>
-    ContractBalanceCtx<'_, M, S, Tx, Ecal, OnVerifyError>
-{
+impl<M, S, Tx, Ecal, V> ContractBalanceCtx<'_, M, S, Tx, Ecal, V> {
     pub(crate) fn contract_balance(
         self,
         result: &mut Word,
@@ -201,12 +199,12 @@ impl<M, S, Tx, Ecal, OnVerifyError>
     where
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        OnVerifyError: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<M, S, Tx, Ecal>,
     {
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
         let contract_id = ContractId::new(self.memory.read_bytes(c)?);
 
-        self.verifier_state.check_contract_in_inputs(
+        self.verifier.check_contract_in_inputs(
             self.panic_context,
             self.input_contracts,
             &contract_id,
@@ -219,7 +217,7 @@ impl<M, S, Tx, Ecal, OnVerifyError>
         Ok(inc_pc(self.pc)?)
     }
 }
-struct TransferCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
+struct TransferCtx<'vm, M, S, Tx, Ecal, V> {
     storage: &'vm mut S,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
@@ -236,11 +234,11 @@ struct TransferCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
-    verifier_state: &'vm mut OnVerifyError,
+    verifier: &'vm mut V,
     _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> TransferCtx<'_, M, S, Tx, Ecal, OnVerifyError> {
+impl<M, S, Tx, Ecal, V> TransferCtx<'_, M, S, Tx, Ecal, V> {
     /// In Fuel specs:
     /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
     /// $rA -> recipient_contract_id_offset
@@ -256,14 +254,14 @@ impl<M, S, Tx, Ecal, OnVerifyError> TransferCtx<'_, M, S, Tx, Ecal, OnVerifyErro
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        OnVerifyError: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<M, S, Tx, Ecal>,
     {
         let amount = transfer_amount;
         let destination =
             ContractId::from(self.memory.read_bytes(recipient_contract_id_offset)?);
         let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
 
-        self.verifier_state.check_contract_in_inputs(
+        self.verifier.check_contract_in_inputs(
             self.panic_context,
             self.input_contracts,
             &destination,
@@ -334,7 +332,7 @@ impl<M, S, Tx, Ecal, OnVerifyError> TransferCtx<'_, M, S, Tx, Ecal, OnVerifyErro
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        OnVerifyError: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<M, S, Tx, Ecal>,
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;

@@ -20,7 +20,7 @@ use fuel_types::{
     Word,
 };
 
-impl<M, S, T, Ecal, OnVerifyError> Interpreter<M, S, T, Ecal, OnVerifyError>
+impl<M, S, T, Ecal, V> Interpreter<M, S, T, Ecal, V>
 where
     S: InterpreterStorage,
 {

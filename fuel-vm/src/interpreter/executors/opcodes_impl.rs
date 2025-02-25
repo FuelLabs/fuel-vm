@@ -31,17 +31,17 @@ use fuel_asm::{
 };
 use fuel_types::Word;
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError> for ADD
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for ADD
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().add())?;
         let (a, b, c) = self.unpack();
@@ -55,17 +55,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError> for ADDI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for ADDI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().addi())?;
         let (a, b, imm) = self.unpack();
@@ -79,18 +79,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::AND
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::AND
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().and())?;
         let (a, b, c) = self.unpack();
@@ -99,18 +98,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ANDI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ANDI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().andi())?;
         let (a, b, imm) = self.unpack();
@@ -119,18 +117,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::DIV
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::DIV
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().div())?;
         let (a, b, c) = self.unpack();
@@ -140,18 +137,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::DIVI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::DIVI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().divi())?;
         let (a, b, imm) = self.unpack();
@@ -161,18 +157,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::EQ
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::EQ
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().eq_())?;
         let (a, b, c) = self.unpack();
@@ -184,18 +179,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::EXP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::EXP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().exp())?;
         let (a, b, c) = self.unpack();
@@ -209,18 +203,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::EXPI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::EXPI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().expi())?;
         let (a, b, imm) = self.unpack();
@@ -235,18 +228,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::GT
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::GT
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().gt())?;
         let (a, b, c) = self.unpack();
@@ -258,18 +250,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::LT
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LT
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().lt())?;
         let (a, b, c) = self.unpack();
@@ -281,18 +272,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WDCM
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WDCM
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wdcm())?;
         let (a, b, c, imm) = self.unpack();
@@ -308,18 +298,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WQCM
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WQCM
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wqcm())?;
         let (a, b, c, imm) = self.unpack();
@@ -335,18 +324,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WDOP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WDOP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wdop())?;
         let (a, b, c, imm) = self.unpack();
@@ -362,18 +350,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WQOP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WQOP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wqop())?;
         let (a, b, c, imm) = self.unpack();
@@ -389,18 +376,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WDML
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WDML
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wdml())?;
         let (a, b, c, imm) = self.unpack();
@@ -416,18 +402,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WQML
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WQML
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wqml())?;
         let (a, b, c, imm) = self.unpack();
@@ -443,18 +428,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WDDV
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WDDV
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wddv())?;
         let (a, b, c, imm) = self.unpack();
@@ -470,18 +454,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WQDV
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WQDV
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wqdv())?;
         let (a, b, c, imm) = self.unpack();
@@ -497,18 +480,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WDMD
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WDMD
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wdmd())?;
         let (a, b, c, d) = self.unpack();
@@ -522,18 +504,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WQMD
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WQMD
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wqmd())?;
         let (a, b, c, d) = self.unpack();
@@ -547,18 +528,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WDAM
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WDAM
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wdam())?;
         let (a, b, c, d) = self.unpack();
@@ -571,18 +551,17 @@ where
         Ok(ExecuteState::Proceed)
     }
 }
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WQAM
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WQAM
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wqam())?;
         let (a, b, c, d) = self.unpack();
@@ -595,18 +574,17 @@ where
         Ok(ExecuteState::Proceed)
     }
 }
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WDMM
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WDMM
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wdmm())?;
         let (a, b, c, d) = self.unpack();
@@ -619,18 +597,17 @@ where
         Ok(ExecuteState::Proceed)
     }
 }
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::WQMM
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::WQMM
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().wqmm())?;
         let (a, b, c, d) = self.unpack();
@@ -644,18 +621,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MLOG
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MLOG
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().mlog())?;
         let (a, b, c) = self.unpack();
@@ -675,18 +651,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MOD
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MOD
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().mod_op())?;
         let (a, b, c) = self.unpack();
@@ -702,18 +677,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MODI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MODI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().modi())?;
         let (a, b, imm) = self.unpack();
@@ -729,18 +703,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MOVE
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MOVE
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().move_op())?;
         let (a, b) = self.unpack();
@@ -749,18 +722,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MOVI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MOVI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().movi())?;
         let (a, imm) = self.unpack();
@@ -769,18 +741,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MROO
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MROO
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().mroo())?;
         let (a, b, c) = self.unpack();
@@ -800,18 +771,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MUL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MUL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().mul())?;
         let (a, b, c) = self.unpack();
@@ -825,18 +795,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MULI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MULI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().muli())?;
         let (a, b, imm) = self.unpack();
@@ -850,18 +819,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MLDV
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MLDV
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().mldv())?;
         let (a, b, c, d) = self.unpack();
@@ -875,18 +843,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::NOOP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::NOOP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().noop())?;
         interpreter.alu_clear()?;
@@ -894,18 +861,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::NOT
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::NOT
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().not())?;
         let (a, b) = self.unpack();
@@ -914,18 +880,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::OR
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::OR
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().or())?;
         let (a, b, c) = self.unpack();
@@ -934,18 +899,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ORI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ORI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().ori())?;
         let (a, b, imm) = self.unpack();
@@ -954,18 +918,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SLL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SLL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().sll())?;
         let (a, b, c) = self.unpack();
@@ -982,18 +945,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SLLI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SLLI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().slli())?;
         let (a, b, imm) = self.unpack();
@@ -1008,18 +970,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SRL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SRL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().srl())?;
         let (a, b, c) = self.unpack();
@@ -1035,18 +996,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SRLI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SRLI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().srli())?;
         let (a, b, imm) = self.unpack();
@@ -1061,18 +1021,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SUB
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SUB
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().sub())?;
         let (a, b, c) = self.unpack();
@@ -1086,18 +1045,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SUBI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SUBI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().subi())?;
         let (a, b, imm) = self.unpack();
@@ -1111,18 +1069,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::XOR
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::XOR
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().xor())?;
         let (a, b, c) = self.unpack();
@@ -1131,18 +1088,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::XORI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::XORI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().xori())?;
         let (a, b, imm) = self.unpack();
@@ -1151,18 +1107,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().ji())?;
         let imm = self.unpack();
@@ -1171,18 +1126,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JNEI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JNEI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jnei())?;
         let (a, b, imm) = self.unpack();
@@ -1195,18 +1149,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JNZI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JNZI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jnzi())?;
         let (a, imm) = self.unpack();
@@ -1219,18 +1172,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JMP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JMP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jmp())?;
         let a = self.unpack();
@@ -1241,18 +1193,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JNE
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JNE
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jne())?;
         let (a, b, c) = self.unpack();
@@ -1265,18 +1216,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JMPF
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JMPF
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jmpf())?;
         let (a, offset) = self.unpack();
@@ -1289,18 +1239,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JMPB
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JMPB
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jmpb())?;
         let (a, offset) = self.unpack();
@@ -1313,18 +1262,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JNZF
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JNZF
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jnzf())?;
         let (a, b, offset) = self.unpack();
@@ -1338,18 +1286,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JNZB
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JNZB
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jnzb())?;
         let (a, b, offset) = self.unpack();
@@ -1363,18 +1310,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JNEF
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JNEF
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jnef())?;
         let (a, b, c, offset) = self.unpack();
@@ -1388,18 +1334,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::JNEB
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::JNEB
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().jneb())?;
         let (a, b, c, offset) = self.unpack();
@@ -1413,18 +1358,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::RET
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::RET
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().ret())?;
         let a = self.unpack();
@@ -1434,18 +1378,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::RETD
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::RETD
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
         let len = interpreter.registers[b];
@@ -1456,18 +1399,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::RVRT
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::RVRT
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().rvrt())?;
         let a = self.unpack();
@@ -1477,18 +1419,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SMO
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SMO
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         interpreter.dependent_gas_charge(
@@ -1505,18 +1446,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ALOC
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ALOC
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let a = self.unpack();
         let number_of_bytes = interpreter.registers[a];
@@ -1527,18 +1467,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CFEI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CFEI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let number_of_bytes = self.unpack().into();
         interpreter
@@ -1548,18 +1487,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CFE
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CFE
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let a = self.unpack();
         let number_of_bytes = interpreter.registers[a];
@@ -1570,18 +1508,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CFSI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CFSI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().cfsi())?;
         let imm = self.unpack();
@@ -1590,18 +1527,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CFS
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CFS
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().cfsi())?;
         let a = self.unpack();
@@ -1611,18 +1547,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::PSHL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::PSHL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().pshl())?;
         let bitmask = self.unpack();
@@ -1631,18 +1566,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::PSHH
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::PSHH
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().pshh())?;
         let bitmask = self.unpack();
@@ -1651,18 +1585,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::POPL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::POPL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().popl())?;
         let bitmask = self.unpack();
@@ -1671,18 +1604,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::POPH
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::POPH
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().poph())?;
         let bitmask = self.unpack();
@@ -1691,18 +1623,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::LB
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LB
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().lb())?;
         let (a, b, imm) = self.unpack();
@@ -1711,18 +1642,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::LW
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LW
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().lw())?;
         let (a, b, imm) = self.unpack();
@@ -1731,18 +1661,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MCL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MCL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
         let len = interpreter.registers[b];
@@ -1752,18 +1681,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MCLI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MCLI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, imm) = self.unpack();
         let len = Word::from(imm);
@@ -1773,18 +1701,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MCP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MCP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
         let len = interpreter.registers[c];
@@ -1794,18 +1721,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MCPI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MCPI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, imm) = self.unpack();
         let len = imm.into();
@@ -1815,18 +1741,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MEQ
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MEQ
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         let len = interpreter.registers[d];
@@ -1836,18 +1761,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SB
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SB
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().sb())?;
         let (a, b, imm) = self.unpack();
@@ -1860,18 +1784,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SW
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SW
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().sw())?;
         let (a, b, imm) = self.unpack();
@@ -1884,18 +1807,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::BAL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::BAL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().bal())?;
         let (a, b, c) = self.unpack();
@@ -1908,18 +1830,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::BHEI
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::BHEI
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().bhei())?;
         let a = self.unpack();
@@ -1928,18 +1849,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::BHSH
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::BHSH
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().bhsh())?;
         let (a, b) = self.unpack();
@@ -1948,18 +1868,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::BURN
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::BURN
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().burn())?;
         let (a, b) = self.unpack();
@@ -1968,18 +1887,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CALL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CALL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for the gas inside of the `prepare_call` function.
         let (a, b, c, d) = self.unpack();
@@ -1990,18 +1908,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CB
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CB
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().cb())?;
         let a = self.unpack();
@@ -2010,18 +1927,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CCP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CCP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         interpreter.code_copy(
@@ -2034,18 +1950,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CROO
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CROO
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b) = self.unpack();
         interpreter.code_root(interpreter.registers[a], interpreter.registers[b])?;
@@ -2053,18 +1968,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::CSIZ
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::CSIZ
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for the gas inside of the `code_size` function.
         let (a, b) = self.unpack();
@@ -2073,18 +1987,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::LDC
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LDC
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for the gas inside of the `load_contract_code` function.
         let (a, b, c, mode) = self.unpack();
@@ -2098,18 +2011,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::LOG
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LOG
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().log())?;
         let (a, b, c, d) = self.unpack();
@@ -2123,18 +2035,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::LOGD
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LOGD
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         interpreter.dependent_gas_charge(
@@ -2151,18 +2062,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::MINT
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::MINT
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().mint())?;
         let (a, b) = self.unpack();
@@ -2171,18 +2081,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SCWQ
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SCWQ
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
         interpreter.dependent_gas_charge(
@@ -2198,18 +2107,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SRW
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SRW
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().srw())?;
         let (a, b, c) = self.unpack();
@@ -2218,18 +2126,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SRWQ
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SRWQ
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         interpreter.dependent_gas_charge(
@@ -2246,18 +2153,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SWW
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SWW
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().sww())?;
         let (a, b, c) = self.unpack();
@@ -2270,18 +2176,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::SWWQ
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SWWQ
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         interpreter.dependent_gas_charge(
@@ -2298,18 +2203,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::TIME
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::TIME
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().time())?;
         let (a, b) = self.unpack();
@@ -2318,18 +2222,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ECK1
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ECK1
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().eck1())?;
         let (a, b, c) = self.unpack();
@@ -2342,18 +2245,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ECR1
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ECR1
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().ecr1())?;
         let (a, b, c) = self.unpack();
@@ -2366,18 +2268,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ED19
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ED19
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, len) = self.unpack();
         let mut len = interpreter.registers[len];
@@ -2398,18 +2299,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::K256
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::K256
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
         let len = interpreter.registers[c];
@@ -2419,18 +2319,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::S256
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::S256
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c) = self.unpack();
         let len = interpreter.registers[c];
@@ -2440,18 +2339,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::FLAG
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::FLAG
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().flag())?;
         let a = self.unpack();
@@ -2460,18 +2358,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::GM
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::GM
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().gm())?;
         let (a, imm) = self.unpack();
@@ -2480,18 +2377,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::GTF
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::GTF
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().gtf())?;
         let (a, b, imm) = self.unpack();
@@ -2500,18 +2396,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::TR
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::TR
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().tr())?;
         let (a, b, c) = self.unpack();
@@ -2524,18 +2419,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::TRO
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::TRO
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().tro())?;
         let (a, b, c, d) = self.unpack();
@@ -2549,18 +2443,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ECAL
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ECAL
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         interpreter.external_call(a, b, c, d)?;
@@ -2568,18 +2461,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::BSIZ
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::BSIZ
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for this inside the function.
         let (a, b) = self.unpack();
@@ -2588,18 +2480,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::BLDD
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::BLDD
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         // We charge for this inside the function.
         let (a, b, c, d) = self.unpack();
@@ -2613,18 +2504,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::ECOP
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::ECOP
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter
             .gas_charge(interpreter.gas_costs().ecop().map_err(PanicReason::from)?)?;
@@ -2639,18 +2529,17 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError>
-    for fuel_asm::op::EPAR
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::EPAR
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         let (a, b, c, d) = self.unpack();
         let len = interpreter.registers[c];

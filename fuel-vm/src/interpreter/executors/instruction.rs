@@ -23,13 +23,13 @@ use fuel_asm::{
     RegId,
 };
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
@@ -102,31 +102,31 @@ where
     }
 }
 
-pub trait Execute<M, S, Tx, Ecal, OnVerifyError>
+pub trait Execute<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError>;
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Execute<M, S, Tx, Ecal, OnVerifyError> for Instruction
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for Instruction
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         match self {
             Instruction::ADD(op) => op.execute(interpreter),

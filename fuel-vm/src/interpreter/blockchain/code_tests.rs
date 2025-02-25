@@ -70,7 +70,7 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         hp: Reg::new(&hp),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
@@ -129,7 +129,7 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
         hp: Reg::new(&hp),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
@@ -184,7 +184,7 @@ fn test_code_copy() -> IoResult<(), MemoryStorageError> {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.code_copy(dest_mem_address, contract_id_mem_address, offset, num_bytes)?;

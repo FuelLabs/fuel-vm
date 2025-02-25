@@ -37,8 +37,8 @@ use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<M, Ecal = NotSupportedEcal, OnVerifyError = Panic> {
-    transactor: Transactor<M, MemoryStorage, Script, Ecal, OnVerifyError>,
+pub struct MemoryClient<M, Ecal = NotSupportedEcal, V = Panic> {
+    transactor: Transactor<M, MemoryStorage, Script, Ecal, V>,
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -52,26 +52,22 @@ impl Default for MemoryClient<MemoryInstance> {
     }
 }
 
-impl<M, Ecal: EcalHandler, OnVerifyError> AsRef<MemoryStorage>
-    for MemoryClient<M, Ecal, OnVerifyError>
-{
+impl<M, Ecal: EcalHandler, V> AsRef<MemoryStorage> for MemoryClient<M, Ecal, V> {
     fn as_ref(&self) -> &MemoryStorage {
         self.transactor.as_ref()
     }
 }
 
-impl<M, Ecal: EcalHandler, OnVerifyError> AsMut<MemoryStorage>
-    for MemoryClient<M, Ecal, OnVerifyError>
-{
+impl<M, Ecal: EcalHandler, V> AsMut<MemoryStorage> for MemoryClient<M, Ecal, V> {
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()
     }
 }
 
-impl<M, Ecal, OnVerifyError> MemoryClient<M, Ecal, OnVerifyError>
+impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
     Ecal: EcalHandler + Default,
-    OnVerifyError: Verifier<M, MemoryStorage, Script, Ecal> + Default,
+    V: Verifier<M, MemoryStorage, Script, Ecal> + Default,
 {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(
@@ -85,24 +81,22 @@ where
     }
 }
 
-impl<M, Ecal, OnVerifyError> MemoryClient<M, Ecal, OnVerifyError>
+impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, MemoryStorage, Script, Ecal>,
+    V: Verifier<M, MemoryStorage, Script, Ecal>,
 {
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(
-        transactor: Transactor<M, MemoryStorage, Script, Ecal, OnVerifyError>,
-    ) -> Self {
+    pub fn from_txtor(transactor: Transactor<M, MemoryStorage, Script, Ecal, V>) -> Self {
         Self { transactor }
     }
 }
 
-impl<M, Ecal, OnVerifyError> MemoryClient<M, Ecal, OnVerifyError>
+impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
     M: Memory,
     Ecal: EcalHandler,
-    OnVerifyError: Verifier<M, MemoryStorage, Script, Ecal>,
+    V: Verifier<M, MemoryStorage, Script, Ecal>,
 {
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.

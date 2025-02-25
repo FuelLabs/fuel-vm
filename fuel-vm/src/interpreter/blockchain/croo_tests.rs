@@ -86,7 +86,7 @@ fn test_code_root() {
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     }
     .code_root(croo_address as Word, 0)
@@ -138,7 +138,7 @@ fn test_code_root_contract_not_found() {
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     }
     .code_root(croo_address as Word, 0)
@@ -184,7 +184,7 @@ fn test_code_root_contract_not_in_inputs() {
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     }
     .code_root(croo_address as Word, 0)

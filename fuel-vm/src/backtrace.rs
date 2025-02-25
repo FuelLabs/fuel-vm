@@ -43,8 +43,8 @@ impl Backtrace {
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<M, S, Tx, Ecal, OnVerifyError>(
-        vm: &Interpreter<M, S, Tx, Ecal, OnVerifyError>,
+    pub fn from_vm_error<M, S, Tx, Ecal, V>(
+        vm: &Interpreter<M, S, Tx, Ecal, V>,
         result: ScriptExecutionResult,
     ) -> Self
     where

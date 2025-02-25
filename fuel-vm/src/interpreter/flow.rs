@@ -86,7 +86,7 @@ mod ret_tests;
 #[cfg(test)]
 mod tests;
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
@@ -335,12 +335,12 @@ impl JumpArgs {
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    OnVerifyError: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<M, S, Tx, Ecal>,
 {
     /// Prepare a call instruction for execution
     pub fn prepare_call(
@@ -394,7 +394,7 @@ where
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             current_contract,
-            verifier_state: &mut self.verification_state,
+            verifier: &mut self.verifier,
             _phantom: Default::default(),
         }
         .prepare_call()
@@ -447,7 +447,7 @@ impl PrepareCallRegisters<'_> {
     }
 }
 
-struct PrepareCallCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
+struct PrepareCallCtx<'vm, M, S, Tx, Ecal, V> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
     memory: &'vm mut MemoryInstance,
@@ -461,11 +461,11 @@ struct PrepareCallCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
-    verifier_state: &'vm mut OnVerifyError,
+    verifier: &'vm mut V,
     _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> PrepareCallCtx<'_, M, S, Tx, Ecal, OnVerifyError> {
+impl<M, S, Tx, Ecal, V> PrepareCallCtx<'_, M, S, Tx, Ecal, V> {
     fn prepare_call(mut self) -> IoResult<(), S::DataError>
     where
         S: StorageSize<ContractsRawCode>
@@ -473,7 +473,7 @@ impl<M, S, Tx, Ecal, OnVerifyError> PrepareCallCtx<'_, M, S, Tx, Ecal, OnVerifyE
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
         S: InterpreterStorage,
-        OnVerifyError: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<M, S, Tx, Ecal>,
     {
         let call_bytes = self
             .memory
@@ -514,7 +514,7 @@ impl<M, S, Tx, Ecal, OnVerifyError> PrepareCallCtx<'_, M, S, Tx, Ecal, OnVerifyE
             )?;
         }
 
-        self.verifier_state.check_contract_in_inputs(
+        self.verifier.check_contract_in_inputs(
             self.panic_context,
             self.input_contracts,
             call.to(),

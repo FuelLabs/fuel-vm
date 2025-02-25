@@ -245,7 +245,7 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
@@ -263,7 +263,7 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
@@ -281,7 +281,7 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        verifier_state: &mut Panic,
+        verifier: &mut Panic,
         _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;

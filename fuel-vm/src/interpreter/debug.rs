@@ -2,7 +2,7 @@ use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
 {

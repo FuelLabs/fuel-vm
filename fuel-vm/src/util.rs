@@ -548,17 +548,17 @@ pub mod test_helpers {
                 .expect("Expected vm execution to be successful");
         }
 
-        fn execute_tx_inner<M, Tx, Ecal, OnVerifyError>(
+        fn execute_tx_inner<M, Tx, Ecal, V>(
             &mut self,
-            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal, OnVerifyError>,
+            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal, V>,
             checked: Checked<Tx>,
-        ) -> anyhow::Result<(StateTransition<Tx>, OnVerifyError)>
+        ) -> anyhow::Result<(StateTransition<Tx>, V)>
         where
             M: Memory,
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
-            OnVerifyError: Verifier<M, MemoryStorage, Tx, Ecal> + Clone,
+            V: Verifier<M, MemoryStorage, Tx, Ecal> + Clone,
         {
             self.storage.set_block_height(self.block_height);
 
@@ -575,7 +575,7 @@ pub mod test_helpers {
 
             let interpreter = transactor.interpreter();
 
-            let verification_state = interpreter.verification_state().clone();
+            let verifier = interpreter.verifier().clone();
 
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
@@ -597,7 +597,7 @@ pub mod test_helpers {
                 self.storage = storage;
             }
 
-            Ok((state, verification_state))
+            Ok((state, verifier))
         }
 
         pub fn deploy(

@@ -28,11 +28,11 @@ use crate::{
     storage::MemoryStorage,
 };
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: Default,
     Ecal: Default,
-    OnVerifyError: Default,
+    V: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -48,10 +48,10 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: Default,
-    OnVerifyError: Default,
+    V: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -80,22 +80,21 @@ where
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,
-            verification_state: Default::default(),
+            verifier: Default::default(),
         }
     }
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<S, Tx, Ecal, OnVerifyError> Default
-    for Interpreter<MemoryInstance, S, Tx, Ecal, OnVerifyError>
+impl<S, Tx, Ecal, V> Default for Interpreter<MemoryInstance, S, Tx, Ecal, V>
 where
     S: Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
-    OnVerifyError: Default,
+    V: Default,
 {
     fn default() -> Self {
-        Interpreter::<_, S, Tx, Ecal, OnVerifyError>::with_storage(
+        Interpreter::<_, S, Tx, Ecal, V>::with_storage(
             MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),
@@ -104,11 +103,11 @@ where
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<Tx, Ecal, OnVerifyError> Interpreter<MemoryInstance, (), Tx, Ecal, OnVerifyError>
+impl<Tx, Ecal, V> Interpreter<MemoryInstance, (), Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
-    OnVerifyError: Default,
+    V: Default,
 {
     /// Create a new interpreter without a storage backend.
     ///
@@ -119,12 +118,11 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal, OnVerifyError>
-    Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, OnVerifyError>
+impl<Tx, Ecal, V> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
-    OnVerifyError: Default,
+    V: Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///
@@ -135,18 +133,17 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal, OnVerifyError>
-    Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, OnVerifyError>
+impl<Tx, Ecal, V> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    OnVerifyError: Default,
+    V: Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///
     /// It will have full capabilities.
     pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
-        Interpreter::<_, MemoryStorage, Tx, Ecal, OnVerifyError>::with_storage_and_ecal(
+        Interpreter::<_, MemoryStorage, Tx, Ecal, V>::with_storage_and_ecal(
             MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),

@@ -14,7 +14,6 @@ mod blob;
 mod blockchain;
 mod cgas;
 mod coins;
-mod continue_on_error;
 mod contract;
 mod crypto;
 mod debugger;

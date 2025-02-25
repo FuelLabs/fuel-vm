@@ -133,7 +133,7 @@ where
             },
             _,
         ) = split_registers(&mut self.registers);
-        let input: LoadContractCodeCtx<S, V> = LoadContractCodeCtx {
+        let input = LoadContractCodeCtx {
             memory: self.memory.as_mut(),
             context: &self.context,
             storage: &mut self.storage,

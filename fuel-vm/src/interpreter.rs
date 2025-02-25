@@ -13,7 +13,10 @@ use crate::{
     state::Debugger,
     verification,
 };
-use alloc::vec::Vec;
+use alloc::{
+    collections::BTreeSet,
+    vec::Vec,
+};
 use core::{
     mem,
     ops::Index,
@@ -127,7 +130,7 @@ pub struct Interpreter<
     receipts: ReceiptsCtx,
     tx: Tx,
     initial_balances: InitialBalances,
-    input_contracts: alloc::collections::BTreeSet<ContractId>,
+    input_contracts: BTreeSet<ContractId>,
     input_contracts_index_to_output_index: alloc::collections::BTreeMap<u16, u16>,
     storage: S,
     debugger: Debugger,
@@ -691,33 +694,6 @@ impl CheckedMetadata for BlobCheckedMetadata {
         InitialBalances {
             non_retryable: self.free_balances.clone(),
             retryable: None,
-        }
-    }
-}
-
-pub(crate) struct InputContracts<'vm> {
-    input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
-    panic_context: &'vm mut PanicContext,
-}
-
-impl<'vm> InputContracts<'vm> {
-    pub fn new(
-        input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
-        panic_context: &'vm mut PanicContext,
-    ) -> Self {
-        Self {
-            input_contracts,
-            panic_context,
-        }
-    }
-
-    /// Checks that the contract is declared in the transaction inputs.
-    pub fn check(&mut self, contract: &ContractId) -> SimpleResult<()> {
-        if !self.input_contracts.contains(contract) {
-            *self.panic_context = PanicContext::ContractId(*contract);
-            Err(PanicReason::ContractNotInInputs.into())
-        } else {
-            Ok(())
         }
     }
 }

@@ -12,10 +12,7 @@ use crate::{
     },
     state::ExecuteState,
     storage::InterpreterStorage,
-    verification::{
-        OnErrorAction,
-        Verifier,
-    },
+    verification::Verifier,
 };
 
 use fuel_asm::{
@@ -101,15 +98,7 @@ where
             return Err(PanicReason::ContractInstructionNotAllowed.into())
         }
 
-        match instruction.execute(self) {
-            Ok(state) => Ok(state),
-            Err(err) => {
-                match OnVerifyError::on_instruction_error(self, instruction, &err) {
-                    OnErrorAction::Terminate => Err(err),
-                    OnErrorAction::Continue => Ok(ExecuteState::Proceed),
-                }
-            }
-        }
+        instruction.execute(self)
     }
 }
 

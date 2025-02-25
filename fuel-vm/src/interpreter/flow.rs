@@ -30,7 +30,6 @@ use crate::{
         },
         receipts::ReceiptsCtx,
         ExecutableTransaction,
-        InputContracts,
         Interpreter,
         Memory,
         MemoryInstance,
@@ -46,12 +45,12 @@ use crate::{
         ContractsRawCode,
         InterpreterStorage,
     },
-    verification::{
-        OnErrorAction,
-        Verifier,
-    },
+    verification::Verifier,
 };
-use alloc::vec::Vec;
+use alloc::{
+    collections::BTreeSet,
+    vec::Vec,
+};
 use core::{
     cmp,
     marker::PhantomData,
@@ -389,10 +388,8 @@ where
             gas_cost,
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             new_storage_gas_per_byte,
             receipts: &mut self.receipts,
             frames: &mut self.frames,
@@ -459,7 +456,8 @@ struct PrepareCallCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     runtime_balances: &'vm mut RuntimeBalances,
     new_storage_gas_per_byte: Word,
     storage: &'vm mut S,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
@@ -516,15 +514,11 @@ impl<M, S, Tx, Ecal, OnVerifyError> PrepareCallCtx<'_, M, S, Tx, Ecal, OnVerifyE
             )?;
         }
 
-        if let Err(err) = self.input_contracts.check(&call.to()) {
-            match OnVerifyError::on_contract_not_in_inputs(
-                &mut self.verifier_state,
-                *call.to(),
-            ) {
-                OnErrorAction::Continue => {}
-                OnErrorAction::Terminate => return Err(err.into()),
-            }
-        }
+        self.verifier_state.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            call.to(),
+        )?;
 
         // credit contract asset_id balance
         let (_, created_new_entry) = balance_increase(

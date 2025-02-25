@@ -3,12 +3,16 @@
 //! Alternative strategy, [`AttemptContinue`], continues execution and collects multiple
 //! errors.
 
-use fuel_asm::Instruction;
-use fuel_tx::ContractId;
+use alloc::collections::BTreeSet;
+
+use fuel_tx::{
+    ContractId,
+    PanicReason,
+};
 
 use crate::{
-    error::RuntimeError,
-    prelude::Interpreter,
+    error::PanicOrBug,
+    interpreter::PanicContext,
     storage::InterpreterStorage,
 };
 
@@ -23,28 +27,14 @@ where
     Self: Sized + Seal,
     S: InterpreterStorage,
 {
-    /// Handle an error after an instruction has been run
-    fn on_instruction_error(
-        _vm: &mut Interpreter<M, S, Tx, Ecal, Self>,
-        _instruction: Instruction,
-        _err: &RuntimeError<S::DataError>,
-    ) -> OnErrorAction {
-        OnErrorAction::Terminate
-    }
-
     /// Handle an error after a contract is missing from the inputs
-    fn on_contract_not_in_inputs(&mut self, _contract_id: ContractId) -> OnErrorAction {
-        OnErrorAction::Terminate
-    }
-}
-
-/// What should be done after encountering an error.
-#[derive(Debug, Copy, Clone)]
-pub enum OnErrorAction {
-    /// The VM terminates via panic. This is the default behavior.
-    Terminate,
-    /// Continue execution as if nothing happened.
-    Continue,
+    #[allow(private_interfaces)] // PanicContext is an internal type, so this isn't callable by external code
+    fn check_contract_in_inputs(
+        &mut self,
+        panic_context: &mut PanicContext,
+        input_contracts: &BTreeSet<ContractId>,
+        contract_id: &ContractId,
+    ) -> Result<(), PanicOrBug>;
 }
 
 /// Panic on failed verification. This is the default verification strategy.
@@ -56,6 +46,20 @@ where
     Self: Sized,
     S: InterpreterStorage,
 {
+    #[allow(private_interfaces)]
+    fn check_contract_in_inputs(
+        &mut self,
+        panic_context: &mut PanicContext,
+        input_contracts: &BTreeSet<ContractId>,
+        contract_id: &ContractId,
+    ) -> Result<(), PanicOrBug> {
+        if input_contracts.contains(contract_id) {
+            Ok(())
+        } else {
+            *panic_context = PanicContext::ContractId(*contract_id);
+            Err(PanicReason::ContractNotInInputs.into())
+        }
+    }
 }
 
 impl Seal for Panic {}
@@ -73,9 +77,17 @@ where
     Self: Sized,
     S: InterpreterStorage,
 {
-    fn on_contract_not_in_inputs(&mut self, contract_id: ContractId) -> OnErrorAction {
-        self.missing_contract_inputs.push(contract_id);
-        OnErrorAction::Continue
+    #[allow(private_interfaces)]
+    fn check_contract_in_inputs(
+        &mut self,
+        _panic_context: &mut PanicContext,
+        input_contracts: &BTreeSet<ContractId>,
+        contract_id: &ContractId,
+    ) -> Result<(), PanicOrBug> {
+        if !input_contracts.contains(contract_id) {
+            self.missing_contract_inputs.push(*contract_id);
+        }
+        Ok(())
     }
 }
 

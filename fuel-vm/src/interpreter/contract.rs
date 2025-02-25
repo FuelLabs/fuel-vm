@@ -1,5 +1,6 @@
 //! This module contains logic on contract management.
 
+use alloc::collections::BTreeSet;
 use core::marker::PhantomData;
 
 use super::{
@@ -14,6 +15,7 @@ use super::{
     Interpreter,
     Memory,
     MemoryInstance,
+    PanicContext,
     RuntimeBalances,
 };
 use crate::{
@@ -25,10 +27,7 @@ use crate::{
         IoResult,
         RuntimeError,
     },
-    interpreter::{
-        receipts::ReceiptsCtx,
-        InputContracts,
-    },
+    interpreter::receipts::ReceiptsCtx,
     storage::{
         BlobData,
         ContractsAssets,
@@ -36,10 +35,7 @@ use crate::{
         ContractsRawCode,
         InterpreterStorage,
     },
-    verification::{
-        OnErrorAction,
-        Verifier,
-    },
+    verification::Verifier,
 };
 use fuel_asm::{
     PanicReason,
@@ -81,10 +77,8 @@ where
             storage: &self.storage,
             memory: self.memory.as_mut(),
             pc,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             verifier_state: &mut self.verification_state,
             _phantom: Default::default(),
         };
@@ -119,10 +113,8 @@ where
             receipts: &mut self.receipts,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
             ggas,
@@ -163,10 +155,8 @@ where
             receipts: &mut self.receipts,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
             ggas,
@@ -193,7 +183,8 @@ struct ContractBalanceCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     verifier_state: &'vm mut OnVerifyError,
     _phantom: PhantomData<(M, Tx, Ecal)>,
 }
@@ -202,7 +193,7 @@ impl<M, S, Tx, Ecal, OnVerifyError>
     ContractBalanceCtx<'_, M, S, Tx, Ecal, OnVerifyError>
 {
     pub(crate) fn contract_balance(
-        mut self,
+        self,
         result: &mut Word,
         b: Word,
         c: Word,
@@ -215,15 +206,11 @@ impl<M, S, Tx, Ecal, OnVerifyError>
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
         let contract_id = ContractId::new(self.memory.read_bytes(c)?);
 
-        if let Err(err) = self.input_contracts.check(&contract_id) {
-            match OnVerifyError::on_contract_not_in_inputs(
-                &mut self.verifier_state,
-                contract_id,
-            ) {
-                OnErrorAction::Continue => {}
-                OnErrorAction::Terminate => return Err(err.into()),
-            }
-        }
+        self.verifier_state.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &contract_id,
+        )?;
 
         let balance = balance(self.storage, &contract_id, &asset_id)?;
 
@@ -241,7 +228,8 @@ struct TransferCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
 
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     tx_offset: usize,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
@@ -259,7 +247,7 @@ impl<M, S, Tx, Ecal, OnVerifyError> TransferCtx<'_, M, S, Tx, Ecal, OnVerifyErro
     /// $rB -> transfer_amount
     /// $rC -> asset_id_offset
     pub(crate) fn transfer(
-        mut self,
+        self,
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
@@ -275,15 +263,11 @@ impl<M, S, Tx, Ecal, OnVerifyError> TransferCtx<'_, M, S, Tx, Ecal, OnVerifyErro
             ContractId::from(self.memory.read_bytes(recipient_contract_id_offset)?);
         let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
 
-        if let Err(err) = self.input_contracts.check(&destination) {
-            match OnVerifyError::on_contract_not_in_inputs(
-                &mut self.verifier_state,
-                destination,
-            ) {
-                OnErrorAction::Continue => {}
-                OnErrorAction::Terminate => return Err(err.into()),
-            }
-        }
+        self.verifier_state.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &destination,
+        )?;
 
         if amount == 0 {
             return Err(PanicReason::TransferZeroCoins.into())

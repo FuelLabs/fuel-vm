@@ -43,7 +43,7 @@ fn calling_contract_not_in_inputs_will_collect_and_continue() {
         .script_gas_limit(10_000)
         .attempt_execute();
 
-    assert_success(&res.receipts());
+    assert_success(res.receipts());
 
     assert_eq!(collected_errors.missing_contract_inputs, vec![contract_id]);
 }
@@ -71,7 +71,7 @@ fn calling_nonexistent_contract_panics_normally() {
         .script_gas_limit(10_000)
         .attempt_execute();
 
-    assert_panics(&res.receipts(), PanicReason::ContractNotFound);
+    assert_panics(res.receipts(), PanicReason::ContractNotFound);
 
     assert_eq!(collected_errors.missing_contract_inputs, vec![]);
 }

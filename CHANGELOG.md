@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [904](https://github.com/FuelLabs/fuel-vm/pull/904): Moved the logic of each opcode into its own function. It helps so reduce the size of the `instruction_inner` function, allowing compiler to do better optimizations. The Mira swaps receive performance improvement in 16.5%.
 
 ### Fixed
+- [917](https://github.com/FuelLabs/fuel-vm/pull/917): Ignore predicate verification during the estimation. 
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Fix elided lifetimes compilation warnings that became errors after the release of rust 1.83.0. 
 - [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889) and [908](https://github.com/FuelLabs/fuel-vm/pull/908): Debugger breakpoint caused receipts to be produced incorrectly.

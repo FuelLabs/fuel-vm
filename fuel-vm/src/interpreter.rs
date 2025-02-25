@@ -324,6 +324,11 @@ impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError> {
     pub fn receipts_mut(&mut self) -> &mut ReceiptsCtx {
         &mut self.receipts
     }
+
+    /// Get verificatio state
+    pub fn verification_state(&self) -> &OnVerifyError {
+        &self.verification_state
+    }
 }
 
 pub(crate) fn flags(flag: Reg<FLAG>) -> Flags {
@@ -338,13 +343,17 @@ pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
     flags(flag).contains(Flags::UNSAFEMATH)
 }
 
-impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, OnVerifyError> AsRef<S>
+    for Interpreter<M, S, Tx, Ecal, OnVerifyError>
+{
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, OnVerifyError> AsMut<S>
+    for Interpreter<M, S, Tx, Ecal, OnVerifyError>
+{
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }

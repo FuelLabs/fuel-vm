@@ -1,10 +1,15 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
 use alloc::vec;
+use fuel_tx::Script;
 
-use crate::storage::{
-    MemoryStorage,
-    MemoryStorageError,
+use crate::{
+    interpreter::NotSupportedEcal,
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
+    verification::Panic,
 };
 
 use super::*;
@@ -235,11 +240,12 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
+        verifier_state: &mut Panic,
+        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
     let _ = input
@@ -255,6 +261,8 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
+        verifier_state: &mut Panic,
+        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
     input.code_size(&mut result, 0).unwrap();
@@ -270,6 +278,8 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
+        verifier_state: &mut Panic,
+        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
     let _ = input

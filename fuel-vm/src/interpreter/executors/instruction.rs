@@ -103,10 +103,12 @@ where
 
         match instruction.execute(self) {
             Ok(state) => Ok(state),
-            Err(err) => match OnVerifyError::on_error(self, instruction, &err) {
-                OnErrorAction::Terminate => Err(err),
-                OnErrorAction::Continue => Ok(ExecuteState::Proceed),
-            },
+            Err(err) => {
+                match OnVerifyError::on_instruction_error(self, instruction, &err) {
+                    OnErrorAction::Terminate => Err(err),
+                    OnErrorAction::Continue => Ok(ExecuteState::Proceed),
+                }
+            }
         }
     }
 }

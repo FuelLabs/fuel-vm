@@ -16,6 +16,10 @@ use crate::{
         MemoryStorageError,
     },
     transactor::Transactor,
+    verification::{
+        Panic,
+        Verifier,
+    },
 };
 use fuel_tx::{
     Blob,
@@ -33,8 +37,8 @@ use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<M, Ecal = NotSupportedEcal> {
-    transactor: Transactor<M, MemoryStorage, Script, Ecal>,
+pub struct MemoryClient<M, Ecal = NotSupportedEcal, OnVerifyError = Panic> {
+    transactor: Transactor<M, MemoryStorage, Script, Ecal, OnVerifyError>,
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -48,19 +52,27 @@ impl Default for MemoryClient<MemoryInstance> {
     }
 }
 
-impl<M, Ecal: EcalHandler> AsRef<MemoryStorage> for MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler, OnVerifyError> AsRef<MemoryStorage>
+    for MemoryClient<M, Ecal, OnVerifyError>
+{
     fn as_ref(&self) -> &MemoryStorage {
         self.transactor.as_ref()
     }
 }
 
-impl<M, Ecal: EcalHandler> AsMut<MemoryStorage> for MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler, OnVerifyError> AsMut<MemoryStorage>
+    for MemoryClient<M, Ecal, OnVerifyError>
+{
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()
     }
 }
 
-impl<M, Ecal: EcalHandler + Default> MemoryClient<M, Ecal> {
+impl<M, Ecal, OnVerifyError> MemoryClient<M, Ecal, OnVerifyError>
+where
+    Ecal: EcalHandler + Default,
+    OnVerifyError: Verifier<M, MemoryStorage, Script, Ecal> + Default,
+{
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(
         memory: M,
@@ -73,16 +85,24 @@ impl<M, Ecal: EcalHandler + Default> MemoryClient<M, Ecal> {
     }
 }
 
-impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal> {
+impl<M, Ecal, OnVerifyError> MemoryClient<M, Ecal, OnVerifyError>
+where
+    Ecal: EcalHandler,
+    OnVerifyError: Verifier<M, MemoryStorage, Script, Ecal>,
+{
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<M, MemoryStorage, Script, Ecal>) -> Self {
+    pub fn from_txtor(
+        transactor: Transactor<M, MemoryStorage, Script, Ecal, OnVerifyError>,
+    ) -> Self {
         Self { transactor }
     }
 }
 
-impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal>
+impl<M, Ecal, OnVerifyError> MemoryClient<M, Ecal, OnVerifyError>
 where
     M: Memory,
+    Ecal: EcalHandler,
+    OnVerifyError: Verifier<M, MemoryStorage, Script, Ecal>,
 {
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.

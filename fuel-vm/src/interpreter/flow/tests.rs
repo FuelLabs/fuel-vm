@@ -5,9 +5,13 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::storage::{
-    MemoryStorage,
-    MemoryStorageError,
+use crate::{
+    interpreter::NotSupportedEcal,
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
+    verification::Panic,
 };
 
 use super::*;
@@ -383,6 +387,8 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageE
         receipts: &mut receipts,
         frames: &mut frames,
         current_contract,
+        verifier_state: &mut Panic,
+        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.prepare_call().map(|_| Output {
         reg,

@@ -1,3 +1,5 @@
+use core::marker::PhantomData;
+
 use crate::{
     call::CallFrame,
     constraints::reg_key::*,
@@ -45,6 +47,10 @@ use crate::{
         ContractsStateData,
         InterpreterStorage,
     },
+    verification::{
+        OnErrorAction,
+        Verifier,
+    },
 };
 use alloc::vec::Vec;
 use fuel_asm::{
@@ -52,7 +58,10 @@ use fuel_asm::{
     PanicReason,
     RegId,
 };
-use fuel_storage::StorageSize;
+use fuel_storage::{
+    StorageInspect,
+    StorageSize,
+};
 use fuel_tx::{
     consts::BALANCE_ENTRY_SIZE,
     BlobId,
@@ -89,6 +98,7 @@ where
     M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
+    OnVerifyError: Verifier<M, S, Tx, Ecal>,
 {
     /// Loads contract ID pointed by `contract_id_addr`, and then for that contract,
     /// copies `length_unpadded` bytes from it starting from offset `contract_offset` into
@@ -124,24 +134,27 @@ where
             },
             _,
         ) = split_registers(&mut self.registers);
-        let input = LoadContractCodeCtx {
-            memory: self.memory.as_mut(),
-            context: &self.context,
-            storage: &mut self.storage,
-            contract_max_size,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
-            gas_cost,
-            cgas,
-            ggas,
-            ssp,
-            sp,
-            hp: hp.as_ref(),
-            fp: fp.as_ref(),
-            pc,
-        };
+        let input: LoadContractCodeCtx<M, S, Tx, Ecal, OnVerifyError> =
+            LoadContractCodeCtx {
+                memory: self.memory.as_mut(),
+                context: &self.context,
+                storage: &mut self.storage,
+                contract_max_size,
+                input_contracts: InputContracts::new(
+                    &self.input_contracts,
+                    &mut self.panic_context,
+                ),
+                gas_cost,
+                cgas,
+                ggas,
+                ssp,
+                sp,
+                hp: hp.as_ref(),
+                fp: fp.as_ref(),
+                pc,
+                verifier_state: &mut self.verification_state,
+                _phantom: Default::default(),
+            };
 
         match mode.to_u8() {
             0 => input.load_contract_code(addr, offset, length_unpadded),
@@ -221,6 +234,8 @@ where
             cgas,
             ggas,
             pc,
+            verifier_state: &mut self.verification_state,
+            _phantom: Default::default(),
         };
         input.code_copy(a, b, c, d)
     }
@@ -264,7 +279,6 @@ where
             memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
-
             input_contracts: InputContracts::new(
                 &self.input_contracts,
                 &mut self.panic_context,
@@ -273,6 +287,8 @@ where
             ggas,
             owner,
             pc,
+            verifier_state: &mut self.verification_state,
+            _phantom: Default::default(),
         }
         .code_root(a, b)
     }
@@ -289,7 +305,6 @@ where
             memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
-
             input_contracts: InputContracts::new(
                 &self.input_contracts,
                 &mut self.panic_context,
@@ -297,6 +312,8 @@ where
             cgas,
             ggas,
             pc,
+            verifier_state: &mut self.verification_state,
+            _phantom: Default::default(),
         };
         input.code_size(result, b)
     }
@@ -500,11 +517,10 @@ where
     }
 }
 
-struct LoadContractCodeCtx<'vm, S> {
+struct LoadContractCodeCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     contract_max_size: u64,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
-
     input_contracts: InputContracts<'vm>,
     storage: &'vm S,
     gas_cost: DependentCost,
@@ -515,11 +531,14 @@ struct LoadContractCodeCtx<'vm, S> {
     hp: Reg<'vm, HP>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
+    verifier_state: &'vm mut OnVerifyError,
+    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<S> LoadContractCodeCtx<'_, S>
+impl<M, S, Tx, Ecal, OnVerifyError> LoadContractCodeCtx<'_, M, S, Tx, Ecal, OnVerifyError>
 where
     S: InterpreterStorage,
+    OnVerifyError: Verifier<M, S, Tx, Ecal>,
 {
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
@@ -536,6 +555,7 @@ where
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
@@ -559,7 +579,15 @@ where
             return Err(PanicReason::ContractMaxSize.into())
         }
 
-        self.input_contracts.check(&contract_id)?;
+        if let Err(err) = self.input_contracts.check(&contract_id) {
+            match OnVerifyError::on_contract_not_in_inputs(
+                &mut self.verifier_state,
+                contract_id,
+            ) {
+                OnErrorAction::Continue => {}
+                OnErrorAction::Terminate => return Err(err.into()),
+            }
+        }
 
         // Fetch the storage contract
         let contract_len = contract_size(&self.storage, &contract_id)?;
@@ -866,7 +894,7 @@ where
     }
 }
 
-struct CodeCopyCtx<'vm, S> {
+struct CodeCopyCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     memory: &'vm mut MemoryInstance,
     input_contracts: InputContracts<'vm>,
     storage: &'vm S,
@@ -875,12 +903,11 @@ struct CodeCopyCtx<'vm, S> {
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     pc: RegMut<'vm, PC>,
+    verifier_state: &'vm mut OnVerifyError,
+    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<S> CodeCopyCtx<'_, S>
-where
-    S: InterpreterStorage,
-{
+impl<M, S, Tx, Ecal, OnVerifyError> CodeCopyCtx<'_, M, S, Tx, Ecal, OnVerifyError> {
     pub(crate) fn code_copy(
         mut self,
         dst_addr: Word,
@@ -890,11 +917,20 @@ where
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
 
         self.memory.write(self.owner, dst_addr, length)?;
-        self.input_contracts.check(&contract_id)?;
+        if let Err(err) = self.input_contracts.check(&contract_id) {
+            match OnVerifyError::on_contract_not_in_inputs(
+                &mut self.verifier_state,
+                contract_id,
+            ) {
+                OnErrorAction::Continue => {}
+                OnErrorAction::Terminate => return Err(err.into()),
+            }
+        }
 
         let contract_len = contract_size(&self.storage, &contract_id)?;
         let charge_len = core::cmp::max(contract_len as u64, length);
@@ -968,7 +1004,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     Ok(())
 }
 
-struct CodeRootCtx<'vm, S> {
+struct CodeRootCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
@@ -977,18 +1013,29 @@ struct CodeRootCtx<'vm, S> {
     ggas: RegMut<'vm, GGAS>,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
+    verifier_state: &'vm mut OnVerifyError,
+    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<S> CodeRootCtx<'_, S> {
+impl<M, S, Tx, Ecal, OnVerifyError> CodeRootCtx<'_, M, S, Tx, Ecal, OnVerifyError> {
     pub(crate) fn code_root(mut self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         self.memory.write_noownerchecks(a, Bytes32::LEN)?;
 
         let contract_id = ContractId::new(self.memory.read_bytes(b)?);
 
-        self.input_contracts.check(&contract_id)?;
+        if let Err(err) = self.input_contracts.check(&contract_id) {
+            match OnVerifyError::on_contract_not_in_inputs(
+                &mut self.verifier_state,
+                contract_id,
+            ) {
+                OnErrorAction::Continue => {}
+                OnErrorAction::Terminate => return Err(err.into()),
+            }
+        }
 
         let len = contract_size(self.storage, &contract_id)?;
         dependent_gas_charge_without_base(
@@ -1011,7 +1058,7 @@ impl<S> CodeRootCtx<'_, S> {
     }
 }
 
-struct CodeSizeCtx<'vm, S> {
+struct CodeSizeCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
@@ -1019,20 +1066,32 @@ struct CodeSizeCtx<'vm, S> {
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     pc: RegMut<'vm, PC>,
+    verifier_state: &'vm mut OnVerifyError,
+    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<S> CodeSizeCtx<'_, S> {
+impl<M, S, Tx, Ecal, OnVerifyError> CodeSizeCtx<'_, M, S, Tx, Ecal, OnVerifyError> {
     pub(crate) fn code_size(
         mut self,
         result: &mut Word,
         b: Word,
-    ) -> Result<(), RuntimeError<S::Error>>
+    ) -> Result<(), RuntimeError<<S as StorageInspect<ContractsRawCode>>::Error>>
     where
         S: StorageSize<ContractsRawCode>,
+        S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         let contract_id = ContractId::new(self.memory.read_bytes(b)?);
 
-        self.input_contracts.check(&contract_id)?;
+        if let Err(err) = self.input_contracts.check(&contract_id) {
+            match OnVerifyError::on_contract_not_in_inputs(
+                &mut self.verifier_state,
+                contract_id,
+            ) {
+                OnErrorAction::Continue => {}
+                OnErrorAction::Terminate => return Err(err.into()),
+            }
+        }
 
         let len = contract_size(self.storage, &contract_id)?;
         dependent_gas_charge_without_base(

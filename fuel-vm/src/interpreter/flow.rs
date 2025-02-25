@@ -46,9 +46,16 @@ use crate::{
         ContractsRawCode,
         InterpreterStorage,
     },
+    verification::{
+        OnErrorAction,
+        Verifier,
+    },
 };
 use alloc::vec::Vec;
-use core::cmp;
+use core::{
+    cmp,
+    marker::PhantomData,
+};
 use fuel_asm::{
     Instruction,
     PanicInstruction,
@@ -334,6 +341,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    OnVerifyError: Verifier<M, S, Tx, Ecal>,
 {
     /// Prepare a call instruction for execution
     pub fn prepare_call(
@@ -389,6 +397,8 @@ where
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             current_contract,
+            verifier_state: &mut self.verification_state,
+            _phantom: Default::default(),
         }
         .prepare_call()
     }
@@ -440,7 +450,7 @@ impl PrepareCallRegisters<'_> {
     }
 }
 
-struct PrepareCallCtx<'vm, S> {
+struct PrepareCallCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
     memory: &'vm mut MemoryInstance,
@@ -453,18 +463,19 @@ struct PrepareCallCtx<'vm, S> {
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
+    verifier_state: &'vm mut OnVerifyError,
+    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<S> PrepareCallCtx<'_, S>
-where
-    S: InterpreterStorage,
-{
+impl<M, S, Tx, Ecal, OnVerifyError> PrepareCallCtx<'_, M, S, Tx, Ecal, OnVerifyError> {
     fn prepare_call(mut self) -> IoResult<(), S::DataError>
     where
         S: StorageSize<ContractsRawCode>
             + ContractsAssetsStorage
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
+        S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         let call_bytes = self
             .memory
@@ -505,7 +516,15 @@ where
             )?;
         }
 
-        self.input_contracts.check(call.to())?;
+        if let Err(err) = self.input_contracts.check(&call.to()) {
+            match OnVerifyError::on_contract_not_in_inputs(
+                &mut self.verifier_state,
+                *call.to(),
+            ) {
+                OnErrorAction::Continue => {}
+                OnErrorAction::Terminate => return Err(err.into()),
+            }
+        }
 
         // credit contract asset_id balance
         let (_, created_new_entry) = balance_increase(

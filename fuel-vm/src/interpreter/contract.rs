@@ -1,5 +1,7 @@
 //! This module contains logic on contract management.
 
+use core::marker::PhantomData;
+
 use super::{
     gas::gas_charge,
     internal::{
@@ -29,9 +31,14 @@ use crate::{
     },
     storage::{
         BlobData,
+        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
+    },
+    verification::{
+        OnErrorAction,
+        Verifier,
     },
 };
 use fuel_asm::{
@@ -39,7 +46,10 @@ use fuel_asm::{
     RegId,
     Word,
 };
-use fuel_storage::StorageSize;
+use fuel_storage::{
+    StorageInspect,
+    StorageSize,
+};
 use fuel_tx::{
     Output,
     Receipt,
@@ -57,6 +67,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    OnVerifyError: Verifier<M, S, Tx, Ecal>,
 {
     pub(crate) fn contract_balance(
         &mut self,
@@ -74,6 +85,8 @@ where
                 &self.input_contracts,
                 &mut self.panic_context,
             ),
+            verifier_state: &mut self.verification_state,
+            _phantom: Default::default(),
         };
         input.contract_balance(result, b, c)?;
         Ok(())
@@ -104,7 +117,6 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -117,6 +129,8 @@ where
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
+            verifier_state: &mut self.verification_state,
+            _phantom: Default::default(),
         };
         input.transfer(a, b, c)
     }
@@ -147,7 +161,6 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-
             new_storage_gas_per_byte,
             tx: &mut self.tx,
             input_contracts: InputContracts::new(
@@ -160,6 +173,8 @@ where
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
+            verifier_state: &mut self.verification_state,
+            _phantom: Default::default(),
         };
         input.transfer_output(a, b, c, d)
     }
@@ -174,36 +189,50 @@ where
     }
 }
 
-struct ContractBalanceCtx<'vm, S> {
+struct ContractBalanceCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
     input_contracts: InputContracts<'vm>,
+    verifier_state: &'vm mut OnVerifyError,
+    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<S> ContractBalanceCtx<'_, S> {
+impl<M, S, Tx, Ecal, OnVerifyError>
+    ContractBalanceCtx<'_, M, S, Tx, Ecal, OnVerifyError>
+{
     pub(crate) fn contract_balance(
         mut self,
         result: &mut Word,
         b: Word,
         c: Word,
-    ) -> IoResult<(), S::Error>
+    ) -> IoResult<(), <S as StorageInspect<ContractsAssets>>::Error>
     where
         S: ContractsAssetsStorage,
+        S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
-        let contract = ContractId::new(self.memory.read_bytes(c)?);
+        let contract_id = ContractId::new(self.memory.read_bytes(c)?);
 
-        self.input_contracts.check(&contract)?;
+        if let Err(err) = self.input_contracts.check(&contract_id) {
+            match OnVerifyError::on_contract_not_in_inputs(
+                &mut self.verifier_state,
+                contract_id,
+            ) {
+                OnErrorAction::Continue => {}
+                OnErrorAction::Terminate => return Err(err.into()),
+            }
+        }
 
-        let balance = balance(self.storage, &contract, &asset_id)?;
+        let balance = balance(self.storage, &contract_id, &asset_id)?;
 
         *result = balance;
 
         Ok(inc_pc(self.pc)?)
     }
 }
-struct TransferCtx<'vm, S, Tx> {
+struct TransferCtx<'vm, M, S, Tx, Ecal, OnVerifyError> {
     storage: &'vm mut S,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
@@ -219,9 +248,11 @@ struct TransferCtx<'vm, S, Tx> {
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
+    verifier_state: &'vm mut OnVerifyError,
+    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<S, Tx> TransferCtx<'_, S, Tx> {
+impl<M, S, Tx, Ecal, OnVerifyError> TransferCtx<'_, M, S, Tx, Ecal, OnVerifyError> {
     /// In Fuel specs:
     /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
     /// $rA -> recipient_contract_id_offset
@@ -232,17 +263,27 @@ impl<S, Tx> TransferCtx<'_, S, Tx> {
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> IoResult<(), S::Error>
+    ) -> IoResult<(), <S as StorageInspect<ContractsAssets>>::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
+        S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         let amount = transfer_amount;
         let destination =
             ContractId::from(self.memory.read_bytes(recipient_contract_id_offset)?);
         let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
 
-        self.input_contracts.check(&destination)?;
+        if let Err(err) = self.input_contracts.check(&destination) {
+            match OnVerifyError::on_contract_not_in_inputs(
+                &mut self.verifier_state,
+                destination,
+            ) {
+                OnErrorAction::Continue => {}
+                OnErrorAction::Terminate => return Err(err.into()),
+            }
+        }
 
         if amount == 0 {
             return Err(PanicReason::TransferZeroCoins.into())
@@ -304,10 +345,12 @@ impl<S, Tx> TransferCtx<'_, S, Tx> {
         output_index: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> IoResult<(), S::Error>
+    ) -> IoResult<(), <S as StorageInspect<ContractsAssets>>::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
+        S: InterpreterStorage,
+        OnVerifyError: Verifier<M, S, Tx, Ecal>,
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;

@@ -96,29 +96,36 @@ where
     // TODO: Take connected node in input, remove reference to self.
     // This will allow decoupling the set of
     fn prepare_join_extension_nodes(
+        extension_node_rlp: &RlpNode,
         extension_node: ExtensionNode,
+        connected_node_rlp: &RlpNode,
         connected_extension_node: &ExtensionNode,
     ) -> anyhow::Result<(RlpNode, Pending)> {
+        println!(
+            "Joining extension nodes {:?} and {:?}",
+            extension_node_rlp, connected_node_rlp
+        );
+        println!(
+            "Old child for extension node {:?} is {:?}",
+            extension_node_rlp, extension_node.child
+        );
         let prefix_nibbles = extension_node.as_ref().key;
-        let connected_node_rlp = extension_node.clone().child;
-
         let suffix_nibbles = connected_extension_node.as_ref().key;
         let nibbles = prefix_nibbles.join(suffix_nibbles);
-        let new_extension_node =
-            ExtensionNode::new(nibbles, connected_extension_node.child.clone());
+        let child: RlpNode = connected_extension_node.child.clone();
+
+        let new_extension_node = ExtensionNode::new(nibbles, child);
 
         let new_extension_node_rlp = TrieNode::Extension(new_extension_node.clone())
             .rlp(&mut Vec::with_capacity(33));
-        let old_extension_node_rlp =
-            TrieNode::Extension(extension_node).rlp(&mut Vec::with_capacity(33));
 
         let mut pending = Pending::new();
         pending.insert(
             new_extension_node_rlp.clone(),
             TrieNode::Extension(new_extension_node),
         );
-        pending.delete(old_extension_node_rlp);
-        pending.delete(connected_node_rlp);
+        pending.delete(extension_node_rlp.clone());
+        pending.delete(connected_node_rlp.clone());
 
         Ok((new_extension_node_rlp, pending))
     }
@@ -201,6 +208,7 @@ where
                 let new_rlp_node = new_node.rlp(&mut Vec::with_capacity(33));
                 let mut pending = Pending::new();
                 pending.insert(new_rlp_node.clone(), new_node);
+                pending.delete(node_to_connect_rlp.clone());
                 pending.delete(branch_node_rlp);
                 Ok((new_rlp_node, pending))
             }
@@ -452,11 +460,11 @@ where
 
     fn prepare_delete_child_from_branch_node(
         branch_node_rlp: RlpNode,
-        branch_node: &mut BranchNode,
+        mut branch_node: BranchNode,
         nibble: u8,
     ) -> (RlpNode, Pending) {
         let new_branch_node_rlp =
-            Self::delete_child_from_branch_node(branch_node, nibble);
+            Self::delete_child_from_branch_node(&mut branch_node, nibble);
         let mut pending = Pending::new();
         pending.insert(
             new_branch_node_rlp.clone(),
@@ -758,6 +766,7 @@ where
                             ref extension_node_rlp,
                             _extension_node,
                         ) => {
+                            println!("Found an extension node with rlp {:?} while deleting key", extension_node_rlp);
                             // Remove the extension node
                             self.storage.remove(extension_node_rlp).map_err(|_e| {
                                 anyhow::anyhow!(
@@ -779,6 +788,10 @@ where
                                     nibble != &decision && node.is_some()
                                 })
                                 .collect::<Vec<_>>();
+                            println!(
+                                "Branch node in deletion process with siblings: {:?}",
+                                siblings_of_node_being_deleted
+                            );
                             let Some((first_sibling, other_siblings)) =
                                 siblings_of_node_being_deleted.split_first()
                             else {
@@ -798,21 +811,81 @@ where
                                     anyhow::bail!("Child node not found in storage")
                                 };
 
-                                let (new_extension_node_rlp, pending) =
-                                    Self::prepare_branch_to_extension_node(
-                                        branch_node.clone(),
-                                        *nibble,
-                                        &child_at_nibble_rlp,
-                                        &child_at_nibble,
-                                    )?;
+                                // Delete the sibling from the branch node
+                                let (
+                                    branch_node_one_child_rlp,
+                                    mut branch_node_one_child_pending,
+                                ) = Self::prepare_delete_child_from_branch_node(
+                                    branch_node_rlp.clone(),
+                                    branch_node.clone(),
+                                    decision,
+                                );
+
+                                // The branch node with 1 child in the pending operations
+                                // won't have to be inserted in the storage, and it is the
+                                // only node in the pending operations.
+                                debug_assert_eq!(
+                                    branch_node_one_child_pending.to_insert().len(),
+                                    1
+                                );
+                                let (_rlp, TrieNode::Branch(branch_node_one_child)) =
+                                    branch_node_one_child_pending
+                                        .to_insert_mut()
+                                        .drain(..)
+                                        .collect::<Vec<_>>()
+                                        .into_iter()
+                                        .next()
+                                        .unwrap()
+                                else {
+                                    anyhow::bail!("Branch node expected when converting a branch node into an extension node")
+                                };
+
+                                // Next, transform the branch node with one child into a
+                                // extension node pointing to that child.
+                                let (
+                                    new_extension_node_rlp,
+                                    mut branch_to_extension_node_pending,
+                                ) = Self::prepare_branch_to_extension_node(
+                                    branch_node_one_child,
+                                    *nibble,
+                                    &child_at_nibble_rlp,
+                                    &child_at_nibble,
+                                )?;
+
+                                // TODO: But we also need to modify the remaining child in
+                                // case it is an extension
+                                // node.
+
+                                // The changes to convert the branch node into an
+                                // extension node
+                                // contain the removal of the branch node with one child,
+                                // but this will not be
+                                // inserted in the storage and can be removed
+                                // debug_assert_eq!(
+                                //    branch_to_extension_node_pending.to_delete().len(),
+                                //    1
+                                //);
+                                // debug_assert_eq!(
+                                //    (branch_to_extension_node_pending.to_delete())[0],
+                                //    branch_node_one_child_rlp
+                                //);
+
+                                // branch_to_extension_node_pending.to_delete_mut().
+                                // clear();
+
+                                let pending = branch_node_one_child_pending
+                                    .merge(branch_to_extension_node_pending);
                                 self.apply_operations(pending)?;
+                                println!("Entering JoinExtensionNodes stage");
                                 stage = Stage::JoinExtensionNodes(new_extension_node_rlp);
                             } else {
-                                let mut new_branch_node = branch_node.clone();
+                                let new_branch_node = branch_node.clone();
+                                // TODO: This deletion is done in both branches and can be
+                                // simplified.
                                 let (new_branch_node_rlp, pending) =
                                     Self::prepare_delete_child_from_branch_node(
                                         branch_node_rlp.clone(),
-                                        &mut new_branch_node,
+                                        new_branch_node,
                                         decision,
                                     );
                                 self.apply_operations(pending)?;
@@ -822,6 +895,7 @@ where
                     }
                 }
                 Stage::JoinExtensionNodes(rlp_node) => {
+                    println!("In joinExtensionNodes stage");
                     match traversed_node {
                         TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already
@@ -847,8 +921,18 @@ where
 
                             stage = Stage::PostDeletion(new_branch_node_rlp);
                         }
-                        TraversedNode::Extension(_extension_node_rlp, extension_node) => {
-                            let connected_node = self.storage.get(&extension_node.child).map_err(|_| anyhow::anyhow!("Cannot fetch {:?} from storage", extension_node.child))?.ok_or_else(|| {
+                        TraversedNode::Extension(extension_node_rlp, extension_node) => {
+                            // extension_node must be connected to node_rlp. However,
+                            // node_rlp at this point should
+                            // represent an extension node. We have an extension node
+                            // connected to another extension node,
+                            // and we can simplify this with a single path.
+                            println!("Found node {extension_node_rlp:?} to join with {rlp_node:?}");
+                            // The child of `extension_node` is a node that has been
+                            // removed already from the
+                            // storage (the old branch node with two children). We must
+                            // fetch
+                            let connected_node = self.storage.get(&rlp_node).map_err(|_| anyhow::anyhow!("Cannot fetch {:?} from storage", extension_node.child))?.ok_or_else(|| {
                                 anyhow::anyhow!("Node referenced by extension node not found in storage")
                             })?;
                             let TrieNode::Extension(ref connected_node) =
@@ -863,7 +947,9 @@ where
                             // case we join the two extension nodes,
                             let (new_extension_node_rlp, pending) =
                                 Self::prepare_join_extension_nodes(
+                                    &extension_node_rlp,
                                     extension_node,
+                                    &rlp_node,
                                     connected_node,
                                 )?;
                             self.apply_operations(pending)?;
@@ -873,6 +959,7 @@ where
                     }
                 }
                 Stage::PostDeletion(rlp_node) => {
+                    println!("Post deletion stage: {:?}", rlp_node);
                     match traversed_node {
                         TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already
@@ -919,7 +1006,6 @@ where
             Stage::InProgress => {
                 // We traversed all the nodes in the path, keeping deleting nodes.
                 // The tree is now empty.
-                let empty_node_rlp = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
                 // No need to insert the empty root in the tree. When iterating through
                 // nodes in a path, the NodesIterator treats an empty root as if it
                 // was present in the tree.

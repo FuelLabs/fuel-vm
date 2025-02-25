@@ -137,7 +137,9 @@ impl MerklePatriciaTrie {
     }
 
     pub fn delete(&mut self, key: MerkleTreeKey) {
-        let _ = self.trie.delete_leaf(&Nibbles::unpack(key.as_ref()));
+        if let Err(e) = self.trie.delete_leaf(&Nibbles::unpack(key.as_ref())) {
+            println!("Error while deleting node: {e:?}");
+        }
     }
 
     pub fn root(&self) -> RlpNode {
@@ -550,5 +552,68 @@ mod test {
         assert_eq!(extension_node_key.as_ref(), &[0u8; 64]);
         assert_eq!(leaf_node.key.as_ref(), &[0u8; 64]);
         assert_eq!(leaf_node.value, b"DATA2");
+    }
+
+    #[test]
+    fn remove_leaf_from_node_with_only_one_leaf() {
+        let mut trie = super::MerklePatriciaTrie::new();
+        let key = MerkleTreeKey::new_without_hash([0x00; 32]);
+        trie.update(key, b"DATA1");
+        trie.delete(key);
+
+        let root_rlp = trie.root();
+        let storage = trie.trie.storage.map;
+
+        println!("");
+        println!("{:?}", storage);
+        // One extension node, One leaf node
+        assert_eq!(storage.len(), 0);
+        assert_eq!(
+            root_rlp,
+            TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33))
+        );
+    }
+
+    #[test]
+    fn remove_leaf_branch_node_collapses_to_extension_node() {
+        let mut trie = super::MerklePatriciaTrie::new();
+        let key1 = MerkleTreeKey::new_without_hash([0x00; 32]);
+        let key2 = MerkleTreeKey::new_without_hash([0x01; 32]);
+        trie.update(key1, b"DATA1");
+        trie.update(key2, b"DATA2");
+        // At this point the tree contains one extension node pointing to a branch node
+        // with two children. Each child is an extension node pointing to a leaf
+        // node.
+        trie.delete(key2);
+
+        // After the deletion the branch node has been collapsed into an extension node.
+        // Furthermore, such an extension node has been merged with the parent node.
+        // The tree contains one extension node, and two leaf nodes.
+
+        let root_rlp = trie.root();
+        let storage = trie.trie.storage.map;
+
+        println!("");
+        println!("{:?}", storage);
+        // One extension node, One leaf node
+        assert_eq!(storage.len(), 2);
+
+        let Some(TrieNode::Extension(root_node)) = storage.get(&WrappedRlpNode(root_rlp))
+        else {
+            panic!("Root node not in storage");
+        };
+
+        let extension_node_key = &root_node.key;
+        let leaf_node_rlp = &root_node.child;
+
+        let Some(TrieNode::Leaf(leaf_node)) =
+            storage.get(&WrappedRlpNode(leaf_node_rlp.clone()))
+        else {
+            panic!("Leaf node not in storage")
+        };
+
+        assert_eq!(extension_node_key.as_ref(), &[0u8; 64]);
+        assert_eq!(leaf_node.key.as_ref(), &[0u8; 64]);
+        assert_eq!(leaf_node.value, b"DATA1");
     }
 }

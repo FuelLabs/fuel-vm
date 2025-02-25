@@ -34,6 +34,22 @@ impl Pending {
         self.to_insert.push((node, value));
     }
 
+    pub(crate) fn to_insert(&self) -> &Vec<(RlpNode, TrieNode)> {
+        &self.to_insert
+    }
+
+    pub(crate) fn to_insert_mut(&mut self) -> &mut Vec<(RlpNode, TrieNode)> {
+        &mut self.to_insert
+    }
+
+    pub(crate) fn to_delete(&self) -> &Vec<RlpNode> {
+        &self.to_delete
+    }
+
+    pub(crate) fn to_delete_mut(&mut self) -> &mut Vec<RlpNode> {
+        &mut self.to_delete
+    }
+
     pub fn merge(mut self, other: Pending) -> Pending {
         self.to_delete.extend(other.to_delete);
         self.to_insert.extend(other.to_insert);

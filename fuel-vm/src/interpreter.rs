@@ -320,7 +320,7 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
         &mut self.receipts
     }
 
-    /// Get verificatio state
+    /// Get verifier state. Note that the default verifier has no state.
     pub fn verifier(&self) -> &V {
         &self.verifier
     }

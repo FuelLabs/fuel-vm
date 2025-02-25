@@ -97,7 +97,7 @@ where
     M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
-    V: Verifier<S>,
+    V: Verifier,
 {
     /// Loads contract ID pointed by `contract_id_addr`, and then for that contract,
     /// copies `length_unpadded` bytes from it starting from offset `contract_offset` into
@@ -537,7 +537,7 @@ impl<S, V> LoadContractCodeCtx<'_, S, V> {
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
@@ -895,7 +895,7 @@ impl<S, V> CodeCopyCtx<'_, S, V> {
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
 
@@ -995,7 +995,7 @@ impl<S, V> CodeRootCtx<'_, S, V> {
     pub(crate) fn code_root(self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         self.memory.write_noownerchecks(a, Bytes32::LEN)?;
 
@@ -1049,7 +1049,7 @@ impl<S, V> CodeSizeCtx<'_, S, V> {
     where
         S: StorageSize<ContractsRawCode>,
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         let contract_id = ContractId::new(self.memory.read_bytes(b)?);
 

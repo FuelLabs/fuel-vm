@@ -62,7 +62,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    V: Verifier<S>,
+    V: Verifier,
 {
     pub(crate) fn contract_balance(
         &mut self,
@@ -194,7 +194,7 @@ impl<S, V> ContractBalanceCtx<'_, S, V> {
     where
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
         let contract_id = ContractId::new(self.memory.read_bytes(c)?);
@@ -248,7 +248,7 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         let amount = transfer_amount;
         let destination =
@@ -326,7 +326,7 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;

@@ -337,7 +337,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    V: Verifier<S>,
+    V: Verifier,
 {
     /// Prepare a call instruction for execution
     pub fn prepare_call(
@@ -468,7 +468,7 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
         S: InterpreterStorage,
-        V: Verifier<S>,
+        V: Verifier,
     {
         let call_bytes = self
             .memory

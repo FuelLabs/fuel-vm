@@ -64,7 +64,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
-    V: Verifier<S> + Default,
+    V: Verifier + Default,
 {
     /// Transactor constructor
     pub fn new(memory: M, storage: S, interpreter_params: InterpreterParams) -> Self {
@@ -313,7 +313,7 @@ where
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
-    V: Verifier<S>,
+    V: Verifier,
 {
     /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
@@ -418,7 +418,7 @@ where
     S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
-    V: Verifier<S> + Default,
+    V: Verifier + Default,
 {
     fn default() -> Self {
         Self::new(

@@ -11,7 +11,6 @@ use fuel_tx::{
 use crate::{
     error::PanicOrBug,
     interpreter::PanicContext,
-    storage::InterpreterStorage,
 };
 
 /// Do not allow outside implementations for the Verifier, so that it's not a breaking
@@ -20,10 +19,9 @@ trait Seal {}
 
 /// What to do when verification fails.
 #[allow(private_bounds)] // For selaed trait
-pub trait Verifier<S>
+pub trait Verifier
 where
     Self: Sized + Seal,
-    S: InterpreterStorage,
 {
     /// Handle an error after a contract is missing from the inputs
     #[allow(private_interfaces)] // PanicContext is an internal type, so this isn't callable by external code
@@ -40,10 +38,9 @@ where
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Normal;
 
-impl<S> Verifier<S> for Normal
+impl Verifier for Normal
 where
     Self: Sized,
-    S: InterpreterStorage,
 {
     #[allow(private_interfaces)]
     fn check_contract_in_inputs(

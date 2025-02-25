@@ -552,7 +552,7 @@ pub mod test_helpers {
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
-            V: Verifier<MemoryStorage> + Clone,
+            V: Verifier + Clone,
         {
             self.storage.set_block_height(self.block_height);
 

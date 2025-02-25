@@ -17,7 +17,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    V: Verifier<S>,
+    V: Verifier,
 {
     /// Continue the execution from a previously interrupted program flow.
     pub fn resume(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {

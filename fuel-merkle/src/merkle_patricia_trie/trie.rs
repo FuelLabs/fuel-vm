@@ -412,7 +412,7 @@ where
     }
 
     // Utility function to expand the list of children of a BranchNode
-    // Children are stored in a compact version using a bitmast. This function
+    // Children are stored in a compact version using a bitmask. This function
     // expands the compacted list of children to an arry of 16 elements.
     fn expand_branch_node(branch_node: &BranchNode) -> [Option<RlpNode>; 16] {
         let mut children = [const { None }; 16];
@@ -917,14 +917,12 @@ where
                 anyhow::bail!("Can't be in predeletion stage.")
             }
             Stage::InProgress => {
-                let empty_node_rlp = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
                 // We traversed all the nodes in the path, keeping deleting nodes.
                 // The tree is now empty.
-                self.storage
-                    .insert(&empty_node_rlp, &TrieNode::EmptyRoot)
-                    .map_err(|_| {
-                        anyhow::anyhow!("Cannot insert {:?} in storage", empty_node_rlp)
-                    })?;
+                let empty_node_rlp = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
+                // No need to insert the empty root in the tree. When iterating through
+                // nodes in a path, the NodesIterator treats an empty root as if it
+                // was present in the tree.
                 self.root = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
             }
             Stage::PostDeletion(rlp_node) | Stage::JoinExtensionNodes(rlp_node) => {

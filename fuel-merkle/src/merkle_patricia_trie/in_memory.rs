@@ -532,8 +532,7 @@ mod test {
         println!("");
         println!("{:?}", storage);
         // One extension node, One leaf node
-        // TODO: We keep the Empty root in the map, while we should not.
-        //assert_eq!(storage.len(), 2);
+        assert_eq!(storage.len(), 2);
 
         let Some(TrieNode::Extension(root_node)) = storage.get(&WrappedRlpNode(root_rlp))
         else {

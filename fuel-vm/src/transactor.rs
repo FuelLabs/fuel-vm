@@ -23,6 +23,10 @@ use crate::{
         StateTransitionRef,
     },
     storage::InterpreterStorage,
+    verification::{
+        Panic,
+        Verifier,
+    },
 };
 use fuel_tx::{
     Blob,
@@ -46,25 +50,26 @@ use crate::interpreter::MemoryInstance;
 /// builder`.
 ///
 /// Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
-pub struct Transactor<M, S, Tx, Ecal = NotSupportedEcal>
+pub struct Transactor<M, S, Tx, Ecal = NotSupportedEcal, OnVerifyError = Panic>
 where
     S: InterpreterStorage,
 {
-    interpreter: Interpreter<M, S, Tx, Ecal>,
+    interpreter: Interpreter<M, S, Tx, Ecal, OnVerifyError>,
     program_state: Option<ProgramState>,
     error: Option<InterpreterError<S::DataError>>,
 }
 
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    OnVerifyError: Verifier<M, S, Tx, Ecal> + Default,
 {
     /// Transactor constructor
     pub fn new(memory: M, storage: S, interpreter_params: InterpreterParams) -> Self {
         Self {
-            interpreter: Interpreter::<M, S, Tx, Ecal>::with_storage(
+            interpreter: Interpreter::<M, S, Tx, Ecal, OnVerifyError>::with_storage(
                 memory,
                 storage,
                 interpreter_params,
@@ -74,7 +79,7 @@ where
         }
     }
 }
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
@@ -149,7 +154,7 @@ where
     }
 
     /// Gets the interpreter.
-    pub fn interpreter(&self) -> &Interpreter<M, S, Tx, Ecal> {
+    pub fn interpreter(&self) -> &Interpreter<M, S, Tx, Ecal, OnVerifyError> {
         &self.interpreter
     }
 
@@ -175,7 +180,7 @@ where
     }
 }
 
-impl<M, S, Ecal> Transactor<M, S, Script, Ecal>
+impl<M, S, Ecal, OnVerifyError> Transactor<M, S, Script, Ecal, OnVerifyError>
 where
     M: Memory,
     S: InterpreterStorage,
@@ -200,7 +205,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     S: InterpreterStorage,
 {
@@ -301,13 +306,14 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
+    OnVerifyError: Verifier<M, S, Tx, Ecal>,
 {
     /// Execute a transaction, and return the new state of the transactor
     pub fn transact(&mut self, tx: Checked<Tx>) -> &mut Self {
@@ -345,12 +351,13 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> From<Interpreter<M, S, Tx, Ecal>> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> From<Interpreter<M, S, Tx, Ecal, OnVerifyError>>
+    for Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    fn from(interpreter: Interpreter<M, S, Tx, Ecal>) -> Self {
+    fn from(interpreter: Interpreter<M, S, Tx, Ecal, OnVerifyError>) -> Self {
         let program_state = None;
         let error = None;
 
@@ -362,28 +369,30 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> From<Transactor<M, S, Tx, Ecal>> for Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> From<Transactor<M, S, Tx, Ecal, OnVerifyError>>
+    for Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
 {
-    fn from(transactor: Transactor<M, S, Tx, Ecal>) -> Self {
+    fn from(transactor: Transactor<M, S, Tx, Ecal, OnVerifyError>) -> Self {
         transactor.interpreter
     }
 }
 
-impl<M, S, Tx, Ecal> AsRef<Interpreter<M, S, Tx, Ecal>> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> AsRef<Interpreter<M, S, Tx, Ecal, OnVerifyError>>
+    for Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
     Ecal: EcalHandler,
 {
-    fn as_ref(&self) -> &Interpreter<M, S, Tx, Ecal> {
+    fn as_ref(&self) -> &Interpreter<M, S, Tx, Ecal, OnVerifyError> {
         &self.interpreter
     }
 }
 
-impl<M, S, Tx, Ecal> AsRef<S> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> AsRef<S> for Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -393,7 +402,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> AsMut<S> for Transactor<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> AsMut<S> for Transactor<M, S, Tx, Ecal, OnVerifyError>
 where
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
@@ -404,11 +413,13 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<S, Tx, Ecal> Default for Transactor<MemoryInstance, S, Tx, Ecal>
+impl<S, Tx, Ecal, OnVerifyError> Default
+    for Transactor<MemoryInstance, S, Tx, Ecal, OnVerifyError>
 where
     S: InterpreterStorage + Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    OnVerifyError: Verifier<MemoryInstance, S, Tx, Ecal> + Default,
 {
     fn default() -> Self {
         Self::new(

@@ -41,6 +41,7 @@ pub mod state;
 pub mod storage;
 pub mod transactor;
 pub mod util;
+pub mod verification;
 
 #[cfg(test)]
 mod tests;

@@ -1,16 +1,25 @@
 #![allow(clippy::cast_possible_truncation)]
 
+use core::marker::PhantomData;
+
 use alloc::vec;
 
 use super::*;
 use crate::{
-    interpreter::PanicContext,
+    interpreter::{
+        NotSupportedEcal,
+        PanicContext,
+    },
     storage::{
         MemoryStorage,
         MemoryStorageError,
     },
+    verification::Panic,
 };
-use fuel_tx::Contract;
+use fuel_tx::{
+    Contract,
+    Script,
+};
 
 #[test]
 fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
@@ -51,7 +60,6 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         context: &Context::Script {
             block_height: Default::default(),
         },
-
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
@@ -61,6 +69,8 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         hp: Reg::new(&hp),
+        verifier_state: &mut Panic,
+        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
@@ -108,7 +118,6 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
         context: &Context::Call {
             block_height: Default::default(),
         },
-
         input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
@@ -118,6 +127,8 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
         hp: Reg::new(&hp),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
+        verifier_state: &mut Panic,
+        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
@@ -170,6 +181,8 @@ fn test_code_copy() -> IoResult<(), MemoryStorageError> {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
+        verifier_state: &mut Panic,
+        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.code_copy(dest_mem_address, contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);

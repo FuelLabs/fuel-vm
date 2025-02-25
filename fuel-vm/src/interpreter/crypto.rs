@@ -43,7 +43,7 @@ use fuel_types::{
 #[cfg(test)]
 mod tests;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, OnVerifyError> Interpreter<M, S, Tx, Ecal, OnVerifyError>
 where
     M: Memory,
     Tx: ExecutableTransaction,

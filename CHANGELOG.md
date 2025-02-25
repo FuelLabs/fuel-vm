@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [900](https://github.com/FuelLabs/fuel-vm/pull/900): Change the error variant `DuplicateMessageInputId` to `DuplicateInputNonce` which now contains a nonce instead of `MessageId` for performance improvements.
 - [907](https://github.com/FuelLabs/fuel-vm/pull/907): `StorageRead` and `StorageWrite` traits no longer return the number of bytes written. They already required that the whole buffer is used, but now this is reflected in signature and documentation as well.
 - [914](https://github.com/FuelLabs/fuel-vm/pull/914): The built-in profiler is removed. Use the debugger with single-stepping instead.
+- [914](https://github.com/FuelLabs/fuel-vm/pull/915): Interpreter is now generic over the validation error handling, allowing continue-on-error semantics for some errors, and and collecting those errors so they can all be fixed in one go.
 
 ### Changed
 - [904](https://github.com/FuelLabs/fuel-vm/pull/904): Moved the logic of each opcode into its own function. It helps so reduce the size of the `instruction_inner` function, allowing compiler to do better optimizations. The Mira swaps receive performance improvement in 16.5%.

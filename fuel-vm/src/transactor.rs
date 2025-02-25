@@ -24,7 +24,7 @@ use crate::{
     },
     storage::InterpreterStorage,
     verification::{
-        Panic,
+        Normal,
         Verifier,
     },
 };
@@ -50,7 +50,7 @@ use crate::interpreter::MemoryInstance;
 /// builder`.
 ///
 /// Based on <https://doc.rust-lang.org/1.5.0/style/ownership/builders.html#non-consuming-builders-preferred>
-pub struct Transactor<M, S, Tx, Ecal = NotSupportedEcal, V = Panic>
+pub struct Transactor<M, S, Tx, Ecal = NotSupportedEcal, V = Normal>
 where
     S: InterpreterStorage,
 {

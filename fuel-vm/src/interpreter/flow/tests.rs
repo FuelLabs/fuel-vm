@@ -10,7 +10,7 @@ use crate::{
         MemoryStorage,
         MemoryStorageError,
     },
-    verification::Panic,
+    verification::Normal,
 };
 
 use super::*;
@@ -387,7 +387,7 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageE
         receipts: &mut receipts,
         frames: &mut frames,
         current_contract,
-        verifier: &mut Panic,
+        verifier: &mut Normal,
     };
     input.prepare_call().map(|_| Output {
         reg,

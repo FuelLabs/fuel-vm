@@ -7,7 +7,7 @@ use crate::{
         MemoryStorage,
         MemoryStorageError,
     },
-    verification::Panic,
+    verification::Normal,
 };
 
 use super::*;
@@ -243,7 +243,7 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        verifier: &mut Panic,
+        verifier: &mut Normal,
     };
     let mut result = 0;
     let _ = input
@@ -260,7 +260,7 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        verifier: &mut Panic,
+        verifier: &mut Normal,
     };
     let mut result = 0;
     input.code_size(&mut result, 0).unwrap();
@@ -277,7 +277,7 @@ fn test_code_size() {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        verifier: &mut Panic,
+        verifier: &mut Normal,
     };
     let mut result = 0;
     let _ = input

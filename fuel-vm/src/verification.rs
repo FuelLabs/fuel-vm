@@ -35,11 +35,12 @@ where
     ) -> Result<(), PanicOrBug>;
 }
 
-/// Panic on failed verification. This is the default verification strategy.
+/// The default verification strategy.
+/// Performs the standard verification checks and panics on failure.
 #[derive(Debug, Copy, Clone, Default)]
-pub struct Panic;
+pub struct Normal;
 
-impl<S> Verifier<S> for Panic
+impl<S> Verifier<S> for Normal
 where
     Self: Sized,
     S: InterpreterStorage,
@@ -60,4 +61,4 @@ where
     }
 }
 
-impl Seal for Panic {}
+impl Seal for Normal {}

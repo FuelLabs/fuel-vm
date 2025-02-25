@@ -17,7 +17,7 @@ use crate::{
     },
     transactor::Transactor,
     verification::{
-        Panic,
+        Normal,
         Verifier,
     },
 };
@@ -37,7 +37,7 @@ use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<M, Ecal = NotSupportedEcal, V = Panic> {
+pub struct MemoryClient<M, Ecal = NotSupportedEcal, V = Normal> {
     transactor: Transactor<M, MemoryStorage, Script, Ecal, V>,
 }
 

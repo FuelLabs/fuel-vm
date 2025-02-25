@@ -117,7 +117,7 @@ pub struct NotSupportedEcal;
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification::Panic> {
+pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification::Normal> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: M,
     frames: Vec<CallFrame>,

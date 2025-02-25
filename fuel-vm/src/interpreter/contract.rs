@@ -193,7 +193,6 @@ impl<S, V> ContractBalanceCtx<'_, S, V> {
     ) -> IoResult<(), <S as StorageInspect<ContractsAssets>>::Error>
     where
         S: ContractsAssetsStorage,
-        S: InterpreterStorage,
         V: Verifier,
     {
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
@@ -247,7 +246,6 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
-        S: InterpreterStorage,
         V: Verifier,
     {
         let amount = transfer_amount;

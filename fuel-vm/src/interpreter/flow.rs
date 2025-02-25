@@ -51,10 +51,7 @@ use alloc::{
     collections::BTreeSet,
     vec::Vec,
 };
-use core::{
-    cmp,
-    marker::PhantomData,
-};
+use core::cmp;
 use fuel_asm::{
     Instruction,
     PanicInstruction,
@@ -340,7 +337,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     /// Prepare a call instruction for execution
     pub fn prepare_call(
@@ -395,7 +392,6 @@ where
             frames: &mut self.frames,
             current_contract,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         }
         .prepare_call()
     }
@@ -447,7 +443,7 @@ impl PrepareCallRegisters<'_> {
     }
 }
 
-struct PrepareCallCtx<'vm, M, S, Tx, Ecal, V> {
+struct PrepareCallCtx<'vm, S, V> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
     memory: &'vm mut MemoryInstance,
@@ -462,10 +458,9 @@ struct PrepareCallCtx<'vm, M, S, Tx, Ecal, V> {
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
     verifier: &'vm mut V,
-    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, V> PrepareCallCtx<'_, M, S, Tx, Ecal, V> {
+impl<S, V> PrepareCallCtx<'_, S, V> {
     fn prepare_call(mut self) -> IoResult<(), S::DataError>
     where
         S: StorageSize<ContractsRawCode>
@@ -473,7 +468,7 @@ impl<M, S, Tx, Ecal, V> PrepareCallCtx<'_, M, S, Tx, Ecal, V> {
             + StorageRead<ContractsRawCode>
             + StorageAsRef,
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         let call_bytes = self
             .memory

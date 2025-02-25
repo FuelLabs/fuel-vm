@@ -1,5 +1,3 @@
-use core::marker::PhantomData;
-
 use crate::{
     call::CallFrame,
     constraints::reg_key::*,
@@ -99,7 +97,7 @@ where
     M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     /// Loads contract ID pointed by `contract_id_addr`, and then for that contract,
     /// copies `length_unpadded` bytes from it starting from offset `contract_offset` into
@@ -135,7 +133,7 @@ where
             },
             _,
         ) = split_registers(&mut self.registers);
-        let input: LoadContractCodeCtx<M, S, Tx, Ecal, V> = LoadContractCodeCtx {
+        let input: LoadContractCodeCtx<S, V> = LoadContractCodeCtx {
             memory: self.memory.as_mut(),
             context: &self.context,
             storage: &mut self.storage,
@@ -151,7 +149,6 @@ where
             fp: fp.as_ref(),
             pc,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         };
 
         match mode.to_u8() {
@@ -231,7 +228,6 @@ where
             ggas,
             pc,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         };
         input.code_copy(a, b, c, d)
     }
@@ -282,7 +278,6 @@ where
             owner,
             pc,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         }
         .code_root(a, b)
     }
@@ -305,7 +300,6 @@ where
             ggas,
             pc,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         };
         input.code_size(result, b)
     }
@@ -509,7 +503,7 @@ where
     }
 }
 
-struct LoadContractCodeCtx<'vm, M, S, Tx, Ecal, V> {
+struct LoadContractCodeCtx<'vm, S, V> {
     contract_max_size: u64,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
@@ -525,14 +519,9 @@ struct LoadContractCodeCtx<'vm, M, S, Tx, Ecal, V> {
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
     verifier: &'vm mut V,
-    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, V> LoadContractCodeCtx<'_, M, S, Tx, Ecal, V>
-where
-    S: InterpreterStorage,
-    V: Verifier<M, S, Tx, Ecal>,
-{
+impl<S, V> LoadContractCodeCtx<'_, S, V> {
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
     /// ```txt
@@ -548,7 +537,7 @@ where
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
@@ -883,7 +872,7 @@ where
     }
 }
 
-struct CodeCopyCtx<'vm, M, S, Tx, Ecal, V> {
+struct CodeCopyCtx<'vm, S, V> {
     memory: &'vm mut MemoryInstance,
     input_contracts: &'vm BTreeSet<ContractId>,
     panic_context: &'vm mut PanicContext,
@@ -894,10 +883,9 @@ struct CodeCopyCtx<'vm, M, S, Tx, Ecal, V> {
     ggas: RegMut<'vm, GGAS>,
     pc: RegMut<'vm, PC>,
     verifier: &'vm mut V,
-    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, V> CodeCopyCtx<'_, M, S, Tx, Ecal, V> {
+impl<S, V> CodeCopyCtx<'_, S, V> {
     pub(crate) fn code_copy(
         self,
         dst_addr: Word,
@@ -907,7 +895,7 @@ impl<M, S, Tx, Ecal, V> CodeCopyCtx<'_, M, S, Tx, Ecal, V> {
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
 
@@ -990,7 +978,7 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     Ok(())
 }
 
-struct CodeRootCtx<'vm, M, S, Tx, Ecal, V> {
+struct CodeRootCtx<'vm, S, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
@@ -1001,14 +989,13 @@ struct CodeRootCtx<'vm, M, S, Tx, Ecal, V> {
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
     verifier: &'vm mut V,
-    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, V> CodeRootCtx<'_, M, S, Tx, Ecal, V> {
+impl<S, V> CodeRootCtx<'_, S, V> {
     pub(crate) fn code_root(self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         self.memory.write_noownerchecks(a, Bytes32::LEN)?;
 
@@ -1041,7 +1028,7 @@ impl<M, S, Tx, Ecal, V> CodeRootCtx<'_, M, S, Tx, Ecal, V> {
     }
 }
 
-struct CodeSizeCtx<'vm, M, S, Tx, Ecal, V> {
+struct CodeSizeCtx<'vm, S, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
@@ -1051,10 +1038,9 @@ struct CodeSizeCtx<'vm, M, S, Tx, Ecal, V> {
     ggas: RegMut<'vm, GGAS>,
     pc: RegMut<'vm, PC>,
     verifier: &'vm mut V,
-    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, V> CodeSizeCtx<'_, M, S, Tx, Ecal, V> {
+impl<S, V> CodeSizeCtx<'_, S, V> {
     pub(crate) fn code_size(
         self,
         result: &mut Word,
@@ -1063,7 +1049,7 @@ impl<M, S, Tx, Ecal, V> CodeSizeCtx<'_, M, S, Tx, Ecal, V> {
     where
         S: StorageSize<ContractsRawCode>,
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         let contract_id = ContractId::new(self.memory.read_bytes(b)?);
 

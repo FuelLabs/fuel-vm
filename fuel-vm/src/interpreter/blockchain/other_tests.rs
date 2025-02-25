@@ -1,10 +1,8 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
 use alloc::vec;
-use fuel_tx::Script;
 
 use crate::{
-    interpreter::NotSupportedEcal,
     storage::{
         MemoryStorage,
         MemoryStorageError,
@@ -246,7 +244,6 @@ fn test_code_size() {
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
     let _ = input
@@ -264,7 +261,6 @@ fn test_code_size() {
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
     input.code_size(&mut result, 0).unwrap();
@@ -282,7 +278,6 @@ fn test_code_size() {
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     let mut result = 0;
     let _ = input

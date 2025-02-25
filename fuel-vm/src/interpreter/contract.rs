@@ -1,7 +1,6 @@
 //! This module contains logic on contract management.
 
 use alloc::collections::BTreeSet;
-use core::marker::PhantomData;
 
 use super::{
     gas::gas_charge,
@@ -63,7 +62,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     pub(crate) fn contract_balance(
         &mut self,
@@ -80,7 +79,6 @@ where
             input_contracts: &self.input_contracts,
             panic_context: &mut self.panic_context,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         };
         input.contract_balance(result, b, c)?;
         Ok(())
@@ -122,7 +120,6 @@ where
             is: is.as_ref(),
             pc,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         };
         input.transfer(a, b, c)
     }
@@ -164,7 +161,6 @@ where
             is: is.as_ref(),
             pc,
             verifier: &mut self.verifier,
-            _phantom: Default::default(),
         };
         input.transfer_output(a, b, c, d)
     }
@@ -179,17 +175,16 @@ where
     }
 }
 
-struct ContractBalanceCtx<'vm, M, S, Tx, Ecal, V> {
+struct ContractBalanceCtx<'vm, S, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
     input_contracts: &'vm BTreeSet<ContractId>,
     panic_context: &'vm mut PanicContext,
     verifier: &'vm mut V,
-    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, V> ContractBalanceCtx<'_, M, S, Tx, Ecal, V> {
+impl<S, V> ContractBalanceCtx<'_, S, V> {
     pub(crate) fn contract_balance(
         self,
         result: &mut Word,
@@ -199,7 +194,7 @@ impl<M, S, Tx, Ecal, V> ContractBalanceCtx<'_, M, S, Tx, Ecal, V> {
     where
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
         let contract_id = ContractId::new(self.memory.read_bytes(c)?);
@@ -217,7 +212,7 @@ impl<M, S, Tx, Ecal, V> ContractBalanceCtx<'_, M, S, Tx, Ecal, V> {
         Ok(inc_pc(self.pc)?)
     }
 }
-struct TransferCtx<'vm, M, S, Tx, Ecal, V> {
+struct TransferCtx<'vm, S, Tx, V> {
     storage: &'vm mut S,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
@@ -235,10 +230,9 @@ struct TransferCtx<'vm, M, S, Tx, Ecal, V> {
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
     verifier: &'vm mut V,
-    _phantom: PhantomData<(M, Tx, Ecal)>,
 }
 
-impl<M, S, Tx, Ecal, V> TransferCtx<'_, M, S, Tx, Ecal, V> {
+impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
     /// In Fuel specs:
     /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
     /// $rA -> recipient_contract_id_offset
@@ -254,7 +248,7 @@ impl<M, S, Tx, Ecal, V> TransferCtx<'_, M, S, Tx, Ecal, V> {
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         let amount = transfer_amount;
         let destination =
@@ -332,7 +326,7 @@ impl<M, S, Tx, Ecal, V> TransferCtx<'_, M, S, Tx, Ecal, V> {
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
         S: InterpreterStorage,
-        V: Verifier<M, S, Tx, Ecal>,
+        V: Verifier<S>,
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;

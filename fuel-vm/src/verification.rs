@@ -22,7 +22,7 @@ trait Seal {}
 
 /// What to do when verification fails.
 #[allow(private_bounds)] // For selaed trait
-pub trait Verifier<M, S, Tx, Ecal>
+pub trait Verifier<S>
 where
     Self: Sized + Seal,
     S: InterpreterStorage,
@@ -41,7 +41,7 @@ where
 #[derive(Debug, Copy, Clone, Default)]
 pub struct Panic;
 
-impl<M, S, Tx, Ecal> Verifier<M, S, Tx, Ecal> for Panic
+impl<S> Verifier<S> for Panic
 where
     Self: Sized,
     S: InterpreterStorage,
@@ -72,7 +72,7 @@ pub struct AttemptContinue {
     pub missing_contract_inputs: Vec<ContractId>,
 }
 
-impl<M, S, Tx, Ecal> Verifier<M, S, Tx, Ecal> for AttemptContinue
+impl<S> Verifier<S> for AttemptContinue
 where
     Self: Sized,
     S: InterpreterStorage,

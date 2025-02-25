@@ -839,7 +839,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -1066,7 +1066,7 @@ where
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime

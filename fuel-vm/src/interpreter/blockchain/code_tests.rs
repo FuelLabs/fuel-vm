@@ -1,25 +1,17 @@
 #![allow(clippy::cast_possible_truncation)]
 
-use core::marker::PhantomData;
-
 use alloc::vec;
 
 use super::*;
 use crate::{
-    interpreter::{
-        NotSupportedEcal,
-        PanicContext,
-    },
+    interpreter::PanicContext,
     storage::{
         MemoryStorage,
         MemoryStorageError,
     },
     verification::Panic,
 };
-use fuel_tx::{
-    Contract,
-    Script,
-};
+use fuel_tx::Contract;
 
 #[test]
 fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
@@ -71,7 +63,6 @@ fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
         pc: RegMut::new(&mut pc),
         hp: Reg::new(&hp),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
@@ -130,7 +121,6 @@ fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
@@ -185,7 +175,6 @@ fn test_code_copy() -> IoResult<(), MemoryStorageError> {
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.code_copy(dest_mem_address, contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);

@@ -6,7 +6,6 @@ use alloc::{
 };
 
 use crate::{
-    interpreter::NotSupportedEcal,
     storage::{
         MemoryStorage,
         MemoryStorageError,
@@ -389,7 +388,6 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageE
         frames: &mut frames,
         current_contract,
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     };
     input.prepare_call().map(|_| Output {
         reg,

@@ -1,16 +1,12 @@
 use super::*;
 use crate::{
-    interpreter::{
-        NotSupportedEcal,
-        PanicContext,
-    },
+    interpreter::PanicContext,
     storage::MemoryStorage,
     verification::Panic,
 };
 use fuel_tx::{
     Contract,
     GasCosts,
-    Script,
 };
 
 use alloc::vec;
@@ -87,7 +83,6 @@ fn test_code_root() {
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     }
     .code_root(croo_address as Word, 0)
     .unwrap();
@@ -139,7 +134,6 @@ fn test_code_root_contract_not_found() {
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     }
     .code_root(croo_address as Word, 0)
     .expect_err("Contract is not found");
@@ -185,7 +179,6 @@ fn test_code_root_contract_not_in_inputs() {
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
         verifier: &mut Panic,
-        _phantom: PhantomData::<(MemoryInstance, Script, NotSupportedEcal)>,
     }
     .code_root(croo_address as Word, 0)
     .expect_err("Contract is not in inputs");

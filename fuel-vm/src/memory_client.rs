@@ -67,7 +67,7 @@ impl<M, Ecal: EcalHandler, V> AsMut<MemoryStorage> for MemoryClient<M, Ecal, V> 
 impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
     Ecal: EcalHandler + Default,
-    V: Verifier<M, MemoryStorage, Script, Ecal> + Default,
+    V: Verifier<MemoryStorage> + Default,
 {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(
@@ -84,7 +84,7 @@ where
 impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
     Ecal: EcalHandler,
-    V: Verifier<M, MemoryStorage, Script, Ecal>,
+    V: Verifier<MemoryStorage>,
 {
     /// Create a new instance of the memory client out of a provided storage.
     pub fn from_txtor(transactor: Transactor<M, MemoryStorage, Script, Ecal, V>) -> Self {
@@ -96,7 +96,7 @@ impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
     M: Memory,
     Ecal: EcalHandler,
-    V: Verifier<M, MemoryStorage, Script, Ecal>,
+    V: Verifier<MemoryStorage>,
 {
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.

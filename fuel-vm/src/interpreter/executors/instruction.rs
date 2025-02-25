@@ -29,7 +29,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
@@ -108,7 +108,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     fn execute(
         self,
@@ -122,7 +122,7 @@ where
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
-    V: Verifier<M, S, Tx, Ecal>,
+    V: Verifier<S>,
 {
     fn execute(
         self,

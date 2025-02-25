@@ -3,7 +3,10 @@
 //! Alternative strategy, [`AttemptContinue`], continues execution and collects multiple
 //! errors.
 
-use alloc::collections::BTreeSet;
+use alloc::{
+    collections::BTreeSet,
+    vec::Vec,
+};
 
 use fuel_tx::{
     ContractId,

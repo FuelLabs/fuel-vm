@@ -2,6 +2,8 @@ use fuel_asm::op;
 use fuel_types::canonical::Serialize;
 use rand::Rng;
 
+use alloc::vec;
+
 use crate::{
     prelude::*,
     tests::test_helpers::{

@@ -1045,10 +1045,9 @@ impl<S, V> CodeSizeCtx<'_, S, V> {
         self,
         result: &mut Word,
         b: Word,
-    ) -> Result<(), RuntimeError<<S as StorageInspect<ContractsRawCode>>::Error>>
+    ) -> Result<(), RuntimeError<S::Error>>
     where
         S: StorageSize<ContractsRawCode>,
-        S: InterpreterStorage,
         V: Verifier,
     {
         let contract_id = ContractId::new(self.memory.read_bytes(b)?);

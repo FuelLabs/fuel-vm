@@ -910,7 +910,6 @@ where
                             // node, move to the PostDeletion
                             // stage
 
-                            //TODO: Are we deleting the old child here?
                             let mut new_branch_node = branch_node.clone();
                             let (new_branch_node_rlp, pending) =
                                 Self::prepare_add_child_to_branch_node(

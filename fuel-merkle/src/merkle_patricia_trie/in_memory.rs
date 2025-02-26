@@ -788,4 +788,132 @@ mod test {
 
         assert_eq!(children.next(), None);
     }
+
+    #[test]
+    fn remove_leaf_update_branch_node_in_post_deletion_stage() {
+        // This test checks the behaviour of deletion of a leaf in the case
+        // a branch node is encountered while in the process of reorganising
+        // the trie after all leaf and extension nodes have been removed (post-deletion).
+        // One case where this happens if
+        // * a branch node B1 has two extension nodes children, B2 and E1, E1 being an
+        //   extension node pointing to leaf L1.
+        // * B2 has three children, E2, E3 and E4. pointing at L2, L3, L4 respectively.
+        // * L4 is removed from the tree, causing E4 to be removed and causing B1 to be
+        //   restructured into B1', with children E2 and E3. At this point no other nodes
+        //   need to be removed and the process of deletion enters in post-deletion stage.
+        // * B2 is restructured as B2' in the post-deletion phase, with children B1' and
+        //   E1.
+
+        let mut trie = super::MerklePatriciaTrie::new();
+        let raw_key1 = [0; 32];
+        let key1 = MerkleTreeKey::new_without_hash(raw_key1);
+        let mut raw_key2 = [0; 32];
+        raw_key2[0] = 0xF0;
+        let key2 = MerkleTreeKey::new_without_hash(raw_key2);
+        let mut raw_key3 = [0; 32];
+        raw_key3[0] = 0x01;
+        let key3 = MerkleTreeKey::new_without_hash(raw_key3);
+        let mut raw_key4 = [0; 32];
+        raw_key4[0] = 0x0F;
+        let key4 = MerkleTreeKey::new_without_hash(raw_key4);
+
+        trie.update(key1, b"DATA1");
+        trie.update(key2, b"DATA2");
+        trie.update(key3, b"DATA3");
+        trie.update(key4, b"DATA4");
+
+        // At this point the tree has two branch nodes, four
+        // extension nodes, and 4 leaf nodes.
+
+        assert_eq!(trie.trie.storage.map.len(), 10);
+
+        trie.delete(key3);
+
+        // After the deletion the trie has two branch nodes, three extension nodes, and
+        // three leaves
+
+        let root_rlp = trie.root();
+        let storage = trie.trie.storage.map;
+
+        let Some(TrieNode::Branch(root_node)) = storage.get(&WrappedRlpNode(root_rlp))
+        else {
+            panic!("Root node not in storage");
+        };
+        let branch_node_ref = root_node.as_ref();
+        let mut root_children = branch_node_ref
+            .children()
+            .filter_map(|(nibble, node)| node.map(|node| (nibble, node)));
+
+        let (nibble_0, branch_node_0_rlp) = root_children.next().expect("No child node");
+        let Some(TrieNode::Branch(branch_node_0)) =
+            storage.get(&WrappedRlpNode(branch_node_0_rlp.clone()))
+        else {
+            panic!("Branch node not in storage")
+        };
+        let (nibble_f, extension_node_f_rlp) =
+            root_children.next().expect("No child node");
+        let Some(TrieNode::Extension(extension_node_f)) =
+            storage.get(&WrappedRlpNode(extension_node_f_rlp.clone()))
+        else {
+            panic!("Extension node not in storage")
+        };
+        let leaf_f_rlp = &extension_node_f.child;
+        let Some(TrieNode::Leaf(leaf_f)) =
+            storage.get(&WrappedRlpNode(leaf_f_rlp.clone()))
+        else {
+            panic!("Leaf node not in storage")
+        };
+
+        let branch_node_0_ref = branch_node_0.as_ref();
+        let mut branch_node_0_children = branch_node_0_ref
+            .children()
+            .filter_map(|(nibble, node)| node.map(|node| (nibble, node)));
+
+        let (nibble_00, extension_node_00_rlp) =
+            branch_node_0_children.next().expect("No child node");
+        let Some(TrieNode::Extension(extension_node_00)) =
+            storage.get(&WrappedRlpNode(extension_node_00_rlp.clone()))
+        else {
+            panic!("Extension node not in storage")
+        };
+        let leaf_00_rlp = &extension_node_00.child;
+        let Some(TrieNode::Leaf(leaf_00)) =
+            storage.get(&WrappedRlpNode(leaf_00_rlp.clone()))
+        else {
+            panic!("Leaf node not in storage")
+        };
+
+        let (nibble_0f, extension_node_0f_rlp) =
+            branch_node_0_children.next().expect("No child node");
+        let Some(TrieNode::Extension(extension_node_0f)) =
+            storage.get(&WrappedRlpNode(extension_node_0f_rlp.clone()))
+        else {
+            panic!("Extension node not in storage")
+        };
+        let leaf_0f_rlp = &extension_node_0f.child;
+        let Some(TrieNode::Leaf(leaf_0f)) =
+            storage.get(&WrappedRlpNode(leaf_0f_rlp.clone()))
+        else {
+            panic!("Leaf node not in storage")
+        };
+
+        assert_eq!(nibble_f, 0xF);
+        assert_eq!(extension_node_f.key, Nibbles::unpack(raw_key1)[1..]);
+        assert_eq!(leaf_f.key, Nibbles::unpack(raw_key2));
+        assert_eq!(leaf_f.value, b"DATA2");
+
+        assert_eq!(nibble_0, 0);
+        assert_eq!(nibble_00, 0);
+        assert_eq!(extension_node_00.key, Nibbles::unpack(raw_key1)[2..]);
+        assert_eq!(leaf_00.key, Nibbles::unpack(raw_key1));
+        assert_eq!(leaf_00.value, b"DATA1");
+
+        assert_eq!(nibble_0f, 0xF);
+        assert_eq!(extension_node_0f.key, Nibbles::unpack(raw_key4)[2..]);
+        assert_eq!(leaf_0f.key, Nibbles::unpack(raw_key4));
+        assert_eq!(leaf_0f.value, b"DATA4");
+
+        assert_eq!(branch_node_0_children.next(), None);
+        assert_eq!(root_children.next(), None);
+    }
 }

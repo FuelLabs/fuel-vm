@@ -6,6 +6,7 @@ use crate::{
         RuntimeError,
     },
     storage::{
+        interpreter::ContractsAssetsStorage,
         ContractsAssetKey,
         ContractsAssets,
         ContractsRawCode,
@@ -42,7 +43,6 @@ use fuel_types::{
 use tai64::Tai64;
 
 use super::{
-    interpreter::ContractsAssetsStorage,
     BlobBytes,
     BlobData,
 };

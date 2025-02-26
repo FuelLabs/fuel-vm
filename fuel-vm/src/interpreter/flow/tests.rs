@@ -7,6 +7,7 @@ use alloc::{
 
 use crate::{
     storage::{
+        ContractsAssetsStorage,
         MemoryStorage,
         MemoryStorageError,
     },

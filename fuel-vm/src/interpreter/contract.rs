@@ -29,7 +29,6 @@ use crate::{
     interpreter::receipts::ReceiptsCtx,
     storage::{
         BlobData,
-        ContractsAssets,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
@@ -41,10 +40,7 @@ use fuel_asm::{
     RegId,
     Word,
 };
-use fuel_storage::{
-    StorageInspect,
-    StorageSize,
-};
+use fuel_storage::StorageSize;
 use fuel_tx::{
     Output,
     Receipt,

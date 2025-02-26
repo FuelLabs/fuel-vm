@@ -41,7 +41,6 @@ use crate::{
         BugVariant,
     },
     storage::{
-        ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
     },

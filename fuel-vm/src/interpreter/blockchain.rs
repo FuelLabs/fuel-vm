@@ -55,10 +55,7 @@ use fuel_asm::{
     PanicReason,
     RegId,
 };
-use fuel_storage::{
-    StorageInspect,
-    StorageSize,
-};
+use fuel_storage::StorageSize;
 use fuel_tx::{
     consts::BALANCE_ENTRY_SIZE,
     BlobId,

@@ -463,10 +463,6 @@ struct PrepareCallCtx<'vm, S, V> {
 impl<S, V> PrepareCallCtx<'_, S, V> {
     fn prepare_call(mut self) -> IoResult<(), S::DataError>
     where
-        S: StorageSize<ContractsRawCode>
-            + ContractsAssetsStorage
-            + StorageRead<ContractsRawCode>
-            + StorageAsRef,
         S: InterpreterStorage,
         V: Verifier,
     {

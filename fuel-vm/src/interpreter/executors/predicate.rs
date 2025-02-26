@@ -30,7 +30,7 @@ where
         &mut self,
     ) -> Result<ProgramState, PredicateVerificationFailed> {
         loop {
-            match self.execute()? {
+            match self.execute::<true>()? {
                 ExecuteState::Return(r) => {
                     if r == 1 {
                         return Ok(ProgramState::Return(r))

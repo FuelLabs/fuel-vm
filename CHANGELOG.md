@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [907](https://github.com/FuelLabs/fuel-vm/pull/907): `StorageRead` and `StorageWrite` traits no longer return the number of bytes written. They already required that the whole buffer is used, but now this is reflected in signature and documentation as well.
 - [914](https://github.com/FuelLabs/fuel-vm/pull/914): The built-in profiler is removed. Use the debugger with single-stepping instead.
 - [918](https://github.com/FuelLabs/fuel-vm/pull/918): Interpreter is now generic over the validation error handling. No behavioural changes, but the `Interpreter` has one extra type parameter.
+- [920](https://github.com/FuelLabs/fuel-vm/pull/920): `Interpreter::execute` and friends are now generic over predicateness of the context. This forces monomorphization so the predicate branch is optimized away on non-predicate execution.
 
 ### Changed
 - [904](https://github.com/FuelLabs/fuel-vm/pull/904): Moved the logic of each opcode into its own function. It helps so reduce the size of the `instruction_inner` function, allowing compiler to do better optimizations. The Mira swaps receive performance improvement in 16.5%.

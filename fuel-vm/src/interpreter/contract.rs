@@ -190,7 +190,7 @@ impl<S, V> ContractBalanceCtx<'_, S, V> {
         result: &mut Word,
         b: Word,
         c: Word,
-    ) -> IoResult<(), <S as StorageInspect<ContractsAssets>>::Error>
+    ) -> IoResult<(), S::Error>
     where
         S: ContractsAssetsStorage,
         V: Verifier,

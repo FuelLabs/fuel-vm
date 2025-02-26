@@ -242,7 +242,7 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> IoResult<(), <S as StorageInspect<ContractsAssets>>::Error>
+    ) -> IoResult<(), S::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,

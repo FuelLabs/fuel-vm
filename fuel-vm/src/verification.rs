@@ -1,5 +1,5 @@
 //! Stategies for verifying the correctness of the VM execution.
-//! The default strategy, [`Panic`], simply panics on failed verification.
+//! The default strategy, [`Normal`], simply returns an error on failed verification.
 
 use alloc::collections::BTreeSet;
 

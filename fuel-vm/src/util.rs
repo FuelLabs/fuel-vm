@@ -97,7 +97,10 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
-        interpreter::Memory,
+        interpreter::{
+            Memory,
+            NotSupportedEcal,
+        },
         memory_client::MemoryClient,
         state::StateTransition,
         storage::{
@@ -105,7 +108,10 @@ pub mod test_helpers {
             MemoryStorage,
         },
         transactor::Transactor,
-        verification::Verifier,
+        verification::{
+            AttemptContinue,
+            Verifier,
+        },
     };
     use anyhow::anyhow;
 
@@ -609,6 +615,22 @@ pub mod test_helpers {
             Ok(self.execute_tx_inner(&mut transactor, checked)?.0)
         }
 
+        pub fn attempt_execute_tx(
+            &mut self,
+            checked: Checked<Script>,
+        ) -> anyhow::Result<(StateTransition<Script>, AttemptContinue)> {
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
+            let mut transactor =
+                Transactor::<_, _, _, NotSupportedEcal, AttemptContinue>::new(
+                    MemoryInstance::new(),
+                    self.storage.clone(),
+                    interpreter_params,
+                );
+
+            self.execute_tx_inner(&mut transactor, checked)
+        }
+
         pub fn execute_tx(
             &mut self,
             checked: Checked<Script>,
@@ -641,6 +663,14 @@ pub mod test_helpers {
             let backtrace = transactor.backtrace();
 
             Ok((state, backtrace))
+        }
+
+        /// Build test tx and execute it with error collection
+        pub fn attempt_execute(&mut self) -> (StateTransition<Script>, AttemptContinue) {
+            let tx = self.build();
+
+            self.attempt_execute_tx(tx)
+                .expect("expected successful vm execution")
         }
 
         /// Build test tx and execute it

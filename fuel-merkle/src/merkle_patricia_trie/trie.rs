@@ -844,7 +844,7 @@ where
                                 // extension node pointing to that child.
                                 let (
                                     new_extension_node_rlp,
-                                    mut branch_to_extension_node_pending,
+                                    branch_to_extension_node_pending,
                                 ) = Self::prepare_branch_to_extension_node(
                                     branch_node_one_child,
                                     *nibble,
@@ -909,6 +909,8 @@ where
                             // simply update the branch node to point to the new extension
                             // node, move to the PostDeletion
                             // stage
+
+                            //TODO: Are we deleting the old child here?
                             let mut new_branch_node = branch_node.clone();
                             let (new_branch_node_rlp, pending) =
                                 Self::prepare_add_child_to_branch_node(

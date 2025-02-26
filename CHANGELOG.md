@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
 - [882](https://github.com/FuelLabs/fuel-vm/pull/882): Add a lot of new `GTFArgs` including generic ones that will replace old tx type specific.
 - [909](https://github.com/FuelLabs/fuel-vm/pull/909): Add the `remove_recovery_id()` to `Signature`.
+- [915](https://github.com/FuelLabs/fuel-vm/pull/915): Added support for `AttemptContinue` verifier, that collects and ignores some errors instead of terminating execution. This is meant to help with gathering tx dependencies.
 
 ### Breaking
 - [900](https://github.com/FuelLabs/fuel-vm/pull/900): Change the error variant `DuplicateMessageInputId` to `DuplicateInputNonce` which now contains a nonce instead of `MessageId` for performance improvements.

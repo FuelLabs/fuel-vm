@@ -61,10 +61,13 @@ where
     }
 
     /// Execute a provided instruction
-    pub fn instruction<R: Into<RawInstruction> + Copy, const PREDICATE: bool>(
+    pub fn instruction<R, const PREDICATE: bool>(
         &mut self,
         raw: R,
-    ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
+    ) -> Result<ExecuteState, InterpreterError<S::DataError>>
+    where
+        R: Into<RawInstruction> + Copy,
+    {
         let raw = raw.into();
         let raw = raw.to_be_bytes();
 

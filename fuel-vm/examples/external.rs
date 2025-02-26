@@ -49,8 +49,8 @@ use fuel_vm::{
 pub struct FileReadEcal;
 
 impl EcalHandler for FileReadEcal {
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -130,8 +130,8 @@ pub struct CounterEcal {
 }
 
 impl EcalHandler for CounterEcal {
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         _b: RegId,
         _c: RegId,
@@ -193,8 +193,8 @@ pub struct SharedCounterEcal {
 }
 
 impl EcalHandler for SharedCounterEcal {
-    fn ecal<M, S, Tx>(
-        vm: &mut Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         _b: RegId,
         _c: RegId,

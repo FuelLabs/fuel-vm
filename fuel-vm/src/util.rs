@@ -105,6 +105,7 @@ pub mod test_helpers {
             MemoryStorage,
         },
         transactor::Transactor,
+        verification::Verifier,
     };
     use anyhow::anyhow;
 
@@ -541,16 +542,17 @@ pub mod test_helpers {
                 .expect("Expected vm execution to be successful");
         }
 
-        fn execute_tx_inner<M, Tx, Ecal>(
+        fn execute_tx_inner<M, Tx, Ecal, V>(
             &mut self,
-            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal>,
+            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal, V>,
             checked: Checked<Tx>,
-        ) -> anyhow::Result<StateTransition<Tx>>
+        ) -> anyhow::Result<(StateTransition<Tx>, V)>
         where
             M: Memory,
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
+            V: Verifier + Clone,
         {
             self.storage.set_block_height(self.block_height);
 
@@ -567,6 +569,8 @@ pub mod test_helpers {
 
             let interpreter = transactor.interpreter();
 
+            let verifier = interpreter.verifier().clone();
+
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
             let tx_offset = self.get_tx_params().tx_offset();
@@ -582,14 +586,12 @@ pub mod test_helpers {
             }
 
             assert_eq!(deser_tx, transaction);
-            if is_reverted {
-                return Ok(state);
+            if !is_reverted {
+                // save storage between client instances
+                self.storage = storage;
             }
 
-            // save storage between client instances
-            self.storage = storage;
-
-            Ok(state)
+            Ok((state, verifier))
         }
 
         pub fn deploy(
@@ -604,7 +606,7 @@ pub mod test_helpers {
                 interpreter_params,
             );
 
-            self.execute_tx_inner(&mut transactor, checked)
+            Ok(self.execute_tx_inner(&mut transactor, checked)?.0)
         }
 
         pub fn execute_tx(
@@ -619,7 +621,7 @@ pub mod test_helpers {
                 interpreter_params,
             );
 
-            self.execute_tx_inner(&mut transactor, checked)
+            Ok(self.execute_tx_inner(&mut transactor, checked)?.0)
         }
 
         pub fn execute_tx_with_backtrace(
@@ -635,7 +637,7 @@ pub mod test_helpers {
                 interpreter_params,
             );
 
-            let state = self.execute_tx_inner(&mut transactor, checked)?;
+            let state = self.execute_tx_inner(&mut transactor, checked)?.0;
             let backtrace = transactor.backtrace();
 
             Ok((state, backtrace))

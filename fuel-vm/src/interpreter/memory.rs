@@ -649,7 +649,7 @@ impl MemoryRange {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
 {
@@ -1035,7 +1035,7 @@ pub struct OwnershipRegisters {
 }
 
 impl OwnershipRegisters {
-    pub(crate) fn new<M, S, Tx, Ecal>(vm: &Interpreter<M, S, Tx, Ecal>) -> Self {
+    pub(crate) fn new<M, S, Tx, Ecal, V>(vm: &Interpreter<M, S, Tx, Ecal, V>) -> Self {
         let prev_hp = vm
             .frames
             .last()

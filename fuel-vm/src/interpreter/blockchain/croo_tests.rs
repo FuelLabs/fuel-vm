@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     interpreter::PanicContext,
     storage::MemoryStorage,
+    verification::Normal,
 };
 use fuel_tx::{
     Contract,
@@ -75,14 +76,13 @@ fn test_code_root() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-        input_contracts: InputContracts::new(
-            &input_contracts.into_iter().collect(),
-            &mut panic_context,
-        ),
+        input_contracts: &input_contracts.into_iter().collect(),
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
+        verifier: &mut Normal,
     }
     .code_root(croo_address as Word, 0)
     .unwrap();
@@ -127,15 +127,13 @@ fn test_code_root_contract_not_found() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-
-        input_contracts: InputContracts::new(
-            &input_contracts.into_iter().collect(),
-            &mut panic_context,
-        ),
+        input_contracts: &input_contracts.into_iter().collect(),
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
+        verifier: &mut Normal,
     }
     .code_root(croo_address as Word, 0)
     .expect_err("Contract is not found");
@@ -174,15 +172,13 @@ fn test_code_root_contract_not_in_inputs() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-
-        input_contracts: InputContracts::new(
-            &input_contracts.into_iter().collect(),
-            &mut panic_context,
-        ),
+        input_contracts: &input_contracts.into_iter().collect(),
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
+        verifier: &mut Normal,
     }
     .code_root(croo_address as Word, 0)
     .expect_err("Contract is not in inputs");

@@ -12,6 +12,7 @@ use crate::{
     },
     state::ExecuteState,
     storage::InterpreterStorage,
+    verification::Verifier,
 };
 
 use fuel_asm::{
@@ -22,12 +23,13 @@ use fuel_asm::{
     RegId,
 };
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     /// Execute the current instruction located in `$m[$pc]`.
     pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
@@ -100,29 +102,31 @@ where
     }
 }
 
-pub trait Execute<M, S, Tx, Ecal>
+pub trait Execute<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError>;
 }
 
-impl<M, S, Tx, Ecal> Execute<M, S, Tx, Ecal> for Instruction
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for Instruction
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     fn execute(
         self,
-        interpreter: &mut Interpreter<M, S, Tx, Ecal>,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
         match self {
             Instruction::ADD(op) => op.execute(interpreter),

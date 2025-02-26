@@ -981,7 +981,7 @@ where
                 // Check whether the instruction will be executed in a call context
                 let in_call = !self.frames.is_empty();
 
-                match self.execute() {
+                match self.execute::<true>() {
                     // Proceeding with the execution normally
                     Ok(ExecuteState::Proceed) => continue,
                     // Debugger events are returned directly to the caller

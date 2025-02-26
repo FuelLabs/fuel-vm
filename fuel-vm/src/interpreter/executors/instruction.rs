@@ -32,9 +32,11 @@ where
     V: Verifier,
 {
     /// Execute the current instruction located in `$m[$pc]`.
-    pub fn execute(&mut self) -> Result<ExecuteState, InterpreterError<S::DataError>> {
+    pub fn execute<const PREDICATE: bool>(
+        &mut self,
+    ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         let raw_instruction = self.fetch_instruction()?;
-        self.instruction_per_inner(raw_instruction)
+        self.instruction_per_inner::<PREDICATE>(raw_instruction)
     }
 
     /// Reads the current instruction located in `$m[$pc]`,
@@ -59,17 +61,17 @@ where
     }
 
     /// Execute a provided instruction
-    pub fn instruction<R: Into<RawInstruction> + Copy>(
+    pub fn instruction<R: Into<RawInstruction> + Copy, const PREDICATE: bool>(
         &mut self,
         raw: R,
     ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
         let raw = raw.into();
         let raw = raw.to_be_bytes();
 
-        self.instruction_per_inner(raw)
+        self.instruction_per_inner::<PREDICATE>(raw)
     }
 
-    fn instruction_per_inner(
+    fn instruction_per_inner<const PREDICATE: bool>(
         &mut self,
         raw: [u8; 4],
     ) -> Result<ExecuteState, InterpreterError<S::DataError>> {
@@ -80,22 +82,24 @@ where
             }
         }
 
-        self.instruction_inner(raw).map_err(|e| {
+        self.instruction_inner::<PREDICATE>(raw).map_err(|e| {
             InterpreterError::from_runtime(e, RawInstruction::from_be_bytes(raw))
         })
     }
 
-    fn instruction_inner(
+    fn instruction_inner<const PREDICATE: bool>(
         &mut self,
         raw: [u8; 4],
     ) -> IoResult<ExecuteState, S::DataError> {
         let instruction = Instruction::try_from(raw)
             .map_err(|_| RuntimeError::from(PanicReason::InvalidInstruction))?;
 
-        // TODO additional branch that might be optimized after
-        // https://github.com/FuelLabs/fuel-asm/issues/68
-        if self.is_predicate() && !instruction.opcode().is_predicate_allowed() {
-            return Err(PanicReason::ContractInstructionNotAllowed.into())
+        if PREDICATE {
+            // TODO additional branch that might be optimized after
+            // https://github.com/FuelLabs/fuel-asm/issues/68
+            if !instruction.opcode().is_predicate_allowed() {
+                return Err(PanicReason::ContractInstructionNotAllowed.into())
+            }
         }
 
         instruction.execute(self)

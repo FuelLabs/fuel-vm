@@ -111,10 +111,6 @@ where
         &self.context
     }
 
-    pub(crate) const fn is_predicate(&self) -> bool {
-        self.context.is_predicate()
-    }
-
     pub(crate) fn internal_contract(&self) -> Result<ContractId, PanicReason> {
         internal_contract(&self.context, self.registers.fp(), self.memory.as_ref())
     }

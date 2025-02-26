@@ -319,11 +319,10 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
         output_index: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
-    ) -> IoResult<(), <S as StorageInspect<ContractsAssets>>::Error>
+    ) -> IoResult<(), S::Error>
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
-        S: InterpreterStorage,
         V: Verifier,
     {
         let out_idx =

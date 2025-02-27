@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.60.0]
+
 ### Added
 - [901](https://github.com/FuelLabs/fuel-vm/pull/901): Add `Display` implementation to `Receipt` enum.
 - [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
@@ -31,6 +33,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [889](https://github.com/FuelLabs/fuel-vm/pull/889) and [908](https://github.com/FuelLabs/fuel-vm/pull/908): Debugger breakpoint caused receipts to be produced incorrectly.
 - [903](https://github.com/FuelLabs/fuel-vm/pull/903): Fixed warning being emitted when using packages with Node@22+.
 - [912](https://github.com/FuelLabs/fuel-vm/pull/912): Fix serialization/deserialization of `Policies` in compressed transactions to be backward compatible.
+
+## [Version 0.59.2]
+
+### Fixed
+- [910](https://github.com/FuelLabs/fuel-vm/pull/910): Fix serialization/deserialization of `Policies` in compressed transactions to be backward compatible.
 
 ## [Version 0.59.1]
 

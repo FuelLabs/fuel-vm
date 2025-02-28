@@ -132,12 +132,13 @@ impl MerklePatriciaTrie {
     }
 
     pub fn update(&mut self, key: MerkleTreeKey, data: &[u8]) {
-        let _ = self.trie.delete_leaf(&Nibbles::unpack(key.as_ref()));
+        // No need to delete the leaf if it was present before
+        // let _ = self.trie.delete_leaf(&Nibbles::unpack(key.as_ref()));
         let _ = self.trie.add_leaf(*key, data);
     }
 
     pub fn delete(&mut self, key: MerkleTreeKey) {
-        self.trie.delete_leaf(&Nibbles::unpack(key.as_ref()));
+        let _ = self.trie.delete_leaf(&Nibbles::unpack(key.as_ref()));
     }
 
     pub fn root(&self) -> RlpNode {
@@ -217,11 +218,7 @@ mod test {
         let root_rlp = trie.root();
         let expected_root = super::TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
         let nodes = trie.trie.storage.nodes();
-        assert_eq!(nodes.len(), 1);
-        let (storage_root_rlp, storage_root) = nodes.get(0).unwrap();
-
-        assert_eq!(storage_root_rlp, &root_rlp);
-        assert_eq!(storage_root, &TrieNode::EmptyRoot);
+        assert_eq!(nodes.len(), 0);
         assert_eq!(root_rlp, expected_root);
     }
 

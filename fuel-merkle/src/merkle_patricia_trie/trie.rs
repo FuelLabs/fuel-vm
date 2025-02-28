@@ -79,13 +79,15 @@ where
     fn prepare_store_leaf(
         key: Bytes32,
         value: impl AsRef<[u8]>,
+        rlp_buf: &mut Vec<u8>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let key_nibbles = Nibbles::unpack(key);
         // Create a new leaf node
         let leaf_node =
             TrieNode::Leaf(LeafNode::new(key_nibbles, Vec::from(value.as_ref())));
-        let mut buf = Vec::with_capacity(33);
-        let leaf_rlp_node: RlpNode = leaf_node.rlp(&mut buf);
+        let leaf_rlp_node: RlpNode = leaf_node.rlp(rlp_buf);
+        rlp_buf.clear();
+
         let mut pending = Pending::new();
         pending.insert(leaf_rlp_node.clone(), leaf_node);
 
@@ -100,6 +102,7 @@ where
         extension_node: ExtensionNode,
         connected_node_rlp: &RlpNode,
         connected_extension_node: &ExtensionNode,
+        rlp_buf: &mut Vec<u8>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let prefix_nibbles = extension_node.as_ref().key;
         let suffix_nibbles = connected_extension_node.as_ref().key;
@@ -108,8 +111,9 @@ where
 
         let new_extension_node = ExtensionNode::new(nibbles, child);
 
-        let new_extension_node_rlp = TrieNode::Extension(new_extension_node.clone())
-            .rlp(&mut Vec::with_capacity(33));
+        let new_extension_node_rlp =
+            TrieNode::Extension(new_extension_node.clone()).rlp(rlp_buf);
+        rlp_buf.clear();
 
         let mut pending = Pending::new();
         pending.insert(
@@ -151,9 +155,10 @@ where
         nibble: u8,
         node_to_connect_rlp: &RlpNode,
         node_to_connect: &TrieNode,
+        rlp_buf: &mut Vec<u8>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
-        let branch_node_rlp =
-            TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33));
+        let branch_node_rlp = TrieNode::Branch(branch_node.clone()).rlp(rlp_buf);
+        rlp_buf.clear();
         let expanded_branch_node = Self::expand_branch_node(&branch_node);
         debug_assert_eq!(
             expanded_branch_node
@@ -175,7 +180,8 @@ where
                     node_to_connect_rlp.clone(),
                 );
                 let new_node = TrieNode::Extension(new_extension_node);
-                let new_rlp_node = new_node.rlp(&mut Vec::with_capacity(33));
+                let new_rlp_node = new_node.rlp(rlp_buf);
+                rlp_buf.clear();
                 let mut pending = Pending::new();
                 pending.insert(new_rlp_node.clone(), new_node);
                 pending.delete(branch_node_rlp);
@@ -197,7 +203,8 @@ where
                     extension_node.child.clone(),
                 );
                 let new_node = TrieNode::Extension(new_extension_node);
-                let new_rlp_node = new_node.rlp(&mut Vec::with_capacity(33));
+                let new_rlp_node = new_node.rlp(rlp_buf);
+                rlp_buf.clear();
                 let mut pending = Pending::new();
                 pending.insert(new_rlp_node.clone(), new_node);
                 pending.delete(node_to_connect_rlp.clone());
@@ -215,7 +222,8 @@ where
                     node_to_connect_rlp.clone(),
                 );
                 let new_node = TrieNode::Extension(new_extension_node);
-                let new_rlp_node = new_node.rlp(&mut Vec::with_capacity(33));
+                let new_rlp_node = new_node.rlp(rlp_buf);
+                rlp_buf.clear();
                 let mut pending = Pending::new();
                 pending.insert(new_rlp_node.clone(), new_node);
                 pending.delete(branch_node_rlp);
@@ -232,14 +240,15 @@ where
     fn prepare_linear_path_to_rlp_node(
         nibbles: Nibbles,
         rlp_node: RlpNode,
+        rlp_buf: &mut Vec<u8>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         if nibbles.as_slice().is_empty() {
             Ok((rlp_node, Pending::new()))
         } else {
             let extension_node =
                 TrieNode::Extension(ExtensionNode::new(nibbles, rlp_node.clone()));
-            let mut buf = Vec::with_capacity(33);
-            let extension_rlp_node: RlpNode = extension_node.rlp(&mut buf);
+            let extension_rlp_node: RlpNode = extension_node.rlp(rlp_buf);
+            rlp_buf.clear();
             let mut pending = Pending::new();
             pending.insert(extension_rlp_node.clone(), extension_node);
             Ok((extension_rlp_node, pending))
@@ -253,11 +262,12 @@ where
         nibbles: Nibbles,
         key: Bytes32,
         value: impl AsRef<[u8]>,
+        rlp_buf: &mut Vec<u8>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
-        let (leaf_rlp_node, pending) = Self::prepare_store_leaf(key, value)?;
+        let (leaf_rlp_node, pending) = Self::prepare_store_leaf(key, value, rlp_buf)?;
 
         let (extension_rlp_node, other_pending) =
-            Self::prepare_linear_path_to_rlp_node(nibbles, leaf_rlp_node)?;
+            Self::prepare_linear_path_to_rlp_node(nibbles, leaf_rlp_node, rlp_buf)?;
 
         Ok((extension_rlp_node, pending.merge(other_pending)))
     }
@@ -277,6 +287,7 @@ where
         extension_node: ExtensionNode,
         nibbles: Nibbles,
         node_to_connect: RlpNode,
+        rlp_buf: &mut Vec<u8>,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let common_prefix_length = extension_node.key.common_prefix_length(&nibbles);
 
@@ -291,7 +302,7 @@ where
             // new leaf and extesion node, and insert them in the storage.
             // Additionally, we must remove the old extension node from the storage.
             let (new_extension_rlp_node, mut pending) =
-                Self::prepare_linear_path_to_rlp_node(nibbles, node_to_connect)?;
+                Self::prepare_linear_path_to_rlp_node(nibbles, node_to_connect, rlp_buf)?;
             pending.delete(extension_node_rlp);
 
             Ok((new_extension_rlp_node, pending))
@@ -326,6 +337,7 @@ where
                 Self::prepare_linear_path_to_rlp_node(
                     other_diverging_nibbles_existing_path,
                     extension_node.child,
+                    rlp_buf,
                 )?;
             // 2. Create a new extension node Ext1 with nibles N1, ... , Nm, pointing to
             // `node_to_connect`.
@@ -354,6 +366,7 @@ where
                 Self::prepare_linear_path_to_rlp_node(
                     other_diverging_nibbles_new_path,
                     node_to_connect,
+                    rlp_buf,
                 )?;
 
             let mut pending =
@@ -366,24 +379,30 @@ where
                 &mut branch_node,
                 first_diverging_nibble_existing_path,
                 suffix_extension_node_existing_path_rlp,
+                rlp_buf,
             );
 
             Self::add_child_to_branch_node(
                 &mut branch_node,
                 *first_diverging_nibble_new_path,
                 suffix_extension_node_new_path_rlp,
+                rlp_buf,
             );
 
             let branch_node = TrieNode::Branch(branch_node);
-            let mut buf = Vec::with_capacity(33);
-            let branch_node_rlp = branch_node.rlp(&mut buf);
+            let branch_node_rlp = branch_node.rlp(rlp_buf);
+            rlp_buf.clear();
 
             pending.insert(branch_node_rlp.clone(), branch_node);
 
             // 4. Create an extension node with the common prefix [C0, ..., Ck],
             // pointing to the branch node B created in step 3.
             let (new_extension_node_rlp, new_extension_node_pending) =
-                Self::prepare_linear_path_to_rlp_node(common_prefix, branch_node_rlp)?;
+                Self::prepare_linear_path_to_rlp_node(
+                    common_prefix,
+                    branch_node_rlp,
+                    rlp_buf,
+                )?;
 
             let mut pending = pending.merge(new_extension_node_pending);
 
@@ -423,22 +442,27 @@ where
     fn delete_child_from_branch_node(
         branch_node: &mut BranchNode,
         nibble: u8,
+        rlp_buf: &mut Vec<u8>,
     ) -> RlpNode {
         debug_assert!(branch_node.as_ref().state_mask.count_ones() > 1);
         let mut rlp_vector = Self::expand_branch_node(branch_node);
         rlp_vector[usize::from(nibble)] = None;
         let new_branch_node = Self::collapse_to_branch_node(rlp_vector);
         *branch_node = new_branch_node;
-        TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33))
+
+        let new_branch_node_rlp = TrieNode::Branch(branch_node.clone()).rlp(rlp_buf);
+        rlp_buf.clear();
+        new_branch_node_rlp
     }
 
     fn prepare_delete_child_from_branch_node(
         branch_node_rlp: RlpNode,
         mut branch_node: BranchNode,
         nibble: u8,
+        rlp_buf: &mut Vec<u8>,
     ) -> (RlpNode, Pending) {
         let new_branch_node_rlp =
-            Self::delete_child_from_branch_node(&mut branch_node, nibble);
+            Self::delete_child_from_branch_node(&mut branch_node, nibble, rlp_buf);
         let mut pending = Pending::new();
         pending.insert(
             new_branch_node_rlp.clone(),
@@ -454,12 +478,16 @@ where
         branch_node: &mut BranchNode,
         nibble: u8,
         child: RlpNode,
+        rlp_buf: &mut Vec<u8>,
     ) -> RlpNode {
         let mut rlp_vector = Self::expand_branch_node(branch_node);
         rlp_vector[usize::from(nibble)] = Some(child);
         let new_branch_node = Self::collapse_to_branch_node(rlp_vector);
         *branch_node = new_branch_node;
-        TrieNode::Branch(branch_node.clone()).rlp(&mut Vec::with_capacity(33))
+
+        let new_branch_node_rlp = TrieNode::Branch(branch_node.clone()).rlp(rlp_buf);
+        rlp_buf.clear();
+        new_branch_node_rlp
     }
 
     fn prepare_add_child_to_branch_node(
@@ -467,9 +495,10 @@ where
         branch_node: &mut BranchNode,
         nibble: u8,
         child: RlpNode,
+        rlp_buf: &mut Vec<u8>,
     ) -> (RlpNode, Pending) {
         let new_branch_node_rlp =
-            Self::add_child_to_branch_node(branch_node, nibble, child);
+            Self::add_child_to_branch_node(branch_node, nibble, child, rlp_buf);
         let mut pending = Pending::new();
         pending.insert(
             new_branch_node_rlp.clone(),
@@ -483,11 +512,13 @@ where
         extension_node_rlp: RlpNode,
         mut extension_node: ExtensionNode,
         new_child_rlp: RlpNode,
+        rlp_buf: &mut Vec<u8>,
     ) -> (RlpNode, Pending) {
         let mut pending = Pending::new();
         extension_node.child = new_child_rlp;
         let new_extension_node_rlp =
-            TrieNode::Extension(extension_node.clone()).rlp(&mut Vec::with_capacity(33));
+            TrieNode::Extension(extension_node.clone()).rlp(rlp_buf);
+        rlp_buf.clear();
         pending.insert(
             new_extension_node_rlp.clone(),
             TrieNode::Extension(extension_node),
@@ -502,6 +533,9 @@ where
         key: Bytes32,
         value: impl AsRef<[u8]>,
     ) -> anyhow::Result<RlpNode> {
+        // 33 bytes allocated: this will be used as a mutable buffer to compute the
+        // RLP of every node.
+        let mut rlp_buf = Vec::with_capacity(33);
         // convert the key and value to nibbles
         let key_nibbles = Nibbles::unpack(&key);
 
@@ -525,10 +559,11 @@ where
         // Check the nibbles that are left to iterate.
         let nibbles_left = node_iterator.nibbles_left();
         // We require that the tree contains at least the
-        let last_traversed_node =
-            nodes_in_path.pop().unwrap_or(TraversedNode::EmptyRoot(
-                TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33)),
-            ));
+        let last_traversed_node = nodes_in_path.pop().unwrap_or_else(|| {
+            let node = TraversedNode::EmptyRoot(TrieNode::EmptyRoot.rlp(&mut rlp_buf));
+            rlp_buf.clear();
+            node
+        });
         // We have traversed the path in the tree. The new leaf will be
         // appended to the last node in the path. Different cases should
         // be considered according to the type of the last traversed node.
@@ -540,7 +575,7 @@ where
                 // path. Note that the empty root is not removed from the
                 // storage, as we might have other Merkle Trees pointing
                 // at it as their root.
-                Self::make_linear_path_to_leaf(nibbles_left, key, value)?
+                Self::make_linear_path_to_leaf(nibbles_left, key, value, &mut rlp_buf)?
             }
             TraversedNode::Branch(branch_node_rlp, branch_node, decision) => {
                 // The last node is a branch node.
@@ -557,7 +592,12 @@ where
                 // leaf node, if the nibbles left are empty, or an extension node
                 // pointing to the leaf node.
                 let (extension_or_leaf_node_rlp, pending) =
-                    Self::make_linear_path_to_leaf(nibbles_left, key, value)?;
+                    Self::make_linear_path_to_leaf(
+                        nibbles_left,
+                        key,
+                        value,
+                        &mut rlp_buf,
+                    )?;
                 let mut new_branch_node = branch_node.clone();
                 let (new_branch_node_rlp, other_pending) =
                     Self::prepare_add_child_to_branch_node(
@@ -565,6 +605,7 @@ where
                         &mut new_branch_node,
                         decision,
                         extension_or_leaf_node_rlp,
+                        &mut rlp_buf,
                     );
                 (new_branch_node_rlp, pending.merge(other_pending))
             }
@@ -577,13 +618,15 @@ where
                 // otherwise the iterator would have moved to the next
                 // node. In this case, we create a new extension node with the common
                 // prefix, pointing to a branch node. The branch node has two children:
-                let (leaf_rlp_node, pending) = Self::prepare_store_leaf(key, value)?;
+                let (leaf_rlp_node, pending) =
+                    Self::prepare_store_leaf(key, value, &mut rlp_buf)?;
                 let (branch_rlp_node, other_pending) =
                     Self::prepare_branch_from_extension_node(
                         extension_node_rlp,
                         extension_node,
                         nibbles_left,
                         leaf_rlp_node,
+                        &mut rlp_buf,
                     )?;
                 (branch_rlp_node, pending.merge(other_pending))
             }
@@ -596,7 +639,8 @@ where
                 debug_assert_eq!(nibbles_left_len, 0);
                 debug_assert_eq!(key, other_leaf_node.key.pack().as_ref());
 
-                let (rlp_node, mut pending) = Self::prepare_store_leaf(key, value)?;
+                let (rlp_node, mut pending) =
+                    Self::prepare_store_leaf(key, value, &mut rlp_buf)?;
                 pending.delete(old_leaf_node_rlp);
                 (rlp_node, pending)
             }
@@ -623,6 +667,7 @@ where
                         &mut new_branch_node,
                         decision,
                         rlp_of_new_node.clone(),
+                        &mut rlp_buf,
                     );
 
                     self.apply_operations(pending)?;
@@ -634,6 +679,7 @@ where
                         extension_node_rlp,
                         extension_node,
                         rlp_of_new_node.clone(),
+                        &mut rlp_buf,
                     );
 
                     self.apply_operations(pending)?;
@@ -699,6 +745,8 @@ where
             let node_with_next_decision = node?;
             nodes_in_path.push(node_with_next_decision);
         }
+
+        let mut rlp_buf = Vec::with_capacity(33);
 
         let mut stage = Stage::PreDeletion;
         while let Some(traversed_node) = nodes_in_path.pop() {
@@ -772,12 +820,13 @@ where
 
                                 // Delete the sibling from the branch node
                                 let (
-                                    branch_node_one_child_rlp,
+                                    _branch_node_one_child_rlp,
                                     mut branch_node_one_child_pending,
                                 ) = Self::prepare_delete_child_from_branch_node(
                                     branch_node_rlp.clone(),
                                     branch_node.clone(),
                                     decision,
+                                    &mut rlp_buf,
                                 );
 
                                 // The branch node with 1 child in the pending operations
@@ -809,6 +858,7 @@ where
                                     *nibble,
                                     &child_at_nibble_rlp,
                                     &child_at_nibble,
+                                    &mut rlp_buf,
                                 )?;
 
                                 // TODO: But we also need to modify the remaining child in
@@ -845,6 +895,7 @@ where
                                         branch_node_rlp.clone(),
                                         new_branch_node,
                                         decision,
+                                        &mut rlp_buf,
                                     );
                                 self.apply_operations(pending)?;
                                 stage = Stage::PostDeletion(new_branch_node_rlp);
@@ -874,6 +925,7 @@ where
                                     &mut new_branch_node,
                                     decision,
                                     rlp_node,
+                                    &mut rlp_buf,
                                 );
                             self.apply_operations(pending)?;
 
@@ -908,6 +960,7 @@ where
                                     extension_node,
                                     &rlp_node,
                                     connected_node,
+                                    &mut rlp_buf,
                                 )?;
                             self.apply_operations(pending)?;
 
@@ -933,6 +986,7 @@ where
                                     &mut new_branch_node,
                                     decision,
                                     rlp_node,
+                                    &mut rlp_buf,
                                 );
                             self.apply_operations(pending)?;
                             stage = Stage::PostDeletion(new_branch_node_rlp);
@@ -946,6 +1000,7 @@ where
                                     extension_node_rlp.clone(),
                                     extension_node,
                                     rlp_node.clone(),
+                                    &mut rlp_buf,
                                 );
                             self.apply_operations(pending)?;
                             stage = Stage::PostDeletion(new_extension_node_rlp);
@@ -965,7 +1020,8 @@ where
                 // No need to insert the empty root in the tree. When iterating through
                 // nodes in a path, the NodesIterator treats an empty root as if it
                 // was present in the tree.
-                self.root = TrieNode::EmptyRoot.rlp(&mut Vec::with_capacity(33));
+                self.root = TrieNode::EmptyRoot.rlp(&mut rlp_buf);
+                rlp_buf.clear();
             }
             Stage::PostDeletion(rlp_node) | Stage::JoinExtensionNodes(rlp_node) => {
                 self.root = rlp_node;

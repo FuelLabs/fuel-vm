@@ -137,9 +137,7 @@ impl MerklePatriciaTrie {
     }
 
     pub fn delete(&mut self, key: MerkleTreeKey) {
-        if let Err(e) = self.trie.delete_leaf(&Nibbles::unpack(key.as_ref())) {
-            println!("Error while deleting node: {e:?}");
-        }
+        self.trie.delete_leaf(&Nibbles::unpack(key.as_ref()));
     }
 
     pub fn root(&self) -> RlpNode {
@@ -500,9 +498,6 @@ mod test {
             panic!("Leaf node not in storage")
         };
 
-        println!("");
-        println!("{:?}", storage);
-
         assert_eq!(nibble_0, 0);
         assert_eq!(extension_node_0.key.as_ref(), &[0x0; 63]);
         assert_eq!(leaf_0.key.as_ref(), &[0x0; 64]);
@@ -531,8 +526,6 @@ mod test {
         let root_rlp = trie.root();
         let storage = trie.trie.storage.map;
 
-        println!("");
-        println!("{:?}", storage);
         // One extension node, One leaf node
         assert_eq!(storage.len(), 2);
 
@@ -564,8 +557,6 @@ mod test {
         let root_rlp = trie.root();
         let storage = trie.trie.storage.map;
 
-        println!("");
-        println!("{:?}", storage);
         // One extension node, One leaf node
         assert_eq!(storage.len(), 0);
         assert_eq!(
@@ -593,8 +584,6 @@ mod test {
         let root_rlp = trie.root();
         let storage = trie.trie.storage.map;
 
-        println!("");
-        println!("{:?}", storage);
         // One extension node, One leaf node
         assert_eq!(storage.len(), 2);
 
@@ -638,8 +627,6 @@ mod test {
         let root_rlp = trie.root();
         let storage = trie.trie.storage.map;
 
-        println!("");
-        println!("{:?}", storage);
         // One Branch node, two extension nodes, two leaf nodes.
         assert_eq!(storage.len(), 5);
 
@@ -729,12 +716,9 @@ mod test {
         // At this point the tree contains one extension node pointing to a branch node
         // with two children. Each child is an extension node pointing to a leaf
         // node.
-        println!("");
-        println!("Before deletion: {:?}", trie.trie.storage.map.clone());
 
         trie.delete(key2);
 
-        println!("\nAfter deletion: {:?}", trie.trie.storage.map.clone());
         // 1 Branch node, 2 extension nodes, 2 leaves
         assert_eq!(trie.trie.storage.map.len(), 5);
 

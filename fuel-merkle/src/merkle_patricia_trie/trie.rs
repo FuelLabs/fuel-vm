@@ -101,14 +101,6 @@ where
         connected_node_rlp: &RlpNode,
         connected_extension_node: &ExtensionNode,
     ) -> anyhow::Result<(RlpNode, Pending)> {
-        println!(
-            "Joining extension nodes {:?} and {:?}",
-            extension_node_rlp, connected_node_rlp
-        );
-        println!(
-            "Old child for extension node {:?} is {:?}",
-            extension_node_rlp, extension_node.child
-        );
         let prefix_nibbles = extension_node.as_ref().key;
         let suffix_nibbles = connected_extension_node.as_ref().key;
         let nibbles = prefix_nibbles.join(suffix_nibbles);
@@ -287,10 +279,6 @@ where
         node_to_connect: RlpNode,
     ) -> anyhow::Result<(RlpNode, Pending)> {
         let common_prefix_length = extension_node.key.common_prefix_length(&nibbles);
-        println!(
-            "Splitting the extension node {:?} into a branch node, at length {}",
-            extension_node_rlp, common_prefix_length
-        );
 
         // If the common prefix is the same as the extension node key, then we must update
         // the child of the extension node. Because in our case a leaf always
@@ -308,10 +296,6 @@ where
 
             Ok((new_extension_rlp_node, pending))
         } else {
-            println!(
-                "Extension node and new node diverge at nibble {}",
-                common_prefix_length
-            );
             // The common prefix is not the same as the extension node key.
             // The extension node nibble and the input path nibble have the following
             // structure:
@@ -329,7 +313,6 @@ where
             // pointing to the branch node B created in step 3.
             // 5. Mark the original extension node for deletion.
             let common_prefix = nibbles.slice(0..common_prefix_length);
-            println!("Common prefix: {:?}", common_prefix);
             // 1. Create a new extension Ext0 node with nibbles K1, ... , Kl, pointing to
             // the child of the previous extension node,
 
@@ -337,10 +320,6 @@ where
             // than the length of the extension node.
             let first_diverging_nibble_existing_path =
                 extension_node.key[common_prefix_length];
-            println!(
-                "diverging nibble in extension node: {}",
-                first_diverging_nibble_existing_path
-            );
             let other_diverging_nibbles_existing_path =
                 extension_node.key.slice(common_prefix_length + 1..);
             let (suffix_extension_node_existing_path_rlp, first_extension_node_pending) =
@@ -380,7 +359,6 @@ where
             let mut pending =
                 first_extension_node_pending.merge(second_extension_node_pending);
 
-            println!("Extension nodes created: pending operations {:?}", pending);
             // 3. Create a new branch node B for the common prefix
             // TODO: This is slow, we iterate through the nibble values twice
             let mut branch_node = BranchNode::default();
@@ -400,10 +378,6 @@ where
             let mut buf = Vec::with_capacity(33);
             let branch_node_rlp = branch_node.rlp(&mut buf);
 
-            println!(
-                "Branch node to insert in pending changes: {:?}",
-                branch_node
-            );
             pending.insert(branch_node_rlp.clone(), branch_node);
 
             // 4. Create an extension node with the common prefix [C0, ..., Ck],
@@ -710,9 +684,7 @@ where
             PostDeletion(RlpNode),
         }
 
-        println!("Deleting leaf with key {:?}", key);
         if key.len() != 64 {
-            println!("key does not have 64 nibbles: {}", key.len());
             return Err(anyhow::anyhow!("Key must have 64 nibbles"));
         }
 
@@ -721,18 +693,10 @@ where
         let mut node_iterator = self.iter(key);
         let mut nodes_in_path = Vec::new();
         loop {
-            println!("Retrieveing next node in path");
             let Some(node) = node_iterator.next() else {
                 break
             };
-            if node.is_err() {
-                println!("Error while traversing path to leaf");
-            }
             let node_with_next_decision = node?;
-            println!(
-                "While traversing path to leaf: {:?}",
-                node_with_next_decision
-            );
             nodes_in_path.push(node_with_next_decision);
         }
 
@@ -766,7 +730,6 @@ where
                             ref extension_node_rlp,
                             _extension_node,
                         ) => {
-                            println!("Found an extension node with rlp {:?} while deleting key", extension_node_rlp);
                             // Remove the extension node
                             self.storage.remove(extension_node_rlp).map_err(|_e| {
                                 anyhow::anyhow!(
@@ -788,10 +751,6 @@ where
                                     nibble != &decision && node.is_some()
                                 })
                                 .collect::<Vec<_>>();
-                            println!(
-                                "Branch node in deletion process with siblings: {:?}",
-                                siblings_of_node_being_deleted
-                            );
                             let Some((first_sibling, other_siblings)) =
                                 siblings_of_node_being_deleted.split_first()
                             else {
@@ -876,7 +835,6 @@ where
                                 let pending = branch_node_one_child_pending
                                     .merge(branch_to_extension_node_pending);
                                 self.apply_operations(pending)?;
-                                println!("Entering JoinExtensionNodes stage");
                                 stage = Stage::JoinExtensionNodes(new_extension_node_rlp);
                             } else {
                                 let new_branch_node = branch_node.clone();
@@ -895,7 +853,6 @@ where
                     }
                 }
                 Stage::JoinExtensionNodes(rlp_node) => {
-                    println!("In joinExtensionNodes stage");
                     match traversed_node {
                         TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already
@@ -928,7 +885,6 @@ where
                             // represent an extension node. We have an extension node
                             // connected to another extension node,
                             // and we can simplify this with a single path.
-                            println!("Found node {extension_node_rlp:?} to join with {rlp_node:?}");
                             // The child of `extension_node` is a node that has been
                             // removed already from the
                             // storage (the old branch node with two children). We must
@@ -960,7 +916,6 @@ where
                     }
                 }
                 Stage::PostDeletion(rlp_node) => {
-                    println!("Post deletion stage: {:?}", rlp_node);
                     match traversed_node {
                         TraversedNode::EmptyRoot(_) | TraversedNode::Leaf(_, _) => {
                             // Cannot happen, we have traversed a leaf already

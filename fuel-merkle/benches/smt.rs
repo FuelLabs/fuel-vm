@@ -1,3 +1,4 @@
+use alloy_trie::nodes::RlpNode;
 use criterion::{
     black_box,
     criterion_group,
@@ -6,6 +7,7 @@ use criterion::{
 };
 use fuel_merkle::{
     common::Bytes32,
+    merkle_patricia_trie,
     sparse::{
         in_memory,
         MerkleTreeKey,
@@ -35,6 +37,17 @@ where
         tree.update(key, data.as_ref());
     }
     tree.root()
+}
+
+pub fn baseline_merkle_patricia_trie_root<I>(set: I) -> RlpNode
+where
+    I: Iterator<Item = (MerkleTreeKey, Bytes32)>,
+{
+    let mut trie = merkle_patricia_trie::in_memory::MerklePatriciaTrie::new();
+    for (key, data) in set {
+        trie.update(key.into(), &data);
+    }
+    trie.root()
 }
 
 pub fn subject_root<I, D>(set: I) -> Bytes32
@@ -70,7 +83,7 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let rng = &mut StdRng::seed_from_u64(8586);
     let gen = || Some((MerkleTreeKey::new(random_bytes32(rng)), random_bytes32(rng)));
-    let data = core::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
+    let data = core::iter::from_fn(gen).take(100_000).collect::<Vec<_>>();
 
     let expected_root = baseline_root(data.clone().into_iter());
     let root = subject_root(data.clone().into_iter());
@@ -83,6 +96,21 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let mut group_update = c.benchmark_group("from-set");
 
+    group_update.bench_with_input(
+        "from-set-baseline-merkle-patricia-trie",
+        &data,
+        |b, data| {
+            b.iter(|| {
+                baseline_merkle_patricia_trie_root::<_>(black_box(
+                    data.clone().into_iter(),
+                ))
+            });
+        },
+    );
+
+    group_update.bench_with_input("from-set-baseline", &data, |b, data| {
+        b.iter(|| baseline_root(black_box(data.clone().into_iter())));
+    });
     group_update.bench_with_input("root-from-set", &data, |b, data| {
         b.iter(|| subject_only_root(black_box(data.clone().into_iter())));
     });
@@ -93,10 +121,6 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     group_update.bench_with_input("from-set", &data, |b, data| {
         b.iter(|| subject_root(black_box(data.clone().into_iter())));
-    });
-
-    group_update.bench_with_input("from-set-baseline", &data, |b, data| {
-        b.iter(|| baseline_root(black_box(data.clone().into_iter())));
     });
 
     group_update.finish();

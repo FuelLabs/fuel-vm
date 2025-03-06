@@ -33,7 +33,6 @@ mod encoding_tests;
 
 #[doc(no_inline)]
 pub use args::{
-    narrowint,
     wideint,
     GMArgs,
     GTFArgs,
@@ -154,8 +153,6 @@ impl_instructions! {
     0x21 XOR xor [dst: RegId lhs: RegId rhs: RegId]
     "Fused multiply-divide with arbitrary precision intermediate step."
     0x22 MLDV mldv [dst: RegId mul_lhs: RegId mul_rhs: RegId divisor: RegId]
-    "Narrow-integer arithmetic operation."
-    0x23 NIOP niop [dst: RegId lhs: RegId rhs: RegId flags: Imm06]
 
     "Return from context."
     0x24 RET ret [value: RegId]
@@ -271,6 +268,14 @@ impl_instructions! {
     0x60 MCPI mcpi [dst_addr: RegId src_addr: RegId len: Imm12]
     "Get transaction fields."
     0x61 GTF gtf [dst: RegId arg: RegId selector: Imm12]
+    "Load quarterword (u16)."
+    0x62 LQW lqw [dst: RegId arg: RegId offset: Imm12]
+    "Load halfword (u32)."
+    0x63 LHW lhw [dst: RegId arg: RegId offset: Imm12]
+    "Store quarterword (u16)."
+    0x64 SQW sqw [dst: RegId arg: RegId offset: Imm12]
+    "Store halfword (u32)."
+    0x65 SHW shw [dst: RegId arg: RegId offset: Imm12]
 
     "Clear an immediate number of bytes in memory."
     0x70 MCLI mcli [addr: RegId count: Imm18]
@@ -702,14 +707,14 @@ impl Opcode {
         use Opcode::*;
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
-            | NIOP | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP
+            | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP
             | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
             | PSHH | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1
             | ED19 | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
-            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB
-            | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB
-            | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ
-            | BLDD | ECOP | EPAR => true,
+            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LQW | LHW
+            | LW | SB | SQW | SHW | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
+            | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS
+            | GTF | LDC | BSIZ | BLDD | ECOP | EPAR => true,
             _ => false,
         }
     }

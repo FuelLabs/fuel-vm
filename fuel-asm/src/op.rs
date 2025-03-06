@@ -2,7 +2,6 @@
 //! unique `Opcode` variant.
 
 use super::{
-    narrowint,
     wideint,
     CheckRegId,
     GMArgs,
@@ -68,40 +67,6 @@ const _: () = {
     /// Construct a `GM` instruction from its arguments.
     pub fn gtf_args(ra: u8, rb: u8, args: GTFArgs) -> typescript::Instruction {
         Instruction::GTF(GTF::from_args(ra.check(), rb.check(), args)).into()
-    }
-};
-
-#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
-impl NIOP {
-    /// Construct a `NIOP` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: narrowint::MathArgs) -> Self {
-        Self::new(ra, rb, rc, args.to_imm())
-    }
-}
-
-/// Construct a `WQCM` instruction from its arguments.
-pub fn niop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
-    ra: A,
-    rb: B,
-    rc: C,
-    args: narrowint::MathArgs,
-) -> Instruction {
-    Instruction::NIOP(NIOP::from_args(ra.check(), rb.check(), rc.check(), args))
-}
-
-#[cfg(feature = "typescript")]
-const _: () = {
-    use super::*;
-
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    /// Construct a `WQCM` instruction from its arguments.
-    pub fn niop_args(
-        ra: u8,
-        rb: u8,
-        rc: u8,
-        args: narrowint::CompareArgs,
-    ) -> typescript::Instruction {
-        crate::op::niop_args(ra, rb, rc, args).into()
     }
 };
 

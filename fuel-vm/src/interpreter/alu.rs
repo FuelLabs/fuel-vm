@@ -17,7 +17,6 @@ use fuel_asm::{
 use fuel_types::Word;
 
 mod muldiv;
-mod narrowint;
 mod wideint;
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>

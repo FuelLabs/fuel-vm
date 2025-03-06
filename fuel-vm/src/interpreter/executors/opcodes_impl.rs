@@ -22,6 +22,7 @@ use crate::{
 };
 use core::ops::Div;
 use fuel_asm::{
+    narrowint,
     op::{
         ADD,
         ADDI,
@@ -838,6 +839,32 @@ where
             interpreter.registers[b],
             interpreter.registers[c],
             interpreter.registers[d],
+        )?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::NIOP
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().mldv())?;
+        let (a, b, c, imm) = self.unpack();
+        let args = narrowint::MathArgs::from_imm(imm)
+            .ok_or(PanicReason::InvalidImmediateValue)?;
+        interpreter.alu_narrowint_op(
+            a,
+            interpreter.registers[b],
+            interpreter.registers[c],
+            args,
         )?;
         Ok(ExecuteState::Proceed)
     }

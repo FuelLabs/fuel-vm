@@ -899,7 +899,7 @@ macro_rules! store_load {
                 let owner = self.ownership_registers();
                 let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
 
-                
+
                 let offset = u64::from(offset)
                 .checked_mul(core::mem::size_of::<$t>() as u64)
                 .expect("u12 * size_of cannot overflow a Word");

@@ -707,14 +707,14 @@ impl Opcode {
         use Opcode::*;
         match self {
             ADD | AND | DIV | EQ | EXP | GT | LT | MLOG | MROO | MOD | MOVE | MUL
-            | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP
-            | WDML | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM
-            | PSHH | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1
-            | ED19 | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI
-            | MULI | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LQW | LHW
-            | LW | SB | SQW | SHW | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP
-            | JNE | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS
-            | GTF | LDC | BSIZ | BLDD | ECOP | EPAR => true,
+            | NOT | OR | SLL | SRL | SUB | XOR | WDCM | WQCM | WDOP | WQOP | WDML
+            | WQML | WDDV | WQDV | WDMD | WQMD | WDAM | WQAM | WDMM | WQMM | PSHH
+            | PSHL | POPH | POPL | RET | ALOC | MCL | MCP | MEQ | ECK1 | ECR1 | ED19
+            | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
+            | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LQW | LHW | LW
+            | SB | SQW | SHW | SW | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE
+            | JMPF | JMPB | JNZF | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF
+            | LDC | BSIZ | BLDD | ECOP | EPAR => true,
             _ => false,
         }
     }

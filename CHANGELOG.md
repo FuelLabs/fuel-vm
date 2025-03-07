@@ -5,7 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased (see .changes folder)]
+## [Unreleased]
+
+## [Version 0.60.0]
+
+### Added
+- [901](https://github.com/FuelLabs/fuel-vm/pull/901): Add `Display` implementation to `Receipt` enum.
+- [896](https://github.com/FuelLabs/fuel-vm/pull/896): Expose `leaf_sum` and allow binary `MerkleTree` to be built from existing precomputed leafs.
+- [882](https://github.com/FuelLabs/fuel-vm/pull/882): Add a lot of new `GTFArgs` including generic ones that will replace old tx type specific.
+- [909](https://github.com/FuelLabs/fuel-vm/pull/909): Add the `remove_recovery_id()` to `Signature`.
+- [915](https://github.com/FuelLabs/fuel-vm/pull/915): Added support for `AttemptContinue` verifier, that collects and ignores some errors instead of terminating execution. This is meant to help with gathering tx dependencies.
+
+### Breaking
+- [900](https://github.com/FuelLabs/fuel-vm/pull/900): Change the error variant `DuplicateMessageInputId` to `DuplicateInputNonce` which now contains a nonce instead of `MessageId` for performance improvements.
+- [907](https://github.com/FuelLabs/fuel-vm/pull/907): `StorageRead` and `StorageWrite` traits no longer return the number of bytes written. They already required that the whole buffer is used, but now this is reflected in signature and documentation as well.
+- [914](https://github.com/FuelLabs/fuel-vm/pull/914): The built-in profiler is removed. Use the debugger with single-stepping instead.
+- [918](https://github.com/FuelLabs/fuel-vm/pull/918): Interpreter is now generic over the validation error handling. No behavioural changes, but the `Interpreter` has one extra type parameter.
+- [920](https://github.com/FuelLabs/fuel-vm/pull/920): `Interpreter::execute` and friends are now generic over predicateness of the context. This forces monomorphization so the predicate branch is optimized away on non-predicate execution.
+
+### Changed
+- [904](https://github.com/FuelLabs/fuel-vm/pull/904): Moved the logic of each opcode into its own function. It helps so reduce the size of the `instruction_inner` function, allowing compiler to do better optimizations. The Mira swaps receive performance improvement in 16.5%.
+
+### Fixed
+- [917](https://github.com/FuelLabs/fuel-vm/pull/917): Ignore predicate verification during the estimation. 
+- [895](https://github.com/FuelLabs/fuel-vm/pull/895): Fix elided lifetimes compilation warnings that became errors after the release of rust 1.83.0. 
+- [895](https://github.com/FuelLabs/fuel-vm/pull/895): Bump proptest-derive to version `0.5.1` to fix non-local impl errors on the derivation of `proptest_derive::Arbitrary` introduced by rust 1.83.0. 
+- [889](https://github.com/FuelLabs/fuel-vm/pull/889) and [908](https://github.com/FuelLabs/fuel-vm/pull/908): Debugger breakpoint caused receipts to be produced incorrectly.
+- [903](https://github.com/FuelLabs/fuel-vm/pull/903): Fixed warning being emitted when using packages with Node@22+.
+- [912](https://github.com/FuelLabs/fuel-vm/pull/912): Fix serialization/deserialization of `Policies` in compressed transactions to be backward compatible.
+
+## [Version 0.59.2]
+
+### Fixed
+- [910](https://github.com/FuelLabs/fuel-vm/pull/910): Fix serialization/deserialization of `Policies` in compressed transactions to be backward compatible.
 
 ## [Version 0.59.1]
 

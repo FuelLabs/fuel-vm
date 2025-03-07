@@ -38,6 +38,7 @@ use crate::{
         BlobData,
         InterpreterStorage,
     },
+    verification::Verifier,
 };
 use alloc::{
     vec,
@@ -135,7 +136,7 @@ impl<Tx> PredicateRunKind<'_, Tx> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PredicateAction {
     Verifying,
     Estimating { available_gas: Word },
@@ -366,27 +367,29 @@ pub mod predicates {
     where
         Tx: ExecutableTransaction,
     {
-        match &tx.inputs()[index] {
-            Input::CoinPredicate(CoinPredicate {
-                owner: address,
-                predicate,
-                ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                recipient: address,
-                predicate,
-                ..
-            })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate,
-                recipient: address,
-                ..
-            }) => {
-                if !Input::is_predicate_owner_valid(address, &**predicate) {
-                    return (0, Err(PredicateVerificationFailed::InvalidOwner));
+        if predicate_action == PredicateAction::Verifying {
+            match &tx.inputs()[index] {
+                Input::CoinPredicate(CoinPredicate {
+                    owner: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    recipient: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    predicate,
+                    recipient: address,
+                    ..
+                }) => {
+                    if !Input::is_predicate_owner_valid(address, &**predicate) {
+                        return (0, Err(PredicateVerificationFailed::InvalidOwner));
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
 
         let zero_gas_price = 0;
@@ -496,7 +499,7 @@ pub mod predicates {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -563,7 +566,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -666,7 +669,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -775,7 +778,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -830,12 +833,13 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -977,7 +981,7 @@ where
                 // Check whether the instruction will be executed in a call context
                 let in_call = !self.frames.is_empty();
 
-                match self.execute() {
+                match self.execute::<false>() {
                     // Proceeding with the execution normally
                     Ok(ExecuteState::Proceed) => continue,
                     // Debugger events are returned directly to the caller
@@ -1055,13 +1059,14 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
@@ -1084,7 +1089,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1116,7 +1121,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1148,7 +1153,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1180,7 +1185,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1212,7 +1217,7 @@ where
     }
 }
 
-impl<M, S: InterpreterStorage, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S: InterpreterStorage, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     fn verify_ready_tx<Tx2: IntoChecked>(
         &self,
         tx: &Ready<Tx2>,

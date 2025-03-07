@@ -39,6 +39,7 @@ use crate::{
 use core::iter;
 use fuel_tx::{
     consensus_parameters::gas::GasCostsValuesV5,
+    field::Inputs,
     ConsensusParameters,
 };
 
@@ -160,6 +161,42 @@ where
         }
         _ => panic!("Parallel and sequential execution should return the same result"),
     }
+}
+
+#[test]
+fn estimate_predicate_works_when_predicate_address_incorrect() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let predicate: Vec<u8> = iter::once(op::ret(0x01)).collect();
+    let predicate_data = vec![];
+
+    let mut builder = TransactionBuilder::script(vec![], vec![]);
+
+    // Given
+    let predicate_owner = rng.gen();
+    let input = Input::coin_predicate(
+        rng.gen(),
+        predicate_owner,
+        rng.gen(),
+        rng.gen(),
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data.clone(),
+    );
+    builder.add_input(input);
+    let mut script = builder.finalize();
+
+    // When
+    assert_eq!(script.inputs()[0].predicate_gas_used(), Some(0));
+    let result = script.estimate_predicates(
+        &ConsensusParameters::standard().into(),
+        MemoryInstance::new(),
+        &EmptyStorage,
+    );
+
+    // Then
+    result.expect("Should estimate predicate");
+    assert_ne!(script.inputs()[0].predicate_gas_used(), Some(0));
 }
 
 #[test]

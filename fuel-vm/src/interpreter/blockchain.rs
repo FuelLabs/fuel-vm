@@ -32,7 +32,6 @@ use crate::{
         },
         receipts::ReceiptsCtx,
         ExecutableTransaction,
-        InputContracts,
         Interpreter,
         Memory,
         MemoryInstance,
@@ -45,11 +44,16 @@ use crate::{
         ContractsStateData,
         InterpreterStorage,
     },
+    verification::Verifier,
 };
-use alloc::vec::Vec;
+use alloc::{
+    collections::BTreeSet,
+    vec::Vec,
+};
 use fuel_asm::{
     Imm06,
     PanicReason,
+    RegId,
 };
 use fuel_storage::StorageSize;
 use fuel_tx::{
@@ -69,9 +73,10 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
-    RegisterId,
     Word,
 };
+
+use super::PanicContext;
 
 #[cfg(test)]
 mod code_tests;
@@ -84,11 +89,12 @@ mod smo_tests;
 #[cfg(test)]
 mod test;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
     S: InterpreterStorage,
+    V: Verifier,
 {
     /// Loads contract ID pointed by `contract_id_addr`, and then for that contract,
     /// copies `length_unpadded` bytes from it starting from offset `contract_offset` into
@@ -129,10 +135,8 @@ where
             context: &self.context,
             storage: &mut self.storage,
             contract_max_size,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             gas_cost,
             cgas,
             ggas,
@@ -141,6 +145,7 @@ where
             hp: hp.as_ref(),
             fp: fp.as_ref(),
             pc,
+            verifier: &mut self.verifier,
         };
 
         match mode.to_u8() {
@@ -211,16 +216,15 @@ where
             split_registers(&mut self.registers);
         let input = CodeCopyCtx {
             memory: self.memory.as_mut(),
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             storage: &mut self.storage,
             owner,
             gas_cost,
             cgas,
             ggas,
             pc,
+            verifier: &mut self.verifier,
         };
         input.code_copy(a, b, c, d)
     }
@@ -237,7 +241,7 @@ where
         )
     }
 
-    pub(crate) fn block_height(&mut self, ra: RegisterId) -> IoResult<(), S::DataError> {
+    pub(crate) fn block_height(&mut self, ra: RegId) -> IoResult<(), S::DataError> {
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         Ok(block_height(&self.context, pc, result)?)
@@ -264,24 +268,18 @@ where
             memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
-
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             cgas,
             ggas,
             owner,
             pc,
+            verifier: &mut self.verifier,
         }
         .code_root(a, b)
     }
 
-    pub(crate) fn code_size(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-    ) -> IoResult<(), S::DataError> {
+    pub(crate) fn code_size(&mut self, ra: RegId, b: Word) -> IoResult<(), S::DataError> {
         let gas_cost = self.gas_costs().csiz();
         // Charge only for the `base` execution.
         // We will charge for the contracts size in the `code_size`.
@@ -293,14 +291,12 @@ where
             memory: self.memory.as_mut(),
             storage: &mut self.storage,
             gas_cost,
-
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             cgas,
             ggas,
             pc,
+            verifier: &mut self.verifier,
         };
         input.code_size(result, b)
     }
@@ -308,7 +304,7 @@ where
     pub(crate) fn state_clear_qword(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
         let contract_id = self.internal_contract();
@@ -327,8 +323,8 @@ where
 
     pub(crate) fn state_read_word(
         &mut self,
-        ra: RegisterId,
-        rb: RegisterId,
+        ra: RegId,
+        rb: RegId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
         let (SystemRegisters { fp, pc, .. }, mut w) =
@@ -361,7 +357,7 @@ where
     pub(crate) fn state_read_qword(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
@@ -396,7 +392,7 @@ where
     pub(crate) fn state_write_word(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
     ) -> IoResult<(), S::DataError> {
         let new_storage_gas_per_byte = self.gas_costs().new_storage_per_byte();
@@ -433,7 +429,7 @@ where
     pub(crate) fn state_write_qword(
         &mut self,
         a: Word,
-        rb: RegisterId,
+        rb: RegId,
         c: Word,
         d: Word,
     ) -> IoResult<(), S::DataError> {
@@ -468,11 +464,7 @@ where
         )
     }
 
-    pub(crate) fn timestamp(
-        &mut self,
-        ra: RegisterId,
-        b: Word,
-    ) -> IoResult<(), S::DataError> {
+    pub(crate) fn timestamp(&mut self, ra: RegId, b: Word) -> IoResult<(), S::DataError> {
         let block_height = self.get_block_height()?;
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
@@ -508,12 +500,12 @@ where
     }
 }
 
-struct LoadContractCodeCtx<'vm, S> {
+struct LoadContractCodeCtx<'vm, S, V> {
     contract_max_size: u64,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
-
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     storage: &'vm S,
     gas_cost: DependentCost,
     cgas: RegMut<'vm, CGAS>,
@@ -523,12 +515,10 @@ struct LoadContractCodeCtx<'vm, S> {
     hp: Reg<'vm, HP>,
     fp: Reg<'vm, FP>,
     pc: RegMut<'vm, PC>,
+    verifier: &'vm mut V,
 }
 
-impl<S> LoadContractCodeCtx<'_, S>
-where
-    S: InterpreterStorage,
-{
+impl<S, V> LoadContractCodeCtx<'_, S, V> {
     /// Loads contract ID pointed by `a`, and then for that contract,
     /// copies `c` bytes from it starting from offset `b` into the stack.
     /// ```txt
@@ -544,6 +534,7 @@ where
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
+        V: Verifier,
     {
         let ssp = *self.ssp;
         let sp = *self.sp;
@@ -567,7 +558,11 @@ where
             return Err(PanicReason::ContractMaxSize.into())
         }
 
-        self.input_contracts.check(&contract_id)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &contract_id,
+        )?;
 
         // Fetch the storage contract
         let contract_len = contract_size(&self.storage, &contract_id)?;
@@ -874,23 +869,22 @@ where
     }
 }
 
-struct CodeCopyCtx<'vm, S> {
+struct CodeCopyCtx<'vm, S, V> {
     memory: &'vm mut MemoryInstance,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     storage: &'vm S,
     owner: OwnershipRegisters,
     gas_cost: DependentCost,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     pc: RegMut<'vm, PC>,
+    verifier: &'vm mut V,
 }
 
-impl<S> CodeCopyCtx<'_, S>
-where
-    S: InterpreterStorage,
-{
+impl<S, V> CodeCopyCtx<'_, S, V> {
     pub(crate) fn code_copy(
-        mut self,
+        self,
         dst_addr: Word,
         contract_id_addr: Word,
         contract_offset: Word,
@@ -898,11 +892,16 @@ where
     ) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
+        V: Verifier,
     {
         let contract_id = ContractId::from(self.memory.read_bytes(contract_id_addr)?);
 
         self.memory.write(self.owner, dst_addr, length)?;
-        self.input_contracts.check(&contract_id)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &contract_id,
+        )?;
 
         let contract_len = contract_size(&self.storage, &contract_id)?;
         let charge_len = core::cmp::max(contract_len as u64, length);
@@ -976,27 +975,34 @@ pub(crate) fn coinbase<S: InterpreterStorage>(
     Ok(())
 }
 
-struct CodeRootCtx<'vm, S> {
+struct CodeRootCtx<'vm, S, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     owner: OwnershipRegisters,
     pc: RegMut<'vm, PC>,
+    verifier: &'vm mut V,
 }
 
-impl<S> CodeRootCtx<'_, S> {
-    pub(crate) fn code_root(mut self, a: Word, b: Word) -> IoResult<(), S::DataError>
+impl<S, V> CodeRootCtx<'_, S, V> {
+    pub(crate) fn code_root(self, a: Word, b: Word) -> IoResult<(), S::DataError>
     where
         S: InterpreterStorage,
+        V: Verifier,
     {
         self.memory.write_noownerchecks(a, Bytes32::LEN)?;
 
         let contract_id = ContractId::new(self.memory.read_bytes(b)?);
 
-        self.input_contracts.check(&contract_id)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &contract_id,
+        )?;
 
         let len = contract_size(self.storage, &contract_id)?;
         dependent_gas_charge_without_base(
@@ -1019,28 +1025,35 @@ impl<S> CodeRootCtx<'_, S> {
     }
 }
 
-struct CodeSizeCtx<'vm, S> {
+struct CodeSizeCtx<'vm, S, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     gas_cost: DependentCost,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     pc: RegMut<'vm, PC>,
+    verifier: &'vm mut V,
 }
 
-impl<S> CodeSizeCtx<'_, S> {
+impl<S, V> CodeSizeCtx<'_, S, V> {
     pub(crate) fn code_size(
-        mut self,
+        self,
         result: &mut Word,
         b: Word,
     ) -> Result<(), RuntimeError<S::Error>>
     where
         S: StorageSize<ContractsRawCode>,
+        V: Verifier,
     {
         let contract_id = ContractId::new(self.memory.read_bytes(b)?);
 
-        self.input_contracts.check(&contract_id)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &contract_id,
+        )?;
 
         let len = contract_size(self.storage, &contract_id)?;
         dependent_gas_charge_without_base(

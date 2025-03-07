@@ -16,7 +16,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.79.0
+  RUST_VERSION: 1.81.0
   RUST_VERSION_FMT: nightly-2024-02-07
   RUST_VERSION_COV: nightly-2024-06-05
   GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
@@ -297,7 +297,7 @@ jobs:
       - publish
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
-
+    environment: npm-deploy
     steps:
       - uses: actions/checkout@v3
         with:
@@ -334,9 +334,9 @@ jobs:
       - name: Ensure NPM access
         run: npm whoami
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}
 
       - name: Publish
         run: pnpm -C .npm publish -r --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}

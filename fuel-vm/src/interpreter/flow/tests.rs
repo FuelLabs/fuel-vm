@@ -5,9 +5,13 @@ use alloc::{
     vec::Vec,
 };
 
-use crate::storage::{
-    MemoryStorage,
-    MemoryStorageError,
+use crate::{
+    storage::{
+        ContractsAssetsStorage,
+        MemoryStorage,
+        MemoryStorageError,
+    },
+    verification::Normal,
 };
 
 use super::*;
@@ -378,11 +382,13 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageE
         gas_cost,
         runtime_balances: &mut runtime_balances,
         storage: &mut storage,
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         new_storage_gas_per_byte: 0,
         receipts: &mut receipts,
         frames: &mut frames,
         current_contract,
+        verifier: &mut Normal,
     };
     input.prepare_call().map(|_| Output {
         reg,

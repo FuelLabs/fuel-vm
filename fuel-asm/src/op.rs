@@ -99,7 +99,7 @@ const _: () = {
         ra: u8,
         rb: u8,
         rc: u8,
-        args: narrowint::CompareArgs,
+        args: narrowint::MathArgs,
     ) -> typescript::Instruction {
         crate::op::niop_args(ra, rb, rc, args).into()
     }

@@ -37,6 +37,7 @@ pub enum OpWidth {
 /// Immediate value arguments for the NIOP instruction
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(feature = "typescript", wasm_bindgen(js_name = NarrrowMathArgs))]
 #[must_use]
 pub struct MathArgs {
     /// The operation to perform

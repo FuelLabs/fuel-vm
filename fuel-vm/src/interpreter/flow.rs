@@ -253,11 +253,13 @@ pub(crate) fn revert(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum JumpMode {
-    /// `$pc = $is + address`
-    Absolute,
-    /// `$pc = $pc + address`
+    /// `$pc = reg + (imm * instruction_size)`
+    Assign,
+    /// `$pc = $is + (reg + imm) * instruction_size)`
+    RelativeIS,
+    /// `$pc = $pc + (reg + imm + 1) * instruction_size`
     RelativeForwards,
-    /// `$pc = $pc - address`
+    /// `$pc = $pc - (reg + imm + 1) * instruction_size`
     RelativeBackwards,
 }
 
@@ -303,23 +305,33 @@ impl JumpArgs {
             return Ok(inc_pc(pc)?)
         }
 
-        let offset_instructions = match self.mode {
-            JumpMode::Absolute => self.dynamic.saturating_add(self.fixed),
-            // Here +1 is added since jumping to the jump instruction itself doesn't make
-            // sense
-            JumpMode::RelativeForwards | JumpMode::RelativeBackwards => {
-                self.dynamic.saturating_add(self.fixed).saturating_add(1)
-            }
-        };
-
-        let offset_bytes = offset_instructions.saturating_mul(Instruction::SIZE as Word);
-
         let target_addr = match self.mode {
-            JumpMode::Absolute => is.saturating_add(offset_bytes),
-            JumpMode::RelativeForwards => pc.saturating_add(offset_bytes),
-            JumpMode::RelativeBackwards => pc
-                .checked_sub(offset_bytes)
-                .ok_or(PanicReason::MemoryOverflow)?,
+            JumpMode::Assign => self
+                .dynamic
+                .saturating_add(self.fixed.saturating_mul(Instruction::SIZE as Word)),
+            JumpMode::RelativeIS => {
+                let offset_instructions = self.dynamic.saturating_add(self.fixed);
+                let offset_bytes =
+                    offset_instructions.saturating_mul(Instruction::SIZE as Word);
+                is.saturating_add(offset_bytes)
+            }
+            // In relative jumps, +1 is added since jumping to the jump instruction itself
+            // is not useful
+            JumpMode::RelativeForwards => {
+                let offset_instructions =
+                    self.dynamic.saturating_add(self.fixed).saturating_add(1);
+                let offset_bytes =
+                    offset_instructions.saturating_mul(Instruction::SIZE as Word);
+                pc.saturating_add(offset_bytes)
+            }
+            JumpMode::RelativeBackwards => {
+                let offset_instructions =
+                    self.dynamic.saturating_add(self.fixed).saturating_add(1);
+                let offset_bytes =
+                    offset_instructions.saturating_mul(Instruction::SIZE as Word);
+                pc.checked_sub(offset_bytes)
+                    .ok_or(PanicReason::MemoryOverflow)?
+            }
         };
 
         if target_addr >= VM_MAX_RAM {

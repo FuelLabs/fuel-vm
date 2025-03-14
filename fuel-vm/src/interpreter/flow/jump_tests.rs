@@ -8,7 +8,7 @@ use crate::error::PanicOrBug;
 #[test_case(0, 80, 10 => Ok(40); "jump backwards")]
 #[test_case(0, 40, VM_MAX_RAM => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump too far forward")]
 fn test_absolute_jump(is: Word, mut pc: Word, j: Word) -> SimpleResult<Word> {
-    JumpArgs::new(JumpMode::Absolute)
+    JumpArgs::new(JumpMode::RelativeIS)
         .to_address(j)
         .jump(Reg::new(&is), RegMut::new(&mut pc))
         .map(|_| pc)
@@ -36,10 +36,10 @@ fn test_relative_backwards_jump(is: Word, mut pc: Word, j: Word) -> SimpleResult
         .map(|_| pc)
 }
 
-#[test_case(JumpMode::Absolute, 0, 0, 100 => Ok(4); "absolute jump")]
+#[test_case(JumpMode::RelativeIS, 0, 0, 100 => Ok(4); "absolute jump")]
 #[test_case(JumpMode::RelativeForwards, 0, 1000, 100 => Ok(1004); "relative jump forwards")]
 #[test_case(JumpMode::RelativeBackwards, 0, 1000, 100 => Ok(1004); "relative jump backwards")]
-#[test_case(JumpMode::Absolute, 0, 40, VM_MAX_RAM => Ok(44); "abslute jump too far forward")]
+#[test_case(JumpMode::RelativeIS, 0, 40, VM_MAX_RAM => Ok(44); "abslute jump too far forward")]
 #[test_case(JumpMode::RelativeForwards, 0, 40, VM_MAX_RAM => Ok(44); "relative jump too far forward")]
 #[test_case(JumpMode::RelativeBackwards, 0, 40, 100 => Ok(44); "relative too far backwards")]
 fn test_not_performed_conditional_jump(

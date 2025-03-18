@@ -16,6 +16,7 @@ pub enum OutputRepr {
     Change = 0x02,
     Variable = 0x03,
     ContractCreated = 0x04,
+    Data = 0x05,
 }
 
 impl OutputRepr {
@@ -72,6 +73,7 @@ impl OutputRepr {
             Output::Change { .. } => Self::Change,
             Output::Variable { .. } => Self::Variable,
             Output::ContractCreated { .. } => Self::ContractCreated,
+            Output::DataCoin { .. } => Self::Data,
         }
     }
 }

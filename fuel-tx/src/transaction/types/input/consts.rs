@@ -13,6 +13,7 @@ use fuel_types::{
 
 pub(super) const INPUT_UTXO_ID_OFFSET: usize = WORD_SIZE; // Identifier
 pub(super) const INPUT_COIN_OWNER_OFFSET: usize = INPUT_UTXO_ID_OFFSET + UtxoId::LEN;
+
 pub(super) const INPUT_COIN_ASSET_ID_OFFSET: usize = INPUT_COIN_OWNER_OFFSET
     + Address::LEN // Owner
     + WORD_SIZE; // Amount

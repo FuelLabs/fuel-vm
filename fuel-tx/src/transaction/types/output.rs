@@ -64,6 +64,13 @@ pub enum Output {
         contract_id: ContractId,
         state_root: Bytes32,
     },
+
+    DataCoin {
+        to: Address,
+        amount: Word,
+        asset_id: AssetId,
+        data_hash: Bytes32,
+    },
 }
 
 impl Default for Output {
@@ -120,6 +127,15 @@ impl Output {
         Self::ContractCreated {
             contract_id,
             state_root,
+        }
+    }
+
+pub const fn data(to: Address, amount: Word, asset_id: AssetId, data_hash: Bytes32) -> Self {
+        Self::DataCoin {
+            to,
+            amount,
+            asset_id,
+            data_hash,
         }
     }
 

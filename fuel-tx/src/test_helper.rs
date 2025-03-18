@@ -38,12 +38,19 @@ where
     data
 }
 
+pub fn generate_byte_array<R, const SIZE: usize,>(rng: &mut R) -> [u8; SIZE]
+where
+    R: Rng + CryptoRng,
+{
+    let mut data = [0u8; SIZE];
+    rng.fill_bytes(data.as_mut_slice());
+
+    data
+}
+
 #[cfg(feature = "std")]
 mod use_std {
-    use super::{
-        generate_bytes,
-        generate_nonempty_padded_bytes,
-    };
+    use super::{generate_byte_array, generate_bytes, generate_nonempty_padded_bytes};
     use crate::{
         field,
         Blob,
@@ -71,10 +78,7 @@ mod use_std {
         Hasher,
         SecretKey,
     };
-    use fuel_types::{
-        canonical::Deserialize,
-        BlobId,
-    };
+    use fuel_types::{canonical::Deserialize, BlobId, Bytes32};
     use rand::{
         distributions::{
             Distribution,
@@ -115,6 +119,8 @@ mod use_std {
                     .map(|i| match i {
                         Input::CoinSigned(_) => (),
                         Input::CoinPredicate(_) => (),
+                        Input::DataCoinSigned(_) => (),
+                        Input::DataCoinPredicate(_) => (),
                         Input::Contract(_) => (),
                         Input::MessageCoinSigned(_) => (),
                         Input::MessageCoinPredicate(_) => (),
@@ -130,6 +136,7 @@ mod use_std {
                         Output::Change { .. } => (),
                         Output::Variable { .. } => (),
                         Output::ContractCreated { .. } => (),
+                        Output::DataCoin { .. } => (),
                     })
                     .unwrap_or(());
 
@@ -178,7 +185,12 @@ mod use_std {
                     2 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
                     3 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
                     4 => Output::contract_created(self.rng.gen(), self.rng.gen()),
-
+                    5 => Output::data(
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        self.rng.gen(),
+                        Bytes32::new(generate_byte_array(&mut self.rng)),
+                    ),
                     _ => unreachable!(),
                 };
 

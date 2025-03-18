@@ -3,6 +3,7 @@ use crate::{
     input::{
         coin::{
             Coin,
+            DataCoin,
             CoinSpecification,
         },
         message::{
@@ -238,6 +239,42 @@ where
             predicate_gas_used,
             predicate,
             predicate_data,
+        })
+    }
+}
+
+
+impl<Specification> DecompressibleBy<TestCompressionCtx> for DataCoin<Specification>
+where
+    Specification: CoinSpecification,
+    Specification::Predicate: DecompressibleBy<TestCompressionCtx>,
+    Specification::PredicateData: DecompressibleBy<TestCompressionCtx>,
+    Specification::PredicateGasUsed: DecompressibleBy<TestCompressionCtx>,
+    Specification::Witness: DecompressibleBy<TestCompressionCtx>,
+{
+    async fn decompress_with(
+        c: <DataCoin<Specification> as Compressible>::Compressed,
+        ctx: &TestCompressionCtx,
+    ) -> Result<DataCoin<Specification>, Infallible> {
+        let utxo_id = UtxoId::decompress_with(c.utxo_id, ctx).await?;
+        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
+        let witness_index = c.witness_index.decompress(ctx).await?;
+        let predicate_gas_used = c.predicate_gas_used.decompress(ctx).await?;
+        let predicate = c.predicate.decompress(ctx).await?;
+        let predicate_data = c.predicate_data.decompress(ctx).await?;
+        let data = c.data.decompress(ctx).await?;
+
+        Ok(Self {
+            utxo_id,
+            owner: coin_info.owner,
+            amount: coin_info.amount,
+            asset_id: coin_info.asset_id,
+            tx_pointer: Default::default(),
+            witness_index,
+            predicate_gas_used,
+            predicate,
+            predicate_data,
+            data,
         })
     }
 }

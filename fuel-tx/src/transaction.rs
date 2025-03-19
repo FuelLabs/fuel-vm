@@ -568,6 +568,31 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs_mut().push(input);
     }
 
+
+    fn add_unsigned_data_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+        data: Vec<u8>,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::data_coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            data
+        );
+        self.inputs_mut().push(input);
+    }
+
     /// Append a new unsigned message input to the transaction.
     ///
     /// When the transaction is constructed, [`Signable::sign_inputs`] should

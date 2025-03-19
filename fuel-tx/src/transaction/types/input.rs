@@ -779,6 +779,10 @@ impl Input {
         self.is_coin_signed() | self.is_coin_predicate()
     }
 
+    pub const fn is_data_coin(&self) -> bool {
+        self.is_data_coin_signed() | self.is_data_coin_predicate()
+    }
+
     pub const fn is_coin_signed(&self) -> bool {
         matches!(self, Input::CoinSigned(_))
     }

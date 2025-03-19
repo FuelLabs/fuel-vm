@@ -130,7 +130,7 @@ impl Output {
         }
     }
 
-pub const fn data(to: Address, amount: Word, asset_id: AssetId, data_hash: Bytes32) -> Self {
+pub const fn data_coin(to: Address, amount: Word, asset_id: AssetId, data_hash: Bytes32) -> Self {
         Self::DataCoin {
             to,
             amount,

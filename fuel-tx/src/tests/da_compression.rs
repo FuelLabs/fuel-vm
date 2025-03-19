@@ -65,6 +65,15 @@ struct CoinInfo {
     asset_id: AssetId,
 }
 
+/// When a coin is created, this data is stored
+#[derive(Debug, Default, Clone, PartialEq)]
+struct DataCoinInfo {
+    owner: Address,
+    amount: u64,
+    asset_id: AssetId,
+    data: Vec<u8>,
+}
+
 /// When a message is created, this data is stored
 #[derive(Debug, Default, Clone, PartialEq)]
 struct MessageInfo {
@@ -82,6 +91,7 @@ struct TestCompressionCtx {
     registry: HashMap<Keyspace, BiMap<RegistryKey, Vec<u8>>>,
     tx_blocks: BiMap<CompressedUtxoId, UtxoId>,
     latest_tx_coins: HashMap<UtxoId, CoinInfo>,
+    latest_tx_data_coins: HashMap<UtxoId, DataCoinInfo>,
     latest_tx_pointer: Option<TxPointer>,
     latest_tx_messages: HashMap<Nonce, MessageInfo>,
 }
@@ -112,6 +122,21 @@ impl TestCompressionCtx {
                         },
                     )
                 });
+        let latest_tx_data_coins =
+            tx.inputs()
+                .iter()
+                .filter(|input| input.is_data_coin())
+                .map(|input| {
+                    (
+                        *input.utxo_id().unwrap(),
+                        DataCoinInfo {
+                            owner: *input.input_owner().unwrap(),
+                            amount: input.amount().unwrap(),
+                            asset_id: *input.asset_id(&AssetId::default()).unwrap(),
+                            data: input.input_data().unwrap_or_default().to_vec(),
+                        },
+                    )
+                });
         let latest_tx_messages = tx
             .inputs()
             .iter()
@@ -129,6 +154,8 @@ impl TestCompressionCtx {
             });
 
         self.latest_tx_coins.extend(latest_tx_coins);
+        self.latest_tx_data_coins
+            .extend(latest_tx_data_coins);
         self.latest_tx_messages.extend(latest_tx_messages);
     }
 }
@@ -257,7 +284,7 @@ where
         ctx: &TestCompressionCtx,
     ) -> Result<DataCoin<Specification>, Infallible> {
         let utxo_id = UtxoId::decompress_with(c.utxo_id, ctx).await?;
-        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
+        let coin_info = ctx.latest_tx_data_coins.get(&utxo_id).expect("data coin not found");
         let witness_index = c.witness_index.decompress(ctx).await?;
         let predicate_gas_used = c.predicate_gas_used.decompress(ctx).await?;
         let predicate = c.predicate.decompress(ctx).await?;

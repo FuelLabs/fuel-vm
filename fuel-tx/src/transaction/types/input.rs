@@ -314,6 +314,54 @@ impl Input {
         })
     }
 
+    pub const fn data_coin_signed(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+        data: Vec<u8>,
+    ) -> Self {
+        Self::DataCoinSigned(DataCoinSigned {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+            predicate_gas_used: Empty::new(),
+            predicate: Empty::new(),
+            predicate_data: Empty::new(),
+            data,
+        })
+    }
+
+    pub const fn data_coin_predicate(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+        data: Vec<u8>,
+    ) -> Self {
+        Self::DataCoinPredicate(DataCoinPredicate {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index: Empty::new(),
+            predicate_gas_used,
+            predicate: PredicateCode { bytes: predicate },
+            predicate_data,
+            data,
+        })
+    }
+
     pub const fn contract(
         utxo_id: UtxoId,
         balance_root: Bytes32,

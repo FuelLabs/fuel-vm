@@ -304,6 +304,44 @@ mod use_std {
                         builder.add_input(input);
                     }
 
+                    7 => {
+                        let predicate = generate_nonempty_padded_bytes(&mut self.rng);
+                        let owner = (*Contract::root_from_code(&predicate)).into();
+
+                        let input = Input::data_coin_predicate(
+                            self.rng.gen(),
+                            owner,
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            predicate,
+                            generate_bytes(&mut self.rng),
+                            generate_bytes(&mut self.rng),
+                        );
+
+                        builder.add_input(input);
+                    }
+
+                    8 => {
+                        let predicate = generate_nonempty_padded_bytes(&mut self.rng);
+                        let owner = (*Contract::root_from_code(&predicate)).into();
+
+                        let input = Input::data_coin_predicate(
+                            self.rng.gen(),
+                            owner,
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            self.rng.gen(),
+                            predicate,
+                            generate_bytes(&mut self.rng),
+                            generate_bytes(&mut self.rng),
+                        );
+
+                        builder.add_input(input);
+                    }
+
                     _ => unreachable!(),
                 }
             }

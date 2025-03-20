@@ -132,7 +132,7 @@ where
             let ofs = input_ofs + i.predicate_offset().expect("input contains predicate");
             let predicate_p = &bytes[ofs..ofs + predicate.len()];
 
-            assert_eq!(predicate, predicate_p);
+            assert_eq!(predicate, predicate_p, "the predicate offset is wrong for {i:?}");
         }
 
         if let Some(predicate_data) = i.input_predicate_data() {

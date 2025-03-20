@@ -553,7 +553,7 @@ impl Input {
     pub fn predicate_offset(&self) -> Option<usize> {
         match self {
             Input::CoinPredicate(_) => InputRepr::Coin.coin_predicate_offset(),
-            Input::DataCoinPredicate(_) => InputRepr::DataCoin.coin_predicate_offset(),
+            Input::DataCoinPredicate(_) => InputRepr::DataCoin.data_coin_predicate_offset(),
             Input::MessageCoinPredicate(_) => InputRepr::Message.data_offset(),
             Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => {
                 InputRepr::Message.data_offset().map(|o| {

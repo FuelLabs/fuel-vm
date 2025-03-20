@@ -53,8 +53,15 @@ impl InputRepr {
 
     pub const fn coin_predicate_offset(&self) -> Option<usize> {
         match self {
-            Self::Coin | Self::DataCoin => Some(INPUT_COIN_FIXED_SIZE),
-            Self::Message | Self::Contract => None,
+            Self::Coin => Some(INPUT_COIN_FIXED_SIZE),
+            Self::Message | Self::Contract | Self::DataCoin => None,
+        }
+    }
+
+    pub const fn data_coin_predicate_offset(&self) -> Option<usize> {
+        match self {
+            Self::DataCoin => Some(INPUT_DATA_COIN_FIXED_SIZE),
+            Self::Coin |Self::Message | Self::Contract => None,
         }
     }
 

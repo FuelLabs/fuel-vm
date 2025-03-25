@@ -341,23 +341,29 @@ async fn predicate() {
 
 #[tokio::test]
 async fn gtf_args__input_data_coin_predicate_data() {
-    let expected_data = 0x23 as Word;
-    let expected_data = expected_data.to_be_bytes().to_vec();
+    let expected = 0x23 as Word;
+    let expected_data = expected.to_be_bytes().to_vec();
 
     let data = vec![];
 
     // A script that will succeed only if the argument is 0x23
+    let expected_data_reg = 0x11;
+    // let heap_size = 8;
+    // let heap_size_reg = 0x12;
+    let gtf_data_reg = 0x13;
+    let res_reg = 0x10;
+    let compare_bytes_len = 16;
+    let input_index = 0;
     let predicate = [
-        op::movi(0x10, 0x11),
-        op::addi(0x11, 0x10, 0x12),
-        op::movi(0x12, 0x08),
-        op::aloc(0x12),
-        op::move_(0x12, RegId::HP),
-        op::sw(0x12, 0x11, 0),
-        op::movi(0x10, 0x08),
-        op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
-        op::meq(0x10, 0x11, 0x12, 0x10),
-        op::ret(0x10),
+        op::movi(expected_data_reg, expected as u32),
+        // op::movi(heap_size_reg, heap_size),
+        // op::aloc(heap_size_reg),
+        // op::move_(heap_size_reg, RegId::HP),
+        // op::sw(heap_size_reg, expected_data_reg, 0),
+        op::gtf_args(gtf_data_reg, input_index, GTFArgs::InputCoinPredicateData),
+        // op::meq(res_reg, gtf_data_reg, heap_size_reg, compare_bytes_len),
+        op::meq(res_reg, gtf_data_reg, expected_data_reg, compare_bytes_len),
+        op::ret(res_reg),
     ];
 
     assert!(
@@ -368,50 +374,32 @@ async fn gtf_args__input_data_coin_predicate_data() {
 
 #[tokio::test]
 async fn gtf_args__input_data_coin_data_length() {
-    let expected_data = 0x23 as Word;
-    let expected_data = expected_data.to_be_bytes().to_vec();
+    let predicate_data = vec![];
 
-    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let data = vec![1, 2, 3, 4, 5, 6, 7];
+    let expected = data.len() as u32;
 
     // A script that will succeed only if the argument is 0x23
+    let expected_len_reg = 0x11;
+    let actual_len_reg = 0x13;
+    let res_reg = 0x10;
+    let compare_bytes_len = 16;
+    let input_index = 0;
     let predicate = [
-        op::movi(0x10, 0x11),
-        op::addi(0x11, 0x10, 0x12),
-        op::movi(0x12, 0x08),
-        op::aloc(0x12),
-        op::move_(0x12, RegId::HP),
-        op::sw(0x12, 0x11, 0),
-        op::movi(0x10, 0x08),
-        op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
-        op::meq(0x10, 0x11, 0x12, 0x10),
-        op::ret(0x10),
+        op::movi(expected_len_reg, expected),
+        op::gtf_args(
+            actual_len_reg,
+            input_index,
+            GTFArgs::InputDataCoinDataLength,
+        ),
+        op::meq(res_reg, actual_len_reg, expected_len_reg, compare_bytes_len),
+        op::ret(res_reg),
     ];
 
-    let rng = &mut StdRng::seed_from_u64(2322u64);
-    let predicate: Vec<u8> = predicate
-        .into_iter()
-        .flat_map(|op| u32::from(op).to_be_bytes())
-        .collect();
-
-    let utxo_id = rng.gen();
-    let amount = 0;
-    let asset_id = rng.gen();
-    let tx_pointer = rng.gen();
-    let predicate_gas_used = 0;
-
-    let owner = Input::predicate_owner(&predicate);
-    let input = Input::data_coin_predicate(
-        utxo_id,
-        owner,
-        amount,
-        asset_id,
-        tx_pointer,
-        predicate_gas_used,
-        predicate,
-        predicate_data,
-        data,
+    assert!(
+        execute_data_coin_predicate(predicate.iter().copied(), predicate_data, 0, data)
+            .await
     );
-    assert!(execute_predicate_with_input(dummy_inputs, input, rng).await);
 }
 
 #[tokio::test]

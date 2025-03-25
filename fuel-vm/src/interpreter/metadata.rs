@@ -324,7 +324,11 @@ impl<Tx> GTFInput<'_, Tx> {
                     .ok_or(PanicReason::InputNotFound)?,
             ) as Word,
             GTFArgs::InputDataCoinDataLength => {
-                todo!()
+                tx.inputs()
+                    .get(b)
+                    .filter(|i| i.is_data_coin())
+                    .and_then(Input::data_coin_data_len)
+                    .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputDataCoinData => {
                 todo!()

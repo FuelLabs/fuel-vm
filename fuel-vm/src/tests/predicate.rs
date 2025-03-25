@@ -74,7 +74,6 @@ where
     P: IntoIterator<Item = Instruction>,
 {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-
     let predicate: Vec<u8> = predicate
         .into_iter()
         .flat_map(|op| u32::from(op).to_be_bytes())
@@ -84,8 +83,6 @@ where
     let amount = 0;
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
-    let maturity = Default::default();
-    let height = Default::default();
     let predicate_gas_used = 0;
 
     let owner = Input::predicate_owner(&predicate);
@@ -99,7 +96,52 @@ where
         predicate,
         predicate_data,
     );
+    execute_predicate_with_input(dummy_inputs, input, rng).await
+}
 
+async fn execute_data_coin_predicate<P>(
+    predicate: P,
+    predicate_data: Vec<u8>,
+    dummy_inputs: usize,
+    data: Vec<u8>,
+) -> bool
+where
+    P: IntoIterator<Item = Instruction>,
+{
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let predicate: Vec<u8> = predicate
+        .into_iter()
+        .flat_map(|op| u32::from(op).to_be_bytes())
+        .collect();
+
+    let utxo_id = rng.gen();
+    let amount = 0;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_gas_used = 0;
+
+    let owner = Input::predicate_owner(&predicate);
+    let input = Input::data_coin_predicate(
+        utxo_id,
+        owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        predicate_gas_used,
+        predicate,
+        predicate_data,
+        data,
+    );
+    execute_predicate_with_input(dummy_inputs, input, rng).await
+}
+
+async fn execute_predicate_with_input(
+    dummy_inputs: usize,
+    input: Input,
+    rng: &mut StdRng,
+) -> bool {
+    let maturity = Default::default();
+    let height = Default::default();
     let gas_limit = 1_000_000;
     let script = vec![];
     let script_data = vec![];
@@ -156,6 +198,7 @@ where
             true
         }
         (Err(p_err), Err(s_err)) => {
+            dbg!(&p_err);
             assert_eq!(p_err, s_err);
             false
         }
@@ -294,6 +337,81 @@ async fn predicate() {
 
     assert!(execute_predicate(predicate.iter().copied(), expected_data, 0).await);
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
+}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_predicate_data() {
+    let expected_data = 0x23 as Word;
+    let expected_data = expected_data.to_be_bytes().to_vec();
+
+    let data = vec![];
+
+    // A script that will succeed only if the argument is 0x23
+    let predicate = [
+        op::movi(0x10, 0x11),
+        op::addi(0x11, 0x10, 0x12),
+        op::movi(0x12, 0x08),
+        op::aloc(0x12),
+        op::move_(0x12, RegId::HP),
+        op::sw(0x12, 0x11, 0),
+        op::movi(0x10, 0x08),
+        op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
+        op::meq(0x10, 0x11, 0x12, 0x10),
+        op::ret(0x10),
+    ];
+
+    assert!(
+        execute_data_coin_predicate(predicate.iter().copied(), expected_data, 0, data)
+            .await
+    );
+}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_data_length() {
+    let expected_data = 0x23 as Word;
+    let expected_data = expected_data.to_be_bytes().to_vec();
+
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    // A script that will succeed only if the argument is 0x23
+    let predicate = [
+        op::movi(0x10, 0x11),
+        op::addi(0x11, 0x10, 0x12),
+        op::movi(0x12, 0x08),
+        op::aloc(0x12),
+        op::move_(0x12, RegId::HP),
+        op::sw(0x12, 0x11, 0),
+        op::movi(0x10, 0x08),
+        op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
+        op::meq(0x10, 0x11, 0x12, 0x10),
+        op::ret(0x10),
+    ];
+
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let predicate: Vec<u8> = predicate
+        .into_iter()
+        .flat_map(|op| u32::from(op).to_be_bytes())
+        .collect();
+
+    let utxo_id = rng.gen();
+    let amount = 0;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_gas_used = 0;
+
+    let owner = Input::predicate_owner(&predicate);
+    let input = Input::data_coin_predicate(
+        utxo_id,
+        owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        predicate_gas_used,
+        predicate,
+        predicate_data,
+        data,
+    );
+    assert!(execute_predicate_with_input(dummy_inputs, input, rng).await);
 }
 
 #[tokio::test]

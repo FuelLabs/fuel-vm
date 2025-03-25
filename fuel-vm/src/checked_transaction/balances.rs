@@ -4,6 +4,7 @@ use fuel_tx::{
         coin::{
             CoinPredicate,
             CoinSigned,
+            DataCoinPredicate,
         },
         message::{
             MessageCoinPredicate,
@@ -23,7 +24,10 @@ use fuel_types::{
 };
 
 use alloc::collections::BTreeMap;
-use fuel_tx::policies::PolicyType;
+use fuel_tx::{
+    input::coin::DataCoinSigned,
+    policies::PolicyType,
+};
 
 pub(crate) fn initial_free_balances<T>(
     tx: &T,
@@ -65,7 +69,16 @@ fn add_up_input_balances<T: field::Inputs>(
             Input::CoinPredicate(CoinPredicate {
                 asset_id, amount, ..
             })
+            | Input::DataCoinPredicate(DataCoinPredicate {
+                asset_id, amount, ..
+            })
             | Input::CoinSigned(CoinSigned {
+                asset_id, amount, ..
+            }) => {
+                let balance = non_retryable_balances.entry(*asset_id).or_default();
+                *balance = (*balance).checked_add(*amount)?;
+            }
+            Input::DataCoinSigned(DataCoinSigned {
                 asset_id, amount, ..
             }) => {
                 let balance = non_retryable_balances.entry(*asset_id).or_default();

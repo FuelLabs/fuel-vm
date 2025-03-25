@@ -773,6 +773,8 @@ fn get_transaction_fields() {
         op::add(0x30, 0x30, 0x11),
         op::and(0x20, 0x20, 0x10),
 
+
+
         // Skip over always-zero InputContract fields
         op::addi(0x30, 0x30, cases[9].len().try_into().unwrap()),
         op::addi(0x30, 0x30, cases[10].len().try_into().unwrap()),
@@ -1014,6 +1016,115 @@ fn get_transaction_fields() {
         .finalize_checked_basic(height);
 
     let receipts = client.transact(tx);
+    let success = receipts
+        .iter()
+        .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));
+
+    assert!(success);
+}
+
+#[ignore]
+#[test]
+fn gtf_args__data_coin_data_length() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let gas_costs = GasCosts::default();
+
+    let mut client = MemoryClient::default();
+
+    let witness_limit = 1234;
+    // let max_fee_limit = 4321;
+    let max_fee_limit = 0;
+    let tip = 4321;
+    let gas_limit = 10_000_000;
+    let maturity = 50.into();
+    let height = 122.into();
+    let expiration = 123.into();
+
+    let predicate = vec![op::ret(RegId::ONE)].into_iter().collect::<Vec<u8>>();
+    let mut predicate_data = vec![0u8; 512];
+
+    rng.fill(predicate_data.as_mut_slice());
+
+    let owner = Input::predicate_owner(&predicate);
+    let length = 64;
+    let mut data = vec![0u8; length];
+    rng.fill(data.as_mut_slice());
+    let input_coin_predicate = Input::data_coin_predicate(
+        rng.gen(),
+        owner,
+        1_500,
+        rng.gen(),
+        rng.gen(),
+        gas_costs.ret(),
+        predicate.clone(),
+        predicate_data.clone(),
+        data,
+    );
+
+    // let tx = TransactionBuilder::script(vec![], vec![])
+    //     .maturity(maturity)
+    //     .expiration(expiration)
+    //     .with_gas_costs(gas_costs)
+    //     .script_gas_limit(gas_limit)
+    //     .add_input(input_coin_predicate)
+    //     .finalize_checked(height);
+
+    // let script_data: Vec<u8> = cases.iter().flat_map(|c| c.iter()).copied().collect();
+    let script_data = vec![];
+
+    #[rustfmt::skip]
+    let mut script: Vec<_> = vec![
+        op::movi(0x20, 0x01),
+
+        // op::movi(0x19, 0x01),
+        // op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateData),
+        // op::movi(0x11, predicate_data.len() as Immediate18),
+        // op::meq(0x20, 0x10, 0x30, 0x11),
+        // // op::add(0x30, 0x30, 0x11),
+        // // op::and(0x20, 0x20, 0x10),
+        // op::log(0x20, 0x00, 0x00, 0x00),
+        // op::ret(0x00),
+        // op::movi(0x11, predicate_data.len() as Immediate18),
+        // op::movi(0x19, 0x01),
+        // op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateDataLength),
+        // op::eq(0x10, 0x10, 0x11),
+        // op::and(0x20, 0x20, 0x10),
+
+        // op::movi(0x19, 0x01),
+        // op::gtf_args(0x10, 0x19, GTFArgs::InputCoinPredicateData),
+        // op::movi(0x11, predicate_data.len() as Immediate18),
+        // op::meq(0x10, 0x10, 0x30, 0x11),
+        // op::add(0x30, 0x30, 0x11),
+        // op::and(0x20, 0x20, 0x10),
+        op::log(0x20, 0x00, 0x00, 0x00),
+        op::ret(0x00),
+    ]
+    .into_iter()
+    .collect();
+
+    const SCRIPT_RESERVED_WORDS: usize = 300 * WORD_SIZE;
+
+    while script.len() < SCRIPT_RESERVED_WORDS {
+        script.extend(op::noop().to_bytes());
+    }
+
+    assert_eq!(script.len(), SCRIPT_RESERVED_WORDS);
+
+    let mut builder = TransactionBuilder::script(script.clone(), script_data);
+
+    builder.add_input(input_coin_predicate);
+
+    let tx = builder
+        .tip(tip)
+        .maturity(maturity)
+        .expiration(expiration)
+        .script_gas_limit(gas_limit)
+        .witness_limit(witness_limit)
+        .max_fee_limit(max_fee_limit)
+        .finalize_checked_basic(height);
+
+    let receipts = client.transact(tx);
+    dbg!(&receipts);
     let success = receipts
         .iter()
         .any(|r| matches!(r, Receipt::Log{ ra, .. } if ra == &1));

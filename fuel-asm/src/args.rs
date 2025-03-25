@@ -173,6 +173,12 @@ crate::enum_try_from! {
         /// Set `$rA` to `Memory address of tx.inputs[$rB].predicateGasUsed`
         InputCoinPredicateGasUsed = 0x20D,
 
+        /// Set `$rA` to `tx.inputs[$rB].dataLength`
+        InputDataCoinDataLength = 0x20E,
+
+        /// Set `$rA` to `Memory address of tx.inputs[$rB].data`
+        InputDataCoinData = 0x20F,
+
         /// Set `$rA` to `Memory address of tx.inputs[$rB].txID`
         InputContractTxId = 0x220,
 

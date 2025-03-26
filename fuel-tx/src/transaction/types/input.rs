@@ -725,17 +725,15 @@ impl Input {
         }
     }
 
-    // pub fn data_coin_data_offset(&self) -> Option<usize> {
-    //     match self {
-    //         Input::DataCoinSigned(DataCoinSigned { data, .. })
-    //         | Input::DataCoinPredicate(DataCoinPredicate { data, .. }) => {
-    //             self.data_coin_data_offset().map(|o| {
-    //                 o.saturating_add(bytes::padded_len(data).unwrap_or(usize::MAX))
-    //             })
-    //         }
-    //         _ => None,
-    //     }
-    // }
+    pub fn data_coin_data_offset(&self) -> Option<usize> {
+        match self {
+            Input::DataCoinSigned(DataCoinSigned { data, .. })
+            | Input::DataCoinPredicate(DataCoinPredicate { data, .. }) => self
+                .predicate_data_offset()
+                .map(|o| o.saturating_add(bytes::padded_len(data).unwrap_or(usize::MAX))),
+            _ => None,
+        }
+    }
 
     pub fn input_predicate(&self) -> Option<&[u8]> {
         match self {

@@ -404,7 +404,7 @@ async fn gtf_args__input_data_coin_data_length() {
 
 #[tokio::test]
 async fn gtf_args__input_data_coin_data() {
-    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let predicate_data = data.clone();
 
     // A script that will succeed only if the argument is 0x23
@@ -416,10 +416,11 @@ async fn gtf_args__input_data_coin_data() {
     let predicate = [
         op::gtf_args(len_reg, input_index, GTFArgs::InputDataCoinDataLength),
         // allocate heap space for the data based on the length
-        op::aloc(len_reg),
-        op::move_(expected_data_heap_location, RegId::HP),
-        op::aloc(len_reg),
-        op::move_(actual_data_heap_location, RegId::HP),
+        // don't need to allocate actually because the gtf calls return pointers
+        // op::aloc(len_reg),
+        // op::move_(expected_data_heap_location, RegId::HP),
+        // op::aloc(len_reg),
+        // op::move_(actual_data_heap_location, RegId::HP),
         // get expected data
         op::gtf_args(
             expected_data_heap_location,
@@ -435,6 +436,7 @@ async fn gtf_args__input_data_coin_data() {
         op::meq(
             res_reg,
             expected_data_heap_location,
+            // expected_data_heap_location,
             actual_data_heap_location,
             len_reg,
         ),

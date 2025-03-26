@@ -99,6 +99,71 @@ where
     execute_predicate_with_input(dummy_inputs, input, rng).await
 }
 
+struct DataCoinInputBuilder {
+    pub utxo_id: UtxoId,
+    pub owner: Address,
+    pub amount: Word,
+    pub asset_id: AssetId,
+    pub tx_pointer: TxPointer,
+    pub predicate_gas_used: Word,
+    pub predicate: Vec<u8>,
+    pub predicate_data: Vec<u8>,
+    pub data: Vec<u8>,
+}
+
+impl DataCoinInputBuilder {
+    pub fn new() -> Self {
+        let rng = &mut StdRng::seed_from_u64(2322u64);
+        let _predicate = vec![op::ret(0x01)];
+        let predicate = _predicate.into_iter().collect::<Vec<u8>>();
+
+        let utxo_id = rng.gen();
+        let amount = 0;
+        let asset_id = rng.gen();
+        let tx_pointer = rng.gen();
+        let predicate_gas_used = 0;
+        let predicate_data = vec![];
+        let data = vec![];
+
+        let owner = Input::predicate_owner(&predicate);
+        Self {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            predicate_gas_used,
+            predicate,
+            predicate_data,
+            data,
+        }
+    }
+
+    pub fn with_predicate(&mut self, predicate: Vec<Instruction>) -> &Self {
+        self.predicate = predicate.into_iter().collect();
+        self
+    }
+
+    pub fn with_predicate_data(&mut self, predicate_data: &[u8]) -> &Self {
+        self.predicate_data = predicate_data.to_vec();
+        self
+    }
+
+    pub fn into_input(self) -> Input {
+        Input::data_coin_predicate(
+            self.utxo_id,
+            self.owner,
+            self.amount,
+            self.asset_id,
+            self.tx_pointer,
+            self.predicate_gas_used,
+            self.predicate,
+            self.predicate_data,
+            self.data,
+        )
+    }
+}
+
 async fn execute_data_coin_predicate<P>(
     predicate: P,
     predicate_data: Vec<u8>,
@@ -344,6 +409,54 @@ async fn predicate() {
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
 }
 
+// pub struct DataCoin<Specification> where Specification: CoinSpecification {
+//     pub utxo_id: UtxoId,
+//     pub owner: Address,
+//     pub amount: Word,
+//     pub asset_id: AssetId,
+//     pub tx_pointer: TxPointer,
+//     pub witness_index: Specification::Witness,
+//     pub predicate_gas_used: Specification::PredicateGasUsed,
+//     pub predicate: Specification::Predicate,
+//     pub predicate_data: Specification::PredicateData,
+//     pub data: Vec<u8>
+// }
+#[tokio::test]
+async fn gtf_args__input_data_coin_utxo_id() {
+    use fuel_types::canonical::Serialize;
+    let mut data_coin_builder = DataCoinInputBuilder::new();
+    let utxo_id_as_bytes = Serialize::to_bytes(&data_coin_builder.utxo_id);
+    data_coin_builder.with_predicate_data(&utxo_id_as_bytes);
+
+    let expected_utxo_id_reg = 0x11;
+    let actual_utxo_id_reg = 0x12;
+    let utxo_id_size = 8;
+    let utxo_id_size_reg = 0x13;
+    let res_reg = 0x10;
+    let predicate = vec![
+        op::movi(utxo_id_size_reg, utxo_id_size),
+        op::gtf_args(actual_utxo_id_reg, 0, GTFArgs::InputCoinTxId),
+        op::gtf_args(expected_utxo_id_reg, 0, GTFArgs::InputCoinPredicateData),
+        op::meq(
+            res_reg,
+            expected_utxo_id_reg,
+            actual_utxo_id_reg,
+            utxo_id_size_reg,
+        ),
+        op::ret(res_reg),
+    ];
+    data_coin_builder.with_predicate(predicate);
+    let data_coin_input = data_coin_builder.into_input();
+    assert!(
+        execute_predicate_with_input(
+            0,
+            data_coin_input,
+            &mut StdRng::seed_from_u64(2322u64)
+        )
+        .await
+    );
+}
+
 #[tokio::test]
 async fn gtf_args__input_data_coin_predicate_data() {
     let expected = 0x23 as Word;
@@ -404,40 +517,33 @@ async fn gtf_args__input_data_coin_data_length() {
 
 #[tokio::test]
 async fn gtf_args__input_data_coin_data() {
-    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let data = vec![5; 100];
     let predicate_data = data.clone();
 
-    // A script that will succeed only if the argument is 0x23
     let len_reg = 0x13;
     let res_reg = 0x10;
     let input_index = 0;
-    let expected_data_heap_location = 0x22;
-    let actual_data_heap_location = 0x23;
+    let expected_data_mem_location = 0x22;
+    let actual_data_mem_location = 0x23;
     let predicate = [
         op::gtf_args(len_reg, input_index, GTFArgs::InputDataCoinDataLength),
-        // allocate heap space for the data based on the length
-        // don't need to allocate actually because the gtf calls return pointers
-        // op::aloc(len_reg),
-        // op::move_(expected_data_heap_location, RegId::HP),
-        // op::aloc(len_reg),
-        // op::move_(actual_data_heap_location, RegId::HP),
-        // get expected data
+        // get expected data from predicate data
         op::gtf_args(
-            expected_data_heap_location,
+            expected_data_mem_location,
             input_index,
             GTFArgs::InputCoinPredicateData,
         ),
         // get actual data
         op::gtf_args(
-            actual_data_heap_location,
+            actual_data_mem_location,
             input_index,
             GTFArgs::InputDataCoinData,
         ),
+        // compare
         op::meq(
             res_reg,
-            expected_data_heap_location,
-            // expected_data_heap_location,
-            actual_data_heap_location,
+            expected_data_mem_location,
+            actual_data_mem_location,
             len_reg,
         ),
         op::ret(res_reg),

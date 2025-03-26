@@ -299,7 +299,10 @@ impl Coin<Predicate> {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
-pub struct DataCoin<Specification> where Specification: CoinSpecification {
+pub struct DataCoin<Specification>
+where
+    Specification: CoinSpecification,
+{
     pub utxo_id: UtxoId,
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub owner: Address,
@@ -321,8 +324,7 @@ pub struct DataCoin<Specification> where Specification: CoinSpecification {
     #[educe(Debug(method(fmt_as_field)))]
     pub predicate_data: Specification::PredicateData,
     #[educe(Debug(method(fmt_as_field)))]
-    pub data: Vec<u8>
-
+    pub data: Vec<u8>,
 }
 
 impl<Specification> DataCoin<Specification>

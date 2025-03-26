@@ -330,9 +330,15 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(Input::data_coin_data_len)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
-            GTFArgs::InputDataCoinData => {
-                todo!()
-            }
+            GTFArgs::InputDataCoinData => ofs.saturating_add(
+                tx.inputs()
+                    .get(b)
+                    .filter(|i| i.is_data_coin())
+                    .map(Input::repr)
+                    .and_then(|r| r.data_coin_predicate_offset())
+                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
+                    .ok_or(PanicReason::InputNotFound)?,
+            ) as Word,
             GTFArgs::InputContractTxId => ofs.saturating_add(
                 tx.inputs()
                     .get(b)

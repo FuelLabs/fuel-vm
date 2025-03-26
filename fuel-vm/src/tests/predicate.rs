@@ -315,23 +315,28 @@ async fn predicate_minimal() {
 
 #[tokio::test]
 async fn predicate() {
-    let expected_data = 0x23 as Word;
-    let expected_data = expected_data.to_be_bytes().to_vec();
+    let expected = 0x23 as Word;
+    let expected_data = expected.to_be_bytes().to_vec();
 
     let wrong_data = 0x24 as Word;
     let wrong_data = wrong_data.to_be_bytes().to_vec();
 
     // A script that will succeed only if the argument is 0x23
     let predicate = [
-        op::movi(0x10, 0x11),
-        op::addi(0x11, 0x10, 0x12),
+        // set expected value
+        op::movi(0x11, expected as u32),
+        // allocate 8 bytes to memory
         op::movi(0x12, 0x08),
         op::aloc(0x12),
         op::move_(0x12, RegId::HP),
         op::sw(0x12, 0x11, 0),
+        // set length of the data
         op::movi(0x10, 0x08),
+        // get the data from the input
         op::gtf_args(0x11, 0, GTFArgs::InputCoinPredicateData),
+        // compare expected value with the gotten data
         op::meq(0x10, 0x11, 0x12, 0x10),
+        // return result
         op::ret(0x10),
     ];
 
@@ -348,20 +353,13 @@ async fn gtf_args__input_data_coin_predicate_data() {
 
     // A script that will succeed only if the argument is 0x23
     let expected_data_reg = 0x11;
-    // let heap_size = 8;
-    // let heap_size_reg = 0x12;
     let gtf_data_reg = 0x13;
     let res_reg = 0x10;
-    let compare_bytes_len = 16;
+    let compare_bytes_len = 8;
     let input_index = 0;
     let predicate = [
         op::movi(expected_data_reg, expected as u32),
-        // op::movi(heap_size_reg, heap_size),
-        // op::aloc(heap_size_reg),
-        // op::move_(heap_size_reg, RegId::HP),
-        // op::sw(heap_size_reg, expected_data_reg, 0),
         op::gtf_args(gtf_data_reg, input_index, GTFArgs::InputCoinPredicateData),
-        // op::meq(res_reg, gtf_data_reg, heap_size_reg, compare_bytes_len),
         op::meq(res_reg, gtf_data_reg, expected_data_reg, compare_bytes_len),
         op::ret(res_reg),
     ];
@@ -383,16 +381,63 @@ async fn gtf_args__input_data_coin_data_length() {
     let expected_len_reg = 0x11;
     let actual_len_reg = 0x13;
     let res_reg = 0x10;
-    let compare_bytes_len = 16;
+    let compare_bytes_reg = 0x15;
+    let compare_bytes = 8;
     let input_index = 0;
     let predicate = [
         op::movi(expected_len_reg, expected),
+        op::movi(compare_bytes_reg, compare_bytes),
         op::gtf_args(
             actual_len_reg,
             input_index,
             GTFArgs::InputDataCoinDataLength,
         ),
-        op::meq(res_reg, actual_len_reg, expected_len_reg, compare_bytes_len),
+        op::meq(res_reg, actual_len_reg, expected_len_reg, compare_bytes_reg),
+        op::ret(res_reg),
+    ];
+
+    assert!(
+        execute_data_coin_predicate(predicate.iter().copied(), predicate_data, 0, data)
+            .await
+    );
+}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_data() {
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let predicate_data = data.clone();
+
+    // A script that will succeed only if the argument is 0x23
+    let len_reg = 0x13;
+    let res_reg = 0x10;
+    let input_index = 0;
+    let expected_data_heap_location = 0x22;
+    let actual_data_heap_location = 0x23;
+    let predicate = [
+        op::gtf_args(len_reg, input_index, GTFArgs::InputDataCoinDataLength),
+        // allocate heap space for the data based on the length
+        op::aloc(len_reg),
+        op::move_(expected_data_heap_location, RegId::HP),
+        op::aloc(len_reg),
+        op::move_(actual_data_heap_location, RegId::HP),
+        // get expected data
+        op::gtf_args(
+            expected_data_heap_location,
+            input_index,
+            GTFArgs::InputCoinPredicateData,
+        ),
+        // get actual data
+        op::gtf_args(
+            actual_data_heap_location,
+            input_index,
+            GTFArgs::InputDataCoinData,
+        ),
+        op::meq(
+            res_reg,
+            expected_data_heap_location,
+            actual_data_heap_location,
+            len_reg,
+        ),
         op::ret(res_reg),
     ];
 

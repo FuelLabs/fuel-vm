@@ -22,6 +22,8 @@ use crate::{
     prelude::*,
 };
 
+use fuel_types::canonical::Serialize;
+
 use crate::{
     checked_transaction::{
         CheckError,
@@ -99,7 +101,7 @@ where
     execute_predicate_with_input(dummy_inputs, input, rng).await
 }
 
-struct DataCoinInputBuilder {
+pub struct DataCoinInputBuilder {
     pub utxo_id: UtxoId,
     pub owner: Address,
     pub amount: Word,
@@ -423,7 +425,6 @@ async fn predicate() {
 // }
 #[tokio::test]
 async fn gtf_args__input_data_coin_utxo_id() {
-    use fuel_types::canonical::Serialize;
     let mut data_coin_builder = DataCoinInputBuilder::new();
     let utxo_id_as_bytes = Serialize::to_bytes(&data_coin_builder.utxo_id);
     data_coin_builder.with_predicate_data(&utxo_id_as_bytes);
@@ -442,6 +443,104 @@ async fn gtf_args__input_data_coin_utxo_id() {
             expected_utxo_id_reg,
             actual_utxo_id_reg,
             utxo_id_size_reg,
+        ),
+        op::ret(res_reg),
+    ];
+    data_coin_builder.with_predicate(predicate);
+    let data_coin_input = data_coin_builder.into_input();
+    assert!(
+        execute_predicate_with_input(
+            0,
+            data_coin_input,
+            &mut StdRng::seed_from_u64(2322u64)
+        )
+        .await
+    );
+}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_address() {
+    let mut data_coin_builder = DataCoinInputBuilder::new();
+    let expected_address = data_coin_builder.owner;
+    let expected_address_bytes = expected_address.to_bytes();
+    data_coin_builder.with_predicate_data(&expected_address_bytes);
+
+    let expected_address_reg = 0x11;
+    let actual_address_reg = 0x12;
+    let address_size = 20;
+    let address_size_reg = 0x13;
+    let res_reg = 0x10;
+    let predicate = vec![
+        op::movi(address_size_reg, address_size),
+        op::gtf_args(actual_address_reg, 0, GTFArgs::InputCoinOwner),
+        op::gtf_args(expected_address_reg, 0, GTFArgs::InputCoinPredicateData),
+        op::meq(
+            res_reg,
+            expected_address_reg,
+            actual_address_reg,
+            address_size_reg,
+        ),
+        op::ret(res_reg),
+    ];
+    data_coin_builder.with_predicate(predicate);
+    let data_coin_input = data_coin_builder.into_input();
+    assert!(
+        execute_predicate_with_input(
+            0,
+            data_coin_input,
+            &mut StdRng::seed_from_u64(2322u64)
+        )
+        .await
+    );
+}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_amount() {
+    let mut data_coin_builder = DataCoinInputBuilder::new();
+    let amount = data_coin_builder.amount;
+
+    let expected_amount_reg = 0x11;
+    let actual_amount_reg = 0x12;
+    let res_reg = 0x10;
+    let predicate = vec![
+        op::movi(expected_amount_reg, amount as u32),
+        op::gtf_args(actual_amount_reg, 0, GTFArgs::InputCoinAmount),
+        op::eq(res_reg, expected_amount_reg, actual_amount_reg),
+        op::ret(res_reg),
+    ];
+    data_coin_builder.with_predicate(predicate);
+    let data_coin_input = data_coin_builder.into_input();
+    assert!(
+        execute_predicate_with_input(
+            0,
+            data_coin_input,
+            &mut StdRng::seed_from_u64(2322u64)
+        )
+        .await
+    );
+}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_asset_id() {
+    let mut data_coin_builder = DataCoinInputBuilder::new();
+    let asset_id = data_coin_builder.asset_id;
+    let predicate_data = asset_id.to_bytes();
+    data_coin_builder.with_predicate_data(&predicate_data);
+
+    let expected_asset_id_reg = 0x11;
+    let actual_asset_id_reg = 0x12;
+    let res_reg = 0x10;
+    let size = 32;
+    let size_reg = 0x13;
+    let predicate = vec![
+        op::movi(size_reg, size),
+        op::gtf_args(expected_asset_id_reg, 0, GTFArgs::InputCoinPredicateData),
+        op::gtf_args(actual_asset_id_reg, 0, GTFArgs::InputCoinAssetId),
+        op::meq(
+            res_reg,
+            expected_asset_id_reg,
+            actual_asset_id_reg,
+            size_reg,
         ),
         op::ret(res_reg),
     ];

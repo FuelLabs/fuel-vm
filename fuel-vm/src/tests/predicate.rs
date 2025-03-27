@@ -545,10 +545,10 @@ async fn gtf_args__input_data_coin_asset_id() {
 }
 
 #[tokio::test]
-async fn gtf_args__input_data_coin_tx_pointer() {
+async fn gtf_args__input_data_coin_tx_pointer_is_always_default() {
     let mut data_coin_builder = DataCoinInputBuilder::new();
-    let tx_pointer = data_coin_builder.tx_pointer;
-    let predicate_data = Serialize::to_bytes(&tx_pointer);
+    let default_tx_pointer = TxPointer::default();
+    let predicate_data = Serialize::to_bytes(&default_tx_pointer);
     let len = predicate_data.len() as u32;
     data_coin_builder.with_predicate_data(&predicate_data);
 

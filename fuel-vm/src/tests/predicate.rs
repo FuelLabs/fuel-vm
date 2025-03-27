@@ -581,10 +581,40 @@ async fn gtf_args__input_data_coin_tx_pointer_is_always_default() {
 }
 
 #[tokio::test]
-async fn gtf_args__input_data_coin_witness_index() {}
+async fn gtf_args__input_data_coin_predicate_gas_used() {
+    let mut data_coin_builder = DataCoinInputBuilder::new();
+    let predicate_gas_used = data_coin_builder.predicate_gas_used;
 
-#[tokio::test]
-async fn gtf_args__input_data_coin_predicate_gas_used() {}
+    let expected_predicate_gas_used_reg = 0x11;
+    let actual_predicate_gas_used_reg = 0x12;
+    let res_reg = 0x10;
+    let size_reg = 0x13;
+    let predicate = vec![
+        op::movi(expected_predicate_gas_used_reg, predicate_gas_used as u32),
+        op::gtf_args(
+            actual_predicate_gas_used_reg,
+            0,
+            GTFArgs::InputCoinPredicateGasUsed,
+        ),
+        op::meq(
+            res_reg,
+            expected_predicate_gas_used_reg,
+            actual_predicate_gas_used_reg,
+            size_reg,
+        ),
+        op::ret(res_reg),
+    ];
+    data_coin_builder.with_predicate(predicate);
+    let data_coin_input = data_coin_builder.into_input();
+    assert!(
+        execute_predicate_with_input(
+            0,
+            data_coin_input,
+            &mut StdRng::seed_from_u64(2322u64)
+        )
+        .await
+    );
+}
 
 #[tokio::test]
 async fn gtf_args__input_data_coin_predicate_data() {

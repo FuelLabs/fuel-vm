@@ -634,7 +634,7 @@ fn transfer_to_output(
         to: var_to,
         amount: var_amount,
         asset_id: var_asset_id,
-    }) = tx.outputs().get(to_index as usize).copied()
+    }) = tx.outputs().get(to_index as usize).cloned()
     {
         if result.is_ok() {
             assert_eq!(var_amount, amount, "Transfer amount is wrong");

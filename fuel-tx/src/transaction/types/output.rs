@@ -22,7 +22,6 @@ pub use repr::OutputRepr;
 #[derive(
     Debug,
     Clone,
-    Copy,
     PartialEq,
     Eq,
     Hash,
@@ -69,7 +68,7 @@ pub enum Output {
         to: Address,
         amount: Word,
         asset_id: AssetId,
-        data_hash: Bytes32,
+        data: Vec<u8>,
     },
 }
 
@@ -130,12 +129,17 @@ impl Output {
         }
     }
 
-pub const fn data_coin(to: Address, amount: Word, asset_id: AssetId, data_hash: Bytes32) -> Self {
+    pub const fn data_coin(
+        to: Address,
+        amount: Word,
+        asset_id: AssetId,
+        data: Vec<u8>,
+    ) -> Self {
         Self::DataCoin {
             to,
             amount,
             asset_id,
-            data_hash,
+            data,
         }
     }
 

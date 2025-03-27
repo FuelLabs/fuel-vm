@@ -216,8 +216,8 @@ fn metadata() {
         .maturity(maturity)
         .add_input(inputs[0].clone())
         .add_input(inputs[1].clone())
-        .add_output(outputs[0])
-        .add_output(outputs[1])
+        .add_output(outputs[0].clone())
+        .add_output(outputs[1].clone())
         .add_fee_input()
         .finalize()
         .into_checked(height, &consensus_params)
@@ -521,7 +521,7 @@ fn get_transaction_fields() {
     let outputs_bytes: Vec<Vec<u8>> = outputs
         .iter()
         .map(|v| {
-            let mut v = *v;
+            let mut v = v.clone();
             v.prepare_init_execute();
             v.clone().to_bytes()
         })
@@ -999,7 +999,7 @@ fn get_transaction_fields() {
     });
 
     tx.as_ref().outputs().iter().for_each(|o| {
-        builder.add_output(*o);
+        builder.add_output(o.clone());
     });
 
     tx.as_ref().witnesses().iter().for_each(|w| {

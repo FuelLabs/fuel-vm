@@ -236,7 +236,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -250,7 +250,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -264,7 +264,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -278,7 +278,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -292,7 +292,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -356,7 +356,7 @@ fn transaction_canonical_serialization_deserialization() {
             [0xdd; 32].into(),
             vec![],
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -370,7 +370,7 @@ fn transaction_canonical_serialization_deserialization() {
             [0xdd; 32].into(),
             vec![],
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -435,7 +435,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -450,7 +450,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -494,7 +494,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -508,7 +508,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -556,7 +556,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upload(
@@ -574,7 +574,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upload(
@@ -627,7 +627,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::blob(
@@ -642,7 +642,7 @@ fn transaction_canonical_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::blob(

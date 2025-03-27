@@ -38,7 +38,7 @@ where
     data
 }
 
-pub fn generate_byte_array<R, const SIZE: usize,>(rng: &mut R) -> [u8; SIZE]
+pub fn generate_byte_array<R, const SIZE: usize>(rng: &mut R) -> [u8; SIZE]
 where
     R: Rng + CryptoRng,
 {
@@ -50,7 +50,11 @@ where
 
 #[cfg(feature = "std")]
 mod use_std {
-    use super::{generate_byte_array, generate_bytes, generate_nonempty_padded_bytes};
+    use super::{
+        generate_byte_array,
+        generate_bytes,
+        generate_nonempty_padded_bytes,
+    };
     use crate::{
         field,
         Blob,
@@ -78,7 +82,10 @@ mod use_std {
         Hasher,
         SecretKey,
     };
-    use fuel_types::{canonical::Deserialize, BlobId, Bytes32};
+    use fuel_types::{
+        canonical::Deserialize,
+        BlobId,
+    };
     use rand::{
         distributions::{
             Distribution,
@@ -189,7 +196,7 @@ mod use_std {
                         self.rng.gen(),
                         self.rng.gen(),
                         self.rng.gen(),
-                        Bytes32::new(generate_byte_array(&mut self.rng)),
+                        generate_byte_array::<_, 69>(&mut self.rng).to_vec(),
                     ),
                     _ => unreachable!(),
                 };
@@ -343,7 +350,6 @@ mod use_std {
                     self.rng.gen(),
                 );
             });
-
 
             input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_data_coin_input(

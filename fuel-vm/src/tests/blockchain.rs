@@ -666,7 +666,7 @@ where
     .maturity(maturity)
     .add_input(input0.clone())
     .add_fee_input()
-    .add_output(output0)
+    .add_output(output0.clone())
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");

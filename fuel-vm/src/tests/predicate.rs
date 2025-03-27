@@ -411,18 +411,6 @@ async fn predicate() {
     assert!(!execute_predicate(predicate.iter().copied(), wrong_data, 0).await);
 }
 
-// pub struct DataCoin<Specification> where Specification: CoinSpecification {
-//     pub utxo_id: UtxoId,
-//     pub owner: Address,
-//     pub amount: Word,
-//     pub asset_id: AssetId,
-//     pub tx_pointer: TxPointer,
-//     pub witness_index: Specification::Witness,
-//     pub predicate_gas_used: Specification::PredicateGasUsed,
-//     pub predicate: Specification::Predicate,
-//     pub predicate_data: Specification::PredicateData,
-//     pub data: Vec<u8>
-// }
 #[tokio::test]
 async fn gtf_args__input_data_coin_utxo_id() {
     let mut data_coin_builder = DataCoinInputBuilder::new();
@@ -525,15 +513,15 @@ async fn gtf_args__input_data_coin_asset_id() {
     let mut data_coin_builder = DataCoinInputBuilder::new();
     let asset_id = data_coin_builder.asset_id;
     let predicate_data = asset_id.to_bytes();
+    let size = predicate_data.len();
     data_coin_builder.with_predicate_data(&predicate_data);
 
     let expected_asset_id_reg = 0x11;
     let actual_asset_id_reg = 0x12;
     let res_reg = 0x10;
-    let size = 32;
     let size_reg = 0x13;
     let predicate = vec![
-        op::movi(size_reg, size),
+        op::movi(size_reg, size as u32),
         op::gtf_args(expected_asset_id_reg, 0, GTFArgs::InputCoinPredicateData),
         op::gtf_args(actual_asset_id_reg, 0, GTFArgs::InputCoinAssetId),
         op::meq(
@@ -555,6 +543,48 @@ async fn gtf_args__input_data_coin_asset_id() {
         .await
     );
 }
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_tx_pointer() {
+    let mut data_coin_builder = DataCoinInputBuilder::new();
+    let tx_pointer = data_coin_builder.tx_pointer;
+    let predicate_data = Serialize::to_bytes(&tx_pointer);
+    let len = predicate_data.len() as u32;
+    data_coin_builder.with_predicate_data(&predicate_data);
+
+    let expected_tx_pointer_reg = 0x11;
+    let actual_tx_pointer_reg = 0x12;
+    let res_reg = 0x10;
+    let size_reg = 0x13;
+    let predicate = vec![
+        op::movi(size_reg, len),
+        op::gtf_args(expected_tx_pointer_reg, 0, GTFArgs::InputCoinPredicateData),
+        op::gtf_args(actual_tx_pointer_reg, 0, GTFArgs::InputCoinTxPointer),
+        op::meq(
+            res_reg,
+            expected_tx_pointer_reg,
+            actual_tx_pointer_reg,
+            size_reg,
+        ),
+        op::ret(res_reg),
+    ];
+    data_coin_builder.with_predicate(predicate);
+    let data_coin_input = data_coin_builder.into_input();
+    assert!(
+        execute_predicate_with_input(
+            0,
+            data_coin_input,
+            &mut StdRng::seed_from_u64(2322u64)
+        )
+        .await
+    );
+}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_witness_index() {}
+
+#[tokio::test]
+async fn gtf_args__input_data_coin_predicate_gas_used() {}
 
 #[tokio::test]
 async fn gtf_args__input_data_coin_predicate_data() {

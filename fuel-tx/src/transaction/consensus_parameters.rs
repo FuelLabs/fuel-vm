@@ -7,6 +7,7 @@ use fuel_types::{
 };
 
 pub mod gas;
+pub mod gas_price_metadata;
 
 pub use gas::{
     DependentCost,
@@ -14,6 +15,8 @@ pub use gas::{
     GasCosts,
     GasCostsValues,
 };
+
+pub use gas_price_metadata::GasPriceMetadata;
 
 use crate::consts::BALANCE_ENTRY_SIZE;
 
@@ -23,10 +26,17 @@ const MAX_GAS: u64 = 100_000_000;
 const MAX_SIZE: u64 = 110 * 1024;
 
 #[derive(Debug, derive_more::Display)]
-#[display("setting block transaction size limit is not supported")]
-pub struct SettingBlockTransactionSizeLimitNotSupported;
+pub enum Error {
+    #[display("setting block transaction size limit is not supported")]
+    SettingBlockTransactionSizeLimitNotSupported,
+    #[display("setting block max transactions is not supported")]
+    SettingBlockMaxTransactionsNotSupported,
+    #[display("setting gas price metadata is not supported")]
+    SettingGasPriceMetadataNotSupported,
+}
+
 #[cfg(feature = "std")]
-impl std::error::Error for SettingBlockTransactionSizeLimitNotSupported {}
+impl std::error::Error for Error {}
 
 /// A versioned set of consensus parameters.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -34,6 +44,7 @@ pub enum ConsensusParameters {
     /// Version 1 of the consensus parameters
     V1(ConsensusParametersV1),
     V2(ConsensusParametersV2),
+    V3(ConsensusParametersV3),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -47,13 +58,13 @@ impl ConsensusParameters {
     #[cfg(feature = "test-helpers")]
     /// Constructor for the `ConsensusParameters` with Standard values.
     pub fn standard() -> Self {
-        ConsensusParametersV2::standard().into()
+        ConsensusParametersV3::standard().into()
     }
 
     #[cfg(feature = "test-helpers")]
     /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
     pub fn standard_with_id(chain_id: ChainId) -> Self {
-        ConsensusParametersV2::standard_with_id(chain_id).into()
+        ConsensusParametersV3::standard_with_id(chain_id).into()
     }
 
     /// Constructor for the `ConsensusParameters`
@@ -68,9 +79,11 @@ impl ConsensusParameters {
         base_asset_id: AssetId,
         block_gas_limit: u64,
         block_transaction_size_limit: u64,
+        block_max_transactions: u64,
         privileged_address: Address,
+        gas_price_metadata: GasPriceMetadata,
     ) -> Self {
-        Self::V2(ConsensusParametersV2 {
+        Self::V3(ConsensusParametersV3 {
             tx_params,
             predicate_params,
             script_params,
@@ -81,7 +94,9 @@ impl ConsensusParameters {
             base_asset_id,
             block_gas_limit,
             block_transaction_size_limit,
+            block_max_transactions,
             privileged_address,
+            gas_price_metadata,
         })
     }
 
@@ -90,6 +105,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.tx_params,
             Self::V2(params) => &params.tx_params,
+            Self::V3(params) => &params.tx_params,
         }
     }
 
@@ -98,6 +114,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.predicate_params,
             Self::V2(params) => &params.predicate_params,
+            Self::V3(params) => &params.predicate_params,
         }
     }
 
@@ -106,6 +123,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.script_params,
             Self::V2(params) => &params.script_params,
+            Self::V3(params) => &params.script_params,
         }
     }
 
@@ -114,6 +132,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.contract_params,
             Self::V2(params) => &params.contract_params,
+            Self::V3(params) => &params.contract_params,
         }
     }
 
@@ -122,6 +141,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.fee_params,
             Self::V2(params) => &params.fee_params,
+            Self::V3(params) => &params.fee_params,
         }
     }
 
@@ -130,6 +150,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.chain_id,
             Self::V2(params) => params.chain_id,
+            Self::V3(params) => params.chain_id,
         }
     }
 
@@ -138,6 +159,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.gas_costs,
             Self::V2(params) => &params.gas_costs,
+            Self::V3(params) => &params.gas_costs,
         }
     }
 
@@ -146,6 +168,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.base_asset_id,
             Self::V2(params) => &params.base_asset_id,
+            Self::V3(params) => &params.base_asset_id,
         }
     }
 
@@ -154,6 +177,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.block_gas_limit,
             Self::V2(params) => params.block_gas_limit,
+            Self::V3(params) => params.block_gas_limit,
         }
     }
 
@@ -166,6 +190,20 @@ impl ConsensusParameters {
                 u64::MAX
             }
             Self::V2(params) => params.block_transaction_size_limit,
+            Self::V3(params) => params.block_transaction_size_limit,
+        }
+    }
+
+    /// Get the block max transactions
+    pub fn block_max_transactions(&self) -> u64 {
+        match self {
+            Self::V1(_) | Self::V2(_) => {
+                // In V1 and V2 there was no limit on the transaction size. For the sake
+                // of backwards compatibility we allow for a largest limit
+                // possible.
+                u16::MAX as u64
+            }
+            Self::V3(params) => params.block_max_transactions,
         }
     }
 
@@ -174,6 +212,19 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => &params.privileged_address,
             Self::V2(params) => &params.privileged_address,
+            Self::V3(params) => &params.privileged_address,
+        }
+    }
+
+    /// Get the gas price metadata
+    pub fn gas_price_metadata(&self) -> GasPriceMetadata {
+        match self {
+            Self::V1(_) | Self::V2(_) => {
+                // In V1 and V2 there was no gas price metadata. For the sake
+                // of backwards compatibility we allow for a default value.
+                GasPriceMetadata::default()
+            }
+            Self::V3(params) => params.gas_price_metadata.clone(),
         }
     }
 }
@@ -184,6 +235,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.tx_params = tx_params,
             Self::V2(params) => params.tx_params = tx_params,
+            Self::V3(params) => params.tx_params = tx_params,
         }
     }
 
@@ -192,6 +244,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.predicate_params = predicate_params,
             Self::V2(params) => params.predicate_params = predicate_params,
+            Self::V3(params) => params.predicate_params = predicate_params,
         }
     }
 
@@ -200,6 +253,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.script_params = script_params,
             Self::V2(params) => params.script_params = script_params,
+            Self::V3(params) => params.script_params = script_params,
         }
     }
 
@@ -208,6 +262,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.contract_params = contract_params,
             Self::V2(params) => params.contract_params = contract_params,
+            Self::V3(params) => params.contract_params = contract_params,
         }
     }
 
@@ -216,6 +271,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.fee_params = fee_params,
             Self::V2(params) => params.fee_params = fee_params,
+            Self::V3(params) => params.fee_params = fee_params,
         }
     }
 
@@ -224,6 +280,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.chain_id = chain_id,
             Self::V2(params) => params.chain_id = chain_id,
+            Self::V3(params) => params.chain_id = chain_id,
         }
     }
 
@@ -232,6 +289,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.gas_costs = gas_costs,
             Self::V2(params) => params.gas_costs = gas_costs,
+            Self::V3(params) => params.gas_costs = gas_costs,
         }
     }
 
@@ -240,6 +298,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.base_asset_id = base_asset_id,
             Self::V2(params) => params.base_asset_id = base_asset_id,
+            Self::V3(params) => params.base_asset_id = base_asset_id,
         }
     }
 
@@ -248,6 +307,7 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.block_gas_limit = block_gas_limit,
             Self::V2(params) => params.block_gas_limit = block_gas_limit,
+            Self::V3(params) => params.block_gas_limit = block_gas_limit,
         }
     }
 
@@ -255,11 +315,31 @@ impl ConsensusParameters {
     pub fn set_block_transaction_size_limit(
         &mut self,
         block_transaction_size_limit: u64,
-    ) -> Result<(), SettingBlockTransactionSizeLimitNotSupported> {
+    ) -> Result<(), Error> {
         match self {
-            Self::V1(_) => Err(SettingBlockTransactionSizeLimitNotSupported),
+            Self::V1(_) => Err(Error::SettingBlockTransactionSizeLimitNotSupported),
             Self::V2(params) => {
                 params.block_transaction_size_limit = block_transaction_size_limit;
+                Ok(())
+            }
+            Self::V3(params) => {
+                params.block_transaction_size_limit = block_transaction_size_limit;
+                Ok(())
+            }
+        }
+    }
+
+    /// Set the block max number of transactions.
+    pub fn set_block_max_transactions(
+        &mut self,
+        block_max_transactions: u64,
+    ) -> Result<(), Error> {
+        match self {
+            Self::V1(_) | Self::V2(_) => {
+                Err(Error::SettingBlockMaxTransactionsNotSupported)
+            }
+            Self::V3(params) => {
+                params.block_max_transactions = block_max_transactions;
                 Ok(())
             }
         }
@@ -270,6 +350,21 @@ impl ConsensusParameters {
         match self {
             Self::V1(params) => params.privileged_address = privileged_address,
             Self::V2(params) => params.privileged_address = privileged_address,
+            Self::V3(params) => params.privileged_address = privileged_address,
+        }
+    }
+
+    /// Set the gas price metadata.
+    pub fn set_gas_price_metadata(
+        &mut self,
+        gas_price_metadata: GasPriceMetadata,
+    ) -> Result<(), Error> {
+        match self {
+            Self::V1(_) | Self::V2(_) => Err(Error::SettingGasPriceMetadataNotSupported),
+            Self::V3(params) => {
+                params.gas_price_metadata = gas_price_metadata;
+                Ok(())
+            }
         }
     }
 }
@@ -385,6 +480,72 @@ impl Default for ConsensusParametersV2 {
 impl From<ConsensusParametersV2> for ConsensusParameters {
     fn from(params: ConsensusParametersV2) -> Self {
         Self::V2(params)
+    }
+}
+
+/// A collection of parameters for convenience
+/// The difference with [`ConsensusParametersV2`]:
+/// - `block_max_transactions` has been added.
+/// - `gas_price_metadata` has been added.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct ConsensusParametersV3 {
+    pub tx_params: TxParameters,
+    pub predicate_params: PredicateParameters,
+    pub script_params: ScriptParameters,
+    pub contract_params: ContractParameters,
+    pub fee_params: FeeParameters,
+    pub chain_id: ChainId,
+    pub gas_costs: GasCosts,
+    pub base_asset_id: AssetId,
+    pub block_gas_limit: u64,
+    pub block_transaction_size_limit: u64,
+    pub block_max_transactions: u64,
+    /// The privileged address(user or predicate) that can perform permissioned
+    /// operations(like upgrading the network).
+    pub privileged_address: Address,
+    pub gas_price_metadata: GasPriceMetadata,
+}
+
+#[cfg(feature = "test-helpers")]
+impl ConsensusParametersV3 {
+    const DEFAULT_BLOCK_MAX_TRANSACTIONS: u64 = u64::MAX;
+    const DEFAULT_BLOCK_TRANSACTION_SIZE_LIMIT: u64 = 126 * 1024;
+
+    /// Constructor for the `ConsensusParameters` with Standard values.
+    pub fn standard() -> Self {
+        Self::standard_with_id(ChainId::default())
+    }
+
+    /// Constructor for the `ConsensusParameters` with Standard values around `ChainId`.
+    pub fn standard_with_id(chain_id: ChainId) -> Self {
+        Self {
+            tx_params: TxParameters::DEFAULT,
+            predicate_params: PredicateParameters::DEFAULT,
+            script_params: ScriptParameters::DEFAULT,
+            contract_params: ContractParameters::DEFAULT,
+            fee_params: FeeParameters::DEFAULT,
+            chain_id,
+            gas_costs: GasCosts::default(),
+            base_asset_id: Default::default(),
+            block_gas_limit: TxParameters::DEFAULT.max_gas_per_tx(),
+            block_transaction_size_limit: Self::DEFAULT_BLOCK_TRANSACTION_SIZE_LIMIT,
+            block_max_transactions: Self::DEFAULT_BLOCK_MAX_TRANSACTIONS,
+            privileged_address: Default::default(),
+            gas_price_metadata: GasPriceMetadata::default(),
+        }
+    }
+}
+
+#[cfg(feature = "test-helpers")]
+impl Default for ConsensusParametersV3 {
+    fn default() -> Self {
+        Self::standard()
+    }
+}
+
+impl From<ConsensusParametersV3> for ConsensusParameters {
+    fn from(params: ConsensusParametersV3) -> Self {
+        Self::V3(params)
     }
 }
 
@@ -1036,7 +1197,8 @@ pub mod typescript {
 mod tests {
     use crate::consensus_parameters::{
         ConsensusParametersV2,
-        SettingBlockTransactionSizeLimitNotSupported,
+        ConsensusParametersV3,
+        Error,
     };
 
     use super::{
@@ -1053,7 +1215,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(SettingBlockTransactionSizeLimitNotSupported)
+            Err(Error::SettingBlockTransactionSizeLimitNotSupported)
         ))
     }
 
@@ -1063,6 +1225,72 @@ mod tests {
             ConsensusParametersV2::default().into();
 
         let result = consensus_params.set_block_transaction_size_limit(0);
+
+        assert!(matches!(result, Ok(())))
+    }
+
+    #[test]
+    fn error_when_setting_block_max_transactions_in_consensus_parameters_v1_v2() {
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV1::default().into();
+
+        let result = consensus_params.set_block_max_transactions(0);
+
+        assert!(matches!(
+            result,
+            Err(Error::SettingBlockMaxTransactionsNotSupported)
+        ));
+
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV2::default().into();
+
+        let result = consensus_params.set_block_max_transactions(0);
+
+        assert!(matches!(
+            result,
+            Err(Error::SettingBlockMaxTransactionsNotSupported)
+        ));
+    }
+
+    #[test]
+    fn ok_when_setting_block_max_transactions_in_consensus_parameters_v3() {
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV3::default().into();
+
+        let result = consensus_params.set_block_max_transactions(0);
+
+        assert!(matches!(result, Ok(())))
+    }
+
+    #[test]
+    fn error_when_setting_gas_price_metadata_in_consensus_parameters_v1_v2() {
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV1::default().into();
+
+        let result = consensus_params.set_gas_price_metadata(Default::default());
+
+        assert!(matches!(
+            result,
+            Err(Error::SettingGasPriceMetadataNotSupported)
+        ));
+
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV2::default().into();
+
+        let result = consensus_params.set_gas_price_metadata(Default::default());
+
+        assert!(matches!(
+            result,
+            Err(Error::SettingGasPriceMetadataNotSupported)
+        ));
+    }
+
+    #[test]
+    fn ok_when_setting_gas_price_metadata_in_consensus_parameters_v3() {
+        let mut consensus_params: ConsensusParameters =
+            ConsensusParametersV3::default().into();
+
+        let result = consensus_params.set_gas_price_metadata(Default::default());
 
         assert!(matches!(result, Ok(())))
     }

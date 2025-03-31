@@ -135,6 +135,7 @@ pub mod test_helpers {
         RegId,
     };
     use fuel_tx::{
+        consensus_parameters::GasPriceMetadata,
         field::{
             Outputs,
             ReceiptsRoot,
@@ -408,8 +409,16 @@ pub mod test_helpers {
             self.consensus_params.block_transaction_size_limit()
         }
 
+        pub fn get_block_max_transactions(&self) -> u64 {
+            self.consensus_params.block_max_transactions()
+        }
+
         pub fn get_privileged_address(&self) -> &Address {
             self.consensus_params.privileged_address()
+        }
+
+        pub fn get_gas_price_metadata(&self) -> GasPriceMetadata {
+            self.consensus_params.gas_price_metadata()
         }
 
         pub fn get_chain_id(&self) -> ChainId {

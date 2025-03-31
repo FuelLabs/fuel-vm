@@ -15,6 +15,9 @@
     clippy::string_slice
 )]
 
+// Unused but needed for version pinning
+use base64ct as _;
+
 // Satisfy unused_crate_dependencies lint for self-dependency enabling test features
 #[cfg(test)]
 use fuel_crypto as _;

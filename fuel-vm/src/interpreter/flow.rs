@@ -20,7 +20,6 @@ use crate::{
         gas::{
             dependent_gas_charge_without_base,
             gas_charge,
-            ProfileGas,
         },
         internal::{
             current_contract,
@@ -31,7 +30,6 @@ use crate::{
         },
         receipts::ReceiptsCtx,
         ExecutableTransaction,
-        InputContracts,
         Interpreter,
         Memory,
         MemoryInstance,
@@ -42,14 +40,16 @@ use crate::{
         Bug,
         BugVariant,
     },
-    profiler::Profiler,
     storage::{
-        ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
     },
+    verification::Verifier,
 };
-use alloc::vec::Vec;
+use alloc::{
+    collections::BTreeSet,
+    vec::Vec,
+};
 use core::cmp;
 use fuel_asm::{
     Instruction,
@@ -82,7 +82,7 @@ mod ret_tests;
 #[cfg(test)]
 mod tests;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
@@ -331,11 +331,12 @@ impl JumpArgs {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    V: Verifier,
 {
     /// Prepare a call instruction for execution
     pub fn prepare_call(
@@ -383,15 +384,13 @@ where
             gas_cost,
             runtime_balances: &mut self.balances,
             storage: &mut self.storage,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             new_storage_gas_per_byte,
             receipts: &mut self.receipts,
             frames: &mut self.frames,
             current_contract,
-            profiler: &mut self.profiler,
+            verifier: &mut self.verifier,
         }
         .prepare_call()
     }
@@ -443,7 +442,7 @@ impl PrepareCallRegisters<'_> {
     }
 }
 
-struct PrepareCallCtx<'vm, S> {
+struct PrepareCallCtx<'vm, S, V> {
     params: PrepareCallParams,
     registers: PrepareCallRegisters<'vm>,
     memory: &'vm mut MemoryInstance,
@@ -452,23 +451,19 @@ struct PrepareCallCtx<'vm, S> {
     runtime_balances: &'vm mut RuntimeBalances,
     new_storage_gas_per_byte: Word,
     storage: &'vm mut S,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     receipts: &'vm mut ReceiptsCtx,
     frames: &'vm mut Vec<CallFrame>,
     current_contract: Option<ContractId>,
-    profiler: &'vm mut Profiler,
+    verifier: &'vm mut V,
 }
 
-impl<S> PrepareCallCtx<'_, S>
-where
-    S: InterpreterStorage,
-{
+impl<S, V> PrepareCallCtx<'_, S, V> {
     fn prepare_call(mut self) -> IoResult<(), S::DataError>
     where
-        S: StorageSize<ContractsRawCode>
-            + ContractsAssetsStorage
-            + StorageRead<ContractsRawCode>
-            + StorageAsRef,
+        S: InterpreterStorage,
+        V: Verifier,
     {
         let call_bytes = self
             .memory
@@ -485,16 +480,9 @@ where
             .checked_add(code_size_padded)
             .ok_or_else(|| Bug::new(BugVariant::CodeSizeOverflow))?;
 
-        let profiler = ProfileGas {
-            pc: self.registers.system_registers.pc.as_ref(),
-            is: self.registers.system_registers.is.as_ref(),
-            current_contract: self.current_contract,
-            profiler: self.profiler,
-        };
         dependent_gas_charge_without_base(
             self.registers.system_registers.cgas.as_mut(),
             self.registers.system_registers.ggas.as_mut(),
-            profiler,
             self.gas_cost,
             code_size_padded as Word,
         )?;
@@ -516,7 +504,11 @@ where
             )?;
         }
 
-        self.input_contracts.check(call.to())?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            call.to(),
+        )?;
 
         // credit contract asset_id balance
         let (_, created_new_entry) = balance_increase(
@@ -528,16 +520,9 @@ where
 
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
-            let profiler = ProfileGas {
-                pc: self.registers.system_registers.pc.as_ref(),
-                is: self.registers.system_registers.is.as_ref(),
-                current_contract: self.current_contract,
-                profiler: self.profiler,
-            };
             gas_charge(
                 self.registers.system_registers.cgas.as_mut(),
                 self.registers.system_registers.ggas.as_mut(),
-                profiler,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;

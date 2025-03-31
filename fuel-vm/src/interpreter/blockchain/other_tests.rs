@@ -2,9 +2,12 @@
 
 use alloc::vec;
 
-use crate::storage::{
-    MemoryStorage,
-    MemoryStorageError,
+use crate::{
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
+    verification::Normal,
 };
 
 use super::*;
@@ -143,7 +146,7 @@ fn test_mint(
         context: &context,
         receipts: &mut receipts,
         memory: &mut memory,
-        profiler: &mut Profiler::default(),
+
         new_storage_gas_per_byte: 1,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -226,7 +229,6 @@ fn test_code_size() {
         .write_bytes(&ContractId::from([3u8; 32]), &[1u8; 100])
         .unwrap();
     let mut pc = 4;
-    let is = 0;
     let mut cgas = 0;
     let mut ggas = 0;
     let input_contracts = [contract_id];
@@ -236,13 +238,12 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
-        current_contract: None,
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     };
     let mut result = 0;
     let _ = input
@@ -254,13 +255,12 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
-        profiler: &mut Profiler::default(),
-        current_contract: None,
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     };
     let mut result = 0;
     input.code_size(&mut result, 0).unwrap();
@@ -272,13 +272,12 @@ fn test_code_size() {
         storage: &mut storage,
         memory: &mut memory,
         gas_cost: DependentCost::free(),
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
-        profiler: &mut Profiler::default(),
-        current_contract: None,
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     };
     let mut result = 0;
     let _ = input

@@ -221,8 +221,8 @@ where
         storage: StorageType,
         leaves_count: u64,
     ) -> Result<Self, MerkleTreeError<StorageError>> {
-        let mut nodes = Vec::new();
         let peaks = peak_positions(leaves_count).ok_or(MerkleTreeError::TooLarge)?;
+        let mut nodes = Vec::with_capacity(peaks.len());
         for peak in peaks.iter() {
             let key = peak.in_order_index();
             let node = storage

@@ -35,5 +35,4 @@ cargo test --all-targets --no-default-features &&
 cargo test --all-targets --no-default-features --features serde &&
 cargo test --all-targets --no-default-features --features alloc &&
 cargo test --all-targets --features random &&
-cargo test --all-targets --features serde &&
-cargo test --all-targets --features random,profile-gas,profile-coverage,serde
+cargo test --all-targets --features serde

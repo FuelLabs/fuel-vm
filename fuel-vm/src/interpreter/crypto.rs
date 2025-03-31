@@ -27,6 +27,7 @@ use bn::{
     G1,
     G2,
 };
+use fuel_asm::RegId;
 use fuel_crypto::{
     Hasher,
     Message,
@@ -36,14 +37,13 @@ use fuel_crypto::{
 use fuel_types::{
     Bytes32,
     Bytes64,
-    RegisterId,
     Word,
 };
 
 #[cfg(test)]
 mod tests;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
@@ -126,7 +126,7 @@ where
 
     pub(crate) fn ec_pairing(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
         d: Word,

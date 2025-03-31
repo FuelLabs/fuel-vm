@@ -9,20 +9,20 @@ use crate::{
     error::SimpleResult,
 };
 
-use fuel_asm::PanicReason;
-use fuel_types::{
-    RegisterId,
-    Word,
+use fuel_asm::{
+    PanicReason,
+    RegId,
 };
+use fuel_types::Word;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
 {
     /// Stores the overflowed wrapped value into RegId::OF
     pub(crate) fn alu_muldiv(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         lhs: Word,
         rhs: Word,
         divider: Word,

@@ -1,10 +1,9 @@
 //! This module contains logic on contract management.
 
+use alloc::collections::BTreeSet;
+
 use super::{
-    gas::{
-        gas_charge,
-        ProfileGas,
-    },
+    gas::gas_charge,
     internal::{
         external_asset_id_balance_sub,
         inc_pc,
@@ -15,6 +14,7 @@ use super::{
     Interpreter,
     Memory,
     MemoryInstance,
+    PanicContext,
     RuntimeBalances,
 };
 use crate::{
@@ -26,21 +26,18 @@ use crate::{
         IoResult,
         RuntimeError,
     },
-    interpreter::{
-        receipts::ReceiptsCtx,
-        InputContracts,
-    },
-    prelude::Profiler,
+    interpreter::receipts::ReceiptsCtx,
     storage::{
         BlobData,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
     },
+    verification::Verifier,
 };
 use fuel_asm::{
     PanicReason,
-    RegisterId,
+    RegId,
     Word,
 };
 use fuel_storage::StorageSize;
@@ -56,15 +53,16 @@ use fuel_types::{
     ContractId,
 };
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    V: Verifier,
 {
     pub(crate) fn contract_balance(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
@@ -74,10 +72,9 @@ where
             storage: &self.storage,
             memory: self.memory.as_mut(),
             pc,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
+            verifier: &mut self.verifier,
         };
         input.contract_balance(result, b, c)?;
         Ok(())
@@ -108,19 +105,17 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
             ggas,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
+            verifier: &mut self.verifier,
         };
         input.transfer(a, b, c)
     }
@@ -151,19 +146,17 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
             ggas,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
+            verifier: &mut self.verifier,
         };
         input.transfer_output(a, b, c, d)
     }
@@ -178,61 +171,70 @@ where
     }
 }
 
-struct ContractBalanceCtx<'vm, S> {
+struct ContractBalanceCtx<'vm, S, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
+    verifier: &'vm mut V,
 }
 
-impl<S> ContractBalanceCtx<'_, S> {
+impl<S, V> ContractBalanceCtx<'_, S, V> {
     pub(crate) fn contract_balance(
-        mut self,
+        self,
         result: &mut Word,
         b: Word,
         c: Word,
     ) -> IoResult<(), S::Error>
     where
         S: ContractsAssetsStorage,
+        V: Verifier,
     {
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
-        let contract = ContractId::new(self.memory.read_bytes(c)?);
+        let contract_id = ContractId::new(self.memory.read_bytes(c)?);
 
-        self.input_contracts.check(&contract)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &contract_id,
+        )?;
 
-        let balance = balance(self.storage, &contract, &asset_id)?;
+        let balance = balance(self.storage, &contract_id, &asset_id)?;
 
         *result = balance;
 
         Ok(inc_pc(self.pc)?)
     }
 }
-struct TransferCtx<'vm, S, Tx> {
+struct TransferCtx<'vm, S, Tx, V> {
     storage: &'vm mut S,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
-    profiler: &'vm mut Profiler,
+
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     tx_offset: usize,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
+    verifier: &'vm mut V,
 }
 
-impl<S, Tx> TransferCtx<'_, S, Tx> {
+impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
     /// In Fuel specs:
     /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
     /// $rA -> recipient_contract_id_offset
     /// $rB -> transfer_amount
     /// $rC -> asset_id_offset
     pub(crate) fn transfer(
-        mut self,
+        self,
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
@@ -240,13 +242,18 @@ impl<S, Tx> TransferCtx<'_, S, Tx> {
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
+        V: Verifier,
     {
         let amount = transfer_amount;
         let destination =
             ContractId::from(self.memory.read_bytes(recipient_contract_id_offset)?);
         let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
 
-        self.input_contracts.check(&destination)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &destination,
+        )?;
 
         if amount == 0 {
             return Err(PanicReason::TransferZeroCoins.into())
@@ -274,16 +281,9 @@ impl<S, Tx> TransferCtx<'_, S, Tx> {
             balance_increase(self.storage, &destination, &asset_id, amount)?;
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
-            let profiler = ProfileGas {
-                pc: self.pc.as_ref(),
-                is: self.is,
-                current_contract: internal_context,
-                profiler: self.profiler,
-            };
             gas_charge(
                 self.cgas,
                 self.ggas,
-                profiler,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;
@@ -319,6 +319,7 @@ impl<S, Tx> TransferCtx<'_, S, Tx> {
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
+        V: Verifier,
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;

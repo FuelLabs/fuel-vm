@@ -79,7 +79,7 @@ fn cant_write_to_reserved_registers(raw_random_instruction: u32) -> TestResult {
         .expect("failed dynamic checks");
 
     vm.init_script(tx).expect("Failed to init VM");
-    let res = vm.instruction(raw_random_instruction);
+    let res = vm.instruction::<_, false>(raw_random_instruction);
 
     if writes_to_ra(opcode) || writes_to_rb(opcode) {
         // if this opcode writes to $rA or $rB, expect an error since we're attempting to

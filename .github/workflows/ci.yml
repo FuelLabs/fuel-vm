@@ -16,9 +16,9 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.79.0
+  RUST_VERSION: 1.81.0
   RUST_VERSION_FMT: nightly-2024-02-07
-  RUST_VERSION_COV: nightly-2024-06-05
+  RUST_VERSION_COV: nightly-2025-01-01
   GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
@@ -26,9 +26,28 @@ jobs:
     name: Check Changelog
     runs-on: ubuntu-latest
     steps:
-      - uses: tarides/changelog-check-action@v2
-        with:
-          changelog: CHANGELOG.md
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for a file with the PR number in a sub-directory of the .changes directory" or "no changelog" label.
+        run: |
+          # Check if we are on master
+          if [ "$GITHUB_REF" = "refs/heads/master" ]; then
+            echo "On master branch, skipping changelog check."
+            exit 0
+          fi
+          pr_number_file=$(echo $GITHUB_REF | cut -d'/' -f3).md
+          if [[ $(find .changes/ -type f -name $pr_number_file -print -quit) ]]; then
+            echo "File $pr_number_file exists."
+          else
+            if [ "${{ contains(github.event.pull_request.labels.*.name, 'no changelog') }}" = "true" ]; then
+              echo "No changelog needed."
+              exit 0
+            else
+              echo "File $pr_number_file does not exist."
+              exit 1
+            fi
+          fi
 
   cargo:
     needs:
@@ -92,8 +111,6 @@ jobs:
             args: --all-targets --features random
           - command: test
             args: --all-targets --features serde
-          - command: test
-            args: --all-targets --features random,profile-gas,profile-coverage,serde
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@master
@@ -280,7 +297,7 @@ jobs:
       - publish
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
-
+    environment: npm-deploy
     steps:
       - uses: actions/checkout@v3
         with:
@@ -317,9 +334,9 @@ jobs:
       - name: Ensure NPM access
         run: npm whoami
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}
 
       - name: Publish
         run: pnpm -C .npm publish -r --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}

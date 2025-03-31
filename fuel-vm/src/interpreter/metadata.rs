@@ -45,23 +45,18 @@ use fuel_types::{
     ChainId,
     Immediate12,
     Immediate18,
-    RegisterId,
     Word,
 };
 
 #[cfg(test)]
 mod tests;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
 {
-    pub(crate) fn metadata(
-        &mut self,
-        ra: RegisterId,
-        imm: Immediate18,
-    ) -> SimpleResult<()> {
+    pub(crate) fn metadata(&mut self, ra: RegId, imm: Immediate18) -> SimpleResult<()> {
         let tx_offset = self.tx_offset() as Word;
         let chain_id = self.chain_id();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
@@ -79,7 +74,7 @@ where
 
     pub(crate) fn get_transaction_field(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         imm: Immediate12,
     ) -> SimpleResult<()> {

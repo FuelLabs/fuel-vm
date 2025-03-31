@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     interpreter::PanicContext,
     storage::MemoryStorage,
+    verification::Normal,
 };
 use fuel_tx::{
     Contract,
@@ -16,7 +17,6 @@ const INITIAL_GAS: Word = 1_000_000;
 // Subset of SystemRegisters used during CROO tests
 struct SystemRegisters {
     pc: Word,
-    is: Word,
     cgas: Word,
     ggas: Word,
 }
@@ -24,7 +24,6 @@ struct SystemRegisters {
 fn initialize_system_registers() -> SystemRegisters {
     SystemRegisters {
         pc: 4,
-        is: 0,
         cgas: INITIAL_GAS,
         ggas: INITIAL_GAS,
     }
@@ -63,7 +62,6 @@ fn test_code_root() {
     let ownership_registers = initialize_ownership_registers();
     let SystemRegisters {
         mut pc,
-        is,
         mut cgas,
         mut ggas,
     } = initialize_system_registers();
@@ -78,17 +76,13 @@ fn test_code_root() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-        profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(
-            &input_contracts.into_iter().collect(),
-            &mut panic_context,
-        ),
-        current_contract: None,
+        input_contracts: &input_contracts.into_iter().collect(),
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     }
     .code_root(croo_address as Word, 0)
     .unwrap();
@@ -119,7 +113,6 @@ fn test_code_root_contract_not_found() {
     let ownership_registers = initialize_ownership_registers();
     let SystemRegisters {
         mut pc,
-        is,
         mut cgas,
         mut ggas,
     } = initialize_system_registers();
@@ -134,17 +127,13 @@ fn test_code_root_contract_not_found() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-        profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(
-            &input_contracts.into_iter().collect(),
-            &mut panic_context,
-        ),
-        current_contract: None,
+        input_contracts: &input_contracts.into_iter().collect(),
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     }
     .code_root(croo_address as Word, 0)
     .expect_err("Contract is not found");
@@ -169,7 +158,6 @@ fn test_code_root_contract_not_in_inputs() {
     let ownership_registers = initialize_ownership_registers();
     let SystemRegisters {
         mut pc,
-        is,
         mut cgas,
         mut ggas,
     } = initialize_system_registers();
@@ -184,17 +172,13 @@ fn test_code_root_contract_not_in_inputs() {
         memory: &mut memory,
         storage: &storage,
         gas_cost,
-        profiler: &mut Default::default(),
-        input_contracts: InputContracts::new(
-            &input_contracts.into_iter().collect(),
-            &mut panic_context,
-        ),
-        current_contract: None,
+        input_contracts: &input_contracts.into_iter().collect(),
+        panic_context: &mut panic_context,
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         owner: ownership_registers,
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     }
     .code_root(croo_address as Word, 0)
     .expect_err("Contract is not in inputs");

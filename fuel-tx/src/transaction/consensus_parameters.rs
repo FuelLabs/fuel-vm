@@ -26,22 +26,17 @@ const MAX_GAS: u64 = 100_000_000;
 const MAX_SIZE: u64 = 110 * 1024;
 
 #[derive(Debug, derive_more::Display)]
-#[display("setting block transaction size limit is not supported")]
-pub struct SettingBlockTransactionSizeLimitNotSupported;
-#[cfg(feature = "std")]
-impl std::error::Error for SettingBlockTransactionSizeLimitNotSupported {}
+pub enum Error {
+    #[display("setting block transaction size limit is not supported")]
+    SettingBlockTransactionSizeLimitNotSupported,
+    #[display("setting block max transactions is not supported")]
+    SettingBlockMaxTransactionsNotSupported,
+    #[display("setting gas price metadata is not supported")]
+    SettingGasPriceMetadataNotSupported,
+}
 
-#[derive(Debug, derive_more::Display)]
-#[display("setting block max transactions is not supported")]
-pub struct SettingBlockMaxTransactionsNotSupported;
 #[cfg(feature = "std")]
-impl std::error::Error for SettingBlockMaxTransactionsNotSupported {}
-
-#[derive(Debug, derive_more::Display)]
-#[display("setting gas price metadata is not supported")]
-pub struct SettingGasPriceMetadataNotSupported;
-#[cfg(feature = "std")]
-impl std::error::Error for SettingGasPriceMetadataNotSupported {}
+impl std::error::Error for Error {}
 
 /// A versioned set of consensus parameters.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
@@ -320,9 +315,9 @@ impl ConsensusParameters {
     pub fn set_block_transaction_size_limit(
         &mut self,
         block_transaction_size_limit: u64,
-    ) -> Result<(), SettingBlockTransactionSizeLimitNotSupported> {
+    ) -> Result<(), Error> {
         match self {
-            Self::V1(_) => Err(SettingBlockTransactionSizeLimitNotSupported),
+            Self::V1(_) => Err(Error::SettingBlockTransactionSizeLimitNotSupported),
             Self::V2(params) => {
                 params.block_transaction_size_limit = block_transaction_size_limit;
                 Ok(())
@@ -338,9 +333,11 @@ impl ConsensusParameters {
     pub fn set_block_max_transactions(
         &mut self,
         block_max_transactions: u64,
-    ) -> Result<(), SettingBlockMaxTransactionsNotSupported> {
+    ) -> Result<(), Error> {
         match self {
-            Self::V1(_) | Self::V2(_) => Err(SettingBlockMaxTransactionsNotSupported),
+            Self::V1(_) | Self::V2(_) => {
+                Err(Error::SettingBlockMaxTransactionsNotSupported)
+            }
             Self::V3(params) => {
                 params.block_max_transactions = block_max_transactions;
                 Ok(())
@@ -361,9 +358,9 @@ impl ConsensusParameters {
     pub fn set_gas_price_metadata(
         &mut self,
         gas_price_metadata: GasPriceMetadata,
-    ) -> Result<(), SettingGasPriceMetadataNotSupported> {
+    ) -> Result<(), Error> {
         match self {
-            Self::V1(_) | Self::V2(_) => Err(SettingGasPriceMetadataNotSupported),
+            Self::V1(_) | Self::V2(_) => Err(Error::SettingGasPriceMetadataNotSupported),
             Self::V3(params) => {
                 params.gas_price_metadata = gas_price_metadata;
                 Ok(())
@@ -1201,9 +1198,7 @@ mod tests {
     use crate::consensus_parameters::{
         ConsensusParametersV2,
         ConsensusParametersV3,
-        SettingBlockMaxTransactionsNotSupported,
-        SettingBlockTransactionSizeLimitNotSupported,
-        SettingGasPriceMetadataNotSupported,
+        Error,
     };
 
     use super::{
@@ -1220,7 +1215,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(SettingBlockTransactionSizeLimitNotSupported)
+            Err(Error::SettingBlockTransactionSizeLimitNotSupported)
         ))
     }
 
@@ -1243,7 +1238,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(SettingBlockMaxTransactionsNotSupported)
+            Err(Error::SettingBlockMaxTransactionsNotSupported)
         ));
 
         let mut consensus_params: ConsensusParameters =
@@ -1253,7 +1248,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(SettingBlockMaxTransactionsNotSupported)
+            Err(Error::SettingBlockMaxTransactionsNotSupported)
         ));
     }
 
@@ -1274,14 +1269,20 @@ mod tests {
 
         let result = consensus_params.set_gas_price_metadata(Default::default());
 
-        assert!(matches!(result, Err(SettingGasPriceMetadataNotSupported)));
+        assert!(matches!(
+            result,
+            Err(Error::SettingGasPriceMetadataNotSupported)
+        ));
 
         let mut consensus_params: ConsensusParameters =
             ConsensusParametersV2::default().into();
 
         let result = consensus_params.set_gas_price_metadata(Default::default());
 
-        assert!(matches!(result, Err(SettingGasPriceMetadataNotSupported)));
+        assert!(matches!(
+            result,
+            Err(Error::SettingGasPriceMetadataNotSupported)
+        ));
     }
 
     #[test]

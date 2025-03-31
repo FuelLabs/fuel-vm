@@ -108,9 +108,9 @@ where
             context: self.context,
             balances: self.balances,
             panic_context: self.panic_context,
-            profiler: self.profiler,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
+            verifier: self.verifier,
         }
     }
 
@@ -172,7 +172,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
@@ -182,7 +182,7 @@ where
     /// record any changes this VM makes to it's storage.
     /// Recording storage changes has an overhead so should
     /// be used in production.
-    pub fn add_recording(self) -> Interpreter<M, Record<S>, Tx, Ecal> {
+    pub fn add_recording(self) -> Interpreter<M, Record<S>, Tx, Ecal, V> {
         Interpreter {
             registers: self.registers,
             memory: self.memory,
@@ -198,9 +198,9 @@ where
             context: self.context,
             balances: self.balances,
             panic_context: self.panic_context,
-            profiler: self.profiler,
             interpreter_params: self.interpreter_params,
             ecal_state: self.ecal_state,
+            verifier: self.verifier,
         }
     }
 
@@ -371,7 +371,7 @@ where
         key: &<Type as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
+    ) -> Result<bool, Self::Error> {
         <S as StorageRead<Type>>::read(&self.0, key, offset, buf)
     }
 
@@ -418,7 +418,7 @@ where
     S: StorageWrite<Type>,
     S: InterpreterStorage,
 {
-    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<usize, Self::Error> {
+    fn write_bytes(&mut self, key: &Type::Key, buf: &[u8]) -> Result<(), Self::Error> {
         <S as StorageWrite<Type>>::write_bytes(&mut self.0, key, buf)
     }
 
@@ -426,7 +426,7 @@ where
         &mut self,
         key: &Type::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
         <S as StorageWrite<Type>>::replace_bytes(&mut self.0, key, buf)
     }
 

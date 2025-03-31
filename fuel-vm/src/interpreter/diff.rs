@@ -293,7 +293,7 @@ where
         .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
 {
@@ -363,7 +363,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
 {
@@ -449,7 +449,7 @@ where
     M: Memory,
     Tx: PartialEq,
 {
-    /// Does not compare storage, debugger or profiler
+    /// Does not compare storage or debugger
     fn eq(&self, other: &Self) -> bool {
         self.registers == other.registers
             && self.memory.as_ref() == other.memory.as_ref()

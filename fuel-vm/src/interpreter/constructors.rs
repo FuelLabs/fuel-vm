@@ -22,21 +22,17 @@ use crate::{
 
 use alloc::vec;
 
-#[cfg(feature = "profile-any")]
-use crate::profiler::ProfileReceiver;
-
-use crate::profiler::Profiler;
-
 #[cfg(feature = "test-helpers")]
 use crate::{
     interpreter::EcalHandler,
     storage::MemoryStorage,
 };
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: Default,
     Ecal: Default,
+    V: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -52,9 +48,10 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: Default,
+    V: Default,
 {
     /// Create a new interpreter instance out of a storage implementation.
     ///
@@ -80,35 +77,24 @@ where
             debugger: Debugger::default(),
             context: Context::default(),
             balances: RuntimeBalances::default(),
-            profiler: Profiler::default(),
             interpreter_params,
             panic_context: PanicContext::None,
             ecal_state,
+            verifier: Default::default(),
         }
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
-    /// Sets a profiler for the VM
-    #[cfg(feature = "profile-any")]
-    pub fn with_profiler<P>(&mut self, receiver: P) -> &mut Self
-    where
-        P: ProfileReceiver + Send + Sync + 'static,
-    {
-        self.profiler.set_receiver(alloc::boxed::Box::new(receiver));
-        self
-    }
-}
-
 #[cfg(any(test, feature = "test-helpers"))]
-impl<S, Tx, Ecal> Default for Interpreter<MemoryInstance, S, Tx, Ecal>
+impl<S, Tx, Ecal, V> Default for Interpreter<MemoryInstance, S, Tx, Ecal, V>
 where
     S: Default,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    V: Default,
 {
     fn default() -> Self {
-        Interpreter::<_, S, Tx, Ecal>::with_storage(
+        Interpreter::<_, S, Tx, Ecal, V>::with_storage(
             MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),
@@ -117,10 +103,11 @@ where
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
-impl<Tx, Ecal> Interpreter<MemoryInstance, (), Tx, Ecal>
+impl<Tx, Ecal, V> Interpreter<MemoryInstance, (), Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    V: Default,
 {
     /// Create a new interpreter without a storage backend.
     ///
@@ -131,10 +118,11 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal, V> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler + Default,
+    V: Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///
@@ -145,16 +133,17 @@ where
 }
 
 #[cfg(feature = "test-helpers")]
-impl<Tx, Ecal> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal>
+impl<Tx, Ecal, V> Interpreter<MemoryInstance, MemoryStorage, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    V: Default,
 {
     /// Create a new storage with a provided in-memory storage.
     ///
     /// It will have full capabilities.
     pub fn with_memory_storage_and_ecal(ecal: Ecal) -> Self {
-        Interpreter::<_, MemoryStorage, Tx, Ecal>::with_storage_and_ecal(
+        Interpreter::<_, MemoryStorage, Tx, Ecal, V>::with_storage_and_ecal(
             MemoryInstance::new(),
             Default::default(),
             InterpreterParams::default(),

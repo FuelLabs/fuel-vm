@@ -83,7 +83,7 @@ impl CommonMetadata {
             .collect_vec();
 
         let mut offset = tx.inputs_offset();
-        let mut inputs_offset_at = Vec::new();
+        let mut inputs_offset_at = Vec::with_capacity(tx.inputs().len());
         for (index, input) in tx.inputs().iter().enumerate() {
             let i = offset;
             offset = offset
@@ -93,7 +93,7 @@ impl CommonMetadata {
         }
 
         let mut offset = tx.outputs_offset();
-        let mut outputs_offset_at = Vec::new();
+        let mut outputs_offset_at = Vec::with_capacity(tx.outputs().len());
         for (index, output) in tx.outputs().iter().enumerate() {
             let i = offset;
             offset = offset
@@ -103,7 +103,7 @@ impl CommonMetadata {
         }
 
         let mut offset = tx.witnesses_offset();
-        let mut witnesses_offset_at = Vec::new();
+        let mut witnesses_offset_at = Vec::with_capacity(tx.witnesses().len());
         for (index, witnesses) in tx.witnesses().iter().enumerate() {
             let i = offset;
             offset = offset

@@ -42,7 +42,9 @@ fn reset_vm_state() {
     let desired = Interpreter::<_, _, Script>::with_memory_storage();
     let mut latest = Interpreter::<_, _, Script>::with_memory_storage();
     latest.set_gas(1_000_000);
-    latest.instruction(op::addi(0x10, 0x11, 1)).unwrap();
+    latest
+        .instruction::<_, false>(op::addi(0x10, 0x11, 1))
+        .unwrap();
     let diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
     assert_ne!(desired, latest);
     latest.reset_vm_state(&diff);
@@ -75,7 +77,9 @@ fn record_and_invert_storage() {
     )
     .unwrap();
     latest.set_gas(1_000_000);
-    latest.instruction(op::addi(0x10, 0x11, 1)).unwrap();
+    latest
+        .instruction::<_, false>(op::addi(0x10, 0x11, 1))
+        .unwrap();
 
     let storage_diff: Diff<InitialVmState> = latest.storage_diff().into();
     let mut diff: Diff<InitialVmState> = latest.rollback_to(&desired).into();
@@ -95,7 +99,7 @@ fn record_and_invert_storage() {
     )
     .unwrap();
     d.set_gas(1_000_000);
-    d.instruction(op::addi(0x10, 0x11, 1)).unwrap();
+    d.instruction::<_, false>(op::addi(0x10, 0x11, 1)).unwrap();
 
     assert_ne!(c, d);
     d.reset_vm_state(&diff);

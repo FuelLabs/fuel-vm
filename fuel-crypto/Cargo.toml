@@ -11,6 +11,7 @@ repository = { workspace = true }
 description = "Fuel cryptographic primitives."
 
 [dependencies]
+base64ct = "=1.6" # HACK: transitive dependency breaking MSRV requirement
 coins-bip32 = { version = "0.8", default-features = false, optional = true }
 coins-bip39 = { version = "0.8", default-features = false, features = ["english"], optional = true }
 ecdsa = { version = "0.16", default-features = false }
@@ -31,6 +32,7 @@ bincode = { workspace = true }
 criterion = { workspace = true }
 fuel-crypto = { path = ".", features = ["random", "test-helpers"] }
 sha2 = "0.10"
+test-case = "3.3"
 
 [features]
 default = ["fuel-types/default", "std"]

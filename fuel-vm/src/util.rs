@@ -97,7 +97,10 @@ pub mod test_helpers {
             Checked,
             IntoChecked,
         },
-        interpreter::Memory,
+        interpreter::{
+            Memory,
+            NotSupportedEcal,
+        },
         memory_client::MemoryClient,
         state::StateTransition,
         storage::{
@@ -105,6 +108,10 @@ pub mod test_helpers {
             MemoryStorage,
         },
         transactor::Transactor,
+        verification::{
+            AttemptContinue,
+            Verifier,
+        },
     };
     use anyhow::anyhow;
 
@@ -541,16 +548,17 @@ pub mod test_helpers {
                 .expect("Expected vm execution to be successful");
         }
 
-        fn execute_tx_inner<M, Tx, Ecal>(
+        fn execute_tx_inner<M, Tx, Ecal, V>(
             &mut self,
-            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal>,
+            transactor: &mut Transactor<M, MemoryStorage, Tx, Ecal, V>,
             checked: Checked<Tx>,
-        ) -> anyhow::Result<StateTransition<Tx>>
+        ) -> anyhow::Result<(StateTransition<Tx>, V)>
         where
             M: Memory,
             Tx: ExecutableTransaction,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
+            V: Verifier + Clone,
         {
             self.storage.set_block_height(self.block_height);
 
@@ -567,6 +575,8 @@ pub mod test_helpers {
 
             let interpreter = transactor.interpreter();
 
+            let verifier = interpreter.verifier().clone();
+
             // verify serialized tx == referenced tx
             let transaction: Transaction = interpreter.transaction().clone().into();
             let tx_offset = self.get_tx_params().tx_offset();
@@ -582,14 +592,12 @@ pub mod test_helpers {
             }
 
             assert_eq!(deser_tx, transaction);
-            if is_reverted {
-                return Ok(state);
+            if !is_reverted {
+                // save storage between client instances
+                self.storage = storage;
             }
 
-            // save storage between client instances
-            self.storage = storage;
-
-            Ok(state)
+            Ok((state, verifier))
         }
 
         pub fn deploy(
@@ -603,6 +611,22 @@ pub mod test_helpers {
                 self.storage.clone(),
                 interpreter_params,
             );
+
+            Ok(self.execute_tx_inner(&mut transactor, checked)?.0)
+        }
+
+        pub fn attempt_execute_tx(
+            &mut self,
+            checked: Checked<Script>,
+        ) -> anyhow::Result<(StateTransition<Script>, AttemptContinue)> {
+            let interpreter_params =
+                InterpreterParams::new(self.gas_price, &self.consensus_params);
+            let mut transactor =
+                Transactor::<_, _, _, NotSupportedEcal, AttemptContinue>::new(
+                    MemoryInstance::new(),
+                    self.storage.clone(),
+                    interpreter_params,
+                );
 
             self.execute_tx_inner(&mut transactor, checked)
         }
@@ -619,7 +643,7 @@ pub mod test_helpers {
                 interpreter_params,
             );
 
-            self.execute_tx_inner(&mut transactor, checked)
+            Ok(self.execute_tx_inner(&mut transactor, checked)?.0)
         }
 
         pub fn execute_tx_with_backtrace(
@@ -635,10 +659,18 @@ pub mod test_helpers {
                 interpreter_params,
             );
 
-            let state = self.execute_tx_inner(&mut transactor, checked)?;
+            let state = self.execute_tx_inner(&mut transactor, checked)?.0;
             let backtrace = transactor.backtrace();
 
             Ok((state, backtrace))
+        }
+
+        /// Build test tx and execute it with error collection
+        pub fn attempt_execute(&mut self) -> (StateTransition<Script>, AttemptContinue) {
+            let tx = self.build();
+
+            self.attempt_execute_tx(tx)
+                .expect("expected successful vm execution")
         }
 
         /// Build test tx and execute it
@@ -810,64 +842,5 @@ pub mod test_helpers {
         change.unwrap_or_else(|| {
             panic!("no change matching asset ID {:x} was found", &find_asset_id)
         })
-    }
-}
-
-#[allow(missing_docs)]
-#[cfg(all(
-    feature = "profile-gas",
-    feature = "std",
-    any(test, feature = "test-helpers")
-))]
-/// Gas testing utilities
-pub mod gas_profiling {
-    use crate::prelude::*;
-
-    use std::sync::{
-        Arc,
-        Mutex,
-    };
-
-    #[derive(Clone)]
-    pub struct GasProfiler {
-        data: Arc<Mutex<Option<ProfilingData>>>,
-    }
-
-    impl Default for GasProfiler {
-        fn default() -> Self {
-            Self {
-                data: Arc::new(Mutex::new(None)),
-            }
-        }
-    }
-
-    impl ProfileReceiver for GasProfiler {
-        fn on_transaction(
-            &mut self,
-            _state: Result<&ProgramState, InterpreterError<String>>,
-            data: &ProfilingData,
-        ) {
-            let mut guard = self.data.lock().unwrap();
-            *guard = Some(data.clone());
-        }
-    }
-
-    impl GasProfiler {
-        pub fn data(&self) -> Option<ProfilingData> {
-            self.data.lock().ok().and_then(|g| g.as_ref().cloned())
-        }
-
-        pub fn total_gas(&self) -> Word {
-            self.data()
-                .map(|d| {
-                    d.gas()
-                        .iter()
-                        .map(|(_, gas)| gas)
-                        .copied()
-                        .reduce(Word::saturating_add)
-                        .unwrap_or_default()
-                })
-                .unwrap_or_default()
-        }
     }
 }

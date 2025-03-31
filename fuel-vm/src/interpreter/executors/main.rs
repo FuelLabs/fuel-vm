@@ -38,6 +38,7 @@ use crate::{
         BlobData,
         InterpreterStorage,
     },
+    verification::Verifier,
 };
 use alloc::{
     vec,
@@ -135,7 +136,7 @@ impl<Tx> PredicateRunKind<'_, Tx> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PredicateAction {
     Verifying,
     Estimating { available_gas: Word },
@@ -366,27 +367,29 @@ pub mod predicates {
     where
         Tx: ExecutableTransaction,
     {
-        match &tx.inputs()[index] {
-            Input::CoinPredicate(CoinPredicate {
-                owner: address,
-                predicate,
-                ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                recipient: address,
-                predicate,
-                ..
-            })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate,
-                recipient: address,
-                ..
-            }) => {
-                if !Input::is_predicate_owner_valid(address, &**predicate) {
-                    return (0, Err(PredicateVerificationFailed::InvalidOwner));
+        if predicate_action == PredicateAction::Verifying {
+            match &tx.inputs()[index] {
+                Input::CoinPredicate(CoinPredicate {
+                    owner: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    recipient: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    predicate,
+                    recipient: address,
+                    ..
+                }) => {
+                    if !Input::is_predicate_owner_valid(address, &**predicate) {
+                        return (0, Err(PredicateVerificationFailed::InvalidOwner));
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
 
         let zero_gas_price = 0;
@@ -496,7 +499,7 @@ pub mod predicates {
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -563,7 +566,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -666,7 +669,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -775,7 +778,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -830,12 +833,13 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -909,6 +913,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upgrade) = self.tx.as_upgrade_mut() {
             Self::upgrade_inner(
@@ -920,6 +925,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upload) = self.tx.as_upload_mut() {
             Self::upload_inner(
@@ -931,6 +937,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(blob) = self.tx.as_blob_mut() {
             Self::blob_inner(
@@ -942,13 +949,12 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else {
-            // `Interpreter` supports only `Create` and `Script` transactions. It is not
-            // `Create` -> it is `Script`.
+            // This must be a `Script`.
             self.run_program()?
         };
-        self.update_transaction_outputs()?;
 
         Ok(state)
     }
@@ -956,7 +962,7 @@ where
     pub(crate) fn run_program(
         &mut self,
     ) -> Result<ProgramState, InterpreterError<S::DataError>> {
-        let Some(script) = self.transaction().as_script() else {
+        let Some(script) = self.tx.as_script() else {
             unreachable!("Only `Script` transactions can be executed inside of the VM")
         };
         let gas_limit = *script.script_gas_limit();
@@ -975,7 +981,7 @@ where
                 // Check whether the instruction will be executed in a call context
                 let in_call = !self.frames.is_empty();
 
-                match self.execute() {
+                match self.execute::<false>() {
                     // Proceeding with the execution normally
                     Ok(ExecuteState::Proceed) => continue,
                     // Debugger events are returned directly to the caller
@@ -1042,25 +1048,25 @@ where
             &self.balances,
             gas_price,
         )?;
+        self.update_transaction_outputs()?;
+
+        let Some(script) = self.tx.as_script_mut() else {
+            unreachable!("This is checked to hold in the beginning of this function");
+        };
+        *script.receipts_root_mut() = self.receipts.root();
 
         Ok(state)
     }
-
-    /// Update tx fields after execution
-    pub(crate) fn post_execute(&mut self) {
-        if let Some(script) = self.tx.as_script_mut() {
-            *script.receipts_root_mut() = self.receipts.root();
-        }
-    }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
@@ -1073,16 +1079,6 @@ where
         self.verify_ready_tx(&tx)?;
 
         let state_result = self.init_script(tx).and_then(|_| self.run());
-        self.post_execute();
-
-        #[cfg(feature = "profile-any")]
-        {
-            let r = match &state_result {
-                Ok(state) => Ok(state),
-                Err(err) => Err(err.erase_generics()),
-            };
-            self.profiler.on_transaction(r);
-        }
 
         let state = state_result?;
         Ok(StateTransitionRef::new(
@@ -1093,7 +1089,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1125,7 +1121,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1157,7 +1153,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1189,7 +1185,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1221,7 +1217,7 @@ where
     }
 }
 
-impl<M, S: InterpreterStorage, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S: InterpreterStorage, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     fn verify_ready_tx<Tx2: IntoChecked>(
         &self,
         tx: &Ready<Tx2>,

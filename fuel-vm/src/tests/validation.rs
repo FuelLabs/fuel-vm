@@ -136,6 +136,7 @@ fn transaction__execution__works_current_height_expiration() {
 }
 
 /// Malleable fields should not affect validity of the create transaction
+#[allow(deprecated)]
 #[test]
 fn malleable_fields_do_not_affect_validity_of_create() {
     let params = ConsensusParameters::default();

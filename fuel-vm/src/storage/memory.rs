@@ -6,6 +6,7 @@ use crate::{
         RuntimeError,
     },
     storage::{
+        interpreter::ContractsAssetsStorage,
         ContractsAssetKey,
         ContractsAssets,
         ContractsRawCode,
@@ -42,7 +43,6 @@ use fuel_types::{
 use tai64::Tai64;
 
 use super::{
-    interpreter::ContractsAssetsStorage,
     BlobBytes,
     BlobData,
 };
@@ -253,28 +253,21 @@ impl StorageMutate<ContractsRawCode> for MemoryStorage {
 }
 
 impl StorageWrite<ContractsRawCode> for MemoryStorage {
-    fn write_bytes(
-        &mut self,
-        key: &ContractId,
-        buf: &[u8],
-    ) -> Result<usize, Self::Error> {
-        let size = buf.len();
+    fn write_bytes(&mut self, key: &ContractId, buf: &[u8]) -> Result<(), Self::Error> {
         self.memory.contracts.insert(*key, Contract::from(buf));
-        Ok(size)
+        Ok(())
     }
 
     fn replace_bytes(
         &mut self,
         key: &ContractId,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error> {
-        let size = buf.len();
-        let prev = self
+    ) -> Result<Option<Vec<u8>>, Self::Error> {
+        Ok(self
             .memory
             .contracts
             .insert(*key, Contract::from(buf))
-            .map(Into::into);
-        Ok((size, prev))
+            .map(Into::into))
     }
 
     fn take_bytes(&mut self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -295,26 +288,24 @@ impl StorageRead<ContractsRawCode> for MemoryStorage {
         key: &ContractId,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
-        self.memory
-            .contracts
-            .get(key)
-            .map(|c| {
-                let contract_len = c.as_ref().len();
-                let start = offset;
-                let end = offset.saturating_add(buf.len());
-                // We need to handle the case where the offset is greater than the length
-                // of the contract In this case we follow the same
-                // approach as `copy_from_slice_zero_fill`
-                if end > contract_len {
-                    return Err(MemoryStorageError::OffsetOutOfBounds(end, contract_len));
-                }
+    ) -> Result<bool, Self::Error> {
+        if let Some(c) = self.memory.contracts.get(key) {
+            let contract_len = c.as_ref().len();
+            let start = offset;
+            let end = offset.saturating_add(buf.len());
+            // We need to handle the case where the offset is greater than the length
+            // of the contract In this case we follow the same
+            // approach as `copy_from_slice_zero_fill`
+            if end > contract_len {
+                return Err(MemoryStorageError::OffsetOutOfBounds(end, contract_len));
+            }
 
-                let starting_from_offset = &c.as_ref()[start..end];
-                buf[..].copy_from_slice(starting_from_offset);
-                Ok(buf.len())
-            })
-            .transpose()
+            let starting_from_offset = &c.as_ref()[start..end];
+            buf[..].copy_from_slice(starting_from_offset);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn read_alloc(&self, key: &ContractId) -> Result<Option<Vec<u8>>, Self::Error> {
@@ -440,29 +431,26 @@ impl StorageWrite<ContractsState> for MemoryStorage {
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
-    ) -> Result<usize, Self::Error> {
-        let size = buf.len();
+    ) -> Result<(), Self::Error> {
         self.memory
             .contract_state
             .insert(*key, ContractsStateData::from(buf));
-        Ok(size)
+        Ok(())
     }
 
     fn replace_bytes(
         &mut self,
         key: &<ContractsState as Mappable>::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    ) -> Result<Option<Vec<u8>>, Self::Error>
     where
         Self: StorageSize<ContractsState>,
     {
-        let size = buf.len();
-        let prev = self
+        Ok(self
             .memory
             .contract_state
             .insert(*key, ContractsStateData::from(buf))
-            .map(Into::into);
-        Ok((size, prev))
+            .map(Into::into))
     }
 
     fn take_bytes(
@@ -493,29 +481,27 @@ impl StorageRead<ContractsState> for MemoryStorage {
         key: &<ContractsState as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
-        self.memory
-            .contract_state
-            .get(key)
-            .map(|data| {
-                let contract_state_len = data.as_ref().len();
-                // We need to handle the case where the offset is greater than the length
-                // of the serialized ContractState. In this case we follow
-                // the same approach as `copy_from_slice_zero_fill` and
-                // fill the input buffer with zeros.
-                if offset > contract_state_len {
-                    return Err(MemoryStorageError::OffsetOutOfBounds(
-                        offset,
-                        contract_state_len,
-                    ));
-                }
-                let starting_from_offset = &data.as_ref()[offset..];
-                let len = buf.len().min(starting_from_offset.len());
-                buf[..len].copy_from_slice(&starting_from_offset[..len]);
-                buf[len..].fill(0);
-                Ok(len)
-            })
-            .transpose()
+    ) -> Result<bool, Self::Error> {
+        if let Some(data) = self.memory.contract_state.get(key) {
+            let contract_state_len = data.as_ref().len();
+            // We need to handle the case where the offset is greater than the length
+            // of the serialized ContractState. In this case we follow
+            // the same approach as `copy_from_slice_zero_fill` and
+            // fill the input buffer with zeros.
+            if offset > contract_state_len {
+                return Err(MemoryStorageError::OffsetOutOfBounds(
+                    offset,
+                    contract_state_len,
+                ));
+            }
+            let starting_from_offset = &data.as_ref()[offset..];
+            let len = buf.len().min(starting_from_offset.len());
+            buf[..len].copy_from_slice(&starting_from_offset[..len]);
+            buf[len..].fill(0);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn read_alloc(
@@ -545,27 +531,25 @@ impl StorageRead<BlobData> for MemoryStorage {
         key: &<BlobData as Mappable>::Key,
         offset: usize,
         buf: &mut [u8],
-    ) -> Result<Option<usize>, Self::Error> {
-        self.memory
-            .blobs
-            .get(key)
-            .map(|data| {
-                let blob_len = data.as_ref().len();
-                let start = offset;
-                let end = offset.saturating_add(buf.len());
-                // We need to handle the case where the offset is greater than the length
-                // of the serialized ContractState. In this case we follow
-                // the same approach as `copy_from_slice_zero_fill` and
-                // fill the input buffer with zeros.
-                if end > blob_len {
-                    return Err(MemoryStorageError::OffsetOutOfBounds(offset, blob_len));
-                }
+    ) -> Result<bool, Self::Error> {
+        if let Some(data) = self.memory.blobs.get(key) {
+            let blob_len = data.as_ref().len();
+            let start = offset;
+            let end = offset.saturating_add(buf.len());
+            // We need to handle the case where the offset is greater than the length
+            // of the serialized ContractState. In this case we follow
+            // the same approach as `copy_from_slice_zero_fill` and
+            // fill the input buffer with zeros.
+            if end > blob_len {
+                return Err(MemoryStorageError::OffsetOutOfBounds(offset, blob_len));
+            }
 
-                let starting_from_offset = &data.as_ref()[start..end];
-                buf[..].copy_from_slice(starting_from_offset);
-                Ok(buf.len())
-            })
-            .transpose()
+            let starting_from_offset = &data.as_ref()[start..end];
+            buf[..].copy_from_slice(starting_from_offset);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn read_alloc(
@@ -616,27 +600,25 @@ impl StorageWrite<BlobData> for MemoryStorage {
         &mut self,
         key: &<BlobData as Mappable>::Key,
         buf: &[u8],
-    ) -> Result<usize, Self::Error> {
-        let size = buf.len();
+    ) -> Result<(), Self::Error> {
         self.memory.blobs.insert(*key, BlobBytes::from(buf));
-        Ok(size)
+        Ok(())
     }
 
     fn replace_bytes(
         &mut self,
         key: &<BlobData as Mappable>::Key,
         buf: &[u8],
-    ) -> Result<(usize, Option<Vec<u8>>), Self::Error>
+    ) -> Result<Option<Vec<u8>>, Self::Error>
     where
         Self: StorageSize<BlobData>,
     {
-        let size = buf.len();
         let prev = self
             .memory
             .blobs
             .insert(*key, BlobBytes::from(buf))
             .map(Into::into);
-        Ok((size, prev))
+        Ok(prev)
     }
 
     fn take_bytes(
@@ -861,25 +843,25 @@ mod tests {
             .collect()
     }
 
-    #[test_case(0, 32 => Ok(Some(32)))]
-    #[test_case(4, 32 => Ok(Some(28)))]
-    #[test_case(8, 32 => Ok(Some(24)))]
-    #[test_case(0, 28 => Ok(Some(28)))]
-    #[test_case(4, 28 => Ok(Some(28)))]
-    #[test_case(8, 28 => Ok(Some(24)))]
-    #[test_case(28, 0 => Ok(Some(0)))]
-    #[test_case(28, 4 => Ok(Some(4)))]
-    #[test_case(28, 8 => Ok(Some(4)))]
-    #[test_case(32, 0 => Ok(Some(0)))]
-    #[test_case(32, 4 => Ok(Some(0)))]
-    #[test_case(32, 8 => Ok(Some(0)))]
+    #[test_case(0, 32 => Ok(true))]
+    #[test_case(4, 32 => Ok(true))]
+    #[test_case(8, 32 => Ok(true))]
+    #[test_case(0, 28 => Ok(true))]
+    #[test_case(4, 28 => Ok(true))]
+    #[test_case(8, 28 => Ok(true))]
+    #[test_case(28, 0 => Ok(true))]
+    #[test_case(28, 4 => Ok(true))]
+    #[test_case(28, 8 => Ok(true))]
+    #[test_case(32, 0 => Ok(true))]
+    #[test_case(32, 4 => Ok(true))]
+    #[test_case(32, 8 => Ok(true))]
     #[test_case(33, 0 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
     #[test_case(33, 4 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
     #[test_case(33, 8 => Err(MemoryStorageError::OffsetOutOfBounds(33,32)))]
     fn test_contract_read(
         offset: usize,
         load_buf_size: usize,
-    ) -> Result<Option<usize>, MemoryStorageError> {
+    ) -> Result<bool, MemoryStorageError> {
         // Given
         let raw_contract = [1u8; 32];
         let mut mem = MemoryStorage::default();
@@ -891,7 +873,7 @@ mod tests {
         let mut buf = vec![0u8; buf_size];
 
         // When
-        let bytes_read = StorageRead::<ContractsRawCode>::read(
+        let r = StorageRead::<ContractsRawCode>::read(
             &mem,
             &ContractId::default(),
             offset,
@@ -900,12 +882,11 @@ mod tests {
 
         // Then
 
-        if let Ok(bytes_read) = bytes_read {
-            let contract_bytes_in_buffer = bytes_read.unwrap_or(0);
-            assert!(buf[0..contract_bytes_in_buffer].iter().all(|&v| v == 1));
-            assert!(buf[contract_bytes_in_buffer..].iter().all(|&v| v == 0));
+        if r.is_ok() {
+            assert!(buf[0..buf_size].iter().all(|&v| v == 1));
+            assert!(buf[buf_size..].iter().all(|&v| v == 0));
         }
 
-        bytes_read
+        r
     }
 }

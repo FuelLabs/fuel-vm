@@ -171,6 +171,13 @@ impl Output {
         }
     }
 
+    pub fn data_coin_data_len(&self) -> Option<usize> {
+        match self {
+            Output::DataCoin { data, .. } => Some(data.len()),
+            _ => None,
+        }
+    }
+
     pub const fn input_index(&self) -> Option<u16> {
         match self {
             Output::Contract(Contract { input_index, .. }) => Some(*input_index),
@@ -202,6 +209,10 @@ impl Output {
 
     pub const fn is_coin(&self) -> bool {
         matches!(self, Self::Coin { .. })
+    }
+
+    pub const fn is_data_coin(&self) -> bool {
+        matches!(self, Self::DataCoin { .. })
     }
 
     pub const fn is_change(&self) -> bool {

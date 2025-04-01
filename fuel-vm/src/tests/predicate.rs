@@ -166,7 +166,7 @@ impl DataCoinInputBuilder {
     }
 }
 
-async fn execute_data_coin_predicate<P>(
+async fn execute_data_coin_predicate_input<P>(
     predicate: P,
     predicate_data: Vec<u8>,
     dummy_inputs: usize,
@@ -200,6 +200,45 @@ where
         data,
     );
     execute_predicate_with_input(dummy_inputs, input, rng).await
+}
+
+async fn execute_data_coin_predicate_input_and_output<P>(
+    predicate: P,
+    predicate_data: Vec<u8>,
+    input_data: Vec<u8>,
+    output_data: Vec<u8>,
+) -> bool
+where
+    P: IntoIterator<Item = Instruction>,
+{
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+    let predicate: Vec<u8> = predicate
+        .into_iter()
+        .flat_map(|op| u32::from(op).to_be_bytes())
+        .collect();
+
+    let utxo_id = rng.gen();
+    let amount = 0;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_gas_used = 0;
+
+    let owner = Input::predicate_owner(&predicate);
+    let input = Input::data_coin_predicate(
+        utxo_id,
+        owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        predicate_gas_used,
+        predicate,
+        predicate_data,
+        input_data,
+    );
+
+    let output = Output::data_coin(owner, amount, asset_id, output_data);
+
+    execute_predicate_with_input_and_output(input, output).await
 }
 
 async fn execute_predicate_with_input(
@@ -271,6 +310,41 @@ async fn execute_predicate_with_input(
         }
         _ => panic!("Parallel and sequential execution should return the same result"),
     }
+}
+
+async fn execute_predicate_with_input_and_output(input: Input, output: Output) -> bool {
+    let maturity = Default::default();
+    let height = Default::default();
+    let gas_limit = 1_000_000;
+    let script = vec![];
+    let script_data = vec![];
+
+    let mut builder = TransactionBuilder::script(script, script_data);
+    let params = ConsensusParameters::standard();
+    let check_params = params.clone().into();
+
+    builder.script_gas_limit(gas_limit).maturity(maturity);
+
+    builder.add_input(input);
+    builder.add_output(output);
+
+    let mut transaction = builder.finalize();
+    transaction
+        .estimate_predicates(&check_params, MemoryInstance::new(), &EmptyStorage)
+        .expect("Should estimate predicate");
+
+    let checked = transaction
+        .into_checked_basic(height, &params)
+        .expect("Should successfully convert into Checked");
+
+    let res = check_predicates(
+        &checked,
+        &check_params,
+        MemoryInstance::new(),
+        &EmptyStorage,
+    )
+    .map(|checked| checked.gas_used());
+    res.is_ok()
 }
 
 #[test]
@@ -637,8 +711,13 @@ async fn gtf_args__input_data_coin_predicate_data() {
     ];
 
     assert!(
-        execute_data_coin_predicate(predicate.iter().copied(), expected_data, 0, data)
-            .await
+        execute_data_coin_predicate_input(
+            predicate.iter().copied(),
+            expected_data,
+            0,
+            data
+        )
+        .await
     );
 }
 
@@ -669,8 +748,13 @@ async fn gtf_args__input_data_coin_data_length() {
     ];
 
     assert!(
-        execute_data_coin_predicate(predicate.iter().copied(), predicate_data, 0, data)
-            .await
+        execute_data_coin_predicate_input(
+            predicate.iter().copied(),
+            predicate_data,
+            0,
+            data
+        )
+        .await
     );
 }
 
@@ -709,9 +793,51 @@ async fn gtf_args__input_data_coin_data() {
     ];
 
     assert!(
-        execute_data_coin_predicate(predicate.iter().copied(), predicate_data, 0, data)
-            .await
+        execute_data_coin_predicate_input(
+            predicate.iter().copied(),
+            predicate_data,
+            0,
+            data
+        )
+        .await
     );
+}
+
+#[tokio::test]
+async fn gtf_args__output_data_coin_data_len() {
+    // given
+    let predicate_data = vec![1, 2, 3, 4, 5, 6, 7];
+    let data = vec![5; 100];
+
+    // A script that will succeed only if the argument is the length of the data
+    let expected_len = data.len() as u32;
+
+    let expected_len_reg = 0x13;
+    let actual_len_reg = 0x14;
+    let res_reg = 0x10;
+    let output_index = 0;
+    let predicate = [
+        op::movi(expected_len_reg, expected_len),
+        op::gtf_args(
+            actual_len_reg,
+            output_index,
+            GTFArgs::OutputDataCoinDataLength,
+        ),
+        op::eq(res_reg, actual_len_reg, expected_len_reg),
+        op::ret(res_reg),
+    ];
+
+    // when
+    let success = execute_data_coin_predicate_input_and_output(
+        predicate.iter().copied(),
+        predicate_data,
+        data.clone(),
+        data,
+    )
+    .await;
+
+    // then
+    assert!(success);
 }
 
 #[tokio::test]

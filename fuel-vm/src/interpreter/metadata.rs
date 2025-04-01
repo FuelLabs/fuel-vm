@@ -493,6 +493,13 @@ impl<Tx> GTFInput<'_, Tx> {
                     })
                     .ok_or(PanicReason::OutputNotFound)?,
             ) as Word,
+            GTFArgs::OutputDataCoinDataLength => {
+                tx.outputs()
+                    .get(b)
+                    .filter(|o| o.is_data_coin())
+                    .and_then(Output::data_coin_data_len)
+                    .ok_or(PanicReason::OutputNotFound)? as Word
+            }
             GTFArgs::OutputContractInputIndex => {
                 tx.outputs()
                     .get(b)

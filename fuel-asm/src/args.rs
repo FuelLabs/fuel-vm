@@ -236,6 +236,12 @@ crate::enum_try_from! {
         /// Set `$rA` to `Memory address of tx.outputs[$rB].asset_id`
         OutputCoinAssetId = 0x303,
 
+        /// Set `$rA` to `tx.inputs[$rB].dataLength`
+        OutputDataCoinDataLength = 0x310,
+
+        /// Set `$rA` to `Memory address of tx.inputs[$rB].data`
+        DataCoinData = 0x311,
+
         /// Set `$rA` to `tx.outputs[$rB].inputIndex`
         OutputContractInputIndex = 0x304,
 

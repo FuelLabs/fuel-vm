@@ -16,6 +16,7 @@ mod consts;
 pub mod contract;
 mod repr;
 
+use alloc::vec::Vec;
 use contract::Contract;
 pub use repr::OutputRepr;
 

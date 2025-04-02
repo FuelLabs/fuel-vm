@@ -1020,7 +1020,9 @@ pub(crate) fn memeq(
     c: Word,
     d: Word,
 ) -> SimpleResult<()> {
-    *result = (memory.read(b, d)? == memory.read(c, d)?) as Word;
+    let first_res = memory.read(b, d);
+    let second_res = memory.read(c, d);
+    *result = (first_res? == second_res?) as Word;
     Ok(inc_pc(pc)?)
 }
 

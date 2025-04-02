@@ -240,7 +240,7 @@ crate::enum_try_from! {
         OutputDataCoinDataLength = 0x310,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB].data`
-        DataCoinData = 0x311,
+        OutputDataCoinData = 0x311,
 
         /// Set `$rA` to `tx.outputs[$rB].inputIndex`
         OutputContractInputIndex = 0x304,

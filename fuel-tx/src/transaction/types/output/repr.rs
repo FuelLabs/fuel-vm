@@ -38,6 +38,13 @@ impl OutputRepr {
         }
     }
 
+    pub const fn data_coin_data_offset(&self) -> Option<usize> {
+        match self {
+            Self::Data => Some(OUTPUT_DATA_COIN_DATA_OFFSET),
+            _ => None,
+        }
+    }
+
     pub const fn contract_balance_root_offset(&self) -> Option<usize> {
         match self {
             Self::Contract => Some(OUTPUT_CONTRACT_BALANCE_ROOT_OFFSET),

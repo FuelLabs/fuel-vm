@@ -500,6 +500,17 @@ impl<Tx> GTFInput<'_, Tx> {
                     .and_then(Output::data_coin_data_len)
                     .ok_or(PanicReason::OutputNotFound)? as Word
             }
+            GTFArgs::OutputDataCoinData => ofs.saturating_add(
+                tx.outputs()
+                    .get(b)
+                    .filter(|o| o.is_data_coin())
+                    .map(Output::repr)
+                    .and_then(|r| r.data_coin_data_offset())
+                    .and_then(|ofs| {
+                        tx.outputs_offset_at(b).map(|o| o.saturating_add(ofs))
+                    })
+                    .ok_or(PanicReason::OutputNotFound)?,
+            ) as Word,
             GTFArgs::OutputContractInputIndex => {
                 tx.outputs()
                     .get(b)

@@ -236,7 +236,16 @@ where
         input_data,
     );
 
-    let output = Output::data_coin(owner, amount, asset_id, output_data);
+    let different_owner = rng.gen();
+    let different_amount = 1;
+    let different_asset_id = rng.gen();
+
+    let output = Output::data_coin(
+        different_owner,
+        different_amount,
+        different_asset_id,
+        output_data,
+    );
 
     execute_predicate_with_input_and_output(input, output).await
 }
@@ -804,7 +813,7 @@ async fn gtf_args__input_data_coin_data() {
 }
 
 #[tokio::test]
-async fn gtf_args__output_data_coin_data_len() {
+async fn gtf_args__output_data_coin_data_len__matches_expected_value() {
     // given
     let predicate_data = vec![1, 2, 3, 4, 5, 6, 7];
     let data = vec![5; 100];
@@ -824,6 +833,48 @@ async fn gtf_args__output_data_coin_data_len() {
             GTFArgs::OutputDataCoinDataLength,
         ),
         op::eq(res_reg, actual_len_reg, expected_len_reg),
+        op::ret(res_reg),
+    ];
+
+    // when
+    let success = execute_data_coin_predicate_input_and_output(
+        predicate.iter().copied(),
+        predicate_data,
+        data.clone(),
+        data,
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
+#[tokio::test]
+async fn gtf_args__output_data_coin_data__succeeds_if_input_data_matches_output_data() {
+    // given
+    let data = vec![5; 100];
+    // let predicate_data = vec![1, 2, 3, 4, 5, 6, 7];
+    let predicate_data = data.clone();
+
+    // A script that will succeed only if the argument is the length of the data
+    let expected_len = data.len() as u32;
+
+    let len_reg = 0x13;
+    let res_reg = 0x10;
+    let output_index = 0;
+    let input_index = 0;
+    let output_data_reg = 0x14;
+    let input_data_reg = 0x15;
+    let predicate = [
+        op::movi(len_reg, expected_len),
+        // get output data
+        op::gtf_args(output_data_reg, output_index, GTFArgs::OutputDataCoinData),
+        // get other data
+        // op::gtf_args(input_data_reg, input_index, GTFArgs::InputCoinPredicateData),
+        op::gtf_args(input_data_reg, input_index, GTFArgs::InputDataCoinData),
+        // compare
+        op::meq(res_reg, output_data_reg, input_data_reg, len_reg),
+        // op::meq(res_reg, input_data_reg, output_data_reg, len_reg),
         op::ret(res_reg),
     ];
 

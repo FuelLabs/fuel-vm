@@ -812,6 +812,13 @@ async fn gtf_args__input_data_coin_data() {
     );
 }
 
+//     DataCoin {
+//         to: Address,
+//         amount: Word,
+//         asset_id: AssetId,
+//         data: Vec<u8>,
+//     },
+
 #[tokio::test]
 async fn gtf_args__output_data_coin_data_len__matches_expected_value() {
     // given

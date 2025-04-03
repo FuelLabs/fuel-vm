@@ -123,24 +123,18 @@ fn reduce_free_balances_by_coin_outputs(
     transaction: &impl field::Outputs,
 ) -> Result<(), ValidityError> {
     // reduce free balances by coin outputs
-    for (asset_id, amount) in
-        transaction
-            .outputs()
-            .iter()
-            .filter_map(|output| match output {
-                Output::Coin {
-                    asset_id, amount, ..
-                } => Some((asset_id, amount)),
-                _ => None,
-            })
+    for (asset_id, amount) in transaction
+        .outputs()
+        .iter()
+        .filter_map(Output::coin_balance)
     {
-        let balance = non_retryable_balances.get_mut(asset_id).ok_or(
-            ValidityError::TransactionOutputCoinAssetIdNotFound(*asset_id),
+        let balance = non_retryable_balances.get_mut(&asset_id).ok_or(
+            ValidityError::TransactionOutputCoinAssetIdNotFound(asset_id),
         )?;
-        *balance = balance.checked_sub(*amount).ok_or(
+        *balance = balance.checked_sub(amount).ok_or(
             ValidityError::InsufficientInputAmount {
-                asset: *asset_id,
-                expected: *amount,
+                asset: asset_id,
+                expected: amount,
                 provided: *balance,
             },
         )?;

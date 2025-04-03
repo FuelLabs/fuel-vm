@@ -147,8 +147,21 @@ impl Output {
     pub const fn asset_id(&self) -> Option<&AssetId> {
         match self {
             Output::Coin { asset_id, .. }
+            | Output::DataCoin { asset_id, .. }
             | Output::Change { asset_id, .. }
             | Output::Variable { asset_id, .. } => Some(asset_id),
+            _ => None,
+        }
+    }
+
+    pub const fn coin_balance(&self) -> Option<(AssetId, Word)> {
+        match self {
+            Output::Coin {
+                asset_id, amount, ..
+            } => Some((*asset_id, *amount)),
+            Output::DataCoin {
+                asset_id, amount, ..
+            } => Some((*asset_id, *amount)),
             _ => None,
         }
     }

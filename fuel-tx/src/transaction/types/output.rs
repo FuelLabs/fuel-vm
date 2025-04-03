@@ -208,7 +208,7 @@ impl Output {
     }
 
     pub const fn is_coin(&self) -> bool {
-        matches!(self, Self::Coin { .. })
+        matches!(self, Self::Coin { .. }) || self.is_data_coin()
     }
 
     pub const fn is_data_coin(&self) -> bool {

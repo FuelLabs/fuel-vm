@@ -22,9 +22,10 @@ pub enum OutputRepr {
 impl OutputRepr {
     pub const fn to_offset(&self) -> Option<usize> {
         match self {
-            OutputRepr::Coin | OutputRepr::Change | OutputRepr::Variable => {
-                Some(OUTPUT_CCV_TO_OFFSET)
-            }
+            OutputRepr::Coin
+            | OutputRepr::Change
+            | OutputRepr::Variable
+            | OutputRepr::Data => Some(OUTPUT_CCV_TO_OFFSET),
             _ => None,
         }
     }

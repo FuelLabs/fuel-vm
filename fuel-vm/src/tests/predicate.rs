@@ -975,6 +975,69 @@ async fn gtf_args__output_data_coin_to() {
 }
 
 #[tokio::test]
+async fn gtf_args__output_data_coin_amount() {
+    // given
+    let mut rng = StdRng::seed_from_u64(2322u64);
+
+    // Create a random amount for the output
+    let output_amount: Word = 1234;
+
+    // Store the expected amount in predicate data
+    let predicate_data = output_amount.to_be_bytes().to_vec();
+
+    let expected_amount_reg = 0x11;
+    let actual_amount_reg = 0x12;
+    let res_reg = 0x10;
+    let output_index = 0;
+
+    let predicate = [
+        op::movi(expected_amount_reg, output_amount as u32),
+        op::gtf_args(actual_amount_reg, output_index, GTFArgs::OutputCoinAmount),
+        op::eq(res_reg, expected_amount_reg, actual_amount_reg),
+        op::ret(res_reg),
+    ];
+
+    // Create the output with the expected amount and some data
+    let output_data = vec![1, 2, 3, 4, 5];
+    let output = Output::data_coin(
+        rng.gen(), // to
+        output_amount,
+        rng.gen(), // asset_id
+        output_data,
+    );
+
+    // Create a dummy input
+    let predicate_bytes = predicate
+        .iter()
+        .copied()
+        .flat_map(|op| u32::from(op).to_be_bytes())
+        .collect::<Vec<u8>>();
+    let input_owner = Input::predicate_owner(&predicate_bytes);
+    let utxo_id = rng.gen();
+    let amount = 0;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_gas_used = 0;
+
+    let input = Input::coin_predicate(
+        utxo_id,
+        input_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        predicate_gas_used,
+        predicate_bytes,
+        predicate_data,
+    );
+
+    // when
+    let success = execute_predicate_with_input_and_output(input, output).await;
+
+    // then
+    assert!(success);
+}
+
+#[tokio::test]
 async fn get_verifying_predicate() {
     let indices = vec![0, 4, 5, 7, 11];
 

@@ -165,8 +165,10 @@ impl Output {
     pub const fn amount(&self) -> Option<Word> {
         match self {
             Output::Coin { amount, .. }
+            | Output::DataCoin { amount, .. }
             | Output::Change { amount, .. }
             | Output::Variable { amount, .. } => Some(*amount),
+
             _ => None,
         }
     }

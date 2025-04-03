@@ -920,7 +920,7 @@ async fn gtf_args__output_data_coin_to() {
     let predicate = [
         op::movi(address_size_reg, address_size),
         op::gtf_args(expected_owner_reg, 0, GTFArgs::InputCoinPredicateData),
-        op::gtf_args(actual_owner_reg, output_index, GTFArgs::OutputDataCoinTo),
+        op::gtf_args(actual_owner_reg, output_index, GTFArgs::OutputCoinTo),
         op::meq(res_reg, expected_owner_reg, actual_owner_reg, address_size_reg),
         op::ret(res_reg),
     ];

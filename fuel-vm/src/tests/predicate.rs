@@ -870,11 +870,6 @@ async fn gtf_args__output_data_coin_data__succeeds_if_input_data_matches_output_
         op::ret(res_reg),
     ];
 
-    tracing::debug!(
-        "predicate_bytes: {:?}",
-        &predicate.clone().into_iter().collect::<Vec<u8>>()
-    );
-
     // when
     let success = execute_data_coin_predicate_input_and_output(
         predicate,

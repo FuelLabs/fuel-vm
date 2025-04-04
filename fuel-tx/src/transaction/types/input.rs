@@ -578,9 +578,10 @@ impl Input {
             | Input::DataCoinPredicate(DataCoinPredicate { predicate, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
-                self.predicate_offset().map(|o| {
-                    o.saturating_add(bytes::padded_len(predicate).unwrap_or(usize::MAX))
-                })
+                let padded = bytes::padded_len(predicate);
+                tracing::debug!("padded predicate data: {:?}", padded);
+                self.predicate_offset()
+                    .map(|o| o.saturating_add(padded.unwrap_or(usize::MAX)))
             }
             Input::CoinSigned(_)
             | Input::DataCoinSigned(_)
@@ -727,10 +728,14 @@ impl Input {
 
     pub fn data_coin_data_offset(&self) -> Option<usize> {
         match self {
-            Input::DataCoinSigned(DataCoinSigned { data, .. })
-            | Input::DataCoinPredicate(DataCoinPredicate { data, .. }) => self
-                .predicate_data_offset()
-                .map(|o| o.saturating_add(bytes::padded_len(data).unwrap_or(usize::MAX))),
+            Input::DataCoinSigned(DataCoinSigned { .. }) => {
+                todo!("Where would this be if there is no predicate & predicate_data")
+            }
+            Input::DataCoinPredicate(DataCoinPredicate { predicate_data, .. }) => {
+                let padded = bytes::padded_len(predicate_data);
+                self.predicate_data_offset()
+                    .map(|o| o.saturating_add(padded.unwrap_or(usize::MAX)))
+            }
             _ => None,
         }
     }

@@ -844,10 +844,13 @@ async fn gtf_args__output_data_coin_data_len__matches_expected_value() {
 
 #[tokio::test]
 async fn gtf_args__output_data_coin_data__succeeds_if_input_data_matches_output_data() {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .try_init();
+
     // given
     let data = vec![5; 100];
-    // let predicate_data = vec![1, 2, 3, 4, 5, 6, 7];
-    let predicate_data = data.clone();
+    let predicate_data = vec![1, 2, 3, 4, 5, 6, 7];
 
     // A script that will succeed only if the argument is the length of the data
     let expected_len = data.len() as u32;
@@ -858,7 +861,7 @@ async fn gtf_args__output_data_coin_data__succeeds_if_input_data_matches_output_
     let input_index = 0;
     let output_data_reg = 0x14;
     let input_data_reg = 0x15;
-    let predicate = [
+    let predicate = vec![
         op::movi(len_reg, expected_len),
         // get output data
         op::gtf_args(output_data_reg, output_index, GTFArgs::OutputDataCoinData),
@@ -871,9 +874,14 @@ async fn gtf_args__output_data_coin_data__succeeds_if_input_data_matches_output_
         op::ret(res_reg),
     ];
 
+    tracing::debug!(
+        "predicate_bytes: {:?}",
+        &predicate.clone().into_iter().collect::<Vec<u8>>()
+    );
+
     // when
     let success = execute_data_coin_predicate_input_and_output(
-        predicate.iter().copied(),
+        predicate,
         predicate_data,
         data.clone(),
         data,

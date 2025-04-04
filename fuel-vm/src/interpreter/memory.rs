@@ -1022,6 +1022,7 @@ pub(crate) fn memeq(
 ) -> SimpleResult<()> {
     let first_res = memory.read(b, d);
     let second_res = memory.read(c, d);
+    tracing::debug!("First res: {first_res:?}, second res: {second_res:?}");
     *result = (first_res? == second_res?) as Word;
     Ok(inc_pc(pc)?)
 }

@@ -237,15 +237,8 @@ where
     );
 
     let different_owner = rng.gen();
-    let different_amount = 1;
-    let different_asset_id = rng.gen();
 
-    let output = Output::data_coin(
-        different_owner,
-        different_amount,
-        different_asset_id,
-        output_data,
-    );
+    let output = Output::data_coin(different_owner, amount, asset_id, output_data);
 
     execute_predicate_with_input_and_output(input, output).await
 }

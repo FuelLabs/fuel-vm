@@ -844,10 +844,6 @@ async fn gtf_args__output_data_coin_data_len__matches_expected_value() {
 
 #[tokio::test]
 async fn gtf_args__output_data_coin_data__succeeds_if_input_data_matches_output_data() {
-    let _ = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .try_init();
-
     // given
     let data = vec![5; 100];
     let predicate_data = vec![1, 2, 3, 4, 5, 6, 7];

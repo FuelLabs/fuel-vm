@@ -111,8 +111,7 @@ impl AluResultForFlags {
     }
 
     /// The operation wraps around if wrapping is enabled, otherwise it panics.
-    /// Computes the wrapping value for u64 oveflow. For narrow ints, use
-    /// `wrapping_ok_narrow`.
+    /// Computes the wrapping value for u64 oveflow.
     fn wrapping_ok(value: u128) -> Self {
         let wrapped = value as Word;
         let of = (value >> 64) as Word;

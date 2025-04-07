@@ -55,6 +55,41 @@ fn latest_can_deserialize_previous_tx_pointer() {
     }
 }
 
+#[test]
+fn latest_can_deserialize_previous_tx_pointer_in_tx() {
+    use latest_fuel_tx::field::Inputs;
+
+    for idx in 0..=u16::MAX {
+        let mut tx = fuel_tx_0_59_1::TransactionBuilder::script(vec![], vec![]);
+        tx.add_input(fuel_tx_0_59_1::Input::coin_predicate(
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            fuel_tx_0_59_1::TxPointer::new(0u32.into(), idx),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        ));
+        let tx = tx.finalize_as_transaction();
+        let bytes = postcard::to_allocvec(&tx).unwrap();
+        let latest_tx: latest_fuel_tx::Transaction =
+            postcard::from_bytes(&bytes).unwrap();
+        if let latest_fuel_tx::Transaction::Script(tx) = latest_tx {
+            let input = tx.inputs().get(0).unwrap();
+            if let latest_fuel_tx::Input::CoinPredicate(input) = input {
+                let tx_pointer = input.tx_pointer;
+                assert_eq!(tx_pointer.block_height(), 0u32.into());
+                assert_eq!(tx_pointer.tx_index(), idx.into());
+            } else {
+                panic!("Expected a coin predicate input");
+            }
+        } else {
+            panic!("Expected a script transaction");
+        }
+    }
+}
+
 #[cfg(feature = "da-compression")]
 mod da_compression {
     use std::convert::Infallible;

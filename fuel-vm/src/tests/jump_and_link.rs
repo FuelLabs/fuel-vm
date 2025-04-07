@@ -1,3 +1,5 @@
+use alloc::vec;
+
 use crate::{
     prelude::*,
     tests::test_helpers::{
@@ -148,7 +150,6 @@ fn jump_and_link__recursive_fibonacci() {
         ];
 
         let receipts = run_script(script);
-        dbg!(&receipts);
         assert_success(&receipts);
         let Some(Receipt::Log { ra, .. }) = receipts.get(0) else {
             panic!("Expected a log receipt");
@@ -159,7 +160,6 @@ fn jump_and_link__recursive_fibonacci() {
     assert_eq!(rust_fibo(10), 55, "Sanity check");
 
     for n in 0..=10 {
-        dbg!(n);
         let f = fuel_fibo(n);
         let r = rust_fibo(n);
         assert_eq!(f, r, "Wrong result for fibo({n}), got {f}, expected {r}");

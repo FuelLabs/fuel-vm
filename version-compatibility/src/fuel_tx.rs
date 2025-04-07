@@ -61,6 +61,7 @@ fn latest_can_deserialize_previous_tx_pointer_in_tx() {
 
     for idx in 0..=u16::MAX {
         let mut tx = fuel_tx_0_59_1::TransactionBuilder::script(vec![], vec![]);
+        // Given
         tx.add_input(fuel_tx_0_59_1::Input::coin_predicate(
             Default::default(),
             Default::default(),
@@ -73,8 +74,12 @@ fn latest_can_deserialize_previous_tx_pointer_in_tx() {
         ));
         let tx = tx.finalize_as_transaction();
         let bytes = postcard::to_allocvec(&tx).unwrap();
+
+        // When
         let latest_tx: latest_fuel_tx::Transaction =
             postcard::from_bytes(&bytes).unwrap();
+        
+        // Then
         if let latest_fuel_tx::Transaction::Script(tx) = latest_tx {
             let input = tx.inputs().get(0).unwrap();
             if let latest_fuel_tx::Input::CoinPredicate(input) = input {

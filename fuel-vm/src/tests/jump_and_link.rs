@@ -60,7 +60,7 @@ fn jump_and_link__subroutine_call_works() {
     let receipts = run_script(script);
     assert_success(&receipts);
 
-    if let Some(Receipt::Log { ra, .. }) = receipts.get(0) {
+    if let Some(Receipt::Log { ra, .. }) = receipts.first() {
         assert!(*ra == canary, "Expected canary value to be logged");
     } else {
         panic!("Expected a log receipt");
@@ -91,7 +91,7 @@ fn jump_and_link__immediate_count_is_instructions() {
     let receipts = run_script(script);
     assert_success(&receipts);
 
-    if let Some(Receipt::Log { ra, .. }) = receipts.get(0) {
+    if let Some(Receipt::Log { ra, .. }) = receipts.first() {
         assert_eq!(*ra, skip, "Expected correct number of skipped instructions");
     } else {
         panic!("Expected a log receipt");
@@ -151,10 +151,10 @@ fn jump_and_link__recursive_fibonacci() {
 
         let receipts = run_script(script);
         assert_success(&receipts);
-        let Some(Receipt::Log { ra, .. }) = receipts.get(0) else {
+        let Some(Receipt::Log { ra, .. }) = receipts.first() else {
             panic!("Expected a log receipt");
         };
-        return *ra;
+        *ra
     }
 
     assert_eq!(rust_fibo(10), 55, "Sanity check");

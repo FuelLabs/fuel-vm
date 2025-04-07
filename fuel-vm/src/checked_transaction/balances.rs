@@ -25,7 +25,14 @@ use fuel_types::{
 
 use alloc::collections::BTreeMap;
 use fuel_tx::{
-    input::coin::DataCoinSigned,
+    input::{
+        coin::{
+            DataCoinSigned,
+            UnverifiedCoin,
+            UnverifiedDataCoin,
+        },
+        ReadOnly,
+    },
     policies::PolicyType,
 };
 
@@ -84,6 +91,27 @@ fn add_up_input_balances<T: field::Inputs>(
                 let balance = non_retryable_balances.entry(*asset_id).or_default();
                 *balance = (*balance).checked_add(*amount)?;
             }
+            Input::ReadOnly(inner) => match inner {
+                ReadOnly::VerifiedCoin(CoinPredicate {
+                    asset_id, amount, ..
+                })
+                | ReadOnly::VerifiedDataCoin(DataCoinPredicate {
+                    asset_id,
+                    amount,
+                    ..
+                })
+                | ReadOnly::UnverifiedCoin(UnverifiedCoin {
+                    asset_id, amount, ..
+                })
+                | ReadOnly::UnverifiedDataCoin(UnverifiedDataCoin {
+                    asset_id,
+                    amount,
+                    ..
+                }) => {
+                    let balance = non_retryable_balances.entry(*asset_id).or_default();
+                    *balance = (*balance).checked_add(*amount)?;
+                }
+            },
             // Sum message coin inputs
             Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {

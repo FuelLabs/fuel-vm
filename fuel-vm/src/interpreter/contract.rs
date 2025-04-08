@@ -420,6 +420,12 @@ where
     S: ContractsAssetsStorage + ?Sized,
 {
     let balance = balance(storage, contract, asset_id)?;
+
+    if amount == 0 {
+        // Don't update the balance if the amount is zero
+        return Ok((balance, false))
+    }
+
     let balance = balance
         .checked_add(amount)
         .ok_or(PanicReason::BalanceOverflow)?;
@@ -442,6 +448,12 @@ where
     S: ContractsAssetsStorage + ?Sized,
 {
     let balance = balance(storage, contract, asset_id)?;
+
+    if amount == 0 {
+        // Don't update the balance if the amount is zero
+        return Ok(balance)
+    }
+
     let balance = balance
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;

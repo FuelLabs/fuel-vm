@@ -487,15 +487,10 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
             code_size_padded as Word,
         )?;
 
+        let amount = self.params.amount_of_coins_to_forward;
         if let Some(source_contract) = self.current_contract {
-            balance_decrease(
-                self.storage,
-                &source_contract,
-                &asset_id,
-                self.params.amount_of_coins_to_forward,
-            )?;
+            balance_decrease(self.storage, &source_contract, &asset_id, amount)?;
         } else {
-            let amount = self.params.amount_of_coins_to_forward;
             external_asset_id_balance_sub(
                 self.runtime_balances,
                 self.memory,

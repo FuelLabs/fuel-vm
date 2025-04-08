@@ -359,6 +359,8 @@ pub struct UnverifiedDataCoin {
     pub asset_id: AssetId,
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub data: Vec<u8>,
 }
 
 impl<Specification> DataCoin<Specification>

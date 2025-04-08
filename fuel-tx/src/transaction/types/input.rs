@@ -400,6 +400,24 @@ impl Input {
         }))
     }
 
+    pub const fn unverified_read_only_data_coin(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        data: Vec<u8>,
+    ) -> Self {
+        Self::ReadOnly(ReadOnly::UnverifiedDataCoin(UnverifiedDataCoin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            data,
+        }))
+    }
+
     pub const fn read_only_unverified_coin(
         utxo_id: UtxoId,
         owner: Address,
@@ -1255,7 +1273,9 @@ impl Deserialize for Input {
                     todo!()
                 }
                 InputRepr::ReadOnlyDataCoinUnverified => {
-                    todo!()
+                    Input::ReadOnly(ReadOnly::UnverifiedDataCoin(
+                        UnverifiedDataCoin::decode_static(buffer)?,
+                    ))
                 }
                 InputRepr::ReadOnlyDataCoin => {
                     todo!()

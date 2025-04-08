@@ -163,8 +163,11 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
             .saturating_sub(self.witnesses().size_dynamic() as u64)
             .saturating_mul(fee.gas_per_byte());
 
-        self.min_gas(gas_costs, fee)
-            .saturating_add(remaining_allowed_witness_gas)
+        let max_gas = self
+            .min_gas(gas_costs, fee)
+            .saturating_add(remaining_allowed_witness_gas);
+        tracing::debug!("aaaa {:?}", max_gas);
+        max_gas
     }
 
     /// Returns the minimum fee required to start transaction execution.

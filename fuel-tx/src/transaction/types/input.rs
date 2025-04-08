@@ -384,6 +384,38 @@ impl Input {
         })
     }
 
+    pub const fn unverified_read_only_coin(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+    ) -> Self {
+        Self::ReadOnly(ReadOnly::UnverifiedCoin(UnverifiedCoin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+        }))
+    }
+
+    pub const fn read_only_unverified_coin(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+    ) -> Self {
+        Self::ReadOnly(ReadOnly::UnverifiedCoin(UnverifiedCoin {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+        }))
+    }
+
     pub const fn contract(
         utxo_id: UtxoId,
         balance_root: Bytes32,
@@ -1216,9 +1248,9 @@ impl Deserialize for Input {
                         Input::DataCoinPredicate(data_coin.into_predicate())
                     }
                 }
-                InputRepr::ReadOnlyCoinUnverified => {
-                    todo!()
-                }
+                InputRepr::ReadOnlyCoinUnverified => Input::ReadOnly(
+                    ReadOnly::UnverifiedCoin(UnverifiedCoin::decode_static(buffer)?),
+                ),
                 InputRepr::ReadOnlyCoin => {
                     todo!()
                 }

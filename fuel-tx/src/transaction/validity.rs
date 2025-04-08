@@ -49,6 +49,7 @@ mod error;
 #[cfg(test)]
 mod tests;
 
+use crate::field::WitnessLimit;
 pub use error::ValidityError;
 
 impl Input {

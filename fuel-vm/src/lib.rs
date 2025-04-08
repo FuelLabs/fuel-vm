@@ -13,6 +13,8 @@
     clippy::string_slice
 )]
 
+use tracing as _;
+
 #[doc(hidden)] // Needed by some of the exported macros
 pub extern crate alloc;
 

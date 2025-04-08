@@ -91,27 +91,6 @@ fn add_up_input_balances<T: field::Inputs>(
                 let balance = non_retryable_balances.entry(*asset_id).or_default();
                 *balance = (*balance).checked_add(*amount)?;
             }
-            Input::ReadOnly(inner) => match inner {
-                ReadOnly::VerifiedCoin(CoinPredicate {
-                    asset_id, amount, ..
-                })
-                | ReadOnly::VerifiedDataCoin(DataCoinPredicate {
-                    asset_id,
-                    amount,
-                    ..
-                })
-                | ReadOnly::UnverifiedCoin(UnverifiedCoin {
-                    asset_id, amount, ..
-                })
-                | ReadOnly::UnverifiedDataCoin(UnverifiedDataCoin {
-                    asset_id,
-                    amount,
-                    ..
-                }) => {
-                    let balance = non_retryable_balances.entry(*asset_id).or_default();
-                    *balance = (*balance).checked_add(*amount)?;
-                }
-            },
             // Sum message coin inputs
             Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
@@ -123,7 +102,7 @@ fn add_up_input_balances<T: field::Inputs>(
             | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
                 retryable_balance = retryable_balance.checked_add(*amount)?;
             }
-            Input::Contract(_) => {}
+            Input::ReadOnly(_) | Input::Contract(_) => {}
         }
     }
 

@@ -1,7 +1,3 @@
-use crate::{
-    TxPointer,
-    UtxoId,
-};
 use alloc::{
     string::ToString,
     vec::Vec,
@@ -36,6 +32,13 @@ use fuel_types::{
     Word,
 };
 use message::*;
+pub use predicate::PredicateCode;
+pub use repr::InputRepr;
+
+use crate::{
+    TxPointer,
+    UtxoId,
+};
 
 pub mod coin;
 mod consts;
@@ -43,9 +46,6 @@ pub mod contract;
 pub mod message;
 mod predicate;
 mod repr;
-
-pub use predicate::PredicateCode;
-pub use repr::InputRepr;
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -414,6 +414,54 @@ impl Input {
             amount,
             asset_id,
             tx_pointer,
+            data,
+        }))
+    }
+
+    pub const fn verified_read_only_coin(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) -> Self {
+        Self::ReadOnly(ReadOnly::VerifiedCoin(CoinPredicate {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index: Empty::new(),
+            predicate_gas_used,
+            predicate: PredicateCode { bytes: predicate },
+            predicate_data,
+        }))
+    }
+
+    pub const fn verified_read_only_data_coin(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+        data: Vec<u8>,
+    ) -> Self {
+        Self::ReadOnly(ReadOnly::VerifiedDataCoin(DataCoinPredicate {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index: Empty::new(),
+            predicate_gas_used,
+            predicate: PredicateCode { bytes: predicate },
+            predicate_data,
             data,
         }))
     }
@@ -1269,17 +1317,17 @@ impl Deserialize for Input {
                 InputRepr::ReadOnlyCoinUnverified => Input::ReadOnly(
                     ReadOnly::UnverifiedCoin(UnverifiedCoin::decode_static(buffer)?),
                 ),
-                InputRepr::ReadOnlyCoin => {
-                    todo!()
-                }
+                InputRepr::ReadOnlyCoin => Input::ReadOnly(ReadOnly::VerifiedCoin(
+                    CoinPredicate::decode_static(buffer)?,
+                )),
                 InputRepr::ReadOnlyDataCoinUnverified => {
                     Input::ReadOnly(ReadOnly::UnverifiedDataCoin(
                         UnverifiedDataCoin::decode_static(buffer)?,
                     ))
                 }
-                InputRepr::ReadOnlyDataCoin => {
-                    todo!()
-                }
+                InputRepr::ReadOnlyDataCoin => Input::ReadOnly(
+                    ReadOnly::VerifiedDataCoin(DataCoinPredicate::decode_static(buffer)?),
+                ),
                 InputRepr::Contract => {
                     let contract = Contract::decode_static(buffer)?;
                     Input::Contract(contract)
@@ -1343,11 +1391,11 @@ mod snapshot_tests;
 pub mod typescript {
     use wasm_bindgen::prelude::*;
 
-    use super::*;
-
-    use crate::{
-        TxPointer,
-        UtxoId,
+    use alloc::{
+        boxed::Box,
+        format,
+        string::String,
+        vec::Vec,
     };
     use fuel_types::{
         Address,
@@ -1356,12 +1404,12 @@ pub mod typescript {
         Word,
     };
 
-    use alloc::{
-        boxed::Box,
-        format,
-        string::String,
-        vec::Vec,
+    use crate::{
+        TxPointer,
+        UtxoId,
     };
+
+    use super::*;
 
     #[derive(Clone, Eq, Hash, PartialEq, serde::Serialize, serde::Deserialize)]
     #[wasm_bindgen]

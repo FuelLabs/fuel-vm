@@ -254,12 +254,6 @@ fn correct_change_is_provided_for_data_coin_outputs_create() {
 
 #[test]
 fn transact__unverified_read_only_coin_included_but_value_not_consumed() {
-    let _ = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .try_init();
-
-    tracing::debug!("hello");
-
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     // given
@@ -324,12 +318,6 @@ fn transact__unverified_read_only_coin_included_but_value_not_consumed() {
 
 #[test]
 fn transact__unverified_read_only_data_coin_included_but_value_not_consumed() {
-    let _ = tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .try_init();
-
-    tracing::debug!("hello");
-
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     // given
@@ -372,6 +360,144 @@ fn transact__unverified_read_only_data_coin_included_but_value_not_consumed() {
         input_amount,
         base_asset_id,
         rng.gen(),
+        data,
+    );
+
+    let mut context = TestBuilder::new(2322u64);
+    let context = context.base_asset_id(base_asset_id);
+
+    let consensus_params = context.consensus_params();
+
+    // when
+    let checked = script
+        .into_checked_basic(context.get_block_height(), &consensus_params)
+        .expect("failed to generate checked tx");
+
+    // then
+    let state = context
+        .execute_tx(checked)
+        .expect("Create should be executed");
+    let change = find_change(state.tx().outputs().to_vec(), base_asset_id);
+
+    assert_eq!(change, spend_amount);
+}
+
+#[test]
+fn transact__verified_read_only_coin_included_but_value_not_consumed() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+
+    // given
+    let input_amount = 1000;
+    let spend_amount = 600;
+    let base_asset_id: AssetId = rng.gen();
+    let input_owner = rng.gen();
+    let utxo_id = rng.gen();
+    let read_only_input = Input::read_only_unverified_coin(
+        utxo_id,
+        Address::default(),
+        input_amount.clone(),
+        AssetId::default(),
+        TxPointer::default(),
+    );
+
+    let change_output = Output::change(rng.gen(), 0, base_asset_id);
+    let mut script = Transaction::script(
+        10000,
+        vec![],
+        vec![],
+        Policies::new().with_max_fee(0),
+        vec![],
+        vec![change_output],
+        vec![Witness::default()],
+    );
+    script.add_unsigned_coin_input(
+        utxo_id,
+        &Default::default(),
+        spend_amount,
+        base_asset_id,
+        input_owner,
+        Default::default(),
+    );
+
+    let true_predicate = vec![op::ret(0x01)].into_iter().collect();
+    script.add_verified_read_only_coin_input(
+        rng.gen(),
+        &Default::default(),
+        input_amount,
+        base_asset_id,
+        rng.gen(),
+        0,
+        true_predicate,
+        vec![],
+    );
+
+    let mut context = TestBuilder::new(2322u64);
+    let context = context.base_asset_id(base_asset_id);
+
+    let consensus_params = context.consensus_params();
+
+    // when
+    let checked = script
+        .into_checked_basic(context.get_block_height(), &consensus_params)
+        .expect("failed to generate checked tx");
+
+    // then
+    let state = context
+        .execute_tx(checked)
+        .expect("Create should be executed");
+    let change = find_change(state.tx().outputs().to_vec(), base_asset_id);
+
+    assert_eq!(change, spend_amount);
+}
+
+#[test]
+fn transact__verified_read_only_data_coin_included_but_value_not_consumed() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+
+    // given
+    let input_amount = 1000;
+    let spend_amount = 600;
+    let base_asset_id: AssetId = rng.gen();
+    let input_owner = rng.gen();
+    let utxo_id = rng.gen();
+    let read_only_input = Input::read_only_unverified_coin(
+        utxo_id,
+        Address::default(),
+        input_amount.clone(),
+        AssetId::default(),
+        TxPointer::default(),
+    );
+
+    let change_output = Output::change(rng.gen(), 0, base_asset_id);
+    let mut script = Transaction::script(
+        10000,
+        vec![],
+        vec![],
+        Policies::new().with_max_fee(0),
+        vec![],
+        vec![change_output],
+        vec![Witness::default()],
+    );
+    script.add_unsigned_coin_input(
+        utxo_id,
+        &Default::default(),
+        spend_amount,
+        base_asset_id,
+        input_owner,
+        Default::default(),
+    );
+
+    let data = vec![1, 2, 3, 4, 5, 6];
+    let true_predicate = vec![op::ret(0x01)].into_iter().collect();
+    script.add_verified_read_only_data_coin_input(
+        rng.gen(),
+        &Default::default(),
+        input_amount,
+        base_asset_id,
+        rng.gen(),
+        0,
+        true_predicate,
+        vec![],
         data,
     );
 

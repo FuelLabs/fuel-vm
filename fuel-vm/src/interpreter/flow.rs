@@ -506,7 +506,7 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         )?;
 
         // credit contract asset_id balance
-        let (_, created_new_entry) = balance_increase(
+        let created_new_entry = balance_increase(
             self.storage,
             call.to(),
             &asset_id,

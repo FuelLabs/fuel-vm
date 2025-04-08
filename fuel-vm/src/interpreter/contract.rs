@@ -277,7 +277,7 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
             external_asset_id_balance_sub(self.balances, self.memory, &asset_id, amount)?;
         }
         // credit destination contract
-        let (_, created_new_entry) =
+        let created_new_entry =
             balance_increase(self.storage, &destination, &asset_id, amount)?;
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
@@ -409,32 +409,29 @@ where
 }
 
 /// Increase the asset balance for a contract.
-/// Returns new balance, and a boolean indicating if a new entry was created.
+/// A boolean indicating if a new entry was created.
 pub fn balance_increase<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> IoResult<(Word, bool), S::Error>
+) -> IoResult<bool, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
-    let balance = balance(storage, contract, asset_id)?;
-
     if amount == 0 {
         // Don't update the balance if the amount is zero
-        return Ok((balance, false))
+        return Ok(false)
     }
 
+    let balance = balance(storage, contract, asset_id)?;
     let balance = balance
         .checked_add(amount)
         .ok_or(PanicReason::BalanceOverflow)?;
-
     let old_value = storage
         .contract_asset_id_balance_replace(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
-
-    Ok((balance, old_value.is_none()))
+    Ok(old_value.is_none())
 }
 
 /// Decrease the asset balance for a contract.
@@ -443,22 +440,21 @@ pub fn balance_decrease<S>(
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> IoResult<Word, S::Error>
+) -> IoResult<(), S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
-    let balance = balance(storage, contract, asset_id)?;
-
     if amount == 0 {
         // Don't update the balance if the amount is zero
-        return Ok(balance)
+        return Ok(())
     }
 
+    let balance = balance(storage, contract, asset_id)?;
     let balance = balance
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;
     storage
         .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
-    Ok(balance)
+    Ok(())
 }

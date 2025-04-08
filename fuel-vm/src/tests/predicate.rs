@@ -1171,6 +1171,72 @@ async fn gtf_args__read_only_unverified_coin_utxo_id() {
     assert!(success);
 }
 
+// do owner
+fn check_read_only_unverified_coin_owner_predicate(owner: Address) -> Vec<u8> {
+    let owner_size = owner.size();
+    let owner_size_reg = 0x13;
+    let actual_owner_reg = 0x12;
+    let expected_owner_reg = 0x11;
+    let res_reg = 0x10;
+    let read_only_index = 0;
+    let predicate_input_index = 1;
+    vec![
+        op::movi(owner_size_reg, owner_size as u32),
+        op::gtf_args(actual_owner_reg, read_only_index, GTFArgs::InputCoinOwner),
+        op::gtf_args(
+            expected_owner_reg,
+            predicate_input_index,
+            GTFArgs::InputCoinPredicateData,
+        ),
+        op::meq(
+            res_reg,
+            expected_owner_reg,
+            actual_owner_reg,
+            owner_size_reg,
+        ),
+        op::ret(res_reg),
+    ]
+    .into_iter()
+    .collect()
+}
+
+#[tokio::test]
+async fn gtf_args__read_only_unverified_coin_owner() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let owner: Address = rng.gen();
+    let amount = 123;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_data = owner.to_bytes();
+    let predicate = check_read_only_unverified_coin_owner_predicate(owner);
+    let read_input =
+        Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
 fn check_read_only_unverified_coin_amount_predicate(amount: Word) -> Vec<u8> {
     let expected_amount_reg = 0x13;
     let actual_amount_reg = 0x12;

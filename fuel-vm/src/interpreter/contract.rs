@@ -408,7 +408,7 @@ where
         .unwrap_or_default())
 }
 
-/// Increase the asset balance for a contract.
+/// Increase the asset balance for a contract, unless the `amount` is zero.
 /// A boolean indicating if a new entry was created.
 pub fn balance_increase<S>(
     storage: &mut S,
@@ -434,7 +434,7 @@ where
     Ok(old_value.is_none())
 }
 
-/// Decrease the asset balance for a contract.
+/// Decrease the asset balance for a contract, unless the `amount` is zero.
 pub fn balance_decrease<S>(
     storage: &mut S,
     contract: &ContractId,

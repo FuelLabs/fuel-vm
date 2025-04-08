@@ -240,7 +240,7 @@ where
 
     let output = Output::data_coin(different_owner, amount, asset_id, output_data);
 
-    execute_predicate_with_input_and_output(input, output).await
+    execute_predicate_with_input_and_output(vec![input], vec![output]).await
 }
 
 async fn execute_predicate_with_input(
@@ -314,7 +314,10 @@ async fn execute_predicate_with_input(
     }
 }
 
-async fn execute_predicate_with_input_and_output(input: Input, output: Output) -> bool {
+async fn execute_predicate_with_input_and_output(
+    inputs: Vec<Input>,
+    outputs: Vec<Output>,
+) -> bool {
     let maturity = Default::default();
     let height = Default::default();
     let gas_limit = 1_000_000;
@@ -327,8 +330,12 @@ async fn execute_predicate_with_input_and_output(input: Input, output: Output) -
 
     builder.script_gas_limit(gas_limit).maturity(maturity);
 
-    builder.add_input(input);
-    builder.add_output(output);
+    for input in inputs {
+        builder.add_input(input);
+    }
+    for output in outputs {
+        builder.add_output(output);
+    }
 
     let mut transaction = builder.finalize();
     transaction
@@ -953,7 +960,8 @@ async fn gtf_args__output_data_coin_to() {
     );
 
     // when
-    let success = execute_predicate_with_input_and_output(input, output).await;
+    let success =
+        execute_predicate_with_input_and_output(vec![input], vec![output]).await;
 
     // then
     assert!(success);
@@ -1013,7 +1021,8 @@ async fn gtf_args__output_data_coin_amount() {
     );
 
     // when
-    let success = execute_predicate_with_input_and_output(input, output).await;
+    let success =
+        execute_predicate_with_input_and_output(vec![input], vec![output]).await;
 
     // then
     assert!(success);
@@ -1086,7 +1095,77 @@ async fn gtf_args__output_data_coin_asset_id() {
     );
 
     // when
-    let success = execute_predicate_with_input_and_output(input, output).await;
+    let success =
+        execute_predicate_with_input_and_output(vec![input], vec![output]).await;
+
+    // then
+    assert!(success);
+}
+
+fn check_read_only_unverified_coin_utxo_id_predicate(
+    expected: UtxoId,
+    utxo_id_bytes: &[u8],
+) -> Vec<u8> {
+    let utxo_id_size = utxo_id_bytes.len();
+    let utxo_id_size_reg = 0x13;
+    let actual_utxo_id_reg = 0x12;
+    let expected_utxo_id_reg = 0x11;
+    let res_reg = 0x10;
+    let read_only_index = 0;
+    let predicate_input_index = 1;
+    vec![
+        op::movi(utxo_id_size_reg, utxo_id_size as u32),
+        op::gtf_args(actual_utxo_id_reg, read_only_index, GTFArgs::InputCoinTxId),
+        op::gtf_args(
+            expected_utxo_id_reg,
+            predicate_input_index,
+            GTFArgs::InputCoinPredicateData,
+        ),
+        op::meq(
+            res_reg,
+            expected_utxo_id_reg,
+            actual_utxo_id_reg,
+            utxo_id_size_reg,
+        ),
+        op::ret(res_reg),
+    ]
+    .into_iter()
+    .collect()
+}
+
+#[tokio::test]
+async fn gtf_args__read_only_unverified_coin_utxo_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let owner = rng.gen();
+    let amount = 123;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_data = utxo_id.to_bytes();
+    let predicate =
+        check_read_only_unverified_coin_utxo_id_predicate(utxo_id, &predicate_data);
+    let read_input =
+        Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
 
     // then
     assert!(success);

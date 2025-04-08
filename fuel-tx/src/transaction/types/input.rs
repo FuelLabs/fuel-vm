@@ -1030,11 +1030,18 @@ impl Input {
     }
 
     pub const fn is_coin(&self) -> bool {
-        self.is_coin_signed() | self.is_coin_predicate()
+        self.is_coin_signed()
+            | self.is_coin_predicate()
+            | self.is_data_coin()
+            | self.is_read_only_coin()
     }
 
     pub const fn is_data_coin(&self) -> bool {
         self.is_data_coin_signed() | self.is_data_coin_predicate()
+    }
+
+    pub const fn is_read_only_coin(&self) -> bool {
+        matches!(self, Input::ReadOnly(_))
     }
 
     pub const fn is_coin_signed(&self) -> bool {

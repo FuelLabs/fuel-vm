@@ -288,13 +288,7 @@ pub enum CheckError {
     /// The transaction doesn't pass validity rules.
     Validity(ValidityError),
     /// The predicate verification failed.
-    PredicateVerificationFailed {
-        /// Input index of the failed predicate.
-        /// `TransactionExceedsTotalGasAllowance` sets this to `0`.
-        input_index: usize,
-        /// The reason of the failure.
-        reason: PredicateVerificationFailed,
-    },
+    PredicateVerificationFailed(PredicateVerificationFailed),
     /// The max fee used during checking was lower than calculated during `Immutable`
     /// conversion
     InsufficientMaxFee {
@@ -923,12 +917,9 @@ impl From<ValidityError> for CheckError {
     }
 }
 
-impl From<(usize, PredicateVerificationFailed)> for CheckError {
-    fn from((input_index, reason): (usize, PredicateVerificationFailed)) -> Self {
-        CheckError::PredicateVerificationFailed {
-            input_index,
-            reason,
-        }
+impl From<PredicateVerificationFailed> for CheckError {
+    fn from(value: PredicateVerificationFailed) -> Self {
+        CheckError::PredicateVerificationFailed(value)
     }
 }
 

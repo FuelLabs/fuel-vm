@@ -158,7 +158,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-    ) -> Result<PredicatesChecked, (usize, PredicateVerificationFailed)>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
@@ -182,7 +182,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-    ) -> Result<PredicatesChecked, (usize, PredicateVerificationFailed)>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
@@ -212,7 +212,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-    ) -> Result<PredicatesChecked, (usize, PredicateVerificationFailed)>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
     {
@@ -236,7 +236,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-    ) -> Result<PredicatesChecked, (usize, PredicateVerificationFailed)>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
@@ -257,7 +257,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
         storage: &impl PredicateStorageProvider,
-    ) -> Result<PredicatesChecked, (usize, PredicateVerificationFailed)>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
@@ -313,7 +313,7 @@ pub mod predicates {
         params: &CheckPredicateParams,
         mut memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
-    ) -> Result<PredicatesChecked, (usize, PredicateVerificationFailed)>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
     {
@@ -384,7 +384,10 @@ pub mod predicates {
                     ..
                 }) => {
                     if !Input::is_predicate_owner_valid(address, &**predicate) {
-                        return (0, Err(PredicateVerificationFailed::InvalidOwner));
+                        return (
+                            0,
+                            Err(PredicateVerificationFailed::InvalidOwner { index }),
+                        );
                     }
                 }
                 _ => {}
@@ -417,7 +420,10 @@ pub mod predicates {
         };
 
         if let Err(err) = vm.init_predicate(context, tx, available_gas) {
-            return (0, Err(err.into()));
+            return (
+                0,
+                Err(PredicateVerificationFailed::interpreter_error(index, err)),
+            );
         }
 
         let result = vm.verify_predicate();
@@ -430,14 +436,20 @@ pub mod predicates {
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
                 return if let Err(err) = result {
-                    (gas_used, Err(err))
+                    (
+                        gas_used,
+                        Err(PredicateVerificationFailed::interpreter_error(index, err)),
+                    )
                 } else {
-                    (gas_used, Err(PredicateVerificationFailed::False))
+                    (gas_used, Err(PredicateVerificationFailed::False { index }))
                 }
             }
 
             if vm.remaining_gas() != 0 {
-                return (gas_used, Err(PredicateVerificationFailed::GasMismatch));
+                return (
+                    gas_used,
+                    Err(PredicateVerificationFailed::GasMismatch { index }),
+                );
             }
         }
 
@@ -448,7 +460,7 @@ pub mod predicates {
         mut kind: PredicateRunKind<Tx>,
         checks: Vec<(usize, Result<Word, PredicateVerificationFailed>)>,
         params: &CheckPredicateParams,
-    ) -> Result<PredicatesChecked, (usize, PredicateVerificationFailed)>
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
     {
@@ -482,22 +494,22 @@ pub mod predicates {
 
         let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
         if max_gas > params.max_gas_per_tx {
-            return Err((
-                0, // Dummy value
+            return Err(
                 PredicateVerificationFailed::TransactionExceedsTotalGasAllowance(max_gas),
-            ));
+            );
         }
 
         let mut cumulative_gas_used: u64 = 0;
         for (input_index, result) in checks {
             match result {
                 Ok(gas_used) => {
-                    cumulative_gas_used = cumulative_gas_used
-                        .checked_add(gas_used)
-                        .ok_or((input_index, PredicateVerificationFailed::OutOfGas))?;
+                    cumulative_gas_used =
+                        cumulative_gas_used.checked_add(gas_used).ok_or(
+                            PredicateVerificationFailed::OutOfGas { index: input_index },
+                        )?;
                 }
                 Err(failed) => {
-                    return Err((input_index, failed));
+                    return Err(failed);
                 }
             }
         }

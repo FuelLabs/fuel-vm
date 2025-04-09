@@ -253,7 +253,7 @@ fn correct_change_is_provided_for_data_coin_outputs_create() {
 }
 
 #[test]
-fn transact__unverified_read_only_coin_included_but_value_not_consumed() {
+fn transact__read_only_coin_included_but_value_not_consumed() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     // given
@@ -282,7 +282,7 @@ fn transact__unverified_read_only_coin_included_but_value_not_consumed() {
         Default::default(),
     );
 
-    script.add_unverified_read_only_coin_input(
+    script.add_read_only_coin_input(
         rng.gen(),
         &Default::default(),
         input_amount,
@@ -310,7 +310,7 @@ fn transact__unverified_read_only_coin_included_but_value_not_consumed() {
 }
 
 #[test]
-fn transact__unverified_read_only_data_coin_included_but_value_not_consumed() {
+fn transact__read_only_data_coin_included_but_value_not_consumed() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     // given
@@ -340,7 +340,7 @@ fn transact__unverified_read_only_data_coin_included_but_value_not_consumed() {
     );
 
     let data = vec![1, 2, 3, 4, 5, 6];
-    script.add_unverified_read_only_data_coin_input(
+    script.add_read_only_data_coin_input(
         rng.gen(),
         &Default::default(),
         input_amount,

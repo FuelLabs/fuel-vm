@@ -600,7 +600,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs_mut().push(input);
     }
 
-    fn add_unverified_read_only_coin_input(
+    fn add_read_only_coin_input(
         &mut self,
         utxo_id: UtxoId,
         owner: &PublicKey,
@@ -616,7 +616,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs_mut().push(input);
     }
 
-    fn add_unverified_read_only_data_coin_input(
+    fn add_read_only_data_coin_input(
         &mut self,
         utxo_id: UtxoId,
         owner: &PublicKey,

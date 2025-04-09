@@ -1102,7 +1102,7 @@ async fn gtf_args__output_data_coin_asset_id() {
     assert!(success);
 }
 
-fn check_read_only_unverified_coin_utxo_id_predicate(utxo_id_bytes: &[u8]) -> Vec<u8> {
+fn check_read_only_coin_utxo_id_predicate(utxo_id_bytes: &[u8]) -> Vec<u8> {
     let utxo_id_size = utxo_id_bytes.len();
     let utxo_id_size_reg = 0x13;
     let actual_utxo_id_reg = 0x12;
@@ -1131,7 +1131,7 @@ fn check_read_only_unverified_coin_utxo_id_predicate(utxo_id_bytes: &[u8]) -> Ve
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_coin_utxo_id() {
+async fn gtf_args__read_only_coin_utxo_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1141,7 +1141,7 @@ async fn gtf_args__read_only_unverified_coin_utxo_id() {
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = utxo_id.to_bytes();
-    let predicate = check_read_only_unverified_coin_utxo_id_predicate(&predicate_data);
+    let predicate = check_read_only_coin_utxo_id_predicate(&predicate_data);
     let read_input =
         Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
@@ -1168,7 +1168,7 @@ async fn gtf_args__read_only_unverified_coin_utxo_id() {
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_data_coin_utxo_id() {
+async fn gtf_args__read_only_data_coin_utxo_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1178,7 +1178,7 @@ async fn gtf_args__read_only_unverified_data_coin_utxo_id() {
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = utxo_id.to_bytes();
-    let predicate = check_read_only_unverified_coin_utxo_id_predicate(&predicate_data);
+    let predicate = check_read_only_coin_utxo_id_predicate(&predicate_data);
     let data = vec![];
     let read_input = Input::unverified_read_only_data_coin(
         utxo_id, owner, amount, asset_id, tx_pointer, data,
@@ -1206,7 +1206,7 @@ async fn gtf_args__read_only_unverified_data_coin_utxo_id() {
     assert!(success);
 }
 
-fn check_read_only_unverified_coin_owner_predicate(owner: Address) -> Vec<u8> {
+fn check_read_only_coin_owner_predicate(owner: Address) -> Vec<u8> {
     let owner_size = owner.size();
     let owner_size_reg = 0x13;
     let actual_owner_reg = 0x12;
@@ -1235,7 +1235,7 @@ fn check_read_only_unverified_coin_owner_predicate(owner: Address) -> Vec<u8> {
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_coin_owner() {
+async fn gtf_args__read_only_coin_owner() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1245,7 +1245,7 @@ async fn gtf_args__read_only_unverified_coin_owner() {
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = owner.to_bytes();
-    let predicate = check_read_only_unverified_coin_owner_predicate(owner);
+    let predicate = check_read_only_coin_owner_predicate(owner);
     let read_input =
         Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
@@ -1272,7 +1272,7 @@ async fn gtf_args__read_only_unverified_coin_owner() {
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_data_coin_owner() {
+async fn gtf_args__read_only_data_coin_owner() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1282,7 +1282,7 @@ async fn gtf_args__read_only_unverified_data_coin_owner() {
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = owner.to_bytes();
-    let predicate = check_read_only_unverified_coin_owner_predicate(owner);
+    let predicate = check_read_only_coin_owner_predicate(owner);
     let data = vec![];
     let read_input = Input::unverified_read_only_data_coin(
         utxo_id, owner, amount, asset_id, tx_pointer, data,
@@ -1310,7 +1310,7 @@ async fn gtf_args__read_only_unverified_data_coin_owner() {
     assert!(success);
 }
 
-fn check_read_only_unverified_coin_amount_predicate(amount: Word) -> Vec<u8> {
+fn check_read_only_coin_amount_predicate(amount: Word) -> Vec<u8> {
     let expected_amount_reg = 0x13;
     let actual_amount_reg = 0x12;
     let res_reg = 0x10;
@@ -1326,7 +1326,7 @@ fn check_read_only_unverified_coin_amount_predicate(amount: Word) -> Vec<u8> {
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_coin_amount() {
+async fn gtf_args__read_only_coin_amount() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1336,7 +1336,7 @@ async fn gtf_args__read_only_unverified_coin_amount() {
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = utxo_id.to_bytes();
-    let predicate = check_read_only_unverified_coin_amount_predicate(amount);
+    let predicate = check_read_only_coin_amount_predicate(amount);
     let read_input =
         Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
@@ -1363,7 +1363,7 @@ async fn gtf_args__read_only_unverified_coin_amount() {
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_data_coin_amount() {
+async fn gtf_args__read_only_data_coin_amount() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1373,7 +1373,7 @@ async fn gtf_args__read_only_unverified_data_coin_amount() {
     let asset_id = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = utxo_id.to_bytes();
-    let predicate = check_read_only_unverified_coin_amount_predicate(amount);
+    let predicate = check_read_only_coin_amount_predicate(amount);
     let data = vec![];
     let read_input = Input::unverified_read_only_data_coin(
         utxo_id, owner, amount, asset_id, tx_pointer, data,
@@ -1401,7 +1401,7 @@ async fn gtf_args__read_only_unverified_data_coin_amount() {
     assert!(success);
 }
 
-fn check_read_only_unverified_coin_asset_id_predicate(asset_id_size: usize) -> Vec<u8> {
+fn check_read_only_coin_asset_id_predicate(asset_id_size: usize) -> Vec<u8> {
     let asset_id_size_reg = 0x13;
     let actual_utxo_id_reg = 0x12;
     let expected_utxo_id_reg = 0x11;
@@ -1433,7 +1433,7 @@ fn check_read_only_unverified_coin_asset_id_predicate(asset_id_size: usize) -> V
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_coin_asset_id() {
+async fn gtf_args__read_only_coin_asset_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1443,8 +1443,7 @@ async fn gtf_args__read_only_unverified_coin_asset_id() {
     let asset_id: AssetId = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = asset_id.to_bytes();
-    let predicate =
-        check_read_only_unverified_coin_asset_id_predicate(predicate_data.len());
+    let predicate = check_read_only_coin_asset_id_predicate(predicate_data.len());
     let read_input =
         Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
@@ -1471,7 +1470,7 @@ async fn gtf_args__read_only_unverified_coin_asset_id() {
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_datacoin_asset_id() {
+async fn gtf_args__read_only_datacoin_asset_id() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1481,8 +1480,7 @@ async fn gtf_args__read_only_unverified_datacoin_asset_id() {
     let asset_id: AssetId = rng.gen();
     let tx_pointer = rng.gen();
     let predicate_data = asset_id.to_bytes();
-    let predicate =
-        check_read_only_unverified_coin_asset_id_predicate(predicate_data.len());
+    let predicate = check_read_only_coin_asset_id_predicate(predicate_data.len());
     let data = vec![];
     let read_input = Input::unverified_read_only_data_coin(
         utxo_id, owner, amount, asset_id, tx_pointer, data,
@@ -1510,9 +1508,7 @@ async fn gtf_args__read_only_unverified_datacoin_asset_id() {
     assert!(success);
 }
 
-fn check_read_only_unverified_data_coin_data_len_predicate(
-    expected_len: usize,
-) -> Vec<u8> {
+fn check_read_only_data_coin_data_len_predicate(expected_len: usize) -> Vec<u8> {
     let expected_len_reg = 0x13;
     let actual_len_reg = 0x14;
     let res_reg = 0x10;
@@ -1532,7 +1528,7 @@ fn check_read_only_unverified_data_coin_data_len_predicate(
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_data_coin_data_len() {
+async fn gtf_args__read_only_data_coin_data_len() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1543,7 +1539,7 @@ async fn gtf_args__read_only_unverified_data_coin_data_len() {
     let tx_pointer = rng.gen();
     let data = vec![1, 2, 3, 4, 5];
     let predicate_data = vec![];
-    let predicate = check_read_only_unverified_data_coin_data_len_predicate(data.len());
+    let predicate = check_read_only_data_coin_data_len_predicate(data.len());
     let read_input = Input::unverified_read_only_data_coin(
         utxo_id, owner, amount, asset_id, tx_pointer, data,
     );
@@ -1570,7 +1566,7 @@ async fn gtf_args__read_only_unverified_data_coin_data_len() {
     assert!(success);
 }
 
-fn check_read_only_unverified_data_coin_data_predicate(data_size: usize) -> Vec<u8> {
+fn check_read_only_data_coin_data_predicate(data_size: usize) -> Vec<u8> {
     let asset_id_size_reg = 0x13;
     let actual_data_reg = 0x12;
     let expected_data_reg = 0x11;
@@ -1598,7 +1594,7 @@ fn check_read_only_unverified_data_coin_data_predicate(data_size: usize) -> Vec<
 }
 
 #[tokio::test]
-async fn gtf_args__read_only_unverified_data_coin_data() {
+async fn gtf_args__read_only_data_coin_data() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     // given
@@ -1609,7 +1605,7 @@ async fn gtf_args__read_only_unverified_data_coin_data() {
     let tx_pointer = rng.gen();
     let data = vec![5; 100];
     let predicate_data = data.clone();
-    let predicate = check_read_only_unverified_data_coin_data_predicate(data.len());
+    let predicate = check_read_only_data_coin_data_predicate(data.len());
     let read_input = Input::unverified_read_only_data_coin(
         utxo_id, owner, amount, asset_id, tx_pointer, data,
     );

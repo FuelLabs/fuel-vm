@@ -183,8 +183,8 @@ impl InputRepr {
             | Input::MessageDataPredicate(_) => InputRepr::Message,
             Input::DataCoinSigned(_) | Input::DataCoinPredicate(_) => InputRepr::DataCoin,
             Input::ReadOnly(inner) => match inner {
-                ReadOnly::UnverifiedCoin(_) => InputRepr::ReadOnlyCoinUnverified,
-                ReadOnly::UnverifiedDataCoin(_) => InputRepr::ReadOnlyDataCoinUnverified,
+                ReadOnly::Coin(_) => InputRepr::ReadOnlyCoinUnverified,
+                ReadOnly::DataCoin(_) => InputRepr::ReadOnlyDataCoinUnverified,
             },
         }
     }

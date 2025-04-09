@@ -1,5 +1,8 @@
 #![allow(non_snake_case)]
 
+#[cfg(test)]
+mod ldc_mode_2;
+
 use crate::{
     consts::*,
     interpreter::{
@@ -69,17 +72,12 @@ fn deploy_contract<M>(
 ) where
     M: Memory,
 {
-    let code_root = Contract::root_from_code(contract.as_ref());
-    let state_root = Contract::initial_state_root(storage_slots.iter());
-    let contract_id =
-        Contract::from(contract.as_ref()).id(&salt, &code_root, &state_root);
-
     let tx_params = TxParameters::default();
     let height = Default::default();
     let contract_deployer = TransactionBuilder::create(contract, salt, storage_slots)
         .with_tx_params(tx_params)
-        .add_output(Output::contract_created(contract_id, state_root))
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .finalize_checked(height);
 
     client
@@ -470,7 +468,7 @@ fn state_write_charges_for_new_storage() {
 }
 
 #[test]
-fn ldc__offset_affects_read_code() {
+fn ldc__offset_changes_cost() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let salt: Salt = rng.gen();
 
@@ -598,16 +596,15 @@ where
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
     let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let output0 = Output::contract_created(contract_id, state_root);
-    let output1 = Output::contract(0, rng.gen(), rng.gen());
+    let output0 = Output::contract(0, rng.gen(), rng.gen());
 
     let consensus_params = ConsensusParameters::standard();
 
     let tx_create_target =
         TransactionBuilder::create(target_contract_witness.clone(), salt, vec![])
             .maturity(maturity)
-            .add_random_fee_input()
-            .add_output(output0)
+            .add_fee_input()
+            .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -638,10 +635,10 @@ where
 
     // when
     load_contract.extend([
-        op::move_(reg_a, RegId::HP),   // r[a] := $hp
-        op::ori(reg_b, reg_b, offset), // r[b] += offset
-        op::ori(reg_c, reg_c, len),    // r[b] += len
-        op::ldc(reg_a, reg_b, reg_c),  // Load first two words from the contract
+        op::move_(reg_a, RegId::HP),     // r[a] := $hp
+        op::ori(reg_b, reg_b, offset),   // r[b] += offset
+        op::ori(reg_c, reg_c, len),      // r[b] += len
+        op::ldc(reg_a, reg_b, reg_c, 0), // Load first two words from the contract
     ]);
 
     if include_log_d {
@@ -668,8 +665,8 @@ where
     .script_gas_limit(gas_limit)
     .maturity(maturity)
     .add_input(input0.clone())
-    .add_random_fee_input()
-    .add_output(output1)
+    .add_fee_input()
+    .add_output(output0)
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");
@@ -685,8 +682,8 @@ where
             .script_gas_limit(gas_limit)
             .maturity(maturity)
             .add_input(input0)
-            .add_random_fee_input()
-            .add_output(output1)
+            .add_fee_input()
+            .add_output(output0)
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -741,12 +738,10 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
-    let output0 = Output::contract_created(contract_id, state_root);
-
     let tx_create_target = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
-        .add_random_fee_input()
-        .add_output(output0)
+        .add_fee_input()
+        .add_contract_created()
         .finalize()
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
@@ -761,7 +756,7 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     )
     .script_gas_limit(gas_limit)
     .maturity(maturity)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize()
     .into_checked(height, &consensus_params)
     .expect("failed to check tx");
@@ -791,13 +786,13 @@ fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
 }
 
 #[test]
-fn ldc_ssp_not_sp() {
+fn ldc__fails_with_nonempty_stack() {
     let (load_contract, _) = script_with_data_offset!(
         data_offset,
         vec![
             op::movi(0x10, data_offset as Immediate18),
             op::cfei(0x1), // sp += 1
-            op::ldc(0x10, RegId::ZERO, RegId::ONE),
+            op::ldc(0x10, RegId::ZERO, RegId::ONE, 0),
         ],
         TxParameters::DEFAULT.tx_offset()
     );
@@ -806,14 +801,14 @@ fn ldc_ssp_not_sp() {
 }
 
 #[test]
-fn ldc_mem_offset_above_reg_hp() {
+fn ldc__fails_when_mem_offset_is_above_reg_hp() {
     // Then deploy another contract that attempts to read the first one
 
     let (load_contract, _) = script_with_data_offset!(
         data_offset,
         vec![
             op::movi(0x10, data_offset as Immediate18),
-            op::ldc(0x10, RegId::ZERO, RegId::HP),
+            op::ldc(0x10, RegId::ZERO, RegId::HP, 0),
         ],
         TxParameters::DEFAULT.tx_offset()
     );
@@ -826,7 +821,7 @@ fn ldc_contract_size_overflow() {
     ldc_reason_helper(
         vec![
             op::not(0x20, RegId::ZERO),
-            op::ldc(RegId::HP, RegId::ZERO, 0x20),
+            op::ldc(RegId::HP, RegId::ZERO, 0x20, 0),
         ],
         MemoryOverflow,
     );
@@ -840,10 +835,10 @@ fn ldc_contract_id_end_beyond_max_ram() {
 
     // cover contract_id_end beyond max ram
     let load_contract = vec![
-        op::move_(reg_a, RegId::HP),        // r[a] := $hp
-        op::xor(reg_b, reg_b, reg_b),       // r[b] := 0
-        op::ori(reg_b, reg_b, 12),          // r[b] += 12 (will be padded to 16)
-        op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
+        op::move_(reg_a, RegId::HP),           // r[a] := $hp
+        op::xor(reg_b, reg_b, reg_b),          // r[b] := 0
+        op::ori(reg_b, reg_b, 12),             // r[b] += 12 (will be padded to 16)
+        op::ldc(reg_a, RegId::ZERO, reg_b, 0), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, MemoryOverflow);
@@ -857,7 +852,7 @@ fn ldc_contract_not_in_inputs() {
 
     // contract not in inputs
     let load_contract = vec![
-        op::ldc(reg_a, RegId::ZERO, reg_b), // Load first two words from the contract
+        op::ldc(reg_a, RegId::ZERO, reg_b, 0), // Load first two words from the contract
     ];
 
     ldc_reason_helper(load_contract, ContractNotInInputs);
@@ -890,7 +885,7 @@ fn load_contract_code_copies_expected_bytes() {
             op::movi(0x12, 0 as Immediate18),
             op::movi(0x13, contract_size as Immediate18),
             op::move_(0x22, RegId::SSP),
-            op::ldc(0x11, 0x12, 0x13),
+            op::ldc(0x11, 0x12, 0x13, 0),
             op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
             op::meq(0x30, 0x21, 0x22, 0x13),
             op::ret(0x30),
@@ -946,7 +941,7 @@ fn load_contract_code_out_of_contract_offset_over_length() {
             op::movi(0x12, (contract_size + 1) as Immediate18),
             op::movi(0x13, contract_size as Immediate18),
             op::move_(0x22, RegId::SSP),
-            op::ldc(0x11, 0x12, 0x13),
+            op::ldc(0x11, 0x12, 0x13, 0),
             op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
             op::meq(0x30, 0x21, 0x22, 0x13),
             op::ret(0x30),
@@ -1946,7 +1941,7 @@ fn timestamp_works() {
         let tx = TransactionBuilder::script(script, script_data)
             .script_gas_limit(gas_limit)
             .maturity(maturity)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize_checked(block_height);
 
         let receipts = client.transact(tx);
@@ -2000,7 +1995,7 @@ fn block_height_works(#[values(0, 1, 2, 10, 100)] current_height: u32) {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
@@ -2049,7 +2044,7 @@ fn block_hash_works(
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(current_height);
 
     let receipts = client.transact(tx);
@@ -2087,7 +2082,7 @@ fn coinbase_works() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(gas_limit)
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize_checked(10.into());
 
     let receipts = client.transact(tx);
@@ -2125,15 +2120,13 @@ fn various_ldc_issues_poc() {
     let target_contract_id =
         target_contract.id(&salt, &target_contract_root, &target_state_root);
 
-    let output0 = Output::contract_created(target_contract_id, target_state_root);
-
     let consensus_params = ConsensusParameters::standard();
 
     let tx_create_target =
         TransactionBuilder::create(target_program.clone(), salt, vec![])
             .maturity(maturity)
-            .add_random_fee_input()
-            .add_output(output0)
+            .add_fee_input()
+            .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -2166,7 +2159,7 @@ fn various_ldc_issues_poc() {
         op::move_(reg_a, RegId::HP),         // r[a] := $hp
         op::movi(reg_b, offset),             // r[b] = offset
         op::movi(reg_c, target_len),         // r[c] := len
-        op::ldc(reg_a, reg_b, reg_c),        // Load first two words from the contract
+        op::ldc(reg_a, reg_b, reg_c, 0),     // Load first two words from the contract
         op::lw(reg_c, RegId::FP, 0x240 / 8), // r[c] := code_size
     ]);
 
@@ -2198,16 +2191,13 @@ fn various_ldc_issues_poc() {
     let loader_state_root = Contract::default_state_root();
     let loader_contract_id =
         loader_contract.id(&salt, &loader_contract_root, &loader_state_root);
-
-    let output0 = Output::contract_created(loader_contract_id, loader_state_root);
-
     let consensus_params = ConsensusParameters::standard();
 
     let tx_create_loader =
         TransactionBuilder::create(loader_program.clone(), salt, vec![])
             .maturity(maturity)
-            .add_random_fee_input()
-            .add_output(output0)
+            .add_fee_input()
+            .add_contract_created()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to check tx");
@@ -2259,7 +2249,7 @@ fn various_ldc_issues_poc() {
             .maturity(maturity)
             .add_input(input0)
             .add_input(input1)
-            .add_random_fee_input()
+            .add_fee_input()
             .add_output(output0)
             .add_output(output1)
             .finalize()
@@ -2274,3 +2264,445 @@ fn various_ldc_issues_poc() {
         }
     });
 }
+
+// TODO: Move to `blockchain/ldc_mode_1.rs`
+// === Begin temporary tests for ldcv2 ===
+
+#[test]
+fn ldcv2__loading_less_bytes_due_to_offset_reduces_cost() {
+    let mut client = MemoryClient::default();
+
+    let gas_costs = client.gas_costs();
+    let noop_cost = gas_costs.noop();
+
+    let number_of_opcodes = 25;
+    let offset = 0;
+    let len = 100;
+    let starting_gas_amount =
+        ldcv1__gas_cost_for_len(&mut client, number_of_opcodes, offset, len);
+
+    for i in 1..10 {
+        let offset = i * 4;
+        let expected_gas_used = starting_gas_amount - (i * noop_cost);
+        let actual_gas_used =
+            ldcv1__gas_cost_for_len(&mut client, number_of_opcodes, offset as u16, len);
+
+        assert_eq!(expected_gas_used, actual_gas_used);
+    }
+}
+
+#[test]
+fn ldcv1__cost_is_proportional_to_total_blobs_size_not_rC() {
+    let mut client = MemoryClient::default();
+
+    let gas_costs = client.gas_costs();
+    let ldc_cost = gas_costs.ldc();
+    let ldc_dep_len = match ldc_cost {
+        DependentCost::LightOperation { units_per_gas, .. } => units_per_gas,
+        DependentCost::HeavyOperation { gas_per_unit, .. } => gas_per_unit,
+    };
+    let blob_size = 0;
+    let offset = 0;
+    let len = 0;
+    let starting_gas_amount =
+        ldcv1__gas_cost_for_len(&mut client, blob_size, offset, len);
+
+    let bytes_per_op = 4;
+
+    for i in 1..10 {
+        let number_of_opcodes = blob_size + (i * ldc_dep_len / bytes_per_op) as usize;
+
+        let cost_of_ldc = i;
+
+        // The gas should go up 1 per every ldc_dep_cost even when rC is 0
+        let expected_gas_used = starting_gas_amount + cost_of_ldc;
+
+        let actual_gas_used =
+            ldcv1__gas_cost_for_len(&mut client, number_of_opcodes, offset, len);
+        assert_eq!(actual_gas_used, expected_gas_used);
+    }
+}
+
+fn ldcv1__gas_cost_for_len<M>(
+    client: &mut MemoryClient<M>,
+    // in number of opcodes
+    number_of_opcodes: usize,
+    offset: u16,
+    len: u16,
+) -> Word
+where
+    M: Memory,
+{
+    let mut target_blob = vec![];
+    for _ in 0..number_of_opcodes {
+        target_blob.push(op::noop());
+    }
+
+    let bytes = target_blob.into_iter().collect::<Vec<u8>>();
+
+    let receipts = ldcv1__load_len_of_target_blob(client, offset, len, bytes, false);
+
+    let result = receipts.last().expect("No receipt");
+
+    let actual_gas_used = match result {
+        Receipt::ScriptResult { gas_used, .. } => gas_used,
+        _ => panic!("Should be a `ScriptResult`"),
+    };
+
+    *actual_gas_used
+}
+
+fn ldcv1__load_len_of_target_blob<M>(
+    client: &mut MemoryClient<M>,
+    offset: u16,
+    len: u16,
+    blob_code: Vec<u8>,
+    include_log_d: bool,
+) -> &[Receipt]
+where
+    M: Memory,
+{
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let height = Default::default();
+
+    let blob_id = BlobId::compute(&blob_code);
+
+    let consensus_params = ConsensusParameters::standard();
+
+    let tx_blob = TransactionBuilder::blob(BlobBody {
+        id: blob_id,
+        witness_index: 0,
+    })
+    .add_witness(blob_code.into())
+    .maturity(maturity)
+    .add_fee_input()
+    .finalize()
+    .into_checked(height, &consensus_params)
+    .expect("failed to check tx");
+
+    client.blob(tx_blob).unwrap();
+
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+    let reg_c = 0x22;
+
+    let count = ContractId::LEN as Immediate12;
+
+    let mut load_blob = vec![
+        op::ori(reg_a, reg_a, count), // r[a] := r[a] | ContractId::LEN
+        op::aloc(reg_a),              // Reserve space for blob id in the heap
+    ];
+
+    // Generate code for pushing blob id to heap
+    for (i, byte) in blob_id.as_ref().iter().enumerate() {
+        let index = i as Immediate12;
+        let value = *byte as Immediate12;
+        load_blob.extend([
+            op::movi(reg_a, value.into()),   // r[a] := r[a] | value
+            op::sb(RegId::HP, reg_a, index), // m[$hp+index] := r[a] (=value)
+        ]);
+    }
+
+    // when
+    load_blob.extend([
+        op::move_(reg_a, RegId::HP),     // r[a] := $hp
+        op::ori(reg_b, reg_b, offset),   // r[b] += offset
+        op::ori(reg_c, reg_c, len),      // r[b] += len
+        op::ldc(reg_a, reg_b, reg_c, 1), // Load first two words from the contract
+    ]);
+
+    if include_log_d {
+        let padded_len = pad(len);
+        load_blob.extend([
+            op::subi(reg_a, RegId::SSP, padded_len), /* r[a] := $ssp - padded_len
+                                                      * (start of
+                                                      * the loaded
+                                                      * code) */
+            op::movi(reg_c, padded_len as u32), /* r[b] = padded_len (length of the
+                                                 * loaded code) */
+            op::logd(RegId::ZERO, RegId::ZERO, reg_a, reg_c), /* Log digest of the
+                                                               * loaded code */
+        ])
+    }
+
+    load_blob.push(op::noop()); // Patched to the jump later
+
+    let tx_deploy_loader = TransactionBuilder::script(
+        #[allow(clippy::iter_cloned_collect)]
+        load_blob.iter().copied().collect(),
+        vec![],
+    )
+    .script_gas_limit(gas_limit)
+    .maturity(maturity)
+    .add_fee_input()
+    .finalize()
+    .into_checked(height, &consensus_params)
+    .expect("failed to check tx");
+
+    // Patch the code with correct jump address
+    let transaction_end_addr =
+        tx_deploy_loader.transaction().size() - Script::script_offset_static();
+    *load_blob.last_mut().unwrap() = op::ji((transaction_end_addr / 4) as Immediate24);
+
+    let tx_deploy_loader =
+        TransactionBuilder::script(load_blob.into_iter().collect(), vec![])
+            .script_gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_fee_input()
+            .finalize()
+            .into_checked(height, &consensus_params)
+            .expect("failed to check tx");
+
+    client.transact(tx_deploy_loader)
+}
+
+fn ldcv1_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
+    let gas_price = 0;
+
+    // make gas costs free
+    let gas_costs = GasCosts::default();
+
+    let mut consensus_params = ConsensusParameters::default();
+    consensus_params.set_gas_costs(gas_costs);
+
+    let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
+
+    let mut client = MemoryClient::<_, NotSupportedEcal>::from_txtor(Transactor::new(
+        MemoryInstance::new(),
+        MemoryStorage::default(),
+        interpreter_params,
+    ));
+
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let height = Default::default();
+
+    // Start by creating and deploying a new example contract
+    let blob_code = vec![
+        op::log(RegId::ONE, RegId::ONE, RegId::ONE, RegId::ONE),
+        op::ret(RegId::ONE),
+        op::ret(RegId::ZERO), // Pad to make length uneven to test padding
+    ];
+
+    let program: Vec<u8> = blob_code.into_iter().collect();
+
+    let blob_id = BlobId::compute(&program);
+
+    let tx_blob = TransactionBuilder::blob(BlobBody {
+        id: blob_id,
+        witness_index: 0,
+    })
+    .add_witness(program.into())
+    .maturity(maturity)
+    .add_fee_input()
+    .finalize()
+    .into_checked(height, &consensus_params)
+    .expect("failed to check tx");
+
+    client.blob(tx_blob).unwrap();
+
+    let load_blob = cmd;
+
+    let tx_deploy_loader =
+        TransactionBuilder::script(load_blob.into_iter().collect(), blob_id.to_vec())
+            .script_gas_limit(gas_limit)
+            .maturity(maturity)
+            .add_fee_input()
+            .finalize()
+            .into_checked(height, &consensus_params)
+            .expect("failed to check tx");
+
+    let receipts = client.transact(tx_deploy_loader);
+    if let Receipt::Panic { id: _, reason, .. } = receipts.first().expect("No receipt") {
+        assert_eq!(
+            &expected_reason,
+            reason.reason(),
+            "Expected {}, found {}",
+            expected_reason,
+            reason.reason()
+        );
+    } else {
+        panic!("Script should have panicked before logging");
+    }
+}
+
+#[test]
+fn ldcv1__fails_with_nonempty_stack() {
+    let (load_blob, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::cfei(0x1), // sp += 1
+            op::ldc(0x10, RegId::ZERO, RegId::ONE, 1),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    ldcv1_reason_helper(load_blob, ExpectedUnallocatedStack);
+}
+
+#[test]
+fn ldcv1__fails_when_mem_offset_is_above_reg_hp() {
+    // Then deploy another contract that attempts to read the first one
+
+    let (load_blob, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x10, data_offset as Immediate18),
+            op::ldc(0x10, RegId::ZERO, RegId::HP, 1),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    ldcv1_reason_helper(load_blob, MemoryOverflow);
+}
+
+#[test]
+fn ldcv1__fails_when_blob_size_overflows() {
+    ldcv1_reason_helper(
+        vec![
+            op::not(0x20, RegId::ZERO),
+            op::ldc(RegId::HP, RegId::ZERO, 0x20, 1),
+        ],
+        MemoryOverflow,
+    );
+}
+
+#[test]
+fn ldcv1__fails_wehn_blob_id_ends_beyond_max_ram() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    // cover blob_id_end beyond max ram
+    let load_blob = vec![
+        op::move_(reg_a, RegId::HP),           // r[a] := $hp
+        op::xor(reg_b, reg_b, reg_b),          // r[b] := 0
+        op::ori(reg_b, reg_b, 12),             // r[b] += 12 (will be padded to 16)
+        op::ldc(reg_a, RegId::ZERO, reg_b, 1), // Load first two words from the contract
+    ];
+
+    ldcv1_reason_helper(load_blob, MemoryOverflow);
+}
+
+#[test]
+fn ldcv1__fails_when_blob_doesnt_exist() {
+    // Then deploy another contract that attempts to read the first one
+    let reg_a = 0x20;
+    let reg_b = 0x21;
+
+    // contract not in inputs
+    let load_blob = vec![
+        op::ldc(reg_a, RegId::ZERO, reg_b, 1), // Load first two words from the contract
+    ];
+
+    ldcv1_reason_helper(load_blob, PanicReason::BlobNotFound);
+}
+
+#[test]
+fn load_blob_code__copies_expected_bytes() {
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
+    ];
+
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let blob_size = program.len();
+    let blob_id = BlobId::compute(&program);
+    test_context.setup_blob(program.clone());
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x12, 0 as Immediate18),
+            op::movi(0x13, blob_size as Immediate18),
+            op::move_(0x22, RegId::SSP),
+            op::ldc(0x11, 0x12, 0x13, 1),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, 0x22, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = blob_id.to_vec();
+    script_data.extend(program.as_slice());
+
+    let result = test_context
+        .start_script(script, script_data)
+        .script_gas_limit(gas_limit)
+        .fee_input()
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(1, ret.val().expect("Return value"));
+}
+
+#[test]
+fn load_blob_code__doesnt_load_above_offset() {
+    // This test like a `load_blob_code__copies_expected_bytes`, but the offset
+    // is set to be beyond the length of the contract code. The `meq` should fail.
+    let mut test_context = TestBuilder::new(2322u64);
+    let gas_limit = 1_000_000;
+
+    let program_ops = vec![
+        op::movi(0x10, 0x11),
+        op::movi(0x11, 0x2a),
+        op::add(0x12, 0x10, 0x11),
+        op::log(0x10, 0x11, 0x12, 0x00),
+        op::ret(0x20),
+    ];
+
+    let program = program_ops.clone().into_iter().collect::<Vec<u8>>();
+    let blob_size = program.len();
+    let blob_id = BlobId::compute(&program);
+    test_context.setup_blob(program.clone());
+
+    let (script, _) = script_with_data_offset!(
+        data_offset,
+        vec![
+            op::movi(0x20, data_offset as Immediate18),
+            op::add(0x11, RegId::ZERO, 0x20),
+            op::movi(0x12, (blob_size + 1) as Immediate18),
+            op::movi(0x13, blob_size as Immediate18),
+            op::move_(0x22, RegId::SSP),
+            op::ldc(0x11, 0x12, 0x13, 1),
+            op::addi(0x21, 0x20, ContractId::LEN as Immediate12),
+            op::meq(0x30, 0x21, 0x22, 0x13),
+            op::ret(0x30),
+        ],
+        TxParameters::DEFAULT.tx_offset()
+    );
+
+    let mut script_data = blob_id.to_vec();
+    script_data.extend(program.as_slice());
+
+    let result = test_context
+        .start_script(script, script_data)
+        .script_gas_limit(gas_limit)
+        .fee_input()
+        .execute();
+
+    let receipts = result.receipts();
+    let ret = receipts
+        .first()
+        .expect("A `RET` opcode was part of the program.");
+
+    assert_eq!(0, ret.val().expect("Return value"));
+}
+
+// === End temporary tests for ldcv1 ===

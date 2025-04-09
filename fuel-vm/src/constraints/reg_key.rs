@@ -10,7 +10,6 @@ use core::ops::{
 use fuel_asm::{
     PanicReason,
     RegId,
-    RegisterId,
     Word,
 };
 
@@ -34,15 +33,19 @@ pub struct Reg<'r, const INDEX: u8>(&'r Word);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// A key to a writable register that is within
 /// the bounds of the writable registers.
-pub struct WriteRegKey(usize);
+pub struct WriteRegKey(RegId);
 
 impl WriteRegKey {
     /// Create a new writable register key if the index is within the bounds
     /// of the writable registers.
-    pub fn new(k: impl Into<usize>) -> Result<Self, PanicReason> {
+    pub fn new(k: impl Into<RegId>) -> Result<Self, PanicReason> {
         let k = k.into();
-        is_register_writable(&k)?;
-        Ok(Self(k))
+
+        if k >= RegId::WRITABLE {
+            Ok(Self(k))
+        } else {
+            Err(PanicReason::ReservedRegisterNotWritable)
+        }
     }
 
     /// Translate this key from an absolute register index
@@ -51,19 +54,7 @@ impl WriteRegKey {
     /// This subtracts the number of system registers from the key.
     #[allow(clippy::arithmetic_side_effects)] // Safety: checked in constructor
     fn translate(self) -> usize {
-        self.0 - VM_REGISTER_SYSTEM_COUNT
-    }
-}
-
-/// Check that the register is above the system registers and below the total
-/// number of registers.
-pub(crate) fn is_register_writable(r: &RegisterId) -> Result<(), PanicReason> {
-    const W_USIZE: usize = RegId::WRITABLE.to_u8() as usize;
-    const RANGE: core::ops::Range<usize> = W_USIZE..(W_USIZE + VM_REGISTER_PROGRAM_COUNT);
-    if RANGE.contains(r) {
-        Ok(())
-    } else {
-        Err(PanicReason::ReservedRegisterNotWritable)
+        self.0.to_u8() as usize - VM_REGISTER_SYSTEM_COUNT
     }
 }
 
@@ -109,14 +100,14 @@ impl<'a, const INDEX: u8> From<RegMut<'a, INDEX>> for Reg<'a, INDEX> {
     }
 }
 
-impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
+impl<const INDEX: u8> RegMut<'_, INDEX> {
     /// Re-borrow the register as an immutable reference.
     pub fn as_ref(&self) -> Reg<INDEX> {
         Reg(self.0)
     }
 }
 
-impl<'r, const INDEX: u8> RegMut<'r, INDEX> {
+impl<const INDEX: u8> RegMut<'_, INDEX> {
     /// Re-borrow the register as a mutable reference.
     pub fn as_mut(&mut self) -> RegMut<INDEX> {
         RegMut(self.0)
@@ -271,7 +262,7 @@ pub(crate) fn copy_registers(
     out
 }
 
-impl<'r> ProgramRegisters<'r> {
+impl ProgramRegisters<'_> {
     /// Get two mutable references to program registers.
     /// Note they cannot be the same register.
     pub fn get_mut_two(
@@ -368,10 +359,10 @@ impl<'a> From<ProgramRegisters<'a>> for ProgramRegistersRef<'a> {
     }
 }
 
-impl TryFrom<RegisterId> for WriteRegKey {
+impl TryFrom<RegId> for WriteRegKey {
     type Error = PanicReason;
 
-    fn try_from(r: RegisterId) -> Result<Self, Self::Error> {
+    fn try_from(r: RegId) -> Result<Self, Self::Error> {
         Self::new(r)
     }
 }
@@ -425,7 +416,7 @@ pub(crate) enum ProgramRegistersSegment {
     High,
 }
 
-impl<'r> ProgramRegisters<'r> {
+impl ProgramRegisters<'_> {
     /// Returns the registers corresponding to the segment, always 24 elements.
     pub(crate) fn segment(&self, segment: ProgramRegistersSegment) -> &[Word] {
         match segment {

@@ -96,6 +96,116 @@ fn cmp_u128(
     }
 }
 
+#[test]
+fn cmp_u128_resets_of() {
+    // Given
+    let mut ops = vec![
+        op::movi(0x20, Flags::WRAPPING.bits() as u32),
+        op::flag(0x20),
+    ];
+
+    // Prepare the operands used for the cmp_u128 operation before
+    // performing the division. This is needed because make_u128
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
+    ops.extend(make_u128(0x21, 0));
+    ops.extend(make_u128(0x22, 0));
+
+    // Perform a mul operation that overflows and log the value of RegId::OF
+    ops.push(op::not(0x20, 0));
+    ops.push(op::mul(0x20, 0x20, 0x20));
+    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Now push a cmp_u128 operation and log the value of RegId::OF again
+    ops.push(op::wdcm_args(
+        0x23,
+        0x21,
+        0x22,
+        CompareArgs {
+            indirect_rhs: true,
+            mode: CompareMode::EQ,
+        },
+    ));
+    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    ops.push(op::ret(RegId::ONE));
+
+    // When
+    let receipts: Vec<Receipt> = run_script(ops);
+
+    let Receipt::Log {
+        ra: reg_of_before_cmp,
+        ..
+    } = receipts.first().unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    let Receipt::Log {
+        ra: reg_of_after_cmp,
+        ..
+    } = receipts.get(1).unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    // Then
+    assert!(*reg_of_before_cmp != 0);
+    assert_eq!(*reg_of_after_cmp, 0);
+}
+
+#[test]
+fn cmp_u128_resets_err() {
+    // Given
+    let mut ops = vec![
+        op::movi(0x20, Flags::UNSAFEMATH.bits() as u32),
+        op::flag(0x20),
+    ];
+    // Prepare the operands used for the cmp_u128 operation before
+    // performing the division. This is needed because make_u128
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
+    ops.extend(make_u128(0x21, 0));
+    ops.extend(make_u128(0x22, 0));
+
+    // Perform the division and log the value of RegId::ERR
+    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
+    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Push a cmp_u128 operation and log the value of RegId::ERR again
+    ops.push(op::wdcm_args(
+        0x23,
+        0x21,
+        0x22,
+        CompareArgs {
+            indirect_rhs: true,
+            mode: CompareMode::EQ,
+        },
+    ));
+    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    ops.push(op::ret(RegId::ONE));
+
+    // When
+    let receipts: Vec<Receipt> = run_script(ops);
+
+    let Receipt::Log {
+        ra: reg_err_before_cmp,
+        ..
+    } = receipts.first().unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    let Receipt::Log {
+        ra: reg_err_after_cmp,
+        ..
+    } = receipts.get(1).unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    // Then
+    assert_eq!(*reg_err_before_cmp, 1);
+    assert_eq!(*reg_err_after_cmp, 0);
+}
+
 #[rstest::rstest]
 fn cmp_u256(
     #[values(0u64.into(), 1u64.into(), 2u64.into(), u64::MAX.into(), ((u64::MAX as u128) + 1).into(), u128::MAX.into())]
@@ -128,7 +238,7 @@ fn cmp_u256(
     ops.push(op::log(0x22, RegId::ZERO, RegId::ZERO, RegId::ZERO));
     ops.push(op::ret(RegId::ONE));
 
-    let receipts = run_script(ops);
+    let receipts: Vec<Receipt> = run_script(ops);
 
     if let Receipt::Log { ra, .. } = receipts.first().unwrap() {
         let expected = match mode {
@@ -144,6 +254,116 @@ fn cmp_u256(
     } else {
         panic!("Expected log receipt");
     }
+}
+
+#[test]
+fn cmp_u256_resets_of() {
+    // Given
+    let mut ops = vec![
+        op::movi(0x20, Flags::WRAPPING.bits() as u32),
+        op::flag(0x20),
+    ];
+
+    // Prepare the operands used for the cmp_u256 operation before
+    // performing the division. This is needed because make_u256
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
+    ops.extend(make_u256(0x21, 0u64.into()));
+    ops.extend(make_u256(0x22, 0u64.into()));
+
+    // Perform a mul operation that overflows and log the value of RegId::OF
+    ops.push(op::not(0x20, 0));
+    ops.push(op::mul(0x20, 0x20, 0x20));
+    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Now push a cmp_u256 operation and log the value of RegId::OF again
+    ops.push(op::wqcm_args(
+        0x23,
+        0x21,
+        0x22,
+        CompareArgs {
+            indirect_rhs: true,
+            mode: CompareMode::EQ,
+        },
+    ));
+    ops.push(op::log(RegId::OF, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    ops.push(op::ret(RegId::ONE));
+
+    // When
+    let receipts: Vec<Receipt> = run_script(ops);
+
+    let Receipt::Log {
+        ra: reg_of_before_cmp,
+        ..
+    } = receipts.first().unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    let Receipt::Log {
+        ra: reg_of_after_cmp,
+        ..
+    } = receipts.get(1).unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    // Then
+    assert!(*reg_of_before_cmp != 0);
+    assert_eq!(*reg_of_after_cmp, 0);
+}
+
+#[test]
+fn cmp_u256_resets_err() {
+    // Given
+    let mut ops = vec![
+        op::movi(0x20, Flags::UNSAFEMATH.bits() as u32),
+        op::flag(0x20),
+    ];
+    // Prepare the operands used for the cmp_u256 operation before
+    // performing the division. This is needed because make_u256
+    // uses `movi` internally, which resets both RegId::OF and RegId::ERR.
+    ops.extend(make_u256(0x21, 0u64.into()));
+    ops.extend(make_u256(0x22, 0u64.into()));
+
+    // Perform the division and log the value of the RegId::ERR
+    ops.push(op::div(0x10, RegId::ONE, RegId::ZERO));
+    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+
+    // Push a cmp_u256 operation and log the value of RegId::ERR again
+    ops.push(op::wqcm_args(
+        0x23,
+        0x21,
+        0x22,
+        CompareArgs {
+            indirect_rhs: true,
+            mode: CompareMode::EQ,
+        },
+    ));
+    ops.push(op::log(RegId::ERR, RegId::ZERO, RegId::ZERO, RegId::ZERO));
+    ops.push(op::ret(RegId::ONE));
+
+    // When
+    let receipts: Vec<Receipt> = run_script(ops);
+
+    let Receipt::Log {
+        ra: reg_err_before_cmp,
+        ..
+    } = receipts.first().unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    let Receipt::Log {
+        ra: reg_err_after_cmp,
+        ..
+    } = receipts.get(1).unwrap()
+    else {
+        panic!("Expected log receipt");
+    };
+
+    // Then
+    assert_eq!(*reg_err_before_cmp, 1);
+    assert_eq!(*reg_err_after_cmp, 0);
 }
 
 #[rstest::rstest]

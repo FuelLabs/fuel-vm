@@ -1,4 +1,5 @@
 use super::*;
+use crate::error::PanicOrBug;
 use test_case::test_case;
 
 struct GasChargeInput {
@@ -26,11 +27,9 @@ fn test_gas_charge(input: GasChargeInput) -> SimpleResult<GasChargeOutput> {
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    gas_charge_inner(cgas.as_mut(), ggas.as_mut(), dependent_factor).map(|_| {
-        GasChargeOutput {
-            cgas: *cgas,
-            ggas: *ggas,
-        }
+    gas_charge(cgas.as_mut(), ggas.as_mut(), dependent_factor).map(|_| GasChargeOutput {
+        cgas: *cgas,
+        ggas: *ggas,
     })
 }
 
@@ -41,7 +40,7 @@ fn test_gas_charges_ggas_on_out_of_gas() {
     let gas = 20;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    let _ = gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas)
+    let _ = gas_charge(cgas.as_mut(), ggas.as_mut(), gas)
         .expect_err("Gas charge should fail");
     assert_eq!(*ggas, 5);
     assert_eq!(*cgas, 0);
@@ -103,11 +102,13 @@ fn test_dependent_gas_charge(input: DepGasChargeInput) -> SimpleResult<GasCharge
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    dependent_gas_charge_inner(cgas.as_mut(), ggas.as_mut(), gas_cost, dependent_factor)
-        .map(|_| GasChargeOutput {
+
+    dependent_gas_charge(cgas.as_mut(), ggas.as_mut(), gas_cost, dependent_factor).map(
+        |_| GasChargeOutput {
             cgas: *cgas,
             ggas: *ggas,
-        })
+        },
+    )
 }
 
 #[test_case(
@@ -163,7 +164,7 @@ fn test_dependent_gas_charge_wihtout_base(
     } = input;
     let mut cgas = RegMut::new(&mut cgas);
     let mut ggas = RegMut::new(&mut ggas);
-    dependent_gas_charge_without_base_inner(
+    dependent_gas_charge_without_base(
         cgas.as_mut(),
         ggas.as_mut(),
         gas_cost,

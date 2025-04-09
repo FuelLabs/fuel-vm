@@ -3,11 +3,9 @@ use ethnum::U256;
 use fuel_asm::{
     wideint::*,
     PanicReason,
+    RegId,
 };
-use fuel_types::{
-    RegisterId,
-    Word,
-};
+use fuel_types::Word;
 
 use super::super::{
     internal::inc_pc,
@@ -63,19 +61,20 @@ macro_rules! wideint_ops {
                 $t::from_le_bytes(truncated)
             }
 
-            impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+            impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
             where
                 M: Memory,
                 Tx: ExecutableTransaction,
             {
                 pub(crate) fn [<alu_wideint_cmp_ $t:lower>](
                     &mut self,
-                    ra: RegisterId,
+                    ra: RegId,
                     b: Word,
                     c: Word,
                     args: CompareArgs,
                 ) -> SimpleResult<()> {
-                    let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+
+                    let (SystemRegisters { mut of, mut err, pc, .. }, mut w) = split_registers(&mut self.registers);
                     let dest: &mut Word = &mut w[ra.try_into()?];
 
                     // LHS argument is always indirect, load it
@@ -89,6 +88,8 @@ macro_rules! wideint_ops {
                     };
 
                     *dest = [<cmp_ $t:lower>](lhs, rhs, args.mode);
+                    *of = 0;
+                    *err = 0;
 
                     inc_pc(pc)?;
                     Ok(())

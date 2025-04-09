@@ -3,13 +3,17 @@ use crate::{
     transaction::types::input::AsField,
 };
 use alloc::vec::Vec;
-use derivative::Derivative;
+use educe::Educe;
+#[cfg(feature = "da-compression")]
+use fuel_compression::Compressible;
 use fuel_types::{
     Address,
     MessageId,
     Nonce,
     Word,
 };
+
+use super::PredicateCode;
 
 pub type FullMessage = Message<specifications::Full>;
 pub type MessageDataSigned = Message<specifications::MessageData<specifications::Signed>>;
@@ -30,9 +34,54 @@ mod private {
 }
 
 /// Specifies the message based on the usage context. See [`Message`].
+#[cfg(feature = "da-compression")]
+pub trait MessageSpecification: private::Seal {
+    type Data: AsField<Vec<u8>>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type Predicate: AsField<PredicateCode>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type PredicateData: AsField<Vec<u8>>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+    type PredicateGasUsed: AsField<Word>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        > + Default;
+    type Witness: AsField<u16>
+        + for<'a> Compressible<
+            Compressed: core::fmt::Debug
+                            + PartialEq
+                            + Clone
+                            + serde::Serialize
+                            + serde::Deserialize<'a>,
+        >;
+}
+
+#[cfg(not(feature = "da-compression"))]
 pub trait MessageSpecification: private::Seal {
     type Data: AsField<Vec<u8>>;
-    type Predicate: AsField<Vec<u8>>;
+    type Predicate: AsField<PredicateCode>;
     type PredicateData: AsField<Vec<u8>>;
     type PredicateGasUsed: AsField<Word>;
     type Witness: AsField<u16>;
@@ -42,20 +91,33 @@ pub mod specifications {
     use alloc::vec::Vec;
 
     use super::MessageSpecification;
-    use crate::input::Empty;
+    use crate::input::{
+        Empty,
+        PredicateCode,
+    };
     use fuel_types::Word;
 
     /// The type means that the message should be signed by the `recipient`, and the
     /// signature(witness) should be stored under the `witness_index` index in the
     /// `witnesses` vector of the [`crate::Transaction`].
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
+    #[cfg_attr(
+        feature = "da-compression",
+        derive(fuel_compression::Compress, fuel_compression::Decompress)
+    )]
     pub struct Signed;
 
     /// The type means that the message is not signed, and the `owner` is a `predicate`
     /// bytecode. The merkle root from the `predicate` should be equal to the `owner`.
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
+    #[cfg_attr(
+        feature = "da-compression",
+        derive(fuel_compression::Compress, fuel_compression::Decompress)
+    )]
     pub struct Predicate;
 
     /// The retrayable message metadata. It is a message that can't be used as a coin to
@@ -63,13 +125,14 @@ pub mod specifications {
     /// non-zero `value` that will be transferred to the contract as a native asset
     /// during the execution. If the execution of the transaction fails, the metadata
     /// is not consumed and can be used later until successful execution.
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     pub struct MessageData<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageData<Signed> {
         type Data = Vec<u8>;
-        type Predicate = Empty<Vec<u8>>;
+        type Predicate = Empty<PredicateCode>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
@@ -77,20 +140,21 @@ pub mod specifications {
 
     impl MessageSpecification for MessageData<Predicate> {
         type Data = Vec<u8>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
     }
 
     /// The spendable message acts as a standard coin.
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     pub struct MessageCoin<UsageRules>(core::marker::PhantomData<UsageRules>);
 
     impl MessageSpecification for MessageCoin<Signed> {
         type Data = Empty<Vec<u8>>;
-        type Predicate = Empty<Vec<u8>>;
+        type Predicate = Empty<PredicateCode>;
         type PredicateData = Empty<Vec<u8>>;
         type PredicateGasUsed = Empty<Word>;
         type Witness = u16;
@@ -98,7 +162,7 @@ pub mod specifications {
 
     impl MessageSpecification for MessageCoin<Predicate> {
         type Data = Empty<Vec<u8>>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = Empty<u16>;
@@ -110,13 +174,14 @@ pub mod specifications {
     /// Otherwise into [`MessageCoin`].
     /// If the `predicate` is empty, the usage rules should be [`Signed`], else
     /// [`Predicate`].
-    #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[derive(
+        Default, Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize,
+    )]
     pub struct Full;
 
     impl MessageSpecification for Full {
         type Data = Vec<u8>;
-        type Predicate = Vec<u8>;
+        type Predicate = PredicateCode;
         type PredicateData = Vec<u8>;
         type PredicateGasUsed = Word;
         type Witness = u16;
@@ -140,29 +205,38 @@ pub mod specifications {
 /// - [`specifications::MessageData`] with [`specifications::Signed`] usage rules.
 /// - [`specifications::MessageData`] with [`specifications::Predicate`] usage rules.
 /// - [`specifications::Full`].
-#[derive(Default, Derivative, Clone, PartialEq, Eq, Hash)]
-#[derivative(Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Default, Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
 #[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
 pub struct Message<Specification>
 where
     Specification: MessageSpecification,
 {
     /// The sender from the L1 chain.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub sender: Address,
     /// The receiver on the `Fuel` chain.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub recipient: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
     pub amount: Word,
+    // Unique identifier of the message
     pub nonce: Nonce,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub witness_index: Specification::Witness,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    /// Exact amount of gas used by the predicate.
+    /// If the predicate consumes different amount of gas,
+    /// it's considered to be false.
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_gas_used: Specification::PredicateGasUsed,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub data: Specification::Data,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate: Specification::Predicate,
-    #[derivative(Debug(format_with = "fmt_as_field"))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub predicate_data: Specification::PredicateData,
 }
 

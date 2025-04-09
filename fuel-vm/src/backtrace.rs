@@ -15,7 +15,7 @@ use crate::{
         Interpreter,
     },
 };
-use derivative::Derivative;
+use educe::Educe;
 
 use crate::interpreter::{
     Memory,
@@ -27,8 +27,8 @@ use fuel_types::{
     Word,
 };
 
-#[derive(Derivative)]
-#[derivative(Debug)]
+#[derive(Educe)]
+#[educe(Debug)]
 /// Runtime description derived from a VM error.
 pub struct Backtrace {
     call_stack: Vec<CallFrame>,
@@ -43,8 +43,8 @@ impl Backtrace {
     /// Create a backtrace from a vm instance and instruction result.
     ///
     /// This isn't copy-free and shouldn't be provided by default.
-    pub fn from_vm_error<M, S, Tx, Ecal>(
-        vm: &Interpreter<M, S, Tx, Ecal>,
+    pub fn from_vm_error<M, S, Tx, Ecal, V>(
+        vm: &Interpreter<M, S, Tx, Ecal, V>,
         result: ScriptExecutionResult,
     ) -> Self
     where

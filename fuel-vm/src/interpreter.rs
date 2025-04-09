@@ -2,14 +2,21 @@
 
 use crate::{
     call::CallFrame,
-    checked_transaction::CheckPredicateParams,
+    checked_transaction::{
+        BlobCheckedMetadata,
+        CheckPredicateParams,
+    },
     constraints::reg_key::*,
     consts::*,
     context::Context,
     error::SimpleResult,
     state::Debugger,
+    verification,
 };
-use alloc::vec::Vec;
+use alloc::{
+    collections::BTreeSet,
+    vec::Vec,
+};
 use core::{
     mem,
     ops::Index,
@@ -21,6 +28,7 @@ use fuel_asm::{
 };
 use fuel_tx::{
     field,
+    Blob,
     Chargeable,
     Create,
     Executable,
@@ -47,6 +55,7 @@ use fuel_types::{
 
 mod alu;
 mod balances;
+mod blob;
 mod blockchain;
 mod constructors;
 pub mod contract;
@@ -66,16 +75,12 @@ mod receipts;
 mod debug;
 mod ecal;
 
-use crate::profiler::Profiler;
-
-#[cfg(feature = "profile-gas")]
-use crate::profiler::InstructionLocation;
-
 pub use balances::RuntimeBalances;
 pub use ecal::{
     EcalHandler,
     PredicateErrorEcal,
 };
+pub use executors::predicates;
 pub use memory::{
     Memory,
     MemoryInstance,
@@ -105,32 +110,32 @@ pub struct NotSupportedEcal;
 
 /// VM interpreter.
 ///
-/// The internal state of the VM isn't expose because the intended usage is to
+/// The internal state of the VM isn't exposed because the intended usage is to
 /// either inspect the resulting receipts after a transaction execution, or the
 /// resulting mutated transaction.
 ///
 /// These can be obtained with the help of a [`crate::transactor::Transactor`]
 /// or a client implementation.
 #[derive(Debug, Clone)]
-pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal> {
+pub struct Interpreter<M, S, Tx = (), Ecal = NotSupportedEcal, V = verification::Normal> {
     registers: [Word; VM_REGISTER_COUNT],
     memory: M,
     frames: Vec<CallFrame>,
     receipts: ReceiptsCtx,
     tx: Tx,
     initial_balances: InitialBalances,
-    input_contracts: alloc::collections::BTreeSet<ContractId>,
+    input_contracts: BTreeSet<ContractId>,
     input_contracts_index_to_output_index: alloc::collections::BTreeMap<u16, u16>,
     storage: S,
     debugger: Debugger,
     context: Context,
     balances: RuntimeBalances,
-    profiler: Profiler,
     interpreter_params: InterpreterParams,
     /// `PanicContext` after the latest execution. It is consumed by
     /// `append_panic_receipt` and is `PanicContext::None` after consumption.
     panic_context: PanicContext,
     ecal_state: Ecal,
+    verifier: V,
 }
 
 /// Interpreter parameters
@@ -204,21 +209,21 @@ pub(crate) enum PanicContext {
     ContractId(ContractId),
 }
 
-impl<M: Memory, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: Memory, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Returns the current state of the VM memory
     pub fn memory(&self) -> &MemoryInstance {
         self.memory.as_ref()
     }
 }
 
-impl<M: AsMut<MemoryInstance>, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M: AsMut<MemoryInstance>, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Returns mutable access to the vm memory
     pub fn memory_mut(&mut self) -> &mut MemoryInstance {
         self.memory.as_mut()
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     /// Returns the current state of the registers
     pub const fn registers(&self) -> &[Word] {
         &self.registers
@@ -315,14 +320,9 @@ impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
         &mut self.receipts
     }
 
-    pub(crate) fn contract_id(&self) -> Option<ContractId> {
-        self.frames.last().map(|frame| *frame.to())
-    }
-
-    /// Reference to the underlying profiler
-    #[cfg(feature = "profile-any")]
-    pub const fn profiler(&self) -> &Profiler {
-        &self.profiler
+    /// Get verifier state. Note that the default verifier has no state.
+    pub fn verifier(&self) -> &V {
+        &self.verifier
     }
 }
 
@@ -338,28 +338,30 @@ pub(crate) fn is_unsafe_math(flag: Reg<FLAG>) -> bool {
     flags(flag).contains(Flags::UNSAFEMATH)
 }
 
-#[cfg(feature = "profile-gas")]
-fn current_location(
-    current_contract: Option<ContractId>,
-    pc: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::PC }>,
-    is: crate::constraints::reg_key::Reg<{ crate::constraints::reg_key::IS }>,
-) -> InstructionLocation {
-    // Safety: pc should always be above is, but fallback to zero here for weird cases,
-    //         as the profiling code should be robust against regards cases like this.
-    let offset = (*pc).saturating_sub(*is);
-    InstructionLocation::new(current_contract, offset)
-}
-
-impl<M, S, Tx, Ecal> AsRef<S> for Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, V> AsRef<S> for Interpreter<M, S, Tx, Ecal, V> {
     fn as_ref(&self) -> &S {
         &self.storage
     }
 }
 
-impl<M, S, Tx, Ecal> AsMut<S> for Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, V> AsMut<S> for Interpreter<M, S, Tx, Ecal, V> {
     fn as_mut(&mut self) -> &mut S {
         &mut self.storage
     }
+}
+
+/// Enum of executable transactions.
+pub enum ExecutableTxType<'a> {
+    /// Reference to the `Script` transaction.
+    Script(&'a Script),
+    /// Reference to the `Create` transaction.
+    Create(&'a Create),
+    /// Reference to the `Blob` transaction.
+    Blob(&'a Blob),
+    /// Reference to the `Upgrade` transaction.
+    Upgrade(&'a Upgrade),
+    /// Reference to the `Upload` transaction.
+    Upload(&'a Upload),
 }
 
 /// The definition of the executable transaction supported by the `Interpreter`.
@@ -417,9 +419,21 @@ pub trait ExecutableTransaction:
         None
     }
 
-    /// Returns the type of the transaction like `Transaction::Create` or
-    /// `Transaction::Script`.
-    fn transaction_type() -> Word;
+    /// Casts the `Self` transaction into `&Blob` if any.
+    fn as_blob(&self) -> Option<&Blob> {
+        None
+    }
+
+    /// Casts the `Self` transaction into `&mut Blob` if any.
+    fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        None
+    }
+
+    /// Returns `TransactionRepr` type associated with transaction.
+    fn transaction_type() -> TransactionRepr;
+
+    /// Returns `ExecutableTxType` type associated with transaction.
+    fn executable_type(&self) -> ExecutableTxType;
 
     /// Replaces the `Output::Variable` with the `output`(should be also
     /// `Output::Variable`) by the `idx` index.
@@ -531,8 +545,12 @@ impl ExecutableTransaction for Create {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Create as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Create
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Create(self)
     }
 }
 
@@ -545,8 +563,12 @@ impl ExecutableTransaction for Script {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Script as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Script
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Script(self)
     }
 }
 
@@ -559,8 +581,12 @@ impl ExecutableTransaction for Upgrade {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Upgrade as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Upgrade
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Upgrade(self)
     }
 }
 
@@ -573,8 +599,30 @@ impl ExecutableTransaction for Upload {
         Some(self)
     }
 
-    fn transaction_type() -> Word {
-        TransactionRepr::Upload as Word
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Upload
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Upload(self)
+    }
+}
+
+impl ExecutableTransaction for Blob {
+    fn as_blob(&self) -> Option<&Blob> {
+        Some(self)
+    }
+
+    fn as_blob_mut(&mut self) -> Option<&mut Blob> {
+        Some(self)
+    }
+
+    fn transaction_type() -> TransactionRepr {
+        TransactionRepr::Blob
+    }
+
+    fn executable_type(&self) -> ExecutableTxType {
+        ExecutableTxType::Blob(self)
     }
 }
 
@@ -629,29 +677,11 @@ impl CheckedMetadata for UploadCheckedMetadata {
     }
 }
 
-pub(crate) struct InputContracts<'vm> {
-    input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
-    panic_context: &'vm mut PanicContext,
-}
-
-impl<'vm> InputContracts<'vm> {
-    pub fn new(
-        input_contracts: &'vm alloc::collections::BTreeSet<ContractId>,
-        panic_context: &'vm mut PanicContext,
-    ) -> Self {
-        Self {
-            input_contracts,
-            panic_context,
-        }
-    }
-
-    /// Checks that the contract is declared in the transaction inputs.
-    pub fn check(&mut self, contract: &ContractId) -> SimpleResult<()> {
-        if !self.input_contracts.contains(contract) {
-            *self.panic_context = PanicContext::ContractId(*contract);
-            Err(PanicReason::ContractNotInInputs.into())
-        } else {
-            Ok(())
+impl CheckedMetadata for BlobCheckedMetadata {
+    fn balances(&self) -> InitialBalances {
+        InitialBalances {
+            non_retryable: self.free_balances.clone(),
+            retryable: None,
         }
     }
 }

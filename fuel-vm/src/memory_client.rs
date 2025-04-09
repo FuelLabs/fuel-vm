@@ -11,11 +11,18 @@ use crate::{
         NotSupportedEcal,
     },
     state::StateTransitionRef,
-    storage::MemoryStorage,
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
     transactor::Transactor,
+    verification::{
+        Normal,
+        Verifier,
+    },
 };
-use core::convert::Infallible;
 use fuel_tx::{
+    Blob,
     Create,
     FeeParameters,
     GasCosts,
@@ -30,8 +37,8 @@ use crate::interpreter::MemoryInstance;
 
 #[derive(Debug)]
 /// Client implementation with in-memory storage backend.
-pub struct MemoryClient<M, Ecal = NotSupportedEcal> {
-    transactor: Transactor<M, MemoryStorage, Script, Ecal>,
+pub struct MemoryClient<M, Ecal = NotSupportedEcal, V = Normal> {
+    transactor: Transactor<M, MemoryStorage, Script, Ecal, V>,
 }
 
 #[cfg(any(test, feature = "test-helpers"))]
@@ -45,19 +52,23 @@ impl Default for MemoryClient<MemoryInstance> {
     }
 }
 
-impl<M, Ecal: EcalHandler> AsRef<MemoryStorage> for MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler, V> AsRef<MemoryStorage> for MemoryClient<M, Ecal, V> {
     fn as_ref(&self) -> &MemoryStorage {
         self.transactor.as_ref()
     }
 }
 
-impl<M, Ecal: EcalHandler> AsMut<MemoryStorage> for MemoryClient<M, Ecal> {
+impl<M, Ecal: EcalHandler, V> AsMut<MemoryStorage> for MemoryClient<M, Ecal, V> {
     fn as_mut(&mut self) -> &mut MemoryStorage {
         self.transactor.as_mut()
     }
 }
 
-impl<M, Ecal: EcalHandler + Default> MemoryClient<M, Ecal> {
+impl<M, Ecal, V> MemoryClient<M, Ecal, V>
+where
+    Ecal: EcalHandler + Default,
+    V: Verifier + Default,
+{
     /// Create a new instance of the memory client out of a provided storage.
     pub fn new(
         memory: M,
@@ -70,16 +81,22 @@ impl<M, Ecal: EcalHandler + Default> MemoryClient<M, Ecal> {
     }
 }
 
-impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal> {
+impl<M, Ecal, V> MemoryClient<M, Ecal, V>
+where
+    Ecal: EcalHandler,
+    V: Verifier,
+{
     /// Create a new instance of the memory client out of a provided storage.
-    pub fn from_txtor(transactor: Transactor<M, MemoryStorage, Script, Ecal>) -> Self {
+    pub fn from_txtor(transactor: Transactor<M, MemoryStorage, Script, Ecal, V>) -> Self {
         Self { transactor }
     }
 }
 
-impl<M, Ecal: EcalHandler> MemoryClient<M, Ecal>
+impl<M, Ecal, V> MemoryClient<M, Ecal, V>
 where
     M: Memory,
+    Ecal: EcalHandler,
+    V: Verifier,
 {
     /// If a transaction was executed and produced a VM panic, returns the
     /// backtrace; return `None` otherwise.
@@ -102,7 +119,7 @@ where
     pub fn deploy(
         &mut self,
         tx: Checked<Create>,
-    ) -> Result<Create, InterpreterError<Infallible>> {
+    ) -> Result<Create, InterpreterError<MemoryStorageError>> {
         self.transactor.deploy(tx)
     }
 
@@ -110,13 +127,18 @@ where
     pub fn upgrade(
         &mut self,
         tx: Checked<Upgrade>,
-    ) -> Result<Upgrade, InterpreterError<Infallible>> {
+    ) -> Result<Upgrade, InterpreterError<MemoryStorageError>> {
         self.transactor.upgrade(tx)
     }
 
     /// Executes `Upload` transaction.
     pub fn upload(&mut self, tx: Checked<Upload>) -> Option<Upload> {
         self.transactor.upload(tx).ok()
+    }
+
+    /// Executes `Blob` transaction.
+    pub fn blob(&mut self, tx: Checked<Blob>) -> Option<Blob> {
+        self.transactor.blob(tx).ok()
     }
 
     /// Execute a transaction.

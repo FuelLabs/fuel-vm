@@ -31,6 +31,7 @@ use fuel_types::SubAssetId;
 pub use fuel_types::{
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     Bytes4,
     Bytes64,
@@ -84,6 +85,10 @@ pub use transaction::{
     output::Output,
     output::OutputRepr,
     policies,
+    Blob,
+    BlobBody,
+    BlobIdExt,
+    BlobMetadata,
     Cacheable,
     Chargeable,
     ChargeableMetadata,
@@ -91,6 +96,7 @@ pub use transaction::{
     ConsensusParameters,
     ContractParameters,
     Create,
+    CreateMetadata,
     DependentCost,
     Executable,
     FeeParameters,
@@ -100,6 +106,7 @@ pub use transaction::{
     Mint,
     PredicateParameters,
     Script,
+    ScriptCode,
     ScriptParameters,
     StorageSlot,
     Transaction,
@@ -118,6 +125,13 @@ pub use transaction::{
     UtxoId,
     ValidityError,
     Witness,
+};
+
+#[cfg(feature = "da-compression")]
+pub use transaction::{
+    CompressedMint,
+    CompressedTransaction,
+    CompressedUtxoId,
 };
 
 pub use transaction::{

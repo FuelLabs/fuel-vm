@@ -2,12 +2,20 @@ use crate::UtxoId;
 use fuel_types::{
     AssetId,
     ContractId,
-    MessageId,
+    Nonce,
 };
 
 /// The error returned during the checking of the transaction's validity rules.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::Display)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    derive_more::Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[non_exhaustive]
 pub enum ValidityError {
     /// The actual and calculated metadata of the transaction mismatch.
@@ -41,8 +49,8 @@ pub enum ValidityError {
     DuplicateInputUtxoId {
         utxo_id: UtxoId,
     },
-    DuplicateMessageInputId {
-        message_id: MessageId,
+    DuplicateInputNonce {
+        nonce: Nonce,
     },
     DuplicateInputContractId {
         contract_id: ContractId,
@@ -120,6 +128,7 @@ pub enum ValidityError {
     TransactionPoliciesAreInvalid,
     TransactionNoGasPricePolicy,
     TransactionMaturity,
+    TransactionExpiration,
     TransactionMaxFeeNotSet,
     TransactionInputsMax,
     TransactionOutputsMax,
@@ -132,7 +141,7 @@ pub enum ValidityError {
     /// The transaction doesn't provide enough input amount of the native chain asset to
     /// cover all potential execution fees
     #[display(
-        fmt = "Insufficient fee amount: expected {}, provided {}",
+        "Insufficient fee amount: expected {}, provided {}",
         expected,
         provided
     )]
@@ -145,7 +154,7 @@ pub enum ValidityError {
     /// The transaction doesn't provide enough input amount of the given asset to cover
     /// the amounts used in the outputs.
     #[display(
-        fmt = "Insufficient input amount: asset {}, expected {}, provided {}",
+        "Insufficient input amount: asset {}, expected {}, provided {}",
         asset,
         expected,
         provided
@@ -174,4 +183,8 @@ pub enum ValidityError {
     SerializedWitnessTooLarge {
         index: usize,
     },
+    /// The `Create` transaction doesn't contain `Output::ContractCreated`.
+    TransactionOutputDoesntContainContractCreated,
+    /// Blob id of the transaction differs from the data.
+    TransactionBlobIdVerificationFailed,
 }

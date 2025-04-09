@@ -182,8 +182,8 @@ impl_instructions! {
     0x30 CSIZ csiz [dst: RegId contract_id_addr: RegId]
     "Get current block proposer's address."
     0x31 CB cb [dst: RegId]
-    "Load a contract's code as executable."
-    0x32 LDC ldc [contract_id_addr: RegId offset: RegId len: RegId]
+    "Load code as executable either from contract, blob, or memory."
+    0x32 LDC ldc [src_addr: RegId offset: RegId len: RegId mode: Imm06]
     "Log an event."
     0x33 LOG log [a: RegId b: RegId c: RegId d: RegId]
     "Log data."
@@ -206,12 +206,12 @@ impl_instructions! {
     0x3C TR tr [contract_id_addr: RegId amount: RegId asset_id_addr: RegId]
     "Transfer coins to a variable output."
     0x3D TRO tro [contract_id_addr: RegId output_index: RegId amount: RegId asset_id_addr: RegId]
-    "The 64-byte public key (x, y) recovered from 64-byte signature on 32-byte message."
+    "The 64-byte public key (x, y) recovered from 64-byte signature on 32-byte message hash."
     0x3E ECK1 eck1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
-    "The 64-byte Secp256r1 public key (x, y) recovered from 64-byte signature on 32-byte message."
+    "The 64-byte Secp256r1 public key (x, y) recovered from 64-byte signature on 32-byte message hash."
     0x3F ECR1 ecr1 [dst_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
-    "Verify ED25519 public key and signature match a 32-byte message."
-    0x40 ED19 ed19 [pub_key_addr: RegId sig_addr: RegId msg_hash_addr: RegId]
+    "Verify ED25519 public key and signature match a message."
+    0x40 ED19 ed19 [pub_key_addr: RegId sig_addr: RegId msg_addr: RegId msg_len: RegId]
     "The keccak-256 hash of a slice."
     0x41 K256 k256 [dst_addr: RegId src_addr: RegId len: RegId]
     "The SHA-2-256 hash of a slice."
@@ -340,6 +340,15 @@ impl_instructions! {
 
     "Call external function"
     0xb0 ECAL ecal [a: RegId b: RegId c: RegId d: RegId]
+
+    "Get blob size"
+    0xba BSIZ bsiz [dst: RegId blob_id_ptr: RegId]
+    "Load blob as data"
+    0xbb BLDD bldd [dst_ptr: RegId blob_id_ptr: RegId offset: RegId len: RegId]
+    "Given some curve, performs an operation on points"
+    0xbc ECOP ecop [dst: RegId curve_id: RegId operation_type: RegId points_ptr: RegId]
+    "Given some curve, performs a pairing on groups of points"
+    0xbe EPAR epar [success: RegId curve_id: RegId number_elements: RegId points_ptr: RegId]
 }
 
 impl Instruction {
@@ -696,7 +705,8 @@ impl Opcode {
             | K256 | S256 | NOOP | FLAG | ADDI | ANDI | DIVI | EXPI | MODI | MULI
             | MLDV | ORI | SLLI | SRLI | SUBI | XORI | JNEI | LB | LW | SB | SW
             | MCPI | MCLI | GM | MOVI | JNZI | JI | JMP | JNE | JMPF | JMPB | JNZF
-            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF => true,
+            | JNZB | JNEF | JNEB | CFEI | CFSI | CFE | CFS | GTF | LDC | BSIZ | BLDD
+            | ECOP | EPAR => true,
             _ => false,
         }
     }
@@ -986,9 +996,9 @@ fn check_predicate_allowed() {
     for byte in 0..u8::MAX {
         if let Ok(repr) = Opcode::try_from(byte) {
             let should_allow = match repr {
-                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LDC | LOG
-                | LOGD | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ
-                | TIME | TR | TRO | ECAL => false,
+                BAL | BHEI | BHSH | BURN | CALL | CB | CCP | CROO | CSIZ | LOG | LOGD
+                | MINT | RETD | RVRT | SMO | SCWQ | SRW | SRWQ | SWW | SWWQ | TIME
+                | TR | TRO | ECAL => false,
                 _ => true,
             };
             assert_eq!(should_allow, repr.is_predicate_allowed());

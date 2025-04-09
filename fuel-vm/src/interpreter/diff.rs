@@ -49,6 +49,7 @@ use super::{
     Memory,
     PanicContext,
 };
+use crate::interpreter::memory::MemoryRollbackData;
 use storage::*;
 
 mod storage;
@@ -74,7 +75,7 @@ enum Change<T: VmStateCapture + Clone> {
     /// Holds a snapshot of register state.
     Register(T::State<VecState<Word>>),
     /// Holds a snapshot of memory state.
-    Memory(T::State<MemoryRegion>),
+    Memory(MemoryRollbackData),
     /// Holds a snapshot of storage state.
     Storage(T::State<StorageState>),
     /// Holds a snapshot of the call stack.
@@ -165,31 +166,6 @@ where
     key: K,
     /// Value at the key.
     value: V,
-}
-
-#[derive(Clone)]
-/// The state of a memory region.
-struct MemoryRegion {
-    /// The start of the memory region.
-    start: usize,
-    /// The region of bytes.
-    bytes: Vec<u8>,
-}
-
-impl Debug for MemoryRegion {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        if f.alternate() {
-            f.debug_struct("Memory")
-                .field("start", &self.start)
-                .field("bytes", &self.bytes)
-                .finish()
-        } else {
-            f.debug_struct("Memory")
-                .field("start", &self.start)
-                .field("bytes", &self.bytes.len())
-                .finish()
-        }
-    }
 }
 
 fn capture_buffer_state<'iter, I, T>(
@@ -317,13 +293,14 @@ where
         .map(|((index, a), b)| (index, a.cloned(), b.cloned()))
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
 {
-    /// The diff function generates a diff of VM state, represented by the Diff struct,
-    /// between two VMs internal states.
-    pub fn diff(&self, other: &Self) -> Diff<Deltas>
+    /// The function generates a diff of VM state, represented by the Diff struct,
+    /// between two VMs internal states. The `desired_state` is the desired state
+    /// that we expect after rollback is done.
+    pub fn rollback_to(&self, desired_state: &Self) -> Diff<Deltas>
     where
         Tx: PartialEq + Clone + Debug + 'static,
     {
@@ -332,66 +309,53 @@ where
         };
         let registers = capture_buffer_state(
             self.registers.iter(),
-            other.registers.iter(),
+            desired_state.registers.iter(),
             Change::Register,
         );
         diff.changes.extend(registers);
-        let frames =
-            capture_vec_state(self.frames.iter(), other.frames.iter(), Change::Frame);
+        let frames = capture_vec_state(
+            self.frames.iter(),
+            desired_state.frames.iter(),
+            Change::Frame,
+        );
         diff.changes.extend(frames);
         let receipts = capture_vec_state(
             self.receipts.as_ref().iter(),
-            other.receipts.as_ref().iter(),
+            desired_state.receipts.as_ref().iter(),
             Change::Receipt,
         );
         diff.changes.extend(receipts);
         let balances = capture_map_state(
             self.balances.as_ref(),
-            other.balances.as_ref(),
+            desired_state.balances.as_ref(),
             Change::Balance,
         );
         diff.changes.extend(balances);
 
-        let other_memory = other.memory().clone().into_linear_memory();
-        let this_memory = self.memory().clone().into_linear_memory();
+        let memory_rollback_data =
+            self.memory().collect_rollback_data(desired_state.memory());
 
-        let mut memory = this_memory.iter().enumerate().zip(other_memory.iter());
-
-        while let Some(((start, s_from), s_to)) = memory
-            .by_ref()
-            .find(|((_, a), b)| a != b)
-            .map(|((n, a), b)| ((n, *a), *b))
-        {
-            let (mut from, mut to): (Vec<_>, Vec<_>) = memory
-                .by_ref()
-                .take_while(|((_, a), b)| a != b)
-                .map(|((_, a), b)| (*a, *b))
-                .unzip();
-            from.splice(..0, core::iter::once(s_from)).next();
-            to.splice(..0, core::iter::once(s_to)).next();
-            diff.changes.push(Change::Memory(Delta {
-                from: MemoryRegion { start, bytes: from },
-                to: MemoryRegion { start, bytes: to },
-            }));
+        if let Some(memory_rollback_data) = memory_rollback_data {
+            diff.changes.push(Change::Memory(memory_rollback_data));
         }
 
-        if self.context != other.context {
+        if self.context != desired_state.context {
             diff.changes.push(Change::Context(Delta {
                 from: self.context.clone(),
-                to: other.context.clone(),
+                to: desired_state.context.clone(),
             }))
         }
 
-        if self.panic_context != other.panic_context {
+        if self.panic_context != desired_state.panic_context {
             diff.changes.push(Change::PanicContext(Delta {
                 from: self.panic_context.clone(),
-                to: other.panic_context.clone(),
+                to: desired_state.panic_context.clone(),
             }))
         }
 
-        if self.tx != other.tx {
+        if self.tx != desired_state.tx {
             let from: Arc<dyn AnyDebug> = Arc::new(self.tx.clone());
-            let to: Arc<dyn AnyDebug> = Arc::new(other.tx.clone());
+            let to: Arc<dyn AnyDebug> = Arc::new(desired_state.tx.clone());
             diff.changes.push(Change::Txn(Delta { from, to }))
         }
 
@@ -399,7 +363,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
 {
@@ -416,11 +380,9 @@ where
                 invert_receipts_ctx(&mut self.receipts, value)
             }
             Change::Balance(Previous(value)) => invert_map(self.balances.as_mut(), value),
-            Change::Memory(Previous(MemoryRegion { start, bytes })) => self
-                .memory_mut()
-                .write_noownerchecks(*start, bytes.len())
-                .expect("Memory must exist here")
-                .copy_from_slice(&bytes[..]),
+            Change::Memory(memory_rollback_data) => {
+                self.memory_mut().rollback(memory_rollback_data)
+            }
             Change::Context(Previous(value)) => self.context = value.clone(),
             Change::PanicContext(Previous(value)) => self.panic_context = value.clone(),
             Change::Txn(Previous(tx)) => {
@@ -487,7 +449,7 @@ where
     M: Memory,
     Tx: PartialEq,
 {
-    /// Does not compare storage, debugger or profiler
+    /// Does not compare storage or debugger
     fn eq(&self, other: &Self) -> bool {
         self.registers == other.registers
             && self.memory.as_ref() == other.memory.as_ref()
@@ -510,7 +472,7 @@ impl From<Diff<Deltas>> for Diff<InitialVmState> {
                 .into_iter()
                 .map(|c| match c {
                     Change::Register(v) => Change::Register(v.into()),
-                    Change::Memory(v) => Change::Memory(v.into()),
+                    Change::Memory(v) => Change::Memory(v),
                     Change::Storage(v) => Change::Storage(v.into()),
                     Change::Frame(v) => Change::Frame(v.into()),
                     Change::Receipt(v) => Change::Receipt(v.into()),
@@ -526,7 +488,7 @@ impl From<Diff<Deltas>> for Diff<InitialVmState> {
 
 impl<T> From<Delta<T>> for Previous<T> {
     fn from(d: Delta<T>) -> Self {
-        Self(d.from)
+        Self(d.to)
     }
 }
 

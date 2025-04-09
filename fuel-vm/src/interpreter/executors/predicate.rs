@@ -12,37 +12,25 @@ use crate::{
         ExecuteState,
         ProgramState,
     },
-    storage::PredicateStorage,
+    storage::predicate::PredicateStorage,
 };
 
-use fuel_asm::{
-    PanicReason,
-    RegId,
-};
+use crate::storage::predicate::PredicateStorageRequirements;
+use fuel_asm::PanicReason;
 
-impl<M, Tx, Ecal> Interpreter<M, PredicateStorage, Tx, Ecal>
+impl<M, Tx, Ecal, S> Interpreter<M, PredicateStorage<S>, Tx, Ecal>
 where
     M: Memory,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    S: PredicateStorageRequirements,
 {
     /// Verify a predicate that has been initialized already
     pub(crate) fn verify_predicate(
         &mut self,
     ) -> Result<ProgramState, PredicateVerificationFailed> {
-        let range = self
-            .context
-            .predicate()
-            .expect("The predicate is not initialized")
-            .program()
-            .words();
-
         loop {
-            if range.end <= self.registers[RegId::PC] {
-                return Err(PanicReason::MemoryOverflow.into())
-            }
-
-            match self.execute()? {
+            match self.execute::<true>()? {
                 ExecuteState::Return(r) => {
                     if r == 1 {
                         return Ok(ProgramState::Return(r))

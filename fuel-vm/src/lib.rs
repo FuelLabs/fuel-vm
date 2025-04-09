@@ -19,6 +19,7 @@ pub extern crate alloc;
 extern crate core;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
+
 #[cfg(test)]
 use criterion as _;
 
@@ -32,6 +33,7 @@ mod convert;
 pub mod crypto;
 pub mod error;
 pub mod interpreter;
+#[cfg(feature = "test-helpers")]
 pub mod memory_client;
 pub mod pool;
 pub mod predicate;
@@ -39,34 +41,17 @@ pub mod state;
 pub mod storage;
 pub mod transactor;
 pub mod util;
-
-#[cfg(feature = "profile-any")]
-pub mod profiler;
+pub mod verification;
 
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(feature = "profile-any"))]
-/// Placeholder
-pub mod profiler {
-    use crate::constraints::InstructionLocation;
-
-    /// Placeholder profiler.
-    #[derive(Default, Debug, Clone)]
-    pub struct Profiler;
-
-    impl Profiler {
-        /// Set the current coverage location.
-        pub fn set_coverage(&mut self, _location: InstructionLocation) {}
-
-        /// Add gas to the current coverage location.
-        pub fn add_gas(&mut self, _location: InstructionLocation, _gas_use: u64) {}
-    }
-}
-
 // Fully re-export fuel dependencies
 #[doc(no_inline)]
 pub use fuel_asm;
+#[doc(no_inline)]
+#[cfg(feature = "da-compression")]
+pub use fuel_compression;
 #[doc(no_inline)]
 pub use fuel_crypto;
 #[doc(no_inline)]
@@ -112,6 +97,7 @@ pub mod prelude {
     pub use fuel_types::{
         Address,
         AssetId,
+        BlobId,
         Bytes32,
         Bytes4,
         Bytes64,
@@ -140,13 +126,13 @@ pub mod prelude {
             RuntimeError,
         },
         interpreter::{
+            predicates,
             ExecutableTransaction,
             Interpreter,
             Memory,
             MemoryInstance,
             MemoryRange,
         },
-        memory_client::MemoryClient,
         pool::VmMemoryPool,
         predicate::RuntimePredicate,
         state::{
@@ -156,9 +142,8 @@ pub mod prelude {
             StateTransitionRef,
         },
         storage::{
+            predicate::PredicateStorage,
             InterpreterStorage,
-            MemoryStorage,
-            PredicateStorage,
         },
         transactor::Transactor,
     };
@@ -169,32 +154,13 @@ pub mod prelude {
     };
 
     #[cfg(any(test, feature = "test-helpers"))]
-    pub use crate::util::test_helpers::TestBuilder;
-
-    #[cfg(any(test, feature = "test-helpers"))]
-    pub use crate::checked_transaction::{
-        builder::TransactionBuilderExt,
-        IntoChecked,
-    };
-
-    #[cfg(all(
-        feature = "profile-gas",
-        feature = "std",
-        any(test, feature = "test-helpers")
-    ))]
-    pub use crate::util::gas_profiling::GasProfiler;
-
-    pub use crate::profiler::Profiler;
-    #[cfg(feature = "profile-any")]
-    pub use crate::profiler::{
-        CoverageProfilingData,
-        GasProfilingData,
-        InstructionLocation,
-        PerLocationIter,
-        PerLocationKeys,
-        PerLocationValues,
-        ProfileReceiver,
-        ProfilingData,
-        StderrReceiver,
+    pub use crate::{
+        checked_transaction::{
+            builder::TransactionBuilderExt,
+            IntoChecked,
+        },
+        memory_client::MemoryClient,
+        storage::MemoryStorage,
+        util::test_helpers::TestBuilder,
     };
 }

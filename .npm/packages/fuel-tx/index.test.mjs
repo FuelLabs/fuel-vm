@@ -5,6 +5,17 @@ import * as tx from './dist/web/index.mjs'
 
 describe('fuel-tx [mjs]', () => {
 
+    it('should ensure URL/fetch patching was succesful', async () => {
+        console.log('import.meta', import.meta);
+
+        const mjsContents = fs.readFileSync('./dist/web/index.mjs', 'utf-8')
+        const cjsContents = fs.readFileSync('./dist/node/index.cjs', 'utf-8')
+
+        const reg = /(new URL|fetch)\(.+\)/
+        expect(mjsContents).to.not.match(reg);
+        expect(cjsContents).to.not.match(reg);
+    })
+
     it('should export all types', () => {
         expect(tx.UtxoId).to.be.ok
         expect(tx.TxPointer).to.be.ok
@@ -230,7 +241,7 @@ describe('fuel-tx [mjs]', () => {
 
     it('should be able to deserialize snapshots', () => {
         const snapshots = '../../../fuel-tx/src/transaction/types/input/snapshots';
-        fs.readdirSync(snapshots).forEach(file => {
+        fs.readdirSync(snapshots).filter(fn => fn.endsWith('_canonical.snap')).forEach(file => {
             fs.readFile(path.join(snapshots, file), 'utf8', (err, data) => {
                 expect(err).to.be.null;
                 let dataBytes = hexToBytes(data.split('---\n').at(-1).trim());

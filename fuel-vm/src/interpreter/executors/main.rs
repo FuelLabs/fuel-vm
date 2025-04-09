@@ -1,11 +1,6 @@
 #[cfg(test)]
 mod tests;
 
-use alloc::{
-    vec,
-    vec::Vec,
-};
-
 use crate::{
     checked_transaction::{
         Checked,
@@ -39,10 +34,17 @@ use crate::{
         StateTransitionRef,
     },
     storage::{
+        predicate::PredicateStorage,
+        BlobData,
         InterpreterStorage,
-        PredicateStorage,
     },
+    verification::Verifier,
 };
+use alloc::{
+    vec,
+    vec::Vec,
+};
+use core::fmt::Debug;
 
 use crate::{
     checked_transaction::{
@@ -53,6 +55,7 @@ use crate::{
     interpreter::InterpreterParams,
     prelude::MemoryInstance,
     storage::{
+        predicate::PredicateStorageRequirements,
         UploadedBytecode,
         UploadedBytecodes,
     },
@@ -64,6 +67,7 @@ use fuel_storage::{
 };
 use fuel_tx::{
     field::{
+        BlobId as _,
         BytecodeRoot,
         BytecodeWitnessIndex,
         ReceiptsRoot,
@@ -83,6 +87,8 @@ use fuel_tx::{
             MessageDataPredicate,
         },
     },
+    Blob,
+    BlobIdExt,
     ConsensusParameters,
     Contract,
     Create,
@@ -91,6 +97,7 @@ use fuel_tx::{
     Input,
     Receipt,
     ScriptExecutionResult,
+    Transaction,
     Upgrade,
     UpgradeMetadata,
     UpgradePurpose,
@@ -99,6 +106,7 @@ use fuel_tx::{
 };
 use fuel_types::{
     AssetId,
+    BlobId,
     Word,
 };
 
@@ -119,7 +127,7 @@ enum PredicateRunKind<'a, Tx> {
     Estimating(&'a mut Tx),
 }
 
-impl<'a, Tx> PredicateRunKind<'a, Tx> {
+impl<Tx> PredicateRunKind<'_, Tx> {
     fn tx(&self) -> &Tx {
         match self {
             PredicateRunKind::Verifying(tx) => tx,
@@ -128,31 +136,40 @@ impl<'a, Tx> PredicateRunKind<'a, Tx> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PredicateAction {
     Verifying,
     Estimating { available_gas: Word },
 }
 
-impl<Tx> Interpreter<&mut MemoryInstance, PredicateStorage, Tx>
-where
-    Tx: ExecutableTransaction,
-{
+/// The module contains functions to check predicates defined in the inputs of a
+/// transaction.
+pub mod predicates {
+    use super::*;
+    use crate::storage::predicate::PredicateStorageProvider;
+
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn check_predicates(
+    pub fn check_predicates<Tx>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
+        storage: &impl PredicateStorageRequirements,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
+        Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
     {
         let tx = checked.transaction();
-        Self::run_predicates(PredicateRunKind::Verifying(tx), params, memory.as_mut())
+        run_predicates(
+            PredicateRunKind::Verifying(tx),
+            params,
+            memory.as_mut(),
+            storage,
+        )
     }
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -160,21 +177,26 @@ where
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn check_predicates_async<E>(
+    pub async fn check_predicates_async<Tx, E>(
         checked: &Checked<Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: Send + 'static,
+        Tx: ExecutableTransaction + Send + 'static,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
         E: ParallelExecutor,
     {
         let tx = checked.transaction();
 
-        let predicates_checked =
-            Self::run_predicate_async::<E>(PredicateRunKind::Verifying(tx), params, pool)
-                .await?;
+        let predicates_checked = run_predicate_async::<Tx, E>(
+            PredicateRunKind::Verifying(tx),
+            params,
+            pool,
+            storage,
+        )
+        .await?;
 
         Ok(predicates_checked)
     }
@@ -185,15 +207,20 @@ where
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub fn estimate_predicates(
+    pub fn estimate_predicates<Tx>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
-    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
-        let predicates_checked = Self::run_predicates(
+        storage: &impl PredicateStorageRequirements,
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
+        let predicates_checked = run_predicates(
             PredicateRunKind::Estimating(transaction),
             params,
             memory.as_mut(),
+            storage,
         )?;
         Ok(predicates_checked)
     }
@@ -204,43 +231,47 @@ where
     ///
     /// The storage provider is not used since contract opcodes are not allowed for
     /// predicates.
-    pub async fn estimate_predicates_async<E>(
+    pub async fn estimate_predicates_async<Tx, E>(
         transaction: &mut Tx,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: Send + 'static,
+        Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
     {
-        let predicates_checked = Self::run_predicate_async::<E>(
+        let predicates_checked = run_predicate_async::<Tx, E>(
             PredicateRunKind::Estimating(transaction),
             params,
             pool,
+            storage,
         )
         .await?;
 
         Ok(predicates_checked)
     }
 
-    async fn run_predicate_async<E>(
+    async fn run_predicate_async<Tx, E>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         pool: &impl VmMemoryPool,
+        storage: &impl PredicateStorageProvider,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
-        Tx: Send + 'static,
+        Tx: ExecutableTransaction + Send + 'static,
         E: ParallelExecutor,
     {
         let mut checks = vec![];
         let tx_offset = params.tx_offset;
 
-        let max_gas_per_tx = params.max_gas_per_tx;
-        let max_gas_per_predicate = params.max_gas_per_predicate;
-        let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
         let predicate_action = match kind {
             PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
             PredicateRunKind::Estimating(_) => {
+                let max_gas_per_tx = params.max_gas_per_tx;
+                let max_gas_per_predicate = params.max_gas_per_predicate;
+                let available_gas = core::cmp::min(max_gas_per_predicate, max_gas_per_tx);
+
                 PredicateAction::Estimating { available_gas }
             }
         };
@@ -252,15 +283,17 @@ where
                 let tx = kind.tx().clone();
                 let my_params = params.clone();
                 let mut memory = pool.get_new().await;
+                let storage_instance = storage.storage();
 
                 let verify_task = E::create_task(move || {
-                    let (used_gas, result) = Interpreter::check_predicate(
+                    let (used_gas, result) = check_predicate(
                         tx,
                         index,
                         predicate_action,
                         predicate,
                         my_params,
                         memory.as_mut(),
+                        &storage_instance,
                     );
 
                     result.map(|_| (used_gas, index))
@@ -272,21 +305,24 @@ where
 
         let checks = E::execute_tasks(checks).await;
 
-        Self::finalize_check_predicate(kind, checks, params)
+        finalize_check_predicate(kind, checks, params)
     }
 
-    fn run_predicates(
+    fn run_predicates<Tx>(
         kind: PredicateRunKind<'_, Tx>,
         params: &CheckPredicateParams,
         mut memory: impl Memory,
-    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
+        storage: &impl PredicateStorageRequirements,
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
         let mut checks = vec![];
 
         let max_gas = kind.tx().max_gas(&params.gas_costs, &params.fee_params);
         let max_gas_per_tx = params.max_gas_per_tx;
         let max_gas_per_predicate = params.max_gas_per_predicate;
-        let mut available_gas =
-            core::cmp::min(max_gas_per_predicate, max_gas_per_tx).saturating_sub(max_gas);
+        let mut global_available_gas = max_gas_per_tx.saturating_sub(max_gas);
 
         for index in 0..kind.tx().inputs().len() {
             let tx = kind.tx().clone();
@@ -294,58 +330,66 @@ where
             if let Some(predicate) =
                 RuntimePredicate::from_tx(&tx, params.tx_offset, index)
             {
+                let available_gas = global_available_gas.min(max_gas_per_predicate);
                 let predicate_action = match kind {
                     PredicateRunKind::Verifying(_) => PredicateAction::Verifying,
                     PredicateRunKind::Estimating(_) => {
                         PredicateAction::Estimating { available_gas }
                     }
                 };
-                let (gas_used, result) = Interpreter::check_predicate(
+                let (gas_used, result) = check_predicate(
                     tx,
                     index,
                     predicate_action,
                     predicate,
                     params.clone(),
                     memory.as_mut(),
+                    storage,
                 );
-                available_gas = available_gas.saturating_sub(gas_used);
+                global_available_gas = global_available_gas.saturating_sub(gas_used);
                 let result = result.map(|_| (gas_used, index));
                 checks.push(result);
             }
         }
 
-        Self::finalize_check_predicate(kind, checks, params)
+        finalize_check_predicate(kind, checks, params)
     }
 
-    fn check_predicate(
+    fn check_predicate<Tx>(
         tx: Tx,
         index: usize,
         predicate_action: PredicateAction,
         predicate: RuntimePredicate,
         params: CheckPredicateParams,
         memory: &mut MemoryInstance,
-    ) -> (Word, Result<(), PredicateVerificationFailed>) {
-        match &tx.inputs()[index] {
-            Input::CoinPredicate(CoinPredicate {
-                owner: address,
-                predicate,
-                ..
-            })
-            | Input::MessageDataPredicate(MessageDataPredicate {
-                recipient: address,
-                predicate,
-                ..
-            })
-            | Input::MessageCoinPredicate(MessageCoinPredicate {
-                predicate,
-                recipient: address,
-                ..
-            }) => {
-                if !Input::is_predicate_owner_valid(address, predicate) {
-                    return (0, Err(PredicateVerificationFailed::InvalidOwner));
+        storage: &impl PredicateStorageRequirements,
+    ) -> (Word, Result<(), PredicateVerificationFailed>)
+    where
+        Tx: ExecutableTransaction,
+    {
+        if predicate_action == PredicateAction::Verifying {
+            match &tx.inputs()[index] {
+                Input::CoinPredicate(CoinPredicate {
+                    owner: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    recipient: address,
+                    predicate,
+                    ..
+                })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    predicate,
+                    recipient: address,
+                    ..
+                }) => {
+                    if !Input::is_predicate_owner_valid(address, &**predicate) {
+                        return (0, Err(PredicateVerificationFailed::InvalidOwner));
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
 
         let zero_gas_price = 0;
@@ -353,7 +397,7 @@ where
 
         let mut vm = Interpreter::<_, _, _>::with_storage(
             memory,
-            PredicateStorage {},
+            PredicateStorage::new(storage),
             interpreter_params,
         );
 
@@ -401,11 +445,14 @@ where
         (gas_used, Ok(()))
     }
 
-    fn finalize_check_predicate(
+    fn finalize_check_predicate<Tx>(
         mut kind: PredicateRunKind<Tx>,
         checks: Vec<Result<(Word, usize), PredicateVerificationFailed>>,
         params: &CheckPredicateParams,
-    ) -> Result<PredicatesChecked, PredicateVerificationFailed> {
+    ) -> Result<PredicatesChecked, PredicateVerificationFailed>
+    where
+        Tx: ExecutableTransaction,
+    {
         if let PredicateRunKind::Estimating(tx) = &mut kind {
             checks.iter().for_each(|result| {
                 if let Ok((gas_used, index)) = result {
@@ -452,7 +499,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -519,7 +566,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -622,7 +669,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -731,13 +778,68 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
+where
+    S: InterpreterStorage,
+{
+    fn blob_inner(
+        blob: &mut Blob,
+        storage: &mut S,
+        initial_balances: InitialBalances,
+        gas_costs: &GasCosts,
+        fee_params: &FeeParameters,
+        base_asset_id: &AssetId,
+        gas_price: Word,
+    ) -> Result<(), InterpreterError<S::DataError>> {
+        let blob_data = blob
+            .witnesses()
+            .get(*blob.bytecode_witness_index() as usize)
+            .ok_or(InterpreterError::Bug(Bug::new(
+                // It shouldn't be possible since `Checked<Blob>` guarantees
+                // the existence of the witness.
+                BugVariant::WitnessIndexOutOfBounds,
+            )))?;
+
+        let blob_id = blob.blob_id();
+
+        debug_assert_eq!(
+            BlobId::compute(blob_data.as_ref()),
+            *blob_id,
+            "Tx has invalid BlobId",
+        );
+
+        let old = storage
+            .storage_as_mut::<BlobData>()
+            .replace(blob_id, blob_data.as_ref())
+            .map_err(RuntimeError::Storage)?;
+
+        if old.is_some() {
+            return Err(InterpreterError::Panic(PanicReason::BlobIdAlreadyUploaded));
+        }
+
+        Self::finalize_outputs(
+            blob,
+            gas_costs,
+            fee_params,
+            base_asset_id,
+            false,
+            0,
+            &initial_balances,
+            &RuntimeBalances::try_from(initial_balances.clone())?,
+            gas_price,
+        )?;
+
+        Ok(())
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
-
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -748,12 +850,59 @@ where
     }
 
     pub(crate) fn run(&mut self) -> Result<ProgramState, InterpreterError<S::DataError>> {
+        for input in self.transaction().inputs() {
+            if let Input::Contract(contract) = input {
+                if !self.check_contract_exists(&contract.contract_id)? {
+                    return Err(InterpreterError::Panic(
+                        PanicReason::InputContractDoesNotExist,
+                    ));
+                }
+            }
+        }
+
         // TODO: Remove `Create`, `Upgrade`, and `Upload` from here
         //  https://github.com/FuelLabs/fuel-vm/issues/251
         let gas_costs = self.gas_costs().clone();
         let fee_params = *self.fee_params();
         let base_asset_id = *self.base_asset_id();
         let gas_price = self.gas_price();
+
+        #[cfg(debug_assertions)]
+        // The `match` statement exists to ensure that all variants of `Transaction`
+        // are handled below. If a new variant is added, the compiler will
+        // emit an error.
+        {
+            let mint: Transaction = Transaction::mint(
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            )
+            .into();
+            match mint {
+                Transaction::Create(_) => {
+                    // Handled in the `self.tx.as_create_mut()` branch.
+                }
+                Transaction::Upgrade(_) => {
+                    // Handled in the `self.tx.as_upgrade_mut()` branch.
+                }
+                Transaction::Upload(_) => {
+                    // Handled in the `self.tx.as_upload_mut()` branch.
+                }
+                Transaction::Blob(_) => {
+                    // Handled in the `self.tx.as_blob_mut()` branch.
+                }
+                Transaction::Script(_) => {
+                    // Handled in the `else` branch.
+                }
+                Transaction::Mint(_) => {
+                    // The `Mint` transaction doesn't implement `ExecutableTransaction`.
+                }
+            };
+        }
+
         let state = if let Some(create) = self.tx.as_create_mut() {
             Self::deploy_inner(
                 create,
@@ -764,6 +913,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upgrade) = self.tx.as_upgrade_mut() {
             Self::upgrade_inner(
@@ -775,6 +925,7 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
         } else if let Some(upload) = self.tx.as_upload_mut() {
             Self::upload_inner(
@@ -786,96 +937,24 @@ where
                 &base_asset_id,
                 gas_price,
             )?;
+            self.update_transaction_outputs()?;
             ProgramState::Return(1)
-        } else {
-            if self.transaction().inputs().iter().any(|input| {
-                if let Input::Contract(contract) = input {
-                    !self
-                        .check_contract_exists(&contract.contract_id)
-                        .unwrap_or(false)
-                } else {
-                    false
-                }
-            }) {
-                return Err(InterpreterError::Panic(PanicReason::ContractNotInInputs));
-            }
-
-            let gas_limit;
-            let is_empty_script;
-            if let Some(script) = self.transaction().as_script() {
-                gas_limit = *script.script_gas_limit();
-                is_empty_script = script.script().is_empty();
-            } else {
-                unreachable!("Only `Create` and `Script` transactions can be executed inside of the VM")
-            }
-
-            // TODO set tree balance
-
-            // `Interpreter` supports only `Create` and `Script` transactions. It is not
-            // `Create` -> it is `Script`.
-            let program = if !is_empty_script {
-                self.run_program()
-            } else {
-                // Return `1` as successful execution.
-                let return_val = 1;
-                self.ret(return_val)?;
-                Ok(ProgramState::Return(return_val))
-            };
-
-            let gas_used = gas_limit
-                .checked_sub(self.remaining_gas())
-                .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
-
-            // Catch VM panic and don't propagate, generating a receipt
-            let (status, program) = match program {
-                Ok(s) => {
-                    // either a revert or success
-                    let res = if let ProgramState::Revert(_) = &s {
-                        ScriptExecutionResult::Revert
-                    } else {
-                        ScriptExecutionResult::Success
-                    };
-                    (res, s)
-                }
-
-                Err(e) => match e.instruction_result() {
-                    Some(result) => {
-                        self.append_panic_receipt(result);
-
-                        (ScriptExecutionResult::Panic, ProgramState::Revert(0))
-                    }
-
-                    // This isn't a specified case of an erroneous program and should be
-                    // propagated. If applicable, OS errors will fall into this category.
-                    None => return Err(e),
-                },
-            };
-
-            let receipt = Receipt::script_result(status, gas_used);
-
-            self.receipts.push(receipt)?;
-
-            if program.is_debug() {
-                self.debugger_set_last_state(program);
-            }
-
-            let revert = matches!(program, ProgramState::Revert(_));
-            let gas_price = self.gas_price();
-            Self::finalize_outputs(
-                &mut self.tx,
+        } else if let Some(blob) = self.tx.as_blob_mut() {
+            Self::blob_inner(
+                blob,
+                &mut self.storage,
+                self.initial_balances.clone(),
                 &gas_costs,
                 &fee_params,
                 &base_asset_id,
-                revert,
-                gas_used,
-                &self.initial_balances,
-                &self.balances,
                 gas_price,
             )?;
-
-            program
+            self.update_transaction_outputs()?;
+            ProgramState::Return(1)
+        } else {
+            // This must be a `Script`.
+            self.run_program()?
         };
-        self.update_transaction_outputs()?;
 
         Ok(state)
     }
@@ -883,48 +962,111 @@ where
     pub(crate) fn run_program(
         &mut self,
     ) -> Result<ProgramState, InterpreterError<S::DataError>> {
-        loop {
-            // Check whether the instruction will be executed in a call context
-            let in_call = !self.frames.is_empty();
+        let Some(script) = self.tx.as_script() else {
+            unreachable!("Only `Script` transactions can be executed inside of the VM")
+        };
+        let gas_limit = *script.script_gas_limit();
 
-            let state = self.execute()?;
+        let (result, state) = if script.script().is_empty() {
+            // Empty script is special-cased to simply return `1` as successful execution.
+            let return_val = 1;
+            self.ret(return_val)?;
+            (
+                ScriptExecutionResult::Success,
+                ProgramState::Return(return_val),
+            )
+        } else {
+            // TODO set tree balance
+            loop {
+                // Check whether the instruction will be executed in a call context
+                let in_call = !self.frames.is_empty();
 
-            if in_call {
-                // Only reverts should terminate execution from a call context
-                if let ExecuteState::Revert(r) = state {
-                    return Ok(ProgramState::Revert(r));
-                }
-            } else {
-                match state {
-                    ExecuteState::Return(r) => return Ok(ProgramState::Return(r)),
-
-                    ExecuteState::ReturnData(d) => return Ok(ProgramState::ReturnData(d)),
-
-                    ExecuteState::Revert(r) => return Ok(ProgramState::Revert(r)),
-
-                    ExecuteState::Proceed => (),
-
-                    ExecuteState::DebugEvent(d) => return Ok(ProgramState::RunProgram(d)),
+                match self.execute::<false>() {
+                    // Proceeding with the execution normally
+                    Ok(ExecuteState::Proceed) => continue,
+                    // Debugger events are returned directly to the caller
+                    Ok(ExecuteState::DebugEvent(d)) => {
+                        self.debugger_set_last_state(ProgramState::RunProgram(d));
+                        return Ok(ProgramState::RunProgram(d));
+                    }
+                    // Reverting terminated execution immediately
+                    Ok(ExecuteState::Revert(r)) => {
+                        break (ScriptExecutionResult::Revert, ProgramState::Revert(r))
+                    }
+                    // Returning in call context is ignored
+                    Ok(ExecuteState::Return(_) | ExecuteState::ReturnData(_))
+                        if in_call =>
+                    {
+                        continue
+                    }
+                    // In non-call context, returning terminates the execution
+                    Ok(ExecuteState::Return(r)) => {
+                        break (ScriptExecutionResult::Success, ProgramState::Return(r))
+                    }
+                    Ok(ExecuteState::ReturnData(d)) => {
+                        break (
+                            ScriptExecutionResult::Success,
+                            ProgramState::ReturnData(d),
+                        )
+                    }
+                    // Error always terminates the execution
+                    Err(e) => match e.instruction_result() {
+                        Some(result) => {
+                            self.append_panic_receipt(result);
+                            break (ScriptExecutionResult::Panic, ProgramState::Revert(0));
+                        }
+                        // This isn't a specified case of an erroneous program and should
+                        // be propagated. If applicable, OS errors
+                        // will fall into this category.
+                        // The VM state is not finalized in this case.
+                        None => return Err(e),
+                    },
                 }
             }
-        }
-    }
+        };
 
-    /// Update tx fields after execution
-    pub(crate) fn post_execute(&mut self) {
-        if let Some(script) = self.tx.as_script_mut() {
-            *script.receipts_root_mut() = self.receipts.root();
-        }
+        // Produce result receipt
+        let gas_used = gas_limit
+            .checked_sub(self.remaining_gas())
+            .ok_or_else(|| Bug::new(BugVariant::GlobalGasUnderflow))?;
+        self.receipts
+            .push(Receipt::script_result(result, gas_used))?;
+
+        // Finalize the outputs
+        let fee_params = *self.fee_params();
+        let base_asset_id = *self.base_asset_id();
+        let gas_costs = self.gas_costs().clone();
+        let gas_price = self.gas_price();
+        Self::finalize_outputs(
+            &mut self.tx,
+            &gas_costs,
+            &fee_params,
+            &base_asset_id,
+            matches!(state, ProgramState::Revert(_)),
+            gas_used,
+            &self.initial_balances,
+            &self.balances,
+            gas_price,
+        )?;
+        self.update_transaction_outputs()?;
+
+        let Some(script) = self.tx.as_script_mut() else {
+            unreachable!("This is checked to hold in the beginning of this function");
+        };
+        *script.receipts_root_mut() = self.receipts.root();
+
+        Ok(state)
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
+    V: Verifier,
 {
     /// Initialize a pre-allocated instance of [`Interpreter`] with the provided
     /// transaction and execute it. The result will be bound to the lifetime
@@ -937,16 +1079,6 @@ where
         self.verify_ready_tx(&tx)?;
 
         let state_result = self.init_script(tx).and_then(|_| self.run());
-        self.post_execute();
-
-        #[cfg(feature = "profile-any")]
-        {
-            let r = match &state_result {
-                Ok(state) => Ok(state),
-                Err(err) => Err(err.erase_generics()),
-            };
-            self.profiler.on_transaction(r);
-        }
 
         let state = state_result?;
         Ok(StateTransitionRef::new(
@@ -957,7 +1089,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -989,7 +1121,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1021,7 +1153,7 @@ where
     }
 }
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     S: InterpreterStorage,
 {
@@ -1053,7 +1185,39 @@ where
     }
 }
 
-impl<M, S: InterpreterStorage, Tx, Ecal> Interpreter<M, S, Tx, Ecal> {
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
+where
+    S: InterpreterStorage,
+{
+    /// Executes `Blob` transaction without initialization VM and without invalidation
+    /// of the last state of execution of the `Script` transaction.
+    ///
+    /// Returns `Blob` transaction with all modifications after execution.
+    pub fn blob(
+        &mut self,
+        tx: Ready<Blob>,
+    ) -> Result<Blob, InterpreterError<S::DataError>> {
+        self.verify_ready_tx(&tx)?;
+
+        let (_, checked) = tx.decompose();
+        let (mut blob, metadata): (Blob, <Blob as IntoChecked>::Metadata) =
+            checked.into();
+        let base_asset_id = *self.base_asset_id();
+        let gas_price = self.gas_price();
+        Self::blob_inner(
+            &mut blob,
+            &mut self.storage,
+            metadata.balances(),
+            &self.interpreter_params.gas_costs,
+            &self.interpreter_params.fee_params,
+            &base_asset_id,
+            gas_price,
+        )?;
+        Ok(blob)
+    }
+}
+
+impl<M, S: InterpreterStorage, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
     fn verify_ready_tx<Tx2: IntoChecked>(
         &self,
         tx: &Ready<Tx2>,

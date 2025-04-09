@@ -430,23 +430,37 @@ impl<const N: usize, T: Deserialize> Deserialize for [T; N] {
         } else {
             // Spec doesn't say how to deserialize arrays with unaligned
             // primitives(as `u16`, `u32`, `usize`), so unpad them.
-            let mut uninit = <MaybeUninit<[T; N]>>::uninit();
+            // SAFETY: `uninit`` is an array of `MaybUninit`, which do not require
+            // initialization
+            let mut uninit: [MaybeUninit<T>; N] =
+                unsafe { MaybeUninit::uninit().assume_init() };
             // The following line coerces the pointer to the array to a pointer
             // to the first array element which is equivalent.
-            let mut ptr = uninit.as_mut_ptr() as *mut T;
-            for _ in 0..N {
-                let decoded = T::decode_static(buffer)?;
-                // SAFETY: We do not read uninitialized array contents
-                // 		 while initializing them.
-                unsafe {
-                    core::ptr::write(ptr, decoded);
+            for i in 0..N {
+                match T::decode_static(buffer) {
+                    Err(e) => {
+                        for item in uninit.iter_mut().take(i) {
+                            // SAFETY: all elements up to index i (excluded have been
+                            // initialised)
+                            unsafe {
+                                item.assume_init_drop();
+                            }
+                        }
+                        return Err(e)
+                    }
+                    Ok(decoded) => {
+                        // SAFETY: `uninit[i]` is a MaybeUninit which can be
+                        // safely overwritten.
+                        uninit[i].write(decoded);
+
+                        // SAFETY: Point to the next element after every iteration.
+                        // 		 We do this N times therefore this is safe.
+                    }
                 }
-                // SAFETY: Point to the next element after every iteration.
-                // 		 We do this N times therefore this is safe.
-                ptr = unsafe { ptr.add(1) };
             }
+
             // SAFETY: All array elements have been initialized above.
-            let init = unsafe { uninit.assume_init() };
+            let init = uninit.map(|v| unsafe { v.assume_init() });
             Ok(init)
         }
     }
@@ -467,7 +481,7 @@ impl Output for Vec<u8> {
     }
 }
 
-impl<'a> Output for &'a mut [u8] {
+impl Output for &'_ mut [u8] {
     fn write(&mut self, from: &[u8]) -> Result<(), Error> {
         if from.len() > self.len() {
             return Err(Error::BufferIsTooShort)
@@ -484,7 +498,7 @@ impl<'a> Output for &'a mut [u8] {
     }
 }
 
-impl<'a> Input for &'a [u8] {
+impl Input for &'_ [u8] {
     fn remaining(&mut self) -> usize {
         self.len()
     }

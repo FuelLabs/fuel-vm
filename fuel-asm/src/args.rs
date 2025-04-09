@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 pub mod wideint;
 
 /// 12-bits immediate value type
@@ -11,7 +13,6 @@ crate::enum_try_from! {
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
     #[repr(u8)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
     /// Argument list for GM (get metadata) instruction
     /// The VM is the only who should match this struct, and it *MUST* always perform
     /// exhaustive match so all offered variants are covered.
@@ -51,7 +52,6 @@ crate::enum_try_from! {
     #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
     #[repr(u16)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
     pub enum GTFArgs {
         /// Set `$rA` to `tx.type`
         Type = 0x001,
@@ -66,12 +66,15 @@ crate::enum_try_from! {
         ScriptDataLength = 0x004,
 
         /// Set `$rA` to `tx.inputsCount`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxInputsCount` instead")]
         ScriptInputsCount = 0x005,
 
         /// Set `$rA` to `tx.outputsCount`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxOutputsCount` instead")]
         ScriptOutputsCount = 0x006,
 
         /// Set `$rA` to `tx.witnessesCount`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxWitnessesCount` instead")]
         ScriptWitnessesCount = 0x007,
 
         /// Set `$rA` to `Memory address of tx.script`
@@ -81,12 +84,15 @@ crate::enum_try_from! {
         ScriptData = 0x00A,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB]`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxInputAtIndex` instead")]
         ScriptInputAtIndex = 0x00B,
 
         /// Set `$rA` to `Memory address of t.outputs[$rB]`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxOutputAtIndex` instead")]
         ScriptOutputAtIndex = 0x00C,
 
         /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxWitnessAtIndex` instead")]
         ScriptWitnessAtIndex = 0x00D,
 
         /// Set `$rA` to size of the transaction in memory, in bytes
@@ -99,12 +105,15 @@ crate::enum_try_from! {
         CreateStorageSlotsCount = 0x102,
 
         /// Set `$rA` to `tx.inputsCount`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxInputsCount` instead")]
         CreateInputsCount = 0x103,
 
         /// Set `$rA` to `tx.outputsCount`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxOutputsCount` instead")]
         CreateOutputsCount = 0x104,
 
         /// Set `$rA` to `tx.witnessesCount`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxWitnessesCount` instead")]
         CreateWitnessesCount = 0x105,
 
         /// Set `$rA` to `Memory address of tx.salt`
@@ -114,12 +123,15 @@ crate::enum_try_from! {
         CreateStorageSlotAtIndex = 0x107,
 
         /// Set `$rA` to `Memory address of tx.inputs[$rB]`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxInputAtIndex` instead")]
         CreateInputAtIndex = 0x108,
 
         /// Set `$rA` to `Memory address of t.outputs[$rB]`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxOutputAtIndex` instead")]
         CreateOutputAtIndex = 0x109,
 
         /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
+        #[deprecated(since = "0.60.0", note = "Use the generic `TxWitnessAtIndex` instead")]
         CreateWitnessAtIndex = 0x10A,
 
         /// Set `$rA` to `tx.inputs[$rB].type`
@@ -247,6 +259,54 @@ crate::enum_try_from! {
 
         /// Set `$rA` to `tx.policies[count_ones(0b1111 & tx.policyTypes) - 1].maxFee`
         PolicyMaxFee = 0x504,
+
+        /// Set `$rA` to `tx.policies[count_ones(0b11111 & tx.policyTypes) - 1].expiration`
+        PolicyExpiration = 0x505,
+
+        /// Set `$rA` to `Memory address of tx.root`
+        UploadRoot = 0x600,
+
+        /// Set `$rA` to `tx.witnessIndex`
+        UploadWitnessIndex = 0x601,
+
+        /// Set `$rA` to `tx.subsectionIndex`
+        UploadSubsectionIndex = 0x602,
+
+        /// Set `$rA` to `tx.subsectionsNumber`
+        UploadSubsectionsCount = 0x603,
+
+        /// Set `$rA` to `tx.proofSetCount`
+        UploadProofSetCount = 0x604,
+
+        /// Set `$rA` to `Memory address of tx.proofSet[$rB]`
+        UploadProofSetAtIndex = 0x605,
+
+        /// Set `$rA` to `Memory address of tx.id`
+        BlobId = 0x700,
+
+        /// Set `$rA` to `tx.witnessIndex`
+        BlobWitnessIndex = 0x701,
+
+        /// Set `$rA` to `Memory address of tx.purpose`
+        UpgradePurpose = 0x800,
+
+        /// Set `$rA` to `tx.inputsCount`
+        TxInputsCount = 0x900,
+
+        /// Set `$rA` to `tx.outputsCount`
+        TxOutputsCount = 0x901,
+
+        /// Set `$rA` to `tx.witnessesCount`
+        TxWitnessesCount = 0x902,
+
+        /// Set `$rA` to `Memory address of tx.inputs[$rB]`
+        TxInputAtIndex = 0x903,
+
+        /// Set `$rA` to `Memory address of t.outputs[$rB]`
+        TxOutputAtIndex = 0x904,
+
+        /// Set `$rA` to `Memory address of tx.witnesses[$rB]`
+        TxWitnessAtIndex = 0x905,
     },
     Immediate12
 }
@@ -342,7 +402,23 @@ fn encode_gtf_args() {
         GTFArgs::PolicyTip,
         GTFArgs::PolicyWitnessLimit,
         GTFArgs::PolicyMaturity,
+        GTFArgs::PolicyExpiration,
         GTFArgs::PolicyMaxFee,
+        GTFArgs::UploadRoot,
+        GTFArgs::UploadWitnessIndex,
+        GTFArgs::UploadSubsectionIndex,
+        GTFArgs::UploadSubsectionsCount,
+        GTFArgs::UploadProofSetCount,
+        GTFArgs::UploadProofSetAtIndex,
+        GTFArgs::BlobId,
+        GTFArgs::BlobWitnessIndex,
+        GTFArgs::UpgradePurpose,
+        GTFArgs::TxInputsCount,
+        GTFArgs::TxOutputsCount,
+        GTFArgs::TxWitnessesCount,
+        GTFArgs::TxInputAtIndex,
+        GTFArgs::TxOutputAtIndex,
+        GTFArgs::TxWitnessAtIndex,
     ];
 
     args.into_iter().for_each(|a| {

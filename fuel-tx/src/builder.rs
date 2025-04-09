@@ -5,6 +5,7 @@ use crate::{
         field::{
             self,
             BytecodeWitnessIndex,
+            Expiration,
             Maturity,
             Tip,
             Witnesses,
@@ -14,8 +15,11 @@ use crate::{
         Executable,
         Script,
     },
+    Blob,
+    BlobBody,
     ConsensusParameters,
     ContractParameters,
+    CreateMetadata,
     FeeParameters,
     GasCosts,
     Input,
@@ -42,6 +46,7 @@ use crate::{
 use crate::{
     field::{
         MaxFeeLimit,
+        Outputs,
         WitnessLimit,
     },
     policies::Policies,
@@ -63,6 +68,11 @@ use fuel_types::{
     Nonce,
     Salt,
     Word,
+};
+#[cfg(feature = "rand")]
+use rand::{
+    rngs::StdRng,
+    Rng,
 };
 
 pub trait BuildableAloc
@@ -127,7 +137,7 @@ impl TransactionBuilder<Script> {
             body: ScriptBody {
                 script_gas_limit: Default::default(),
                 receipts_root: Default::default(),
-                script,
+                script: script.into(),
                 script_data,
             },
             policies: Policies::new().with_max_fee(0),
@@ -167,6 +177,17 @@ impl TransactionBuilder<Create> {
 
         Self::with_tx(tx)
     }
+
+    pub fn add_contract_created(&mut self) -> &mut Self {
+        let create_metadata = CreateMetadata::compute(&self.tx)
+            .expect("Should be able to compute metadata");
+
+        self.tx.outputs_mut().push(Output::contract_created(
+            create_metadata.contract_id,
+            create_metadata.state_root,
+        ));
+        self
+    }
 }
 
 impl TransactionBuilder<Upgrade> {
@@ -197,10 +218,25 @@ impl TransactionBuilder<Upload> {
     }
 }
 
+impl TransactionBuilder<Blob> {
+    pub fn blob(body: BlobBody) -> Self {
+        let tx = Blob {
+            body,
+            policies: Policies::new().with_max_fee(0),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            metadata: None,
+        };
+        Self::with_tx(tx)
+    }
+}
+
 impl TransactionBuilder<Mint> {
     pub fn mint(
         block_height: BlockHeight,
-        tx_index: u16,
+        #[cfg(feature = "u32-tx-pointer")] tx_index: u32,
+        #[cfg(not(feature = "u32-tx-pointer"))] tx_index: u16,
         input_contract: input::contract::Contract,
         output_contract: output::contract::Contract,
         mint_amount: Word,
@@ -342,6 +378,12 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
+    pub fn expiration(&mut self, expiration: BlockHeight) -> &mut Self {
+        self.tx.set_expiration(expiration);
+
+        self
+    }
+
     pub fn witness_limit(&mut self, witness_limit: Word) -> &mut Self {
         self.tx.set_witness_limit(witness_limit);
 
@@ -379,7 +421,18 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     }
 
     #[cfg(feature = "rand")]
-    pub fn add_random_fee_input(&mut self) -> &mut Self {
+    pub fn add_random_fee_input(&mut self, rng: &mut StdRng) -> &mut Self {
+        self.add_unsigned_coin_input(
+            SecretKey::random(rng),
+            rng.gen(),
+            u32::MAX as u64,
+            *self.params.base_asset_id(),
+            Default::default(),
+        )
+    }
+
+    #[cfg(feature = "rand")]
+    pub fn add_fee_input(&mut self) -> &mut Self {
         use rand::{
             Rng,
             SeedableRng,

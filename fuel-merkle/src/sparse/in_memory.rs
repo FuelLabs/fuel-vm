@@ -95,7 +95,11 @@ impl MerkleTree {
         }
 
         impl StorageMutate<NodesTable> for EmptyStorage {
-            fn insert(
+            fn insert(&mut self, _: &Bytes32, _: &Primitive) -> Result<(), Self::Error> {
+                Ok(())
+            }
+
+            fn replace(
                 &mut self,
                 _: &Bytes32,
                 _: &Primitive,
@@ -103,7 +107,11 @@ impl MerkleTree {
                 Ok(None)
             }
 
-            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+            fn remove(&mut self, _: &Bytes32) -> Result<(), Self::Error> {
+                Ok(())
+            }
+
+            fn take(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
                 Ok(None)
             }
         }
@@ -148,13 +156,26 @@ impl MerkleTree {
                 &mut self,
                 key: &Bytes32,
                 value: &Primitive,
+            ) -> Result<(), Self::Error> {
+                self.storage.push((*key, *value));
+                Ok(())
+            }
+
+            fn replace(
+                &mut self,
+                key: &Bytes32,
+                value: &Primitive,
             ) -> Result<Option<Primitive>, Self::Error> {
                 self.storage.push((*key, *value));
                 Ok(None)
             }
 
-            fn remove(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+            fn remove(&mut self, _: &Bytes32) -> Result<(), Self::Error> {
                 unimplemented!("Remove operation is not supported")
+            }
+
+            fn take(&mut self, _: &Bytes32) -> Result<Option<Primitive>, Self::Error> {
+                unimplemented!("Take operation is not supported")
             }
         }
 

@@ -5,10 +5,10 @@ on:
     branches:
       - master
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [ opened, synchronize, reopened, labeled, unlabeled ]
   merge_group:
   release:
-    types: [published]
+    types: [ published ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -16,9 +16,9 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_VERSION: 1.75.0
+  RUST_VERSION: 1.81.0
   RUST_VERSION_FMT: nightly-2024-02-07
-  RUST_VERSION_COV: nightly-2024-06-05
+  RUST_VERSION_COV: nightly-2025-01-01
   GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
 jobs:
@@ -26,9 +26,28 @@ jobs:
     name: Check Changelog
     runs-on: ubuntu-latest
     steps:
-      - uses: tarides/changelog-check-action@v2
-        with:
-          changelog: CHANGELOG.md
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for a file with the PR number in a sub-directory of the .changes directory" or "no changelog" label.
+        run: |
+          # Check if we are on master
+          if [ "$GITHUB_REF" = "refs/heads/master" ]; then
+            echo "On master branch, skipping changelog check."
+            exit 0
+          fi
+          pr_number_file=$(echo $GITHUB_REF | cut -d'/' -f3).md
+          if [[ $(find .changes/ -type f -name $pr_number_file -print -quit) ]]; then
+            echo "File $pr_number_file exists."
+          else
+            if [ "${{ contains(github.event.pull_request.labels.*.name, 'no changelog') }}" = "true" ]; then
+              echo "No changelog needed."
+              exit 0
+            else
+              echo "File $pr_number_file does not exist."
+              exit 1
+            fi
+          fi
 
   cargo:
     needs:
@@ -65,7 +84,7 @@ jobs:
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-crypto --no-default-features
           - command: check
-            args: --target wasm32-unknown-unknown -p fuel-tx --features serde --no-default-features
+            args: --target wasm32-unknown-unknown -p fuel-tx --features alloc --no-default-features
           - command: check
             args: --target wasm32-unknown-unknown -p fuel-types --features serde --no-default-features
           - command: rustc
@@ -92,8 +111,6 @@ jobs:
             args: --all-targets --features random
           - command: test
             args: --all-targets --features serde
-          - command: test
-            args: --all-targets --features random,profile-gas,profile-coverage,serde
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@master
@@ -146,8 +163,8 @@ jobs:
           git push
           export PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/$BRANCH_B64/index.html"
           echo "$PAGES_URL"
-          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY          
-        
+          echo "Codecov report $PAGES_URL" >> $GITHUB_STEP_SUMMARY
+
 
   rustfmt:
     runs-on: buildjet-4vcpu-ubuntu-2204
@@ -198,7 +215,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
 
       - name: Publish crate check
-        uses: xgreenx/publish-crates@v1
+        uses: FuelLabs/publish-crates@v1
         with:
           dry-run: true
           check-repo: false
@@ -224,9 +241,9 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-opt
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8.6.9
+          version: ^9.4.0
 
       - name: Setup Node
         uses: actions/setup-node@v3
@@ -262,7 +279,7 @@ jobs:
           ./.github/workflows/scripts/verify_tag.sh ${{ github.ref_name }} Cargo.toml
 
       - name: Publish crate
-        uses: xgreenx/publish-crates@v1
+        uses: FuelLabs/publish-crates@v1
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
@@ -280,12 +297,12 @@ jobs:
       - publish
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: buildjet-4vcpu-ubuntu-2204
-
+    environment: npm-deploy
     steps:
       - uses: actions/checkout@v3
         with:
-            fetch-depth: 0
-            ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -296,9 +313,9 @@ jobs:
         run: cargo install wasm-bindgen-cli wasm-opt
 
       - name: Setup PNPM
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8.6.9
+          version: ^9.4.0
 
       - name: Setup Node
         uses: actions/setup-node@v3
@@ -317,9 +334,9 @@ jobs:
       - name: Ensure NPM access
         run: npm whoami
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}
 
       - name: Publish
         run: pnpm -C .npm publish -r --access public --no-git-checks
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN_VM }}

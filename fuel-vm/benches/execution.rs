@@ -45,7 +45,7 @@ fn execution(c: &mut Criterion) {
         vec![],
     )
     .max_fee_limit(0)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize();
     let script = script
         .into_checked_basic(Default::default(), &Default::default())
@@ -58,7 +58,7 @@ fn execution(c: &mut Criterion) {
     group_execution.bench_function("Infinite `meq` loop", |b| {
         b.iter(|| {
             for _ in 0..1000 {
-                let _ = interpreter.execute().unwrap();
+                let _ = interpreter.execute::<false>().unwrap();
             }
         })
     });
@@ -66,7 +66,7 @@ fn execution(c: &mut Criterion) {
     group_execution.bench_function("Infinite `meq` loop black box", |b| {
         b.iter(|| {
             for _ in 0..1000 {
-                black_box(interpreter.execute()).unwrap();
+                black_box(interpreter.execute::<false>()).unwrap();
             }
         })
     });
@@ -75,7 +75,7 @@ fn execution(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..1000 {
                 unsafe {
-                    let dummy = interpreter.execute().unwrap();
+                    let dummy = interpreter.execute::<false>().unwrap();
                     std::ptr::read_volatile(&dummy)
                 };
             }
@@ -92,7 +92,7 @@ fn execution(c: &mut Criterion) {
         vec![],
     )
     .max_fee_limit(0)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize();
     let script = script
         .into_checked_basic(Default::default(), &Default::default())
@@ -103,7 +103,7 @@ fn execution(c: &mut Criterion) {
     group_execution.bench_function("Infinite `add` loop", |b| {
         b.iter(|| {
             for _ in 0..1000 {
-                let _ = interpreter.execute().unwrap();
+                let _ = interpreter.execute::<false>().unwrap();
             }
         })
     });
@@ -111,7 +111,7 @@ fn execution(c: &mut Criterion) {
     group_execution.bench_function("Infinite `add` loop black box", |b| {
         b.iter(|| {
             for _ in 0..1000 {
-                black_box(interpreter.execute()).unwrap();
+                black_box(interpreter.execute::<false>()).unwrap();
             }
         })
     });
@@ -120,7 +120,7 @@ fn execution(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..1000 {
                 unsafe {
-                    let dummy = interpreter.execute().unwrap();
+                    let dummy = interpreter.execute::<false>().unwrap();
                     std::ptr::read_volatile(&dummy)
                 };
             }
@@ -137,7 +137,7 @@ fn execution(c: &mut Criterion) {
         vec![],
     )
     .max_fee_limit(0)
-    .add_random_fee_input()
+    .add_fee_input()
     .finalize();
     let script = script
         .into_checked_basic(Default::default(), &Default::default())
@@ -148,7 +148,7 @@ fn execution(c: &mut Criterion) {
     group_execution.bench_function("Infinite `not` loop", |b| {
         b.iter(|| {
             for _ in 0..1000 {
-                let _ = interpreter.execute().unwrap();
+                let _ = interpreter.execute::<false>().unwrap();
             }
         })
     });
@@ -156,7 +156,7 @@ fn execution(c: &mut Criterion) {
     group_execution.bench_function("Infinite `not` loop black box", |b| {
         b.iter(|| {
             for _ in 0..1000 {
-                black_box(interpreter.execute()).unwrap();
+                black_box(interpreter.execute::<false>()).unwrap();
             }
         })
     });
@@ -165,7 +165,7 @@ fn execution(c: &mut Criterion) {
         b.iter(|| {
             for _ in 0..1000 {
                 unsafe {
-                    let dummy = interpreter.execute().unwrap();
+                    let dummy = interpreter.execute::<false>().unwrap();
                     std::ptr::read_volatile(&dummy)
                 };
             }

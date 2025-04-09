@@ -1,7 +1,5 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
-use core::convert::Infallible;
-
 use alloc::{
     vec,
     vec::Vec,
@@ -9,7 +7,10 @@ use alloc::{
 
 use crate::{
     interpreter::contract::balance as contract_balance,
-    storage::MemoryStorage,
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
 };
 
 use super::*;
@@ -206,7 +207,7 @@ fn test_smo(
         max_message_data_length,
         initial_balance,
     }: Input,
-) -> Result<Output, RuntimeError<Infallible>> {
+) -> Result<Output, RuntimeError<MemoryStorageError>> {
     let mut rng = StdRng::seed_from_u64(100);
     let base_asset_id = rng.gen();
 
@@ -217,7 +218,7 @@ fn test_smo(
     let mut receipts = Default::default();
     let mut storage = MemoryStorage::default();
     let old_balance = storage
-        .contract_asset_id_balance_insert(
+        .contract_asset_id_balance_replace(
             &ContractId::default(),
             &base_asset_id,
             initial_balance,

@@ -7,12 +7,18 @@ use fuel_types::{
     ContractId,
 };
 
+mod blob_data;
 mod contracts_assets;
 mod contracts_state;
 mod interpreter;
+#[cfg(feature = "test-helpers")]
 mod memory;
-pub(crate) mod predicate;
+pub mod predicate;
 
+pub use blob_data::{
+    BlobBytes,
+    BlobData,
+};
 pub use contracts_assets::{
     ContractsAssetKey,
     ContractsAssets,
@@ -26,8 +32,11 @@ pub use interpreter::{
     ContractsAssetsStorage,
     InterpreterStorage,
 };
-pub use memory::MemoryStorage;
-pub use predicate::PredicateStorage;
+#[cfg(feature = "test-helpers")]
+pub use memory::{
+    MemoryStorage,
+    MemoryStorageError,
+};
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;

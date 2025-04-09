@@ -1,4 +1,7 @@
-use super::backend::k1;
+use super::{
+    backend::k1,
+    signature_format::decode_signature,
+};
 use crate::{
     Error,
     Message,
@@ -14,7 +17,7 @@ use core::{
     str,
 };
 
-/// Compact-form Secp256k1 signature.
+/// Compressed-form Secp256k1 signature.
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(transparent)]
@@ -42,6 +45,12 @@ impl Signature {
         unsafe {
             &*(bytes.as_ptr() as *const Self)
         }
+    }
+
+    /// Removes the recovery id from the signature.
+    pub fn remove_recovery_id(&self) -> [u8; Self::LEN] {
+        let (signature, _recovery_id) = decode_signature(self.0.into());
+        signature
     }
 
     /// Kept temporarily for backwards compatibility.
@@ -135,5 +144,25 @@ impl Signature {
     /// Verify that a signature matches given public key
     pub fn verify(&self, public_key: &PublicKey, message: &Message) -> Result<(), Error> {
         k1::verify(*self.0, **public_key, message)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Signature;
+    use test_case::test_case;
+
+    #[test_case(0x00 => 0x00)]
+    #[test_case(0x7E => 0x7E)]
+    #[test_case(0x7F => 0x7F)]
+    #[test_case(0x80 => 0x00)]
+    #[test_case(0xFF => 0x7F)]
+    fn removes_recovery_id(s_byte: u8) -> u8 {
+        let mut sig_bytes = [0u8; 64];
+        sig_bytes[32..].fill(s_byte);
+
+        let signature = Signature::from_bytes(sig_bytes);
+        let without_recovery_id = signature.remove_recovery_id();
+        without_recovery_id[32]
     }
 }

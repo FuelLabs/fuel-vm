@@ -10,26 +10,23 @@ use crate::{
     error::SimpleResult,
 };
 
-use fuel_asm::PanicReason;
-use fuel_types::{
-    RegisterId,
-    Word,
+use fuel_asm::{
+    PanicReason,
+    RegId,
 };
+use fuel_types::Word;
 
 mod muldiv;
 mod wideint;
 
-#[cfg(test)]
-mod tests;
-
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
 {
     /// Stores the overflowed wrapped value into RegId::OF
     pub(crate) fn alu_capture_overflow<F, B, C>(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         f: F,
         b: B,
         c: C,
@@ -51,7 +48,7 @@ where
     /// Set RegId::OF to true and zero the result register if overflow occurred.
     pub(crate) fn alu_boolean_overflow<F, B, C>(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         f: F,
         b: B,
         c: C,
@@ -72,7 +69,7 @@ where
 
     pub(crate) fn alu_error<F, B, C>(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         f: F,
         b: B,
         c: C,
@@ -92,7 +89,7 @@ where
         alu_error(dest, flag.as_ref(), common, f, b, c, err_bool)
     }
 
-    pub(crate) fn alu_set(&mut self, ra: RegisterId, b: Word) -> SimpleResult<()> {
+    pub(crate) fn alu_set(&mut self, ra: RegId, b: Word) -> SimpleResult<()> {
         let (SystemRegisters { of, err, pc, .. }, mut w) =
             split_registers(&mut self.registers);
         let dest = &mut w[ra.try_into()?];

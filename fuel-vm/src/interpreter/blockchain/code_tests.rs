@@ -1,17 +1,20 @@
 #![allow(clippy::cast_possible_truncation)]
-use core::convert::Infallible;
 
 use alloc::vec;
 
 use super::*;
 use crate::{
     interpreter::PanicContext,
-    storage::MemoryStorage,
+    storage::{
+        MemoryStorage,
+        MemoryStorageError,
+    },
+    verification::Normal,
 };
 use fuel_tx::Contract;
 
 #[test]
-fn test_load_contract_in_script() -> IoResult<(), Infallible> {
+fn test_load_contract_in_script() -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
@@ -21,7 +24,6 @@ fn test_load_contract_in_script() -> IoResult<(), Infallible> {
     let mut sp = 1000;
     let hp = VM_MAX_RAM;
     let fp = 0;
-    let is = 0;
 
     let contract_id = ContractId::from([4u8; 32]);
 
@@ -50,8 +52,8 @@ fn test_load_contract_in_script() -> IoResult<(), Infallible> {
         context: &Context::Script {
             block_height: Default::default(),
         },
-        profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -59,8 +61,8 @@ fn test_load_contract_in_script() -> IoResult<(), Infallible> {
         sp: RegMut::new(&mut sp),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
         hp: Reg::new(&hp),
+        verifier: &mut Normal,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
@@ -70,7 +72,7 @@ fn test_load_contract_in_script() -> IoResult<(), Infallible> {
     Ok(())
 }
 #[test]
-fn test_load_contract_in_call() -> IoResult<(), Infallible> {
+fn test_load_contract_in_call() -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut pc = 4;
@@ -79,7 +81,6 @@ fn test_load_contract_in_call() -> IoResult<(), Infallible> {
     let mut ssp = 1000;
     let mut sp = 1000;
     let fp = 32;
-    let is = 0;
     let hp = VM_MAX_RAM;
 
     let contract_id = ContractId::from([4u8; 32]);
@@ -109,8 +110,8 @@ fn test_load_contract_in_call() -> IoResult<(), Infallible> {
         context: &Context::Call {
             block_height: Default::default(),
         },
-        profiler: &mut Profiler::default(),
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         gas_cost: DependentCost::from_units_per_gas(13, 1),
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
@@ -119,7 +120,7 @@ fn test_load_contract_in_call() -> IoResult<(), Infallible> {
         hp: Reg::new(&hp),
         fp: Reg::new(&fp),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     };
     input.load_contract_code(contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);
@@ -130,13 +131,12 @@ fn test_load_contract_in_call() -> IoResult<(), Infallible> {
 }
 
 #[test]
-fn test_code_copy() -> IoResult<(), Infallible> {
+fn test_code_copy() -> IoResult<(), MemoryStorageError> {
     let mut storage = MemoryStorage::default();
     let mut memory: MemoryInstance = vec![1u8; MEM_SIZE].try_into().unwrap();
     let mut cgas = 1000;
     let mut ggas = 1000;
     let mut pc = 4;
-    let is = 0;
 
     let contract_id = ContractId::from([4u8; 32]);
 
@@ -162,9 +162,8 @@ fn test_code_copy() -> IoResult<(), Infallible> {
     let input = CodeCopyCtx {
         storage: &storage,
         memory: &mut memory,
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
-        profiler: &mut Profiler::default(),
-        current_contract: None,
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         owner: OwnershipRegisters {
             sp: 1000,
             ssp: 1000,
@@ -175,7 +174,7 @@ fn test_code_copy() -> IoResult<(), Infallible> {
         cgas: RegMut::new(&mut cgas),
         ggas: RegMut::new(&mut ggas),
         pc: RegMut::new(&mut pc),
-        is: Reg::new(&is),
+        verifier: &mut Normal,
     };
     input.code_copy(dest_mem_address, contract_id_mem_address, offset, num_bytes)?;
     assert_eq!(pc, 8);

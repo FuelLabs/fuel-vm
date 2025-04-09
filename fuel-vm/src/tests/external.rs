@@ -40,8 +40,8 @@ fn attempt_ecal_without_handler() {
 pub struct NoopEcal;
 
 impl ::fuel_vm::interpreter::EcalHandler for NoopEcal {
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, V>,
         _: RegId,
         _: RegId,
         _: RegId,
@@ -69,7 +69,7 @@ fn noop_ecal() {
     let tx = TransactionBuilder::script(script, vec![])
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
@@ -88,8 +88,8 @@ pub struct SumProdEcal;
 impl ::fuel_vm::interpreter::EcalHandler for SumProdEcal {
     /// This ecal fn computes saturating sum and product of inputs (a,b,c,d),
     /// and stores them in a and b respectively. It charges only a single gas.
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         b: RegId,
         c: RegId,
@@ -145,7 +145,7 @@ fn provide_ecal_fn() {
     let tx = TransactionBuilder::script(script, script_data)
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");
@@ -169,8 +169,8 @@ impl ::fuel_vm::interpreter::EcalHandler for ComplexEcal {
     const INC_PC: bool = false;
 
     /// Ecal meant for testing cornercase behavior of the handler.
-    fn ecal<M, S, Tx>(
-        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self>,
+    fn ecal<M, S, Tx, V>(
+        vm: &mut ::fuel_vm::prelude::Interpreter<M, S, Tx, Self, V>,
         a: RegId,
         _b: RegId,
         _c: RegId,
@@ -216,7 +216,7 @@ fn complex_ecal_fn(val: u32, result: PanicReason) {
     let tx = TransactionBuilder::script(script, vec![])
         .script_gas_limit(1_000_000)
         .maturity(Default::default())
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &consensus_params)
         .expect("failed to generate a checked tx");

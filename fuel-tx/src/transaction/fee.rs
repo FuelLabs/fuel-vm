@@ -26,8 +26,19 @@ use fuel_asm::Word;
 use fuel_types::canonical::Serialize;
 use hashbrown::HashSet;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(
+    Debug,
+    Default,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub struct TransactionFee {
     pub(crate) min_fee: Word,
     pub(crate) max_fee: Word,
@@ -246,7 +257,7 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
                 // Charge EC recovery cost for signed inputs
                 Input::CoinSigned(_)
                 | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.ecr1(),
+                | Input::MessageDataSigned(_) => gas_costs.eck1(),
                 // Charge the cost of the contract root for predicate inputs
                 Input::CoinPredicate(CoinPredicate {
                     predicate,

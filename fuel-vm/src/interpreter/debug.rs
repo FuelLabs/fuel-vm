@@ -2,7 +2,7 @@ use super::Interpreter;
 use crate::prelude::*;
 use fuel_asm::RegId;
 
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     Tx: ExecutableTransaction,
 {
@@ -94,7 +94,7 @@ mod tests {
 
         let tx = TransactionBuilder::script(script, vec![])
             .script_gas_limit(gas_limit)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to generate checked tx")
@@ -102,6 +102,7 @@ mod tests {
                 gas_price,
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
+                None,
             )
             .unwrap();
 
@@ -173,7 +174,7 @@ mod tests {
 
         let tx = TransactionBuilder::script(script, vec![])
             .script_gas_limit(gas_limit)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to generate checked tx")
@@ -181,6 +182,7 @@ mod tests {
                 gas_price,
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
+                None,
             )
             .unwrap();
 
@@ -226,7 +228,7 @@ mod tests {
 
         let tx = TransactionBuilder::script(script, vec![])
             .script_gas_limit(gas_limit)
-            .add_random_fee_input()
+            .add_fee_input()
             .finalize()
             .into_checked(height, &consensus_params)
             .expect("failed to generate checked tx")
@@ -234,6 +236,7 @@ mod tests {
                 gas_price,
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
+                None,
             )
             .unwrap();
 

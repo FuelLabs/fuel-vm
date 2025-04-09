@@ -1,13 +1,18 @@
 #![allow(clippy::arithmetic_side_effects, clippy::cast_possible_truncation)]
 
-use core::convert::Infallible;
-
 use alloc::{
     vec,
     vec::Vec,
 };
 
-use crate::storage::MemoryStorage;
+use crate::{
+    storage::{
+        ContractsAssetsStorage,
+        MemoryStorage,
+        MemoryStorageError,
+    },
+    verification::Normal,
+};
 
 use super::*;
 use crate::crypto;
@@ -119,7 +124,8 @@ impl Default for Output {
                 16,
                 0,
                 0,
-            )],
+            )
+            .unwrap()],
             receipts: vec![Receipt::call(
                 Default::default(),
                 Default::default(),
@@ -181,7 +187,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
         script: Some(Default::default()),
         ..Default::default()
     } => using check_output({
-        let frame = CallFrame::new(ContractId::from([1u8; 32]), AssetId::from([2u8; 32]), make_reg(&[(HP, 1000), (SP, 200), (SSP, 200), (CGAS, 161), (GGAS, 191)]), 104, 4, 5);
+        let frame = CallFrame::new(ContractId::from([1u8; 32]), AssetId::from([2u8; 32]), make_reg(&[(HP, 1000), (SP, 200), (SSP, 200), (CGAS, 161), (GGAS, 191)]), 104, 4, 5).unwrap();
         let receipt = Receipt::call(ContractId::zeroed(), ContractId::from([1u8; 32]), 20, AssetId::from([2u8; 32]), 30, 4, 5, 800, 800);
         let mut script = Script::default();
         *script.receipts_root_mut() = crypto::ephemeral_merkle_root([receipt.to_bytes()].into_iter());
@@ -210,7 +216,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 10 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]), 16, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]), 16, 0, 0).unwrap()],
         ..Default::default()
     })); "transfers with enough balance external"
 )]
@@ -229,7 +235,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 10, ggas: 79 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 10, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 29), (GGAS, 79)]), 16, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 29), (GGAS, 79)]), 16, 0, 0).unwrap()],
         ..Default::default()
     })); "forwards gas"
 )]
@@ -248,7 +254,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 39, ggas: 79 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 39, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 79)]), 16, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 0), (GGAS, 79)]), 16, 0, 0).unwrap()],
         ..Default::default()
     })); "the receipt shows forwarded gas correctly when limited by available gas"
 )]
@@ -267,7 +273,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
     } => using check_output(Ok(Output{
         reg: RegInput{hp: 1000, sp: 716, ssp: 716, fp: 100, pc: 700, is: 700, bal: 20, cgas: 0, ggas: 10 },
         receipts: vec![Receipt::call(Default::default(), Default::default(), 20, Default::default(), 0, 0, 0, 700, 700)].into(),
-        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]), 16, 0, 0)],
+        frames: vec![CallFrame::new(Default::default(), Default::default(), make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 10), (GGAS, 10)]), 16, 0, 0).unwrap()],
         ..Default::default()
     })); "transfers with enough balance internal"
 )]
@@ -324,7 +330,7 @@ fn mem(set: &[(usize, Vec<u8>)]) -> MemoryInstance {
         ..Default::default()
     } => using check_output(Err(RuntimeError::Recoverable(PanicReason::NotEnoughBalance))); "Transfer too many coins internally"
 )]
-fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
+fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<MemoryStorageError>> {
     let Input {
         params,
         mut reg,
@@ -353,12 +359,12 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
     let mut storage = MemoryStorage::default();
     for (id, code) in storage_contract {
         StorageAsMut::storage::<ContractsRawCode>(&mut storage)
-            .write(&id, code.as_ref())
+            .write_bytes(&id, code.as_ref())
             .unwrap();
     }
     for (a, n) in storage_balance.iter() {
         let old_balance = storage
-            .contract_asset_id_balance_insert(&ContractId::default(), a, *n)
+            .contract_asset_id_balance_replace(&ContractId::default(), a, *n)
             .unwrap();
         assert!(old_balance.is_none());
     }
@@ -376,12 +382,13 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
         gas_cost,
         runtime_balances: &mut runtime_balances,
         storage: &mut storage,
-        input_contracts: InputContracts::new(&input_contracts, &mut panic_context),
+        input_contracts: &input_contracts,
+        panic_context: &mut panic_context,
         new_storage_gas_per_byte: 0,
         receipts: &mut receipts,
         frames: &mut frames,
         current_contract,
-        profiler: &mut Profiler::default(),
+        verifier: &mut Normal,
     };
     input.prepare_call().map(|_| Output {
         reg,
@@ -394,8 +401,8 @@ fn test_prepare_call(input: Input) -> Result<Output, RuntimeError<Infallible>> {
 }
 
 fn check_output(
-    expected: Result<Output, RuntimeError<Infallible>>,
-) -> impl FnOnce(Result<Output, RuntimeError<Infallible>>) {
+    expected: Result<Output, RuntimeError<MemoryStorageError>>,
+) -> impl FnOnce(Result<Output, RuntimeError<MemoryStorageError>>) {
     move |result| match (expected, result) {
         (Ok(e), Ok(r)) => {
             assert_eq!(e.reg, r.reg);

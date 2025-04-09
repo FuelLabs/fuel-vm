@@ -7,6 +7,7 @@ use super::*;
 use crate::{
     interpreter::InterpreterParams,
     prelude::*,
+    storage::ContractsRawCode,
 };
 use fuel_asm::op;
 use fuel_tx::ConsensusParameters;
@@ -28,7 +29,7 @@ fn memcopy() {
     );
     let tx = TransactionBuilder::script(op::ret(0x10).to_bytes().to_vec(), vec![])
         .script_gas_limit(100_000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
 
     let tx = tx
@@ -38,6 +39,7 @@ fn memcopy() {
             zero_gas_price,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .unwrap();
 
@@ -46,45 +48,51 @@ fn memcopy() {
     let alloc = 1024;
 
     // r[0x10] := 1024
-    vm.instruction(op::addi(0x10, RegId::ZERO, alloc)).unwrap();
-    vm.instruction(op::aloc(0x10)).unwrap();
+    vm.instruction::<_, false>(op::addi(0x10, RegId::ZERO, alloc))
+        .unwrap();
+    vm.instruction::<_, false>(op::aloc(0x10)).unwrap();
 
     // r[0x20] := 128
-    vm.instruction(op::addi(0x20, RegId::ZERO, 128)).unwrap();
+    vm.instruction::<_, false>(op::addi(0x20, RegId::ZERO, 128))
+        .unwrap();
 
     for i in 0..alloc {
-        vm.instruction(op::addi(0x21, RegId::ZERO, i)).unwrap();
-        vm.instruction(op::sb(RegId::HP, 0x21, i as Immediate12))
+        vm.instruction::<_, false>(op::addi(0x21, RegId::ZERO, i))
+            .unwrap();
+        vm.instruction::<_, false>(op::sb(RegId::HP, 0x21, i as Immediate12))
             .unwrap();
     }
 
     // r[0x23] := m[$hp, 0x20] == m[$zero, 0x20]
-    vm.instruction(op::meq(0x23, RegId::HP, RegId::ZERO, 0x20))
+    vm.instruction::<_, false>(op::meq(0x23, RegId::HP, RegId::ZERO, 0x20))
         .unwrap();
 
     assert_eq!(0, vm.registers()[0x23]);
 
     // r[0x12] := $hp + r[0x20]
-    vm.instruction(op::add(0x12, RegId::HP, 0x20)).unwrap();
+    vm.instruction::<_, false>(op::add(0x12, RegId::HP, 0x20))
+        .unwrap();
 
     // Test ownership
-    vm.instruction(op::mcp(RegId::HP, 0x12, 0x20)).unwrap();
+    vm.instruction::<_, false>(op::mcp(RegId::HP, 0x12, 0x20))
+        .unwrap();
 
     // r[0x23] := m[0x30, 0x20] == m[0x12, 0x20]
-    vm.instruction(op::meq(0x23, RegId::HP, 0x12, 0x20))
+    vm.instruction::<_, false>(op::meq(0x23, RegId::HP, 0x12, 0x20))
         .unwrap();
 
     assert_eq!(1, vm.registers()[0x23]);
 
     // Assert ownership
-    vm.instruction(op::subi(0x24, RegId::HP, 1)).unwrap(); // TODO: look into this
-    let ownership_violated = vm.instruction(op::mcp(0x24, 0x12, 0x20));
+    vm.instruction::<_, false>(op::subi(0x24, RegId::HP, 1))
+        .unwrap(); // TODO: look into this
+    let ownership_violated = vm.instruction::<_, false>(op::mcp(0x24, 0x12, 0x20));
 
     assert!(ownership_violated.is_err());
 
     // Assert no panic on overlapping
-    vm.instruction(op::subi(0x25, 0x12, 1)).unwrap();
-    let overlapping = vm.instruction(op::mcp(RegId::HP, 0x25, 0x20));
+    vm.instruction::<_, false>(op::subi(0x25, 0x12, 1)).unwrap();
+    let overlapping = vm.instruction::<_, false>(op::mcp(RegId::HP, 0x25, 0x20));
 
     assert!(overlapping.is_err());
 }
@@ -97,7 +105,7 @@ fn stack_alloc_ownership() {
 
     let tx = TransactionBuilder::script(vec![], vec![])
         .script_gas_limit(1000000)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .into_checked(Default::default(), &ConsensusParameters::standard())
         .expect("Empty script should be valid")
@@ -105,15 +113,17 @@ fn stack_alloc_ownership() {
             gas_price,
             consensus_params.gas_costs(),
             consensus_params.fee_params(),
+            None,
         )
         .unwrap();
     vm.init_script(tx).expect("Failed to init VM");
 
-    vm.instruction(op::move_(0x10, RegId::SP)).unwrap();
-    vm.instruction(op::cfei(2)).unwrap();
+    vm.instruction::<_, false>(op::move_(0x10, RegId::SP))
+        .unwrap();
+    vm.instruction::<_, false>(op::cfei(2)).unwrap();
 
     // Assert allocated stack is writable
-    vm.instruction(op::mcli(0x10, 2)).unwrap();
+    vm.instruction::<_, false>(op::mcli(0x10, 2)).unwrap();
 }
 
 #[test_case(
@@ -163,6 +173,14 @@ fn stack_alloc_ownership() {
 #[test_case(
     OwnershipRegisters::test(0..20, 40..50),
     20..41 => false; "start exclusive and end inclusive"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..0, VM_MAX_RAM..VM_MAX_RAM),
+    MEM_SIZE..MEM_SIZE => true; "empty range at $hp (VM_MAX_RAM) should be allowed"
+)]
+#[test_case(
+    OwnershipRegisters::test(0..0, 100..VM_MAX_RAM),
+    100..100 => true; "empty range at $hp (not VM_MAX_RAM) should be allowed"
 )]
 fn test_ownership(reg: OwnershipRegisters, range: Range<usize>) -> bool {
     reg.verify_ownership(&MemoryRange::new(range.start, range.len()))
@@ -260,20 +278,31 @@ fn test_mem_write(
 #[test_case(1, 2, 1, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
 #[test_case(1, 2, 2, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
 #[test_case(1, 2, 3, &[] => (true, [0xff, 0, 0, 0xff, 0xff]))]
-fn test_copy_from_slice_zero_fill(
+fn test_copy_from_storage_zero_fill(
     addr: usize,
     len: usize,
-    src_offset: usize,
+    src_offset: Word,
     src_data: &[u8],
 ) -> (bool, [u8; 5]) {
+    let contract_id = ContractId::zeroed();
+    let contract = Contract::from(src_data);
+    let contract_size = src_data.len();
+    let mut storage = MemoryStorage::default();
+    storage
+        .storage_contract_insert(&contract_id, &contract)
+        .unwrap();
+
     let mut memory: MemoryInstance = vec![0xffu8; MEM_SIZE].try_into().unwrap();
-    let r = copy_from_slice_zero_fill(
+    let r = copy_from_storage_zero_fill::<ContractsRawCode, _>(
         &mut memory,
         OwnershipRegisters::test_full_stack(),
-        src_data,
-        addr,
+        &storage,
+        addr as Word,
+        len as Word,
+        &contract_id,
         src_offset,
-        len,
+        contract_size,
+        PanicReason::ContractNotFound,
     )
     .is_ok();
     let memory: [u8; 5] = memory[..5].try_into().unwrap();

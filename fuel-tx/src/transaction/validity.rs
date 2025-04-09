@@ -1,5 +1,8 @@
 use crate::{
-    field::Maturity,
+    field::{
+        Expiration,
+        Maturity,
+    },
     input::{
         coin::{
             CoinPredicate,
@@ -49,6 +52,7 @@ mod tests;
 pub use error::ValidityError;
 
 impl Input {
+    #[cfg(any(feature = "typescript", test))]
     pub fn check(
         &self,
         index: usize,
@@ -131,7 +135,7 @@ impl Input {
                 recipient: owner,
                 predicate,
                 ..
-            }) if !Input::is_predicate_owner_valid(owner, predicate) => {
+            }) if !Input::is_predicate_owner_valid(owner, &**predicate) => {
                 Err(ValidityError::InputPredicateOwner { index })
             }
 
@@ -274,6 +278,7 @@ impl FormatValidityChecks for Transaction {
             Self::Mint(tx) => tx.check_signatures(chain_id),
             Self::Upgrade(tx) => tx.check_signatures(chain_id),
             Self::Upload(tx) => tx.check_signatures(chain_id),
+            Self::Blob(tx) => tx.check_signatures(chain_id),
         }
     }
 
@@ -296,6 +301,7 @@ impl FormatValidityChecks for Transaction {
             Self::Upload(tx) => {
                 tx.check_without_signatures(block_height, consensus_params)
             }
+            Self::Blob(tx) => tx.check_without_signatures(block_height, consensus_params),
         }
     }
 }
@@ -353,6 +359,10 @@ where
 
     if tx.maturity() > block_height {
         Err(ValidityError::TransactionMaturity)?;
+    }
+
+    if tx.expiration() < block_height {
+        Err(ValidityError::TransactionExpiration)?;
     }
 
     if tx.inputs().len() > tx_params.max_inputs() as usize {
@@ -421,10 +431,10 @@ where
         return Err(ValidityError::DuplicateInputContractId { contract_id });
     }
 
-    // Check for duplicated input message id
-    let duplicated_message_id = tx.inputs().iter().filter_map(Input::message_id);
-    if let Some(message_id) = next_duplicate(duplicated_message_id) {
-        return Err(ValidityError::DuplicateMessageInputId { message_id });
+    // Check for duplicated input nonce
+    let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
+    if let Some(nonce) = next_duplicate(duplicated_nonce).copied() {
+        return Err(ValidityError::DuplicateInputNonce { nonce });
     }
 
     // Validate the inputs without checking signature

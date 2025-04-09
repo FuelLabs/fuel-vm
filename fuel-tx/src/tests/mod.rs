@@ -3,10 +3,7 @@
 mod offset;
 mod valid_cases;
 
-#[cfg(feature = "serde")]
 mod bytes;
-#[cfg(feature = "serde")]
+#[cfg(feature = "da-compression")]
+mod da_compression;
 mod display;
-
-#[cfg(not(feature = "serde"))]
-use bincode as _;

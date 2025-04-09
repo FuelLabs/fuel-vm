@@ -1,10 +1,9 @@
 //! This module contains logic on contract management.
 
+use alloc::collections::BTreeSet;
+
 use super::{
-    gas::{
-        gas_charge,
-        ProfileGas,
-    },
+    gas::gas_charge,
     internal::{
         external_asset_id_balance_sub,
         inc_pc,
@@ -15,6 +14,7 @@ use super::{
     Interpreter,
     Memory,
     MemoryInstance,
+    PanicContext,
     RuntimeBalances,
 };
 use crate::{
@@ -26,49 +26,43 @@ use crate::{
         IoResult,
         RuntimeError,
     },
-    interpreter::{
-        receipts::ReceiptsCtx,
-        InputContracts,
-    },
-    prelude::Profiler,
+    interpreter::receipts::ReceiptsCtx,
     storage::{
+        BlobData,
         ContractsAssetsStorage,
         ContractsRawCode,
         InterpreterStorage,
     },
+    verification::Verifier,
 };
 use fuel_asm::{
     PanicReason,
-    RegisterId,
+    RegId,
     Word,
 };
 use fuel_storage::StorageSize;
 use fuel_tx::{
-    Contract,
     Output,
     Receipt,
 };
 use fuel_types::{
     Address,
     AssetId,
+    BlobId,
     Bytes32,
     ContractId,
 };
 
-use alloc::borrow::Cow;
-
-#[cfg(test)]
-mod tests;
-
-impl<M, S, Tx, Ecal> Interpreter<M, S, Tx, Ecal>
+impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
+    V: Verifier,
 {
     pub(crate) fn contract_balance(
         &mut self,
-        ra: RegisterId,
+        ra: RegId,
         b: Word,
         c: Word,
     ) -> Result<(), RuntimeError<S::DataError>> {
@@ -78,10 +72,9 @@ where
             storage: &self.storage,
             memory: self.memory.as_mut(),
             pc,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
+            verifier: &mut self.verifier,
         };
         input.contract_balance(result, b, c)?;
         Ok(())
@@ -112,19 +105,17 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
             ggas,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
+            verifier: &mut self.verifier,
         };
         input.transfer(a, b, c)
     }
@@ -155,19 +146,17 @@ where
             context: &self.context,
             balances: &mut self.balances,
             receipts: &mut self.receipts,
-            profiler: &mut self.profiler,
             new_storage_gas_per_byte,
             tx: &mut self.tx,
-            input_contracts: InputContracts::new(
-                &self.input_contracts,
-                &mut self.panic_context,
-            ),
+            input_contracts: &self.input_contracts,
+            panic_context: &mut self.panic_context,
             tx_offset,
             cgas,
             ggas,
             fp: fp.as_ref(),
             is: is.as_ref(),
             pc,
+            verifier: &mut self.verifier,
         };
         input.transfer_output(a, b, c, d)
     }
@@ -182,74 +171,70 @@ where
     }
 }
 
-pub(crate) fn contract<'s, S>(
-    storage: &'s S,
-    contract: &ContractId,
-) -> IoResult<Cow<'s, Contract>, S::DataError>
-where
-    S: InterpreterStorage,
-{
-    storage
-        .storage_contract(contract)
-        .map_err(RuntimeError::Storage)?
-        .ok_or_else(|| PanicReason::ContractNotFound.into())
-}
-
-struct ContractBalanceCtx<'vm, S> {
+struct ContractBalanceCtx<'vm, S, V> {
     storage: &'vm S,
     memory: &'vm mut MemoryInstance,
     pc: RegMut<'vm, PC>,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
+    verifier: &'vm mut V,
 }
 
-impl<'vm, S> ContractBalanceCtx<'vm, S> {
+impl<S, V> ContractBalanceCtx<'_, S, V> {
     pub(crate) fn contract_balance(
-        mut self,
+        self,
         result: &mut Word,
         b: Word,
         c: Word,
     ) -> IoResult<(), S::Error>
     where
         S: ContractsAssetsStorage,
+        V: Verifier,
     {
         let asset_id = AssetId::new(self.memory.read_bytes(b)?);
-        let contract = ContractId::new(self.memory.read_bytes(c)?);
+        let contract_id = ContractId::new(self.memory.read_bytes(c)?);
 
-        self.input_contracts.check(&contract)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &contract_id,
+        )?;
 
-        let balance = balance(self.storage, &contract, &asset_id)?;
+        let balance = balance(self.storage, &contract_id, &asset_id)?;
 
         *result = balance;
 
         Ok(inc_pc(self.pc)?)
     }
 }
-struct TransferCtx<'vm, S, Tx> {
+struct TransferCtx<'vm, S, Tx, V> {
     storage: &'vm mut S,
     memory: &'vm mut MemoryInstance,
     context: &'vm Context,
     balances: &'vm mut RuntimeBalances,
     receipts: &'vm mut ReceiptsCtx,
-    profiler: &'vm mut Profiler,
+
     new_storage_gas_per_byte: Word,
     tx: &'vm mut Tx,
-    input_contracts: InputContracts<'vm>,
+    input_contracts: &'vm BTreeSet<ContractId>,
+    panic_context: &'vm mut PanicContext,
     tx_offset: usize,
     cgas: RegMut<'vm, CGAS>,
     ggas: RegMut<'vm, GGAS>,
     fp: Reg<'vm, FP>,
     is: Reg<'vm, IS>,
     pc: RegMut<'vm, PC>,
+    verifier: &'vm mut V,
 }
 
-impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
+impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
     /// In Fuel specs:
     /// Transfer $rB coins with asset ID at $rC to contract with ID at $rA.
     /// $rA -> recipient_contract_id_offset
     /// $rB -> transfer_amount
     /// $rC -> asset_id_offset
     pub(crate) fn transfer(
-        mut self,
+        self,
         recipient_contract_id_offset: Word,
         transfer_amount: Word,
         asset_id_offset: Word,
@@ -257,13 +242,18 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
+        V: Verifier,
     {
         let amount = transfer_amount;
         let destination =
             ContractId::from(self.memory.read_bytes(recipient_contract_id_offset)?);
         let asset_id = AssetId::from(self.memory.read_bytes(asset_id_offset)?);
 
-        self.input_contracts.check(&destination)?;
+        self.verifier.check_contract_in_inputs(
+            self.panic_context,
+            self.input_contracts,
+            &destination,
+        )?;
 
         if amount == 0 {
             return Err(PanicReason::TransferZeroCoins.into())
@@ -287,20 +277,13 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
             external_asset_id_balance_sub(self.balances, self.memory, &asset_id, amount)?;
         }
         // credit destination contract
-        let (_, created_new_entry) =
+        let created_new_entry =
             balance_increase(self.storage, &destination, &asset_id, amount)?;
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
-            let profiler = ProfileGas {
-                pc: self.pc.as_ref(),
-                is: self.is,
-                current_contract: internal_context,
-                profiler: self.profiler,
-            };
             gas_charge(
                 self.cgas,
                 self.ggas,
-                profiler,
                 ((Bytes32::LEN + WORD_SIZE) as u64)
                     .saturating_mul(self.new_storage_gas_per_byte),
             )?;
@@ -336,6 +319,7 @@ impl<'vm, S, Tx> TransferCtx<'vm, S, Tx> {
     where
         Tx: ExecutableTransaction,
         S: ContractsAssetsStorage,
+        V: Verifier,
     {
         let out_idx =
             convert::to_usize(output_index).ok_or(PanicReason::OutputNotFound)?;
@@ -392,10 +376,22 @@ pub(crate) fn contract_size<S>(
 where
     S: StorageSize<ContractsRawCode> + ?Sized,
 {
-    Ok(storage
+    let size = storage
         .size_of_value(contract)
         .map_err(RuntimeError::Storage)?
-        .ok_or(PanicReason::ContractNotFound)?)
+        .ok_or(PanicReason::ContractNotFound)?;
+    Ok(size)
+}
+
+pub(crate) fn blob_size<S>(storage: &S, blob_id: &BlobId) -> IoResult<usize, S::Error>
+where
+    S: StorageSize<BlobData> + ?Sized,
+{
+    let size = storage
+        .size_of_value(blob_id)
+        .map_err(RuntimeError::Storage)?
+        .ok_or(PanicReason::BlobNotFound)?;
+    Ok(size)
 }
 
 pub(crate) fn balance<S>(
@@ -412,45 +408,53 @@ where
         .unwrap_or_default())
 }
 
-/// Increase the asset balance for a contract.
-/// Returns new balance, and a boolean indicating if a new entry was created.
+/// Increase the asset balance for a contract, unless the `amount` is zero.
+/// A boolean indicating if a new entry was created.
 pub fn balance_increase<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> IoResult<(Word, bool), S::Error>
+) -> IoResult<bool, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
+    if amount == 0 {
+        // Don't update the balance if the amount is zero
+        return Ok(false)
+    }
+
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
         .checked_add(amount)
         .ok_or(PanicReason::BalanceOverflow)?;
-
     let old_value = storage
-        .contract_asset_id_balance_insert(contract, asset_id, balance)
+        .contract_asset_id_balance_replace(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
-
-    Ok((balance, old_value.is_none()))
+    Ok(old_value.is_none())
 }
 
-/// Decrease the asset balance for a contract.
+/// Decrease the asset balance for a contract, unless the `amount` is zero.
 pub fn balance_decrease<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> IoResult<Word, S::Error>
+) -> IoResult<(), S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
+    if amount == 0 {
+        // Don't update the balance if the amount is zero
+        return Ok(())
+    }
+
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
         .checked_sub(amount)
         .ok_or(PanicReason::NotEnoughBalance)?;
-    let _ = storage
+    storage
         .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
-    Ok(balance)
+    Ok(())
 }

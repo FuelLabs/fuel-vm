@@ -1,6 +1,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(non_snake_case)]
 
+mod blob;
 mod upgrade;
 mod upload;
 
@@ -44,14 +45,15 @@ fn gas_limit() {
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate transaction");
 
     TransactionBuilder::create(vec![0xfau8].into(), rng.gen(), vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate transaction");
@@ -79,14 +81,15 @@ fn maturity() {
 
     TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
         .maturity(block_height)
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate script");
 
     TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
         .maturity(block_height)
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate tx create");
@@ -121,6 +124,81 @@ fn maturity() {
 }
 
 #[test]
+fn script__check__valid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+
+    TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        // Given
+        .expiration(block_height)
+        .add_fee_input()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        // Then
+        .expect("Failed to validate script");
+}
+
+#[test]
+fn script__check__invalid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    // Given
+    let block_height = 1000.into();
+    let old_block_height = 999u32.into();
+    let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
+        // Given
+        .expiration(old_block_height)
+        .add_fee_input()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
+
+    // Then
+    assert_eq!(ValidityError::TransactionExpiration, err);
+}
+
+#[test]
+fn create__check__valid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let block_height = 1000.into();
+
+    TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        // Given
+        .expiration(block_height)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        // Then
+        .expect("Failed to validate tx create");
+}
+
+#[test]
+fn create__check__invalid_expiration_policy() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    // Given
+    let block_height = 1000.into();
+    let old_block_height = 999u32.into();
+    let err = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
+        .expiration(old_block_height)
+        .add_fee_input()
+        .add_contract_created()
+        .finalize()
+        // When
+        .check(block_height, &test_params())
+        .expect_err("Failed to validate tx create");
+
+    // Then
+    assert_eq!(ValidityError::TransactionExpiration, err);
+}
+
+#[test]
 fn script__check__not_set_witness_limit_success() {
     // Given
     let rng = &mut StdRng::seed_from_u64(8586);
@@ -128,7 +206,7 @@ fn script__check__not_set_witness_limit_success() {
 
     // When
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .check(block_height, &test_params());
 
@@ -145,7 +223,8 @@ fn create_not_set_witness_limit_success() {
 
     // When
     let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .finalize()
         .check(block_height, &test_params());
 
@@ -164,7 +243,7 @@ fn script__check__set_witness_limit_for_empty_witness_success() {
 
     // When
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
-        .add_random_fee_input()
+        .add_fee_input()
         .witness_limit(limit as u64)
         .finalize()
         .check(block_height, &test_params());
@@ -185,7 +264,7 @@ fn script_set_witness_limit_less_than_witness_data_size_fails() {
 
     // When
     let err = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
-        .add_random_fee_input()
+        .add_fee_input()
         .witness_limit(limit as u64)
         .finalize()
         .check(block_height, &test_params())
@@ -206,7 +285,8 @@ fn create_set_witness_limit_for_empty_witness_success() {
 
     // When
     let result = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .witness_limit(limit as u64)
         .finalize()
         .check(block_height, &test_params());
@@ -226,7 +306,7 @@ fn create_set_witness_limit_less_than_witness_data_size_fails() {
 
     // When
     let err = TransactionBuilder::create(bytecode.clone().into(), rng.gen(), vec![])
-        .add_random_fee_input()
+        .add_fee_input()
         .witness_limit(limit as u64 - 1)
         .finalize()
         .check(block_height, &test_params())
@@ -244,7 +324,7 @@ fn script_not_set_max_fee_limit_success() {
 
     // When
     let result = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize()
         .check(block_height, &test_params());
 
@@ -259,7 +339,7 @@ fn script__check__no_max_fee_fails() {
 
     // Given
     let mut tx = TransactionBuilder::script(generate_bytes(rng), generate_bytes(rng))
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
     tx.policies_mut().set(PolicyType::MaxFee, None);
 
@@ -280,7 +360,8 @@ fn create_not_set_max_fee_limit_success() {
 
     // When
     let result = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .finalize()
         .check(block_height, &test_params());
 
@@ -295,7 +376,7 @@ fn create__check__no_max_fee_fails() {
 
     // Given
     let mut tx = TransactionBuilder::create(rng.gen(), rng.gen(), vec![])
-        .add_random_fee_input()
+        .add_fee_input()
         .finalize();
     tx.policies_mut().set(PolicyType::MaxFee, None);
 
@@ -348,6 +429,7 @@ fn max_iow() {
         TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![]);
 
     builder.maturity(maturity);
+    builder.add_contract_created();
 
     let secrets =
         cmp::min(TX_PARAMS.max_inputs() as u32, TX_PARAMS.max_witnesses() - 1) as usize;
@@ -639,7 +721,8 @@ fn create__check__happy_path() {
 
     TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .finalize()
         .check(block_height, &test_params())
         .expect("Failed to validate tx");
@@ -672,6 +755,26 @@ fn create__check__cannot_have_contract_input() {
     assert_eq!(
         err,
         ValidityError::TransactionInputContainsContract { index: 0 }
+    );
+}
+
+#[test]
+fn create__check__must_contain_contract_created_output() {
+    let rng = &mut StdRng::seed_from_u64(8586);
+
+    let maturity = 100.into();
+    let block_height = 1000.into();
+
+    let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
+        .maturity(maturity)
+        .add_fee_input()
+        .finalize()
+        .check(block_height, &test_params())
+        .expect_err("Expected erroneous transaction");
+
+    assert_eq!(
+        err,
+        ValidityError::TransactionOutputDoesntContainContractCreated
     );
 }
 
@@ -714,7 +817,8 @@ fn create__check__cannot_have_variable_output() {
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.gen(), vec![])
         .maturity(maturity)
-        .add_random_fee_input()
+        .add_fee_input()
+        .add_contract_created()
         .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
         .finalize()
         .check(block_height, &test_params())
@@ -722,7 +826,7 @@ fn create__check__cannot_have_variable_output() {
 
     assert_eq!(
         err,
-        ValidityError::TransactionOutputContainsVariable { index: 0 }
+        ValidityError::TransactionOutputContainsVariable { index: 1 }
     );
 }
 
@@ -833,6 +937,7 @@ fn create__check__something_else() {
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+    .add_contract_created()
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())
@@ -909,6 +1014,7 @@ fn create__check__something() {
             AssetId::default(),
             rng.gen(),
         )
+        .add_contract_created()
         .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
         .finalize()
         .check(block_height, &test_params())
@@ -940,6 +1046,7 @@ fn create__check__can_max_out_storage_slots() {
     )
     .maturity(maturity)
     .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), AssetId::default(), rng.gen())
+    .add_contract_created()
     .add_output(Output::change(rng.gen(), rng.gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())

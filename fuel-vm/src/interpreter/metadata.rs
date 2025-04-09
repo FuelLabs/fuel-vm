@@ -232,7 +232,7 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::InputCoinTxId => ofs.saturating_add(
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .map(Input::repr)
                     .and_then(|r| r.utxo_id_offset())
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
@@ -241,7 +241,7 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::InputCoinOutputIndex => {
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .and_then(Input::utxo_id)
                     .map(UtxoId::output_index)
                     .ok_or(PanicReason::InputNotFound)? as Word
@@ -249,7 +249,7 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::InputCoinOwner => ofs.saturating_add(
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .map(Input::repr)
                     .and_then(|r| r.owner_offset())
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
@@ -258,13 +258,13 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::InputCoinAmount => tx
                 .inputs()
                 .get(b)
-                .filter(|i| i.is_coin())
+                .filter(|i| i.is_coin() | i.is_data_coin())
                 .and_then(Input::amount)
                 .ok_or(PanicReason::InputNotFound)?,
             GTFArgs::InputCoinAssetId => ofs.saturating_add(
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .map(Input::repr)
                     .and_then(|r| r.asset_id_offset())
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
@@ -273,7 +273,7 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::InputCoinTxPointer => ofs.saturating_add(
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .map(Input::repr)
                     .and_then(|r| r.tx_pointer_offset())
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
@@ -282,35 +282,35 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::InputCoinWitnessIndex => {
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .and_then(Input::witness_index)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputCoinPredicateLength => {
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .and_then(Input::predicate_len)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputCoinPredicateDataLength => {
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .and_then(Input::predicate_data_len)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputCoinPredicateGasUsed => {
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .and_then(Input::predicate_gas_used)
                     .ok_or(PanicReason::InputNotFound)? as Word
             }
             GTFArgs::InputCoinPredicate => ofs.saturating_add(
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .and_then(Input::predicate_offset)
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
                     .ok_or(PanicReason::InputNotFound)?,
@@ -318,8 +318,23 @@ impl<Tx> GTFInput<'_, Tx> {
             GTFArgs::InputCoinPredicateData => ofs.saturating_add(
                 tx.inputs()
                     .get(b)
-                    .filter(|i| i.is_coin())
+                    .filter(|i| i.is_coin() | i.is_data_coin())
                     .and_then(Input::predicate_data_offset)
+                    .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
+                    .ok_or(PanicReason::InputNotFound)?,
+            ) as Word,
+            GTFArgs::InputDataCoinDataLength => {
+                tx.inputs()
+                    .get(b)
+                    .filter(|i| i.is_data_coin())
+                    .and_then(Input::data_coin_data_len)
+                    .ok_or(PanicReason::InputNotFound)? as Word
+            }
+            GTFArgs::InputDataCoinData => ofs.saturating_add(
+                tx.inputs()
+                    .get(b)
+                    .filter(|i| i.is_data_coin())
+                    .and_then(Input::data_coin_data_offset)
                     .and_then(|ofs| tx.inputs_offset_at(b).map(|o| o.saturating_add(ofs)))
                     .ok_or(PanicReason::InputNotFound)?,
             ) as Word,
@@ -473,6 +488,24 @@ impl<Tx> GTFInput<'_, Tx> {
                     .filter(|o| o.is_coin() || o.is_change())
                     .map(Output::repr)
                     .and_then(|r| r.asset_id_offset())
+                    .and_then(|ofs| {
+                        tx.outputs_offset_at(b).map(|o| o.saturating_add(ofs))
+                    })
+                    .ok_or(PanicReason::OutputNotFound)?,
+            ) as Word,
+            GTFArgs::OutputDataCoinDataLength => {
+                tx.outputs()
+                    .get(b)
+                    .filter(|o| o.is_data_coin())
+                    .and_then(Output::data_coin_data_len)
+                    .ok_or(PanicReason::OutputNotFound)? as Word
+            }
+            GTFArgs::OutputDataCoinData => ofs.saturating_add(
+                tx.outputs()
+                    .get(b)
+                    .filter(|o| o.is_data_coin())
+                    .map(Output::repr)
+                    .and_then(|r| r.data_coin_data_offset())
                     .and_then(|ofs| {
                         tx.outputs_offset_at(b).map(|o| o.saturating_add(ofs))
                     })

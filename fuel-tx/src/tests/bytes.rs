@@ -260,7 +260,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.gen::<Witness>().into_inner(),
             rng.gen(),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -269,7 +269,7 @@ fn transaction_serde_serialization_deserialization() {
             generate_bytes(rng),
             rng.gen(),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -278,7 +278,7 @@ fn transaction_serde_serialization_deserialization() {
             vec![],
             rng.gen(),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -287,7 +287,7 @@ fn transaction_serde_serialization_deserialization() {
             vec![],
             rng.gen(),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -296,7 +296,7 @@ fn transaction_serde_serialization_deserialization() {
             vec![],
             rng.gen(),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::script(
@@ -325,7 +325,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.gen(),
             vec![s.clone()],
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -334,7 +334,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.gen(),
             vec![s],
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -343,7 +343,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.gen(),
             vec![],
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -352,7 +352,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.gen(),
             vec![],
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::create(
@@ -387,7 +387,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -402,7 +402,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -446,7 +446,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -460,7 +460,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upgrade(
@@ -508,7 +508,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upload(
@@ -526,7 +526,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upload(
@@ -582,7 +582,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![i.clone()],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upload(
@@ -600,7 +600,7 @@ fn transaction_serde_serialization_deserialization() {
                 .with_witness_limit(Word::MAX >> 4)
                 .with_max_fee(Word::MAX >> 5),
             vec![],
-            vec![o],
+            vec![o.clone()],
             vec![w.clone()],
         ),
         Transaction::upload(

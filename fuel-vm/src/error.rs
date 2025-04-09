@@ -339,21 +339,6 @@ impl From<Bug> for PredicateVerificationFailed {
     }
 }
 
-// impl From<PanicReason> for PredicateVerificationFailed {
-//     fn from(reason: PanicReason) -> Self {
-//         Self::Panic(reason)
-//     }
-// }
-
-// impl From<PanicOrBug> for PredicateVerificationFailed {
-//     fn from(err: PanicOrBug) -> Self {
-//         match err {
-//             PanicOrBug::Panic(reason) => Self::from(reason),
-//             PanicOrBug::Bug(bug) => Self::Bug(bug),
-//         }
-//     }
-// }
-
 /// Traceable bug variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumMessage)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

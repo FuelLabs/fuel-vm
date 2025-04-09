@@ -402,37 +402,40 @@ mod tests {
                     op::ret(0x01),
                 ],
                 INCORRECT_GAS,
-                Err(PredicateVerificationFailed::GasMismatch),
+                Err(PredicateVerificationFailed::GasMismatch { index: 0 }),
             ),
             (
                 // Returning an invalid value
                 vec![op::ret(0x0)],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::Panic(
-                    PanicReason::PredicateReturnedNonOne,
-                )),
+                Err(PredicateVerificationFailed::Panic {
+                    index: 0,
+                    reason: PanicReason::PredicateReturnedNonOne,
+                }),
             ),
             (
                 // Using a contract instruction
                 vec![op::time(0x20, 0x1), op::ret(0x1)],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::PanicInstruction(
-                    PanicInstruction::error(
+                Err(PredicateVerificationFailed::PanicInstruction {
+                    index: 0,
+                    instruction: PanicInstruction::error(
                         PanicReason::ContractInstructionNotAllowed,
                         op::time(0x20, 0x1).into(),
                     ),
-                )),
+                }),
             ),
             (
                 // Using a contract instruction
                 vec![op::ldc(ONE, ONE, ONE, 0)],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::PanicInstruction(
-                    PanicInstruction::error(
+                Err(PredicateVerificationFailed::PanicInstruction {
+                    index: 0,
+                    instruction: PanicInstruction::error(
                         PanicReason::ContractInstructionNotAllowed,
                         op::ldc(ONE, ONE, ONE, 0).into(),
                     ),
-                )),
+                }),
             ),
             (
                 // Use `LDC` with mode `1` to load the blob into the predicate.
@@ -457,9 +460,10 @@ mod tests {
                     op::jmp(0x12),
                 ],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::Panic(
-                    PanicReason::PredicateReturnedNonOne,
-                )),
+                Err(PredicateVerificationFailed::Panic {
+                    index: 0,
+                    reason: PanicReason::PredicateReturnedNonOne,
+                }),
             ),
             (
                 // Use `LDC` with mode `2` to load the part of the predicate from the
@@ -495,9 +499,10 @@ mod tests {
                     op::jmp(0x12),
                 ],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::Panic(
-                    PanicReason::PredicateReturnedNonOne,
-                )),
+                Err(PredicateVerificationFailed::Panic {
+                    index: 0,
+                    reason: PanicReason::PredicateReturnedNonOne,
+                }),
             ),
         ];
 

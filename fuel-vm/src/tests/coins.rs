@@ -25,7 +25,10 @@ use fuel_tx::{
     PanicReason,
     Receipt,
 };
-use fuel_types::canonical::Serialize;
+use fuel_types::{
+    canonical::Serialize,
+    SubAssetId,
+};
 
 use crate::{
     call::Call,
@@ -303,7 +306,7 @@ fn mint_burn_many_calls_sequence(seq: Vec<MintOrBurn>) -> RunResult<Word> {
     RunResult::Success(
         test_context.get_contract_balance(
             &contract_id,
-            &contract_id.asset_id(&Bytes32::zeroed()),
+            &contract_id.asset_id(&SubAssetId::zeroed()),
         ),
     )
 }

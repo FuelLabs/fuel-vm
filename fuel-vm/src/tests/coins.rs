@@ -18,7 +18,6 @@ use fuel_tx::{
     field::Outputs,
     Address,
     AssetId,
-    Bytes32,
     ContractId,
     ContractIdExt,
     Output,

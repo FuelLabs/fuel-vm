@@ -25,14 +25,7 @@ use fuel_types::{
 
 use alloc::collections::BTreeMap;
 use fuel_tx::{
-    input::{
-        coin::{
-            DataCoinSigned,
-            UnverifiedCoin,
-            UnverifiedDataCoin,
-        },
-        ReadOnly,
-    },
+    input::coin::DataCoinSigned,
     policies::PolicyType,
 };
 

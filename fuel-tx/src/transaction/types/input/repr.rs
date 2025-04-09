@@ -91,6 +91,10 @@ impl InputRepr {
     }
 
     pub const fn data_coin_predicate_offset(&self) -> Option<usize> {
+        self.data_coin_fixed_size()
+    }
+
+    pub const fn data_coin_fixed_size(&self) -> Option<usize> {
         match self {
             Self::DataCoin
             | Self::ReadOnlyDataCoinUnverified

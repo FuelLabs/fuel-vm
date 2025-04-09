@@ -262,13 +262,6 @@ fn transact__unverified_read_only_coin_included_but_value_not_consumed() {
     let base_asset_id: AssetId = rng.gen();
     let input_owner = rng.gen();
     let utxo_id = rng.gen();
-    let read_only_input = Input::read_only_unverified_coin(
-        utxo_id,
-        Address::default(),
-        input_amount.clone(),
-        AssetId::default(),
-        TxPointer::default(),
-    );
 
     let change_output = Output::change(rng.gen(), 0, base_asset_id);
     let mut script = Transaction::script(
@@ -326,13 +319,6 @@ fn transact__unverified_read_only_data_coin_included_but_value_not_consumed() {
     let base_asset_id: AssetId = rng.gen();
     let input_owner = rng.gen();
     let utxo_id = rng.gen();
-    let read_only_input = Input::read_only_unverified_coin(
-        utxo_id,
-        Address::default(),
-        input_amount.clone(),
-        AssetId::default(),
-        TxPointer::default(),
-    );
 
     let change_output = Output::change(rng.gen(), 0, base_asset_id);
     let mut script = Transaction::script(
@@ -392,13 +378,6 @@ fn transact__verified_read_only_coin_included_but_value_not_consumed() {
     let base_asset_id: AssetId = rng.gen();
     let input_owner = rng.gen();
     let utxo_id = rng.gen();
-    let read_only_input = Input::read_only_unverified_coin(
-        utxo_id,
-        Address::default(),
-        input_amount.clone(),
-        AssetId::default(),
-        TxPointer::default(),
-    );
 
     let change_output = Output::change(rng.gen(), 0, base_asset_id);
     let mut script = Transaction::script(
@@ -460,13 +439,6 @@ fn transact__verified_read_only_data_coin_included_but_value_not_consumed() {
     let base_asset_id: AssetId = rng.gen();
     let input_owner = rng.gen();
     let utxo_id = rng.gen();
-    let read_only_input = Input::read_only_unverified_coin(
-        utxo_id,
-        Address::default(),
-        input_amount.clone(),
-        AssetId::default(),
-        TxPointer::default(),
-    );
 
     let change_output = Output::change(rng.gen(), 0, base_asset_id);
     let mut script = Transaction::script(

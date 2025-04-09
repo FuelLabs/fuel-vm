@@ -942,9 +942,15 @@ impl Input {
     pub fn data_coin_data_len(&self) -> Option<usize> {
         match self {
             Input::DataCoinSigned(DataCoinSigned { data, .. })
-            | Input::DataCoinPredicate(DataCoinPredicate { data, .. }) => {
-                Some(data.len())
-            }
+            | Input::DataCoinPredicate(DataCoinPredicate { data, .. })
+            | Input::ReadOnly(ReadOnly::UnverifiedDataCoin(UnverifiedDataCoin {
+                data,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::VerifiedDataCoin(DataCoinPredicate {
+                data,
+                ..
+            })) => Some(data.len()),
             Input::CoinSigned(_) | Input::CoinPredicate(_) => Some(0),
             _ => None,
         }
@@ -960,6 +966,12 @@ impl Input {
                 self.predicate_data_offset()
                     .map(|o| o.saturating_add(padded.unwrap_or(usize::MAX)))
             }
+            Input::ReadOnly(ReadOnly::VerifiedDataCoin(DataCoinPredicate { .. })) => {
+                todo!("is this different?")
+            }
+            Input::ReadOnly(ReadOnly::UnverifiedDataCoin(UnverifiedDataCoin {
+                ..
+            })) => Some(READ_ONLY_DATA_OFFSET),
             _ => None,
         }
     }
@@ -1037,11 +1049,18 @@ impl Input {
     }
 
     pub const fn is_data_coin(&self) -> bool {
-        self.is_data_coin_signed() | self.is_data_coin_predicate()
+        self.is_data_coin_signed()
+            | self.is_data_coin_predicate()
+            | self.is_read_only_data_coin()
     }
 
     pub const fn is_read_only_coin(&self) -> bool {
         matches!(self, Input::ReadOnly(_))
+    }
+
+    pub const fn is_read_only_data_coin(&self) -> bool {
+        matches!(self, Input::ReadOnly(ReadOnly::VerifiedDataCoin(_)))
+            | matches!(self, Input::ReadOnly(ReadOnly::UnverifiedDataCoin(_)))
     }
 
     pub const fn is_coin_signed(&self) -> bool {

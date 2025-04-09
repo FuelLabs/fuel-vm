@@ -377,6 +377,10 @@ pub enum BugVariant {
         message = "The witness subsection index is higher than the total number of parts."
     )]
     NextSubsectionIndexIsHigherThanTotalNumberOfParts,
+
+    /// Input index more than u16::MAX was used internally.
+    #[strum(message = "Input index more than u16::MAX was used internally.")]
+    InputIndexMoreThanU16Max,
 }
 
 impl fmt::Display for BugVariant {

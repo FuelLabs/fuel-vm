@@ -288,7 +288,13 @@ pub enum CheckError {
     /// The transaction doesn't pass validity rules.
     Validity(ValidityError),
     /// The predicate verification failed.
-    PredicateVerificationFailed(PredicateVerificationFailed),
+    PredicateVerificationFailed {
+        /// Input index of the failed predicate.
+        /// `TransactionExceedsTotalGasAllowance` sets this to `0`.
+        input_index: u16,
+        /// The reason of the failure.
+        reason: PredicateVerificationFailed,
+    },
     /// The max fee used during checking was lower than calculated during `Immutable`
     /// conversion
     InsufficientMaxFee {
@@ -451,14 +457,14 @@ pub trait ParallelExecutor {
     /// Creates a Future from a CPU-heavy task.
     fn create_task<F>(func: F) -> Self::Task
     where
-        F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
+        F: FnOnce() -> (usize, Result<Word, PredicateVerificationFailed>)
             + Send
             + 'static;
 
     /// Executes tasks created by `create_task` in parallel.
     async fn execute_tasks(
         futures: Vec<Self::Task>,
-    ) -> Vec<Result<(Word, usize), PredicateVerificationFailed>>;
+    ) -> Vec<(usize, Result<Word, PredicateVerificationFailed>)>;
 }
 
 #[async_trait::async_trait]
@@ -917,9 +923,19 @@ impl From<ValidityError> for CheckError {
     }
 }
 
-impl From<PredicateVerificationFailed> for CheckError {
-    fn from(value: PredicateVerificationFailed) -> Self {
-        CheckError::PredicateVerificationFailed(value)
+impl From<(usize, PredicateVerificationFailed)> for CheckError {
+    fn from((input_index, reason): (usize, PredicateVerificationFailed)) -> Self {
+        if let Ok(input_index) = u16::try_from(input_index) {
+            CheckError::PredicateVerificationFailed {
+                input_index,
+                reason,
+            }
+        } else {
+            CheckError::PredicateVerificationFailed {
+                input_index: 0,
+                reason: Bug::new(BugVariant::InputIndexMoreThanU16Max).into(),
+            }
+        }
     }
 }
 

@@ -47,11 +47,11 @@ pub struct TokioWithRayon;
 
 #[async_trait::async_trait]
 impl ParallelExecutor for TokioWithRayon {
-    type Task = AsyncRayonHandle<Result<(Word, usize), PredicateVerificationFailed>>;
+    type Task = AsyncRayonHandle<(usize, Result<Word, PredicateVerificationFailed>)>;
 
     fn create_task<F>(func: F) -> Self::Task
     where
-        F: FnOnce() -> Result<(Word, usize), PredicateVerificationFailed>
+        F: FnOnce() -> (usize, Result<Word, PredicateVerificationFailed>)
             + Send
             + 'static,
     {
@@ -60,7 +60,7 @@ impl ParallelExecutor for TokioWithRayon {
 
     async fn execute_tasks(
         futures: Vec<Self::Task>,
-    ) -> Vec<Result<(Word, usize), PredicateVerificationFailed>> {
+    ) -> Vec<(usize, Result<Word, PredicateVerificationFailed>)> {
         futures::future::join_all(futures).await
     }
 }
@@ -676,7 +676,10 @@ async fn gas_used_by_predicates_more_than_limit() {
 
         assert!(matches!(
             tx_with_predicate.unwrap_err(),
-            CheckError::PredicateVerificationFailed(_)
+            CheckError::PredicateVerificationFailed {
+                input_index: 1,
+                reason: _
+            }
         ));
     }
 
@@ -686,7 +689,10 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     assert!(matches!(
         tx_with_predicate.unwrap_err(),
-        CheckError::PredicateVerificationFailed(_)
+            CheckError::PredicateVerificationFailed {
+                input_index: 1,
+                reason: _
+            }
     ));
 }
 

@@ -297,7 +297,7 @@ mod tests {
                     &storage,
                 );
 
-                assert_eq!(result.map(|_| ()), expected, "failed at input {}", i);
+                assert_eq!(result.map(|_| ()), expected.clone().map_err(|r| (0, r)), "failed at input {}", i);
             }
         }
     }

@@ -689,10 +689,10 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     assert!(matches!(
         tx_with_predicate.unwrap_err(),
-            CheckError::PredicateVerificationFailed {
-                input_index: 1,
-                reason: _
-            }
+        CheckError::PredicateVerificationFailed {
+            input_index: 1,
+            reason: _
+        }
     ));
 }
 

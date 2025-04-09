@@ -291,7 +291,7 @@ pub enum CheckError {
     PredicateVerificationFailed {
         /// Input index of the failed predicate.
         /// `TransactionExceedsTotalGasAllowance` sets this to `0`.
-        input_index: u16,
+        input_index: usize,
         /// The reason of the failure.
         reason: PredicateVerificationFailed,
     },
@@ -925,16 +925,9 @@ impl From<ValidityError> for CheckError {
 
 impl From<(usize, PredicateVerificationFailed)> for CheckError {
     fn from((input_index, reason): (usize, PredicateVerificationFailed)) -> Self {
-        if let Ok(input_index) = u16::try_from(input_index) {
-            CheckError::PredicateVerificationFailed {
-                input_index,
-                reason,
-            }
-        } else {
-            CheckError::PredicateVerificationFailed {
-                input_index: 0,
-                reason: Bug::new(BugVariant::InputIndexMoreThanU16Max).into(),
-            }
+        CheckError::PredicateVerificationFailed {
+            input_index,
+            reason,
         }
     }
 }

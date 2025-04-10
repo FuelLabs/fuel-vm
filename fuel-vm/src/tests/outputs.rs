@@ -398,8 +398,6 @@ fn transact__predicate_read_only_coin_included_but_value_not_consumed() {
         Default::default(),
     );
 
-    let data = vec![1, 2, 3, 4, 5, 6];
-
     let true_predicate = vec![op::ret(RegId::ONE)].into_iter().collect();
     script.add_read_only_predicate_coin_input(
         rng.gen(),

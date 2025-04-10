@@ -631,6 +631,58 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         self.inputs_mut().push(input);
     }
 
+    fn add_read_only_predicate_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) {
+        let owner = Input::predicate_owner(predicate.clone());
+
+        let input = Input::read_only_coin_predicate(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            predicate_gas_used,
+            predicate,
+            predicate_data,
+        );
+        self.inputs_mut().push(input);
+    }
+
+    fn add_read_only_predicate_data_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+        data: Vec<u8>,
+    ) {
+        let owner = Input::predicate_owner(predicate.clone());
+
+        let input = Input::read_only_data_coin_predicate(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            predicate_gas_used,
+            predicate,
+            predicate_data,
+            data,
+        );
+        self.inputs_mut().push(input);
+    }
+
     /// Append a new unsigned message input to the transaction.
     ///
     /// When the transaction is constructed, [`Signable::sign_inputs`] should

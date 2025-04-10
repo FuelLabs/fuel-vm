@@ -265,6 +265,8 @@ pub enum Input {
 pub enum ReadOnly {
     Coin(UnverifiedCoin),
     DataCoin(UnverifiedDataCoin),
+    CoinPredicate(CoinPredicate),
+    DataCoinPredicate(DataCoinPredicate),
 }
 
 impl Default for Input {
@@ -416,6 +418,54 @@ impl Input {
         }))
     }
 
+    pub const fn read_only_coin_predicate(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+    ) -> Self {
+        Self::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index: Empty::new(),
+            predicate_gas_used,
+            predicate: PredicateCode { bytes: predicate },
+            predicate_data,
+        }))
+    }
+
+    pub const fn read_only_data_coin_predicate(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        predicate_gas_used: Word,
+        predicate: Vec<u8>,
+        predicate_data: Vec<u8>,
+        data: Vec<u8>,
+    ) -> Self {
+        Self::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index: Empty::new(),
+            predicate_gas_used,
+            predicate: PredicateCode { bytes: predicate },
+            predicate_data,
+            data,
+        }))
+    }
+
     pub const fn contract(
         utxo_id: UtxoId,
         balance_root: Bytes32,
@@ -528,6 +578,13 @@ impl Input {
             | Self::ReadOnly(ReadOnly::Coin(UnverifiedCoin { utxo_id, .. }))
             | Self::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin {
                 utxo_id, ..
+            }))
+            | Self::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                utxo_id, ..
+            }))
+            | Self::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                utxo_id,
+                ..
             })) => Some(utxo_id),
             Self::MessageCoinSigned(_) => None,
             Self::MessageCoinPredicate(_) => None,
@@ -549,9 +606,12 @@ impl Input {
                 Some(recipient)
             }
             Self::ReadOnly(ReadOnly::Coin(UnverifiedCoin { owner, .. }))
-            | Self::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin { owner, .. })) => {
-                Some(owner)
-            }
+            | Self::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin { owner, .. }))
+            | Self::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate { owner, .. }))
+            | Self::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                owner,
+                ..
+            })) => Some(owner),
             Self::Contract(_) => None,
         }
     }
@@ -568,6 +628,13 @@ impl Input {
             | Self::ReadOnly(ReadOnly::Coin(UnverifiedCoin { asset_id, .. }))
             | Self::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin {
                 asset_id, ..
+            }))
+            | Self::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                asset_id, ..
+            }))
+            | Self::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                asset_id,
+                ..
             })) => Some(asset_id),
             Input::MessageCoinSigned(_)
             | Input::MessageCoinPredicate(_)
@@ -593,6 +660,13 @@ impl Input {
             | Input::ReadOnly(ReadOnly::Coin(UnverifiedCoin { amount, .. }))
             | Input::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin {
                 amount, ..
+            }))
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                amount, ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                amount,
+                ..
             }))
             | Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
             | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. })
@@ -637,6 +711,8 @@ impl Input {
             | Input::DataCoinSigned(_)
             | Input::ReadOnly(ReadOnly::Coin(_))
             | Input::ReadOnly(ReadOnly::DataCoin(_))
+            | Input::ReadOnly(ReadOnly::CoinPredicate(_))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(_))
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => None,
@@ -647,6 +723,13 @@ impl Input {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate, .. })
             | Input::DataCoinPredicate(DataCoinPredicate { predicate, .. })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate, ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
                 let padded = bytes::padded_len(predicate);
@@ -667,6 +750,13 @@ impl Input {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate, .. })
             | Input::DataCoinPredicate(DataCoinPredicate { predicate, .. })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate, ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
                 Some(predicate.len())
@@ -685,6 +775,14 @@ impl Input {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate_data, .. })
             | Input::DataCoinPredicate(DataCoinPredicate { predicate_data, .. })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate_data,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate_data,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate {
                 predicate_data, ..
             })
@@ -709,6 +807,14 @@ impl Input {
             | Input::DataCoinPredicate(DataCoinPredicate {
                 predicate_gas_used, ..
             })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate_gas_used,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate_gas_used,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate {
                 predicate_gas_used,
                 ..
@@ -735,6 +841,14 @@ impl Input {
             | Input::DataCoinPredicate(DataCoinPredicate {
                 predicate_gas_used, ..
             })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate_gas_used,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate_gas_used,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate {
                 predicate_gas_used,
                 ..
@@ -769,6 +883,19 @@ impl Input {
             | Input::CoinPredicate(CoinPredicate { tx_pointer, .. })
             | Input::DataCoinSigned(DataCoinSigned { tx_pointer, .. })
             | Input::DataCoinPredicate(DataCoinPredicate { tx_pointer, .. })
+            | Input::ReadOnly(ReadOnly::Coin(UnverifiedCoin { tx_pointer, .. }))
+            | Input::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin {
+                tx_pointer,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                tx_pointer,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                tx_pointer,
+                ..
+            }))
             | Input::Contract(Contract { tx_pointer, .. }) => Some(tx_pointer),
             _ => None,
         }
@@ -799,10 +926,15 @@ impl Input {
         match self {
             Input::DataCoinSigned(DataCoinSigned { data, .. })
             | Input::DataCoinPredicate(DataCoinPredicate { data, .. })
-            | Input::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin { data, .. })) => {
-                Some(data.len())
-            }
-            Input::CoinSigned(_) | Input::CoinPredicate(_) => Some(0),
+            | Input::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin { data, .. }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                data,
+                ..
+            })) => Some(data.len()),
+            Input::CoinSigned(_)
+            | Input::CoinPredicate(_)
+            | Input::ReadOnly(ReadOnly::Coin(_))
+            | Input::ReadOnly(ReadOnly::CoinPredicate(_)) => Some(0),
             _ => None,
         }
     }
@@ -820,6 +952,14 @@ impl Input {
             Input::ReadOnly(ReadOnly::DataCoin(UnverifiedDataCoin { .. })) => {
                 Some(READ_ONLY_DATA_OFFSET)
             }
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate_data,
+                ..
+            })) => {
+                let padded = bytes::padded_len(predicate_data);
+                self.predicate_data_offset()
+                    .map(|o| o.saturating_add(padded.unwrap_or(usize::MAX)))
+            }
             _ => None,
         }
     }
@@ -828,6 +968,13 @@ impl Input {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate, .. })
             | Input::DataCoinPredicate(DataCoinPredicate { predicate, .. })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate, ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
                 Some(predicate)
@@ -841,6 +988,14 @@ impl Input {
         match self {
             Input::CoinPredicate(CoinPredicate { predicate_data, .. })
             | Input::DataCoinPredicate(DataCoinPredicate { predicate_data, .. })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate_data,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate_data,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate {
                 predicate_data, ..
             })
@@ -868,6 +1023,18 @@ impl Input {
                 predicate_gas_used,
                 ..
             })
+            | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                predicate,
+                predicate_data,
+                predicate_gas_used,
+                ..
+            }))
+            | Input::ReadOnly(ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                predicate,
+                predicate_data,
+                predicate_gas_used,
+                ..
+            }))
             | Input::MessageCoinPredicate(MessageCoinPredicate {
                 predicate,
                 predicate_data,
@@ -1025,6 +1192,8 @@ impl Input {
             Input::MessageDataPredicate(message) => message.prepare_sign(),
             Input::ReadOnly(ReadOnly::Coin(_coin)) => {}
             Input::ReadOnly(ReadOnly::DataCoin(_data_coin)) => {}
+            Input::ReadOnly(ReadOnly::CoinPredicate(_coin)) => {}
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(_data_coin)) => {}
         }
     }
 
@@ -1071,6 +1240,10 @@ impl Serialize for Input {
             Input::DataCoinPredicate(data_coin) => data_coin.size_static(),
             Input::ReadOnly(ReadOnly::Coin(coin)) => coin.size_static(),
             Input::ReadOnly(ReadOnly::DataCoin(data_coin)) => data_coin.size_static(),
+            Input::ReadOnly(ReadOnly::CoinPredicate(coin)) => coin.size_static(),
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(data_coin)) => {
+                data_coin.size_static()
+            }
             Input::Contract(contract) => contract.size_static(),
             Input::MessageCoinSigned(message) => message.size_static(),
             Input::MessageCoinPredicate(message) => message.size_static(),
@@ -1093,6 +1266,10 @@ impl Serialize for Input {
             Input::MessageDataPredicate(message) => message.size_dynamic(),
             Input::ReadOnly(ReadOnly::Coin(coin)) => coin.size_dynamic(),
             Input::ReadOnly(ReadOnly::DataCoin(data_coin)) => data_coin.size_dynamic(),
+            Input::ReadOnly(ReadOnly::CoinPredicate(coin)) => coin.size_dynamic(),
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(data_coin)) => {
+                data_coin.size_dynamic()
+            }
         }
     }
 
@@ -1113,6 +1290,10 @@ impl Serialize for Input {
             Input::ReadOnly(ReadOnly::DataCoin(data_coin)) => {
                 data_coin.encode_static(buffer)
             }
+            Input::ReadOnly(ReadOnly::CoinPredicate(coin)) => coin.encode_static(buffer),
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(data_coin)) => {
+                data_coin.encode_static(buffer)
+            }
         }
     }
 
@@ -1131,6 +1312,10 @@ impl Serialize for Input {
             Input::MessageDataPredicate(message) => message.encode_dynamic(buffer),
             Input::ReadOnly(ReadOnly::Coin(coin)) => coin.encode_dynamic(buffer),
             Input::ReadOnly(ReadOnly::DataCoin(data_coin)) => {
+                data_coin.encode_dynamic(buffer)
+            }
+            Input::ReadOnly(ReadOnly::CoinPredicate(coin)) => coin.encode_dynamic(buffer),
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(data_coin)) => {
                 data_coin.encode_dynamic(buffer)
             }
         }
@@ -1167,6 +1352,14 @@ impl Deserialize for Input {
                 InputRepr::ReadOnlyDataCoinUnverified => Input::ReadOnly(
                     ReadOnly::DataCoin(UnverifiedDataCoin::decode_static(buffer)?),
                 ),
+                InputRepr::ReadOnlyCoinPredicate => Input::ReadOnly(
+                    ReadOnly::CoinPredicate(CoinPredicate::decode_static(buffer)?),
+                ),
+                InputRepr::ReadOnlyDataCoinPredicate => {
+                    Input::ReadOnly(ReadOnly::DataCoinPredicate(
+                        DataCoinPredicate::decode_static(buffer)?,
+                    ))
+                }
                 InputRepr::Contract => {
                     let contract = Contract::decode_static(buffer)?;
                     Input::Contract(contract)
@@ -1211,6 +1404,10 @@ impl Deserialize for Input {
             Input::MessageDataPredicate(message) => message.decode_dynamic(buffer),
             Input::ReadOnly(ReadOnly::Coin(coin)) => coin.decode_dynamic(buffer),
             Input::ReadOnly(ReadOnly::DataCoin(data_coin)) => {
+                data_coin.decode_dynamic(buffer)
+            }
+            Input::ReadOnly(ReadOnly::CoinPredicate(coin)) => coin.decode_dynamic(buffer),
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(data_coin)) => {
                 data_coin.decode_dynamic(buffer)
             }
         }

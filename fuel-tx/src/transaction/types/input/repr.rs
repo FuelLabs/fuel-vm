@@ -21,6 +21,8 @@ pub enum InputRepr {
     DataCoin = 0x03,
     ReadOnlyCoinUnverified = 0x04,
     ReadOnlyDataCoinUnverified = 0x05,
+    ReadOnlyCoinPredicate = 0x06,
+    ReadOnlyDataCoinPredicate = 0x07,
 }
 
 impl InputRepr {
@@ -30,7 +32,9 @@ impl InputRepr {
             | Self::Contract
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => Some(INPUT_UTXO_ID_OFFSET),
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => Some(INPUT_UTXO_ID_OFFSET),
             Self::Message => None,
         }
     }
@@ -40,9 +44,10 @@ impl InputRepr {
             Self::Coin => Some(INPUT_COIN_OWNER_OFFSET),
             Self::DataCoin => Some(INPUT_COIN_OWNER_OFFSET),
             Self::Message => Some(INPUT_MESSAGE_RECIPIENT_OFFSET),
-            Self::ReadOnlyCoinUnverified | Self::ReadOnlyDataCoinUnverified => {
-                Some(INPUT_COIN_OWNER_OFFSET)
-            }
+            Self::ReadOnlyCoinUnverified
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => Some(INPUT_COIN_OWNER_OFFSET),
             Self::Contract => None,
         }
     }
@@ -52,7 +57,9 @@ impl InputRepr {
             Self::Coin
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => Some(INPUT_COIN_ASSET_ID_OFFSET),
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => Some(INPUT_COIN_ASSET_ID_OFFSET),
             Self::Message | Self::Contract => None,
         }
     }
@@ -64,18 +71,21 @@ impl InputRepr {
             | Self::Contract
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
     pub const fn coin_predicate_offset(&self) -> Option<usize> {
         match self {
-            Self::Coin => Some(INPUT_COIN_FIXED_SIZE),
+            Self::Coin | Self::ReadOnlyCoinPredicate => Some(INPUT_COIN_FIXED_SIZE),
             Self::Message
             | Self::Contract
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
@@ -85,13 +95,14 @@ impl InputRepr {
 
     pub const fn data_coin_fixed_size(&self) -> Option<usize> {
         match self {
-            Self::DataCoin | Self::ReadOnlyDataCoinUnverified => {
-                Some(INPUT_DATA_COIN_FIXED_SIZE)
-            }
+            Self::DataCoin
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyDataCoinPredicate => Some(INPUT_DATA_COIN_FIXED_SIZE),
             Self::Coin
             | Self::Message
             | Self::Contract
-            | Self::ReadOnlyCoinUnverified => None,
+            | Self::ReadOnlyCoinUnverified
+            | Self::ReadOnlyCoinPredicate => None,
         }
     }
 
@@ -102,7 +113,9 @@ impl InputRepr {
             | Self::Coin
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
@@ -113,7 +126,9 @@ impl InputRepr {
             | Self::Coin
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
@@ -124,7 +139,9 @@ impl InputRepr {
             | Self::Coin
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
@@ -135,7 +152,9 @@ impl InputRepr {
             | Self::Coin
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
@@ -146,7 +165,9 @@ impl InputRepr {
             | Self::Coin
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
@@ -157,7 +178,9 @@ impl InputRepr {
             | Self::Coin
             | Self::DataCoin
             | Self::ReadOnlyCoinUnverified
-            | Self::ReadOnlyDataCoinUnverified => None,
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => None,
         }
     }
 
@@ -166,9 +189,10 @@ impl InputRepr {
             Self::Coin => Some(INPUT_COIN_TX_POINTER_OFFSET),
             Self::DataCoin => Some(INPUT_COIN_TX_POINTER_OFFSET),
             Self::Contract => Some(INPUT_CONTRACT_TX_POINTER_OFFSET),
-            Self::ReadOnlyCoinUnverified | Self::ReadOnlyDataCoinUnverified => {
-                Some(INPUT_COIN_TX_POINTER_OFFSET)
-            }
+            Self::ReadOnlyCoinUnverified
+            | Self::ReadOnlyDataCoinUnverified
+            | Self::ReadOnlyCoinPredicate
+            | Self::ReadOnlyDataCoinPredicate => Some(INPUT_COIN_TX_POINTER_OFFSET),
             Self::Message => None,
         }
     }
@@ -185,6 +209,8 @@ impl InputRepr {
             Input::ReadOnly(inner) => match inner {
                 ReadOnly::Coin(_) => InputRepr::ReadOnlyCoinUnverified,
                 ReadOnly::DataCoin(_) => InputRepr::ReadOnlyDataCoinUnverified,
+                ReadOnly::CoinPredicate(_) => InputRepr::ReadOnlyCoinPredicate,
+                ReadOnly::DataCoinPredicate(_) => InputRepr::ReadOnlyDataCoinPredicate,
             },
         }
     }

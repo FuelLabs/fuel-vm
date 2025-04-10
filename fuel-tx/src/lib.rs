@@ -27,6 +27,7 @@ pub use fuel_asm::{
     PanicInstruction,
     PanicReason,
 };
+use fuel_types::SubAssetId;
 pub use fuel_types::{
     Address,
     AssetId,
@@ -145,14 +146,14 @@ pub use contract::Contract;
 /// Trait extends the functionality of the `ContractId` type.
 pub trait ContractIdExt {
     /// Creates an `AssetId` from the `ContractId` and `sub_id`.
-    fn asset_id(&self, sub_id: &Bytes32) -> AssetId;
+    fn asset_id(&self, sub_id: &SubAssetId) -> AssetId;
 
     /// Creates an `AssetId` from the `ContractId` and the default 0x00..000 `sub_id`.
     fn default_asset(&self) -> AssetId;
 }
 
 impl ContractIdExt for ContractId {
-    fn asset_id(&self, sub_id: &Bytes32) -> AssetId {
+    fn asset_id(&self, sub_id: &SubAssetId) -> AssetId {
         let hasher = fuel_crypto::Hasher::default();
         AssetId::new(
             *hasher
@@ -163,6 +164,6 @@ impl ContractIdExt for ContractId {
     }
 
     fn default_asset(&self) -> AssetId {
-        self.asset_id(&Bytes32::zeroed())
+        self.asset_id(&SubAssetId::zeroed())
     }
 }

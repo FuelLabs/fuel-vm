@@ -344,6 +344,7 @@ macro_rules! key_methods {
 
 key!(Address, 32);
 key!(AssetId, 32);
+key!(SubAssetId, 32);
 key!(BlobId, 32);
 key!(ContractId, 32);
 key!(TxId, 32);

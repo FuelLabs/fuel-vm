@@ -701,6 +701,12 @@ impl Input {
             Input::DataCoinPredicate(_) => {
                 InputRepr::DataCoin.data_coin_predicate_offset()
             }
+            Input::ReadOnly(ReadOnly::CoinPredicate(_)) => {
+                InputRepr::ReadOnlyCoinPredicate.coin_predicate_offset()
+            }
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(_)) => {
+                InputRepr::ReadOnlyDataCoinPredicate.data_coin_predicate_offset()
+            }
             Input::MessageCoinPredicate(_) => InputRepr::Message.data_offset(),
             Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => {
                 InputRepr::Message.data_offset().map(|o| {
@@ -711,8 +717,6 @@ impl Input {
             | Input::DataCoinSigned(_)
             | Input::ReadOnly(ReadOnly::Coin(_))
             | Input::ReadOnly(ReadOnly::DataCoin(_))
-            | Input::ReadOnly(ReadOnly::CoinPredicate(_))
-            | Input::ReadOnly(ReadOnly::DataCoinPredicate(_))
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => None,

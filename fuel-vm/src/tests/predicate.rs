@@ -1204,6 +1204,154 @@ async fn gtf_args__read_only_data_coin_utxo_id() {
     assert!(success);
 }
 
+fn true_predicate() -> Vec<u8> {
+    vec![op::ret(0x01)].into_iter().collect()
+}
+
+fn false_predicate() -> Vec<u8> {
+    vec![op::ret(0x00)].into_iter().collect()
+}
+
+#[tokio::test]
+async fn execute__failing_predicate_read_only_coin_tx_fails() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let amount = 123;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_data = utxo_id.to_bytes();
+    let predicate = check_read_only_coin_utxo_id_predicate(&predicate_data);
+    let false_predicate = false_predicate();
+    let false_predicate_owner = Input::predicate_owner(&false_predicate);
+    let read_input = Input::read_only_coin_predicate(
+        utxo_id,
+        false_predicate_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        0,
+        false_predicate,
+        vec![],
+    );
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(!success);
+}
+
+#[tokio::test]
+async fn gtf_args__read_only_coin_predicate_utxo_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let amount = 123;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_data = utxo_id.to_bytes();
+    let predicate = check_read_only_coin_utxo_id_predicate(&predicate_data);
+    let true_predicate = true_predicate();
+    let true_predicate_owner = Input::predicate_owner(&true_predicate);
+    let read_input = Input::read_only_coin_predicate(
+        utxo_id,
+        true_predicate_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        0,
+        true_predicate,
+        vec![],
+    );
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
+#[tokio::test]
+async fn gtf_args__read_only_data_coin_predicate_utxo_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let amount = 123;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_data = utxo_id.to_bytes();
+    let predicate = check_read_only_coin_utxo_id_predicate(&predicate_data);
+    let true_predicate = true_predicate();
+    let true_predicate_owner = Input::predicate_owner(&true_predicate);
+    let data = vec![];
+    let read_input = Input::read_only_data_coin_predicate(
+        utxo_id,
+        true_predicate_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        0,
+        true_predicate.clone(),
+        vec![],
+        data,
+    );
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
 fn check_read_only_coin_owner_predicate(owner: Address) -> Vec<u8> {
     let owner_size = owner.size();
     let owner_size_reg = 0x13;

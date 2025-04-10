@@ -147,7 +147,10 @@ enum PredicateAction {
 pub mod predicates {
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
-    use fuel_tx::input::coin::DataCoinPredicate;
+    use fuel_tx::input::{
+        coin::DataCoinPredicate,
+        ReadOnly,
+    };
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -466,6 +469,15 @@ pub mod predicates {
                             predicate_gas_used,
                             ..
                         })
+                        | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                            predicate_gas_used,
+                            ..
+                        }))
+                        | Input::ReadOnly(ReadOnly::DataCoinPredicate(
+                            DataCoinPredicate {
+                                predicate_gas_used, ..
+                            },
+                        ))
                         | Input::MessageCoinPredicate(MessageCoinPredicate {
                             predicate_gas_used,
                             ..

@@ -382,7 +382,7 @@ impl Input {
         })
     }
 
-    pub const fn unverified_read_only_coin(
+    pub const fn read_only_coin(
         utxo_id: UtxoId,
         owner: Address,
         amount: Word,
@@ -398,7 +398,7 @@ impl Input {
         }))
     }
 
-    pub const fn unverified_read_only_data_coin(
+    pub const fn read_only_data_coin(
         utxo_id: UtxoId,
         owner: Address,
         amount: Word,
@@ -413,22 +413,6 @@ impl Input {
             asset_id,
             tx_pointer,
             data,
-        }))
-    }
-
-    pub const fn read_only_coin(
-        utxo_id: UtxoId,
-        owner: Address,
-        amount: Word,
-        asset_id: AssetId,
-        tx_pointer: TxPointer,
-    ) -> Self {
-        Self::ReadOnly(ReadOnly::Coin(UnverifiedCoin {
-            utxo_id,
-            owner,
-            amount,
-            asset_id,
-            tx_pointer,
         }))
     }
 

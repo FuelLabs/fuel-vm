@@ -359,7 +359,7 @@ pub struct UnverifiedDataCoin {
     pub asset_id: AssetId,
     #[cfg_attr(feature = "da-compression", compress(skip))]
     pub tx_pointer: TxPointer,
-    #[cfg_attr(feature = "da-compression", compress(skip))]
+    #[educe(Debug(method(fmt_as_field)))]
     pub data: Vec<u8>,
 }
 

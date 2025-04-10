@@ -1142,8 +1142,7 @@ async fn gtf_args__read_only_coin_utxo_id() {
     let tx_pointer = rng.gen();
     let predicate_data = utxo_id.to_bytes();
     let predicate = check_read_only_coin_utxo_id_predicate(&predicate_data);
-    let read_input =
-        Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
+    let read_input = Input::read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1180,9 +1179,8 @@ async fn gtf_args__read_only_data_coin_utxo_id() {
     let predicate_data = utxo_id.to_bytes();
     let predicate = check_read_only_coin_utxo_id_predicate(&predicate_data);
     let data = vec![];
-    let read_input = Input::unverified_read_only_data_coin(
-        utxo_id, owner, amount, asset_id, tx_pointer, data,
-    );
+    let read_input =
+        Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1246,8 +1244,7 @@ async fn gtf_args__read_only_coin_owner() {
     let tx_pointer = rng.gen();
     let predicate_data = owner.to_bytes();
     let predicate = check_read_only_coin_owner_predicate(owner);
-    let read_input =
-        Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
+    let read_input = Input::read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1284,9 +1281,8 @@ async fn gtf_args__read_only_data_coin_owner() {
     let predicate_data = owner.to_bytes();
     let predicate = check_read_only_coin_owner_predicate(owner);
     let data = vec![];
-    let read_input = Input::unverified_read_only_data_coin(
-        utxo_id, owner, amount, asset_id, tx_pointer, data,
-    );
+    let read_input =
+        Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1337,8 +1333,7 @@ async fn gtf_args__read_only_coin_amount() {
     let tx_pointer = rng.gen();
     let predicate_data = utxo_id.to_bytes();
     let predicate = check_read_only_coin_amount_predicate(amount);
-    let read_input =
-        Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
+    let read_input = Input::read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1375,9 +1370,8 @@ async fn gtf_args__read_only_data_coin_amount() {
     let predicate_data = utxo_id.to_bytes();
     let predicate = check_read_only_coin_amount_predicate(amount);
     let data = vec![];
-    let read_input = Input::unverified_read_only_data_coin(
-        utxo_id, owner, amount, asset_id, tx_pointer, data,
-    );
+    let read_input =
+        Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1444,8 +1438,7 @@ async fn gtf_args__read_only_coin_asset_id() {
     let tx_pointer = rng.gen();
     let predicate_data = asset_id.to_bytes();
     let predicate = check_read_only_coin_asset_id_predicate(predicate_data.len());
-    let read_input =
-        Input::unverified_read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
+    let read_input = Input::read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1482,9 +1475,8 @@ async fn gtf_args__read_only_datacoin_asset_id() {
     let predicate_data = asset_id.to_bytes();
     let predicate = check_read_only_coin_asset_id_predicate(predicate_data.len());
     let data = vec![];
-    let read_input = Input::unverified_read_only_data_coin(
-        utxo_id, owner, amount, asset_id, tx_pointer, data,
-    );
+    let read_input =
+        Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1540,9 +1532,8 @@ async fn gtf_args__read_only_data_coin_data_len() {
     let data = vec![1, 2, 3, 4, 5];
     let predicate_data = vec![];
     let predicate = check_read_only_data_coin_data_len_predicate(data.len());
-    let read_input = Input::unverified_read_only_data_coin(
-        utxo_id, owner, amount, asset_id, tx_pointer, data,
-    );
+    let read_input =
+        Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1606,9 +1597,8 @@ async fn gtf_args__read_only_data_coin_data() {
     let data = vec![5; 100];
     let predicate_data = data.clone();
     let predicate = check_read_only_data_coin_data_predicate(data.len());
-    let read_input = Input::unverified_read_only_data_coin(
-        utxo_id, owner, amount, asset_id, tx_pointer, data,
-    );
+    let read_input =
+        Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),

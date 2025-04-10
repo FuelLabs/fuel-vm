@@ -610,9 +610,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     ) {
         let owner = Input::owner(owner);
 
-        let input = Input::unverified_read_only_coin(
-            utxo_id, owner, amount, asset_id, tx_pointer,
-        );
+        let input = Input::read_only_coin(utxo_id, owner, amount, asset_id, tx_pointer);
         self.inputs_mut().push(input);
     }
 
@@ -627,7 +625,7 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     ) {
         let owner = Input::owner(owner);
 
-        let input = Input::unverified_read_only_data_coin(
+        let input = Input::read_only_data_coin(
             utxo_id, owner, amount, asset_id, tx_pointer, data,
         );
         self.inputs_mut().push(input);

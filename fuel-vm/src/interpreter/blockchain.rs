@@ -73,6 +73,7 @@ use fuel_types::{
     BlockHeight,
     Bytes32,
     ContractId,
+    SubAssetId,
     Word,
 };
 
@@ -801,7 +802,7 @@ where
 {
     pub(crate) fn burn(self, a: Word, b: Word) -> IoResult<(), S::Error> {
         let contract_id = internal_contract(self.context, self.fp, self.memory)?;
-        let sub_id = Bytes32::new(self.memory.read_bytes(b)?);
+        let sub_id = SubAssetId::new(self.memory.read_bytes(b)?);
         let asset_id = contract_id.asset_id(&sub_id);
 
         let balance = balance(self.storage, &contract_id, &asset_id)?;
@@ -841,7 +842,7 @@ where
 {
     pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
         let contract_id = internal_contract(self.context, self.fp, self.memory)?;
-        let sub_id = Bytes32::new(self.memory.read_bytes(b)?);
+        let sub_id = SubAssetId::new(self.memory.read_bytes(b)?);
         let asset_id = contract_id.asset_id(&sub_id);
 
         let balance = balance(self.storage, &contract_id, &asset_id)?;

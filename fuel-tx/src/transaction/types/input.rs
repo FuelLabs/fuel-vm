@@ -1079,6 +1079,7 @@ impl Input {
 
     pub const fn is_read_only_data_coin(&self) -> bool {
         matches!(self, Input::ReadOnly(ReadOnly::DataCoin(_)))
+            | matches!(self, Input::ReadOnly(ReadOnly::DataCoinPredicate(_)))
     }
 
     pub const fn is_coin_signed(&self) -> bool {

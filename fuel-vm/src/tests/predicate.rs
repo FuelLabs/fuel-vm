@@ -1790,6 +1790,99 @@ async fn gtf_args__read_only_datacoin_asset_id() {
     assert!(success);
 }
 
+#[tokio::test]
+async fn gtf_args__read_only_predicate_coin_asset_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let amount = 123;
+    let asset_id: AssetId = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_data = asset_id.to_bytes();
+    let predicate = check_read_only_coin_asset_id_predicate(predicate_data.len());
+    let true_predicate = true_predicate();
+    let true_predicate_owner = Input::predicate_owner(&true_predicate);
+    let read_input = Input::read_only_coin_predicate(
+        utxo_id,
+        true_predicate_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        0,
+        true_predicate,
+        vec![],
+    );
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
+#[tokio::test]
+async fn gtf_args__read_only_prediate_datacoin_asset_id() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let amount = 123;
+    let asset_id: AssetId = rng.gen();
+    let tx_pointer = rng.gen();
+    let predicate_data = asset_id.to_bytes();
+    let predicate = check_read_only_coin_asset_id_predicate(predicate_data.len());
+    let true_predicate = true_predicate();
+    let true_predicate_owner = Input::predicate_owner(&true_predicate);
+    let read_input = Input::read_only_data_coin_predicate(
+        utxo_id,
+        true_predicate_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        0,
+        true_predicate,
+        vec![],
+        vec![4, 3, 2, 1],
+    );
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
 fn check_read_only_data_coin_data_len_predicate(expected_len: usize) -> Vec<u8> {
     let expected_len_reg = 0x13;
     let actual_len_reg = 0x14;
@@ -1824,6 +1917,54 @@ async fn gtf_args__read_only_data_coin_data_len() {
     let predicate = check_read_only_data_coin_data_len_predicate(data.len());
     let read_input =
         Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
+#[tokio::test]
+async fn gtf_args__read_only_predicate_data_coin_data_len() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let amount = 123;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let data = vec![1, 2, 3, 4, 5];
+    let predicate_data = vec![];
+    let predicate = check_read_only_data_coin_data_len_predicate(data.len());
+    let true_predicate = true_predicate();
+    let true_predicate_owner = Input::predicate_owner(&true_predicate);
+    let read_input = Input::read_only_data_coin_predicate(
+        utxo_id,
+        true_predicate_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        0,
+        true_predicate,
+        vec![],
+        data,
+    );
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),
@@ -1889,6 +2030,54 @@ async fn gtf_args__read_only_data_coin_data() {
     let predicate = check_read_only_data_coin_data_predicate(data.len());
     let read_input =
         Input::read_only_data_coin(utxo_id, owner, amount, asset_id, tx_pointer, data);
+    let predicate_input = Input::coin_predicate(
+        rng.gen(),
+        Input::predicate_owner(&predicate),
+        234,
+        asset_id,
+        rng.gen(),
+        0,
+        predicate.clone(),
+        predicate_data,
+    );
+    let output = Output::change(rng.gen(), 0, asset_id);
+
+    // when
+    let success = execute_predicate_with_input_and_output(
+        vec![read_input, predicate_input],
+        vec![output],
+    )
+    .await;
+
+    // then
+    assert!(success);
+}
+
+#[tokio::test]
+async fn gtf_args__read_only_predicate_data_coin_data() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let utxo_id: UtxoId = rng.gen();
+    let amount = 123;
+    let asset_id = rng.gen();
+    let tx_pointer = rng.gen();
+    let data = vec![5; 100];
+    let predicate_data = data.clone();
+    let predicate = check_read_only_data_coin_data_predicate(data.len());
+    let true_predicate = true_predicate();
+    let true_predicate_owner = Input::predicate_owner(&true_predicate);
+    let read_input = Input::read_only_data_coin_predicate(
+        utxo_id,
+        true_predicate_owner,
+        amount,
+        asset_id,
+        tx_pointer,
+        0,
+        true_predicate,
+        vec![],
+        data,
+    );
     let predicate_input = Input::coin_predicate(
         rng.gen(),
         Input::predicate_owner(&predicate),

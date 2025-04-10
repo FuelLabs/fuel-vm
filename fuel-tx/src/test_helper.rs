@@ -128,6 +128,7 @@ mod use_std {
                         Input::CoinPredicate(_) => (),
                         Input::DataCoinSigned(_) => (),
                         Input::DataCoinPredicate(_) => (),
+                        Input::ReadOnly(_) => (),
                         Input::Contract(_) => (),
                         Input::MessageCoinSigned(_) => (),
                         Input::MessageCoinPredicate(_) => (),

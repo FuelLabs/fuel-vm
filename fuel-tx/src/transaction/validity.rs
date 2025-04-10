@@ -380,8 +380,9 @@ where
     let any_spendable_input = tx.inputs().iter().find(|input| match input {
         Input::CoinSigned(_)
         | Input::CoinPredicate(_)
-            | Input::DataCoinSigned(_)
-                | Input::DataCoinPredicate(_)
+        | Input::DataCoinSigned(_)
+        | Input::DataCoinPredicate(_)
+        | Input::ReadOnly(_)
         | Input::MessageCoinSigned(_)
         | Input::MessageCoinPredicate(_) => true,
         Input::MessageDataSigned(_)

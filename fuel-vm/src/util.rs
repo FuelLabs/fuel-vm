@@ -86,46 +86,17 @@ macro_rules! script_with_data_offset {
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
+    use anyhow::anyhow;
+    use itertools::Itertools;
+    use rand::{
+        prelude::StdRng,
+        Rng,
+        SeedableRng,
+    };
+
     use alloc::{
         vec,
         vec::Vec,
-    };
-
-    use crate::{
-        checked_transaction::{
-            builder::TransactionBuilderExt,
-            Checked,
-            IntoChecked,
-        },
-        interpreter::{
-            Memory,
-            NotSupportedEcal,
-        },
-        memory_client::MemoryClient,
-        state::StateTransition,
-        storage::{
-            ContractsAssetsStorage,
-            MemoryStorage,
-        },
-        transactor::Transactor,
-        verification::{
-            AttemptContinue,
-            Verifier,
-        },
-    };
-    use anyhow::anyhow;
-
-    use crate::{
-        interpreter::{
-            CheckedMetadata,
-            ExecutableTransaction,
-            InterpreterParams,
-            MemoryInstance,
-        },
-        prelude::{
-            Backtrace,
-            Call,
-        },
     };
     use fuel_asm::{
         op,
@@ -175,11 +146,36 @@ pub mod test_helpers {
         Salt,
         Word,
     };
-    use itertools::Itertools;
-    use rand::{
-        prelude::StdRng,
-        Rng,
-        SeedableRng,
+
+    use crate::{
+        checked_transaction::{
+            builder::TransactionBuilderExt,
+            Checked,
+            IntoChecked,
+        },
+        interpreter::{
+            CheckedMetadata,
+            ExecutableTransaction,
+            InterpreterParams,
+            Memory,
+            MemoryInstance,
+            NotSupportedEcal,
+        },
+        memory_client::MemoryClient,
+        prelude::{
+            Backtrace,
+            Call,
+        },
+        state::StateTransition,
+        storage::{
+            ContractsAssetsStorage,
+            MemoryStorage,
+        },
+        transactor::Transactor,
+        verification::{
+            AttemptContinue,
+            Verifier,
+        },
     };
 
     pub struct CreatedContract {
@@ -212,6 +208,10 @@ pub mod test_helpers {
                 block_height: Default::default(),
                 consensus_params: ConsensusParameters::standard(),
             }
+        }
+
+        pub fn consensus_params(&self) -> ConsensusParameters {
+            self.consensus_params.clone()
         }
 
         pub fn get_block_height(&self) -> BlockHeight {

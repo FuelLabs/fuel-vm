@@ -87,10 +87,10 @@ fn input_coin_message_signature() {
             .expect("Failed to validate transactions");
 
         for _ in 0..3 {
-            let utxo_id = rng.gen();
-            let amount = rng.gen();
-            let asset_id = rng.gen();
-            let tx_pointer = rng.gen();
+            let utxo_id = rng.r#gen();
+            let amount = rng.r#gen();
+            let asset_id = rng.r#gen();
+            let tx_pointer = rng.r#gen();
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
                 let witness_index = <Tx as field::Witnesses>::witnesses(tx).len();
@@ -108,9 +108,9 @@ fn input_coin_message_signature() {
         }
 
         for _ in 0..3 {
-            let sender = rng.gen();
-            let nonce = rng.gen();
-            let amount = rng.gen();
+            let sender = rng.r#gen();
+            let nonce = rng.r#gen();
+            let amount = rng.r#gen();
             let data = generate_bytes(rng);
 
             sign_and_validate(rng, txs.by_ref(), |tx, public| {
@@ -140,10 +140,10 @@ fn coin_signed() {
     let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
     let input =
-        Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+        Input::coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
     tx.add_input(input);
 
-    let block_height = rng.gen();
+    let block_height = rng.r#gen();
     let err = tx
         .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
@@ -158,12 +158,12 @@ fn duplicate_secrets_reuse_witness() {
 
     let script = TransactionBuilder::script(vec![], vec![])
         // coin 1
-        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default())
+        .add_unsigned_coin_input(key, rng.r#gen(), 100, Default::default(), Default::default())
         // coin 2
-        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default())
+        .add_unsigned_coin_input(key, rng.r#gen(), 200, rng.r#gen(), Default::default())
         // message 1
-        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
-        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
+        .add_unsigned_message_input(key, rng.r#gen(), rng.r#gen(), 100, vec![])
+        .add_unsigned_message_input(key, rng.r#gen(), rng.r#gen(), 100, vec![rng.r#gen()])
         .finalize();
 
     assert_eq!(
@@ -173,14 +173,14 @@ fn duplicate_secrets_reuse_witness() {
     );
 
     // verify witness reuse for creation txs
-    let create = TransactionBuilder::create(Witness::default(), rng.gen(), vec![])
+    let create = TransactionBuilder::create(Witness::default(), rng.r#gen(), vec![])
         // coin 1
-        .add_unsigned_coin_input(key, rng.gen(), 100, Default::default(), Default::default())
+        .add_unsigned_coin_input(key, rng.r#gen(), 100, Default::default(), Default::default())
         // coin 2
-        .add_unsigned_coin_input(key, rng.gen(), 200, rng.gen(), Default::default())
+        .add_unsigned_coin_input(key, rng.r#gen(), 200, rng.r#gen(), Default::default())
         // message 1
-        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![])
-        .add_unsigned_message_input(key, rng.gen(), rng.gen(), 100, vec![rng.gen()])
+        .add_unsigned_message_input(key, rng.r#gen(), rng.r#gen(), 100, vec![])
+        .add_unsigned_message_input(key, rng.r#gen(), rng.r#gen(), 100, vec![rng.r#gen()])
         .finalize();
 
     assert_eq!(
@@ -194,18 +194,18 @@ fn duplicate_secrets_reuse_witness() {
 fn coin_predicate() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let txhash: Bytes32 = rng.gen();
+    let txhash: Bytes32 = rng.r#gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
     let owner = Input::predicate_owner(&predicate);
 
     Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -216,12 +216,12 @@ fn coin_predicate() {
     let owner = Input::predicate_owner(&predicate);
 
     let err = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -236,12 +236,12 @@ fn coin_predicate() {
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -256,20 +256,20 @@ fn coin_predicate() {
 fn contract() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let txhash: Bytes32 = rng.gen();
+    let txhash: Bytes32 = rng.r#gen();
 
-    Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
         .check(
             1,
             &txhash,
-            &[Output::contract(1, rng.gen(), rng.gen())],
+            &[Output::contract(1, rng.r#gen(), rng.r#gen())],
             &[],
             &Default::default(),
             &mut None,
         )
         .unwrap();
 
-    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    let err = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
         .check(1, &txhash, &[], &[], &Default::default(), &mut None)
         .err()
         .unwrap();
@@ -279,11 +279,11 @@ fn contract() {
         err
     );
 
-    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    let err = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
         .check(
             1,
             &txhash,
-            &[Output::coin(rng.gen(), rng.gen(), rng.gen())],
+            &[Output::coin(rng.r#gen(), rng.r#gen(), rng.r#gen())],
             &[],
             &Default::default(),
             &mut None,
@@ -296,11 +296,11 @@ fn contract() {
         err
     );
 
-    let err = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen())
+    let err = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
         .check(
             1,
             &txhash,
-            &[Output::contract(2, rng.gen(), rng.gen())],
+            &[Output::contract(2, rng.r#gen(), rng.r#gen())],
             &[],
             &Default::default(),
             &mut None,
@@ -317,17 +317,17 @@ fn contract() {
 #[test]
 fn message_metadata() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let txhash: Bytes32 = rng.gen();
+    let txhash: Bytes32 = rng.r#gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
     let recipient = Input::predicate_owner(&predicate);
 
     Input::message_data_predicate(
-        rng.gen(),
+        rng.r#gen(),
         recipient,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
@@ -338,20 +338,20 @@ fn message_metadata() {
     let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
     let input = Input::message_data_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         0,
         generate_bytes(rng),
     );
     let fee_input =
-        Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 1);
+        Input::message_coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 1);
 
     tx.add_input(input);
     tx.add_input(fee_input);
 
-    let block_height = rng.gen();
+    let block_height = rng.r#gen();
     let err = tx
         .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
@@ -363,11 +363,11 @@ fn message_metadata() {
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_data_predicate(
-        rng.gen(),
+        rng.r#gen(),
         recipient,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
@@ -380,10 +380,10 @@ fn message_metadata() {
     let data = vec![0xff; PREDICATE_PARAMS.max_message_data_length() as usize + 1];
 
     let err = Input::message_data_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         0,
         data.clone(),
     )
@@ -400,11 +400,11 @@ fn message_metadata() {
     assert_eq!(ValidityError::InputMessageDataLength { index: 1 }, err,);
 
     let err = Input::message_data_predicate(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         data,
         generate_nonempty_padded_bytes(rng),
         generate_bytes(rng),
@@ -417,11 +417,11 @@ fn message_metadata() {
     let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length() as usize + 1];
 
     let err = Input::message_data_predicate(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         generate_bytes(rng),
         predicate,
         generate_bytes(rng),
@@ -435,11 +435,11 @@ fn message_metadata() {
         vec![0xff; PREDICATE_PARAMS.max_predicate_data_length() as usize + 1];
 
     let err = Input::message_data_predicate(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         generate_bytes(rng),
         generate_bytes(rng),
         predicate_data,
@@ -453,17 +453,17 @@ fn message_metadata() {
 #[test]
 fn message_message_coin() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let txhash: Bytes32 = rng.gen();
+    let txhash: Bytes32 = rng.r#gen();
 
     let predicate = generate_nonempty_padded_bytes(rng);
     let recipient = Input::predicate_owner(&predicate);
 
     Input::message_coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         recipient,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -472,10 +472,10 @@ fn message_message_coin() {
 
     let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
-    let input = Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+    let input = Input::message_coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
     tx.add_input(input);
 
-    let block_height = rng.gen();
+    let block_height = rng.r#gen();
     let err = tx
         .check(block_height, &ConsensusParameters::standard())
         .expect_err("Expected failure");
@@ -487,11 +487,11 @@ fn message_message_coin() {
     predicate[0] = predicate[0].wrapping_add(1);
 
     let err = Input::message_coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         recipient,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -503,11 +503,11 @@ fn message_message_coin() {
     let predicate = vec![0xff; PREDICATE_PARAMS.max_predicate_length() as usize + 1];
 
     let err = Input::message_coin_predicate(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate,
         generate_bytes(rng),
     )
@@ -520,11 +520,11 @@ fn message_message_coin() {
         vec![0xff; PREDICATE_PARAMS.max_predicate_data_length() as usize + 1];
 
     let err = Input::message_coin_predicate(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         generate_bytes(rng),
         predicate_data,
     )
@@ -537,15 +537,15 @@ fn message_message_coin() {
 #[test]
 fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let utxo_id = rng.gen();
+    let utxo_id = rng.r#gen();
 
-    let a = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
-    let b = Input::coin_signed(utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+    let a = Input::coin_signed(utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
+    let b = Input::coin_signed(utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(a)
         .add_input(b)
-        .add_witness(rng.gen())
+        .add_witness(rng.r#gen())
         .finalize()
         .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect_err("Expected checkable failure");
@@ -557,21 +557,21 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
 fn transaction_with_duplicate_message_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let message_input = Input::message_data_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         0,
         generate_bytes(rng),
     );
     let nonce = message_input.nonce().cloned().unwrap();
     let fee = Input::coin_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
     );
 
     let err = TransactionBuilder::script(vec![], vec![])
@@ -579,7 +579,7 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
         .add_input(message_input.clone())
         // duplicate input
         .add_input(message_input)
-        .add_witness(rng.gen())
+        .add_witness(rng.r#gen())
         .finalize()
         .check_without_signatures(
             Default::default(),
@@ -593,21 +593,21 @@ fn transaction_with_duplicate_message_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_contract_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let contract_id = rng.gen();
+    let contract_id = rng.r#gen();
     let fee = Input::coin_signed(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
     );
 
-    let a = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let b = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
+    let a = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), contract_id);
+    let b = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), contract_id);
 
-    let o = Output::contract(0, rng.gen(), rng.gen());
-    let p = Output::contract(1, rng.gen(), rng.gen());
+    let o = Output::contract(0, rng.r#gen(), rng.r#gen());
+    let p = Output::contract(1, rng.r#gen(), rng.r#gen());
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(fee)
@@ -625,15 +625,15 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
 #[test]
 fn transaction_with_duplicate_contract_utxo_id_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let input_utxo_id: UtxoId = rng.gen();
+    let input_utxo_id: UtxoId = rng.r#gen();
 
-    let a = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
-    let b = Input::contract(input_utxo_id, rng.gen(), rng.gen(), rng.gen(), rng.gen());
+    let a = Input::contract(input_utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
+    let b = Input::contract(input_utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
     let fee =
-        Input::coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen(), 0);
+        Input::coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
 
-    let o = Output::contract(0, rng.gen(), rng.gen());
-    let p = Output::contract(1, rng.gen(), rng.gen());
+    let o = Output::contract(0, rng.r#gen(), rng.r#gen());
+    let p = Output::contract(1, rng.r#gen(), rng.r#gen());
 
     TransactionBuilder::script(vec![], vec![])
         .add_input(a)
@@ -641,7 +641,7 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
         .add_input(fee)
         .add_output(o)
         .add_output(p)
-        .add_witness(rng.gen())
+        .add_witness(rng.r#gen())
         .finalize()
         .check_without_signatures(Default::default(), &ConsensusParameters::standard())
         .expect("Duplicated UTXO id is valid for contract input");

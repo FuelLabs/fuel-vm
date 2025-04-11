@@ -1046,9 +1046,9 @@ mod tests {
         let tx = TransactionBuilder::script(vec![], vec![])
             .max_fee_limit(max_fee)
             // Add message input with enough to cover max fee
-            .add_unsigned_message_input(SecretKey::random(rng), rng.gen(), rng.gen(), input_amount, vec![0xff; 10])
+            .add_unsigned_message_input(SecretKey::random(rng), rng.r#gen(), rng.r#gen(), input_amount, vec![0xff; 10])
             // Add empty base coin
-            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.r#gen(), 0, AssetId::BASE, rng.r#gen())
             .finalize();
 
         let err = tx
@@ -1080,17 +1080,17 @@ mod tests {
             .max_fee_limit(max_fee)
             .script_gas_limit(gas_limit)
             .add_input(Input::message_data_predicate(
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 input_amount,
-                rng.gen(),
+                rng.r#gen(),
                 Default::default(),
                 vec![0xff; 10],
                 vec![0xaa; 10],
                 vec![0xbb; 10],
             ))
             // Add empty base coin
-            .add_unsigned_coin_input(SecretKey::random(rng), rng.gen(), 0, AssetId::BASE, rng.gen())
+            .add_unsigned_coin_input(SecretKey::random(rng), rng.r#gen(), 0, AssetId::BASE, rng.r#gen())
             .finalize();
 
         let err = tx
@@ -1128,7 +1128,7 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let predicate_gas_used = rng.gen();
+        let predicate_gas_used = rng.r#gen();
         let tx = predicate_tx(
             rng,
             gas_limit,
@@ -1164,7 +1164,7 @@ mod tests {
         let rng = &mut StdRng::seed_from_u64(seed);
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(gas_price_factor);
-        let predicate_gas_used = rng.gen();
+        let predicate_gas_used = rng.r#gen();
         let tx = predicate_tx(
             rng,
             gas_limit,
@@ -1286,23 +1286,23 @@ mod tests {
             // Set up 3 signed inputs
             .add_unsigned_message_input(
                 SecretKey::random(rng),
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
                 SecretKey::random(rng),
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
                 SecretKey::random(rng),
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .finalize();
@@ -1337,23 +1337,23 @@ mod tests {
             // Set up 3 signed inputs
             .add_unsigned_message_input(
                 secret,
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
                 secret,
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
                 secret,
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .finalize();
@@ -1400,28 +1400,28 @@ mod tests {
             .script_gas_limit(gas_limit)
             // Set up 3 predicate inputs
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 50,
                 predicate_1.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 100,
                 predicate_2.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 200,
                 predicate_3.to_vec(),
                 vec![],
@@ -1465,49 +1465,49 @@ mod tests {
             // Set up 3 signed inputs
             .add_unsigned_message_input(
                 SecretKey::random(rng),
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
                 SecretKey::random(rng),
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             .add_unsigned_message_input(
                 SecretKey::random(rng),
-                rng.gen(),
-                rng.gen(),
-                rng.gen::<u32>() as u64,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen::<u32>() as u64,
                 vec![],
             )
             // Set up 3 predicate inputs
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 50,
                 predicate_1.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 100,
                 predicate_2.to_vec(),
                 vec![],
             ))
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 200,
                 predicate_3.to_vec(),
                 vec![],
@@ -1545,14 +1545,14 @@ mod tests {
         let witness_limit = 1000;
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
-        let gen_storage_slot = || rng.gen::<StorageSlot>();
+        let gen_storage_slot = || rng.r#gen::<StorageSlot>();
         let storage_slots = core::iter::repeat_with(gen_storage_slot)
             .take(100)
             .collect::<Vec<_>>();
         let storage_slots_len = storage_slots.len();
-        let bytecode = rng.gen::<Witness>();
+        let bytecode = rng.r#gen::<Witness>();
         let bytecode_len = bytecode.as_ref().len();
-        let salt = rng.gen::<Salt>();
+        let salt = rng.r#gen::<Salt>();
         let tx = TransactionBuilder::create(bytecode.clone(), salt, storage_slots)
             .witness_limit(witness_limit)
             .finalize();
@@ -1587,7 +1587,7 @@ mod tests {
         let gas_costs = GasCosts::default();
         let fee_params = FeeParameters::DEFAULT.with_gas_price_factor(1);
         let bytecode: Witness = Vec::<u8>::new().into();
-        let salt = rng.gen::<Salt>();
+        let salt = rng.r#gen::<Salt>();
         let tx = TransactionBuilder::create(bytecode.clone(), salt, vec![])
             .witness_limit(witness_limit)
             .finalize();
@@ -1618,7 +1618,7 @@ mod tests {
     fn checked_tx_rejects_invalid_tx() {
         // simple smoke test that invalid txs cannot be checked
         let rng = &mut StdRng::seed_from_u64(2322u64);
-        let asset = rng.gen();
+        let asset = rng.r#gen();
         let gas_limit = 100;
         let input_amount = 1_000;
 
@@ -1626,23 +1626,23 @@ mod tests {
         let tx = TransactionBuilder::script(vec![], vec![])
             .script_gas_limit(gas_limit)
             .add_input(Input::coin_signed(
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 input_amount,
                 asset,
-                rng.gen(),
+                rng.r#gen(),
                 Default::default(),
             ))
             .add_input(Input::contract(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
             ))
-            .add_output(Output::contract(1, rng.gen(), rng.gen()))
-            .add_output(Output::coin(rng.gen(), 10, asset))
-            .add_output(Output::change(rng.gen(), 0, asset))
+            .add_output(Output::contract(1, rng.r#gen(), rng.r#gen()))
+            .add_output(Output::coin(rng.r#gen(), 10, asset))
+            .add_output(Output::change(rng.r#gen(), 0, asset))
             .add_witness(Default::default())
             .finalize();
 
@@ -1695,7 +1695,7 @@ mod tests {
 
         // given
         // invalidating the transaction by increasing witness size
-        new_transaction.witnesses_mut().push(rng.gen());
+        new_transaction.witnesses_mut().push(rng.r#gen());
         let bigger_checked = new_transaction
             .into_checked(Default::default(), &params)
             .unwrap();
@@ -1888,28 +1888,28 @@ mod tests {
         let input_amount = 1_000;
         let rng = &mut StdRng::seed_from_u64(2322u64);
         let secret = SecretKey::random(rng);
-        let any_asset = rng.gen();
+        let any_asset = rng.r#gen();
         let tx = TransactionBuilder::script(vec![], vec![])
             .script_gas_limit(100)
             // base asset
             .add_unsigned_coin_input(
                 secret,
-                rng.gen(),
+                rng.r#gen(),
                 input_amount,
                 AssetId::default(),
-                rng.gen(),
+                rng.r#gen(),
             )
-            .add_output(Output::change(rng.gen(), 0, AssetId::default()))
+            .add_output(Output::change(rng.r#gen(), 0, AssetId::default()))
             // arbitrary spending asset
             .add_unsigned_coin_input(
                 secret,
-                rng.gen(),
+                rng.r#gen(),
                 input_amount,
                 any_asset,
-                rng.gen(),
+                rng.r#gen(),
             )
-            .add_output(Output::coin(rng.gen(), input_amount + 1, any_asset))
-            .add_output(Output::change(rng.gen(), 0, any_asset))
+            .add_output(Output::coin(rng.r#gen(), input_amount + 1, any_asset))
+            .add_output(Output::change(rng.r#gen(), 0, any_asset))
             .finalize();
 
         let checked = tx
@@ -2086,21 +2086,21 @@ mod tests {
             .max_fee_limit(max_fee_limit)
             .add_unsigned_coin_input(
                 SecretKey::random(rng),
-                rng.gen(),
+                rng.r#gen(),
                 input_amount,
                 asset,
-                rng.gen(),
+                rng.r#gen(),
             )
             .add_input(Input::contract(
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
             ))
-            .add_output(Output::contract(1, rng.gen(), rng.gen()))
-            .add_output(Output::coin(rng.gen(), output_amount, asset))
-            .add_output(Output::change(rng.gen(), 0, asset))
+            .add_output(Output::contract(1, rng.r#gen(), rng.r#gen()))
+            .add_output(Output::coin(rng.r#gen(), output_amount, asset))
+            .add_output(Output::change(rng.r#gen(), 0, asset))
             .finalize()
     }
 
@@ -2121,16 +2121,16 @@ mod tests {
             .script_gas_limit(gas_limit)
             .witness_limit(witness_limit)
             .add_input(Input::coin_predicate(
-                rng.gen(),
+                rng.r#gen(),
                 owner,
                 fee_input_amount,
                 asset,
-                rng.gen(),
+                rng.r#gen(),
                 predicate_gas_used,
                 predicate,
                 vec![],
             ))
-            .add_output(Output::change(rng.gen(), 0, asset))
+            .add_output(Output::change(rng.r#gen(), 0, asset))
             .finalize()
     }
 
@@ -2146,8 +2146,8 @@ mod tests {
             .script_gas_limit(gas_limit)
             .add_unsigned_message_input(
                 SecretKey::random(rng),
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 input_amount,
                 vec![],
             )
@@ -2164,10 +2164,10 @@ mod tests {
             .tip(tip)
             .script_gas_limit(gas_limit)
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 input_amount,
-                rng.gen(),
+                rng.r#gen(),
                 Default::default(),
                 vec![],
                 vec![],
@@ -2200,12 +2200,12 @@ mod tests {
             .script_gas_limit(gas_limit)
             .add_unsigned_coin_input(
                 SecretKey::random(rng),
-                rng.gen(),
+                rng.r#gen(),
                 input_amount,
                 AssetId::default(),
-                rng.gen(),
+                rng.r#gen(),
             )
-            .add_output(Output::change(rng.gen(), 0, AssetId::default()))
+            .add_output(Output::change(rng.r#gen(), 0, AssetId::default()))
             .finalize()
     }
 }

@@ -69,8 +69,8 @@ fn sparse_merkle_tree(c: &mut Criterion) {
     };
 
     let rng = &mut StdRng::seed_from_u64(8586);
-    let gen = || Some((MerkleTreeKey::new(random_bytes32(rng)), random_bytes32(rng)));
-    let data = core::iter::from_fn(gen).take(50_000).collect::<Vec<_>>();
+    let generator = || Some((MerkleTreeKey::new(random_bytes32(rng)), random_bytes32(rng)));
+    let data = core::iter::from_fn(generator).take(50_000).collect::<Vec<_>>();
 
     let expected_root = baseline_root(data.clone().into_iter());
     let root = subject_root(data.clone().into_iter());
@@ -83,19 +83,19 @@ fn sparse_merkle_tree(c: &mut Criterion) {
 
     let mut group_update = c.benchmark_group("from-set");
 
-    group_update.bench_with_input("root-from-set", &data, |b, data| {
+    group_update.bench_with_input("root-from-set", &data, |b, data: &Vec<(MerkleTreeKey, [u8; 32])>| {
         b.iter(|| subject_only_root(black_box(data.clone().into_iter())));
     });
 
-    group_update.bench_with_input("nodes-from-set", &data, |b, data| {
+    group_update.bench_with_input("nodes-from-set", &data, |b, data: &Vec<(MerkleTreeKey, [u8; 32])>| {
         b.iter(|| subject_nodes(black_box(data.clone().into_iter())));
     });
 
-    group_update.bench_with_input("from-set", &data, |b, data| {
+    group_update.bench_with_input("from-set", &data, |b, data: &Vec<(MerkleTreeKey, [u8; 32])>| {
         b.iter(|| subject_root(black_box(data.clone().into_iter())));
     });
 
-    group_update.bench_with_input("from-set-baseline", &data, |b, data| {
+    group_update.bench_with_input("from-set-baseline", &data, |b, data: &Vec<(MerkleTreeKey, [u8; 32])>| {
         b.iter(|| baseline_root(black_box(data.clone().into_iter())));
     });
 

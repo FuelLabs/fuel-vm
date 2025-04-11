@@ -74,7 +74,7 @@ fn call() {
 
     assert_encoding_correct(
         (0..10)
-            .map(|_| Call::new(rng.gen(), rng.gen(), rng.gen()))
+            .map(|_| Call::new(rng.r#gen(), rng.r#gen(), rng.r#gen()))
             .collect::<Vec<Call>>()
             .as_slice(),
     );
@@ -88,12 +88,12 @@ fn call_frame() {
         (0..10)
             .map(|_| {
                 CallFrame::new(
-                    rng.gen(),
-                    rng.gen(),
-                    [rng.gen(); VM_REGISTER_COUNT],
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    [rng.r#gen(); VM_REGISTER_COUNT],
                     200,
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                 )
                 .unwrap()
             })

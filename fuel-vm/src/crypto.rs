@@ -47,11 +47,11 @@ fn ephemeral_merkle_root_returns_the_expected_root() {
     assert_eq!(empty, root);
 
     // Test for 5 leaves
-    let a: Address = rng.gen();
-    let b: Address = rng.gen();
-    let c: Address = rng.gen();
-    let d: Address = rng.gen();
-    let e: Address = rng.gen();
+    let a: Address = rng.r#gen();
+    let b: Address = rng.r#gen();
+    let c: Address = rng.r#gen();
+    let d: Address = rng.r#gen();
+    let e: Address = rng.r#gen();
 
     let initial = [a, b, c, d, e];
 

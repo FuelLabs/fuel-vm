@@ -46,7 +46,7 @@ mod tests {
 
         for case in 0..100 {
             let secret = SecretKey::random(rng);
-            let message = Message::new(vec![rng.gen(); case]);
+            let message = Message::new(vec![rng.r#gen(); case]);
 
             let public_k = k256::public_key(&secret);
             let public_s = secp256k1::public_key(&secret);

@@ -313,7 +313,7 @@ where
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateClearQWord::new(a, c)?;
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref memory,
             ..
@@ -335,7 +335,7 @@ where
             .ok_or(RuntimeError::Recoverable(
                 PanicReason::ReservedRegisterNotWritable,
             ))?;
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref memory,
             ref context,
@@ -367,7 +367,7 @@ where
             split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
-        let Self {
+        let &mut Self {
             ref storage,
             ref context,
             ref mut memory,
@@ -404,7 +404,7 @@ where
             mut w,
         ) = split_registers(&mut self.registers);
         let exists = &mut w[WriteRegKey::try_from(rb)?];
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref memory,
             ref context,
@@ -446,7 +446,7 @@ where
             num_slots: d,
         };
 
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref mut memory,
             ..

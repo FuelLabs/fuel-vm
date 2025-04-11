@@ -41,17 +41,17 @@ fn external_balance() {
     let fee_params = *ConsensusParameters::standard().fee_params();
 
     let script = op::ret(0x01).to_bytes().to_vec();
-    let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
+    let balances = vec![(rng.r#gen(), 100), (rng.r#gen(), 500)];
 
     let mut builder = TransactionBuilder::script(script, Default::default());
 
     balances.iter().copied().for_each(|(asset, amount)| {
         builder.add_unsigned_coin_input(
             SecretKey::random(&mut rng),
-            rng.gen(),
+            rng.r#gen(),
             amount,
             asset,
-            rng.gen(),
+            rng.r#gen(),
         );
     });
 
@@ -119,14 +119,14 @@ fn variable_output_updates_in_memory() {
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let asset_id_to_update: AssetId = rng.gen();
+    let asset_id_to_update: AssetId = rng.r#gen();
     let amount_to_set: Word = 100;
-    let owner: Address = rng.gen();
+    let owner: Address = rng.r#gen();
 
     let variable_output = Output::Variable {
-        to: rng.gen(),
+        to: rng.r#gen(),
         amount: 0,
-        asset_id: rng.gen(),
+        asset_id: rng.r#gen(),
     };
 
     let tx = TransactionBuilder::script(vec![], vec![])

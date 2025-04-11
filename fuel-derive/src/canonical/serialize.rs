@@ -38,7 +38,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     } else {
         quote! { let mut size = 0usize; }
     };
-    let size_static_code = quote! { #initial_size match self { #size_static_code}; size };
+    let size_static_code = quote! { #initial_size match *self { #size_static_code}; size };
 
     let size_dynamic_code = variant.each(|binding| {
         quote! {
@@ -46,7 +46,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
         }
     });
     let size_dynamic_code =
-        quote! { let mut size = 0usize; match self { #size_dynamic_code}; size };
+        quote! { let mut size = 0usize; match *self { #size_dynamic_code}; size };
 
     let prefix = if let Some(prefix_type) = attrs.prefix.as_ref() {
         quote! {
@@ -71,7 +71,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
             #[inline(always)]
             fn encode_static<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
                 #prefix
-                match self {
+                match *self {
                     #encode_static
                 };
 
@@ -79,7 +79,7 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
             }
 
             fn encode_dynamic<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
-                match self {
+                match *self {
                     #encode_dynamic
                 };
 
@@ -151,7 +151,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
     let match_size_static = quote! {{
         // `repr(128)` is unstable, so because of that we can use 8 bytes.
         let mut size = 8usize;
-        match self { #match_size_static } size }
+        match *self { #match_size_static } size }
     };
 
     let match_size_dynamic: TokenStream2 = s
@@ -166,7 +166,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
         })
         .collect();
     let match_size_dynamic =
-        quote! {{ let mut size = 0usize; match self { #match_size_dynamic } size }};
+        quote! {{ let mut size = 0usize; match *self { #match_size_dynamic } size }};
 
     let impl_code = s.gen_impl(quote! {
         gen impl ::fuel_types::canonical::Serialize for @Self {
@@ -182,7 +182,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
 
             #[inline(always)]
             fn encode_static<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
-                match self {
+                match *self {
                     #(
                         #encode_static
                     )*,
@@ -193,7 +193,7 @@ fn serialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
 
             fn encode_dynamic<O: ::fuel_types::canonical::Output + ?Sized>(&self, buffer: &mut O) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
-                match self {
+                match *self {
                     #(
                         #encode_dynamic
                     )*,

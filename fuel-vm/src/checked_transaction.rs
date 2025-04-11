@@ -300,7 +300,7 @@ pub enum CheckError {
 }
 
 /// Performs checks for a transaction
-pub trait IntoChecked: FormatValidityChecks + Sized {
+pub trait IntoChecked: FormatValidityChecks + UniqueIdentifier + Sized {
     /// Metadata produced during the check.
     type Metadata: Sized;
 
@@ -344,7 +344,17 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError>;
+    ) -> Result<Checked<Self>, CheckError> {
+        self.into_checked_basic_with_id(block_height, consensus_params)
+            .map_err(|(_, err)| err)
+    }
+
+    /// Similar to `into_checked_basic` but keep the id in case of error.
+    fn into_checked_basic_with_id(
+        self,
+        block_height: BlockHeight,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<Checked<Self>, (TxId, CheckError)>;
 }
 
 /// The parameters needed for checking a predicate
@@ -864,45 +874,45 @@ impl From<<Blob as IntoChecked>::Metadata> for CheckedMetadata {
 impl IntoChecked for Transaction {
     type Metadata = CheckedMetadata;
 
-    fn into_checked_basic(
+    fn into_checked_basic_with_id(
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
-    ) -> Result<Checked<Self>, CheckError> {
+    ) -> Result<Checked<Self>, (TxId, CheckError)> {
         match self {
             Self::Script(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Create(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Mint(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Upgrade(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Upload(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
             Self::Blob(tx) => {
                 let (transaction, metadata) = tx
-                    .into_checked_basic(block_height, consensus_params)?
+                    .into_checked_basic_with_id(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }

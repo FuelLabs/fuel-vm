@@ -1344,13 +1344,13 @@ mod test {
     #[test]
     fn test_from_set_yields_expected_root() {
         let rng = &mut rand::thread_rng();
-        let gen = || {
+        let generator = || {
             Some((
                 MerkleTreeKey::new_without_hash(random_bytes32(rng)),
                 random_bytes32(rng),
             ))
         };
-        let data = std::iter::from_fn(gen).take(1_000).collect::<Vec<_>>();
+        let data = std::iter::from_fn(generator).take(1_000).collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();
@@ -1374,13 +1374,13 @@ mod test {
     #[test]
     fn test_from_empty_set_yields_expected_root() {
         let rng = &mut rand::thread_rng();
-        let gen = || {
+        let generator = || {
             Some((
                 MerkleTreeKey::new_without_hash(random_bytes32(rng)),
                 random_bytes32(rng),
             ))
         };
-        let data = std::iter::from_fn(gen).take(0).collect::<Vec<_>>();
+        let data = std::iter::from_fn(generator).take(0).collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();
@@ -1404,13 +1404,13 @@ mod test {
     #[test]
     fn test_from_unit_set_yields_expected_root() {
         let rng = &mut rand::thread_rng();
-        let gen = || {
+        let generator = || {
             Some((
                 MerkleTreeKey::new_without_hash(random_bytes32(rng)),
                 random_bytes32(rng),
             ))
         };
-        let data = std::iter::from_fn(gen).take(1).collect::<Vec<_>>();
+        let data = std::iter::from_fn(generator).take(1).collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();

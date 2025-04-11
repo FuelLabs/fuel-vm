@@ -122,36 +122,36 @@ fn hex_encoding() {
 
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    encode_decode::<Address>(rng.gen());
-    encode_decode::<AssetId>(rng.gen());
-    encode_decode::<ContractId>(rng.gen());
-    encode_decode::<TxId>(rng.gen());
-    encode_decode::<Bytes4>(rng.gen());
-    encode_decode::<Bytes8>(rng.gen());
-    encode_decode::<Bytes20>(rng.gen());
-    encode_decode::<Bytes32>(rng.gen());
-    encode_decode::<Nonce>(rng.gen());
-    encode_decode::<MessageId>(rng.gen());
-    encode_decode::<Salt>(rng.gen());
-    encode_decode::<Bytes64>(rng.gen());
+    encode_decode::<Address>(rng.r#gen());
+    encode_decode::<AssetId>(rng.r#gen());
+    encode_decode::<ContractId>(rng.r#gen());
+    encode_decode::<TxId>(rng.r#gen());
+    encode_decode::<Bytes4>(rng.r#gen());
+    encode_decode::<Bytes8>(rng.r#gen());
+    encode_decode::<Bytes20>(rng.r#gen());
+    encode_decode::<Bytes32>(rng.r#gen());
+    encode_decode::<Nonce>(rng.r#gen());
+    encode_decode::<MessageId>(rng.r#gen());
+    encode_decode::<Salt>(rng.r#gen());
+    encode_decode::<Bytes64>(rng.r#gen());
 }
 
 #[test]
 #[cfg(feature = "serde")]
 fn test_key_serde() {
     let rng = &mut StdRng::seed_from_u64(8586);
-    let adr: Address = rng.gen();
-    let ast_id: AssetId = rng.gen();
-    let contract_id: ContractId = rng.gen();
-    let tx_id: TxId = rng.gen();
-    let bytes4: Bytes4 = rng.gen();
-    let bytes8: Bytes8 = rng.gen();
-    let bytes20: Bytes20 = rng.gen();
-    let bytes32: Bytes32 = rng.gen();
-    let nonce: Nonce = rng.gen();
-    let message_id: MessageId = rng.gen();
-    let salt: Salt = rng.gen();
-    let bytes64: Bytes64 = rng.gen();
+    let adr: Address = rng.r#gen();
+    let ast_id: AssetId = rng.r#gen();
+    let contract_id: ContractId = rng.r#gen();
+    let tx_id: TxId = rng.r#gen();
+    let bytes4: Bytes4 = rng.r#gen();
+    let bytes8: Bytes8 = rng.r#gen();
+    let bytes20: Bytes20 = rng.r#gen();
+    let bytes32: Bytes32 = rng.r#gen();
+    let nonce: Nonce = rng.r#gen();
+    let message_id: MessageId = rng.r#gen();
+    let salt: Salt = rng.r#gen();
+    let bytes64: Bytes64 = rng.r#gen();
 
     let adr_t = bincode::serialize(&adr).expect("Failed to serialize Address");
     let adr_t: Address =
@@ -220,57 +220,57 @@ fn test_key_serde() {
 fn test_key_types_hex_serialization() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let adr: Address = rng.gen();
+    let adr: Address = rng.r#gen();
     let adr_to_string =
         serde_json::to_string(&adr).expect("serde_json::to_string failed on Address");
     assert_eq!(format!("\"{adr}\""), adr_to_string);
 
-    let ast_id: AssetId = rng.gen();
+    let ast_id: AssetId = rng.r#gen();
     let ast_id_to_string =
         serde_json::to_string(&ast_id).expect("serde_json::to_string failed on AssetId");
     assert_eq!(format!("\"{ast_id}\""), ast_id_to_string);
 
-    let contract_id: ContractId = rng.gen();
+    let contract_id: ContractId = rng.r#gen();
     let contract_id_to_string = serde_json::to_string(&contract_id)
         .expect("serde_json::to_string failed on ContractId");
     assert_eq!(format!("\"{contract_id}\""), contract_id_to_string);
 
-    let tx_id: TxId = rng.gen();
+    let tx_id: TxId = rng.r#gen();
     let tx_id_to_string =
         serde_json::to_string(&tx_id).expect("serde_json::to_string failed on TxId");
     assert_eq!(format!("\"{tx_id}\""), tx_id_to_string);
 
-    let bytes4: Bytes4 = rng.gen();
+    let bytes4: Bytes4 = rng.r#gen();
     let bytes4_to_string =
         serde_json::to_string(&bytes4).expect("serde_json::to_string failed on Bytes4");
     assert_eq!(format!("\"{bytes4}\""), bytes4_to_string);
 
-    let bytes8: Bytes8 = rng.gen();
+    let bytes8: Bytes8 = rng.r#gen();
     let bytes8_to_string =
         serde_json::to_string(&bytes8).expect("serde_json::to_string failed on Bytes8");
     assert_eq!(format!("\"{bytes8}\""), bytes8_to_string);
 
-    let bytes20: Bytes20 = rng.gen();
+    let bytes20: Bytes20 = rng.r#gen();
     let bytes20_to_string =
         serde_json::to_string(&bytes20).expect("serde_json::to_string failed on Bytes20");
     assert_eq!(format!("\"{bytes20}\""), bytes20_to_string);
 
-    let bytes32: Bytes32 = rng.gen();
+    let bytes32: Bytes32 = rng.r#gen();
     let bytes32_to_string =
         serde_json::to_string(&bytes32).expect("serde_json::to_string failed on Bytes32");
     assert_eq!(format!("\"{bytes32}\""), bytes32_to_string);
 
-    let message_id: MessageId = rng.gen();
+    let message_id: MessageId = rng.r#gen();
     let message_id_to_string = serde_json::to_string(&message_id)
         .expect("serde_json::to_string failed on MessageId");
     assert_eq!(format!("\"{message_id}\""), message_id_to_string);
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let salt_to_string =
         serde_json::to_string(&salt).expect("serde_json::to_string failed on Salt");
     assert_eq!(format!("\"{salt}\""), salt_to_string);
 
-    let bytes64: Bytes64 = rng.gen();
+    let bytes64: Bytes64 = rng.r#gen();
     let bytes64_to_string =
         serde_json::to_string(&bytes64).expect("Failed to serialize Bytes64");
     assert_eq!(format!("\"{bytes64}\""), bytes64_to_string);

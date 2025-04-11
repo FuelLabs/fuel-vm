@@ -424,7 +424,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     pub fn add_random_fee_input(&mut self, rng: &mut StdRng) -> &mut Self {
         self.add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
+            rng.r#gen(),
             u32::MAX as u64,
             *self.params.base_asset_id(),
             Default::default(),
@@ -440,7 +440,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
         self.add_unsigned_coin_input(
             SecretKey::random(&mut rng),
-            rng.gen(),
+            rng.r#gen(),
             u32::MAX as u64,
             *self.params.base_asset_id(),
             Default::default(),

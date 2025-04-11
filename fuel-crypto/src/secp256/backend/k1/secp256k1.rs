@@ -114,7 +114,7 @@ mod tests {
         let secret = random_secret(rng);
         let public = public_key(&secret);
 
-        let message = Message::new(rng.gen::<[u8; 10]>());
+        let message = Message::new(rng.r#gen::<[u8; 10]>());
 
         let signature = sign(&secret, &message);
         verify(signature, *public, &message).expect("Verification failed");

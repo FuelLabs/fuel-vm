@@ -97,7 +97,7 @@ impl AsMut<[u8]> for ContractsStateData {
 #[cfg(feature = "random")]
 impl Distribution<ContractsStateData> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ContractsStateData {
-        ContractsStateData(rng.gen::<Bytes32>().to_vec())
+        ContractsStateData(rng.r#gen::<Bytes32>().to_vec())
     }
 }
 

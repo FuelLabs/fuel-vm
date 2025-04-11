@@ -209,7 +209,7 @@ fn test_smo(
     }: Input,
 ) -> Result<Output, RuntimeError<MemoryStorageError>> {
     let mut rng = StdRng::seed_from_u64(100);
-    let base_asset_id = rng.gen();
+    let base_asset_id = rng.r#gen();
 
     let mut memory: MemoryInstance = vec![0; MEM_SIZE].try_into().unwrap();
     for (offset, bytes) in mem {

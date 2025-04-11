@@ -73,7 +73,7 @@ impl TxPointer {
 #[cfg(feature = "random")]
 impl Distribution<TxPointer> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> TxPointer {
-        TxPointer::new(rng.gen(), rng.gen())
+        TxPointer::new(rng.r#gen(), rng.r#gen())
     }
 }
 

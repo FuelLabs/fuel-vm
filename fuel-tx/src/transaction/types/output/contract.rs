@@ -47,9 +47,9 @@ use rand::{
 impl Distribution<Contract> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Contract {
         Contract {
-            input_index: rng.gen(),
-            balance_root: rng.gen(),
-            state_root: rng.gen(),
+            input_index: rng.r#gen(),
+            balance_root: rng.r#gen(),
+            state_root: rng.r#gen(),
         }
     }
 }

@@ -680,7 +680,7 @@ fn iow_offset() {
             });
 
             let offset = tx.receipts_root_offset();
-            let receipts_root = rng.gen();
+            let receipts_root = rng.r#gen();
 
             *tx.receipts_root_mut() = receipts_root;
 

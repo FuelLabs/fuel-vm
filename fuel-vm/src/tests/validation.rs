@@ -52,10 +52,10 @@ fn transaction_can_be_executed_after_maturity() {
     .max_fee_limit(arb_max_fee)
     .add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         arb_max_fee,
         Default::default(),
-        rng.gen(),
+        rng.r#gen(),
     )
     .script_gas_limit(100)
     .maturity(MATURITY)
@@ -83,10 +83,10 @@ fn transaction__execution__works_before_expiration() {
     .max_fee_limit(arb_max_fee)
     .add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         arb_max_fee,
         Default::default(),
-        rng.gen(),
+        rng.r#gen(),
     )
     .script_gas_limit(100)
     .expiration(EXPIRATION)
@@ -117,10 +117,10 @@ fn transaction__execution__works_current_height_expiration() {
     .max_fee_limit(arb_max_fee)
     .add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         arb_max_fee,
         Default::default(),
-        rng.gen(),
+        rng.r#gen(),
     )
     .script_gas_limit(100)
     .expiration(EXPIRATION)

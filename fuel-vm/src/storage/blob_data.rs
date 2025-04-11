@@ -74,7 +74,7 @@ impl Distribution<BlobBytes> for Standard {
         let len = rng.gen_range(0..1024);
         let mut val = Vec::new();
         for _ in 0..len {
-            val.push(rng.gen());
+            val.push(rng.r#gen());
         }
         BlobBytes(val)
     }

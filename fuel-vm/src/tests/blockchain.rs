@@ -322,7 +322,7 @@ fn state_read_write() {
 #[test]
 fn ldc__load_external_contract_code() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
 
     let mut client = MemoryClient::default();
 
@@ -365,7 +365,7 @@ fn ldc__load_external_contract_code() {
 #[test]
 fn ldc__gas_cost_is_not_dependent_on_rC() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
 
     let mut client = MemoryClient::default();
 
@@ -470,7 +470,7 @@ fn state_write_charges_for_new_storage() {
 #[test]
 fn ldc__offset_changes_cost() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
 
     let mut client = MemoryClient::default();
 
@@ -502,7 +502,7 @@ fn ldc__offset_changes_cost() {
 #[test]
 fn ldc__cost_is_proportional_to_total_contracts_size_not_rC() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
 
     let mut client = MemoryClient::default();
 
@@ -595,8 +595,8 @@ where
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
-    let input0 = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), contract_id);
-    let output0 = Output::contract(0, rng.gen(), rng.gen());
+    let input0 = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), contract_id);
+    let output0 = Output::contract(0, rng.r#gen(), rng.r#gen());
 
     let consensus_params = ConsensusParameters::standard();
 
@@ -703,7 +703,7 @@ fn pad(a: u16) -> u16 {
 
 fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
     let rng = &mut StdRng::seed_from_u64(2322u64);
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let gas_price = 0;
 
     // make gas costs free
@@ -1762,10 +1762,10 @@ fn smo_instruction_works() {
         let block_height = Default::default();
 
         let secret = SecretKey::random(rng);
-        let sender = rng.gen();
+        let sender = rng.r#gen();
 
         // Two bytes of random data to send as the message
-        let msg_data = [rng.gen::<u8>(), rng.gen::<u8>()];
+        let msg_data = [rng.r#gen::<u8>(), rng.r#gen::<u8>()];
 
         #[rustfmt::skip]
         let script = vec![
@@ -1791,9 +1791,9 @@ fn smo_instruction_works() {
             .max_fee_limit(max_fee);
         // add inputs
         for (amount, data) in inputs {
-            tx.add_unsigned_message_input(secret, sender, rng.gen(), amount, data);
+            tx.add_unsigned_message_input(secret, sender, rng.r#gen(), amount, data);
         }
-        tx.add_unsigned_coin_input(secret, rng.gen(), max_fee, AssetId::BASE, rng.gen());
+        tx.add_unsigned_coin_input(secret, rng.r#gen(), max_fee, AssetId::BASE, rng.r#gen());
         let tx = tx
             .add_output(Output::Change {
                 to: Default::default(),
@@ -2097,7 +2097,7 @@ fn coinbase_works() {
 fn various_ldc_issues_poc() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
     let gas_limit = 1_000_000;
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let maturity = Default::default();
     let height = Default::default();
 
@@ -2227,21 +2227,21 @@ fn various_ldc_issues_poc() {
     ]);
 
     let input0 = Input::contract(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         target_contract_id,
     );
     let input1 = Input::contract(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         loader_contract_id,
     );
-    let output0 = Output::contract(0, rng.gen(), rng.gen());
-    let output1 = Output::contract(1, rng.gen(), rng.gen());
+    let output0 = Output::contract(0, rng.r#gen(), rng.r#gen());
+    let output1 = Output::contract(1, rng.r#gen(), rng.r#gen());
 
     let tx_deploy_loader =
         TransactionBuilder::script(script.into_iter().collect(), vec![])

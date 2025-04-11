@@ -42,7 +42,7 @@ pub fn run_script(script: Vec<Instruction>) -> Vec<Receipt> {
         .maturity(Default::default())
         .add_unsigned_coin_input(
             SecretKey::random(&mut rng),
-            rng.gen(),
+            rng.r#gen(),
             arb_max_fee,
             *consensus_params.base_asset_id(),
             Default::default(),

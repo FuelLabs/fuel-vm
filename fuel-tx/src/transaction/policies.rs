@@ -617,22 +617,22 @@ impl Deserialize for Policies {
 #[cfg(feature = "random")]
 impl Distribution<Policies> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Policies {
-        let bits: u32 = rng.gen();
+        let bits: u32 = rng.r#gen();
         let bits = bits & PoliciesBits::all().bits();
         let bits = PoliciesBits::from_bits(bits).expect("We checked that above");
-        let values = rng.gen();
+        let values = rng.r#gen();
         let mut policies = Policies {
             bits,
             values: Policies::values_for_bitmask(bits, values),
         };
 
         if policies.is_set(PolicyType::Maturity) {
-            let maturity: u32 = rng.gen();
+            let maturity: u32 = rng.r#gen();
             policies.set(PolicyType::Maturity, Some(maturity as u64));
         }
 
         if policies.is_set(PolicyType::Expiration) {
-            let expiration: u32 = rng.gen();
+            let expiration: u32 = rng.r#gen();
             policies.set(PolicyType::Expiration, Some(expiration as u64));
         }
 

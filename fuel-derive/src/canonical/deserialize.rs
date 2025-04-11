@@ -63,7 +63,7 @@ fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {
             }
 
             fn decode_dynamic<I: ::fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
-                match self {
+                match *self {
                     #decode_dynamic,
                 };
                 ::core::result::Result::Ok(())
@@ -160,7 +160,7 @@ fn deserialize_enum(s: &synstructure::Structure) -> TokenStream2 {
             }
 
             fn decode_dynamic<I: ::fuel_types::canonical::Input + ?Sized>(&mut self, buffer: &mut I) -> ::core::result::Result<(), ::fuel_types::canonical::Error> {
-                match self {
+                match *self {
                     #(
                         #decode_dynamic
                     )*

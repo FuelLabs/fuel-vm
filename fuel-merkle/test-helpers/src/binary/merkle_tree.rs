@@ -33,7 +33,7 @@ impl MerkleTree {
     pub fn root(&self) -> Data {
         match self.head() {
             None => *empty_sum(),
-            Some(ref head) => {
+            Some(head) => {
                 let mut current = head.clone();
                 while current.next().is_some() {
                     let mut node = current;

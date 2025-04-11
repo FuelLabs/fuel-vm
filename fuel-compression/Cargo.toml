@@ -1,5 +1,6 @@
 [package]
 name = "fuel-compression"
+rust-version = { workspace = true }
 version = { workspace = true }
 authors = { workspace = true }
 categories = ["cryptography::cryptocurrencies"]

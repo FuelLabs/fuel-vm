@@ -1,5 +1,6 @@
 [package]
 name = "fuel-types"
+rust-version = { workspace = true }
 version = { workspace = true }
 authors = { workspace = true }
 categories = { workspace = true }

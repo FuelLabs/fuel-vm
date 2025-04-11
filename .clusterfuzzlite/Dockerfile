@@ -1,4 +1,4 @@
-FROM gcr.io/oss-fuzz-base/base-builder-rust:e155522ceab10af0de09331bb56acf6e0534b95d290de5a8b97539260c3908a9
+FROM gcr.io/oss-fuzz-base/base-builder-rust:9f439c9572c8dcc7f6f02d9a3f278363c1b19cd62d3fcfbedc45be866b3f0bdb
 # RUN rustup toolchain install 1.85
 # RUN rustup default 1.85
 COPY . $SRC/fuel-vm

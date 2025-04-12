@@ -1195,10 +1195,12 @@ impl Input {
             Input::MessageCoinPredicate(message) => message.prepare_sign(),
             Input::MessageDataSigned(message) => message.prepare_sign(),
             Input::MessageDataPredicate(message) => message.prepare_sign(),
-            Input::ReadOnly(ReadOnly::Coin(_coin)) => {}
-            Input::ReadOnly(ReadOnly::DataCoin(_data_coin)) => {}
-            Input::ReadOnly(ReadOnly::CoinPredicate(_coin)) => {}
-            Input::ReadOnly(ReadOnly::DataCoinPredicate(_data_coin)) => {}
+            Input::ReadOnly(ReadOnly::Coin(coin)) => coin.prepare_sign(),
+            Input::ReadOnly(ReadOnly::DataCoin(data_coin)) => data_coin.prepare_sign(),
+            Input::ReadOnly(ReadOnly::CoinPredicate(coin)) => coin.prepare_sign(),
+            Input::ReadOnly(ReadOnly::DataCoinPredicate(data_coin)) => {
+                data_coin.prepare_sign()
+            }
         }
     }
 

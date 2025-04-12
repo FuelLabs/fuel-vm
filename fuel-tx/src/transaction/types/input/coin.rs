@@ -430,3 +430,15 @@ impl DataCoin<Full> {
         }
     }
 }
+
+impl UnverifiedCoin {
+    pub fn prepare_sign(&mut self) {
+        self.tx_pointer = Default::default();
+    }
+}
+
+impl UnverifiedDataCoin {
+    pub fn prepare_sign(&mut self) {
+        self.tx_pointer = Default::default();
+    }
+}

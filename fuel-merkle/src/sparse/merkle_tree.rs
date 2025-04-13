@@ -280,7 +280,6 @@ where
             .collect::<alloc::collections::BTreeMap<Bytes32, D>>();
         let mut branches = sorted
             .iter()
-            .filter(|(_, value)| !value.as_ref().is_empty())
             .map(|(key, data)| Node::create_leaf(key, data))
             .map(Into::<Branch>::into)
             .collect::<Vec<_>>();
@@ -410,13 +409,6 @@ where
         key: MerkleTreeKey,
         data: &[u8],
     ) -> Result<(), MerkleTreeError<StorageError>> {
-        if data.is_empty() {
-            // If the data is empty, this signifies a delete operation for the
-            // given key.
-            self.delete(key)?;
-            return Ok(())
-        }
-
         let leaf_node = Node::create_leaf(key.as_ref(), data);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
@@ -967,7 +959,7 @@ mod test {
     }
 
     #[test]
-    fn test_update_with_empty_data_does_not_change_root() {
+    fn test_insert_empty_data_changes_root() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
@@ -975,12 +967,12 @@ mod test {
 
         let root = tree.root();
         let expected_root =
-            "0000000000000000000000000000000000000000000000000000000000000000";
+            "3529664b414de6285270f7ebda7a43e20ae0ff6191c07d876b86282eb8ce93ce";
         assert_eq!(hex::encode(root), expected_root);
     }
 
     #[test]
-    fn test_update_with_empty_data_performs_delete() {
+    fn test_update_with_empty_data_changes_root() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
@@ -989,7 +981,7 @@ mod test {
 
         let root = tree.root();
         let expected_root =
-            "0000000000000000000000000000000000000000000000000000000000000000";
+            "3529664b414de6285270f7ebda7a43e20ae0ff6191c07d876b86282eb8ce93ce";
         assert_eq!(hex::encode(root), expected_root);
     }
 

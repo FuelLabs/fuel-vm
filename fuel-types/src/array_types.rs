@@ -107,7 +107,7 @@ macro_rules! key_methods {
             /// `Self::LEN`. Instead, it will cause undefined behavior and read random
             /// disowned bytes
             pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-                $i($crate::bytes::from_slice_unchecked(bytes))
+                unsafe { $i($crate::bytes::from_slice_unchecked(bytes)) }
             }
 
             /// Copy-free reference cast

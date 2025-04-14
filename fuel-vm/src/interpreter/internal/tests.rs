@@ -3,26 +3,26 @@ use alloc::vec;
 use crate::{
     constraints::reg_key::RegMut,
     interpreter::{
+        InterpreterParams,
+        MemoryInstance,
         internal::{
             external_asset_id_balance_sub,
             set_variable_output,
         },
-        InterpreterParams,
-        MemoryInstance,
     },
     prelude::*,
 };
 use fuel_asm::op;
 use fuel_tx::{
-    field::Outputs,
     ConsensusParameters,
     TransactionBuilder,
+    field::Outputs,
 };
 use fuel_types::canonical::Deserialize;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use super::inc_pc;
@@ -66,13 +66,15 @@ fn external_balance() {
     vm.init_script(tx).expect("Failed to init VM!");
 
     for (asset_id, amount) in balances {
-        assert!(external_asset_id_balance_sub(
-            &mut vm.balances,
-            vm.memory.as_mut(),
-            &asset_id,
-            amount + 1,
-        )
-        .is_err());
+        assert!(
+            external_asset_id_balance_sub(
+                &mut vm.balances,
+                vm.memory.as_mut(),
+                &asset_id,
+                amount + 1,
+            )
+            .is_err()
+        );
         external_asset_id_balance_sub(
             &mut vm.balances,
             vm.memory.as_mut(),
@@ -80,13 +82,15 @@ fn external_balance() {
             amount - 10,
         )
         .unwrap();
-        assert!(external_asset_id_balance_sub(
-            &mut vm.balances,
-            vm.memory.as_mut(),
-            &asset_id,
-            11,
-        )
-        .is_err());
+        assert!(
+            external_asset_id_balance_sub(
+                &mut vm.balances,
+                vm.memory.as_mut(),
+                &asset_id,
+                11,
+            )
+            .is_err()
+        );
         external_asset_id_balance_sub(
             &mut vm.balances,
             vm.memory.as_mut(),
@@ -94,13 +98,15 @@ fn external_balance() {
             10,
         )
         .unwrap();
-        assert!(external_asset_id_balance_sub(
-            &mut vm.balances,
-            vm.memory.as_mut(),
-            &asset_id,
-            1,
-        )
-        .is_err());
+        assert!(
+            external_asset_id_balance_sub(
+                &mut vm.balances,
+                vm.memory.as_mut(),
+                &asset_id,
+                1,
+            )
+            .is_err()
+        );
     }
 }
 

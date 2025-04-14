@@ -9,25 +9,25 @@ use alloc::{
     vec::Vec,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_types::{
-    canonical::Serialize,
     BlobId,
+    canonical::Serialize,
 };
 use policies::Policies;
 use rand::{
-    rngs::StdRng,
     Rng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 use test_case::test_case;
 
 use super::test_helpers::{
-    assert_success,
     RunResult,
+    assert_success,
 };
 use crate::tests::test_helpers::set_full_word;
 

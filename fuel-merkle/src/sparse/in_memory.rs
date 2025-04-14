@@ -5,9 +5,9 @@ use crate::{
     },
     sparse::{
         self,
+        Primitive,
         merkle_tree::MerkleTreeKey,
         proof::Proof,
-        Primitive,
     },
     storage::{
         Mappable,

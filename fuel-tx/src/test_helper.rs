@@ -45,7 +45,6 @@ mod use_std {
         generate_nonempty_padded_bytes,
     };
     use crate::{
-        field,
         Blob,
         BlobBody,
         BlobIdExt,
@@ -65,6 +64,7 @@ mod use_std {
         Upload,
         UploadBody,
         UploadSubsection,
+        field,
     };
     use core::marker::PhantomData;
     use fuel_crypto::{
@@ -72,18 +72,18 @@ mod use_std {
         SecretKey,
     };
     use fuel_types::{
-        canonical::Deserialize,
         BlobId,
+        canonical::Deserialize,
     };
     use rand::{
+        CryptoRng,
+        Rng,
+        SeedableRng,
         distributions::{
             Distribution,
             Uniform,
         },
         rngs::StdRng,
-        CryptoRng,
-        Rng,
-        SeedableRng,
     };
     use strum::EnumCount;
 
@@ -173,10 +173,24 @@ mod use_std {
                 let variant = self.output_sampler.sample(&mut self.rng);
 
                 let output = match variant {
-                    0 => Output::coin(self.rng.r#gen(), self.rng.r#gen(), self.rng.r#gen()),
-                    1 => Output::contract(self.rng.r#gen(), self.rng.r#gen(), self.rng.r#gen()),
-                    2 => Output::change(self.rng.r#gen(), self.rng.r#gen(), self.rng.r#gen()),
-                    3 => Output::variable(self.rng.r#gen(), self.rng.r#gen(), self.rng.r#gen()),
+                    0 => {
+                        Output::coin(self.rng.r#gen(), self.rng.r#gen(), self.rng.r#gen())
+                    }
+                    1 => Output::contract(
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                    ),
+                    2 => Output::change(
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                    ),
+                    3 => Output::variable(
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                    ),
                     4 => Output::contract_created(self.rng.r#gen(), self.rng.r#gen()),
 
                     _ => unreachable!(),

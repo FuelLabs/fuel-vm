@@ -2,15 +2,15 @@
 
 use super::PREDICATE_PARAMS;
 use crate::{
+    ConsensusParameters,
     builder::TransactionBuilder,
     field,
     field::Witnesses,
     test_helper::{
+        TransactionFactory,
         generate_bytes,
         generate_nonempty_padded_bytes,
-        TransactionFactory,
     },
-    ConsensusParameters,
     *,
 };
 use fuel_crypto::{
@@ -19,10 +19,10 @@ use fuel_crypto::{
 };
 use fuel_types::ChainId;
 use rand::{
-    rngs::StdRng,
     CryptoRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]
@@ -139,8 +139,14 @@ fn coin_signed() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
-    let input =
-        Input::coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
+    let input = Input::coin_signed(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        0,
+    );
     tx.add_input(input);
 
     let block_height = rng.r#gen();
@@ -258,55 +264,79 @@ fn contract() {
 
     let txhash: Bytes32 = rng.r#gen();
 
-    Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
-        .check(
-            1,
-            &txhash,
-            &[Output::contract(1, rng.r#gen(), rng.r#gen())],
-            &[],
-            &Default::default(),
-            &mut None,
-        )
-        .unwrap();
+    Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    )
+    .check(
+        1,
+        &txhash,
+        &[Output::contract(1, rng.r#gen(), rng.r#gen())],
+        &[],
+        &Default::default(),
+        &mut None,
+    )
+    .unwrap();
 
-    let err = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
-        .check(1, &txhash, &[], &[], &Default::default(), &mut None)
-        .err()
-        .unwrap();
-
-    assert_eq!(
-        ValidityError::InputContractAssociatedOutputContract { index: 1 },
-        err
-    );
-
-    let err = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
-        .check(
-            1,
-            &txhash,
-            &[Output::coin(rng.r#gen(), rng.r#gen(), rng.r#gen())],
-            &[],
-            &Default::default(),
-            &mut None,
-        )
-        .err()
-        .unwrap();
+    let err = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    )
+    .check(1, &txhash, &[], &[], &Default::default(), &mut None)
+    .err()
+    .unwrap();
 
     assert_eq!(
         ValidityError::InputContractAssociatedOutputContract { index: 1 },
         err
     );
 
-    let err = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
-        .check(
-            1,
-            &txhash,
-            &[Output::contract(2, rng.r#gen(), rng.r#gen())],
-            &[],
-            &Default::default(),
-            &mut None,
-        )
-        .err()
-        .unwrap();
+    let err = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    )
+    .check(
+        1,
+        &txhash,
+        &[Output::coin(rng.r#gen(), rng.r#gen(), rng.r#gen())],
+        &[],
+        &Default::default(),
+        &mut None,
+    )
+    .err()
+    .unwrap();
+
+    assert_eq!(
+        ValidityError::InputContractAssociatedOutputContract { index: 1 },
+        err
+    );
+
+    let err = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    )
+    .check(
+        1,
+        &txhash,
+        &[Output::contract(2, rng.r#gen(), rng.r#gen())],
+        &[],
+        &Default::default(),
+        &mut None,
+    )
+    .err()
+    .unwrap();
 
     assert_eq!(
         ValidityError::InputContractAssociatedOutputContract { index: 1 },
@@ -472,7 +502,8 @@ fn message_message_coin() {
 
     let mut tx = TransactionBuilder::script(vec![], vec![]).finalize();
 
-    let input = Input::message_coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
+    let input =
+        Input::message_coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
     tx.add_input(input);
 
     let block_height = rng.r#gen();
@@ -539,8 +570,22 @@ fn transaction_with_duplicate_coin_inputs_is_invalid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let utxo_id = rng.r#gen();
 
-    let a = Input::coin_signed(utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
-    let b = Input::coin_signed(utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
+    let a = Input::coin_signed(
+        utxo_id,
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        0,
+    );
+    let b = Input::coin_signed(
+        utxo_id,
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        0,
+    );
 
     let err = TransactionBuilder::script(vec![], vec![])
         .add_input(a)
@@ -603,8 +648,20 @@ fn transaction_with_duplicate_contract_inputs_is_invalid() {
         rng.r#gen(),
     );
 
-    let a = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), contract_id);
-    let b = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), contract_id);
+    let a = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        contract_id,
+    );
+    let b = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        contract_id,
+    );
 
     let o = Output::contract(0, rng.r#gen(), rng.r#gen());
     let p = Output::contract(1, rng.r#gen(), rng.r#gen());
@@ -627,10 +684,28 @@ fn transaction_with_duplicate_contract_utxo_id_is_valid() {
     let rng = &mut StdRng::seed_from_u64(8586);
     let input_utxo_id: UtxoId = rng.r#gen();
 
-    let a = Input::contract(input_utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
-    let b = Input::contract(input_utxo_id, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
-    let fee =
-        Input::coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), 0);
+    let a = Input::contract(
+        input_utxo_id,
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    );
+    let b = Input::contract(
+        input_utxo_id,
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    );
+    let fee = Input::coin_signed(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        0,
+    );
 
     let o = Output::contract(0, rng.r#gen(), rng.r#gen());
     let p = Output::contract(1, rng.r#gen(), rng.r#gen());

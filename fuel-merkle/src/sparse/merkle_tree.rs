@@ -2,8 +2,8 @@ mod branch;
 mod node;
 
 use branch::{
-    merge_branches,
     Branch,
+    merge_branches,
 };
 use node::{
     Node,
@@ -13,12 +13,13 @@ use node::{
 
 use crate::{
     common::{
-        error::DeserializeError,
-        node::ChildError,
         AsPathIterator,
         Bytes32,
+        error::DeserializeError,
+        node::ChildError,
     },
     sparse::{
+        Primitive,
         empty_sum,
         proof::{
             ExclusionLeaf,
@@ -27,7 +28,6 @@ use crate::{
             InclusionProof,
             Proof,
         },
-        Primitive,
     },
     storage::{
         Mappable,
@@ -247,7 +247,7 @@ where
         path_nodes.reverse();
         side_nodes.reverse();
         side_nodes.pop(); // The last element in the side nodes list is the
-                          // root; remove it.
+        // root; remove it.
 
         Ok((path_nodes, side_nodes))
     }
@@ -729,16 +729,16 @@ mod test {
     use super::Node;
     use crate::{
         common::{
-            sum,
             Bytes32,
             StorageMap,
+            sum,
         },
         sparse::{
-            empty_sum,
             MerkleTree,
             MerkleTreeError,
             MerkleTreeKey,
             Primitive,
+            empty_sum,
         },
     };
     use fuel_storage::Mappable;
@@ -1350,7 +1350,9 @@ mod test {
                 random_bytes32(rng),
             ))
         };
-        let data = std::iter::from_fn(generator).take(1_000).collect::<Vec<_>>();
+        let data = std::iter::from_fn(generator)
+            .take(1_000)
+            .collect::<Vec<_>>();
 
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();

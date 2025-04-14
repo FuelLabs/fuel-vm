@@ -13,18 +13,23 @@ use crate::{
         NotSupportedEcal,
     },
     storage::{
-        predicate::EmptyStorage,
         UploadedBytecode,
+        predicate::EmptyStorage,
     },
 };
 use fuel_asm::{
-    op,
     GMArgs,
     GTFArgs,
     RegId,
+    op,
 };
 use fuel_crypto::Hasher;
 use fuel_tx::{
+    ConsensusParameters,
+    Finalizable,
+    Receipt,
+    Script,
+    TransactionBuilder,
     field::{
         Inputs,
         Outputs,
@@ -33,22 +38,17 @@ use fuel_tx::{
         Witnesses,
     },
     policies::PoliciesBits,
-    ConsensusParameters,
-    Finalizable,
-    Receipt,
-    Script,
-    TransactionBuilder,
 };
 use fuel_types::{
-    bytes,
-    canonical::Serialize,
     BlockHeight,
     ChainId,
+    bytes,
+    canonical::Serialize,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use crate::prelude::{
@@ -114,13 +114,15 @@ fn metadata() {
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::<_, _, _>::new(
-        MemoryInstance::new(),
-        &mut storage,
-        interpreter_params.clone()
-    )
-    .transact(tx)
-    .is_success());
+    assert!(
+        Transactor::<_, _, _>::new(
+            MemoryInstance::new(),
+            &mut storage,
+            interpreter_params.clone()
+        )
+        .transact(tx)
+        .is_success()
+    );
 
     let mut routine_call_metadata_contract = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
@@ -160,13 +162,15 @@ fn metadata() {
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    assert!(Transactor::<_, _, _>::new(
-        MemoryInstance::new(),
-        &mut storage,
-        interpreter_params.clone()
-    )
-    .transact(tx)
-    .is_success());
+    assert!(
+        Transactor::<_, _, _>::new(
+            MemoryInstance::new(),
+            &mut storage,
+            interpreter_params.clone()
+        )
+        .transact(tx)
+        .is_success()
+    );
 
     let mut inputs = vec![];
     let mut outputs = vec![];

@@ -10,10 +10,14 @@ use crate::{
 };
 use core::str::FromStr;
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
+    ConsensusParameters,
+    Input,
+    TransactionBuilder,
+    UtxoId,
     field::{
         Inputs,
         Outputs,
@@ -21,16 +25,12 @@ use fuel_tx::{
         StorageSlots,
     },
     input::coin::CoinPredicate,
-    ConsensusParameters,
-    Input,
-    TransactionBuilder,
-    UtxoId,
 };
 use fuel_types::BlockHeight;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use crate::storage::predicate::EmptyStorage;

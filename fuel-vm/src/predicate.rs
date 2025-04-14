@@ -58,14 +58,14 @@ mod tests {
     use core::iter;
     use fuel_asm::op;
     use fuel_tx::{
-        field::ScriptGasLimit,
         TransactionBuilder,
+        field::ScriptGasLimit,
     };
     use fuel_types::bytes;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use crate::{
@@ -87,8 +87,8 @@ mod tests {
             *,
         },
         storage::{
-            predicate::empty_predicate_storage,
             BlobData,
+            predicate::empty_predicate_storage,
         },
     };
 
@@ -168,15 +168,17 @@ mod tests {
                 InterpreterParams::default(),
             );
 
-            assert!(interpreter
-                .init_predicate(
-                    Context::PredicateVerification {
-                        program: RuntimePredicate::empty(),
-                    },
-                    tx.transaction().clone(),
-                    *tx.transaction().script_gas_limit(),
-                )
-                .is_ok());
+            assert!(
+                interpreter
+                    .init_predicate(
+                        Context::PredicateVerification {
+                            program: RuntimePredicate::empty(),
+                        },
+                        tx.transaction().clone(),
+                        *tx.transaction().script_gas_limit(),
+                    )
+                    .is_ok()
+            );
 
             let pad = bytes::padded_len(&predicate).unwrap() - predicate.len();
 

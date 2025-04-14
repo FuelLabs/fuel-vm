@@ -9,23 +9,23 @@ use crate::{
         *,
     },
     util::test_helpers::{
-        find_change,
         TestBuilder,
+        find_change,
     },
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
-    policies::Policies,
     ConsensusParameters,
     Witness,
+    policies::Policies,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 /// Testing of post-execution output handling

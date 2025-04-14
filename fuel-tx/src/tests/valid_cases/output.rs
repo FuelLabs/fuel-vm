@@ -1,9 +1,9 @@
 use fuel_tx::*;
 use rand::{
-    rngs::StdRng,
     Rng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]
@@ -33,7 +33,13 @@ fn contract() {
                     rng.r#gen(),
                     rng.r#gen(),
                 ),
-                Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+                Input::contract(
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                ),
             ],
         )
         .unwrap();
@@ -50,7 +56,13 @@ fn contract() {
                     rng.r#gen(),
                     rng.r#gen(),
                 ),
-                Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+                Input::contract(
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                ),
             ],
         )
         .err()
@@ -70,7 +82,13 @@ fn contract() {
                     rng.r#gen(),
                     rng.r#gen(),
                 ),
-                Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+                Input::contract(
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                ),
             ],
         )
         .err()

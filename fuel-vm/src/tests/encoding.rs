@@ -8,19 +8,19 @@ use crate::{
     prelude::*,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use core::fmt;
 use fuel_tx::policies::Policies;
 use fuel_types::{
+    Word,
     canonical::{
         Deserialize,
         Serialize,
     },
-    Word,
 };
 
 pub fn assert_encoding_correct<T>(data: &[T])

@@ -12,23 +12,23 @@ use crate::{
     *,
 };
 use fuel_asm::{
-    op,
     PanicInstruction,
     PanicReason,
+    op,
 };
 use fuel_types::{
+    Immediate24,
     bytes,
     canonical::{
         Deserialize,
         Serialize,
     },
-    Immediate24,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 use std::fmt;
 
@@ -108,7 +108,13 @@ fn input() {
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
-        Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+        Input::contract(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
         Input::message_data_signed(
             rng.r#gen(),
             rng.r#gen(),
@@ -127,7 +133,13 @@ fn input() {
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
-        Input::message_coin_signed(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+        Input::message_coin_signed(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
         Input::message_coin_predicate(
             rng.r#gen(),
             rng.r#gen(),
@@ -237,8 +249,20 @@ fn receipt() {
             rng.r#gen(),
             vec![rng.r#gen()],
         ),
-        Receipt::mint(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
-        Receipt::burn(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+        Receipt::mint(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
+        Receipt::burn(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
     ];
 
     assert_encoding_correct(&receipts);
@@ -248,7 +272,13 @@ fn receipt() {
 fn transaction_serde_serialization_deserialization() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let i = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
+    let i = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    );
     let o = Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen());
     let w = rng.r#gen::<Witness>();
     let s = rng.r#gen::<StorageSlot>();
@@ -669,7 +699,16 @@ fn create_input_data_offset() {
             rng.r#gen(),
             rng.r#gen(),
         )],
-        vec![Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()); 2],
+        vec![
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen()
+            );
+            2
+        ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
@@ -792,8 +831,20 @@ fn script_input_coin_data_offset() {
             rng.r#gen(),
         )],
         vec![
-            Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
-            Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
         ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
@@ -906,8 +957,20 @@ fn upgrade_input_coin_data_offset() {
             rng.r#gen(),
         )],
         vec![
-            Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
-            Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
         ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
@@ -998,8 +1061,20 @@ fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
             rng.r#gen(),
         )],
         vec![
-            Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
-            Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
         ],
     ];
     let outputs: Vec<Vec<Output>> = vec![

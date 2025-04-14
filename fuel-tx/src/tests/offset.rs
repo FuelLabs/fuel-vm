@@ -4,6 +4,7 @@
 //! different fields of transactions. An offset is used to access it.
 
 use crate::{
+    Upgrade,
     field::{
         BlobId as BlobIdField,
         InputContract,
@@ -21,21 +22,20 @@ use crate::{
     },
     input,
     test_helper::TransactionFactory,
-    Upgrade,
     *,
 };
 use fuel_types::{
+    AssetId,
+    ChainId,
     canonical::{
         Deserialize,
         Serialize,
     },
-    AssetId,
-    ChainId,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 // Assert everything is tested. If some of these bools fails, just increase the number of

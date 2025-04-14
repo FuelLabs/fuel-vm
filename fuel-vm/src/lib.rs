@@ -98,10 +98,10 @@ pub mod prelude {
         Address,
         AssetId,
         BlobId,
-        Bytes32,
         Bytes4,
-        Bytes64,
         Bytes8,
+        Bytes32,
+        Bytes64,
         ContractId,
         Immediate06,
         Immediate12,
@@ -126,12 +126,12 @@ pub mod prelude {
             RuntimeError,
         },
         interpreter::{
-            predicates,
             ExecutableTransaction,
             Interpreter,
             Memory,
             MemoryInstance,
             MemoryRange,
+            predicates,
         },
         pool::VmMemoryPool,
         predicate::RuntimePredicate,
@@ -142,8 +142,8 @@ pub mod prelude {
             StateTransitionRef,
         },
         storage::{
-            predicate::PredicateStorage,
             InterpreterStorage,
+            predicate::PredicateStorage,
         },
         transactor::Transactor,
     };
@@ -156,8 +156,8 @@ pub mod prelude {
     #[cfg(any(test, feature = "test-helpers"))]
     pub use crate::{
         checked_transaction::{
-            builder::TransactionBuilderExt,
             IntoChecked,
+            builder::TransactionBuilderExt,
         },
         memory_client::MemoryClient,
         storage::MemoryStorage,

@@ -24,7 +24,6 @@ use alloc::{
     vec::Vec,
 };
 use fuel_asm::{
-    op,
     Instruction,
     PanicReason::{
         ContractMaxSize,
@@ -33,35 +32,36 @@ use fuel_asm::{
         MemoryOverflow,
     },
     RegId,
+    op,
 };
 use fuel_crypto::{
     Hasher,
     SecretKey,
 };
 use fuel_tx::{
-    field::{
-        Outputs,
-        Script as ScriptField,
-    },
     ConsensusParameters,
     Finalizable,
     Input,
     Output,
     Receipt,
     TransactionBuilder,
+    field::{
+        Outputs,
+        Script as ScriptField,
+    },
 };
 use fuel_types::{
-    canonical::Serialize,
     AssetId,
     BlockHeight,
     ChainId,
+    canonical::Serialize,
 };
 use itertools::Itertools;
 use rand::{
-    rngs::StdRng,
     CryptoRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 fn deploy_contract<M>(
@@ -595,7 +595,13 @@ where
     let state_root = Contract::default_state_root();
     let contract_id = contract.id(&salt, &contract_root, &state_root);
 
-    let input0 = Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), contract_id);
+    let input0 = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        contract_id,
+    );
     let output0 = Output::contract(0, rng.r#gen(), rng.r#gen());
 
     let consensus_params = ConsensusParameters::standard();
@@ -694,11 +700,7 @@ where
 fn pad(a: u16) -> u16 {
     const SIZE: u16 = 8;
     let rem = a % SIZE;
-    if rem == 0 {
-        a
-    } else {
-        a + (SIZE - rem)
-    }
+    if rem == 0 { a } else { a + (SIZE - rem) }
 }
 
 fn ldc_reason_helper(cmd: Vec<Instruction>, expected_reason: PanicReason) {
@@ -1793,7 +1795,13 @@ fn smo_instruction_works() {
         for (amount, data) in inputs {
             tx.add_unsigned_message_input(secret, sender, rng.r#gen(), amount, data);
         }
-        tx.add_unsigned_coin_input(secret, rng.r#gen(), max_fee, AssetId::BASE, rng.r#gen());
+        tx.add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            max_fee,
+            AssetId::BASE,
+            rng.r#gen(),
+        );
         let tx = tx
             .add_output(Output::Change {
                 to: Default::default(),

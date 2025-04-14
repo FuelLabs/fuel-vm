@@ -7,17 +7,17 @@ use alloc::{
 use test_case::test_case;
 
 use fuel_asm::{
-    op,
     GTFArgs,
     PanicReason::MemoryOverflow,
     RegId,
+    op,
 };
 use fuel_crypto::{
-    secp256r1::encode_pubkey,
     Hasher,
     PublicKey,
     SecretKey,
     Signature,
+    secp256r1::encode_pubkey,
 };
 use fuel_tx::{
     ConsensusParameters,
@@ -25,8 +25,8 @@ use fuel_tx::{
 };
 use fuel_types::ChainId;
 use rand::{
-    rngs::StdRng,
     SeedableRng,
+    rngs::StdRng,
 };
 use sha3::{
     Digest,

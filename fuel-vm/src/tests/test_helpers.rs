@@ -4,8 +4,8 @@ use alloc::{
 };
 
 use fuel_asm::{
-    op,
     Instruction,
+    op,
 };
 use fuel_crypto::SecretKey;
 use fuel_tx::ConsensusParameters;
@@ -61,7 +61,9 @@ pub fn assert_success(receipts: &[Receipt]) {
         if *result != ScriptExecutionResult::Success {
             let Some(Receipt::Panic { reason, .. }) = receipts.get(receipts.len() - 2)
             else {
-                panic!("Expected vm success, got {result:?} instead (panic receipt missing!)");
+                panic!(
+                    "Expected vm success, got {result:?} instead (panic receipt missing!)"
+                );
             };
 
             panic!(

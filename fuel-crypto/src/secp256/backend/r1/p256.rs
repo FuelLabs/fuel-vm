@@ -3,9 +3,9 @@
 #[cfg(feature = "test-helpers")]
 use crate::secp256::signature_format::encode_signature;
 use crate::{
+    Error,
     message::Message,
     secp256::signature_format::decode_signature,
-    Error,
 };
 #[cfg(feature = "test-helpers")]
 use ecdsa::RecoveryId;
@@ -87,9 +87,9 @@ mod tests {
 
     use p256::ecdsa::SigningKey;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     #[test]

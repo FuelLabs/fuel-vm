@@ -6,11 +6,11 @@ use test_case::test_case;
 
 use crate::prelude::*;
 use fuel_asm::{
-    op,
     Flags,
     Instruction,
     RegId,
     Word,
+    op,
 };
 use fuel_tx::{
     PanicReason,
@@ -18,9 +18,9 @@ use fuel_tx::{
 };
 
 use super::test_helpers::{
+    RunResult,
     run_script,
     set_full_word,
-    RunResult,
 };
 
 fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {

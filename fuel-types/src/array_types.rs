@@ -17,11 +17,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 #[cfg(all(feature = "alloc", feature = "typescript"))]
@@ -424,8 +424,8 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
 #[cfg(all(test, feature = "serde"))]
 mod tests_serde {
     use rand::{
-        rngs::StdRng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use super::*;

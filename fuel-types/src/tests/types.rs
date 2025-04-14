@@ -2,10 +2,10 @@
 
 use fuel_types::*;
 use rand::{
-    rngs::StdRng,
     Rng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use core::{

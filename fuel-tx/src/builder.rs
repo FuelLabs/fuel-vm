@@ -1,20 +1,4 @@
 use crate::{
-    input,
-    output,
-    transaction::{
-        field::{
-            self,
-            BytecodeWitnessIndex,
-            Expiration,
-            Maturity,
-            Tip,
-            Witnesses,
-        },
-        Chargeable,
-        Create,
-        Executable,
-        Script,
-    },
     Blob,
     BlobBody,
     ConsensusParameters,
@@ -36,6 +20,22 @@ use crate::{
     Upload,
     UploadBody,
     Witness,
+    input,
+    output,
+    transaction::{
+        Chargeable,
+        Create,
+        Executable,
+        Script,
+        field::{
+            self,
+            BytecodeWitnessIndex,
+            Expiration,
+            Maturity,
+            Tip,
+            Witnesses,
+        },
+    },
 };
 
 use crate::{
@@ -71,8 +71,8 @@ use fuel_types::{
 };
 #[cfg(feature = "rand")]
 use rand::{
-    rngs::StdRng,
     Rng,
+    rngs::StdRng,
 };
 
 pub trait BuildableAloc

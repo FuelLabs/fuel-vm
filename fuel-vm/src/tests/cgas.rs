@@ -8,14 +8,14 @@ use crate::{
     script_with_data_offset,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_types::canonical::Serialize;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]

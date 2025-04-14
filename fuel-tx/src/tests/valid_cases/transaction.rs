@@ -6,10 +6,10 @@ mod upgrade;
 mod upload;
 
 use super::{
-    test_params,
     CONTRACT_PARAMS,
     SCRIPT_PARAMS,
     TX_PARAMS,
+    test_params,
 };
 use crate::{
     policies::{
@@ -30,10 +30,10 @@ use fuel_types::canonical::{
     Serialize,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]
@@ -439,7 +439,13 @@ fn max_iow() {
 
     let asset_id: AssetId = AssetId::BASE;
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(*k, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen());
+        builder.add_unsigned_coin_input(
+            *k,
+            rng.r#gen(),
+            rng.r#gen(),
+            asset_id,
+            rng.r#gen(),
+        );
     });
 
     while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
@@ -467,7 +473,13 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(*k, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
+        builder.add_unsigned_coin_input(
+            *k,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        );
     });
 
     while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
@@ -497,7 +509,13 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(*k, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
+        builder.add_unsigned_coin_input(
+            *k,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        );
     });
 
     while builder.outputs().len() < 1 + TX_PARAMS.max_outputs() as usize {
@@ -527,7 +545,13 @@ fn max_iow() {
         .collect();
 
     secrets.iter().for_each(|k| {
-        builder.add_unsigned_coin_input(*k, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen());
+        builder.add_unsigned_coin_input(
+            *k,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        );
     });
 
     while builder.outputs().len() < TX_PARAMS.max_outputs() as usize {
@@ -746,7 +770,13 @@ fn create__check__cannot_have_contract_input() {
             rng.r#gen(),
             rng.r#gen(),
         ))
-        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
         .add_output(Output::contract(0, rng.r#gen(), rng.r#gen()))
         .finalize()
         .check(block_height, &test_params())
@@ -797,7 +827,13 @@ fn create__check__cannot_have_message_input() {
             rng.r#gen(),
             not_empty_data,
         )
-        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
         .finalize()
         .check(block_height, &test_params())
         .expect_err("Expected erroneous transaction");
@@ -849,7 +885,13 @@ fn create__check__cannot_have_multiple_change_outputs() {
             AssetId::default(),
             rng.r#gen(),
         )
-        .add_unsigned_coin_input(secret_b, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+        .add_unsigned_coin_input(
+            secret_b,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
         .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::BASE))
         .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::BASE))
         .finalize()
@@ -876,8 +918,20 @@ fn create__check__errors_if_input_non_base_asset_id() {
 
     let err = TransactionBuilder::create(generate_bytes(rng).into(), rng.r#gen(), vec![])
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), AssetId::BASE, rng.r#gen())
-        .add_unsigned_coin_input(secret_b, rng.r#gen(), rng.r#gen(), asset_id, rng.r#gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            AssetId::BASE,
+            rng.r#gen(),
+        )
+        .add_unsigned_coin_input(
+            secret_b,
+            rng.r#gen(),
+            rng.r#gen(),
+            asset_id,
+            rng.r#gen(),
+        )
         .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::BASE))
         .add_output(Output::change(rng.r#gen(), rng.r#gen(), asset_id))
         .finalize()
@@ -908,7 +962,13 @@ fn create__check__cannot_create_multiple_contract_outputs() {
 
     let err = TransactionBuilder::create(witness.into(), salt, storage_slots)
         .maturity(maturity)
-        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), AssetId::BASE, rng.r#gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            AssetId::BASE,
+            rng.r#gen(),
+        )
         .add_output(Output::contract_created(contract_id, state_root))
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize()
@@ -936,7 +996,13 @@ fn create__check__something_else() {
         vec![],
     )
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), AssetId::default(), rng.r#gen())
+    .add_unsigned_coin_input(
+        secret,
+        rng.r#gen(),
+        rng.r#gen(),
+        AssetId::default(),
+        rng.r#gen(),
+    )
     .add_contract_created()
     .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::default()))
     .finalize()
@@ -959,7 +1025,13 @@ fn create__check__errors_if_witness_bytecode_too_long() {
         vec![],
     )
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), AssetId::default(), rng.r#gen())
+    .add_unsigned_coin_input(
+        secret,
+        rng.r#gen(),
+        rng.r#gen(),
+        AssetId::default(),
+        rng.r#gen(),
+    )
     .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())
@@ -1045,7 +1117,13 @@ fn create__check__can_max_out_storage_slots() {
         storage_slots.clone(),
     )
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), AssetId::default(), rng.r#gen())
+    .add_unsigned_coin_input(
+        secret,
+        rng.r#gen(),
+        rng.r#gen(),
+        AssetId::default(),
+        rng.r#gen(),
+    )
     .add_contract_created()
     .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::default()))
     .finalize()
@@ -1080,7 +1158,13 @@ fn create__check__cannot_exceed_max_storage_slot() {
         storage_slots_max,
     )
     .maturity(maturity)
-    .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), AssetId::default(), rng.r#gen())
+    .add_unsigned_coin_input(
+        secret,
+        rng.r#gen(),
+        rng.r#gen(),
+        AssetId::default(),
+        rng.r#gen(),
+    )
     .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::default()))
     .finalize()
     .check(block_height, &test_params())
@@ -1103,7 +1187,13 @@ fn script__check__transaction_at_maximum_size_is_valid() {
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+            .add_unsigned_coin_input(
+                secret,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            )
             .finalize();
         tx.size()
     };
@@ -1116,7 +1206,13 @@ fn script__check__transaction_at_maximum_size_is_valid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
-        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
         .finalize();
 
     tx.check(block_height, &params)
@@ -1137,7 +1233,13 @@ fn script__check__transaction_exceeding_maximum_size_is_invalid() {
 
     let base_size = {
         let tx = TransactionBuilder::script(vec![], vec![])
-            .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+            .add_unsigned_coin_input(
+                secret,
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            )
             .finalize();
         tx.size()
     };
@@ -1152,7 +1254,13 @@ fn script__check__transaction_exceeding_maximum_size_is_invalid() {
         data
     };
     let tx = TransactionBuilder::script(script, vec![])
-        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
         .finalize();
 
     let err = tx

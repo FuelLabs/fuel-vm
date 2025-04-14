@@ -1,24 +1,24 @@
 use crate::{
+    Error,
     message::Message,
     secp256::{
+        PublicKey,
         signature_format::{
+            RecoveryId as SecpRecoveryId,
             decode_signature,
             encode_signature,
-            RecoveryId as SecpRecoveryId,
         },
-        PublicKey,
     },
-    Error,
 };
 
 use crate::SecretKey;
 
 use k256::{
+    EncodedPoint,
     ecdsa::{
         RecoveryId,
         VerifyingKey,
     },
-    EncodedPoint,
 };
 
 #[cfg(feature = "random")]
@@ -124,9 +124,9 @@ mod tests {
     use fuel_types::Bytes32;
     #[cfg(feature = "std")]
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use super::*;

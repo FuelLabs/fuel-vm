@@ -2,15 +2,15 @@
 
 use fuel_asm::PanicReason;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 use test_case::test_case;
 
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::Receipt;
 use fuel_vm::{

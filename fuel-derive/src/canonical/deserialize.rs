@@ -5,9 +5,9 @@ use quote::{
 };
 
 use super::attribute::{
+    StructAttrs,
     should_skip_field,
     should_skip_field_binding,
-    StructAttrs,
 };
 
 fn deserialize_struct(s: &mut synstructure::Structure) -> TokenStream2 {

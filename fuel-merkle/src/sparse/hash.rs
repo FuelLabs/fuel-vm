@@ -1,7 +1,7 @@
 use crate::common::{
-    sum_iter,
     Bytes32,
     Prefix,
+    sum_iter,
 };
 
 pub const fn zero_sum() -> &'static Bytes32 {

@@ -1,6 +1,6 @@
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
     ConsensusParameters,
@@ -8,9 +8,9 @@ use fuel_tx::{
 };
 use fuel_vm::prelude::*;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[cfg(feature = "alloc")]

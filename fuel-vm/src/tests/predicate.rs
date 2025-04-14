@@ -2,17 +2,17 @@
 #![allow(non_snake_case)]
 
 use fuel_asm::{
-    op,
     GMArgs,
     GTFArgs,
     Instruction,
     RegId,
+    op,
 };
 use fuel_tx::TransactionBuilder;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 use tokio_rayon::AsyncRayonHandle;
 
@@ -38,9 +38,9 @@ use crate::{
 };
 use core::iter;
 use fuel_tx::{
+    ConsensusParameters,
     consensus_parameters::gas::GasCostsValuesV5,
     field::Inputs,
-    ConsensusParameters,
 };
 
 pub struct TokioWithRayon;
@@ -430,23 +430,27 @@ async fn predicate_gas_metering() {
     );
 
     // This runs out of gas
-    assert!(execute_gas_metered_predicates(vec![vec![
-        op::ji(0), // Infinite loop
-    ]])
-    .await
-    .is_err());
+    assert!(
+        execute_gas_metered_predicates(vec![vec![
+            op::ji(0), // Infinite loop
+        ]])
+        .await
+        .is_err()
+    );
 
     // Multiple Predicate Success
-    assert!(execute_gas_metered_predicates(vec![
-        vec![op::ret(RegId::ONE)],
-        vec![
-            op::movi(0x10, 0x11),
-            op::movi(0x10, 0x11),
-            op::ret(RegId::ONE),
-        ],
-    ])
-    .await
-    .is_ok());
+    assert!(
+        execute_gas_metered_predicates(vec![
+            vec![op::ret(RegId::ONE)],
+            vec![
+                op::movi(0x10, 0x11),
+                op::movi(0x10, 0x11),
+                op::ret(RegId::ONE),
+            ],
+        ])
+        .await
+        .is_ok()
+    );
 
     // Running predicate gas used is combined properly
     let exe = (0..4).map(|n| async move {

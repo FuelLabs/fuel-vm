@@ -19,9 +19,9 @@ where
 fn ephemeral_merkle_root_returns_the_expected_root() {
     use fuel_crypto::Hasher;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use alloc::{

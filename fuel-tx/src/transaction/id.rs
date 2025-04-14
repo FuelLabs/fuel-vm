@@ -1,4 +1,6 @@
 use crate::{
+    Input,
+    Transaction,
     field,
     input::{
         coin::CoinSigned,
@@ -7,8 +9,6 @@ use crate::{
             MessageDataSigned,
         },
     },
-    Input,
-    Transaction,
 };
 use fuel_crypto::{
     Message,
@@ -123,6 +123,14 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
+        Buildable,
+        Input,
+        Output,
+        StorageSlot,
+        Transaction,
+        UpgradePurpose as UpgradePurposeType,
+        UploadBody,
+        UtxoId,
         field::*,
         input,
         input::{
@@ -142,31 +150,23 @@ mod tests {
             generate_bytes,
             generate_nonempty_padded_bytes,
         },
-        Buildable,
-        Input,
-        Output,
-        StorageSlot,
-        Transaction,
-        UpgradePurpose as UpgradePurposeType,
-        UploadBody,
-        UtxoId,
     };
     use core::{
         mem,
         ops::Not,
     };
     use fuel_types::{
+        ChainId,
         canonical::{
             Deserialize,
             Serialize,
         },
-        ChainId,
     };
     use rand::{
-        rngs::StdRng,
         Rng,
         RngCore,
         SeedableRng,
+        rngs::StdRng,
     };
 
     fn invert<B>(mut bytes: B)
@@ -635,7 +635,13 @@ mod tests {
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
                 ),
-                Input::contract(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
+                Input::contract(
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                ),
                 Input::message_coin_signed(
                     rng.r#gen(),
                     rng.r#gen(),

@@ -59,8 +59,8 @@ macro_rules! script_with_data_offset {
             {
                 use $crate::{
                     fuel_tx::{
-                        field::Script as ScriptField,
                         Script,
+                        field::Script as ScriptField,
                     },
                     fuel_types::bytes::padded_len,
                     prelude::Immediate18,
@@ -93,9 +93,9 @@ pub mod test_helpers {
 
     use crate::{
         checked_transaction::{
-            builder::TransactionBuilderExt,
             Checked,
             IntoChecked,
+            builder::TransactionBuilderExt,
         },
         interpreter::{
             Memory,
@@ -128,17 +128,13 @@ pub mod test_helpers {
         },
     };
     use fuel_asm::{
-        op,
         GTFArgs,
         Instruction,
         PanicReason,
         RegId,
+        op,
     };
     use fuel_tx::{
-        field::{
-            Outputs,
-            ReceiptsRoot,
-        },
         BlobBody,
         BlobIdExt,
         ConsensusParameters,
@@ -159,12 +155,12 @@ pub mod test_helpers {
         TransactionBuilder,
         TxParameters,
         Witness,
+        field::{
+            Outputs,
+            ReceiptsRoot,
+        },
     };
     use fuel_types::{
-        canonical::{
-            Deserialize,
-            Serialize,
-        },
         Address,
         AssetId,
         BlobId,
@@ -174,12 +170,16 @@ pub mod test_helpers {
         Immediate12,
         Salt,
         Word,
+        canonical::{
+            Deserialize,
+            Serialize,
+        },
     };
     use itertools::Itertools;
     use rand::{
-        prelude::StdRng,
         Rng,
         SeedableRng,
+        prelude::StdRng,
     };
 
     pub struct CreatedContract {

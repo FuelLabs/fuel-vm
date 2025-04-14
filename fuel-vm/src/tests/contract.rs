@@ -8,19 +8,19 @@ use alloc::{
     vec::Vec,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
-    policies::Policies,
     ConsensusParameters,
     Witness,
+    policies::Policies,
 };
 use fuel_types::canonical::Serialize;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]

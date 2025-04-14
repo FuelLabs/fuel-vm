@@ -2,8 +2,8 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
 
 use super::attribute::{
-    should_skip_field_binding,
     StructAttrs,
+    should_skip_field_binding,
 };
 
 fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
@@ -38,7 +38,8 @@ fn serialize_struct(s: &synstructure::Structure) -> TokenStream2 {
     } else {
         quote! { let mut size = 0usize; }
     };
-    let size_static_code = quote! { #initial_size match *self { #size_static_code}; size };
+    let size_static_code =
+        quote! { #initial_size match *self { #size_static_code}; size };
 
     let size_dynamic_code = variant.each(|binding| {
         quote! {

@@ -10,6 +10,11 @@ use crate::{
         SimpleResult,
     },
     interpreter::{
+        ExecutableTransaction,
+        Interpreter,
+        Memory,
+        MemoryInstance,
+        RuntimeBalances,
         contract::{
             balance,
             balance_decrease,
@@ -27,15 +32,10 @@ use crate::{
             tx_id,
         },
         memory::{
-            copy_from_storage_zero_fill,
             OwnershipRegisters,
+            copy_from_storage_zero_fill,
         },
         receipts::ReceiptsCtx,
-        ExecutableTransaction,
-        Interpreter,
-        Memory,
-        MemoryInstance,
-        RuntimeBalances,
     },
     storage::{
         BlobData,
@@ -57,17 +57,13 @@ use fuel_asm::{
 };
 use fuel_storage::StorageSize;
 use fuel_tx::{
-    consts::BALANCE_ENTRY_SIZE,
     BlobId,
     ContractIdExt,
     DependentCost,
     Receipt,
+    consts::BALANCE_ENTRY_SIZE,
 };
 use fuel_types::{
-    bytes::{
-        self,
-        padded_len_word,
-    },
     Address,
     AssetId,
     BlockHeight,
@@ -75,6 +71,10 @@ use fuel_types::{
     ContractId,
     SubAssetId,
     Word,
+    bytes::{
+        self,
+        padded_len_word,
+    },
 };
 
 use super::PanicContext;

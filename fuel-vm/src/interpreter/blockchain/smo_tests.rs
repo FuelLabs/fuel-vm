@@ -15,9 +15,9 @@ use crate::{
 
 use super::*;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use test_case::test_case;

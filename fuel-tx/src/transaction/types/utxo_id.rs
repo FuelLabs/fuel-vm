@@ -9,11 +9,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 /// Identification of unspend transaction output.

@@ -8,12 +8,12 @@
 #![allow(non_upper_case_globals)]
 
 use fuel_tx::{
-    field::Expiration,
     Create,
     Mint,
     Script,
     Transaction,
     ValidityError,
+    field::Expiration,
 };
 use fuel_types::{
     BlockHeight,
@@ -30,8 +30,8 @@ use core::{
     future::Future,
 };
 use fuel_tx::{
-    field::MaxFeeLimit,
     ConsensusParameters,
+    field::MaxFeeLimit,
 };
 
 mod balances;
@@ -934,23 +934,23 @@ mod tests {
     use fuel_asm::op;
     use fuel_crypto::SecretKey;
     use fuel_tx::{
+        Script,
+        TransactionBuilder,
+        ValidityError,
         field::{
             ScriptGasLimit,
             Tip,
             WitnessLimit,
             Witnesses,
         },
-        Script,
-        TransactionBuilder,
-        ValidityError,
     };
     use fuel_types::canonical::Serialize;
     use quickcheck::TestResult;
     use quickcheck_macros::quickcheck;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     fn params(factor: u64) -> ConsensusParameters {
@@ -1958,9 +1958,11 @@ mod tests {
             .check_signatures(&chain_id)
             .unwrap();
 
-        assert!(checked
-            .checks()
-            .contains(Checks::Basic | Checks::Signatures));
+        assert!(
+            checked
+                .checks()
+                .contains(Checks::Basic | Checks::Signatures)
+        );
     }
 
     #[test]
@@ -1986,9 +1988,11 @@ mod tests {
             // Sets Checks::Predicates
             .check_predicates(&check_predicate_params, MemoryInstance::new(), &EmptyStorage)
             .unwrap();
-        assert!(checked
-            .checks()
-            .contains(Checks::Basic | Checks::Predicates));
+        assert!(
+            checked
+                .checks()
+                .contains(Checks::Basic | Checks::Predicates)
+        );
     }
 
     fn is_valid_max_fee(

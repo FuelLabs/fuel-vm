@@ -1,11 +1,11 @@
 #![cfg(feature = "std")]
 
 use fuel_asm::{
-    op,
     Imm18,
     Instruction,
     PanicReason,
     RegId,
+    op,
 };
 use fuel_tx::Receipt;
 use rstest::rstest;

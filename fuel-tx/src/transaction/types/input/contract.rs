@@ -47,11 +47,11 @@ impl Contract {
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 #[cfg(feature = "random")]

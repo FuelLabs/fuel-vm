@@ -464,7 +464,13 @@ fn check__cannot_have_coin_with_non_base_asset_id() {
 
     // Given
     let tx = valid_upload_transaction()
-        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
         .finalize_as_transaction();
 
     // When
@@ -486,7 +492,13 @@ fn check__can_have_message_coin_input() {
     // Given
     let empty_data = vec![];
     let tx = valid_upload_transaction()
-        .add_unsigned_message_input(secret, rng.r#gen(), rng.r#gen(), rng.r#gen(), empty_data)
+        .add_unsigned_message_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            empty_data,
+        )
         .finalize_as_transaction();
 
     // When

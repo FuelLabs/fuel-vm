@@ -1,18 +1,18 @@
 use fuel_types::{
+    Bytes32,
+    Bytes64,
     canonical::{
         Deserialize,
         Serialize,
     },
-    Bytes32,
-    Bytes64,
 };
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 use core::cmp::Ordering;

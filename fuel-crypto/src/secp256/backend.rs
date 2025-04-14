@@ -24,9 +24,9 @@ pub mod r1 {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use crate::{

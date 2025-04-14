@@ -8,14 +8,13 @@ use rstest::rstest;
 use test_case::test_case;
 
 use fuel_asm::{
-    op,
     GTFArgs,
     Instruction,
     RegId,
     Word,
+    op,
 };
 use fuel_tx::{
-    field::Outputs,
     Address,
     AssetId,
     ContractId,
@@ -23,10 +22,11 @@ use fuel_tx::{
     Output,
     PanicReason,
     Receipt,
+    field::Outputs,
 };
 use fuel_types::{
-    canonical::Serialize,
     SubAssetId,
+    canonical::Serialize,
 };
 
 use crate::{

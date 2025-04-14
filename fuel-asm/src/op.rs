@@ -2,12 +2,6 @@
 //! unique `Opcode` variant.
 
 use super::{
-    wideint::{
-        CompareArgs,
-        DivArgs,
-        MathArgs,
-        MulArgs,
-    },
     CheckRegId,
     GMArgs,
     GTFArgs,
@@ -15,6 +9,12 @@ use super::{
     Imm18,
     Instruction,
     RegId,
+    wideint::{
+        CompareArgs,
+        DivArgs,
+        MathArgs,
+        MulArgs,
+    },
 };
 
 // Here we re-export the generated instruction types and constructors, but extend them

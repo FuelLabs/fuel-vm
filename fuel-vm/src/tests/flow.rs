@@ -12,9 +12,9 @@ use crate::{
     util::test_helpers::TestBuilder,
 };
 use fuel_asm::{
-    op,
     Flags,
     RegId,
+    op,
 };
 use fuel_crypto::Hasher;
 use fuel_types::canonical::Serialize;

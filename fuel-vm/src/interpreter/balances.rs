@@ -13,8 +13,8 @@ use fuel_asm::{
     Word,
 };
 use fuel_tx::{
-    consts::BALANCE_ENTRY_SIZE,
     ValidityError,
+    consts::BALANCE_ENTRY_SIZE,
 };
 use fuel_types::AssetId;
 use itertools::Itertools;
@@ -231,9 +231,9 @@ fn writes_to_memory_correctly() {
     use crate::prelude::*;
     use alloc::vec;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -280,9 +280,9 @@ fn try_from_iter_wont_overflow() {
     use crate::prelude::*;
     use alloc::vec;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -331,9 +331,9 @@ fn checked_add_and_sub_works() {
     use crate::prelude::*;
     use alloc::vec;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -404,9 +404,11 @@ fn checked_add_and_sub_works() {
     assert_eq!(bal, 5);
 
     // Balance won't panic underflow
-    assert!(balances
-        .checked_balance_sub(&mut memory, &asset, 10)
-        .is_none());
+    assert!(
+        balances
+            .checked_balance_sub(&mut memory, &asset, 10)
+            .is_none()
+    );
 
     // Balance won't panic overflow
     let val = balances
@@ -417,7 +419,9 @@ fn checked_add_and_sub_works() {
     assert_eq!(val, u64::MAX);
     assert_eq!(bal, u64::MAX);
 
-    assert!(balances
-        .checked_balance_add(&mut memory, &asset, 1)
-        .is_none());
+    assert!(
+        balances
+            .checked_balance_add(&mut memory, &asset, 1)
+            .is_none()
+    );
 }

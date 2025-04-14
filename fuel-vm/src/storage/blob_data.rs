@@ -1,7 +1,7 @@
 use fuel_storage::Mappable;
 use fuel_types::{
-    fmt_truncated_hex,
     BlobId,
+    fmt_truncated_hex,
 };
 
 use alloc::vec::Vec;
@@ -9,11 +9,11 @@ use educe::Educe;
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 /// The storage table for blob data bytes.

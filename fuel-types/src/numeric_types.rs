@@ -15,11 +15,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 #[cfg(all(feature = "alloc", feature = "typescript"))]

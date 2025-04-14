@@ -300,7 +300,7 @@ pub mod predicates {
                         &storage_instance,
                     );
 
-                    result.map(|_| (used_gas, index))
+                    (index, result.map(|()| used_gas))
                 });
 
                 checks.push(verify_task);
@@ -351,8 +351,7 @@ pub mod predicates {
                     storage,
                 );
                 global_available_gas = global_available_gas.saturating_sub(gas_used);
-                let result = result.map(|_| (gas_used, index));
-                checks.push(result);
+                checks.push((index, result.map(|()| gas_used)));
             }
         }
 
@@ -389,7 +388,10 @@ pub mod predicates {
                     ..
                 }) => {
                     if !Input::is_predicate_owner_valid(address, &**predicate) {
-                        return (0, Err(PredicateVerificationFailed::InvalidOwner));
+                        return (
+                            0,
+                            Err(PredicateVerificationFailed::InvalidOwner { index }),
+                        );
                     }
                 }
                 _ => {}
@@ -422,7 +424,10 @@ pub mod predicates {
         };
 
         if let Err(err) = vm.init_predicate(context, tx, available_gas) {
-            return (0, Err(err.into()));
+            return (
+                0,
+                Err(PredicateVerificationFailed::interpreter_error(index, err)),
+            );
         }
 
         let result = vm.verify_predicate();
@@ -435,14 +440,20 @@ pub mod predicates {
         if let PredicateAction::Verifying = predicate_action {
             if !is_successful {
                 return if let Err(err) = result {
-                    (gas_used, Err(err))
+                    (
+                        gas_used,
+                        Err(PredicateVerificationFailed::interpreter_error(index, err)),
+                    )
                 } else {
-                    (gas_used, Err(PredicateVerificationFailed::False))
+                    (gas_used, Err(PredicateVerificationFailed::False { index }))
                 }
             }
 
             if vm.remaining_gas() != 0 {
-                return (gas_used, Err(PredicateVerificationFailed::GasMismatch));
+                return (
+                    gas_used,
+                    Err(PredicateVerificationFailed::GasMismatch { index }),
+                );
             }
         }
 
@@ -451,16 +462,16 @@ pub mod predicates {
 
     fn finalize_check_predicate<Tx>(
         mut kind: PredicateRunKind<Tx>,
-        checks: Vec<Result<(Word, usize), PredicateVerificationFailed>>,
+        checks: Vec<(usize, Result<Word, PredicateVerificationFailed>)>,
         params: &CheckPredicateParams,
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
     {
         if let PredicateRunKind::Estimating(tx) = &mut kind {
-            checks.iter().for_each(|result| {
-                if let Ok((gas_used, index)) = result {
-                    match &mut tx.inputs_mut()[*index] {
+            checks.iter().for_each(|(input_index, result)| {
+                if let Ok(gas_used) = result {
+                    match &mut tx.inputs_mut()[*input_index] {
                         Input::CoinPredicate(CoinPredicate {
                             predicate_gas_used,
                             ..
@@ -505,10 +516,20 @@ pub mod predicates {
             );
         }
 
-        let cumulative_gas_used = checks.into_iter().try_fold(0u64, |acc, result| {
-            acc.checked_add(result.map(|(gas_used, _)| gas_used)?)
-                .ok_or(PredicateVerificationFailed::OutOfGas)
-        })?;
+        let mut cumulative_gas_used: u64 = 0;
+        for (input_index, result) in checks {
+            match result {
+                Ok(gas_used) => {
+                    cumulative_gas_used =
+                        cumulative_gas_used.checked_add(gas_used).ok_or(
+                            PredicateVerificationFailed::OutOfGas { index: input_index },
+                        )?;
+                }
+                Err(failed) => {
+                    return Err(failed);
+                }
+            }
+        }
 
         Ok(PredicatesChecked {
             gas_used: cumulative_gas_used,

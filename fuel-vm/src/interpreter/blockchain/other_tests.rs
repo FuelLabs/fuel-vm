@@ -37,7 +37,7 @@ fn test_burn(
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
         .copy_from_slice(sub_id.as_slice());
-    let sub_id = Bytes32::from(sub_id);
+    let sub_id = SubAssetId::from(sub_id);
     let asset_id = contract_id.asset_id(&sub_id);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {
@@ -115,7 +115,7 @@ fn test_mint(
     memory[0..ContractId::LEN].copy_from_slice(contract_id.as_slice());
     memory[ContractId::LEN..ContractId::LEN + Bytes32::LEN]
         .copy_from_slice(sub_id.as_slice());
-    let sub_id = Bytes32::from(sub_id);
+    let sub_id = SubAssetId::from(sub_id);
     let asset_id = contract_id.asset_id(&sub_id);
     let initialize = initialize.into();
     if let Some(initialize) = initialize {

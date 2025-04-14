@@ -1,5 +1,6 @@
 [package]
 name = "fuel-vm"
+rust-version = { workspace = true }
 version = { workspace = true }
 authors = { workspace = true }
 categories = { workspace = true }
@@ -104,6 +105,7 @@ test-helpers = [
     "tai64",
     "fuel-crypto/test-helpers",
 ]
+u32-tx-pointer = ["fuel-tx/u32-tx-pointer"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }

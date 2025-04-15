@@ -909,7 +909,7 @@ async fn gtf_args__output_data_coin_to() {
             input_index,
             GTFArgs::InputCoinPredicateData,
         ),
-        op::gtf_args(actual_owner_reg, output_index, GTFArgs::OutputCoinTo),
+        op::gtf_args(actual_owner_reg, output_index, GTFArgs::OutputDataCoinTo),
         op::meq(
             res_reg,
             expected_owner_reg,

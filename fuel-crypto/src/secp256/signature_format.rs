@@ -73,8 +73,8 @@ pub fn decode_signature(mut signature: [u8; 64]) -> ([u8; 64], RecoveryId) {
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use rand::{
-        rngs::StdRng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use crate::{

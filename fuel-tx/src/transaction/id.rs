@@ -1,4 +1,6 @@
 use crate::{
+    Input,
+    Transaction,
     field,
     input::{
         coin::CoinSigned,
@@ -7,8 +9,6 @@ use crate::{
             MessageDataSigned,
         },
     },
-    Input,
-    Transaction,
 };
 use fuel_crypto::{
     Message,
@@ -123,6 +123,14 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
+        Buildable,
+        Input,
+        Output,
+        StorageSlot,
+        Transaction,
+        UpgradePurpose as UpgradePurposeType,
+        UploadBody,
+        UtxoId,
         field::*,
         input,
         input::{
@@ -142,31 +150,23 @@ mod tests {
             generate_bytes,
             generate_nonempty_padded_bytes,
         },
-        Buildable,
-        Input,
-        Output,
-        StorageSlot,
-        Transaction,
-        UpgradePurpose as UpgradePurposeType,
-        UploadBody,
-        UtxoId,
     };
     use core::{
         mem,
         ops::Not,
     };
     use fuel_types::{
+        ChainId,
         canonical::{
             Deserialize,
             Serialize,
         },
-        ChainId,
     };
     use rand::{
-        rngs::StdRng,
         Rng,
         RngCore,
         SeedableRng,
+        rngs::StdRng,
     };
 
     fn invert<B>(mut bytes: B)
@@ -618,54 +618,60 @@ mod tests {
             vec![],
             vec![
                 Input::coin_signed(
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     rng.next_u64(),
-                    rng.gen(),
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                 ),
                 Input::coin_predicate(
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     rng.next_u64(),
-                    rng.gen(),
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
                 ),
-                Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+                Input::contract(
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
+                ),
                 Input::message_coin_signed(
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     rng.next_u64(),
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                 ),
                 Input::message_coin_predicate(
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     rng.next_u64(),
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
                 ),
                 Input::message_data_signed(
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     rng.next_u64(),
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     generate_nonempty_padded_bytes(rng),
                 ),
                 Input::message_data_predicate(
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     rng.next_u64(),
-                    rng.gen(),
-                    rng.gen(),
+                    rng.r#gen(),
+                    rng.r#gen(),
                     generate_nonempty_padded_bytes(rng),
                     generate_nonempty_padded_bytes(rng),
                     generate_bytes(rng),
@@ -676,11 +682,11 @@ mod tests {
         let outputs = [
             vec![],
             vec![
-                Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
-                Output::contract(rng.gen(), rng.gen(), rng.gen()),
-                Output::change(rng.gen(), rng.next_u64(), rng.gen()),
-                Output::variable(rng.gen(), rng.next_u64(), rng.gen()),
-                Output::contract_created(rng.gen(), rng.gen()),
+                Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen()),
+                Output::contract(rng.r#gen(), rng.r#gen(), rng.r#gen()),
+                Output::change(rng.r#gen(), rng.next_u64(), rng.r#gen()),
+                Output::variable(rng.r#gen(), rng.next_u64(), rng.r#gen()),
+                Output::contract_created(rng.r#gen(), rng.r#gen()),
             ],
         ];
 
@@ -691,13 +697,13 @@ mod tests {
 
         let scripts = [vec![], generate_bytes(rng), generate_bytes(rng)];
         let script_data = [vec![], generate_bytes(rng), generate_bytes(rng)];
-        let storage_slots = [vec![], vec![rng.gen(), rng.gen()]];
+        let storage_slots = [vec![], vec![rng.r#gen(), rng.r#gen()]];
         let purposes = [
             UpgradePurposeType::ConsensusParameters {
-                witness_index: rng.gen(),
-                checksum: rng.gen(),
+                witness_index: rng.r#gen(),
+                checksum: rng.r#gen(),
             },
-            UpgradePurposeType::StateTransition { root: rng.gen() },
+            UpgradePurposeType::StateTransition { root: rng.r#gen() },
         ];
 
         for inputs in inputs.iter() {
@@ -709,7 +715,7 @@ mod tests {
                                 rng.next_u64(),
                                 script.clone(),
                                 script_data.clone(),
-                                rng.gen(),
+                                rng.r#gen(),
                                 inputs.clone(),
                                 outputs.clone(),
                                 witnesses.clone(),
@@ -726,9 +732,9 @@ mod tests {
 
                     for storage_slots in storage_slots.iter() {
                         let tx = Transaction::create(
-                            rng.gen(),
-                            rng.gen(),
-                            rng.gen(),
+                            rng.r#gen(),
+                            rng.r#gen(),
+                            rng.r#gen(),
                             storage_slots.clone(),
                             inputs.clone(),
                             outputs.clone(),
@@ -753,7 +759,7 @@ mod tests {
                     for purpose in purposes.iter() {
                         let tx = Transaction::upgrade(
                             *purpose,
-                            rng.gen(),
+                            rng.r#gen(),
                             inputs.clone(),
                             outputs.clone(),
                             witnesses.clone(),
@@ -778,13 +784,13 @@ mod tests {
                     {
                         let tx = Transaction::upload(
                             UploadBody {
-                                root: rng.gen(),
-                                witness_index: rng.gen(),
-                                subsection_index: rng.gen(),
-                                subsections_number: rng.gen(),
-                                proof_set: vec![rng.gen(), rng.gen(), rng.gen()],
+                                root: rng.r#gen(),
+                                witness_index: rng.r#gen(),
+                                subsection_index: rng.r#gen(),
+                                subsections_number: rng.r#gen(),
+                                proof_set: vec![rng.r#gen(), rng.r#gen(), rng.r#gen()],
                             },
-                            rng.gen(),
+                            rng.r#gen(),
                             inputs.clone(),
                             outputs.clone(),
                             witnesses.clone(),

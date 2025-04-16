@@ -1,13 +1,13 @@
 use criterion::{
+    Criterion,
     black_box,
     criterion_group,
     criterion_main,
-    Criterion,
 };
 use fuel_types::{
+    Bytes64,
     canonical,
     canonical::Serialize,
-    Bytes64,
 };
 
 #[cfg(feature = "unsafe")]

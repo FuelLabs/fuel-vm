@@ -9,25 +9,25 @@ use alloc::{
     vec::Vec,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_types::{
-    canonical::Serialize,
     BlobId,
+    canonical::Serialize,
 };
 use policies::Policies;
 use rand::{
-    rngs::StdRng,
     Rng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 use test_case::test_case;
 
 use super::test_helpers::{
-    assert_success,
     RunResult,
+    assert_success,
 };
 use crate::tests::test_helpers::set_full_word;
 
@@ -55,17 +55,17 @@ fn blob_cannot_be_reuploaded() {
         policies,
         vec![],
         vec![
-            Output::change(rng.gen(), 0, asset_id),
-            Output::coin(rng.gen(), spend_amount, asset_id),
+            Output::change(rng.r#gen(), 0, asset_id),
+            Output::coin(rng.r#gen(), spend_amount, asset_id),
         ],
         vec![program, Witness::default()],
     );
     blob.add_unsigned_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         &Default::default(),
         input_amount,
         asset_id,
-        rng.gen(),
+        rng.r#gen(),
         Default::default(),
     );
 

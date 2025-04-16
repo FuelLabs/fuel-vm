@@ -1,22 +1,22 @@
 use crate::{
+    Error,
     message::Message,
     secp256::{
+        PublicKey,
         signature_format::{
+            RecoveryId as SecpRecoveryId,
             decode_signature,
             encode_signature,
-            RecoveryId as SecpRecoveryId,
         },
-        PublicKey,
     },
-    Error,
 };
 
 use secp256k1::{
+    Secp256k1,
     ecdsa::{
         RecoverableSignature,
         Signature,
     },
-    Secp256k1,
 };
 use std::sync::OnceLock;
 
@@ -100,9 +100,9 @@ pub fn verify(
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use super::*;
@@ -114,7 +114,7 @@ mod tests {
         let secret = random_secret(rng);
         let public = public_key(&secret);
 
-        let message = Message::new(rng.gen::<[u8; 10]>());
+        let message = Message::new(rng.r#gen::<[u8; 10]>());
 
         let signature = sign(&secret, &message);
         verify(signature, *public, &message).expect("Verification failed");

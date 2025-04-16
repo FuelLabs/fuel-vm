@@ -110,7 +110,6 @@ mod da_compression {
     };
 
     use fuel_tx_0_58_2::{
-        input::PredicateCode as PredicateCode_0_58_2,
         Address as Address_0_58_2,
         AssetId as AssetId_0_58_2,
         CompressedUtxoId as CompressedUtxoId_0_58_2,
@@ -118,9 +117,9 @@ mod da_compression {
         ScriptCode as ScriptCode_0_58_2,
         TxPointer as TxPointer_0_58_2,
         UtxoId as UtxoId_0_58_2,
+        input::PredicateCode as PredicateCode_0_58_2,
     };
     use latest_fuel_tx::{
-        input::PredicateCode as LatestPredicateCode,
         Address as LatestAddress,
         AssetId as LatestAssetId,
         CompressedUtxoId as LatestCompressedUtxoId,
@@ -128,6 +127,7 @@ mod da_compression {
         ScriptCode as LatestScriptCode,
         TxPointer as LatestTxPointer,
         UtxoId as LatestUtxoId,
+        input::PredicateCode as LatestPredicateCode,
     };
     struct TestContext;
 

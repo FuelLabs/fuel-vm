@@ -1,18 +1,18 @@
 use ethnum::U256;
 
 use fuel_asm::{
-    wideint::*,
     PanicReason,
     RegId,
+    wideint::*,
 };
 use fuel_types::Word;
 
 use super::super::{
+    ExecutableTransaction,
+    Interpreter,
     internal::inc_pc,
     is_unsafe_math,
     is_wrapping,
-    ExecutableTransaction,
-    Interpreter,
 };
 use crate::{
     constraints::reg_key::*,

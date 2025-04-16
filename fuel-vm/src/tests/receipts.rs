@@ -1,7 +1,7 @@
 use fuel_asm::{
-    op,
     PanicReason,
     RegId,
+    op,
 };
 use fuel_tx::{
     Receipt,

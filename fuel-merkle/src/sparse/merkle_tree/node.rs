@@ -1,5 +1,7 @@
 use crate::{
     common::{
+        Bytes32,
+        Prefix,
         error::DeserializeError,
         node::{
             ChildError,
@@ -12,8 +14,6 @@ use crate::{
             Side,
         },
         sum,
-        Bytes32,
-        Prefix,
     },
     sparse::{
         hash::{
@@ -513,15 +513,15 @@ mod test_node {
     use super::Node;
     use crate::{
         common::{
-            error::DeserializeError,
-            sum,
             Bytes32,
             Prefix,
             PrefixError,
+            error::DeserializeError,
+            sum,
         },
         sparse::{
-            zero_sum,
             Primitive,
+            zero_sum,
         },
     };
 
@@ -687,15 +687,15 @@ mod test_storage_node {
     };
     use crate::{
         common::{
+            Bytes32,
+            PrefixError,
+            StorageMap,
             error::DeserializeError,
             node::{
                 ChildError,
                 ParentNode,
             },
             sum,
-            Bytes32,
-            PrefixError,
-            StorageMap,
         },
         sparse::Primitive,
         storage::{

@@ -1,5 +1,12 @@
 use crate::{
+    ConsensusParameters,
+    GasCosts,
+    Input,
+    Output,
+    TransactionRepr,
+    ValidityError,
     transaction::{
+        Chargeable,
         id::PrepareSign,
         metadata::CommonMetadata,
         types::chargeable_transaction::{
@@ -7,22 +14,15 @@ use crate::{
             ChargeableTransaction,
             UniqueFormatValidityChecks,
         },
-        Chargeable,
     },
-    ConsensusParameters,
-    GasCosts,
-    Input,
-    Output,
-    TransactionRepr,
-    ValidityError,
 };
 use educe::Educe;
 use fuel_types::{
-    bytes::WORD_SIZE,
-    canonical::Serialize,
     Bytes32,
     ChainId,
     Word,
+    bytes::WORD_SIZE,
+    canonical::Serialize,
 };
 
 use fuel_crypto::Hasher;

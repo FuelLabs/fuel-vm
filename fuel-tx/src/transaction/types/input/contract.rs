@@ -47,22 +47,22 @@ impl Contract {
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 #[cfg(feature = "random")]
 impl Distribution<Contract> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Contract {
         Contract {
-            utxo_id: rng.gen(),
-            balance_root: rng.gen(),
-            state_root: rng.gen(),
-            tx_pointer: rng.gen(),
-            contract_id: rng.gen(),
+            utxo_id: rng.r#gen(),
+            balance_root: rng.r#gen(),
+            state_root: rng.r#gen(),
+            tx_pointer: rng.r#gen(),
+            contract_id: rng.r#gen(),
         }
     }
 }

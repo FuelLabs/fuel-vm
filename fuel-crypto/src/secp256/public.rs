@@ -1,7 +1,7 @@
 use crate::{
+    Error,
     hasher::Hasher,
     secp256::SecretKey,
-    Error,
 };
 use core::{
     fmt,

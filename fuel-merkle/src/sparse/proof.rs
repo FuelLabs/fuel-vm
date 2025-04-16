@@ -1,20 +1,20 @@
 use crate::{
     common::{
+        Bytes32,
+        ProofSet,
         path::{
             Path,
             Side,
         },
         sum,
-        Bytes32,
-        ProofSet,
     },
     sparse::{
+        MerkleTreeKey,
         hash::{
             calculate_leaf_hash,
             calculate_node_hash,
         },
         zero_sum,
-        MerkleTreeKey,
     },
 };
 
@@ -173,9 +173,9 @@ mod test {
             StorageMap,
         },
         sparse::{
-            proof::Proof,
             MerkleTree,
             Primitive,
+            proof::Proof,
         },
     };
     use fuel_storage::Mappable;
@@ -618,17 +618,17 @@ mod test_random {
             StorageMap,
         },
         sparse::{
-            proof::Proof,
             MerkleTree,
             MerkleTreeKey,
             Primitive,
+            proof::Proof,
         },
     };
     use fuel_storage::Mappable;
 
     use rand::{
-        prelude::StdRng,
         SeedableRng,
+        prelude::StdRng,
     };
 
     #[derive(Debug)]

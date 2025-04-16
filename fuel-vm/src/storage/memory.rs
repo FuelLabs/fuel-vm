@@ -6,7 +6,6 @@ use crate::{
         RuntimeError,
     },
     storage::{
-        interpreter::ContractsAssetsStorage,
         ContractsAssetKey,
         ContractsAssets,
         ContractsRawCode,
@@ -16,6 +15,7 @@ use crate::{
         InterpreterStorage,
         UploadedBytecode,
         UploadedBytecodes,
+        interpreter::ContractsAssetsStorage,
     },
 };
 
@@ -698,11 +698,7 @@ impl InterpreterStorage for MemoryStorage {
         let mut next_item = iter.next();
         Ok(core::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
-            if add_one(&mut n) {
-                None
-            } else {
-                Some(n)
-            }
+            if add_one(&mut n) { None } else { Some(n) }
         })
         .map(|next_key: [u8; 32]| match next_item.take() {
             Some((k, v)) => match next_key.cmp(k.state_key()) {
@@ -736,11 +732,7 @@ impl InterpreterStorage for MemoryStorage {
         let mut unset_count = 0;
         core::iter::successors(Some(**start_key), |n| {
             let mut n = *n;
-            if add_one(&mut n) {
-                None
-            } else {
-                Some(n)
-            }
+            if add_one(&mut n) { None } else { Some(n) }
         })
         .zip(values)
         .try_for_each(|(key, value)| {
@@ -766,11 +758,7 @@ impl InterpreterStorage for MemoryStorage {
         let mut values: hashbrown::HashSet<_> =
             core::iter::successors(Some(**start_key), |n| {
                 let mut n = *n;
-                if add_one(&mut n) {
-                    None
-                } else {
-                    Some(n)
-                }
+                if add_one(&mut n) { None } else { Some(n) }
             })
             .take(range)
             .collect();

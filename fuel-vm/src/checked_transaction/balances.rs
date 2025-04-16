@@ -1,4 +1,8 @@
 use fuel_tx::{
+    Chargeable,
+    Input,
+    Output,
+    ValidityError,
     field,
     input::{
         coin::{
@@ -12,10 +16,6 @@ use fuel_tx::{
             MessageDataSigned,
         },
     },
-    Chargeable,
-    Input,
-    Output,
-    ValidityError,
 };
 use fuel_types::{
     AssetId,

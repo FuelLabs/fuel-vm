@@ -6,11 +6,11 @@ use alloc::{
 use crate::{
     checked_transaction::IntoChecked,
     fuel_asm::{
-        op,
         Instruction,
         Opcode,
         PanicReason::ReservedRegisterNotWritable,
         RegId,
+        op,
     },
     interpreter::InterpreterParams,
     prelude::{

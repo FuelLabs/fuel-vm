@@ -203,7 +203,7 @@ pub fn derive(mut s: synstructure::Structure) -> TokenStream2 {
 
         gen impl<Ctx> ::fuel_compression::CompressibleBy<Ctx> for @Self #w_impl_field_bounds_compress {
             async fn compress_with(&self, ctx: &mut Ctx) -> Result<Self::Compressed, Ctx::Error> {
-                Ok(match self { #compress_per_variant })
+                Ok(match *self { #compress_per_variant })
             }
         }
     });

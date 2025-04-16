@@ -1,19 +1,4 @@
 use crate::{
-    field,
-    input::{
-        coin::{
-            Coin,
-            CoinSpecification,
-        },
-        message::{
-            Message,
-            MessageSpecification,
-        },
-        AsField,
-        PredicateCode,
-    },
-    test_helper::TransactionFactory,
-    transaction::field::Inputs,
     Blob,
     CompressedUtxoId,
     Create,
@@ -26,6 +11,21 @@ use crate::{
     Upgrade,
     Upload,
     UtxoId,
+    field,
+    input::{
+        AsField,
+        PredicateCode,
+        coin::{
+            Coin,
+            CoinSpecification,
+        },
+        message::{
+            Message,
+            MessageSpecification,
+        },
+    },
+    test_helper::TransactionFactory,
+    transaction::field::Inputs,
 };
 use bimap::BiMap;
 use fuel_compression::{
@@ -45,9 +45,9 @@ use fuel_types::{
     Word,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 use std::{
     collections::HashMap,
@@ -321,13 +321,15 @@ async fn example_struct_postcard_roundtrip_multiple() {
     let mut ctx = TestCompressionCtx::default();
     for _ in 0..10 {
         let original = Example {
-            asset_id: AssetId::new(rng.gen()),
-            array: rng.gen(),
-            vec: (0..rng.gen_range(0..32)).map(|_| rng.gen::<u8>()).collect(),
-            integer: rng.gen(),
+            asset_id: AssetId::new(rng.r#gen()),
+            array: rng.r#gen(),
+            vec: (0..rng.gen_range(0..32))
+                .map(|_| rng.r#gen::<u8>())
+                .collect(),
+            integer: rng.r#gen(),
             inner: Inner {
-                asset_id: AssetId::new(rng.gen()),
-                count: rng.gen(),
+                asset_id: AssetId::new(rng.r#gen()),
+                count: rng.r#gen(),
             },
         };
         let compressed = original

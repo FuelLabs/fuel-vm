@@ -1,9 +1,9 @@
 extern crate core;
 
 use rand::{
+    Rng,
     seq::IteratorRandom,
     thread_rng,
-    Rng,
 };
 use sha2::{
     Digest,

@@ -4,8 +4,8 @@ use crate::{
     Signature,
 };
 use rand::{
-    rngs::StdRng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]

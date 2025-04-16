@@ -12,9 +12,9 @@ use crate::{
 
 use super::*;
 use fuel_tx::{
+    Create,
     field::Policies as PoliciesField,
     policies::Policies,
-    Create,
 };
 use test_case::test_case;
 

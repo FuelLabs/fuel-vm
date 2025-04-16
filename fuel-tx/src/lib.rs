@@ -32,10 +32,10 @@ pub use fuel_types::{
     Address,
     AssetId,
     BlobId,
-    Bytes32,
     Bytes4,
-    Bytes64,
     Bytes8,
+    Bytes32,
+    Bytes64,
     ContractId,
     MessageId,
     Salt,
@@ -76,15 +76,6 @@ pub use receipt::{
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    consensus_parameters,
-    field,
-    input,
-    input::Input,
-    input::InputRepr,
-    output,
-    output::Output,
-    output::OutputRepr,
-    policies,
     Blob,
     BlobBody,
     BlobIdExt,
@@ -125,6 +116,15 @@ pub use transaction::{
     UtxoId,
     ValidityError,
     Witness,
+    consensus_parameters,
+    field,
+    input,
+    input::Input,
+    input::InputRepr,
+    output,
+    output::Output,
+    output::OutputRepr,
+    policies,
 };
 
 #[cfg(feature = "da-compression")]

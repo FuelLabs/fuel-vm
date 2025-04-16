@@ -18,12 +18,12 @@ use super::*;
 use crate::crypto;
 use fuel_storage::StorageAsMut;
 use fuel_tx::{
-    field::ReceiptsRoot,
     Script,
+    field::ReceiptsRoot,
 };
 use fuel_types::{
-    canonical::Serialize,
     ContractId,
+    canonical::Serialize,
 };
 use test_case::test_case;
 
@@ -117,15 +117,23 @@ impl Default for Output {
         Self {
             reg: Default::default(),
             memory: CheckMem::Check(vec![]),
-            frames: vec![CallFrame::new(
-                Default::default(),
-                Default::default(),
-                make_reg(&[(HP, 1000), (SP, 100), (SSP, 100), (CGAS, 20), (GGAS, 20)]),
-                16,
-                0,
-                0,
-            )
-            .unwrap()],
+            frames: vec![
+                CallFrame::new(
+                    Default::default(),
+                    Default::default(),
+                    make_reg(&[
+                        (HP, 1000),
+                        (SP, 100),
+                        (SSP, 100),
+                        (CGAS, 20),
+                        (GGAS, 20),
+                    ]),
+                    16,
+                    0,
+                    0,
+                )
+                .unwrap(),
+            ],
             receipts: vec![Receipt::call(
                 Default::default(),
                 Default::default(),

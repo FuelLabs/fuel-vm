@@ -2,8 +2,8 @@ use core::convert::Infallible;
 
 use crate::{
     binary::{
-        empty_sum,
         Node,
+        empty_sum,
     },
     common::Bytes32,
 };

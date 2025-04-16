@@ -1,8 +1,8 @@
 use crate::common::{
-    node::Node,
-    path_iterator::PathIter,
     AsPathIterator,
     Position,
+    node::Node,
+    path_iterator::PathIter,
 };
 
 use super::path::Side;

@@ -4,16 +4,16 @@ use alloc::{
 };
 
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
-    field::ReceiptsRoot,
     ConsensusParameters,
     Finalizable,
     GasCosts,
     Script,
     TransactionBuilder,
+    field::ReceiptsRoot,
 };
 
 use crate::{

@@ -12,6 +12,12 @@ use crate::{
         SimpleResult,
     },
     interpreter::{
+        ExecutableTransaction,
+        Interpreter,
+        Memory,
+        MemoryInstance,
+        PanicContext,
+        RuntimeBalances,
         contract::{
             balance_decrease,
             balance_increase,
@@ -29,12 +35,6 @@ use crate::{
             set_frame_pointer,
         },
         receipts::ReceiptsCtx,
-        ExecutableTransaction,
-        Interpreter,
-        Memory,
-        MemoryInstance,
-        PanicContext,
-        RuntimeBalances,
     },
     prelude::{
         Bug,
@@ -67,12 +67,12 @@ use fuel_tx::{
     Receipt,
 };
 use fuel_types::{
-    bytes::padded_len_usize,
-    canonical::Serialize,
     AssetId,
     Bytes32,
     ContractId,
     Word,
+    bytes::padded_len_usize,
+    canonical::Serialize,
 };
 
 #[cfg(test)]

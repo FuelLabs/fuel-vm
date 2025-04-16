@@ -45,7 +45,6 @@ mod use_std {
         generate_nonempty_padded_bytes,
     };
     use crate::{
-        field,
         Blob,
         BlobBody,
         BlobIdExt,
@@ -65,6 +64,7 @@ mod use_std {
         Upload,
         UploadBody,
         UploadSubsection,
+        field,
     };
     use core::marker::PhantomData;
     use fuel_crypto::{
@@ -72,18 +72,18 @@ mod use_std {
         SecretKey,
     };
     use fuel_types::{
-        canonical::Deserialize,
         BlobId,
+        canonical::Deserialize,
     };
     use rand::{
+        CryptoRng,
+        Rng,
+        SeedableRng,
         distributions::{
             Distribution,
             Uniform,
         },
         rngs::StdRng,
-        CryptoRng,
-        Rng,
-        SeedableRng,
     };
     use strum::EnumCount;
 
@@ -173,11 +173,25 @@ mod use_std {
                 let variant = self.output_sampler.sample(&mut self.rng);
 
                 let output = match variant {
-                    0 => Output::coin(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    1 => Output::contract(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    2 => Output::change(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    3 => Output::variable(self.rng.gen(), self.rng.gen(), self.rng.gen()),
-                    4 => Output::contract_created(self.rng.gen(), self.rng.gen()),
+                    0 => {
+                        Output::coin(self.rng.r#gen(), self.rng.r#gen(), self.rng.r#gen())
+                    }
+                    1 => Output::contract(
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                    ),
+                    2 => Output::change(
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                    ),
+                    3 => Output::variable(
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                    ),
+                    4 => Output::contract_created(self.rng.r#gen(), self.rng.r#gen()),
 
                     _ => unreachable!(),
                 };
@@ -220,12 +234,12 @@ mod use_std {
                         let owner = (*Contract::root_from_code(&predicate)).into();
 
                         let input = Input::coin_predicate(
-                            self.rng.gen(),
+                            self.rng.r#gen(),
                             owner,
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -235,11 +249,11 @@ mod use_std {
 
                     2 => {
                         let input = Input::contract(
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
                         );
 
                         builder.add_input(input);
@@ -256,11 +270,11 @@ mod use_std {
                         let recipient = (*Contract::root_from_code(&predicate)).into();
 
                         let input = Input::message_coin_predicate(
-                            self.rng.gen(),
+                            self.rng.r#gen(),
                             recipient,
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                         );
@@ -279,11 +293,11 @@ mod use_std {
                         let recipient = (*Contract::root_from_code(&predicate)).into();
 
                         let input = Input::message_data_predicate(
-                            self.rng.gen(),
+                            self.rng.r#gen(),
                             recipient,
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
                             generate_bytes(&mut self.rng),
                             predicate,
                             generate_bytes(&mut self.rng),
@@ -299,10 +313,10 @@ mod use_std {
             input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_coin_input(
                     *k,
-                    self.rng.gen(),
-                    self.rng.gen(),
-                    self.rng.gen(),
-                    self.rng.gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
                 );
             });
 
@@ -310,18 +324,18 @@ mod use_std {
                 MessageType::MessageCoin => {
                     builder.add_unsigned_message_input(
                         *k,
-                        self.rng.gen(),
-                        self.rng.gen(),
-                        self.rng.gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
                         vec![],
                     );
                 }
                 MessageType::MessageData => {
                     builder.add_unsigned_message_input(
                         *k,
-                        self.rng.gen(),
-                        self.rng.gen(),
-                        self.rng.gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
                         generate_bytes(&mut self.rng),
                     );
                 }
@@ -353,9 +367,9 @@ mod use_std {
         pub fn transaction_with_keys(&mut self) -> (Create, Vec<SecretKey>) {
             let slots = self.rng.gen_range(0..10);
             let mut builder = TransactionBuilder::<Create>::create(
-                self.rng.gen(),
-                self.rng.gen(),
-                (0..slots).map(|_| self.rng.gen()).collect(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                (0..slots).map(|_| self.rng.r#gen()).collect(),
             );
 
             let keys = self.fill_transaction(&mut builder);
@@ -398,7 +412,7 @@ mod use_std {
 
             let purpose = match variant {
                 0 => UpgradePurpose::StateTransition {
-                    root: self.rng.gen(),
+                    root: self.rng.r#gen(),
                 },
                 1 => UpgradePurpose::ConsensusParameters {
                     witness_index: 0,
@@ -482,13 +496,13 @@ mod use_std {
     {
         pub fn transaction(&mut self) -> Mint {
             let builder = TransactionBuilder::<Mint>::mint(
-                self.rng.gen(),
-                self.rng.gen(),
-                self.rng.gen(),
-                self.rng.gen(),
-                self.rng.gen(),
-                self.rng.gen(),
-                self.rng.gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
             );
 
             builder.finalize()

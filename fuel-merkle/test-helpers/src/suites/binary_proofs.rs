@@ -3,9 +3,9 @@ use fuel_merkle::{
     common::Bytes32,
 };
 use fuel_merkle_test_helpers::data::{
-    binary::ProofTest,
     EncodedValue,
     Encoding,
+    binary::ProofTest,
 };
 
 use digest::Digest;

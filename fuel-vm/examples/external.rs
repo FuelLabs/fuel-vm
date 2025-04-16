@@ -19,10 +19,10 @@ use std::{
 };
 
 use fuel_asm::{
-    op,
     GTFArgs,
     PanicReason,
     RegId,
+    op,
 };
 use fuel_tx::{
     ConsensusParameters,

@@ -44,11 +44,13 @@ pub const fn padded_len_word(len: Word) -> Option<Word> {
 /// This function will not panic if the length of the slice is smaller than `N`. Instead,
 /// it will cause undefined behavior and read random disowned bytes.
 pub unsafe fn from_slice_unchecked<const N: usize>(buf: &[u8]) -> [u8; N] {
-    let ptr = buf.as_ptr() as *const [u8; N];
+    unsafe {
+        let ptr = buf.as_ptr() as *const [u8; N];
 
-    // Static assertions are not applicable to runtime length check (e.g. slices).
-    // This is safe if the size of `bytes` is consistent to `N`
-    *ptr
+        // Static assertions are not applicable to runtime length check (e.g. slices).
+        // This is safe if the size of `bytes` is consistent to `N`
+        *ptr
+    }
 }
 
 #[test]

@@ -17,9 +17,9 @@ use test_case::test_case;
 
 use crate::{
     constraints::reg_key::{
+        HP,
         Reg,
         RegMut,
-        HP,
         SP,
     },
     consts::*,

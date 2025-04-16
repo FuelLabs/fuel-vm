@@ -18,6 +18,13 @@ use fuel_crypto::{
     PublicKey,
 };
 use fuel_types::{
+    Address,
+    AssetId,
+    Bytes32,
+    ContractId,
+    MessageId,
+    Nonce,
+    Word,
     bytes,
     canonical,
     canonical::{
@@ -27,13 +34,6 @@ use fuel_types::{
         Serialize,
     },
     fmt_truncated_hex,
-    Address,
-    AssetId,
-    Bytes32,
-    ContractId,
-    MessageId,
-    Nonce,
-    Word,
 };
 use message::*;
 

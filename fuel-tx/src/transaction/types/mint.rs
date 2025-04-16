@@ -1,25 +1,25 @@
 use crate::{
+    ConsensusParameters,
+    TransactionRepr,
+    TxPointer,
+    ValidityError,
     input,
     output,
     transaction::{
         field::TxPointer as TxPointerField,
         validity::{
-            check_size,
             FormatValidityChecks,
+            check_size,
         },
     },
-    ConsensusParameters,
-    TransactionRepr,
-    TxPointer,
-    ValidityError,
 };
 use educe::Educe;
 use fuel_asm::Word;
 use fuel_types::{
-    bytes::WORD_SIZE,
     AssetId,
     BlockHeight,
     Bytes32,
+    bytes::WORD_SIZE,
 };
 
 use fuel_types::ChainId;

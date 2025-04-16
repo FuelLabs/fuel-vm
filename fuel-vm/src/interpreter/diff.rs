@@ -42,12 +42,12 @@ use crate::{
 };
 
 use super::{
-    balances::Balance,
-    receipts::ReceiptsCtx,
     ExecutableTransaction,
     Interpreter,
     Memory,
     PanicContext,
+    balances::Balance,
+    receipts::ReceiptsCtx,
 };
 use crate::interpreter::memory::MemoryRollbackData;
 use storage::*;

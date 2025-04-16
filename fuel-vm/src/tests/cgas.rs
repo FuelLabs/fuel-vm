@@ -8,14 +8,14 @@ use crate::{
     script_with_data_offset,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_types::canonical::Serialize;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]
@@ -23,7 +23,7 @@ fn cgas_overflow_bug() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_limit = 1_000_000;
-    let asset_id: AssetId = rng.gen();
+    let asset_id: AssetId = rng.r#gen();
     let call_amount = 500;
     let initial_internal_balance = 1_000_000;
 
@@ -118,7 +118,7 @@ fn cgas_uses_min_available_gas() {
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let gas_limit = 1_000_000;
-    let asset_id: AssetId = rng.gen();
+    let asset_id: AssetId = rng.r#gen();
     let call_amount = 0;
     let initial_internal_balance = 1_000_000;
     let gas_forward_amount = 20_000;

@@ -216,14 +216,14 @@ where
 )]
 mod test {
     use crate::common::{
+        AsPathIterator,
+        Bytes8,
         node::{
             ChildKeyResult,
             ChildResult,
             Node,
             ParentNode,
         },
-        AsPathIterator,
-        Bytes8,
     };
     use alloc::vec::Vec;
     use core::convert::Infallible;

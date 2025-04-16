@@ -8,8 +8,8 @@ use crate::{
 
 #[cfg(feature = "std")]
 use rand::{
-    rngs::StdRng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[cfg(feature = "std")]

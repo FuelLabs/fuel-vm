@@ -8,19 +8,19 @@ use alloc::{
     vec::Vec,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
-    policies::Policies,
     ConsensusParameters,
     Witness,
+    policies::Policies,
 };
 use fuel_types::canonical::Serialize;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]
@@ -37,7 +37,7 @@ fn prevent_contract_id_redeployment() {
         op::rvrt(0),
     ];
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let program: Witness = function_rvrt.into_iter().collect::<Vec<u8>>().into();
 
     let contract = Contract::from(program.as_ref());
@@ -57,17 +57,17 @@ fn prevent_contract_id_redeployment() {
         vec![],
         vec![
             output,
-            Output::change(rng.gen(), 0, asset_id),
-            Output::coin(rng.gen(), spend_amount, asset_id),
+            Output::change(rng.r#gen(), 0, asset_id),
+            Output::coin(rng.r#gen(), spend_amount, asset_id),
         ],
         vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         &Default::default(),
         input_amount,
         asset_id,
-        rng.gen(),
+        rng.r#gen(),
         Default::default(),
     );
 

@@ -2,17 +2,17 @@
 #![allow(non_snake_case)]
 
 use fuel_asm::{
-    op,
     GMArgs,
     GTFArgs,
     Instruction,
     RegId,
+    op,
 };
 use fuel_tx::TransactionBuilder;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 use tokio_rayon::AsyncRayonHandle;
 
@@ -38,9 +38,9 @@ use crate::{
 };
 use core::iter;
 use fuel_tx::{
+    ConsensusParameters,
     consensus_parameters::gas::GasCostsValuesV5,
     field::Inputs,
-    ConsensusParameters,
 };
 
 pub struct TokioWithRayon;
@@ -80,10 +80,10 @@ where
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
 
-    let utxo_id = rng.gen();
+    let utxo_id = rng.r#gen();
     let amount = 0;
-    let asset_id = rng.gen();
-    let tx_pointer = rng.gen();
+    let asset_id = rng.r#gen();
+    let tx_pointer = rng.r#gen();
     let maturity = Default::default();
     let height = Default::default();
     let predicate_gas_used = 0;
@@ -113,10 +113,10 @@ where
     (0..dummy_inputs).for_each(|_| {
         builder.add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         );
     });
 
@@ -172,13 +172,13 @@ fn estimate_predicate_works_when_predicate_address_incorrect() {
     let mut builder = TransactionBuilder::script(vec![], vec![]);
 
     // Given
-    let predicate_owner = rng.gen();
+    let predicate_owner = rng.r#gen();
     let input = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         predicate_owner,
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         0,
         predicate.clone(),
         predicate_data.clone(),
@@ -214,11 +214,11 @@ fn estimate_predicate_works_when_max_gas_per_predicate_less_than_tx_gas__10_inpu
 
     for _ in 0..PREDICATE_COUNT {
         let input = Input::coin_predicate(
-            rng.gen(),
+            rng.r#gen(),
             predicate_owner,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             0,
             predicate.clone(),
             predicate_data.clone(),
@@ -338,10 +338,10 @@ async fn execute_gas_metered_predicates(
     if predicates.is_empty() {
         builder.add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
+            rng.r#gen(),
             arb_max_fee,
             params.base_asset_id,
-            rng.gen(),
+            rng.r#gen(),
         );
     }
 
@@ -354,11 +354,11 @@ async fn execute_gas_metered_predicates(
 
         let owner = Input::predicate_owner(&predicate);
         let input = Input::coin_predicate(
-            rng.gen(),
+            rng.r#gen(),
             owner,
             coin_amount,
             AssetId::default(),
-            rng.gen(),
+            rng.r#gen(),
             0,
             predicate,
             vec![],
@@ -430,23 +430,27 @@ async fn predicate_gas_metering() {
     );
 
     // This runs out of gas
-    assert!(execute_gas_metered_predicates(vec![vec![
-        op::ji(0), // Infinite loop
-    ]])
-    .await
-    .is_err());
+    assert!(
+        execute_gas_metered_predicates(vec![vec![
+            op::ji(0), // Infinite loop
+        ]])
+        .await
+        .is_err()
+    );
 
     // Multiple Predicate Success
-    assert!(execute_gas_metered_predicates(vec![
-        vec![op::ret(RegId::ONE)],
-        vec![
-            op::movi(0x10, 0x11),
-            op::movi(0x10, 0x11),
-            op::ret(RegId::ONE),
-        ],
-    ])
-    .await
-    .is_ok());
+    assert!(
+        execute_gas_metered_predicates(vec![
+            vec![op::ret(RegId::ONE)],
+            vec![
+                op::movi(0x10, 0x11),
+                op::movi(0x10, 0x11),
+                op::ret(RegId::ONE),
+            ],
+        ])
+        .await
+        .is_ok()
+    );
 
     // Running predicate gas used is combined properly
     let exe = (0..4).map(|n| async move {
@@ -487,10 +491,10 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
 
     builder.add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         coin_amount,
         AssetId::default(),
-        rng.gen(),
+        rng.r#gen(),
     );
 
     // parallel version
@@ -525,11 +529,11 @@ async fn gas_used_by_predicates_not_causes_out_of_gas_during_script() {
         .collect();
     let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         coin_amount,
         AssetId::default(),
-        rng.gen(),
+        rng.r#gen(),
         0,
         predicate,
         vec![],
@@ -610,10 +614,10 @@ async fn gas_used_by_predicates_more_than_limit() {
 
     builder.add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         coin_amount,
         AssetId::default(),
-        rng.gen(),
+        rng.r#gen(),
     );
 
     // parallel version
@@ -654,11 +658,11 @@ async fn gas_used_by_predicates_more_than_limit() {
     .collect();
     let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         coin_amount,
         AssetId::default(),
-        rng.gen(),
+        rng.r#gen(),
         gas_limit + 1,
         predicate,
         vec![],
@@ -716,11 +720,11 @@ fn synchronous_estimate_predicates_respects_total_tx_gas_limit() {
 
     for _ in 0..255 {
         builder.add_input(Input::coin_predicate(
-            rng.gen(),
+            rng.r#gen(),
             predicate_owner,
             coin_amount,
             AssetId::default(),
-            rng.gen(),
+            rng.r#gen(),
             0,
             predicate.clone(),
             vec![],

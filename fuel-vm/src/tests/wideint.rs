@@ -6,6 +6,10 @@ use alloc::{
 use ethnum::U256;
 
 use fuel_asm::{
+    Flags,
+    Instruction,
+    PanicReason,
+    RegId,
     op,
     wideint::{
         CompareArgs,
@@ -15,10 +19,6 @@ use fuel_asm::{
         MathOp,
         MulArgs,
     },
-    Flags,
-    Instruction,
-    PanicReason,
-    RegId,
 };
 use fuel_tx::Receipt;
 

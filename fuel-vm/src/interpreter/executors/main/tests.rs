@@ -17,17 +17,17 @@ use alloc::{
     vec::Vec,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
     ConsensusParameters,
     TransactionBuilder,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 #[test]
@@ -54,10 +54,10 @@ fn estimate_gas_gives_proper_gas_used() {
 
     builder.add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         coin_amount,
         AssetId::default(),
-        rng.gen(),
+        rng.r#gen(),
     );
 
     let transaction_without_predicate = builder
@@ -82,11 +82,11 @@ fn estimate_gas_gives_proper_gas_used() {
         .collect();
     let owner = Input::predicate_owner(&predicate);
     let input = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         coin_amount,
         AssetId::default(),
-        rng.gen(),
+        rng.r#gen(),
         0,
         predicate,
         vec![],
@@ -97,10 +97,12 @@ fn estimate_gas_gives_proper_gas_used() {
     let mut transaction = builder.finalize();
 
     // unestimated transaction should fail as it's predicates are not estimated
-    assert!(transaction
-        .clone()
-        .into_checked(Default::default(), params)
-        .is_err());
+    assert!(
+        transaction
+            .clone()
+            .into_checked(Default::default(), params)
+            .is_err()
+    );
 
     estimate_predicates(
         &mut transaction,

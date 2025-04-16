@@ -1,9 +1,9 @@
 use super::{
-    internal::inc_pc,
     ExecutableTransaction,
     ExecutableTxType,
     Interpreter,
     Memory,
+    internal::inc_pc,
 };
 use crate::{
     call::CallFrame,
@@ -20,6 +20,11 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
+    Input,
+    InputRepr,
+    Output,
+    OutputRepr,
+    UtxoId,
     field::{
         BlobId,
         BytecodeRoot,
@@ -35,11 +40,6 @@ use fuel_tx::{
         UpgradePurpose,
     },
     policies::PolicyType,
-    Input,
-    InputRepr,
-    Output,
-    OutputRepr,
-    UtxoId,
 };
 use fuel_types::{
     ChainId,

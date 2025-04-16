@@ -3,9 +3,9 @@
 #[cfg(feature = "test-helpers")]
 use crate::secp256::signature_format::encode_signature;
 use crate::{
+    Error,
     message::Message,
     secp256::signature_format::decode_signature,
-    Error,
 };
 #[cfg(feature = "test-helpers")]
 use ecdsa::RecoveryId;
@@ -87,9 +87,9 @@ mod tests {
 
     use p256::ecdsa::SigningKey;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     #[test]
@@ -99,7 +99,7 @@ mod tests {
         let signing_key = SigningKey::random(&mut rng);
         let verifying_key = signing_key.verifying_key();
 
-        let message = Message::new([rng.gen(); 100]);
+        let message = Message::new([rng.r#gen(); 100]);
 
         let (signature, recovery_id) =
             signing_key.sign_prehash_recoverable(&*message).unwrap();
@@ -119,7 +119,7 @@ mod tests {
             let signing_key = SigningKey::random(&mut rng);
             let verifying_key = signing_key.verifying_key();
 
-            let message = Message::new([rng.gen(); 100]);
+            let message = Message::new([rng.r#gen(); 100]);
             let signature =
                 sign_prehashed(&signing_key, &message).expect("Couldn't sign");
 
@@ -136,7 +136,7 @@ mod tests {
         let mut rng = &mut StdRng::seed_from_u64(1234);
 
         for _ in 0..100 {
-            let message = Message::new([rng.gen(); 100]);
+            let message = Message::new([rng.r#gen(); 100]);
             let signing_key = SigningKey::random(&mut rng);
             let (signature, _) = signing_key.sign_prehash_recoverable(&*message).unwrap();
             let signature = signature.normalize_s().unwrap_or(signature);

@@ -1,9 +1,9 @@
 use crate::double_key;
 use fuel_storage::Mappable;
 use fuel_types::{
-    fmt_truncated_hex,
     Bytes32,
     ContractId,
+    fmt_truncated_hex,
 };
 
 use alloc::{
@@ -14,11 +14,11 @@ use educe::Educe;
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 /// The storage table for contract's hashed key-value state.
@@ -97,7 +97,7 @@ impl AsMut<[u8]> for ContractsStateData {
 #[cfg(feature = "random")]
 impl Distribution<ContractsStateData> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> ContractsStateData {
-        ContractsStateData(rng.gen::<Bytes32>().to_vec())
+        ContractsStateData(rng.r#gen::<Bytes32>().to_vec())
     }
 }
 

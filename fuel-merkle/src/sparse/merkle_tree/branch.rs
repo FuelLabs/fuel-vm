@@ -1,8 +1,8 @@
 use super::Node;
 use crate::{
     common::{
-        path::Path,
         Bytes32,
+        path::Path,
     },
     sparse::Primitive,
 };

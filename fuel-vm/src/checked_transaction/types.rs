@@ -59,12 +59,12 @@ impl core::ops::Deref for RetryableAmount {
 /// For [`fuel_tx::Create`]
 pub mod create {
     use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
         Checked,
         IntoChecked,
+        balances::{
+            AvailableBalances,
+            initial_free_balances,
+        },
     };
     use crate::checked_transaction::{
         CheckError,
@@ -169,12 +169,12 @@ pub mod mint {
 /// For [`fuel_tx::Script`]
 pub mod script {
     use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
         Checked,
         IntoChecked,
+        balances::{
+            AvailableBalances,
+            initial_free_balances,
+        },
     };
     use crate::checked_transaction::{
         CheckError,
@@ -250,12 +250,12 @@ pub mod script {
 /// For [`fuel_tx::Upgrade`]
 pub mod upgrade {
     use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
         Checked,
         IntoChecked,
+        balances::{
+            AvailableBalances,
+            initial_free_balances,
+        },
     };
     use crate::checked_transaction::{
         CheckError,
@@ -328,12 +328,12 @@ pub mod upgrade {
 /// For [`fuel_tx::Upload`]
 pub mod upload {
     use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
         Checked,
         IntoChecked,
+        balances::{
+            AvailableBalances,
+            initial_free_balances,
+        },
     };
     use crate::checked_transaction::{
         CheckError,
@@ -406,12 +406,12 @@ pub mod upload {
 /// For [`fuel_tx::Blob`]
 pub mod blob {
     use super::super::{
-        balances::{
-            initial_free_balances,
-            AvailableBalances,
-        },
         Checked,
         IntoChecked,
+        balances::{
+            AvailableBalances,
+            initial_free_balances,
+        },
     };
     use crate::checked_transaction::{
         CheckError,

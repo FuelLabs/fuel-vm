@@ -1,9 +1,9 @@
 use crate::{
     binary::{
-        empty_sum,
-        in_memory::NodesTable,
         Node,
         Primitive,
+        empty_sum,
+        in_memory::NodesTable,
     },
     common::{
         Bytes32,
@@ -362,11 +362,11 @@ mod test {
     };
     use crate::{
         binary::{
+            Node,
+            Primitive,
             empty_sum,
             leaf_sum,
             node_sum,
-            Node,
-            Primitive,
         },
         common::StorageMap,
     };
@@ -591,8 +591,8 @@ mod test {
     }
 
     #[test]
-    fn prove_returns_invalid_proof_index_error_when_index_is_greater_than_number_of_leaves(
-    ) {
+    fn prove_returns_invalid_proof_index_error_when_index_is_greater_than_number_of_leaves()
+     {
         let mut storage_map = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage_map);
 

@@ -1,9 +1,9 @@
 use alloc::vec;
 use fuel_asm::{
-    op,
     GTFArgs,
     RegId,
     Word,
+    op,
 };
 use fuel_tx::{
     ConsensusParameters,

@@ -15,11 +15,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 #[cfg(all(feature = "alloc", feature = "typescript"))]
@@ -43,7 +43,7 @@ macro_rules! key {
         #[cfg(feature = "random")]
         impl Distribution<$i> for Standard {
             fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $i {
-                $i(rng.gen())
+                $i(rng.r#gen())
             }
         }
     };
@@ -94,7 +94,7 @@ macro_rules! key_methods {
                     &mut self,
                     rng: &mut R,
                 ) -> Result<(), rand::Error> {
-                    let number = rng.gen();
+                    let number = rng.r#gen();
                     *self = $i(number);
 
                     Ok(())

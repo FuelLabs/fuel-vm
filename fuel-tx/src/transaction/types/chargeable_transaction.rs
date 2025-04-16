@@ -1,7 +1,14 @@
 use crate::{
+    ConsensusParameters,
+    Input,
+    Output,
+    UniqueIdentifier,
+    ValidityError,
+    Witness,
     field::ChargeableBody,
     policies::Policies,
     transaction::{
+        Chargeable,
         field::{
             Inputs,
             Outputs,
@@ -11,25 +18,18 @@ use crate::{
         id::PrepareSign,
         metadata::CommonMetadata,
         validity::{
-            check_common_part,
             FormatValidityChecks,
+            check_common_part,
         },
-        Chargeable,
     },
-    ConsensusParameters,
-    Input,
-    Output,
-    UniqueIdentifier,
-    ValidityError,
-    Witness,
 };
 use educe::Educe;
 use fuel_types::{
-    bytes,
-    canonical::Serialize,
     BlockHeight,
     Bytes32,
     ChainId,
+    bytes,
+    canonical::Serialize,
 };
 use hashbrown::HashMap;
 

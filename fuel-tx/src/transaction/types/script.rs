@@ -4,8 +4,15 @@ use core::ops::{
 };
 
 use crate::{
+    ConsensusParameters,
+    FeeParameters,
+    GasCosts,
+    Output,
+    TransactionRepr,
+    ValidityError,
     field::WitnessLimit,
     transaction::{
+        Chargeable,
         field::{
             ReceiptsRoot,
             Script as ScriptField,
@@ -20,24 +27,17 @@ use crate::{
             ChargeableTransaction,
             UniqueFormatValidityChecks,
         },
-        Chargeable,
     },
-    ConsensusParameters,
-    FeeParameters,
-    GasCosts,
-    Output,
-    TransactionRepr,
-    ValidityError,
 };
 use educe::Educe;
 use fuel_types::{
+    Bytes32,
+    ChainId,
+    Word,
     bytes,
     bytes::WORD_SIZE,
     canonical::Serialize,
     fmt_truncated_hex,
-    Bytes32,
-    ChainId,
-    Word,
 };
 
 #[cfg(feature = "alloc")]

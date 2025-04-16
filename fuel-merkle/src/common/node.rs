@@ -1,6 +1,6 @@
 use crate::common::{
-    Bytes32,
     Bytes8,
+    Bytes32,
 };
 
 use alloc::string::String;

@@ -15,11 +15,11 @@ use fuel_crypto::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 #[derive(Educe, Default, Clone, PartialEq, Eq, Hash)]

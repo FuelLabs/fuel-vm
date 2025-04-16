@@ -1,5 +1,13 @@
 use crate::{
+    ConsensusParameters,
+    FeeParameters,
+    GasCosts,
+    Input,
+    Output,
+    TransactionRepr,
+    ValidityError,
     transaction::{
+        Chargeable,
         fee::min_gas,
         id::PrepareSign,
         metadata::CommonMetadata,
@@ -8,24 +16,16 @@ use crate::{
             ChargeableTransaction,
             UniqueFormatValidityChecks,
         },
-        Chargeable,
     },
-    ConsensusParameters,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Output,
-    TransactionRepr,
-    ValidityError,
 };
 use core::ops::Deref;
 use educe::Educe;
 use fuel_types::{
-    bytes::WORD_SIZE,
-    canonical::Serialize,
     Bytes32,
     ChainId,
     Word,
+    bytes::WORD_SIZE,
+    canonical::Serialize,
 };
 
 #[cfg(feature = "alloc")]

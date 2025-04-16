@@ -2,15 +2,15 @@
 
 use fuel_asm::PanicReason;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 use test_case::test_case;
 
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::Receipt;
 use fuel_vm::{
@@ -360,8 +360,8 @@ fn test_meq() {
 fn test_push_pop_ops() {
     let rng = &mut StdRng::seed_from_u64(1234);
     for _ in 0..1000 {
-        let mask = rng.gen::<u32>() & 0x00ff_ffff;
-        let (push, pop) = if rng.gen() {
+        let mask = rng.r#gen::<u32>() & 0x00ff_ffff;
+        let (push, pop) = if rng.r#gen() {
             (op::pshl(mask), op::popl(mask))
         } else {
             (op::pshh(mask), op::poph(mask))

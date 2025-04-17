@@ -189,7 +189,7 @@ impl MerkleTree {
     }
 
     pub fn update(&mut self, key: MerkleTreeKey, data: &[u8]) {
-        let _ = self.tree.update(key, data);
+        let _ = self.tree.insert(key, data);
     }
 
     pub fn delete(&mut self, key: MerkleTreeKey) {

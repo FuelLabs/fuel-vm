@@ -178,6 +178,23 @@ where
     pub predicate_data: Specification::PredicateData,
 }
 
+#[derive(Default, Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct UnverifiedCoin {
+    pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub owner: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub amount: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub asset_id: AssetId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub tx_pointer: TxPointer,
+}
+
 impl<Specification> Coin<Specification>
 where
     Specification: CoinSpecification,
@@ -327,6 +344,25 @@ where
     pub data: Vec<u8>,
 }
 
+#[derive(Default, Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct UnverifiedDataCoin {
+    pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub owner: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub amount: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub asset_id: AssetId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub tx_pointer: TxPointer,
+    #[educe(Debug(method(fmt_as_field)))]
+    pub data: Vec<u8>,
+}
+
 impl<Specification> DataCoin<Specification>
 where
     Specification: CoinSpecification,
@@ -392,5 +428,17 @@ impl DataCoin<Full> {
             data,
             ..Default::default()
         }
+    }
+}
+
+impl UnverifiedCoin {
+    pub fn prepare_sign(&mut self) {
+        self.tx_pointer = Default::default();
+    }
+}
+
+impl UnverifiedDataCoin {
+    pub fn prepare_sign(&mut self) {
+        self.tx_pointer = Default::default();
     }
 }

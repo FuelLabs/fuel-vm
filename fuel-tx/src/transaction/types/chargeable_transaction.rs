@@ -97,7 +97,7 @@ where
     #[educe(PartialEq(ignore))]
     #[educe(Hash(ignore))]
     #[canonical(skip)]
-    pub(crate) metadata: Option<ChargeableMetadata<MetadataBody>>,
+    pub metadata: Option<ChargeableMetadata<MetadataBody>>,
 }
 
 impl<Body, MetadataBody> Default for ChargeableTransaction<Body, MetadataBody>

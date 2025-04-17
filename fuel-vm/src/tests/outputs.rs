@@ -178,3 +178,72 @@ fn correct_change_is_provided_for_coin_outputs_create() {
 
     assert_eq!(change, input_amount - spend_amount);
 }
+
+#[test]
+fn correct_change_is_provided_for_data_coin_outputs_create() {
+    let mut rng = StdRng::seed_from_u64(2322u64);
+    let input_amount = 1000;
+    let spend_amount = 600;
+    let base_asset_id: AssetId = rng.gen();
+
+    #[rustfmt::skip]
+    let invalid_instruction_bytecode = vec![0u8; 4];
+
+    let salt: Salt = rng.gen();
+    let program: Witness = invalid_instruction_bytecode.into();
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract_undefined = contract.id(&salt, &contract_root, &state_root);
+
+    let output = Output::contract_created(contract_undefined, state_root);
+
+    let mut context = TestBuilder::new(2322u64);
+    let context = context.base_asset_id(base_asset_id);
+    let bytecode_witness = 0;
+
+    let mut create = Transaction::create(
+        bytecode_witness,
+        Policies::new().with_max_fee(0),
+        salt,
+        vec![],
+        vec![],
+        vec![
+            output,
+            Output::change(rng.gen(), 0, base_asset_id),
+            Output::data_coin(rng.gen(), spend_amount, base_asset_id, vec![]),
+        ],
+        vec![program, Witness::default()],
+    );
+    create.add_unsigned_coin_input(
+        rng.gen(),
+        &Default::default(),
+        input_amount,
+        base_asset_id,
+        rng.gen(),
+        Default::default(),
+    );
+
+    let consensus_params = ConsensusParameters::new(
+        *context.get_tx_params(),
+        *context.get_predicate_params(),
+        *context.get_script_params(),
+        *context.get_contract_params(),
+        *context.get_fee_params(),
+        context.get_chain_id(),
+        context.get_gas_costs().to_owned(),
+        *context.get_base_asset_id(),
+        context.get_block_gas_limit(),
+        context.get_block_transaction_size_limit(),
+        *context.get_privileged_address(),
+    );
+    let create = create
+        .into_checked_basic(context.get_block_height(), &consensus_params)
+        .expect("failed to generate checked tx");
+
+    let state = context.deploy(create).expect("Create should be executed");
+    let change = find_change(state.tx().outputs().to_vec(), base_asset_id);
+
+    assert_eq!(change, input_amount - spend_amount);
+}

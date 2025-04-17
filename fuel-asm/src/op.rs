@@ -55,7 +55,7 @@ const _: () = {
     }
 };
 
-/// Construct a `GM` instruction from its arguments.
+/// Construct a `GTF` instruction from its arguments.
 pub fn gtf_args<A: CheckRegId, B: CheckRegId>(
     ra: A,
     rb: B,

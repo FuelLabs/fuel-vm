@@ -147,6 +147,7 @@ enum PredicateAction {
 pub mod predicates {
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
+    use fuel_tx::input::coin::DataCoinPredicate;
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -469,6 +470,10 @@ pub mod predicates {
                 if let Ok(gas_used) = result {
                     match &mut tx.inputs_mut()[*input_index] {
                         Input::CoinPredicate(CoinPredicate {
+                            predicate_gas_used,
+                            ..
+                        })
+                        | Input::DataCoinPredicate(DataCoinPredicate {
                             predicate_gas_used,
                             ..
                         })

@@ -151,7 +151,7 @@ fn metadata() {
     let contract = Contract::from(program.as_ref());
     let contract_root = contract.root();
     let state_root = Contract::default_state_root();
-    let contract_call = contract.id(&salt, &contract_root, &state_root);
+    let contract_id = contract.id(&salt, &contract_root, &state_root);
     let tx = TransactionBuilder::create(program, salt, vec![])
         .maturity(maturity)
         .add_fee_input()
@@ -176,7 +176,7 @@ fn metadata() {
         rng.gen(),
         rng.gen(),
         rng.gen(),
-        contract_call,
+        contract_id,
     ));
     outputs.push(Output::contract(0, rng.gen(), rng.gen()));
 
@@ -195,14 +195,10 @@ fn metadata() {
         op::move_(0x10, RegId::HP),
     ];
 
-    contract_call
-        .as_ref()
-        .iter()
-        .enumerate()
-        .for_each(|(i, b)| {
-            script.push(op::movi(0x11, *b as Immediate18));
-            script.push(op::sb(0x10, 0x11, i as Immediate12));
-        });
+    contract_id.as_ref().iter().enumerate().for_each(|(i, b)| {
+        script.push(op::movi(0x11, *b as Immediate18));
+        script.push(op::sb(0x10, 0x11, i as Immediate12));
+    });
 
     script.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
     script.push(op::ret(RegId::ONE));
@@ -243,7 +239,7 @@ fn metadata() {
         .expect("IsCallerExternal should set $rA as boolean flag");
     assert_eq!(0, ra);
 
-    let contract_call = Hasher::hash(contract_call.as_ref());
+    let contract_call = Hasher::hash(contract_id.as_ref());
     let digest = receipts[4]
         .digest()
         .expect("GetCaller should return contract Id");
@@ -376,7 +372,7 @@ fn get_metadata_tx_start() {
 }
 
 #[test]
-fn get_metadata__gas_price() {
+fn get_metadata__gas_price__script() {
     // given
     let gas_limit = 1_000_000;
     let height = BlockHeight::default();
@@ -419,6 +415,129 @@ fn get_metadata__gas_price() {
     } else {
         panic!("expected return receipt, instead of {:?}", receipts[0])
     }
+}
+
+#[test]
+fn get_metadata__gas_price__contract() {
+    let rng = &mut StdRng::seed_from_u64(2322u64);
+
+    // given
+    let mut storage = MemoryStorage::default();
+
+    let gas_price = 123;
+    let gas_limit = 1_000_000;
+    let maturity = Default::default();
+    let height = Default::default();
+
+    let consensus_params = ConsensusParameters::standard();
+
+    // Create a contract that gets the gas price and returns it
+    #[rustfmt::skip]
+    let contract_bytecode = vec![
+        op::gm_args(0x10, GMArgs::GetGasPrice),
+        op::ret(0x10),
+    ];
+
+    let salt: Salt = rng.gen();
+    let program: Witness = contract_bytecode.into_iter().collect::<Vec<u8>>().into();
+
+    let contract = Contract::from(program.as_ref());
+    let contract_root = contract.root();
+    let state_root = Contract::default_state_root();
+    let contract_id = contract.id(&salt, &contract_root, &state_root);
+
+    // Deploy the contract
+    let tx = TransactionBuilder::create(program, salt, vec![])
+        .maturity(maturity)
+        .add_fee_input()
+        .add_contract_created()
+        .add_max_fee_limit(10)
+        .finalize()
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx");
+
+    let interpreter_params = InterpreterParams {
+        gas_price,
+        ..Default::default()
+    };
+
+    // Deploy the contract into the blockchain
+    assert!(Transactor::<_, _, _>::new(
+        MemoryInstance::new(),
+        &mut storage,
+        interpreter_params.clone()
+    )
+    .transact(tx)
+    .is_success());
+
+    let mut script = vec![
+        op::movi(0x10, (1 + Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
+        op::aloc(0x10),
+        op::move_(0x10, RegId::HP),
+    ];
+
+    // Copy contract ID bytes into the allocated memory
+    contract_id.as_ref().iter().enumerate().for_each(|(i, b)| {
+        script.push(op::movi(0x11, *b as Immediate18));
+        script.push(op::sb(0x10, 0x11, i as Immediate12));
+    });
+
+    // Call the contract and forward the returned value
+    script.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
+    script.push(op::ret(RegId::ONE));
+
+    let tx = TransactionBuilder::script(script.into_iter().collect(), vec![])
+        .script_gas_limit(gas_limit)
+        .add_input(Input::contract(
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            rng.gen(),
+            contract_id,
+        ))
+        .add_output(Output::contract(0, rng.gen(), rng.gen()))
+        .add_fee_input()
+        .add_max_fee_limit(10)
+        .finalize()
+        .into_checked(height, &consensus_params)
+        .expect("failed to check tx");
+
+    // when
+    let receipts = Transactor::<_, _, _>::new(
+        MemoryInstance::new(),
+        &mut storage,
+        interpreter_params,
+    )
+    .transact(tx)
+    .receipts()
+    .expect("Failed to transact")
+    .to_owned();
+
+    // then
+    let receipt = find_matching_return_receipt_for_contract_id(&receipts, &contract_id)
+        .expect("There should be a return receipt for contract");
+
+    if let Receipt::Return { val, .. } = receipt {
+        assert_eq!(val, gas_price);
+    } else {
+        panic!("expected return receipt, instead of {:?}", receipt)
+    }
+}
+
+fn find_matching_return_receipt_for_contract_id(
+    receipts: &[Receipt],
+    contract_id: &ContractId,
+) -> Option<Receipt> {
+    receipts
+        .iter()
+        .find(|receipt| {
+            if let Receipt::Return { id, .. } = receipt {
+                contract_id == id
+            } else {
+                false
+            }
+        })
+        .cloned()
 }
 
 #[allow(deprecated)]

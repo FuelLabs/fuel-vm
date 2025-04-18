@@ -375,6 +375,52 @@ fn get_metadata_tx_start() {
     }
 }
 
+#[test]
+fn get_metadata__gas_price() {
+    // given
+    let gas_limit = 1_000_000;
+    let height = BlockHeight::default();
+    let mut storage = MemoryStorage::default();
+
+    let gas_price = 123;
+
+    let script = TransactionBuilder::script(
+        vec![op::gm_args(0x20, GMArgs::GetGasPrice), op::ret(0x20)]
+            .into_iter()
+            .collect(),
+        vec![],
+    )
+    .script_gas_limit(gas_limit)
+    .add_fee_input()
+    .add_max_fee_limit(10)
+    .finalize()
+    .into_checked(height, &ConsensusParameters::default())
+    .unwrap();
+
+    let interpreter_params = InterpreterParams {
+        gas_price,
+        ..Default::default()
+    };
+
+    // when
+    let receipts = Transactor::<_, _, _>::new(
+        MemoryInstance::new(),
+        &mut storage,
+        interpreter_params,
+    )
+    .transact(script)
+    .receipts()
+    .expect("Failed to transact")
+    .to_owned();
+
+    // then
+    if let Receipt::Return { val, .. } = receipts[0].clone() {
+        assert_eq!(val, gas_price);
+    } else {
+        panic!("expected return receipt, instead of {:?}", receipts[0])
+    }
+}
+
 #[allow(deprecated)]
 #[test]
 fn get_transaction_fields() {

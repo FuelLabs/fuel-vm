@@ -535,6 +535,11 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
 
         tx
     }
+
+    pub fn add_max_fee_limit(&mut self, max_fee: Word) -> &mut Self {
+        self.tx.set_max_fee_limit(max_fee);
+        self
+    }
 }
 
 impl<Tx: field::Outputs> TransactionBuilder<Tx> {

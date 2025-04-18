@@ -59,6 +59,7 @@ where
     pub(crate) fn metadata(&mut self, ra: RegId, imm: Immediate18) -> SimpleResult<()> {
         let tx_offset = self.tx_offset() as Word;
         let chain_id = self.chain_id();
+        let gas_price = self.gas_price();
         let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(ra)?];
         metadata(
@@ -69,6 +70,7 @@ where
             imm,
             chain_id,
             tx_offset,
+            gas_price,
         )
     }
 
@@ -100,6 +102,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn metadata(
     context: &Context,
     frames: &[CallFrame],
@@ -108,6 +111,7 @@ pub(crate) fn metadata(
     imm: Immediate18,
     chain_id: ChainId,
     tx_offset: Word,
+    gas_price: Word,
 ) -> SimpleResult<()> {
     let parent = context
         .is_internal()
@@ -130,6 +134,13 @@ pub(crate) fn metadata(
         GMArgs::IsCallerExternal => match parent {
             Some(p) => (p == 0) as Word,
             None => return Err(PanicReason::ExpectedInternalContext.into()),
+        },
+        GMArgs::GetGasPrice => match context {
+            Context::PredicateVerification { .. }
+            | Context::PredicateEstimation { .. } => {
+                return Err(PanicReason::CanNotGetGasPriceInPredicate.into())
+            }
+            _ => gas_price,
         },
     };
 

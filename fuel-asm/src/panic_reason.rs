@@ -166,6 +166,8 @@ enum_from! {
         ProofInUploadNotFound = 0x3e,
         /// Invalid purpose type in Upgrade
         InvalidUpgradePurposeType = 0x3f,
+        /// Cannot get gas price in predicate
+        CanNotGetGasPriceInPredicate = 0x40,
     }
 }
 

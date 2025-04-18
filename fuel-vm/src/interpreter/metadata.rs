@@ -102,6 +102,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn metadata(
     context: &Context,
     frames: &[CallFrame],
@@ -139,7 +140,7 @@ pub(crate) fn metadata(
             | Context::PredicateEstimation { .. } => {
                 return Err(PanicReason::CanNotGetGasPriceInPredicate.into())
             }
-            _ => gas_price.into(),
+            _ => gas_price,
         },
     };
 

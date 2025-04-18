@@ -322,10 +322,10 @@ where
         let fee_params = self.interpreter.fee_params();
         let block_height = self.interpreter.context().block_height();
 
-        match tx
+        let res = tx
             .into_ready(gas_price, gas_costs, fee_params, block_height)
-            .map_err(InterpreterError::CheckError)
-        {
+            .map_err(InterpreterError::CheckError);
+        match res {
             Ok(ready_tx) => self.transact_ready_tx(ready_tx),
             Err(e) => self.handle_error(e),
         }

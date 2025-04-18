@@ -91,6 +91,7 @@ fn get_chain_id(context: Context, chain_id: u64) {
 #[test_case(Context::Script { block_height: BlockHeight::default() }, 2, Ok(()); "can fetch inside script")]
 #[test_case(Context::Call { block_height: BlockHeight::default() }, 2, Ok(()); "can fetch inside call")]
 fn get_gas_price(context: Context, gas_price: u64, expected_res: SimpleResult<()>) {
+    // given
     let mut frames = vec![];
     let mut pc = 4;
     let mut result = 0;
@@ -100,6 +101,7 @@ fn get_gas_price(context: Context, gas_price: u64, expected_res: SimpleResult<()
         frames.push(CallFrame::default());
     }
 
+    // when
     let actual_res = metadata(
         &context,
         &frames,
@@ -111,6 +113,7 @@ fn get_gas_price(context: Context, gas_price: u64, expected_res: SimpleResult<()
         gas_price,
     );
 
+    // then
     match expected_res {
         Ok(_) => {
             assert_eq!(actual_res, Ok(()));

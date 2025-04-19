@@ -113,3 +113,6 @@ u32-tx-pointer = ["fuel-tx/u32-tx-pointer"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(fuzzing)'] }
+
+[lib]
+crate-type = ["cdylib", "rlib"]

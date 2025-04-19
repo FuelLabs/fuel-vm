@@ -50,8 +50,12 @@ static_assertions = "1.1"
 strum = { version = "0.24", features = ["derive"], default-features = false }
 tai64 = { version = "4.0", default-features = false, optional = true }
 
+[dependencies.getrandom]
+version = "0.2"
+features = ["js"]
+
 [dev-dependencies]
-criterion = { workspace = true }
+# criterion = { workspace = true }
 ed25519-dalek = { version = "2.0.0", features = ["rand_core"] }
 fuel-crypto = { workspace = true, features = ["test-helpers"] }
 fuel-tx = { workspace = true, features = ["test-helpers"] }
@@ -67,14 +71,14 @@ num-integer = "0.1.45"
 p256 = "0.13"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
-rayon = "1.7"
+# rayon = "1.7"
 rstest = "0.17"
 test-case = "3.3"
-tokio = { version = "1.27", features = ["full"] }
-tokio-rayon = "2.1.0"
+# tokio = { version = "1.27", features = ["full"] }
+# tokio-rayon = "2.1.0"
 
 [features]
-default = ["std"]
+default = []
 std = [
     "alloc",
     "fuel-crypto/std",

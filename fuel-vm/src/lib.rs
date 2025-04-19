@@ -20,6 +20,8 @@ extern crate core;
 #[cfg(feature = "std")]
 extern crate libm as _; // Not needed with stdlib
 
+use getrandom as _;
+
 #[cfg(test)]
 use criterion as _;
 

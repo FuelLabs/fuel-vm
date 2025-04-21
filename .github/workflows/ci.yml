@@ -293,7 +293,7 @@ jobs:
           targets: "wasm32-unknown-unknown"
 
       - name: Installing required crates
-        run: cargo install wasm-bindgen-cli wasm-opt
+        run: cargo install wasm-bindgen-cli wasm-opt --locked
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4

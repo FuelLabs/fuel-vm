@@ -298,7 +298,7 @@ macro_rules! generate_memory_instance_grow_by_heap_test {
 
                 memory_instance.grow_heap_by(sp, RegMut::new(&mut hp), SIZE.try_into().unwrap())?;
                 memory_instance.write_bytes_noownerchecks(
-                    memory_instance.heap_offset().to_addr().unwrap(),
+                    memory_instance.hp,
                     [1u8; SIZE],
                 )?;
 
@@ -335,5 +335,8 @@ macro_rules! generate_memory_instance_grow_by_heap_tests {
 }
 
 generate_memory_instance_grow_by_heap_tests!(
-    256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288
+    0, 1, 16, 32, 64, 128,
+    256, 512, 1024, 2048,
+    4096, 8192, 16384,
+    32768, 65536, 131072
 );

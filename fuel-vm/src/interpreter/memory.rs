@@ -205,7 +205,7 @@ impl MemoryInstance {
             // So, either we need to clear the memory before copying,
             // or after we copied dirty parts.
             // Clearing before looks like more readable solution.
-            let end = self.hp - self.heap_offset();
+            let end = self.hp.saturating_sub(self.heap_offset());
             self.heap[..end].fill(0);
 
             // To reduce frequent reallocations, allocate at least 256 bytes at once.

@@ -19,6 +19,9 @@
 #[cfg(test)]
 use fuel_crypto as _;
 
+use base64ct as _;
+use half as _;
+
 /// Required export for using mnemonic keygen on [`SecretKey::new_from_mnemonic`]
 #[cfg(feature = "std")]
 #[doc(no_inline)]

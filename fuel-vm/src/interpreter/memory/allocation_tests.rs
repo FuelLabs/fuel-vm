@@ -285,7 +285,7 @@ fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Imm12) -> SimpleRes
     Ok(())
 }
 
-macro_rules! generate_memory_instance_grow_by_heap_test {
+macro_rules! generate_test__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size {
     ($size:expr) => {
         paste::paste! {
             #[test]
@@ -326,17 +326,14 @@ macro_rules! generate_memory_instance_grow_by_heap_test {
 }
 
 // Generate tests with different sizes
-macro_rules! generate_memory_instance_grow_by_heap_tests {
+macro_rules! generate_tests__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size {
     ($($size:expr),*) => {
         $(
-            generate_memory_instance_grow_by_heap_test!($size);
+            generate_test__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size!($size);
         )*
     };
 }
 
-generate_memory_instance_grow_by_heap_tests!(
-    0, 1, 16, 32, 64, 128,
-    256, 512, 1024, 2048,
-    4096, 8192, 16384,
-    32768, 65536, 131072
+generate_tests__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size!(
+    0, 1, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072
 );

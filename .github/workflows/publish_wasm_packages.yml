@@ -1,0 +1,65 @@
+# This is used as a temporary fix because the original workflow failed due to invalid versions. we
+# don't want to re-release the crates, but we want to publish the wasm packages
+
+name: Publish WASM Packages
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: 1.79.0
+  RUST_VERSION_FMT: nightly-2024-02-07
+  RUST_VERSION_COV: nightly-2024-06-05
+  GIT_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+jobs:
+  publish_wasm_packages:
+    runs-on: buildjet-4vcpu-ubuntu-2204
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "wasm32-unknown-unknown"
+
+      - name: Installing required crates
+        run: cargo install wasm-bindgen-cli wasm-opt --locked
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ^9.4.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          cache: "pnpm"
+          node-version: 18.14.1
+          node-version-file: ".npm/package.json"
+          cache-dependency-path: ".npm/pnpm-lock.yaml"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Build and Test packages
+        run: |
+          pnpm -C .npm install
+          pnpm -C .npm pack:all
+
+      - name: Ensure NPM access
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish
+        run: pnpm -C .npm publish -r --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

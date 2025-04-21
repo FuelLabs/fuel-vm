@@ -11,11 +11,13 @@ repository = { workspace = true }
 description = "Fuel cryptographic primitives."
 
 [dependencies]
+base64ct = { version = "=1.6.0" }
 coins-bip32 = { version = "0.8", default-features = false, optional = true }
 coins-bip39 = { version = "0.8", default-features = false, features = ["english"], optional = true }
 ecdsa = { version = "0.16", default-features = false }
 ed25519-dalek = { version = "2.0.0", default-features = false }
 fuel-types = { workspace = true, default-features = false }
+half = { version = "=2.4.1", default-features = false }
 k256 = { version = "0.13", default-features = false, features = ["digest", "ecdsa"] }
 lazy_static = { version = "1.4", optional = true }
 p256 = { version = "0.13", default-features = false, features = ["digest", "ecdsa"] }

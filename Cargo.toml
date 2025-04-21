@@ -34,6 +34,7 @@ fuel-vm = { version = "0.59.2", path = "fuel-vm", default-features = false }
 bitflags = "2"
 bincode = { version = "1.3", default-features = false }
 criterion = "0.5.0"
+base64ct = "=1.6.0"
 
 [profile.web-release] # For minimal wasm binaries, use this profile
 inherits = "release"

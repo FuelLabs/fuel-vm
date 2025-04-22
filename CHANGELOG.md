@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [Version 0.60.1]
+
 ### Fixed
 
 - [942](https://github.com/FuelLabs/fuel-vm/pull/942): Fix heap memory reallocation after reset.

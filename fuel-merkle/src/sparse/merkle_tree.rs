@@ -280,7 +280,6 @@ where
             .collect::<alloc::collections::BTreeMap<Bytes32, D>>();
         let mut branches = sorted
             .iter()
-            .filter(|(_, value)| !value.as_ref().is_empty())
             .map(|(key, data)| Node::create_leaf(key, data))
             .map(Into::<Branch>::into)
             .collect::<Vec<_>>();
@@ -405,18 +404,11 @@ where
         Ok(tree)
     }
 
-    pub fn update(
+    pub fn insert(
         &mut self,
         key: MerkleTreeKey,
         data: &[u8],
     ) -> Result<(), MerkleTreeError<StorageError>> {
-        if data.is_empty() {
-            // If the data is empty, this signifies a delete operation for the
-            // given key.
-            self.delete(key)?;
-            return Ok(())
-        }
-
         let leaf_node = Node::create_leaf(key.as_ref(), data);
         self.storage
             .insert(leaf_node.hash(), &leaf_node.as_ref().into())?;
@@ -782,7 +774,7 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
 
         let root = tree.root();
         let expected_root =
@@ -795,8 +787,8 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
 
         let root = tree.root();
         let expected_root =
@@ -809,9 +801,9 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
 
         let root = tree.root();
         let expected_root =
@@ -824,11 +816,11 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
 
         let root = tree.root();
         let expected_root =
@@ -843,7 +835,7 @@ mod test {
 
         for i in 0_u32..10 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         let root = tree.root();
@@ -859,7 +851,7 @@ mod test {
 
         for i in 0_u32..100 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         let root = tree.root();
@@ -873,8 +865,8 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
 
         let root = tree.root();
         let expected_root =
@@ -887,8 +879,8 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x00"), b"CHANGE").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"CHANGE").unwrap();
 
         let root = tree.root();
         let expected_root =
@@ -903,19 +895,19 @@ mod test {
 
         for i in 0_u32..10 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         let root_hash_before = tree.root();
 
         for i in 3_u32..7 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA_2").unwrap();
+            tree.insert(key, b"DATA_2").unwrap();
         }
 
         for i in 3_u32..7 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         let root_hash_after = tree.root();
@@ -930,17 +922,17 @@ mod test {
 
         for i in 0_u32..5 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         for i in 10_u32..15 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         for i in 20_u32..25 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         let root = tree.root();
@@ -954,11 +946,11 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x06"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x08"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x06"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x08"), b"DATA").unwrap();
 
         let root = tree.root();
         let expected_root =
@@ -967,29 +959,29 @@ mod test {
     }
 
     #[test]
-    fn test_update_with_empty_data_does_not_change_root() {
+    fn test_insert_empty_data_changes_root() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"").unwrap();
 
         let root = tree.root();
         let expected_root =
-            "0000000000000000000000000000000000000000000000000000000000000000";
+            "3529664b414de6285270f7ebda7a43e20ae0ff6191c07d876b86282eb8ce93ce";
         assert_eq!(hex::encode(root), expected_root);
     }
 
     #[test]
-    fn test_update_with_empty_data_performs_delete() {
+    fn test_update_with_empty_data_changes_root() {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x00"), b"").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"").unwrap();
 
         let root = tree.root();
         let expected_root =
-            "0000000000000000000000000000000000000000000000000000000000000000";
+            "3529664b414de6285270f7ebda7a43e20ae0ff6191c07d876b86282eb8ce93ce";
         assert_eq!(hex::encode(root), expected_root);
     }
 
@@ -998,7 +990,7 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
         tree.delete(key(b"\x00\x00\x00\x00")).unwrap();
 
         let root = tree.root();
@@ -1012,8 +1004,8 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
         tree.delete(key(b"\x00\x00\x00\x01")).unwrap();
 
         let root = tree.root();
@@ -1029,7 +1021,7 @@ mod test {
 
         for i in 0_u32..10 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         for i in 5_u32..10 {
@@ -1048,11 +1040,11 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
         let mut tree = MerkleTree::new(&mut storage);
 
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
         tree.delete(key(b"\x00\x00\x04\x00")).unwrap();
 
         let root = tree.root();
@@ -1068,7 +1060,7 @@ mod test {
 
         for i in 0_u32..10 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         for i in 5_u32..15 {
@@ -1078,7 +1070,7 @@ mod test {
 
         for i in 10_u32..20 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         for i in 15_u32..25 {
@@ -1088,7 +1080,7 @@ mod test {
 
         for i in 20_u32..30 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         for i in 25_u32..35 {
@@ -1110,18 +1102,18 @@ mod test {
 
         for i in 0_u32..tenth_index {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
         let size_before_tenth = tree.storage().len();
         let tenth_key = key(tenth_index.to_be_bytes());
 
         // Given
-        tree.update(tenth_key, b"DATA").unwrap();
+        tree.insert(tenth_key, b"DATA").unwrap();
         let size_after_tenth = tree.storage().len();
         assert_ne!(size_after_tenth, size_before_tenth);
 
         // When
-        tree.update(tenth_key, b"ANOTHER_DATA").unwrap();
+        tree.insert(tenth_key, b"ANOTHER_DATA").unwrap();
 
         // Then
         assert_eq!(tree.storage().len(), size_after_tenth);
@@ -1135,18 +1127,18 @@ mod test {
 
         for i in 0_u32..tenth_index {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
         let size_before_tenth = tree.storage().len();
         let tenth_key = key(tenth_index.to_be_bytes());
 
         // Given
-        tree.update(tenth_key, b"DATA").unwrap();
+        tree.insert(tenth_key, b"DATA").unwrap();
         let size_after_tenth = tree.storage().len();
         assert_ne!(size_after_tenth, size_before_tenth);
 
         // When
-        tree.update(tenth_key, b"DATA").unwrap();
+        tree.insert(tenth_key, b"DATA").unwrap();
 
         // Then
         assert_eq!(tree.storage().len(), size_after_tenth);
@@ -1160,13 +1152,13 @@ mod test {
 
         for i in 0_u32..tenth_index {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
         let size_before_tenth = tree.storage().len();
         let tenth_key = key(tenth_index.to_be_bytes());
 
         // Given
-        tree.update(tenth_key, b"DATA").unwrap();
+        tree.insert(tenth_key, b"DATA").unwrap();
         let size_after_tenth = tree.storage().len();
         assert_ne!(size_after_tenth, size_before_tenth);
 
@@ -1184,7 +1176,7 @@ mod test {
 
         for i in 0_u32..10 {
             let key = key(i.to_be_bytes());
-            tree.update(key, b"DATA").unwrap();
+            tree.insert(key, b"DATA").unwrap();
         }
 
         for i in 0_u32..5 {
@@ -1212,8 +1204,8 @@ mod test {
         let leaf_2_data = b"DATA_2";
         let leaf_2 = Node::create_leaf(&leaf_2_key.0, leaf_2_data);
 
-        tree.update(leaf_2_key, leaf_2_data).unwrap();
-        tree.update(leaf_1_key, leaf_1_data).unwrap();
+        tree.insert(leaf_2_key, leaf_2_data).unwrap();
+        tree.insert(leaf_1_key, leaf_1_data).unwrap();
         assert_eq!(
             tree.storage
                 .get(leaf_2.hash())
@@ -1243,11 +1235,11 @@ mod test {
         let (mut storage_to_load, root_to_load) = {
             let mut storage = StorageMap::<TestTable>::new();
             let mut tree = MerkleTree::new(&mut storage);
-            tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
             let root = tree.root();
             (storage, root)
         };
@@ -1258,16 +1250,16 @@ mod test {
         let expected_root = {
             let mut storage = StorageMap::<TestTable>::new();
             let mut tree = MerkleTree::new(&mut storage);
-            tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x05"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x06"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x07"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x08"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x09"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x05"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x06"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x07"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x08"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x09"), b"DATA").unwrap();
             tree.root()
         };
 
@@ -1278,11 +1270,11 @@ mod test {
             // root matches the expected root. This verifies that the loaded tree has
             // successfully wrapped the given storage backing and assumed the correct
             // state so that future updates can be made seamlessly.
-            tree.update(key(b"\x00\x00\x00\x05"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x06"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x07"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x08"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x09"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x05"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x06"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x07"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x08"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x09"), b"DATA").unwrap();
             tree.root()
         };
 
@@ -1304,11 +1296,11 @@ mod test {
 
         {
             let mut tree = MerkleTree::new(&mut storage);
-            tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
-            tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+            tree.insert(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
         }
 
         let root = &sum(b"\xff\xff\xff\xff");
@@ -1324,11 +1316,11 @@ mod test {
         let mut storage = StorageMap::<TestTable>::new();
 
         let mut tree = MerkleTree::new(&mut storage);
-        tree.update(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
-        tree.update(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x00"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x01"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x02"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x03"), b"DATA").unwrap();
+        tree.insert(key(b"\x00\x00\x00\x04"), b"DATA").unwrap();
         let root = tree.root();
 
         // Overwrite the root key-value with an invalid primitive to create a
@@ -1359,7 +1351,7 @@ mod test {
             let mut tree = MerkleTree::new(&mut storage);
             let input = data.clone();
             for (key, value) in input.into_iter() {
-                tree.update(key, &value).unwrap();
+                tree.insert(key, &value).unwrap();
             }
             tree.root()
         };
@@ -1389,7 +1381,7 @@ mod test {
             let mut tree = MerkleTree::new(&mut storage);
             let input = data.clone();
             for (key, value) in input.into_iter() {
-                tree.update(key, &value).unwrap();
+                tree.insert(key, &value).unwrap();
             }
             tree.root()
         };
@@ -1419,7 +1411,7 @@ mod test {
             let mut tree = MerkleTree::new(&mut storage);
             let input = data.clone();
             for (key, value) in input.into_iter() {
-                tree.update(key, &value).unwrap();
+                tree.insert(key, &value).unwrap();
             }
             tree.root()
         };
@@ -1455,7 +1447,7 @@ mod test {
             let mut tree = MerkleTree::new(&mut storage);
             let input = data;
             for (key, value) in input.into_iter() {
-                tree.update(key, &value).unwrap();
+                tree.insert(key, &value).unwrap();
             }
             tree.root()
         };
@@ -1491,7 +1483,7 @@ mod test {
             let mut tree = MerkleTree::new(&mut storage);
             let input = data.clone();
             for (key, value) in input.into_iter() {
-                tree.update(key, &value).unwrap();
+                tree.insert(key, &value).unwrap();
             }
             tree.root()
         };
@@ -1526,25 +1518,25 @@ mod test {
 
         let k0 = [0u8; 32];
         let v0 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+        tree.insert(MerkleTreeKey::new_without_hash(k0), &v0)
             .expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let v1 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+        tree.insert(MerkleTreeKey::new_without_hash(k1), &v1)
             .expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let v2 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+        tree.insert(MerkleTreeKey::new_without_hash(k2), &v2)
             .expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let v3 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+        tree.insert(MerkleTreeKey::new_without_hash(k3), &v3)
             .expect("Expected successful update");
 
         let l0 = Node::create_leaf(&k0, v0);
@@ -1640,25 +1632,25 @@ mod test {
 
         let k0 = [0u8; 32];
         let v0 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+        tree.insert(MerkleTreeKey::new_without_hash(k0), &v0)
             .expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let v1 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+        tree.insert(MerkleTreeKey::new_without_hash(k1), &v1)
             .expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let v2 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+        tree.insert(MerkleTreeKey::new_without_hash(k2), &v2)
             .expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let v3 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+        tree.insert(MerkleTreeKey::new_without_hash(k3), &v3)
             .expect("Expected successful update");
 
         // When
@@ -1689,25 +1681,25 @@ mod test {
 
         let k0 = [0u8; 32];
         let v0 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k0), &v0)
+        tree.insert(MerkleTreeKey::new_without_hash(k0), &v0)
             .expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let v1 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k1), &v1)
+        tree.insert(MerkleTreeKey::new_without_hash(k1), &v1)
             .expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let v2 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k2), &v2)
+        tree.insert(MerkleTreeKey::new_without_hash(k2), &v2)
             .expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let v3 = sum(b"DATA");
-        tree.update(MerkleTreeKey::new_without_hash(k3), &v3)
+        tree.insert(MerkleTreeKey::new_without_hash(k3), &v3)
             .expect("Expected successful update");
 
         // When

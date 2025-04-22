@@ -50,6 +50,7 @@ mod tests;
 #[cfg(test)]
 mod impl_tests;
 
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod allocation_tests;
 
@@ -186,6 +187,26 @@ impl MemoryInstance {
             self.heap[start..end].fill(0);
         } else {
             // Reallocation is needed.
+
+            // Need to clear dirty memory before expanding it. An example:
+            // Heap vector: [dirty, dirty, dirty, 0, 0, 0]
+            //                                   /|\
+            //                                    |
+            //                                   HP
+            //
+            // If we copy from [0, old_len), it means we copy the dirty memory as well.
+            // Ending up with:
+            // Heap vector: [0, 0, dirty, dirty, dirty, 0, 0, 0]
+            //              /|\
+            //               |
+            //              HP
+            //
+            // So, either we need to clear the memory before copying,
+            // or after we copied dirty parts.
+            // Clearing before looks like more readable solution.
+            let end = self.hp.saturating_sub(self.heap_offset());
+            self.heap[..end].fill(0);
+
             // To reduce frequent reallocations, allocate at least 256 bytes at once.
             // After that, double the allocation every time.
             let cap = new_len.next_power_of_two().clamp(256, MEM_SIZE);

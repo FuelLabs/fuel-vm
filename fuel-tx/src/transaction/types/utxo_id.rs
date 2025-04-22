@@ -9,11 +9,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 /// Identification of unspend transaction output.
@@ -84,7 +84,7 @@ impl Distribution<UtxoId> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> UtxoId {
         let mut tx_id = Bytes32::default();
         rng.fill_bytes(tx_id.as_mut());
-        UtxoId::new(tx_id, rng.gen())
+        UtxoId::new(tx_id, rng.r#gen())
     }
 }
 

@@ -1,8 +1,8 @@
 use super::super::{
-    internal::inc_pc,
-    is_wrapping,
     ExecutableTransaction,
     Interpreter,
+    internal::inc_pc,
+    is_wrapping,
 };
 use crate::{
     constraints::reg_key::*,

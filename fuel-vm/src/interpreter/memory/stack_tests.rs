@@ -12,9 +12,9 @@ use crate::{
     consts::*,
     error::PanicOrBug,
     interpreter::memory::{
+        MemoryInstance,
         pop_selected_registers,
         push_selected_registers,
-        MemoryInstance,
     },
 };
 

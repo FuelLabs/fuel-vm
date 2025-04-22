@@ -1,7 +1,7 @@
 use crate::binary::{
+    Data,
     leaf_sum,
     node_sum,
-    Data,
 };
 
 pub fn verify<T: AsRef<[u8]>>(
@@ -70,11 +70,11 @@ pub fn verify<T: AsRef<[u8]>>(
 mod test {
     use super::verify;
     use crate::{
+        TEST_DATA,
         binary::{
             Data,
             MerkleTree,
         },
-        TEST_DATA,
     };
 
     #[test]
@@ -101,8 +101,8 @@ mod test {
     }
 
     #[test]
-    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root(
-    ) {
+    fn verify_returns_false_when_the_given_proof_set_does_not_match_the_given_merkle_root()
+     {
         // Check the Merkle root of one tree against the computed Merkle root of
         // another tree's proof set: because the two roots come from different
         // trees, the comparison should fail.

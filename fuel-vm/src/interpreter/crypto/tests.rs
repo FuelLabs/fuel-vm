@@ -3,9 +3,9 @@ use alloc::vec;
 
 use fuel_crypto::SecretKey;
 use rand::{
-    rngs::StdRng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 use rstest::rstest;
 

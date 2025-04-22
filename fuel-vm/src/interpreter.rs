@@ -27,7 +27,6 @@ use fuel_asm::{
     PanicReason,
 };
 use fuel_tx::{
-    field,
     Blob,
     Chargeable,
     Create,
@@ -44,6 +43,7 @@ use fuel_tx::{
     Upgrade,
     Upload,
     ValidityError,
+    field,
 };
 use fuel_types::{
     AssetId,

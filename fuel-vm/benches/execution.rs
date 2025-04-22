@@ -1,12 +1,12 @@
 use criterion::{
+    Criterion,
     black_box,
     criterion_group,
     criterion_main,
-    Criterion,
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
     Finalizable,

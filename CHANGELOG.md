@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Added new `GetGasPrice` `GM` opcode argument to retrieve the gas price of the base asset id in scripts/contracts.
+
 ## [Version 0.60.1]
 
 ### Fixed

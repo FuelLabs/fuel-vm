@@ -50,6 +50,7 @@ mod tests;
 #[cfg(test)]
 mod impl_tests;
 
+#[allow(non_snake_case)]
 #[cfg(test)]
 mod allocation_tests;
 

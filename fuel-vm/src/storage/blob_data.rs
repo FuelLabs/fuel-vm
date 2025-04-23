@@ -1,7 +1,7 @@
 use fuel_storage::Mappable;
 use fuel_types::{
-    fmt_truncated_hex,
     BlobId,
+    fmt_truncated_hex,
 };
 
 use alloc::vec::Vec;
@@ -9,11 +9,11 @@ use educe::Educe;
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 /// The storage table for blob data bytes.
@@ -74,7 +74,7 @@ impl Distribution<BlobBytes> for Standard {
         let len = rng.gen_range(0..1024);
         let mut val = Vec::new();
         for _ in 0..len {
-            val.push(rng.gen());
+            val.push(rng.r#gen());
         }
         BlobBytes(val)
     }

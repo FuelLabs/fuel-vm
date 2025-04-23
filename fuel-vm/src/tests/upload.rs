@@ -5,12 +5,10 @@ use crate::{
     storage::UploadedBytecode,
 };
 use fuel_asm::{
-    op,
     PanicReason,
+    op,
 };
 use fuel_tx::{
-    field::Outputs,
-    policies::Policies,
     GasCosts,
     Input,
     Output,
@@ -18,6 +16,8 @@ use fuel_tx::{
     Upload,
     UploadSubsection,
     ValidityError,
+    field::Outputs,
+    policies::Policies,
 };
 use fuel_types::AssetId;
 
@@ -82,11 +82,13 @@ fn transact__uploads_bytecode_with_one_subsection() {
 
     // Given
     let tx = valid_transaction_from_subsection(subsections[0].clone());
-    assert!(!client
-        .as_ref()
-        .storage_as_ref::<UploadedBytecodes>()
-        .contains_key(&root)
-        .unwrap());
+    assert!(
+        !client
+            .as_ref()
+            .storage_as_ref::<UploadedBytecodes>()
+            .contains_key(&root)
+            .unwrap()
+    );
 
     // When
     let _ = client.transact(tx).expect("Failed to transact");

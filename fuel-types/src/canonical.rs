@@ -186,11 +186,7 @@ pub const ALIGN: usize = 8;
 #[allow(clippy::arithmetic_side_effects)] // Safety: (a % b) < b
 const fn alignment_bytes(len: usize) -> usize {
     let modulo = len % ALIGN;
-    if modulo == 0 {
-        0
-    } else {
-        ALIGN - modulo
-    }
+    if modulo == 0 { 0 } else { ALIGN - modulo }
 }
 
 /// Size after alignment. Saturates on overflow.

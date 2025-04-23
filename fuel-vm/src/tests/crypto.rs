@@ -7,17 +7,17 @@ use alloc::{
 use test_case::test_case;
 
 use fuel_asm::{
-    op,
     GTFArgs,
     PanicReason::MemoryOverflow,
     RegId,
+    op,
 };
 use fuel_crypto::{
-    secp256r1::encode_pubkey,
     Hasher,
     PublicKey,
     SecretKey,
     Signature,
+    secp256r1::encode_pubkey,
 };
 use fuel_tx::{
     ConsensusParameters,
@@ -25,8 +25,8 @@ use fuel_tx::{
 };
 use fuel_types::ChainId;
 use rand::{
-    rngs::StdRng,
     SeedableRng,
+    rngs::StdRng,
 };
 use sha3::{
     Digest,
@@ -206,10 +206,10 @@ async fn recover_tx_id_predicate() {
     let script_data = public.as_ref().to_vec();
 
     let input = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         Input::predicate_owner(&predicate),
         1000,
-        rng.gen(),
+        rng.r#gen(),
         Default::default(),
         0,
         predicate,
@@ -222,9 +222,9 @@ async fn recover_tx_id_predicate() {
         .add_input(input)
         .add_unsigned_coin_input(
             secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             Default::default(),
         )
         .finalize();

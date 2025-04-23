@@ -1,8 +1,8 @@
 #![cfg(feature = "alloc")]
 
 use super::{
-    internal::inc_pc,
     Interpreter,
+    internal::inc_pc,
 };
 use crate::{
     constraints::reg_key::*,
@@ -17,8 +17,8 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
-    fmt_truncated_hex,
     Word,
+    fmt_truncated_hex,
 };
 
 use core::{

@@ -1,6 +1,6 @@
 use fuel_types::{
-    bytes::WORD_SIZE,
     AssetId,
+    bytes::WORD_SIZE,
 };
 
 /// Size of balance entry, i.e. asset id and associated balance.

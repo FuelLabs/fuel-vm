@@ -20,10 +20,12 @@ use super::{
     Memory,
 };
 
+pub mod syscall;
+
 /// ECAL opcode handler
-pub trait EcalHandler: Clone
+pub trait EcalHandler
 where
-    Self: Sized,
+    Self: Clone,
 {
     /// Whether to increment PC after executing ECAL. If this is false,
     /// the handler must increment PC itself.
@@ -51,23 +53,6 @@ impl EcalHandler for NotSupportedEcal {
         _: RegId,
     ) -> SimpleResult<()> {
         Err(PanicReason::EcalError)?
-    }
-}
-
-/// ECAL is not allowed in predicates
-#[derive(Debug, Clone, Copy, Default)]
-pub struct PredicateErrorEcal;
-
-/// ECAL is not allowed in predicates
-impl EcalHandler for PredicateErrorEcal {
-    fn ecal<M, S, Tx, V>(
-        _vm: &mut Interpreter<M, S, Tx, Self, V>,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-        _: RegId,
-    ) -> SimpleResult<()> {
-        Err(PanicReason::ContractInstructionNotAllowed)?
     }
 }
 

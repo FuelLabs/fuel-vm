@@ -32,7 +32,9 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
         self.registers[RegId::CGAS] = gas;
     }
 
-    pub(crate) fn dependent_gas_charge(
+    /// Do a gas charge for opcodes with variable size of input data, panicing when
+    /// running out of gas.
+    pub fn dependent_gas_charge(
         &mut self,
         gas_cost: DependentCost,
         arg: Word,
@@ -41,7 +43,8 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V> {
         dependent_gas_charge(cgas, ggas, gas_cost, arg)
     }
 
-    pub(crate) fn dependent_gas_charge_without_base(
+    /// Similar to [`Self::dependent_gas_charge`], but without the base gas charge.
+    pub fn dependent_gas_charge_without_base(
         &mut self,
         gas_cost: DependentCost,
         arg: Word,

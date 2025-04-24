@@ -146,7 +146,10 @@ enum PredicateAction {
 /// transaction.
 pub mod predicates {
     use super::*;
-    use crate::storage::predicate::PredicateStorageProvider;
+    use crate::{
+        interpreter::syscall::EcalSyscallHandler,
+        storage::predicate::PredicateStorageProvider,
+    };
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -392,13 +395,15 @@ pub mod predicates {
             }
         }
 
+        let ecal = EcalSyscallHandler::new(params.allow_syscall);
         let zero_gas_price = 0;
         let interpreter_params = InterpreterParams::new(zero_gas_price, params);
 
-        let mut vm = Interpreter::<_, _, _>::with_storage(
+        let mut vm = Interpreter::<_, _, _, _>::with_storage_and_ecal(
             memory,
             PredicateStorage::new(storage),
             interpreter_params,
+            ecal,
         );
 
         let (context, available_gas) = match predicate_action {
@@ -423,6 +428,31 @@ pub mod predicates {
 
         let result = vm.verify_predicate();
         let is_successful = matches!(result, Ok(ProgramState::Return(0x01)));
+
+        let logs = vm.ecal_state().logs();
+
+        if !logs.is_empty() {
+            let logs_string = logs.join("\n");
+            let tx_id = vm.tx.id(&vm.interpreter_params.chain_id);
+
+            let span = if predicate_action == PredicateAction::Verifying {
+                tracing::info_span!(
+                    "check_predicate",
+                    tx_id = % tx_id,
+                    predicate_index = index
+                )
+            } else {
+                tracing::info_span!(
+                    "estimate_predicate",
+                    tx_id = % tx_id,
+                    predicate_index = index
+                )
+            };
+
+            span.in_scope(|| {
+                tracing::info!("\n{}", logs_string);
+            });
+        }
 
         let Some(gas_used) = available_gas.checked_sub(vm.remaining_gas()) else {
             return (0, Err(Bug::new(BugVariant::GlobalGasUnderflow).into()));

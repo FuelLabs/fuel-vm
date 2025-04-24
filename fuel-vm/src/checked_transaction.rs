@@ -304,6 +304,7 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     /// Metadata produced during the check.
     type Metadata: Sized;
 
+    #[cfg(feature = "test-helpers")]
     /// Returns transaction that passed all `Checks`.
     fn into_checked(
         self,
@@ -313,9 +314,11 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
     where
         Checked<Self>: CheckPredicates,
     {
+        let check_predicate_params = consensus_params.into();
         self.into_checked_reusable_memory(
             block_height,
             consensus_params,
+            &check_predicate_params,
             MemoryInstance::new(),
             &EmptyStorage,
         )
@@ -327,16 +330,16 @@ pub trait IntoChecked: FormatValidityChecks + Sized {
         self,
         block_height: BlockHeight,
         consensus_params: &ConsensusParameters,
+        check_predicate_params: &CheckPredicateParams,
         memory: impl Memory,
         storage: &impl PredicateStorageRequirements,
     ) -> Result<Checked<Self>, CheckError>
     where
         Checked<Self>: CheckPredicates,
     {
-        let check_predicate_params = consensus_params.into();
         self.into_checked_basic(block_height, consensus_params)?
             .check_signatures(&consensus_params.chain_id())?
-            .check_predicates(&check_predicate_params, memory, storage)
+            .check_predicates(check_predicate_params, memory, storage)
     }
 
     /// Returns transaction that passed only `Checks::Basic`.
@@ -370,6 +373,8 @@ pub struct CheckPredicateParams {
     pub fee_params: FeeParameters,
     /// Base Asset ID
     pub base_asset_id: AssetId,
+    /// Allows the usage of syscalls in predicates.
+    pub allow_syscall: bool,
 }
 
 #[cfg(feature = "test-helpers")]
@@ -398,6 +403,7 @@ impl From<&ConsensusParameters> for CheckPredicateParams {
             tx_offset: value.tx_params().tx_offset(),
             fee_params: *(value.fee_params()),
             base_asset_id: *value.base_asset_id(),
+            allow_syscall: false,
         }
     }
 }

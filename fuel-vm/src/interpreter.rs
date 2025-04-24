@@ -77,8 +77,8 @@ mod ecal;
 
 pub use balances::RuntimeBalances;
 pub use ecal::{
+    syscall,
     EcalHandler,
-    PredicateErrorEcal,
 };
 pub use executors::predicates;
 pub use memory::{

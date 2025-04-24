@@ -127,11 +127,13 @@ pub mod prelude {
         },
         interpreter::{
             predicates,
+            syscall,
             ExecutableTransaction,
             Interpreter,
             Memory,
             MemoryInstance,
             MemoryRange,
+            NotSupportedEcal,
         },
         pool::VmMemoryPool,
         predicate::RuntimePredicate,

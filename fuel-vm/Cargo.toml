@@ -48,6 +48,7 @@ sha3 = { version = "0.10", default-features = false }
 static_assertions = "1.1"
 strum = { version = "0.24", features = ["derive"], default-features = false }
 tai64 = { version = "4.0", default-features = false, optional = true }
+tracing = "0.1"
 
 [dev-dependencies]
 criterion = { workspace = true }
@@ -71,6 +72,7 @@ rstest = "0.17"
 test-case = "3.3"
 tokio = { version = "1.27", features = ["full"] }
 tokio-rayon = "2.1.0"
+tracing-test = "0.2"
 
 [features]
 default = ["std"]

@@ -52,10 +52,12 @@ where
         height: BlockHeight,
         storage: &impl PredicateStorageRequirements,
     ) -> Checked<Tx> {
+        let check_params = self.get_params().into();
         self.finalize()
             .into_checked_reusable_memory(
                 height,
                 self.get_params(),
+                &check_params,
                 MemoryInstance::new(),
                 storage,
             )

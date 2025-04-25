@@ -18,13 +18,13 @@ use crate::{
 };
 
 use super::{
-    internal::inc_pc,
-    split_registers,
     GetRegMut,
     Interpreter,
     Memory,
     SystemRegisters,
     WriteRegKey,
+    internal::inc_pc,
+    split_registers,
 };
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>

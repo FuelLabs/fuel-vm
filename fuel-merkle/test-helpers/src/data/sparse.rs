@@ -1,8 +1,8 @@
 use fuel_merkle::{
     common::Bytes32,
     sparse::{
-        in_memory,
         MerkleTreeKey,
+        in_memory,
     },
 };
 use serde::Deserialize;

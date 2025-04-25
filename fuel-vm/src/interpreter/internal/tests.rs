@@ -3,26 +3,26 @@ use alloc::vec;
 use crate::{
     constraints::reg_key::RegMut,
     interpreter::{
+        InterpreterParams,
+        MemoryInstance,
         internal::{
             external_asset_id_balance_sub,
             set_variable_output,
         },
-        InterpreterParams,
-        MemoryInstance,
     },
     prelude::*,
 };
 use fuel_asm::op;
 use fuel_tx::{
-    field::Outputs,
     ConsensusParameters,
     TransactionBuilder,
+    field::Outputs,
 };
 use fuel_types::canonical::Deserialize;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use super::inc_pc;
@@ -41,17 +41,17 @@ fn external_balance() {
     let fee_params = *ConsensusParameters::standard().fee_params();
 
     let script = op::ret(0x01).to_bytes().to_vec();
-    let balances = vec![(rng.gen(), 100), (rng.gen(), 500)];
+    let balances = vec![(rng.r#gen(), 100), (rng.r#gen(), 500)];
 
     let mut builder = TransactionBuilder::script(script, Default::default());
 
     balances.iter().copied().for_each(|(asset, amount)| {
         builder.add_unsigned_coin_input(
             SecretKey::random(&mut rng),
-            rng.gen(),
+            rng.r#gen(),
             amount,
             asset,
-            rng.gen(),
+            rng.r#gen(),
         );
     });
 
@@ -66,13 +66,15 @@ fn external_balance() {
     vm.init_script(tx).expect("Failed to init VM!");
 
     for (asset_id, amount) in balances {
-        assert!(external_asset_id_balance_sub(
-            &mut vm.balances,
-            vm.memory.as_mut(),
-            &asset_id,
-            amount + 1,
-        )
-        .is_err());
+        assert!(
+            external_asset_id_balance_sub(
+                &mut vm.balances,
+                vm.memory.as_mut(),
+                &asset_id,
+                amount + 1,
+            )
+            .is_err()
+        );
         external_asset_id_balance_sub(
             &mut vm.balances,
             vm.memory.as_mut(),
@@ -80,13 +82,15 @@ fn external_balance() {
             amount - 10,
         )
         .unwrap();
-        assert!(external_asset_id_balance_sub(
-            &mut vm.balances,
-            vm.memory.as_mut(),
-            &asset_id,
-            11,
-        )
-        .is_err());
+        assert!(
+            external_asset_id_balance_sub(
+                &mut vm.balances,
+                vm.memory.as_mut(),
+                &asset_id,
+                11,
+            )
+            .is_err()
+        );
         external_asset_id_balance_sub(
             &mut vm.balances,
             vm.memory.as_mut(),
@@ -94,13 +98,15 @@ fn external_balance() {
             10,
         )
         .unwrap();
-        assert!(external_asset_id_balance_sub(
-            &mut vm.balances,
-            vm.memory.as_mut(),
-            &asset_id,
-            1,
-        )
-        .is_err());
+        assert!(
+            external_asset_id_balance_sub(
+                &mut vm.balances,
+                vm.memory.as_mut(),
+                &asset_id,
+                1,
+            )
+            .is_err()
+        );
     }
 }
 
@@ -119,14 +125,14 @@ fn variable_output_updates_in_memory() {
 
     let gas_limit = 1_000_000;
     let height = Default::default();
-    let asset_id_to_update: AssetId = rng.gen();
+    let asset_id_to_update: AssetId = rng.r#gen();
     let amount_to_set: Word = 100;
-    let owner: Address = rng.gen();
+    let owner: Address = rng.r#gen();
 
     let variable_output = Output::Variable {
-        to: rng.gen(),
+        to: rng.r#gen(),
         amount: 0,
-        asset_id: rng.gen(),
+        asset_id: rng.r#gen(),
     };
 
     let tx = TransactionBuilder::script(vec![], vec![])

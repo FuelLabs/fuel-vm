@@ -1,15 +1,15 @@
 use fuel_crypto::Hasher;
 use fuel_types::{
-    canonical::{
-        self,
-        Serialize as _,
-    },
     Address,
     AssetId,
     Bytes32,
     ContractId,
     Nonce,
     Word,
+    canonical::{
+        self,
+        Serialize as _,
+    },
 };
 
 mod consts;

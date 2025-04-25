@@ -9,23 +9,23 @@ use crate::{
         *,
     },
     util::test_helpers::{
-        find_change,
         TestBuilder,
+        find_change,
     },
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
-    policies::Policies,
     ConsensusParameters,
     Witness,
+    policies::Policies,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 /// Testing of post-execution output handling
@@ -34,7 +34,7 @@ fn full_change_with_no_fees() {
     let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let gas_price = 0;
-    let base_asset_id: AssetId = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -48,7 +48,7 @@ fn full_change_with_no_fees() {
 #[test]
 fn used_gas_is_deducted_from_base_asset_change() {
     let mut rng = StdRng::seed_from_u64(2322u64);
-    let base_asset_id = rng.gen();
+    let base_asset_id = rng.r#gen();
     let input_amount = 1000;
     let gas_price = 1;
 
@@ -66,7 +66,7 @@ fn used_gas_is_deducted_from_base_asset_change() {
 #[test]
 fn used_gas_is_deducted_from_base_asset_change_on_revert() {
     let mut rng = StdRng::seed_from_u64(2322u64);
-    let base_asset_id = rng.gen();
+    let base_asset_id = rng.r#gen();
     let input_amount = 1000;
     let gas_price = 1;
 
@@ -98,7 +98,7 @@ fn correct_change_is_provided_for_coin_outputs_script() {
     let input_amount = 1000;
     let gas_price = 0;
     let spend_amount = 600;
-    let asset_id: AssetId = rng.gen();
+    let asset_id: AssetId = rng.r#gen();
 
     let change = TestBuilder::new(2322u64)
         .gas_price(gas_price)
@@ -115,12 +115,12 @@ fn correct_change_is_provided_for_coin_outputs_create() {
     let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let spend_amount = 600;
-    let base_asset_id: AssetId = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
 
     #[rustfmt::skip]
     let invalid_instruction_bytecode = vec![0u8; 4];
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let program: Witness = invalid_instruction_bytecode.into();
 
     let contract = Contract::from(program.as_ref());
@@ -142,17 +142,17 @@ fn correct_change_is_provided_for_coin_outputs_create() {
         vec![],
         vec![
             output,
-            Output::change(rng.gen(), 0, base_asset_id),
-            Output::coin(rng.gen(), spend_amount, base_asset_id),
+            Output::change(rng.r#gen(), 0, base_asset_id),
+            Output::coin(rng.r#gen(), spend_amount, base_asset_id),
         ],
         vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         &Default::default(),
         input_amount,
         base_asset_id,
-        rng.gen(),
+        rng.r#gen(),
         Default::default(),
     );
 
@@ -186,12 +186,12 @@ fn correct_change_is_provided_for_data_coin_outputs_create() {
     // given
     let input_amount = 1000;
     let spend_amount = 600;
-    let base_asset_id: AssetId = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
 
     #[rustfmt::skip]
     let invalid_instruction_bytecode = vec![0u8; 4];
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let program: Witness = invalid_instruction_bytecode.into();
 
     let contract = Contract::from(program.as_ref());
@@ -213,17 +213,17 @@ fn correct_change_is_provided_for_data_coin_outputs_create() {
         vec![],
         vec![
             output,
-            Output::change(rng.gen(), 0, base_asset_id),
-            Output::data_coin(rng.gen(), spend_amount, base_asset_id, vec![]),
+            Output::change(rng.r#gen(), 0, base_asset_id),
+            Output::data_coin(rng.r#gen(), spend_amount, base_asset_id, vec![]),
         ],
         vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         &Default::default(),
         input_amount,
         base_asset_id,
-        rng.gen(),
+        rng.r#gen(),
         Default::default(),
     );
 
@@ -259,11 +259,11 @@ fn transact__read_only_coin_included_but_value_not_consumed() {
     // given
     let input_amount = 1000;
     let spend_amount = 600;
-    let base_asset_id: AssetId = rng.gen();
-    let input_owner = rng.gen();
-    let utxo_id = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
+    let input_owner = rng.r#gen();
+    let utxo_id = rng.r#gen();
 
-    let change_output = Output::change(rng.gen(), 0, base_asset_id);
+    let change_output = Output::change(rng.r#gen(), 0, base_asset_id);
     let mut script = Transaction::script(
         10000,
         vec![],
@@ -283,11 +283,11 @@ fn transact__read_only_coin_included_but_value_not_consumed() {
     );
 
     script.add_read_only_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         &Default::default(),
         input_amount,
         base_asset_id,
-        rng.gen(),
+        rng.r#gen(),
     );
 
     let mut context = TestBuilder::new(2322u64);
@@ -316,11 +316,11 @@ fn transact__read_only_data_coin_included_but_value_not_consumed() {
     // given
     let input_amount = 1000;
     let spend_amount = 600;
-    let base_asset_id: AssetId = rng.gen();
-    let input_owner = rng.gen();
-    let utxo_id = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
+    let input_owner = rng.r#gen();
+    let utxo_id = rng.r#gen();
 
-    let change_output = Output::change(rng.gen(), 0, base_asset_id);
+    let change_output = Output::change(rng.r#gen(), 0, base_asset_id);
     let mut script = Transaction::script(
         10000,
         vec![],
@@ -341,11 +341,11 @@ fn transact__read_only_data_coin_included_but_value_not_consumed() {
 
     let data = vec![1, 2, 3, 4, 5, 6];
     script.add_read_only_data_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         &Default::default(),
         input_amount,
         base_asset_id,
-        rng.gen(),
+        rng.r#gen(),
         data,
     );
 
@@ -375,11 +375,11 @@ fn transact__predicate_read_only_coin_included_but_value_not_consumed() {
     // given
     let input_amount = 1000;
     let spend_amount = 600;
-    let base_asset_id: AssetId = rng.gen();
-    let input_owner = rng.gen();
-    let utxo_id = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
+    let input_owner = rng.r#gen();
+    let utxo_id = rng.r#gen();
 
-    let change_output = Output::change(rng.gen(), 0, base_asset_id);
+    let change_output = Output::change(rng.r#gen(), 0, base_asset_id);
     let mut script = Transaction::script(
         10000,
         vec![],
@@ -400,10 +400,10 @@ fn transact__predicate_read_only_coin_included_but_value_not_consumed() {
 
     let true_predicate = vec![op::ret(RegId::ONE)].into_iter().collect();
     script.add_read_only_predicate_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         input_amount,
         base_asset_id,
-        rng.gen(),
+        rng.r#gen(),
         0,
         true_predicate,
         vec![],
@@ -433,11 +433,11 @@ fn transact__predicate_read_only_data_coin_included_but_value_not_consumed() {
     // given
     let input_amount = 1000;
     let spend_amount = 600;
-    let base_asset_id: AssetId = rng.gen();
-    let input_owner = rng.gen();
-    let utxo_id = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
+    let input_owner = rng.r#gen();
+    let utxo_id = rng.r#gen();
 
-    let change_output = Output::change(rng.gen(), 0, base_asset_id);
+    let change_output = Output::change(rng.r#gen(), 0, base_asset_id);
     let mut script = Transaction::script(
         10000,
         vec![],
@@ -460,10 +460,10 @@ fn transact__predicate_read_only_data_coin_included_but_value_not_consumed() {
 
     let true_predicate = vec![op::ret(RegId::ONE)].into_iter().collect();
     script.add_read_only_predicate_data_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         input_amount,
         base_asset_id,
-        rng.gen(),
+        rng.r#gen(),
         0,
         true_predicate,
         vec![],

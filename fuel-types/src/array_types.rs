@@ -17,11 +17,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 #[cfg(all(feature = "alloc", feature = "typescript"))]
@@ -43,7 +43,7 @@ macro_rules! key {
         #[cfg(feature = "random")]
         impl Distribution<$i> for Standard {
             fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> $i {
-                $i(rng.gen())
+                $i(rng.r#gen())
             }
         }
     };
@@ -107,7 +107,7 @@ macro_rules! key_methods {
             /// `Self::LEN`. Instead, it will cause undefined behavior and read random
             /// disowned bytes
             pub unsafe fn from_slice_unchecked(bytes: &[u8]) -> Self {
-                $i($crate::bytes::from_slice_unchecked(bytes))
+                unsafe { $i($crate::bytes::from_slice_unchecked(bytes)) }
             }
 
             /// Copy-free reference cast
@@ -424,8 +424,8 @@ impl<'de, const S: usize> serde::de::Visitor<'de> for ArrayVisitor<S> {
 #[cfg(all(test, feature = "serde"))]
 mod tests_serde {
     use rand::{
-        rngs::StdRng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use super::*;
@@ -434,7 +434,7 @@ mod tests_serde {
     #[test]
     fn test_human_readable() {
         let rng = &mut StdRng::seed_from_u64(8586);
-        let original: Address = rng.gen();
+        let original: Address = rng.r#gen();
         let serialized = serde_json::to_string(&original).expect("Serialization failed");
         assert_eq!(
             serialized,
@@ -449,7 +449,7 @@ mod tests_serde {
     #[test]
     fn test_not_human_readable() {
         let rng = &mut StdRng::seed_from_u64(8586);
-        let original: Address = rng.gen();
+        let original: Address = rng.r#gen();
         let serialized = postcard::to_stdvec(&original).expect("Serialization failed");
         let expected_vec = original.0.to_vec();
         assert_eq!(&serialized, &expected_vec);
@@ -462,7 +462,7 @@ mod tests_serde {
     #[test]
     fn test_not_human_readable_incorrect_deser() {
         let rng = &mut StdRng::seed_from_u64(8586);
-        let original: Address = rng.gen();
+        let original: Address = rng.r#gen();
         let mut serialized =
             postcard::to_stdvec(&original).expect("Serialization failed");
         serialized.pop();
@@ -474,7 +474,7 @@ mod tests_serde {
     #[test]
     fn test_bincode() {
         let rng = &mut StdRng::seed_from_u64(8586);
-        let original: Address = rng.gen();
+        let original: Address = rng.r#gen();
         let serialized = bincode::serialize(&original).expect("Serialization failed");
         let recreated: Address =
             bincode::deserialize(&serialized).expect("Deserialization failed");

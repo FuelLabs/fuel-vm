@@ -1,9 +1,9 @@
 use fuel_types::{
-    bytes::WORD_SIZE,
     Address,
     AssetId,
     Bytes32,
     ContractId,
+    bytes::WORD_SIZE,
 };
 
 pub(super) const OUTPUT_CCV_TO_OFFSET: usize = WORD_SIZE; // Identifier

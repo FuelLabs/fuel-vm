@@ -6,15 +6,15 @@ use crate::{
         StorageMap,
     },
     sparse::{
+        MerkleTree,
+        MerkleTreeKey,
+        Primitive,
         proof::{
             ExclusionLeaf,
             ExclusionLeafData,
             ExclusionProof,
             Proof,
         },
-        MerkleTree,
-        MerkleTreeKey,
-        Primitive,
     },
 };
 

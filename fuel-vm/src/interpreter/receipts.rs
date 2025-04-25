@@ -8,8 +8,8 @@ use fuel_asm::PanicReason;
 use fuel_merkle::binary::root_calculator::MerkleRootCalculator as MerkleTree;
 use fuel_tx::Receipt;
 use fuel_types::{
-    canonical::Serialize,
     Bytes32,
+    canonical::Serialize,
 };
 
 use crate::{

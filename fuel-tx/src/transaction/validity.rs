@@ -1,4 +1,10 @@
 use crate::{
+    Chargeable,
+    ConsensusParameters,
+    Input,
+    Output,
+    Transaction,
+    Witness,
     field::{
         Expiration,
         Maturity,
@@ -18,28 +24,22 @@ use crate::{
     output,
     policies::PolicyType,
     transaction::{
+        Executable,
         consensus_parameters::{
             PredicateParameters,
             TxParameters,
         },
         field,
-        Executable,
     },
-    Chargeable,
-    ConsensusParameters,
-    Input,
-    Output,
-    Transaction,
-    Witness,
 };
 use core::hash::Hash;
 use fuel_types::{
-    canonical,
-    canonical::Serialize,
     Address,
     BlockHeight,
     Bytes32,
     ChainId,
+    canonical,
+    canonical::Serialize,
 };
 use hashbrown::HashMap;
 use itertools::Itertools;
@@ -510,8 +510,8 @@ where
 #[cfg(feature = "typescript")]
 mod typescript {
     use crate::{
-        transaction::consensus_parameters::typescript::PredicateParameters,
         Witness,
+        transaction::consensus_parameters::typescript::PredicateParameters,
     };
     use fuel_types::Bytes32;
     use wasm_bindgen::JsValue;

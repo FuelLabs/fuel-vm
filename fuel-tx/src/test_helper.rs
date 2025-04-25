@@ -207,9 +207,9 @@ mod use_std {
                     ),
                     4 => Output::contract_created(self.rng.r#gen(), self.rng.r#gen()),
                     5 => Output::data_coin(
-                        self.rng.gen(),
-                        self.rng.gen(),
-                        self.rng.gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
+                        self.rng.r#gen(),
                         generate_byte_array::<_, 69>(&mut self.rng).to_vec(),
                     ),
                     _ => unreachable!(),
@@ -337,12 +337,12 @@ mod use_std {
                         let owner = (*Contract::root_from_code(&predicate)).into();
 
                         let input = Input::data_coin_predicate(
-                            self.rng.gen(),
+                            self.rng.r#gen(),
                             owner,
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
-                            self.rng.gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
                             predicate,
                             generate_bytes(&mut self.rng),
                             generate_bytes(&mut self.rng),
@@ -368,10 +368,10 @@ mod use_std {
             input_coin_keys.iter().for_each(|k| {
                 builder.add_unsigned_data_coin_input(
                     *k,
-                    self.rng.gen(),
-                    self.rng.gen(),
-                    self.rng.gen(),
-                    self.rng.gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
+                    self.rng.r#gen(),
                 );
             });
 

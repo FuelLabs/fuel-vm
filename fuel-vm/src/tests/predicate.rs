@@ -119,10 +119,10 @@ impl DataCoinInputBuilder {
         let _predicate = vec![op::ret(0x01)];
         let predicate = _predicate.into_iter().collect::<Vec<u8>>();
 
-        let utxo_id = rng.gen();
+        let utxo_id = rng.r#gen();
         let amount = 0;
-        let asset_id = rng.gen();
-        let tx_pointer = rng.gen();
+        let asset_id = rng.r#gen();
+        let tx_pointer = rng.r#gen();
         let predicate_gas_used = 0;
         let predicate_data = vec![];
         let data = vec![];
@@ -181,10 +181,10 @@ where
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
 
-    let utxo_id = rng.gen();
+    let utxo_id = rng.r#gen();
     let amount = 0;
-    let asset_id = rng.gen();
-    let tx_pointer = rng.gen();
+    let asset_id = rng.r#gen();
+    let tx_pointer = rng.r#gen();
     let predicate_gas_used = 0;
 
     let owner = Input::predicate_owner(&predicate);
@@ -217,10 +217,10 @@ where
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect();
 
-    let utxo_id = rng.gen();
+    let utxo_id = rng.r#gen();
     let amount = 0;
-    let asset_id = rng.gen();
-    let tx_pointer = rng.gen();
+    let asset_id = rng.r#gen();
+    let tx_pointer = rng.r#gen();
     let predicate_gas_used = 0;
 
     let owner = Input::predicate_owner(&predicate);
@@ -236,7 +236,7 @@ where
         input_data,
     );
 
-    let different_owner = rng.gen();
+    let different_owner = rng.r#gen();
 
     let output = Output::data_coin(different_owner, amount, asset_id, output_data);
 
@@ -889,7 +889,7 @@ async fn gtf_args__output_data_coin_to() {
     let mut rng = StdRng::seed_from_u64(2322u64);
 
     // Create a random address for the output
-    let output_owner: Address = rng.gen();
+    let output_owner: Address = rng.r#gen();
 
     // Store the expected owner in predicate data
     let predicate_data = output_owner.to_bytes().to_vec();
@@ -909,7 +909,7 @@ async fn gtf_args__output_data_coin_to() {
             input_index,
             GTFArgs::InputCoinPredicateData,
         ),
-        op::gtf_args(actual_owner_reg, output_index, GTFArgs::OutputDataCoinTo),
+        op::gtf_args(actual_owner_reg, output_index, GTFArgs::OutputCoinTo),
         op::meq(
             res_reg,
             expected_owner_reg,
@@ -919,8 +919,8 @@ async fn gtf_args__output_data_coin_to() {
         op::ret(res_reg),
     ];
 
-    let amount = rng.gen();
-    let asset_id = rng.gen();
+    let amount = rng.r#gen();
+    let asset_id = rng.r#gen();
     // Create the output with the expected owner and some data
     let output_data = vec![1, 2, 3, 4, 5];
     let output = Output::data_coin(
@@ -937,8 +937,8 @@ async fn gtf_args__output_data_coin_to() {
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect::<Vec<u8>>();
     let input_owner = Input::predicate_owner(&predicate_bytes);
-    let utxo_id = rng.gen();
-    let tx_pointer = rng.gen();
+    let utxo_id = rng.r#gen();
+    let tx_pointer = rng.r#gen();
     let predicate_gas_used = 0;
 
     let input = Input::coin_predicate(
@@ -984,9 +984,9 @@ async fn gtf_args__output_data_coin_amount() {
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect::<Vec<u8>>();
     let input_owner = Input::predicate_owner(&predicate_bytes);
-    let utxo_id = rng.gen();
-    let asset_id = rng.gen();
-    let tx_pointer = rng.gen();
+    let utxo_id = rng.r#gen();
+    let asset_id = rng.r#gen();
+    let tx_pointer = rng.r#gen();
     let predicate_gas_used = 0;
 
     // Store the expected amount in predicate data
@@ -995,7 +995,7 @@ async fn gtf_args__output_data_coin_amount() {
     // Create the output with the expected amount and some data
     let output_data = vec![1, 2, 3, 4, 5];
     let output = Output::data_coin(
-        rng.gen(), // to
+        rng.r#gen(), // to
         amount,
         asset_id, // asset_id
         output_data,
@@ -1024,7 +1024,7 @@ async fn gtf_args__output_data_coin_asset_id() {
     // given
     let mut rng = StdRng::seed_from_u64(2322u64);
 
-    let asset_id: AssetId = rng.gen();
+    let asset_id: AssetId = rng.r#gen();
 
     // Store the expected asset ID in predicate data
     let predicate_data = asset_id.to_bytes();
@@ -1055,9 +1055,9 @@ async fn gtf_args__output_data_coin_asset_id() {
 
     // Create the output with the expected asset ID and some data
     let output_data = vec![1, 2, 3, 4, 5];
-    let amount = rng.gen();
+    let amount = rng.r#gen();
     let output = Output::data_coin(
-        rng.gen(), // to
+        rng.r#gen(), // to
         amount,
         asset_id,
         output_data,
@@ -1070,8 +1070,8 @@ async fn gtf_args__output_data_coin_asset_id() {
         .flat_map(|op| u32::from(op).to_be_bytes())
         .collect::<Vec<u8>>();
     let input_owner = Input::predicate_owner(&predicate_bytes);
-    let utxo_id = rng.gen();
-    let tx_pointer = rng.gen();
+    let utxo_id = rng.r#gen();
+    let tx_pointer = rng.r#gen();
     let predicate_gas_used = 0;
 
     let input = Input::coin_predicate(

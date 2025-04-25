@@ -184,12 +184,12 @@ fn correct_change_is_provided_for_data_coin_outputs_create() {
     let mut rng = StdRng::seed_from_u64(2322u64);
     let input_amount = 1000;
     let spend_amount = 600;
-    let base_asset_id: AssetId = rng.gen();
+    let base_asset_id: AssetId = rng.r#gen();
 
     #[rustfmt::skip]
     let invalid_instruction_bytecode = vec![0u8; 4];
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let program: Witness = invalid_instruction_bytecode.into();
 
     let contract = Contract::from(program.as_ref());
@@ -211,17 +211,17 @@ fn correct_change_is_provided_for_data_coin_outputs_create() {
         vec![],
         vec![
             output,
-            Output::change(rng.gen(), 0, base_asset_id),
-            Output::data_coin(rng.gen(), spend_amount, base_asset_id, vec![]),
+            Output::change(rng.r#gen(), 0, base_asset_id),
+            Output::data_coin(rng.r#gen(), spend_amount, base_asset_id, vec![]),
         ],
         vec![program, Witness::default()],
     );
     create.add_unsigned_coin_input(
-        rng.gen(),
+        rng.r#gen(),
         &Default::default(),
         input_amount,
         base_asset_id,
-        rng.gen(),
+        rng.r#gen(),
         Default::default(),
     );
 

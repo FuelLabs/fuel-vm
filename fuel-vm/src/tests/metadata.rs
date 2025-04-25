@@ -1054,11 +1054,11 @@ fn gtf_args__data_coin_data_length() {
     let mut data = vec![0u8; length];
     rng.fill(data.as_mut_slice());
     let input_coin_predicate = Input::data_coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         1_500,
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         gas_costs.ret(),
         predicate.clone(),
         predicate_data.clone(),

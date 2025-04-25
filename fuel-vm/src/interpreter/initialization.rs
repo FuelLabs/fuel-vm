@@ -18,12 +18,12 @@ use crate::{
 };
 use fuel_asm::RegId;
 use fuel_tx::{
+    Input,
+    Output,
     field::{
         Script,
         ScriptGasLimit,
     },
-    Input,
-    Output,
 };
 use fuel_types::Word;
 

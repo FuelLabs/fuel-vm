@@ -1,4 +1,14 @@
 use crate::{
+    Chargeable,
+    ConsensusParameters,
+    Contract,
+    GasCosts,
+    Input,
+    Output,
+    PrepareSign,
+    StorageSlot,
+    TransactionRepr,
+    ValidityError,
     transaction::{
         field::{
             BytecodeWitnessIndex,
@@ -12,27 +22,17 @@ use crate::{
             UniqueFormatValidityChecks,
         },
     },
-    Chargeable,
-    ConsensusParameters,
-    Contract,
-    GasCosts,
-    Input,
-    Output,
-    PrepareSign,
-    StorageSlot,
-    TransactionRepr,
-    ValidityError,
 };
 use educe::Educe;
 use fuel_types::{
-    bytes::WORD_SIZE,
-    canonical,
-    Bytes32,
     Bytes4,
+    Bytes32,
     ChainId,
     ContractId,
     Salt,
     Word,
+    bytes::WORD_SIZE,
+    canonical,
 };
 
 #[cfg(feature = "alloc")]

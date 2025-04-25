@@ -1,6 +1,6 @@
 use super::{
-    consts::*,
     Output,
+    consts::*,
 };
 
 #[cfg(feature = "std")]

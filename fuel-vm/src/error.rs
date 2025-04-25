@@ -476,8 +476,8 @@ mod bt {
 impl fmt::Display for Bug {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use percent_encoding::{
-            utf8_percent_encode,
             NON_ALPHANUMERIC,
+            utf8_percent_encode,
         };
 
         let issue_title = format!("Bug report: {:?} in {}", self.variant, self.location);

@@ -1,6 +1,6 @@
 use super::{
-    consts::*,
     Input,
+    consts::*,
 };
 
 #[derive(

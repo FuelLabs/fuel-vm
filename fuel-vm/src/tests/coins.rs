@@ -8,14 +8,13 @@ use rstest::rstest;
 use test_case::test_case;
 
 use fuel_asm::{
-    op,
     GTFArgs,
     Instruction,
     RegId,
     Word,
+    op,
 };
 use fuel_tx::{
-    field::Outputs,
     Address,
     AssetId,
     ContractId,
@@ -23,10 +22,11 @@ use fuel_tx::{
     Output,
     PanicReason,
     Receipt,
+    field::Outputs,
 };
 use fuel_types::{
-    canonical::Serialize,
     SubAssetId,
+    canonical::Serialize,
 };
 
 use crate::{
@@ -340,7 +340,7 @@ fn transfer_to_contract_external(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id: AssetId = test_context.rng.gen();
+    let asset_id: AssetId = test_context.rng.r#gen();
 
     let contract = test_context
         .setup_contract(
@@ -428,7 +428,7 @@ fn transfer_to_contract_internal(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id: AssetId = test_context.rng.gen();
+    let asset_id: AssetId = test_context.rng.r#gen();
 
     let this_contract = test_context
         .setup_contract(ops, Some((asset_id, balance)), None)
@@ -514,7 +514,7 @@ fn transfer_to_contract_bounds(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id: AssetId = test_context.rng.gen();
+    let asset_id: AssetId = test_context.rng.r#gen();
 
     let this_contract = test_context
         .setup_contract(ops, Some((asset_id, Word::MAX)), None)
@@ -593,7 +593,7 @@ fn transfer_to_output(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id: AssetId = test_context.rng.gen();
+    let asset_id: AssetId = test_context.rng.r#gen();
 
     let contract_id = test_context
         .setup_contract(ops.clone(), Some((asset_id, balance)), None)
@@ -713,7 +713,7 @@ fn transfer_to_output_bounds(
     ]);
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id: AssetId = test_context.rng.gen();
+    let asset_id: AssetId = test_context.rng.r#gen();
 
     let this_contract = test_context
         .setup_contract(ops, Some((asset_id, Word::MAX)), None)
@@ -782,7 +782,7 @@ fn call_forwarding(
     let reg_asset_id_ptr: u8 = 0x14;
 
     let mut test_context = TestBuilder::new(1234u64);
-    let asset_id: AssetId = test_context.rng.gen();
+    let asset_id: AssetId = test_context.rng.r#gen();
 
     // Setup the dst contract. This does nothing, just holds/receives the balance.
     let dst_contract = test_context

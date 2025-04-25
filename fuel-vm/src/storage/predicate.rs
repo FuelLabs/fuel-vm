@@ -32,13 +32,13 @@ use fuel_types::{
 };
 
 use super::{
-    interpreter::ContractsAssetsStorage,
     BlobData,
     ContractsAssets,
     ContractsRawCode,
     ContractsState,
     ContractsStateData,
     UploadedBytecodes,
+    interpreter::ContractsAssetsStorage,
 };
 
 /// Create an empty predicate storage.

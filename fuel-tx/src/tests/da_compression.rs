@@ -1,22 +1,4 @@
 use crate::{
-    field,
-    input::{
-        coin::{
-            Coin,
-            CoinSpecification,
-            DataCoin,
-            UnverifiedCoin,
-            UnverifiedDataCoin,
-        },
-        message::{
-            Message,
-            MessageSpecification,
-        },
-        AsField,
-        PredicateCode,
-    },
-    test_helper::TransactionFactory,
-    transaction::field::Inputs,
     Blob,
     CompressedUtxoId,
     Create,
@@ -36,6 +18,7 @@ use crate::{
         coin::{
             Coin,
             CoinSpecification,
+            DataCoin,
         },
         message::{
             Message,

@@ -146,6 +146,11 @@ impl DataCoinInputBuilder {
         self
     }
 
+    pub fn with_owner(&mut self, owner: Address) -> &mut Self {
+        self.owner = owner;
+        self
+    }
+
     pub fn with_predicate_data(&mut self, predicate_data: &[u8]) -> &Self {
         self.predicate_data = predicate_data.to_vec();
         self
@@ -517,7 +522,11 @@ async fn gtf_args__input_data_coin_utxo_id() {
         ),
         op::ret(res_reg),
     ];
+    let predicate_bytes = predicate.clone().into_iter().collect::<Vec<u8>>();
+    let owner = Input::predicate_owner(&predicate_bytes);
     data_coin_builder.with_predicate(predicate);
+    data_coin_builder.with_owner(owner);
+
     let data_coin_input = data_coin_builder.into_input();
     assert!(
         execute_predicate_with_input(
@@ -532,17 +541,14 @@ async fn gtf_args__input_data_coin_utxo_id() {
 #[tokio::test]
 async fn gtf_args__input_data_coin_address() {
     let mut data_coin_builder = DataCoinInputBuilder::new();
-    let expected_address = data_coin_builder.owner;
-    let expected_address_bytes = expected_address.to_bytes();
-    data_coin_builder.with_predicate_data(&expected_address_bytes);
 
     let expected_address_reg = 0x11;
     let actual_address_reg = 0x12;
-    let address_size = 20;
+    let address_size = Address::LEN;
     let address_size_reg = 0x13;
     let res_reg = 0x10;
     let predicate = vec![
-        op::movi(address_size_reg, address_size),
+        op::movi(address_size_reg, address_size as u32),
         op::gtf_args(actual_address_reg, 0, GTFArgs::InputCoinOwner),
         op::gtf_args(expected_address_reg, 0, GTFArgs::InputCoinPredicateData),
         op::meq(
@@ -553,7 +559,13 @@ async fn gtf_args__input_data_coin_address() {
         ),
         op::ret(res_reg),
     ];
+    let predicate_bytes = predicate.clone().into_iter().collect::<Vec<u8>>();
+    let owner = Input::predicate_owner(&predicate_bytes);
     data_coin_builder.with_predicate(predicate);
+    data_coin_builder.with_owner(owner);
+    let expected_address = data_coin_builder.owner;
+    let expected_address_bytes = expected_address.to_bytes();
+    data_coin_builder.with_predicate_data(&expected_address_bytes);
     let data_coin_input = data_coin_builder.into_input();
     assert!(
         execute_predicate_with_input(
@@ -579,7 +591,10 @@ async fn gtf_args__input_data_coin_amount() {
         op::eq(res_reg, expected_amount_reg, actual_amount_reg),
         op::ret(res_reg),
     ];
+    let predicate_bytes = predicate.clone().into_iter().collect::<Vec<u8>>();
+    let owner = Input::predicate_owner(&predicate_bytes);
     data_coin_builder.with_predicate(predicate);
+    data_coin_builder.with_owner(owner);
     let data_coin_input = data_coin_builder.into_input();
     assert!(
         execute_predicate_with_input(
@@ -615,7 +630,10 @@ async fn gtf_args__input_data_coin_asset_id() {
         ),
         op::ret(res_reg),
     ];
+    let predicate_bytes = predicate.clone().into_iter().collect::<Vec<u8>>();
+    let owner = Input::predicate_owner(&predicate_bytes);
     data_coin_builder.with_predicate(predicate);
+    data_coin_builder.with_owner(owner);
     let data_coin_input = data_coin_builder.into_input();
     assert!(
         execute_predicate_with_input(
@@ -651,7 +669,10 @@ async fn gtf_args__input_data_coin_tx_pointer_is_always_default() {
         ),
         op::ret(res_reg),
     ];
+    let predicate_bytes: Vec<_> = predicate.clone().into_iter().collect();
+    let owner = Input::predicate_owner(&predicate_bytes);
     data_coin_builder.with_predicate(predicate);
+    data_coin_builder.with_owner(owner);
     let data_coin_input = data_coin_builder.into_input();
     assert!(
         execute_predicate_with_input(
@@ -687,7 +708,11 @@ async fn gtf_args__input_data_coin_predicate_gas_used() {
         ),
         op::ret(res_reg),
     ];
+    let predicate_bytes = predicate.clone().into_iter().collect::<Vec<u8>>();
+    let owner = Input::predicate_owner(&predicate_bytes);
     data_coin_builder.with_predicate(predicate);
+    data_coin_builder.with_owner(owner);
+
     let data_coin_input = data_coin_builder.into_input();
     assert!(
         execute_predicate_with_input(

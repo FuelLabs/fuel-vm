@@ -147,7 +147,10 @@ enum PredicateAction {
 pub mod predicates {
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
-    use fuel_tx::input::coin::DataCoinPredicate;
+    use fuel_tx::input::{
+        ReadOnly,
+        coin::DataCoinPredicate,
+    };
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.
@@ -396,6 +399,26 @@ pub mod predicates {
                         );
                     }
                 }
+                Input::ReadOnly(inner) => match inner {
+                    ReadOnly::CoinPredicate(CoinPredicate {
+                        owner: address,
+                        predicate,
+                        ..
+                    })
+                    | ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                        owner: address,
+                        predicate,
+                        ..
+                    }) => {
+                        if !Input::is_predicate_owner_valid(address, &**predicate) {
+                            return (
+                                0,
+                                Err(PredicateVerificationFailed::InvalidOwner { index }),
+                            );
+                        }
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         }
@@ -482,6 +505,15 @@ pub mod predicates {
                             predicate_gas_used,
                             ..
                         })
+                        | Input::ReadOnly(ReadOnly::CoinPredicate(CoinPredicate {
+                            predicate_gas_used,
+                            ..
+                        }))
+                        | Input::ReadOnly(ReadOnly::DataCoinPredicate(
+                            DataCoinPredicate {
+                                predicate_gas_used, ..
+                            },
+                        ))
                         | Input::MessageCoinPredicate(MessageCoinPredicate {
                             predicate_gas_used,
                             ..

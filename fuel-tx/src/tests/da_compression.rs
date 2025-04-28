@@ -19,6 +19,8 @@ use crate::{
             Coin,
             CoinSpecification,
             DataCoin,
+            UnverifiedCoin,
+            UnverifiedDataCoin,
         },
         message::{
             Message,
@@ -303,6 +305,46 @@ where
             predicate,
             predicate_data,
             data,
+        })
+    }
+}
+
+impl DecompressibleBy<TestCompressionCtx> for UnverifiedCoin {
+    async fn decompress_with(
+        c: <UnverifiedCoin as Compressible>::Compressed,
+        ctx: &TestCompressionCtx,
+    ) -> Result<UnverifiedCoin, Infallible> {
+        let utxo_id = UtxoId::decompress_with(c.utxo_id, ctx).await?;
+        let coin_info = ctx.latest_tx_coins.get(&utxo_id).expect("coin not found");
+
+        Ok(Self {
+            utxo_id,
+            owner: coin_info.owner,
+            amount: coin_info.amount,
+            asset_id: coin_info.asset_id,
+            tx_pointer: Default::default(),
+        })
+    }
+}
+
+impl DecompressibleBy<TestCompressionCtx> for UnverifiedDataCoin {
+    async fn decompress_with(
+        c: <UnverifiedDataCoin as Compressible>::Compressed,
+        ctx: &TestCompressionCtx,
+    ) -> Result<UnverifiedDataCoin, Infallible> {
+        let utxo_id = UtxoId::decompress_with(c.utxo_id, ctx).await?;
+        let coin_info = ctx
+            .latest_tx_data_coins
+            .get(&utxo_id)
+            .expect("data coin not found");
+
+        Ok(Self {
+            utxo_id,
+            owner: coin_info.owner,
+            amount: coin_info.amount,
+            asset_id: coin_info.asset_id,
+            tx_pointer: Default::default(),
+            data: c.data.decompress(ctx).await?,
         })
     }
 }

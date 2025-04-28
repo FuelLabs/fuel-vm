@@ -86,6 +86,13 @@ macro_rules! script_with_data_offset {
 #[cfg(any(test, feature = "test-helpers"))]
 /// Testing utilities
 pub mod test_helpers {
+    use itertools::Itertools;
+    use rand::{
+        Rng,
+        SeedableRng,
+        prelude::StdRng,
+    };
+
     use alloc::{
         vec,
         vec::Vec,
@@ -175,12 +182,6 @@ pub mod test_helpers {
             Serialize,
         },
     };
-    use itertools::Itertools;
-    use rand::{
-        Rng,
-        SeedableRng,
-        prelude::StdRng,
-    };
 
     pub struct CreatedContract {
         pub tx: Create,
@@ -212,6 +213,10 @@ pub mod test_helpers {
                 block_height: Default::default(),
                 consensus_params: ConsensusParameters::standard(),
             }
+        }
+
+        pub fn consensus_params(&self) -> ConsensusParameters {
+            self.consensus_params.clone()
         }
 
         pub fn get_block_height(&self) -> BlockHeight {

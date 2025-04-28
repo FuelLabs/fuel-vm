@@ -95,7 +95,7 @@ fn add_up_input_balances<T: field::Inputs>(
             | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
                 retryable_balance = retryable_balance.checked_add(*amount)?;
             }
-            Input::Contract(_) => {}
+            Input::ReadOnly(_) | Input::Contract(_) => {}
         }
     }
 

@@ -128,6 +128,7 @@ mod use_std {
                         Input::CoinPredicate(_) => (),
                         Input::DataCoinSigned(_) => (),
                         Input::DataCoinPredicate(_) => (),
+                        Input::ReadOnly(_) => (),
                         Input::Contract(_) => (),
                         Input::MessageCoinSigned(_) => (),
                         Input::MessageCoinPredicate(_) => (),
@@ -348,6 +349,20 @@ mod use_std {
                             generate_bytes(&mut self.rng),
                         );
 
+                        builder.add_input(input);
+                    }
+
+                    9 => {
+                        // TODO: Make sure this is right. All the tests pass, but idk if we are
+                        //   missing coverage
+                        let owner = self.rng.r#gen();
+                        let input = Input::read_only_coin(
+                            self.rng.r#gen(),
+                            owner,
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                        );
                         builder.add_input(input);
                     }
 

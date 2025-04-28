@@ -559,6 +559,9 @@ async fn gtf_args__input_data_coin_address() {
     let owner = Input::predicate_owner(&predicate_bytes);
     data_coin_builder.with_predicate(predicate);
     data_coin_builder.with_owner(owner);
+    let expected_address = data_coin_builder.owner;
+    let expected_address_bytes = expected_address.to_bytes();
+    data_coin_builder.with_predicate_data(&expected_address_bytes);
     let data_coin_input = data_coin_builder.into_input();
     assert!(
         execute_predicate_with_input(

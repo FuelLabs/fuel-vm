@@ -374,6 +374,11 @@ pub mod predicates {
                     predicate,
                     ..
                 })
+                | Input::DataCoinPredicate(DataCoinPredicate {
+                    owner: address,
+                    predicate,
+                    ..
+                })
                 | Input::MessageDataPredicate(MessageDataPredicate {
                     recipient: address,
                     predicate,

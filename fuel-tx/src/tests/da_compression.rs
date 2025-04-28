@@ -1,20 +1,4 @@
 use crate::{
-    field,
-    input::{
-        coin::{
-            Coin,
-            DataCoin,
-            CoinSpecification,
-        },
-        message::{
-            Message,
-            MessageSpecification,
-        },
-        AsField,
-        PredicateCode,
-    },
-    test_helper::TransactionFactory,
-    transaction::field::Inputs,
     Blob,
     CompressedUtxoId,
     Create,
@@ -34,6 +18,7 @@ use crate::{
         coin::{
             Coin,
             CoinSpecification,
+            DataCoin,
         },
         message::{
             Message,
@@ -137,21 +122,21 @@ impl TestCompressionCtx {
                         },
                     )
                 });
-        let latest_tx_data_coins =
-            tx.inputs()
-                .iter()
-                .filter(|input| input.is_data_coin())
-                .map(|input| {
-                    (
-                        *input.utxo_id().unwrap(),
-                        DataCoinInfo {
-                            owner: *input.input_owner().unwrap(),
-                            amount: input.amount().unwrap(),
-                            asset_id: *input.asset_id(&AssetId::default()).unwrap(),
-                            data: input.input_data().unwrap_or_default().to_vec(),
-                        },
-                    )
-                });
+        let latest_tx_data_coins = tx
+            .inputs()
+            .iter()
+            .filter(|input| input.is_data_coin())
+            .map(|input| {
+                (
+                    *input.utxo_id().unwrap(),
+                    DataCoinInfo {
+                        owner: *input.input_owner().unwrap(),
+                        amount: input.amount().unwrap(),
+                        asset_id: *input.asset_id(&AssetId::default()).unwrap(),
+                        data: input.input_data().unwrap_or_default().to_vec(),
+                    },
+                )
+            });
         let latest_tx_messages = tx
             .inputs()
             .iter()
@@ -169,8 +154,7 @@ impl TestCompressionCtx {
             });
 
         self.latest_tx_coins.extend(latest_tx_coins);
-        self.latest_tx_data_coins
-            .extend(latest_tx_data_coins);
+        self.latest_tx_data_coins.extend(latest_tx_data_coins);
         self.latest_tx_messages.extend(latest_tx_messages);
     }
 }
@@ -285,7 +269,6 @@ where
     }
 }
 
-
 impl<Specification> DecompressibleBy<TestCompressionCtx> for DataCoin<Specification>
 where
     Specification: CoinSpecification,
@@ -299,7 +282,10 @@ where
         ctx: &TestCompressionCtx,
     ) -> Result<DataCoin<Specification>, Infallible> {
         let utxo_id = UtxoId::decompress_with(c.utxo_id, ctx).await?;
-        let coin_info = ctx.latest_tx_data_coins.get(&utxo_id).expect("data coin not found");
+        let coin_info = ctx
+            .latest_tx_data_coins
+            .get(&utxo_id)
+            .expect("data coin not found");
         let witness_index = c.witness_index.decompress(ctx).await?;
         let predicate_gas_used = c.predicate_gas_used.decompress(ctx).await?;
         let predicate = c.predicate.decompress(ctx).await?;

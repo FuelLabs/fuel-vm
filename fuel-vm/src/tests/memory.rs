@@ -20,11 +20,11 @@ use fuel_vm::{
 };
 
 use super::test_helpers::{
+    RunResult,
     assert_panics,
     assert_success,
     run_script,
     set_full_word,
-    RunResult,
 };
 use fuel_tx::ConsensusParameters;
 

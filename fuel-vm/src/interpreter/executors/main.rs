@@ -148,8 +148,8 @@ pub mod predicates {
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
     use fuel_tx::input::{
-        coin::DataCoinPredicate,
         ReadOnly,
+        coin::DataCoinPredicate,
     };
 
     /// Initialize the VM with the provided transaction and check all predicates defined
@@ -399,6 +399,26 @@ pub mod predicates {
                         );
                     }
                 }
+                Input::ReadOnly(inner) => match inner {
+                    ReadOnly::CoinPredicate(CoinPredicate {
+                        owner: address,
+                        predicate,
+                        ..
+                    })
+                    | ReadOnly::DataCoinPredicate(DataCoinPredicate {
+                        owner: address,
+                        predicate,
+                        ..
+                    }) => {
+                        if !Input::is_predicate_owner_valid(address, &**predicate) {
+                            return (
+                                0,
+                                Err(PredicateVerificationFailed::InvalidOwner { index }),
+                            );
+                        }
+                    }
+                    _ => {}
+                },
                 _ => {}
             }
         }

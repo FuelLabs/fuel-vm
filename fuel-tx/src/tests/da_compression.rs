@@ -19,6 +19,8 @@ use crate::{
             Coin,
             CoinSpecification,
             DataCoin,
+            UnverifiedCoin,
+            UnverifiedDataCoin,
         },
         message::{
             Message,

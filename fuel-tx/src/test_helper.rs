@@ -352,6 +352,20 @@ mod use_std {
                         builder.add_input(input);
                     }
 
+                    9 => {
+                        // TODO: Make sure this is right. All the tests pass, but idk if we are
+                        //   missing coverage
+                        let owner = self.rng.r#gen();
+                        let input = Input::read_only_coin(
+                            self.rng.r#gen(),
+                            owner,
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                            self.rng.r#gen(),
+                        );
+                        builder.add_input(input);
+                    }
+
                     _ => unreachable!(),
                 }
             }

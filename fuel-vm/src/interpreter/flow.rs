@@ -12,6 +12,12 @@ use crate::{
         SimpleResult,
     },
     interpreter::{
+        ExecutableTransaction,
+        Interpreter,
+        Memory,
+        MemoryInstance,
+        PanicContext,
+        RuntimeBalances,
         contract::{
             balance_decrease,
             balance_increase,
@@ -29,12 +35,6 @@ use crate::{
             set_frame_pointer,
         },
         receipts::ReceiptsCtx,
-        ExecutableTransaction,
-        Interpreter,
-        Memory,
-        MemoryInstance,
-        PanicContext,
-        RuntimeBalances,
     },
     prelude::{
         Bug,
@@ -67,12 +67,12 @@ use fuel_tx::{
     Receipt,
 };
 use fuel_types::{
-    bytes::padded_len_usize,
-    canonical::Serialize,
     AssetId,
     Bytes32,
     ContractId,
     Word,
+    bytes::padded_len_usize,
+    canonical::Serialize,
 };
 
 #[cfg(test)]
@@ -487,15 +487,10 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
             code_size_padded as Word,
         )?;
 
+        let amount = self.params.amount_of_coins_to_forward;
         if let Some(source_contract) = self.current_contract {
-            balance_decrease(
-                self.storage,
-                &source_contract,
-                &asset_id,
-                self.params.amount_of_coins_to_forward,
-            )?;
+            balance_decrease(self.storage, &source_contract, &asset_id, amount)?;
         } else {
-            let amount = self.params.amount_of_coins_to_forward;
             external_asset_id_balance_sub(
                 self.runtime_balances,
                 self.memory,
@@ -511,7 +506,7 @@ impl<S, V> PrepareCallCtx<'_, S, V> {
         )?;
 
         // credit contract asset_id balance
-        let (_, created_new_entry) = balance_increase(
+        let created_new_entry = balance_increase(
             self.storage,
             call.to(),
             &asset_id,

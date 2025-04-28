@@ -10,6 +10,11 @@ use crate::{
         SimpleResult,
     },
     interpreter::{
+        ExecutableTransaction,
+        Interpreter,
+        Memory,
+        MemoryInstance,
+        RuntimeBalances,
         contract::{
             balance,
             balance_decrease,
@@ -27,15 +32,10 @@ use crate::{
             tx_id,
         },
         memory::{
-            copy_from_storage_zero_fill,
             OwnershipRegisters,
+            copy_from_storage_zero_fill,
         },
         receipts::ReceiptsCtx,
-        ExecutableTransaction,
-        Interpreter,
-        Memory,
-        MemoryInstance,
-        RuntimeBalances,
     },
     storage::{
         BlobData,
@@ -57,23 +57,24 @@ use fuel_asm::{
 };
 use fuel_storage::StorageSize;
 use fuel_tx::{
-    consts::BALANCE_ENTRY_SIZE,
     BlobId,
     ContractIdExt,
     DependentCost,
     Receipt,
+    consts::BALANCE_ENTRY_SIZE,
 };
 use fuel_types::{
-    bytes::{
-        self,
-        padded_len_word,
-    },
     Address,
     AssetId,
     BlockHeight,
     Bytes32,
     ContractId,
+    SubAssetId,
     Word,
+    bytes::{
+        self,
+        padded_len_word,
+    },
 };
 
 use super::PanicContext;
@@ -312,7 +313,7 @@ where
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
         let input = StateClearQWord::new(a, c)?;
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref memory,
             ..
@@ -334,7 +335,7 @@ where
             .ok_or(RuntimeError::Recoverable(
                 PanicReason::ReservedRegisterNotWritable,
             ))?;
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref memory,
             ref context,
@@ -366,7 +367,7 @@ where
             split_registers(&mut self.registers);
         let result = &mut w[WriteRegKey::try_from(rb)?];
 
-        let Self {
+        let &mut Self {
             ref storage,
             ref context,
             ref mut memory,
@@ -403,7 +404,7 @@ where
             mut w,
         ) = split_registers(&mut self.registers);
         let exists = &mut w[WriteRegKey::try_from(rb)?];
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref memory,
             ref context,
@@ -445,7 +446,7 @@ where
             num_slots: d,
         };
 
-        let Self {
+        let &mut Self {
             ref mut storage,
             ref mut memory,
             ..
@@ -801,7 +802,7 @@ where
 {
     pub(crate) fn burn(self, a: Word, b: Word) -> IoResult<(), S::Error> {
         let contract_id = internal_contract(self.context, self.fp, self.memory)?;
-        let sub_id = Bytes32::new(self.memory.read_bytes(b)?);
+        let sub_id = SubAssetId::new(self.memory.read_bytes(b)?);
         let asset_id = contract_id.asset_id(&sub_id);
 
         let balance = balance(self.storage, &contract_id, &asset_id)?;
@@ -841,7 +842,7 @@ where
 {
     pub(crate) fn mint(self, a: Word, b: Word) -> Result<(), RuntimeError<S::Error>> {
         let contract_id = internal_contract(self.context, self.fp, self.memory)?;
-        let sub_id = Bytes32::new(self.memory.read_bytes(b)?);
+        let sub_id = SubAssetId::new(self.memory.read_bytes(b)?);
         let asset_id = contract_id.asset_id(&sub_id);
 
         let balance = balance(self.storage, &contract_id, &asset_id)?;

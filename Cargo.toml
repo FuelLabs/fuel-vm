@@ -15,10 +15,11 @@ resolver = "2"
 [workspace.package]
 authors = ["Fuel Labs <contact@fuel.sh>"]
 categories = ["cryptography::cryptocurrencies", "data-structures", "parsing"]
-edition = "2021"
+edition = "2024"
 homepage = "https://fuel.network/"
 license = "BUSL-1.1"
 repository = "https://github.com/FuelLabs/fuel-vm"
+rust-version = "1.85.0"
 version = "0.60.0"
 
 [workspace.dependencies]

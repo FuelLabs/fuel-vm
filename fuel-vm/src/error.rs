@@ -249,20 +249,35 @@ impl<StorageError> From<Infallible> for RuntimeError<StorageError> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PredicateVerificationFailed {
     /// The predicate did not use the amount of gas provided
-    #[display(fmt = "Predicate used less than the required amount of gas")]
-    GasMismatch,
+    #[display(fmt = "Predicate {index} used less than the required amount of gas")]
+    GasMismatch {
+        /// Input index of the predicate
+        index: usize,
+    },
     /// The transaction doesn't contain enough gas to evaluate the predicate
-    #[display(fmt = "Insufficient gas available for single predicate")]
-    OutOfGas,
+    #[display(fmt = "Insufficient gas available for predicate {index}")]
+    OutOfGas {
+        /// Input index of the predicate
+        index: usize,
+    },
     /// The predicate owner does not correspond to the predicate code
-    #[display(fmt = "Predicate owner invalid, doesn't match code root")]
-    InvalidOwner,
+    #[display(fmt = "Predicate {index} owner invalid, doesn't match code root")]
+    InvalidOwner {
+        /// Input index of the predicate
+        index: usize,
+    },
     /// The predicate wasn't successfully evaluated to true
-    #[display(fmt = "Predicate failed to evaluate")]
-    False,
+    #[display(fmt = "Predicate {index} failed to evaluate")]
+    False {
+        /// Input index of the predicate
+        index: usize,
+    },
     /// The predicate gas used was not specified before execution
-    #[display(fmt = "Predicate failed to evaluate")]
-    GasNotSpecified,
+    #[display(fmt = "Predicate {index} failed to evaluate")]
+    GasNotSpecified {
+        /// Input index of the predicate
+        index: usize,
+    },
     /// The transaction's `max_gas` is greater than the global gas limit.
     #[display(fmt = "Transaction exceeds total gas allowance {_0:?}")]
     TransactionExceedsTotalGasAllowance(Word),
@@ -273,33 +288,47 @@ pub enum PredicateVerificationFailed {
     #[display(fmt = "Invalid interpreter state reached unexpectedly")]
     Bug(Bug),
     /// The VM execution resulted in a well-formed panic, caused by an instruction.
-    #[display(fmt = "Execution error: {_0:?}")]
-    PanicInstruction(PanicInstruction),
+    #[display(fmt = "Execution error: {instruction:?} in input predicate {index}")]
+    PanicInstruction {
+        /// Input index of the predicate
+        index: usize,
+        /// Instruction that caused the panic
+        instruction: PanicInstruction,
+    },
     /// The VM execution resulted in a well-formed panic not caused by an instruction.
-    #[display(fmt = "Execution error: {_0:?}")]
-    Panic(PanicReason),
+    #[display(fmt = "Execution error: {reason:?} in input predicate {index}")]
+    Panic {
+        /// Input index of the predicate
+        index: usize,
+        /// Panic reason
+        reason: PanicReason,
+    },
     /// Predicate verification failed since it attempted to access storage
-    #[display(
-        fmt = "Predicate verification failed since it attempted to access storage"
-    )]
-    Storage,
+    #[display(fmt = "Predicate {index} attempted to access storage")]
+    Storage {
+        /// Input index of the predicate
+        index: usize,
+    },
 }
 
-impl From<InterpreterError<predicate::PredicateStorageError>>
-    for PredicateVerificationFailed
-{
-    fn from(error: InterpreterError<predicate::PredicateStorageError>) -> Self {
+impl PredicateVerificationFailed {
+    /// Construct a new `PredicateVerificationFailed` from the given
+    /// `InterpreterError` and the index of the predicate that caused it.
+    pub(crate) fn interpreter_error(
+        index: usize,
+        error: InterpreterError<predicate::PredicateStorageError>,
+    ) -> Self {
         match error {
             error if error.panic_reason() == Some(PanicReason::OutOfGas) => {
-                PredicateVerificationFailed::OutOfGas
+                Self::OutOfGas { index }
             }
-            InterpreterError::Panic(reason) => PredicateVerificationFailed::Panic(reason),
-            InterpreterError::PanicInstruction(result) => {
-                PredicateVerificationFailed::PanicInstruction(result)
+            InterpreterError::Panic(reason) => Self::Panic { index, reason },
+            InterpreterError::PanicInstruction(instruction) => {
+                Self::PanicInstruction { index, instruction }
             }
-            InterpreterError::Bug(bug) => PredicateVerificationFailed::Bug(bug),
-            InterpreterError::Storage(_) => PredicateVerificationFailed::Storage,
-            _ => PredicateVerificationFailed::False,
+            InterpreterError::Bug(bug) => Self::Bug(bug),
+            InterpreterError::Storage(_) => Self::Storage { index },
+            _ => Self::False { index },
         }
     }
 }
@@ -307,21 +336,6 @@ impl From<InterpreterError<predicate::PredicateStorageError>>
 impl From<Bug> for PredicateVerificationFailed {
     fn from(bug: Bug) -> Self {
         Self::Bug(bug)
-    }
-}
-
-impl From<PanicReason> for PredicateVerificationFailed {
-    fn from(reason: PanicReason) -> Self {
-        Self::Panic(reason)
-    }
-}
-
-impl From<PanicOrBug> for PredicateVerificationFailed {
-    fn from(err: PanicOrBug) -> Self {
-        match err {
-            PanicOrBug::Panic(reason) => Self::from(reason),
-            PanicOrBug::Bug(bug) => Self::Bug(bug),
-        }
     }
 }
 
@@ -377,6 +391,10 @@ pub enum BugVariant {
         message = "The witness subsection index is higher than the total number of parts."
     )]
     NextSubsectionIndexIsHigherThanTotalNumberOfParts,
+
+    /// Input index more than u16::MAX was used internally.
+    #[strum(message = "Input index more than u16::MAX was used internally.")]
+    InputIndexMoreThanU16Max,
 }
 
 impl fmt::Display for BugVariant {
@@ -458,8 +476,8 @@ mod bt {
 impl fmt::Display for Bug {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use percent_encoding::{
-            utf8_percent_encode,
             NON_ALPHANUMERIC,
+            utf8_percent_encode,
         };
 
         let issue_title = format!("Bug report: {:?} in {}", self.variant, self.location);

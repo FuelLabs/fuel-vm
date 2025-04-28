@@ -1,20 +1,4 @@
 use crate::{
-    input,
-    output,
-    transaction::{
-        field::{
-            self,
-            BytecodeWitnessIndex,
-            Expiration,
-            Maturity,
-            Tip,
-            Witnesses,
-        },
-        Chargeable,
-        Create,
-        Executable,
-        Script,
-    },
     Blob,
     BlobBody,
     ConsensusParameters,
@@ -36,6 +20,22 @@ use crate::{
     Upload,
     UploadBody,
     Witness,
+    input,
+    output,
+    transaction::{
+        Chargeable,
+        Create,
+        Executable,
+        Script,
+        field::{
+            self,
+            BytecodeWitnessIndex,
+            Expiration,
+            Maturity,
+            Tip,
+            Witnesses,
+        },
+    },
 };
 
 use crate::{
@@ -71,8 +71,8 @@ use fuel_types::{
 };
 #[cfg(feature = "rand")]
 use rand::{
-    rngs::StdRng,
     Rng,
+    rngs::StdRng,
 };
 
 pub trait BuildableAloc
@@ -235,7 +235,8 @@ impl TransactionBuilder<Blob> {
 impl TransactionBuilder<Mint> {
     pub fn mint(
         block_height: BlockHeight,
-        tx_index: u16,
+        #[cfg(feature = "u32-tx-pointer")] tx_index: u32,
+        #[cfg(not(feature = "u32-tx-pointer"))] tx_index: u16,
         input_contract: input::contract::Contract,
         output_contract: output::contract::Contract,
         mint_amount: Word,
@@ -423,7 +424,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
     pub fn add_random_fee_input(&mut self, rng: &mut StdRng) -> &mut Self {
         self.add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
+            rng.r#gen(),
             u32::MAX as u64,
             *self.params.base_asset_id(),
             Default::default(),
@@ -439,7 +440,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         let mut rng = rand::rngs::StdRng::seed_from_u64(2322u64);
         self.add_unsigned_coin_input(
             SecretKey::random(&mut rng),
-            rng.gen(),
+            rng.r#gen(),
             u32::MAX as u64,
             *self.params.base_asset_id(),
             Default::default(),

@@ -27,14 +27,15 @@ pub use fuel_asm::{
     PanicInstruction,
     PanicReason,
 };
+use fuel_types::SubAssetId;
 pub use fuel_types::{
     Address,
     AssetId,
     BlobId,
-    Bytes32,
     Bytes4,
-    Bytes64,
     Bytes8,
+    Bytes32,
+    Bytes64,
     ContractId,
     MessageId,
     Salt,
@@ -75,15 +76,6 @@ pub use receipt::{
 
 #[cfg(feature = "alloc")]
 pub use transaction::{
-    consensus_parameters,
-    field,
-    input,
-    input::Input,
-    input::InputRepr,
-    output,
-    output::Output,
-    output::OutputRepr,
-    policies,
     Blob,
     BlobBody,
     BlobIdExt,
@@ -124,6 +116,15 @@ pub use transaction::{
     UtxoId,
     ValidityError,
     Witness,
+    consensus_parameters,
+    field,
+    input,
+    input::Input,
+    input::InputRepr,
+    output,
+    output::Output,
+    output::OutputRepr,
+    policies,
 };
 
 #[cfg(feature = "da-compression")]
@@ -145,14 +146,14 @@ pub use contract::Contract;
 /// Trait extends the functionality of the `ContractId` type.
 pub trait ContractIdExt {
     /// Creates an `AssetId` from the `ContractId` and `sub_id`.
-    fn asset_id(&self, sub_id: &Bytes32) -> AssetId;
+    fn asset_id(&self, sub_id: &SubAssetId) -> AssetId;
 
     /// Creates an `AssetId` from the `ContractId` and the default 0x00..000 `sub_id`.
     fn default_asset(&self) -> AssetId;
 }
 
 impl ContractIdExt for ContractId {
-    fn asset_id(&self, sub_id: &Bytes32) -> AssetId {
+    fn asset_id(&self, sub_id: &SubAssetId) -> AssetId {
         let hasher = fuel_crypto::Hasher::default();
         AssetId::new(
             *hasher
@@ -163,6 +164,6 @@ impl ContractIdExt for ContractId {
     }
 
     fn default_asset(&self) -> AssetId {
-        self.asset_id(&Bytes32::zeroed())
+        self.asset_id(&SubAssetId::zeroed())
     }
 }

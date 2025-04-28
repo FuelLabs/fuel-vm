@@ -1,7 +1,7 @@
 use crate::common::{
-    empty_sum_sha256,
     Bytes32,
     Prefix,
+    empty_sum_sha256,
 };
 
 use digest::Digest;

@@ -58,14 +58,14 @@ mod tests {
     use core::iter;
     use fuel_asm::op;
     use fuel_tx::{
-        field::ScriptGasLimit,
         TransactionBuilder,
+        field::ScriptGasLimit,
     };
     use fuel_types::bytes;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     use crate::{
@@ -87,8 +87,8 @@ mod tests {
             *,
         },
         storage::{
-            predicate::empty_predicate_storage,
             BlobData,
+            predicate::empty_predicate_storage,
         },
     };
 
@@ -109,31 +109,31 @@ mod tests {
 
         let owner = (*Contract::root_from_code(&predicate)).into();
         let a = Input::coin_predicate(
-            rng.gen(),
+            rng.r#gen(),
             owner,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             0,
             predicate.clone(),
             predicate_data.clone(),
         );
 
         let b = Input::message_coin_predicate(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             0,
             predicate.clone(),
             predicate_data.clone(),
         );
 
         let c = Input::message_data_predicate(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             0,
             vec![0xff; 10],
             predicate.clone(),
@@ -168,15 +168,17 @@ mod tests {
                 InterpreterParams::default(),
             );
 
-            assert!(interpreter
-                .init_predicate(
-                    Context::PredicateVerification {
-                        program: RuntimePredicate::empty(),
-                    },
-                    tx.transaction().clone(),
-                    *tx.transaction().script_gas_limit(),
-                )
-                .is_ok());
+            assert!(
+                interpreter
+                    .init_predicate(
+                        Context::PredicateVerification {
+                            program: RuntimePredicate::empty(),
+                        },
+                        tx.transaction().clone(),
+                        *tx.transaction().script_gas_limit(),
+                    )
+                    .is_ok()
+            );
 
             let pad = bytes::padded_len(&predicate).unwrap() - predicate.len();
 
@@ -227,31 +229,31 @@ mod tests {
                 let owner = Input::predicate_owner(&predicate);
                 [
                     Input::coin_predicate(
-                        rng.gen(),
+                        rng.r#gen(),
                         owner,
-                        rng.gen(),
-                        rng.gen(),
-                        rng.gen(),
+                        rng.r#gen(),
+                        rng.r#gen(),
+                        rng.r#gen(),
                         0,
                         predicate.clone(),
                         predicate_data.clone(),
                     ),
                     Input::message_coin_predicate(
-                        rng.gen(),
+                        rng.r#gen(),
                         owner,
-                        rng.gen(),
-                        rng.gen(),
+                        rng.r#gen(),
+                        rng.r#gen(),
                         0,
                         predicate.clone(),
                         predicate_data.clone(),
                     ),
                     Input::message_data_predicate(
-                        rng.gen(),
+                        rng.r#gen(),
                         owner,
-                        rng.gen(),
-                        rng.gen(),
+                        rng.r#gen(),
+                        rng.r#gen(),
                         0,
-                        vec![rng.gen(); rng.gen_range(1..100)],
+                        vec![rng.r#gen(); rng.gen_range(1..100)],
                         predicate.clone(),
                         predicate_data.clone(),
                     ),
@@ -402,37 +404,40 @@ mod tests {
                     op::ret(0x01),
                 ],
                 INCORRECT_GAS,
-                Err(PredicateVerificationFailed::GasMismatch),
+                Err(PredicateVerificationFailed::GasMismatch { index: 0 }),
             ),
             (
                 // Returning an invalid value
                 vec![op::ret(0x0)],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::Panic(
-                    PanicReason::PredicateReturnedNonOne,
-                )),
+                Err(PredicateVerificationFailed::Panic {
+                    index: 0,
+                    reason: PanicReason::PredicateReturnedNonOne,
+                }),
             ),
             (
                 // Using a contract instruction
                 vec![op::time(0x20, 0x1), op::ret(0x1)],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::PanicInstruction(
-                    PanicInstruction::error(
+                Err(PredicateVerificationFailed::PanicInstruction {
+                    index: 0,
+                    instruction: PanicInstruction::error(
                         PanicReason::ContractInstructionNotAllowed,
                         op::time(0x20, 0x1).into(),
                     ),
-                )),
+                }),
             ),
             (
                 // Using a contract instruction
                 vec![op::ldc(ONE, ONE, ONE, 0)],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::PanicInstruction(
-                    PanicInstruction::error(
+                Err(PredicateVerificationFailed::PanicInstruction {
+                    index: 0,
+                    instruction: PanicInstruction::error(
                         PanicReason::ContractInstructionNotAllowed,
                         op::ldc(ONE, ONE, ONE, 0).into(),
                     ),
-                )),
+                }),
             ),
             (
                 // Use `LDC` with mode `1` to load the blob into the predicate.
@@ -457,9 +462,10 @@ mod tests {
                     op::jmp(0x12),
                 ],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::Panic(
-                    PanicReason::PredicateReturnedNonOne,
-                )),
+                Err(PredicateVerificationFailed::Panic {
+                    index: 0,
+                    reason: PanicReason::PredicateReturnedNonOne,
+                }),
             ),
             (
                 // Use `LDC` with mode `2` to load the part of the predicate from the
@@ -495,9 +501,10 @@ mod tests {
                     op::jmp(0x12),
                 ],
                 CORRECT_GAS,
-                Err(PredicateVerificationFailed::Panic(
-                    PanicReason::PredicateReturnedNonOne,
-                )),
+                Err(PredicateVerificationFailed::Panic {
+                    index: 0,
+                    reason: PanicReason::PredicateReturnedNonOne,
+                }),
             ),
         ];
 

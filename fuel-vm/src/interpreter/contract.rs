@@ -3,6 +3,12 @@
 use alloc::collections::BTreeSet;
 
 use super::{
+    ExecutableTransaction,
+    Interpreter,
+    Memory,
+    MemoryInstance,
+    PanicContext,
+    RuntimeBalances,
     gas::gas_charge,
     internal::{
         external_asset_id_balance_sub,
@@ -10,12 +16,6 @@ use super::{
         internal_contract,
         set_variable_output,
     },
-    ExecutableTransaction,
-    Interpreter,
-    Memory,
-    MemoryInstance,
-    PanicContext,
-    RuntimeBalances,
 };
 use crate::{
     constraints::reg_key::*,
@@ -277,7 +277,7 @@ impl<S, Tx, V> TransferCtx<'_, S, Tx, V> {
             external_asset_id_balance_sub(self.balances, self.memory, &asset_id, amount)?;
         }
         // credit destination contract
-        let (_, created_new_entry) =
+        let created_new_entry =
             balance_increase(self.storage, &destination, &asset_id, amount)?;
         if created_new_entry {
             // If a new entry was created, we must charge gas for it
@@ -408,39 +408,47 @@ where
         .unwrap_or_default())
 }
 
-/// Increase the asset balance for a contract.
-/// Returns new balance, and a boolean indicating if a new entry was created.
+/// Increase the asset balance for a contract, unless the `amount` is zero.
+/// A boolean indicating if a new entry was created.
 pub fn balance_increase<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> IoResult<(Word, bool), S::Error>
+) -> IoResult<bool, S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
+    if amount == 0 {
+        // Don't update the balance if the amount is zero
+        return Ok(false)
+    }
+
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
         .checked_add(amount)
         .ok_or(PanicReason::BalanceOverflow)?;
-
     let old_value = storage
         .contract_asset_id_balance_replace(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
-
-    Ok((balance, old_value.is_none()))
+    Ok(old_value.is_none())
 }
 
-/// Decrease the asset balance for a contract.
+/// Decrease the asset balance for a contract, unless the `amount` is zero.
 pub fn balance_decrease<S>(
     storage: &mut S,
     contract: &ContractId,
     asset_id: &AssetId,
     amount: Word,
-) -> IoResult<Word, S::Error>
+) -> IoResult<(), S::Error>
 where
     S: ContractsAssetsStorage + ?Sized,
 {
+    if amount == 0 {
+        // Don't update the balance if the amount is zero
+        return Ok(())
+    }
+
     let balance = balance(storage, contract, asset_id)?;
     let balance = balance
         .checked_sub(amount)
@@ -448,5 +456,5 @@ where
     storage
         .contract_asset_id_balance_insert(contract, asset_id, balance)
         .map_err(RuntimeError::Storage)?;
-    Ok(balance)
+    Ok(())
 }

@@ -9,8 +9,8 @@ use core::{
 use zeroize::Zeroize;
 
 use crate::{
-    secp256::PublicKey,
     Error,
+    secp256::PublicKey,
 };
 
 #[cfg(feature = "std")]

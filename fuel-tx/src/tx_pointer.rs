@@ -1,6 +1,6 @@
 use fuel_types::{
-    bytes::WORD_SIZE,
     BlockHeight,
+    bytes::WORD_SIZE,
 };
 
 use fuel_types::canonical::{
@@ -15,11 +15,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 /// Identification of unspend transaction output.
@@ -35,13 +35,20 @@ pub struct TxPointer {
     /// Block height
     block_height: BlockHeight,
     /// Transaction index
+    #[cfg(feature = "u32-tx-pointer")]
+    tx_index: u32,
+    #[cfg(not(feature = "u32-tx-pointer"))]
     tx_index: u16,
 }
 
 impl TxPointer {
     pub const LEN: usize = 2 * WORD_SIZE;
 
-    pub const fn new(block_height: BlockHeight, tx_index: u16) -> Self {
+    pub const fn new(
+        block_height: BlockHeight,
+        #[cfg(feature = "u32-tx-pointer")] tx_index: u32,
+        #[cfg(not(feature = "u32-tx-pointer"))] tx_index: u16,
+    ) -> Self {
         Self {
             block_height,
             tx_index,
@@ -52,6 +59,12 @@ impl TxPointer {
         self.block_height
     }
 
+    #[cfg(feature = "u32-tx-pointer")]
+    pub const fn tx_index(&self) -> u32 {
+        self.tx_index
+    }
+
+    #[cfg(not(feature = "u32-tx-pointer"))]
     pub const fn tx_index(&self) -> u16 {
         self.tx_index
     }
@@ -60,7 +73,7 @@ impl TxPointer {
 #[cfg(feature = "random")]
 impl Distribution<TxPointer> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> TxPointer {
-        TxPointer::new(rng.gen(), rng.gen())
+        TxPointer::new(rng.r#gen(), rng.r#gen())
     }
 }
 
@@ -70,12 +83,36 @@ impl fmt::Display for TxPointer {
     }
 }
 
+#[cfg(feature = "u32-tx-pointer")]
+impl fmt::LowerHex for TxPointer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if self.tx_index > u16::MAX.into() {
+            write!(f, "{:08x}{:08x}", self.block_height, self.tx_index)
+        } else {
+            write!(f, "{:08x}{:04x}", self.block_height, self.tx_index)
+        }
+    }
+}
+
+#[cfg(not(feature = "u32-tx-pointer"))]
 impl fmt::LowerHex for TxPointer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:08x}{:04x}", self.block_height, self.tx_index)
     }
 }
 
+#[cfg(feature = "u32-tx-pointer")]
+impl fmt::UpperHex for TxPointer {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if self.tx_index > u16::MAX.into() {
+            write!(f, "{:08X}{:08X}", self.block_height, self.tx_index)
+        } else {
+            write!(f, "{:08X}{:04X}", self.block_height, self.tx_index)
+        }
+    }
+}
+
+#[cfg(not(feature = "u32-tx-pointer"))]
 impl fmt::UpperHex for TxPointer {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{:08X}{:04X}", self.block_height, self.tx_index)
@@ -85,6 +122,30 @@ impl fmt::UpperHex for TxPointer {
 impl str::FromStr for TxPointer {
     type Err = &'static str;
 
+    #[cfg(feature = "u32-tx-pointer")]
+    /// TxPointer is encoded as 16 hex characters:
+    /// - 8 characters for block height
+    /// - 4 or 8 characters for tx index (old version used 4 characters (u16::MAX))
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        const ERR: &str = "Invalid encoded byte in TxPointer";
+
+        if (s.len() != 16 && s.len() != 12) || !s.is_char_boundary(8) {
+            return Err(ERR)
+        }
+
+        let (block_height, tx_index) = s.split_at(8);
+
+        let block_height = u32::from_str_radix(block_height, 16).map_err(|_| ERR)?;
+        let tx_index = match tx_index.len() {
+            4 => u16::from_str_radix(tx_index, 16).map_err(|_| ERR)?.into(),
+            8 => u32::from_str_radix(tx_index, 16).map_err(|_| ERR)?,
+            _ => return Err(ERR),
+        };
+
+        Ok(Self::new(block_height.into(), tx_index))
+    }
+
+    #[cfg(not(feature = "u32-tx-pointer"))]
     /// TxPointer is encoded as 12 hex characters:
     /// - 8 characters for block height
     /// - 4 characters for tx index
@@ -144,11 +205,70 @@ pub mod typescript {
     }
 }
 
+#[cfg(not(feature = "u32-tx-pointer"))]
 #[test]
 fn fmt_encode_decode() {
     use core::str::FromStr;
 
     let cases = vec![(83473, 3829)];
+
+    for (block_height, tx_index) in cases {
+        let tx_pointer = TxPointer::new(block_height.into(), tx_index);
+
+        let lower = format!("{tx_pointer:x}");
+        let upper = format!("{tx_pointer:X}");
+
+        assert_eq!(lower, format!("{block_height:08x}{tx_index:04x}"));
+        assert_eq!(upper, format!("{block_height:08X}{tx_index:04X}"));
+
+        let x = TxPointer::from_str(&lower).expect("failed to decode from str");
+        assert_eq!(tx_pointer, x);
+
+        let x = TxPointer::from_str(&upper).expect("failed to decode from str");
+        assert_eq!(tx_pointer, x);
+
+        let bytes = tx_pointer.clone().to_bytes();
+        let tx_pointer_p = TxPointer::from_bytes(&bytes).expect("failed to deserialize");
+
+        assert_eq!(tx_pointer, tx_pointer_p);
+    }
+}
+
+#[cfg(feature = "u32-tx-pointer")]
+#[test]
+fn fmt_encode_decode_u32() {
+    use core::str::FromStr;
+
+    let cases = vec![(83473, u32::from(u16::MAX) + 478930)];
+
+    for (block_height, tx_index) in cases {
+        let tx_pointer = TxPointer::new(block_height.into(), tx_index);
+
+        let lower = format!("{tx_pointer:x}");
+        let upper = format!("{tx_pointer:X}");
+
+        assert_eq!(lower, format!("{block_height:08x}{tx_index:08x}"));
+        assert_eq!(upper, format!("{block_height:08X}{tx_index:08X}"));
+
+        let x = TxPointer::from_str(&lower).expect("failed to decode from str");
+        assert_eq!(tx_pointer, x);
+
+        let x = TxPointer::from_str(&upper).expect("failed to decode from str");
+        assert_eq!(tx_pointer, x);
+
+        let bytes = tx_pointer.clone().to_bytes();
+        let tx_pointer_p = TxPointer::from_bytes(&bytes).expect("failed to deserialize");
+
+        assert_eq!(tx_pointer, tx_pointer_p);
+    }
+}
+
+#[cfg(feature = "u32-tx-pointer")]
+#[test]
+fn fmt_backward_compatibility_u32() {
+    use core::str::FromStr;
+
+    let cases = vec![(83473, 647)];
 
     for (block_height, tx_index) in cases {
         let tx_pointer = TxPointer::new(block_height.into(), tx_index);

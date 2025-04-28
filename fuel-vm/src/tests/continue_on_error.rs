@@ -17,7 +17,7 @@ use crate::{
 #[test]
 fn calling_contract_not_in_inputs_will_collect_and_continue() {
     let mut ctx = TestBuilder::new(2322u64);
-    let base_asset_id = ctx.rng.gen();
+    let base_asset_id = ctx.rng.r#gen();
 
     // Given
     let contract_code = vec![
@@ -55,10 +55,10 @@ fn calling_contract_not_in_inputs_will_collect_and_continue() {
 #[test]
 fn calling_nonexistent_contract_panics_normally() {
     let mut ctx = TestBuilder::new(2322u64);
-    let base_asset_id = ctx.rng.gen();
+    let base_asset_id = ctx.rng.r#gen();
 
     // Given
-    let nonexistent_contract_id = ctx.rng.gen();
+    let nonexistent_contract_id = ctx.rng.r#gen();
     let script_code = vec![
         op::gtf_args(0x10, RegId::ZERO, GTFArgs::ScriptData),
         op::call(0x10, RegId::ZERO, RegId::ZERO, RegId::CGAS),

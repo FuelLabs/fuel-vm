@@ -12,18 +12,18 @@ use crate::{
     storage::MemoryStorage,
 };
 use fuel_asm::{
-    op,
     PanicReason,
+    op,
 };
 use fuel_tx::{
-    field::Outputs,
-    policies::Policies,
     ConsensusParameters,
     GasCosts,
     Input,
     Output,
     Transaction,
     Upgrade,
+    field::Outputs,
+    policies::Policies,
 };
 use fuel_types::AssetId;
 
@@ -96,19 +96,23 @@ mod state_transition {
         // Given
         let expected_version = CURRENT_STATE_TRANSITION_VERSION + 1;
         let tx = valid_transaction(state_transition_hash).test_into_ready();
-        assert!(!client
-            .as_mut()
-            .state_transition_bytecodes_versions_mut()
-            .contains_key(&expected_version));
+        assert!(
+            !client
+                .as_mut()
+                .state_transition_bytecodes_versions_mut()
+                .contains_key(&expected_version)
+        );
 
         // When
         let _ = client.transact(tx).expect("failed to transact");
 
         // Then
-        assert!(client
-            .as_mut()
-            .state_transition_bytecodes_versions_mut()
-            .contains_key(&expected_version));
+        assert!(
+            client
+                .as_mut()
+                .state_transition_bytecodes_versions_mut()
+                .contains_key(&expected_version)
+        );
     }
 
     #[test]
@@ -314,19 +318,23 @@ mod consensus_parameters {
         // Given
         let expected_version = CURRENT_CONSENSUS_PARAMETERS_VERSION + 1;
         let tx = valid_transaction().test_into_ready();
-        assert!(!client
-            .as_mut()
-            .consensus_parameters_versions_mut()
-            .contains_key(&expected_version));
+        assert!(
+            !client
+                .as_mut()
+                .consensus_parameters_versions_mut()
+                .contains_key(&expected_version)
+        );
 
         // When
         let _ = client.transact(tx).expect("failed to transact");
 
         // Then
-        assert!(client
-            .as_mut()
-            .consensus_parameters_versions_mut()
-            .contains_key(&expected_version));
+        assert!(
+            client
+                .as_mut()
+                .consensus_parameters_versions_mut()
+                .contains_key(&expected_version)
+        );
     }
 
     #[test]

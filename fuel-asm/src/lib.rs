@@ -37,6 +37,7 @@ pub use args::{
     wideint,
     GMArgs,
     GTFArgs,
+    wideint,
 };
 
 /// Register ID type

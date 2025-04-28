@@ -1,13 +1,13 @@
 use super::{
+    ExecutableTransaction,
+    Interpreter,
+    Memory,
+    MemoryInstance,
     internal::{
         inc_pc,
         internal_contract,
     },
     receipts::ReceiptsCtx,
-    ExecutableTransaction,
-    Interpreter,
-    Memory,
-    MemoryInstance,
 };
 use crate::{
     constraints::reg_key::*,

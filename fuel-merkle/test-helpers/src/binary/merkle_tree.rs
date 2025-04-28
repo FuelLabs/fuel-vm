@@ -1,9 +1,9 @@
 use crate::binary::{
+    Data,
+    Node,
     empty_sum,
     leaf_sum,
     node_sum,
-    Data,
-    Node,
 };
 use std::collections::VecDeque;
 
@@ -33,7 +33,7 @@ impl MerkleTree {
     pub fn root(&self) -> Data {
         match self.head() {
             None => *empty_sum(),
-            Some(ref head) => {
+            Some(head) => {
                 let mut current = head.clone();
                 while current.next().is_some() {
                     let mut node = current;
@@ -150,12 +150,12 @@ impl MerkleTree {
 mod test {
     use super::MerkleTree;
     use crate::{
+        TEST_DATA,
         binary::{
             empty_sum,
             leaf_sum,
             node_sum,
         },
-        TEST_DATA,
     };
 
     #[test]
@@ -328,8 +328,8 @@ mod test {
     }
 
     #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_left_of_the_root(
-    ) {
+    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_left_of_the_root()
+     {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(2);
 
@@ -367,8 +367,8 @@ mod test {
     }
 
     #[test]
-    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_right_of_the_root(
-    ) {
+    fn prove_returns_the_merkle_root_and_proof_set_for_the_given_proof_index_right_of_the_root()
+     {
         let mut mt = MerkleTree::new();
         mt.set_proof_index(4);
 

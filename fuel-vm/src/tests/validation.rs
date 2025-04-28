@@ -10,10 +10,14 @@ use crate::{
 };
 use core::str::FromStr;
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 use fuel_tx::{
+    ConsensusParameters,
+    Input,
+    TransactionBuilder,
+    UtxoId,
     field::{
         Inputs,
         Outputs,
@@ -21,16 +25,12 @@ use fuel_tx::{
         StorageSlots,
     },
     input::coin::CoinPredicate,
-    ConsensusParameters,
-    Input,
-    TransactionBuilder,
-    UtxoId,
 };
 use fuel_types::BlockHeight;
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use crate::storage::predicate::EmptyStorage;
@@ -52,10 +52,10 @@ fn transaction_can_be_executed_after_maturity() {
     .max_fee_limit(arb_max_fee)
     .add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         arb_max_fee,
         Default::default(),
-        rng.gen(),
+        rng.r#gen(),
     )
     .script_gas_limit(100)
     .maturity(MATURITY)
@@ -83,10 +83,10 @@ fn transaction__execution__works_before_expiration() {
     .max_fee_limit(arb_max_fee)
     .add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         arb_max_fee,
         Default::default(),
-        rng.gen(),
+        rng.r#gen(),
     )
     .script_gas_limit(100)
     .expiration(EXPIRATION)
@@ -117,10 +117,10 @@ fn transaction__execution__works_current_height_expiration() {
     .max_fee_limit(arb_max_fee)
     .add_unsigned_coin_input(
         SecretKey::random(rng),
-        rng.gen(),
+        rng.r#gen(),
         arb_max_fee,
         Default::default(),
-        rng.gen(),
+        rng.r#gen(),
     )
     .script_gas_limit(100)
     .expiration(EXPIRATION)
@@ -217,7 +217,16 @@ fn malleable_fields_do_not_affect_validity_of_create() {
         match tx.inputs_mut()[0] {
             Input::CoinPredicate(CoinPredicate {
                 ref mut tx_pointer, ..
-            }) => *tx_pointer = TxPointer::from_str("123456780001").unwrap(),
+            }) => {
+                #[cfg(not(feature = "u32-tx-pointer"))]
+                {
+                    *tx_pointer = TxPointer::from_str("123456780001").unwrap()
+                }
+                #[cfg(feature = "u32-tx-pointer")]
+                {
+                    *tx_pointer = TxPointer::from_str("1234567800000001").unwrap()
+                }
+            }
             _ => unreachable!(),
         };
 
@@ -319,7 +328,16 @@ fn malleable_fields_do_not_affect_validity_of_script() {
         match tx.inputs_mut()[0] {
             Input::CoinPredicate(CoinPredicate {
                 ref mut tx_pointer, ..
-            }) => *tx_pointer = TxPointer::from_str("123456780001").unwrap(),
+            }) => {
+                #[cfg(not(feature = "u32-tx-pointer"))]
+                {
+                    *tx_pointer = TxPointer::from_str("123456780001").unwrap()
+                }
+                #[cfg(feature = "u32-tx-pointer")]
+                {
+                    *tx_pointer = TxPointer::from_str("1234567800000001").unwrap()
+                }
+            }
             _ => unreachable!(),
         };
 
@@ -334,7 +352,14 @@ fn malleable_fields_do_not_affect_validity_of_script() {
                 *utxo_id = UtxoId::new([1; 32].into(), 0);
                 *balance_root = [2; 32].into();
                 *state_root = [3; 32].into();
-                *tx_pointer = TxPointer::from_str("123456780001").unwrap();
+                #[cfg(not(feature = "u32-tx-pointer"))]
+                {
+                    *tx_pointer = TxPointer::from_str("123456780001").unwrap();
+                }
+                #[cfg(feature = "u32-tx-pointer")]
+                {
+                    *tx_pointer = TxPointer::from_str("1234567800000001").unwrap();
+                }
             }
             _ => unreachable!(),
         };

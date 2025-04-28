@@ -16,6 +16,7 @@ use fuel_asm::{
     Instruction,
     RegId,
     Word,
+    op,
 };
 use fuel_tx::{
     PanicReason,
@@ -23,9 +24,9 @@ use fuel_tx::{
 };
 
 use super::test_helpers::{
+    RunResult,
     run_script,
     set_full_word,
-    RunResult,
 };
 
 fn alu_reserved(registers_init: &[(RegisterId, Word)], ins: Instruction) {

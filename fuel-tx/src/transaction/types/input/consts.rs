@@ -4,11 +4,11 @@ use crate::{
 };
 
 use fuel_types::{
-    bytes::WORD_SIZE,
     Address,
     AssetId,
     Bytes32,
     Nonce,
+    bytes::WORD_SIZE,
 };
 
 pub(super) const INPUT_UTXO_ID_OFFSET: usize = WORD_SIZE; // Identifier

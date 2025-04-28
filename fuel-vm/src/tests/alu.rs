@@ -6,16 +6,15 @@ use test_case::test_case;
 
 use crate::prelude::*;
 use fuel_asm::{
+    Flags,
+    Instruction,
+    RegId,
+    Word,
     narrowint::{
         MathArgs,
         MathOp,
         OpWidth,
     },
-    op,
-    Flags,
-    Instruction,
-    RegId,
-    Word,
     op,
 };
 use fuel_tx::{

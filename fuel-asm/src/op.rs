@@ -2,8 +2,6 @@
 //! unique `Opcode` variant.
 
 use super::{
-    narrowint,
-    wideint,
     CheckRegId,
     GMArgs,
     GTFArgs,
@@ -11,6 +9,8 @@ use super::{
     Imm18,
     Instruction,
     RegId,
+    narrowint,
+    wideint,
     wideint::{
         CompareArgs,
         DivArgs,

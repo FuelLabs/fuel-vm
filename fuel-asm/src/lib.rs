@@ -33,10 +33,10 @@ mod encoding_tests;
 
 #[doc(no_inline)]
 pub use args::{
-    narrowint,
-    wideint,
     GMArgs,
     GTFArgs,
+    narrowint,
+    wideint,
     wideint,
 };
 

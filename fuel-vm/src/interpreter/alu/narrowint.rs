@@ -1,17 +1,17 @@
 //! Operations on subword integers u8, u16, u32.
 
 use fuel_asm::{
-    narrowint::*,
     PanicReason,
     RegId,
+    narrowint::*,
 };
 use fuel_types::Word;
 
 use super::super::{
-    internal::inc_pc,
-    is_wrapping,
     ExecutableTransaction,
     Interpreter,
+    internal::inc_pc,
+    is_wrapping,
 };
 use crate::{
     constraints::reg_key::*,
@@ -76,11 +76,7 @@ where
             MathOp::EXP => match lhs.checked_pow(rhs_u32) {
                 Some(v) => {
                     let (wrapped, overflow) = split_overflow(v, args.width);
-                    if overflow != 0 {
-                        (0, 1)
-                    } else {
-                        (wrapped, 0)
-                    }
+                    if overflow != 0 { (0, 1) } else { (wrapped, 0) }
                 }
                 None => (0, 1),
             },

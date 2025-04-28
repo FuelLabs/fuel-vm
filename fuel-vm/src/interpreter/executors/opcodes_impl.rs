@@ -22,8 +22,8 @@ use crate::{
 };
 use core::ops::Div;
 use fuel_asm::{
-    narrowint,
     PanicReason,
+    narrowint,
     op::{
         ADD,
         ADDI,

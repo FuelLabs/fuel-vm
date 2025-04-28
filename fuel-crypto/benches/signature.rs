@@ -1,8 +1,8 @@
 use criterion::{
+    Criterion,
     black_box,
     criterion_group,
     criterion_main,
-    Criterion,
 };
 use sha2::digest::Update;
 
@@ -17,8 +17,8 @@ fn signatures(c: &mut Criterion) {
             Signature,
         };
         use rand::{
-            rngs::StdRng,
             SeedableRng,
+            rngs::StdRng,
         };
 
         let rng = &mut StdRng::seed_from_u64(8586);
@@ -100,9 +100,9 @@ fn signatures(c: &mut Criterion) {
     // k256
     let (k2_key, k2_verifying, k2_digest, k2_signature, k2_recovery_id) = {
         use k256::ecdsa::{
-            signature::DigestVerifier,
             SigningKey,
             VerifyingKey,
+            signature::DigestVerifier,
         };
         use sha2::{
             Digest,

@@ -197,7 +197,7 @@ fn reached_max_inputs() {
     let mut builder = valid_upgrade_transaction();
 
     while builder.outputs().len() < test_params().tx_params().max_outputs() as usize {
-        builder.add_output(Output::coin(rng.gen(), rng.gen(), AssetId::BASE));
+        builder.add_output(Output::coin(rng.r#gen(), rng.r#gen(), AssetId::BASE));
     }
 
     // Given
@@ -208,10 +208,10 @@ fn reached_max_inputs() {
     secrets.iter().for_each(|k| {
         builder.add_unsigned_coin_input(
             *k,
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             AssetId::BASE,
-            rng.gen(),
+            rng.r#gen(),
         );
     });
     while builder.witnesses().len() < test_params().tx_params().max_witnesses() as usize {
@@ -239,10 +239,10 @@ fn reached_max_outputs() {
     secrets.iter().for_each(|k| {
         builder.add_unsigned_coin_input(
             *k,
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             AssetId::BASE,
-            rng.gen(),
+            rng.r#gen(),
         );
     });
     while builder.witnesses().len() < test_params().tx_params().max_witnesses() as usize {
@@ -251,7 +251,7 @@ fn reached_max_outputs() {
 
     // Given
     while builder.outputs().len() < test_params().tx_params().max_outputs() as usize + 1 {
-        builder.add_output(Output::coin(rng.gen(), rng.gen(), AssetId::BASE));
+        builder.add_output(Output::coin(rng.r#gen(), rng.r#gen(), AssetId::BASE));
     }
     let tx = builder.finalize_as_transaction();
 
@@ -275,14 +275,14 @@ fn reached_max_witnesses() {
     secrets.iter().for_each(|k| {
         builder.add_unsigned_coin_input(
             *k,
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             AssetId::BASE,
-            rng.gen(),
+            rng.r#gen(),
         );
     });
     while builder.outputs().len() < test_params().tx_params().max_outputs() as usize {
-        builder.add_output(Output::coin(rng.gen(), rng.gen(), AssetId::BASE));
+        builder.add_output(Output::coin(rng.r#gen(), rng.r#gen(), AssetId::BASE));
     }
 
     // Given
@@ -307,11 +307,11 @@ fn output_change_asset_id_duplicated_output() {
     let secret = SecretKey::random(rng);
 
     // Given
-    let a: AssetId = rng.gen();
+    let a: AssetId = rng.r#gen();
     let tx = valid_upgrade_transaction()
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), a, rng.gen())
-        .add_output(Output::change(rng.gen(), rng.next_u64(), a))
-        .add_output(Output::change(rng.gen(), rng.next_u64(), a))
+        .add_unsigned_coin_input(secret, rng.r#gen(), rng.r#gen(), a, rng.r#gen())
+        .add_output(Output::change(rng.r#gen(), rng.next_u64(), a))
+        .add_output(Output::change(rng.r#gen(), rng.next_u64(), a))
         .finalize();
 
     // When
@@ -330,9 +330,9 @@ fn output_change_asset_id_foreign_asset() {
     let block_height = 1000.into();
 
     // Given
-    let c: AssetId = rng.gen();
+    let c: AssetId = rng.r#gen();
     let tx = valid_upgrade_transaction()
-        .add_output(Output::change(rng.gen(), rng.next_u64(), c))
+        .add_output(Output::change(rng.r#gen(), rng.next_u64(), c))
         .finalize();
 
     // When
@@ -353,13 +353,13 @@ fn check__cannot_have_contract_input() {
     // Given
     let tx = valid_upgrade_transaction()
         .add_input(Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         ))
-        .add_output(Output::contract(1, rng.gen(), rng.gen()))
+        .add_output(Output::contract(1, rng.r#gen(), rng.r#gen()))
         .finalize_as_transaction();
 
     // When
@@ -380,7 +380,13 @@ fn check__cannot_have_coin_with_non_base_asset_id() {
 
     // Given
     let tx = valid_upgrade_transaction()
-        .add_unsigned_coin_input(secret, rng.gen(), rng.gen(), rng.gen(), rng.gen())
+        .add_unsigned_coin_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        )
         .finalize_as_transaction();
 
     // When
@@ -402,7 +408,13 @@ fn check__can_have_message_coin_input() {
     // Given
     let empty_data = vec![];
     let tx = valid_upgrade_transaction()
-        .add_unsigned_message_input(secret, rng.gen(), rng.gen(), rng.gen(), empty_data)
+        .add_unsigned_message_input(
+            secret,
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            empty_data,
+        )
         .finalize_as_transaction();
 
     // When
@@ -423,9 +435,9 @@ fn check__cannot_have_message_data_input() {
     let tx = valid_upgrade_transaction()
         .add_unsigned_message_input(
             secret,
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             not_empty_data,
         )
         .finalize_as_transaction();
@@ -447,7 +459,7 @@ fn check__cannot_have_variable_output() {
 
     // Given
     let tx = valid_upgrade_transaction()
-        .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
+        .add_output(Output::variable(rng.r#gen(), rng.r#gen(), rng.r#gen()))
         .finalize_as_transaction();
 
     // When
@@ -467,7 +479,7 @@ fn check__cannot_have_contract_output() {
 
     // Given
     let tx = valid_upgrade_transaction()
-        .add_output(Output::Contract(rng.gen()))
+        .add_output(Output::Contract(rng.r#gen()))
         .finalize_as_transaction();
 
     // When
@@ -487,7 +499,7 @@ fn check__cannot_have_create_contract_output() {
 
     // Given
     let tx = valid_upgrade_transaction()
-        .add_output(Output::contract_created(rng.gen(), rng.gen()))
+        .add_output(Output::contract_created(rng.r#gen(), rng.r#gen()))
         .finalize_as_transaction();
 
     // When
@@ -507,7 +519,7 @@ fn check__can_have_change_output() {
 
     // Given
     let tx = valid_upgrade_transaction()
-        .add_output(Output::change(rng.gen(), rng.gen(), AssetId::BASE))
+        .add_output(Output::change(rng.r#gen(), rng.r#gen(), AssetId::BASE))
         .finalize_as_transaction();
 
     // When
@@ -523,16 +535,16 @@ fn check__errors_if_change_is_wrong_asset() {
     let block_height = 1000.into();
 
     // Given
-    let a: AssetId = rng.gen();
+    let a: AssetId = rng.r#gen();
     let tx = valid_upgrade_transaction()
         .add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             a,
-            rng.gen(),
+            rng.r#gen(),
         )
-        .add_output(Output::change(rng.gen(), rng.gen(), a))
+        .add_output(Output::change(rng.r#gen(), rng.r#gen(), a))
         .finalize_as_transaction();
 
     // When
@@ -683,17 +695,17 @@ mod check_inputs {
     fn coin_predicate_check_owner_works() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
-        let predicate = (0..100).map(|_| rng.gen()).collect_vec();
+        let predicate = (0..100).map(|_| rng.r#gen()).collect_vec();
         let owner: Address = Input::predicate_owner(&predicate);
 
         // Given
         let tx = valid_upgrade_transaction()
             .add_input(Input::coin_predicate(
-                rng.gen(),
+                rng.r#gen(),
                 owner,
-                rng.gen(),
+                rng.r#gen(),
                 AssetId::BASE,
-                rng.gen(),
+                rng.r#gen(),
                 0,
                 predicate,
                 vec![],
@@ -711,17 +723,17 @@ mod check_inputs {
     fn coin_predicate_check_owners_fails_incorrect_owner() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
-        let predicate = (0..100).map(|_| rng.gen()).collect_vec();
+        let predicate = (0..100).map(|_| rng.r#gen()).collect_vec();
         let incorrect_owner: Address = [1; 32].into();
 
         // Given
         let tx = valid_upgrade_transaction()
             .add_input(Input::coin_predicate(
-                rng.gen(),
+                rng.r#gen(),
                 incorrect_owner,
-                rng.gen(),
+                rng.r#gen(),
                 AssetId::BASE,
-                rng.gen(),
+                rng.r#gen(),
                 0,
                 predicate,
                 vec![],
@@ -739,16 +751,16 @@ mod check_inputs {
     fn message_predicate_check_owners_works() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
-        let predicate = (0..100).map(|_| rng.gen()).collect_vec();
+        let predicate = (0..100).map(|_| rng.r#gen()).collect_vec();
         let owner: Address = Input::predicate_owner(&predicate);
 
         // Given
         let tx = valid_upgrade_transaction()
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
+                rng.r#gen(),
                 owner,
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 0,
                 predicate,
                 vec![],
@@ -766,16 +778,16 @@ mod check_inputs {
     fn message_predicate_check_owners_fails_incorrect_owner() {
         let rng = &mut StdRng::seed_from_u64(8586);
         let block_height = 1000.into();
-        let predicate = (0..100).map(|_| rng.gen()).collect_vec();
+        let predicate = (0..100).map(|_| rng.r#gen()).collect_vec();
         let incorrect_owner: Address = [1; 32].into();
 
         // Given
         let tx = valid_upgrade_transaction()
             .add_input(Input::message_coin_predicate(
-                rng.gen(),
+                rng.r#gen(),
                 incorrect_owner,
-                rng.gen(),
-                rng.gen(),
+                rng.r#gen(),
+                rng.r#gen(),
                 0,
                 predicate,
                 vec![],

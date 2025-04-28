@@ -2,19 +2,19 @@ use crate::{
     constraints::reg_key::ProgramRegistersSegment,
     error::IoResult,
     interpreter::{
+        EcalHandler,
+        ExecutableTransaction,
+        Interpreter,
+        Memory,
         alu,
         executors::instruction::{
-            checked_nth_root,
             Execute,
+            checked_nth_root,
         },
         flow::{
             JumpArgs,
             JumpMode,
         },
-        EcalHandler,
-        ExecutableTransaction,
-        Interpreter,
-        Memory,
     },
     prelude::InterpreterStorage,
     state::ExecuteState,
@@ -22,14 +22,14 @@ use crate::{
 };
 use core::ops::Div;
 use fuel_asm::{
+    Instruction,
+    PanicReason,
+    RegId,
     op::{
         ADD,
         ADDI,
     },
     wideint,
-    Instruction,
-    PanicReason,
-    RegId,
 };
 use fuel_types::Word;
 

@@ -61,7 +61,9 @@ impl ProofTest {
         if verification != expected_verification {
             return Err(TestError::Failed(
                 self.name,
-                format!("Verification {verification} does not match expected verification {expected_verification}",),
+                format!(
+                    "Verification {verification} does not match expected verification {expected_verification}",
+                ),
             ));
         }
 

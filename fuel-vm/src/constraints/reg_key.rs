@@ -227,8 +227,25 @@ pub(crate) struct ProgramRegistersRef<'a>(pub &'a [Word; VM_REGISTER_PROGRAM_COU
 pub(crate) fn split_registers(
     registers: &mut [Word; VM_REGISTER_COUNT],
 ) -> (SystemRegisters<'_>, ProgramRegisters<'_>) {
-    let [zero, one, of, pc, ssp, sp, fp, hp, err, ggas, cgas, bal, is, ret, retl, flag, rest @ ..] =
-        registers;
+    let [
+        zero,
+        one,
+        of,
+        pc,
+        ssp,
+        sp,
+        fp,
+        hp,
+        err,
+        ggas,
+        cgas,
+        bal,
+        is,
+        ret,
+        retl,
+        flag,
+        rest @ ..,
+    ] = registers;
     let r = SystemRegisters {
         zero: RegMut(zero),
         one: RegMut(one),

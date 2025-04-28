@@ -9,8 +9,8 @@ use crate::{
     },
 };
 use fuel_asm::{
-    op,
     RegId,
+    op,
 };
 
 #[test]

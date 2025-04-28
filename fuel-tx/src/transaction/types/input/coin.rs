@@ -1,13 +1,13 @@
 use core::default::Default;
 
 use crate::{
-    input::{
-        fmt_as_field,
-        Empty,
-    },
-    transaction::types::input::AsField,
     TxPointer,
     UtxoId,
+    input::{
+        Empty,
+        fmt_as_field,
+    },
+    transaction::types::input::AsField,
 };
 use alloc::vec::Vec;
 use educe::Educe;

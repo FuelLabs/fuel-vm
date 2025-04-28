@@ -1,4 +1,7 @@
 use crate::{
+    FeeParameters,
+    GasCosts,
+    Input,
     field,
     field::{
         MaxFeeLimit,
@@ -18,9 +21,6 @@ use crate::{
         },
     },
     policies::PolicyType,
-    FeeParameters,
-    GasCosts,
-    Input,
 };
 use fuel_asm::Word;
 use fuel_types::canonical::Serialize;

@@ -284,3 +284,56 @@ fn test_store_word(has_ownership: bool, a: Word, b: Word, c: Imm12) -> SimpleRes
 
     Ok(())
 }
+
+macro_rules! generate_test__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size {
+    ($size:expr) => {
+        paste::paste! {
+            #[test]
+            fn [<memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size_ $size>]() -> SimpleResult<()> {
+                // given: a pre-initialized memory instance with $size bytes of heap memory
+                let mut memory_instance = MemoryInstance::new();
+                let sp = Reg::new(&10);
+                let mut hp = VM_MAX_RAM;
+                const SIZE: usize = $size;
+
+                memory_instance.grow_heap_by(sp, RegMut::new(&mut hp), SIZE.try_into().unwrap())?;
+                memory_instance.write_bytes_noownerchecks(
+                    memory_instance.hp,
+                    [1u8; SIZE],
+                )?;
+
+                // when: we reset and grow the heap again, triggering the reallocation
+                // after we grow the heap again, it should not have any memory left over from before
+                // the reset
+                memory_instance.reset();
+                let mut hp = VM_MAX_RAM;
+                const NEW_SIZE: usize = SIZE * 3;
+                memory_instance.grow_heap_by(
+                    sp,
+                    RegMut::new(&mut hp),
+                    NEW_SIZE.try_into().unwrap(),
+                )?;
+                let heap = memory_instance.heap_raw();
+                let heap_len = heap.len();
+
+                // then: we check that the heap is all zeroed out
+                assert_eq!(heap, vec![0u8; heap_len]);
+
+                Ok(())
+            }
+        }
+    };
+}
+
+// Generate tests with different sizes
+macro_rules! generate_tests__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size {
+    ($($size:expr),*) => {
+        $(
+            generate_test__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size!($size);
+        )*
+    };
+}
+
+generate_tests__memory_instance__grow_heap_by_after_reset__does_not_retain_dirty_memory_size!(
+    0, 1, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072
+);

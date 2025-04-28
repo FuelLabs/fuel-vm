@@ -1,14 +1,14 @@
 use super::{
+    ExecutableTransaction,
+    Interpreter,
+    Memory,
+    MemoryInstance,
     internal::{
         clear_err,
         inc_pc,
         set_err,
     },
     memory::OwnershipRegisters,
-    ExecutableTransaction,
-    Interpreter,
-    Memory,
-    MemoryInstance,
 };
 use crate::{
     constraints::reg_key::*,
@@ -22,10 +22,10 @@ use bn::{
     Fq,
     Fq2,
     Fr,
-    Group,
-    Gt,
     G1,
     G2,
+    Group,
+    Gt,
 };
 use fuel_asm::RegId;
 use fuel_crypto::{

@@ -18,16 +18,16 @@ use fuel_asm::{
     RegId,
 };
 use fuel_tx::{
-    field::Outputs,
     Output,
+    field::Outputs,
 };
 use fuel_types::{
-    canonical::Serialize,
     AssetId,
     BlockHeight,
     Bytes32,
     ContractId,
     Word,
+    canonical::Serialize,
 };
 
 use core::ops::Range;

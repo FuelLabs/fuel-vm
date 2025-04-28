@@ -5,14 +5,14 @@ use fuel_asm::{
     RegId,
 };
 use fuel_types::{
+    AssetId,
+    ContractId,
+    Word,
     bytes::padded_len_usize,
     canonical::{
         Deserialize,
         Serialize,
     },
-    AssetId,
-    ContractId,
-    Word,
 };
 
 use crate::consts::{

@@ -34,9 +34,9 @@ use crate::{
         StateTransitionRef,
     },
     storage::{
-        predicate::PredicateStorage,
         BlobData,
         InterpreterStorage,
+        predicate::PredicateStorage,
     },
     verification::Verifier,
 };
@@ -55,9 +55,9 @@ use crate::{
     interpreter::InterpreterParams,
     prelude::MemoryInstance,
     storage::{
-        predicate::PredicateStorageRequirements,
         UploadedBytecode,
         UploadedBytecodes,
+        predicate::PredicateStorageRequirements,
     },
 };
 use fuel_asm::PanicReason;
@@ -66,6 +66,22 @@ use fuel_storage::{
     StorageAsRef,
 };
 use fuel_tx::{
+    Blob,
+    BlobIdExt,
+    ConsensusParameters,
+    Contract,
+    Create,
+    FeeParameters,
+    GasCosts,
+    Input,
+    Receipt,
+    ScriptExecutionResult,
+    Transaction,
+    Upgrade,
+    UpgradeMetadata,
+    UpgradePurpose,
+    Upload,
+    ValidityError,
     field::{
         BlobId as _,
         BytecodeRoot,
@@ -87,22 +103,6 @@ use fuel_tx::{
             MessageDataPredicate,
         },
     },
-    Blob,
-    BlobIdExt,
-    ConsensusParameters,
-    Contract,
-    Create,
-    FeeParameters,
-    GasCosts,
-    Input,
-    Receipt,
-    ScriptExecutionResult,
-    Transaction,
-    Upgrade,
-    UpgradeMetadata,
-    UpgradePurpose,
-    Upload,
-    ValidityError,
 };
 use fuel_types::{
     AssetId,

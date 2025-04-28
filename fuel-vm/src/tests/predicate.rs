@@ -534,13 +534,10 @@ async fn gtf_args__input_data_coin_utxo_id() {
 #[tokio::test]
 async fn gtf_args__input_data_coin_address() {
     let mut data_coin_builder = DataCoinInputBuilder::new();
-    let expected_address = data_coin_builder.owner;
-    let expected_address_bytes = expected_address.to_bytes();
-    data_coin_builder.with_predicate_data(&expected_address_bytes);
 
     let expected_address_reg = 0x11;
     let actual_address_reg = 0x12;
-    let address_size = expected_address.size();
+    let address_size = Address::LEN;
     let address_size_reg = 0x13;
     let res_reg = 0x10;
     let predicate = vec![

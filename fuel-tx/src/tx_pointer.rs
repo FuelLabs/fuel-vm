@@ -1,6 +1,6 @@
 use fuel_types::{
-    bytes::WORD_SIZE,
     BlockHeight,
+    bytes::WORD_SIZE,
 };
 
 use fuel_types::canonical::{
@@ -15,11 +15,11 @@ use core::{
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 /// Identification of unspend transaction output.
@@ -73,7 +73,7 @@ impl TxPointer {
 #[cfg(feature = "random")]
 impl Distribution<TxPointer> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> TxPointer {
-        TxPointer::new(rng.gen(), rng.gen())
+        TxPointer::new(rng.r#gen(), rng.r#gen())
     }
 }
 

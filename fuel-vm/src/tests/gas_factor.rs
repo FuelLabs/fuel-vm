@@ -7,12 +7,12 @@ use crate::{
 use core::iter;
 use fuel_asm::op;
 use fuel_tx::{
+    ConsensusParameters,
+    FeeParameters,
     field::{
         MaxFeeLimit,
         Outputs,
     },
-    ConsensusParameters,
-    FeeParameters,
 };
 use std::panic;
 

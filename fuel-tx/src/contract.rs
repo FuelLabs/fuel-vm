@@ -9,15 +9,15 @@ use fuel_crypto::Hasher;
 use fuel_merkle::{
     binary::root_calculator::MerkleRootCalculator as BinaryMerkleTree,
     sparse::{
-        in_memory::MerkleTree as SparseMerkleTree,
         MerkleTreeKey,
+        in_memory::MerkleTree as SparseMerkleTree,
     },
 };
 use fuel_types::{
-    fmt_truncated_hex,
     Bytes32,
     ContractId,
     Salt,
+    fmt_truncated_hex,
 };
 
 use alloc::vec::Vec;
@@ -180,15 +180,15 @@ impl TryFrom<&Transaction> for Contract {
 mod tests {
     use super::*;
     use fuel_types::{
-        bytes::WORD_SIZE,
         Bytes64,
+        bytes::WORD_SIZE,
     };
     use itertools::Itertools;
     use quickcheck_macros::quickcheck;
     use rand::{
-        rngs::StdRng,
         RngCore,
         SeedableRng,
+        rngs::StdRng,
     };
     use rstest::rstest;
 

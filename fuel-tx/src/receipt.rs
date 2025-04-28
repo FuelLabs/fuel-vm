@@ -4,11 +4,6 @@ use educe::Educe;
 use fuel_asm::PanicInstruction;
 use fuel_crypto::Hasher;
 use fuel_types::{
-    canonical::{
-        Deserialize,
-        Serialize,
-    },
-    fmt_option_truncated_hex,
     Address,
     AssetId,
     Bytes32,
@@ -17,6 +12,11 @@ use fuel_types::{
     Nonce,
     SubAssetId,
     Word,
+    canonical::{
+        Deserialize,
+        Serialize,
+    },
+    fmt_option_truncated_hex,
 };
 
 mod receipt_repr;

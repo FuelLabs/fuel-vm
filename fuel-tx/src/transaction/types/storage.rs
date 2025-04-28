@@ -1,18 +1,18 @@
 use fuel_types::{
+    Bytes32,
+    Bytes64,
     canonical::{
         Deserialize,
         Serialize,
     },
-    Bytes32,
-    Bytes64,
 };
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 
 use core::cmp::Ordering;
@@ -72,8 +72,8 @@ impl From<&Bytes64> for StorageSlot {
 impl Distribution<StorageSlot> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> StorageSlot {
         StorageSlot {
-            key: rng.gen(),
-            value: rng.gen(),
+            key: rng.r#gen(),
+            value: rng.r#gen(),
         }
     }
 }
@@ -104,8 +104,8 @@ mod tests {
     #[test]
     fn test_storage_slot_serialization() {
         let rng = &mut rand::rngs::StdRng::seed_from_u64(8586);
-        let key: Bytes32 = rng.gen();
-        let value: Bytes32 = rng.gen();
+        let key: Bytes32 = rng.r#gen();
+        let value: Bytes32 = rng.r#gen();
 
         let slot = StorageSlot::new(key, value);
         let slots = vec![slot.clone()];

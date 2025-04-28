@@ -13,18 +13,23 @@ use crate::{
         NotSupportedEcal,
     },
     storage::{
-        predicate::EmptyStorage,
         UploadedBytecode,
+        predicate::EmptyStorage,
     },
 };
 use fuel_asm::{
-    op,
     GMArgs,
     GTFArgs,
     RegId,
+    op,
 };
 use fuel_crypto::Hasher;
 use fuel_tx::{
+    ConsensusParameters,
+    Finalizable,
+    Receipt,
+    Script,
+    TransactionBuilder,
     field::{
         Inputs,
         Outputs,
@@ -33,22 +38,17 @@ use fuel_tx::{
         Witnesses,
     },
     policies::PoliciesBits,
-    ConsensusParameters,
-    Finalizable,
-    Receipt,
-    Script,
-    TransactionBuilder,
 };
 use fuel_types::{
-    bytes,
-    canonical::Serialize,
     BlockHeight,
     ChainId,
+    bytes,
+    canonical::Serialize,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     SeedableRng,
+    rngs::StdRng,
 };
 
 use crate::prelude::{
@@ -92,7 +92,7 @@ fn metadata() {
         op::ret(RegId::ONE),
     ];
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let program: Witness = routine_metadata_is_caller_external
         .into_iter()
         .collect::<Vec<u8>>()
@@ -114,13 +114,15 @@ fn metadata() {
     let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::<_, _, _>::new(
-        MemoryInstance::new(),
-        &mut storage,
-        interpreter_params.clone()
-    )
-    .transact(tx)
-    .is_success());
+    assert!(
+        Transactor::<_, _, _>::new(
+            MemoryInstance::new(),
+            &mut storage,
+            interpreter_params.clone()
+        )
+        .transact(tx)
+        .is_success()
+    );
 
     let mut routine_call_metadata_contract = vec![
         op::gm_args(0x10, GMArgs::IsCallerExternal),
@@ -142,7 +144,7 @@ fn metadata() {
     routine_call_metadata_contract.push(op::call(0x10, RegId::ZERO, 0x10, RegId::CGAS));
     routine_call_metadata_contract.push(op::ret(RegId::ONE));
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let program: Witness = routine_call_metadata_contract
         .into_iter()
         .collect::<Vec<u8>>()
@@ -160,34 +162,36 @@ fn metadata() {
         .into_checked(height, &consensus_params)
         .expect("failed to check tx");
 
-    assert!(Transactor::<_, _, _>::new(
-        MemoryInstance::new(),
-        &mut storage,
-        interpreter_params.clone()
-    )
-    .transact(tx)
-    .is_success());
+    assert!(
+        Transactor::<_, _, _>::new(
+            MemoryInstance::new(),
+            &mut storage,
+            interpreter_params.clone()
+        )
+        .transact(tx)
+        .is_success()
+    );
 
     let mut inputs = vec![];
     let mut outputs = vec![];
 
     inputs.push(Input::contract(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         contract_call,
     ));
-    outputs.push(Output::contract(0, rng.gen(), rng.gen()));
+    outputs.push(Output::contract(0, rng.r#gen(), rng.r#gen()));
 
     inputs.push(Input::contract(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         contract_metadata,
     ));
-    outputs.push(Output::contract(1, rng.gen(), rng.gen()));
+    outputs.push(Output::contract(1, rng.r#gen(), rng.r#gen()));
 
     let mut script = vec![
         op::movi(0x10, (1 + Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
@@ -256,7 +260,7 @@ fn get_metadata_chain_id() {
     let gas_limit = 1_000_000;
     let height = BlockHeight::default();
 
-    let chain_id: ChainId = rng.gen();
+    let chain_id: ChainId = rng.r#gen();
 
     let interpreter_params = InterpreterParams {
         chain_id,
@@ -395,7 +399,7 @@ fn get_transaction_fields() {
     let tx_params = TxParameters::default();
 
     let contract: Witness = vec![op::ret(0x01)].into_iter().collect::<Vec<u8>>().into();
-    let salt = rng.gen();
+    let salt = rng.r#gen();
     let code_root = Contract::root_from_code(contract.as_ref());
     let storage_slots = vec![];
     let state_root = Contract::initial_state_root(storage_slots.iter());
@@ -405,10 +409,10 @@ fn get_transaction_fields() {
     let tx = TransactionBuilder::create(contract, salt, storage_slots)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
+            rng.r#gen(),
             max_fee_limit,
             AssetId::zeroed(),
-            rng.gen(),
+            rng.r#gen(),
         )
         .add_contract_created()
         .finalize_checked(height);
@@ -422,11 +426,11 @@ fn get_transaction_fields() {
 
     let owner = Input::predicate_owner(&predicate);
     let input_coin_predicate = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         1_500,
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         gas_costs.ret(),
         predicate.clone(),
         predicate_data.clone(),
@@ -447,17 +451,17 @@ fn get_transaction_fields() {
 
     let owner = Input::predicate_owner(&m_predicate);
     let message_predicate = Input::message_data_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         7_500,
-        rng.gen(),
+        rng.r#gen(),
         gas_costs.ret(),
         m_data.clone(),
         m_predicate.clone(),
         m_predicate_data.clone(),
     );
 
-    let asset = rng.gen();
+    let asset = rng.r#gen();
     let asset_amt = 27;
 
     let tx = TransactionBuilder::script(vec![], vec![])
@@ -467,43 +471,43 @@ fn get_transaction_fields() {
         .script_gas_limit(gas_limit)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
+            rng.r#gen(),
             input,
             AssetId::zeroed(),
-            rng.gen(),
+            rng.r#gen(),
         )
         .add_input(input_coin_predicate)
         .add_input(Input::contract(
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             state_root,
-            rng.gen(),
+            rng.r#gen(),
             contract_id,
         ))
-        .add_output(Output::variable(rng.gen(), rng.gen(), rng.gen()))
+        .add_output(Output::variable(rng.r#gen(), rng.r#gen(), rng.r#gen()))
         .add_output(Output::contract(
             contract_input_index,
-            rng.gen(),
+            rng.r#gen(),
             state_root,
         ))
         .add_witness(Witness::from(b"some-data".to_vec()))
         .add_unsigned_message_input(
             SecretKey::random(rng),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             message_amount,
             message_data.clone(),
         )
         .add_input(message_predicate)
         .add_unsigned_coin_input(
             SecretKey::random(rng),
-            rng.gen(),
+            rng.r#gen(),
             asset_amt,
             asset,
-            rng.gen(),
+            rng.r#gen(),
         )
-        .add_output(Output::coin(rng.gen(), asset_amt, asset))
-        .add_output(Output::change(rng.gen(), rng.gen_range(10..1000), asset))
+        .add_output(Output::coin(rng.r#gen(), asset_amt, asset))
+        .add_output(Output::change(rng.r#gen(), rng.gen_range(10..1000), asset))
         .finalize_checked(height);
 
     let inputs = tx.as_ref().inputs();
@@ -1110,11 +1114,11 @@ fn get__create_specific_transaction_fields__success() {
 
     let predicate_owner: Address = Input::predicate_owner(&predicate_code);
     tx.add_input(Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         predicate_owner,
-        rng.gen(),
+        rng.r#gen(),
         *tx.get_params().base_asset_id(),
-        rng.gen(),
+        rng.r#gen(),
         0,
         predicate_code,
         vec![],
@@ -1201,11 +1205,11 @@ fn get__upload_specific_transaction_fields__success() {
 
     let predicate_owner: Address = Input::predicate_owner(&predicate_code);
     tx.add_input(Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         predicate_owner,
-        rng.gen(),
+        rng.r#gen(),
         *tx.get_params().base_asset_id(),
-        rng.gen(),
+        rng.r#gen(),
         0,
         predicate_code,
         vec![],
@@ -1274,11 +1278,11 @@ fn get__blob_specific_transaction_fields__success() {
 
     let predicate_owner: Address = Input::predicate_owner(&predicate_code);
     tx.add_input(Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         predicate_owner,
-        rng.gen(),
+        rng.r#gen(),
         *tx.get_params().base_asset_id(),
-        rng.gen(),
+        rng.r#gen(),
         0,
         predicate_code,
         vec![],
@@ -1350,11 +1354,11 @@ fn get__upgrade_specific_transaction_fields__success() {
 
     let predicate_owner: Address = Input::predicate_owner(&predicate_code);
     tx.add_input(Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         predicate_owner,
-        rng.gen(),
+        rng.r#gen(),
         *tx.get_params().base_asset_id(),
-        rng.gen(),
+        rng.r#gen(),
         0,
         predicate_code,
         vec![],

@@ -1,14 +1,14 @@
 use alloc::vec::Vec;
 use fuel_types::{
-    canonical::Serialize,
     Bytes32,
     ChainId,
+    canonical::Serialize,
 };
 
 use crate::{
-    field,
     UniqueIdentifier,
     ValidityError,
+    field,
 };
 
 /// Entity support metadata computation to cache results.

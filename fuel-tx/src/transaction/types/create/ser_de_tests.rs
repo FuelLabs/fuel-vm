@@ -1,9 +1,9 @@
 use fuel_types::{
+    Bytes32,
     canonical::{
         Deserialize,
         Serialize,
     },
-    Bytes32,
 };
 
 use super::*;

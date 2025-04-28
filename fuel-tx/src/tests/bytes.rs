@@ -12,23 +12,23 @@ use crate::{
     *,
 };
 use fuel_asm::{
-    op,
     PanicInstruction,
     PanicReason,
+    op,
 };
 use fuel_types::{
+    Immediate24,
     bytes,
     canonical::{
         Deserialize,
         Serialize,
     },
-    Immediate24,
 };
 use rand::{
-    rngs::StdRng,
     Rng,
     RngCore,
     SeedableRng,
+    rngs::StdRng,
 };
 use std::fmt;
 
@@ -91,49 +91,61 @@ fn input() {
 
     assert_encoding_correct(&[
         Input::coin_signed(
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             rng.next_u64(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         ),
         Input::coin_predicate(
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             rng.next_u64(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
-        Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Input::contract(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
         Input::message_data_signed(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             generate_bytes(rng),
         ),
         Input::message_data_predicate(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             generate_bytes(rng),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
-        Input::message_coin_signed(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Input::message_coin_signed(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
         Input::message_coin_predicate(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             generate_nonempty_padded_bytes(rng),
             generate_bytes(rng),
         ),
@@ -145,11 +157,11 @@ fn output() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
     assert_encoding_correct(&[
-        Output::coin(rng.gen(), rng.next_u64(), rng.gen()),
-        Output::contract(rng.gen(), rng.gen(), rng.gen()),
-        Output::change(rng.gen(), rng.next_u64(), rng.gen()),
-        Output::variable(rng.gen(), rng.next_u64(), rng.gen()),
-        Output::contract_created(rng.gen(), rng.gen()),
+        Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen()),
+        Output::contract(rng.r#gen(), rng.r#gen(), rng.r#gen()),
+        Output::change(rng.r#gen(), rng.next_u64(), rng.r#gen()),
+        Output::variable(rng.r#gen(), rng.next_u64(), rng.r#gen()),
+        Output::contract_created(rng.r#gen(), rng.r#gen()),
     ]);
 }
 
@@ -159,86 +171,98 @@ fn receipt() {
 
     let receipts = vec![
         Receipt::call(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         ),
-        Receipt::ret(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Receipt::ret(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
         Receipt::return_data(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            vec![rng.gen(), rng.gen()],
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            vec![rng.r#gen(), rng.r#gen()],
         ),
-        Receipt::revert(rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Receipt::revert(rng.r#gen(), rng.r#gen(), rng.r#gen(), rng.r#gen()),
         Receipt::log(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         ),
         Receipt::log_data(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            vec![rng.gen(), rng.gen()],
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            vec![rng.r#gen(), rng.r#gen()],
         ),
         Receipt::transfer(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         ),
         Receipt::transfer_out(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         ),
         Receipt::panic(
-            rng.gen(),
+            rng.r#gen(),
             PanicInstruction::error(
                 PanicReason::UnknownPanicReason,
-                op::ji(rng.gen::<Immediate24>() & 0xffffff).into(),
+                op::ji(rng.r#gen::<Immediate24>() & 0xffffff).into(),
             ),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         )
-        .with_panic_contract_id(Some(rng.gen())),
-        Receipt::script_result(ScriptExecutionResult::Success, rng.gen()),
-        Receipt::script_result(ScriptExecutionResult::Panic, rng.gen()),
-        Receipt::script_result(ScriptExecutionResult::Revert, rng.gen()),
+        .with_panic_contract_id(Some(rng.r#gen())),
+        Receipt::script_result(ScriptExecutionResult::Success, rng.r#gen()),
+        Receipt::script_result(ScriptExecutionResult::Panic, rng.r#gen()),
+        Receipt::script_result(ScriptExecutionResult::Revert, rng.r#gen()),
         Receipt::script_result(
-            ScriptExecutionResult::GenericFailure(rng.gen()),
-            rng.gen(),
+            ScriptExecutionResult::GenericFailure(rng.r#gen()),
+            rng.r#gen(),
         ),
         Receipt::message_out(
-            &rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            vec![rng.gen()],
+            &rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            vec![rng.r#gen()],
         ),
-        Receipt::mint(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-        Receipt::burn(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+        Receipt::mint(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
+        Receipt::burn(
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+        ),
     ];
 
     assert_encoding_correct(&receipts);
@@ -248,17 +272,23 @@ fn receipt() {
 fn transaction_serde_serialization_deserialization() {
     let rng = &mut StdRng::seed_from_u64(8586);
 
-    let i = Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen());
-    let o = Output::coin(rng.gen(), rng.next_u64(), rng.gen());
-    let w = rng.gen::<Witness>();
-    let s = rng.gen::<StorageSlot>();
+    let i = Input::contract(
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+    );
+    let o = Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen());
+    let w = rng.r#gen::<Witness>();
+    let s = rng.r#gen::<StorageSlot>();
 
     assert_encoding_correct(&[
         Transaction::script(
             rng.next_u64(),
-            rng.gen::<Witness>().into_inner(),
-            rng.gen::<Witness>().into_inner(),
-            rng.gen(),
+            rng.r#gen::<Witness>().into_inner(),
+            rng.r#gen::<Witness>().into_inner(),
+            rng.r#gen(),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
@@ -267,25 +297,16 @@ fn transaction_serde_serialization_deserialization() {
             rng.next_u64(),
             vec![],
             generate_bytes(rng),
-            rng.gen(),
+            rng.r#gen(),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::script(
             rng.next_u64(),
-            rng.gen::<Witness>().into_inner(),
+            rng.r#gen::<Witness>().into_inner(),
             vec![],
-            rng.gen(),
-            vec![i.clone()],
-            vec![o],
-            vec![w.clone()],
-        ),
-        Transaction::script(
-            rng.next_u64(),
-            vec![],
-            vec![],
-            rng.gen(),
+            rng.r#gen(),
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
@@ -294,7 +315,16 @@ fn transaction_serde_serialization_deserialization() {
             rng.next_u64(),
             vec![],
             vec![],
-            rng.gen(),
+            rng.r#gen(),
+            vec![i.clone()],
+            vec![o],
+            vec![w.clone()],
+        ),
+        Transaction::script(
+            rng.next_u64(),
+            vec![],
+            vec![],
+            rng.r#gen(),
             vec![],
             vec![o],
             vec![w.clone()],
@@ -303,7 +333,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.next_u64(),
             vec![],
             vec![],
-            rng.gen(),
+            rng.r#gen(),
             vec![],
             vec![],
             vec![w.clone()],
@@ -312,7 +342,7 @@ fn transaction_serde_serialization_deserialization() {
             rng.next_u64(),
             vec![],
             vec![],
-            rng.gen(),
+            rng.r#gen(),
             vec![],
             vec![],
             vec![],
@@ -320,54 +350,54 @@ fn transaction_serde_serialization_deserialization() {
     ]);
     assert_encoding_correct(&[
         Transaction::create(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             vec![s.clone()],
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             vec![s],
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             vec![],
             vec![i.clone()],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             vec![],
             vec![],
             vec![o],
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             vec![],
             vec![],
             vec![],
             vec![w.clone()],
         ),
         Transaction::create(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             vec![],
             vec![],
             vec![],
@@ -641,12 +671,12 @@ fn transaction_serde_serialization_deserialization() {
         ),
     ]);
     assert_encoding_correct(&[Transaction::mint(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
     )]);
 }
 
@@ -656,25 +686,34 @@ fn create_input_data_offset() {
 
     let maturity = 10.into();
     let bytecode_witness_index = 0x00;
-    let salt = rng.gen();
+    let salt = rng.r#gen();
 
     let storage_slots: Vec<Vec<StorageSlot>> =
-        vec![vec![], vec![rng.gen()], vec![rng.gen(), rng.gen()]];
+        vec![vec![], vec![rng.r#gen()], vec![rng.r#gen(), rng.r#gen()]];
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
         vec![Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         )],
-        vec![Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()); 2],
+        vec![
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen()
+            );
+            2
+        ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
-        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
+        vec![Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen())],
+        vec![Output::contract(rng.r#gen(), rng.r#gen(), rng.r#gen())],
     ];
     let witnesses: Vec<Vec<Witness>> = vec![
         vec![],
@@ -684,16 +723,16 @@ fn create_input_data_offset() {
 
     let predicate = generate_nonempty_padded_bytes(rng);
     let predicate_data = generate_bytes(rng);
-    let predicate_gas_used: u64 = rng.gen();
+    let predicate_gas_used: u64 = rng.r#gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
     let input_coin = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         rng.next_u64(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data.clone(),
@@ -701,10 +740,10 @@ fn create_input_data_offset() {
 
     let data = generate_bytes(rng);
     let input_message = Input::message_data_predicate(
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate_gas_used,
         data,
         predicate.clone(),
@@ -785,21 +824,33 @@ fn script_input_coin_data_offset() {
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
         vec![Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         )],
         vec![
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
         ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
-        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
+        vec![Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen())],
+        vec![Output::contract(rng.r#gen(), rng.r#gen(), rng.r#gen())],
     ];
     let witnesses: Vec<Vec<Witness>> = vec![
         vec![],
@@ -815,16 +866,16 @@ fn script_input_coin_data_offset() {
     }
 
     let predicate_data = generate_bytes(rng);
-    let predicate_gas_used = rng.gen();
+    let predicate_gas_used = rng.r#gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
     let input_coin = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         rng.next_u64(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data,
@@ -899,21 +950,33 @@ fn upgrade_input_coin_data_offset() {
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
         vec![Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         )],
         vec![
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
         ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
-        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
+        vec![Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen())],
+        vec![Output::contract(rng.r#gen(), rng.r#gen(), rng.r#gen())],
     ];
     let witnesses: Vec<Vec<Witness>> = vec![
         vec![],
@@ -929,16 +992,16 @@ fn upgrade_input_coin_data_offset() {
     }
 
     let predicate_data = generate_bytes(rng);
-    let predicate_gas_used = rng.gen();
+    let predicate_gas_used = rng.r#gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
     let input_coin = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         rng.next_u64(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data,
@@ -991,21 +1054,33 @@ fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
     let inputs: Vec<Vec<Input>> = vec![
         vec![],
         vec![Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
         )],
         vec![
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
-            Input::contract(rng.gen(), rng.gen(), rng.gen(), rng.gen(), rng.gen()),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
+            Input::contract(
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+                rng.r#gen(),
+            ),
         ],
     ];
     let outputs: Vec<Vec<Output>> = vec![
         vec![],
-        vec![Output::coin(rng.gen(), rng.next_u64(), rng.gen())],
-        vec![Output::contract(rng.gen(), rng.gen(), rng.gen())],
+        vec![Output::coin(rng.r#gen(), rng.next_u64(), rng.r#gen())],
+        vec![Output::contract(rng.r#gen(), rng.r#gen(), rng.r#gen())],
     ];
     let witnesses: Vec<Vec<Witness>> = vec![
         vec![],
@@ -1021,16 +1096,16 @@ fn upload__inputs_predicate_offset_at__returns_offset_to_the_predicate() {
     }
 
     let predicate_data = generate_bytes(rng);
-    let predicate_gas_used = rng.gen();
+    let predicate_gas_used = rng.r#gen();
 
     let owner = (*Contract::root_from_code(&predicate)).into();
 
     let input_coin = Input::coin_predicate(
-        rng.gen(),
+        rng.r#gen(),
         owner,
         rng.next_u64(),
-        rng.gen(),
-        rng.gen(),
+        rng.r#gen(),
+        rng.r#gen(),
         predicate_gas_used,
         predicate.clone(),
         predicate_data,

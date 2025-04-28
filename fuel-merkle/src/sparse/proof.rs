@@ -1,20 +1,20 @@
 use crate::{
     common::{
+        Bytes32,
+        ProofSet,
         path::{
             Path,
             Side,
         },
         sum,
-        Bytes32,
-        ProofSet,
     },
     sparse::{
+        MerkleTreeKey,
         hash::{
             calculate_leaf_hash,
             calculate_node_hash,
         },
         zero_sum,
-        MerkleTreeKey,
     },
 };
 
@@ -173,9 +173,9 @@ mod test {
             StorageMap,
         },
         sparse::{
-            proof::Proof,
             MerkleTree,
             Primitive,
+            proof::Proof,
         },
     };
     use fuel_storage::Mappable;
@@ -210,25 +210,25 @@ mod test {
 
         let k0 = [0u8; 32].into();
         let v0 = b"DATA_0";
-        tree.update(k0, v0).expect("Expected successful update");
+        tree.insert(k0, v0).expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let k1 = k1.into();
         let v1 = b"DATA_1";
-        tree.update(k1, v1).expect("Expected successful update");
+        tree.insert(k1, v1).expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let k2 = k2.into();
         let v2 = b"DATA_2";
-        tree.update(k2, v2).expect("Expected successful update");
+        tree.insert(k2, v2).expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let k3 = k3.into();
         let v3 = b"DATA_3";
-        tree.update(k3, v3).expect("Expected successful update");
+        tree.insert(k3, v3).expect("Expected successful update");
 
         let root = tree.root();
 
@@ -309,25 +309,25 @@ mod test {
 
         let k0 = [0u8; 32].into();
         let v0 = b"DATA_0";
-        tree.update(k0, v0).expect("Expected successful update");
+        tree.insert(k0, v0).expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let k1 = k1.into();
         let v1 = b"DATA_1";
-        tree.update(k1, v1).expect("Expected successful update");
+        tree.insert(k1, v1).expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let k2 = k2.into();
         let v2 = b"DATA_2";
-        tree.update(k2, v2).expect("Expected successful update");
+        tree.insert(k2, v2).expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let k3 = k3.into();
         let v3 = b"DATA_3";
-        tree.update(k3, v3).expect("Expected successful update");
+        tree.insert(k3, v3).expect("Expected successful update");
 
         let root = tree.root();
 
@@ -407,25 +407,25 @@ mod test {
 
         let k0 = [0u8; 32].into();
         let v0 = b"DATA_0";
-        tree.update(k0, v0).expect("Expected successful update");
+        tree.insert(k0, v0).expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let k1 = k1.into();
         let v1 = b"DATA_1";
-        tree.update(k1, v1).expect("Expected successful update");
+        tree.insert(k1, v1).expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let k2 = k2.into();
         let v2 = b"DATA_2";
-        tree.update(k2, v2).expect("Expected successful update");
+        tree.insert(k2, v2).expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let k3 = k3.into();
         let v3 = b"DATA_3";
-        tree.update(k3, v3).expect("Expected successful update");
+        tree.insert(k3, v3).expect("Expected successful update");
 
         let root = tree.root();
 
@@ -463,25 +463,25 @@ mod test {
 
         let k0 = [0u8; 32];
         let v0 = b"DATA_0";
-        tree.update(k0.into(), v0)
+        tree.insert(k0.into(), v0)
             .expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let v1 = b"DATA_1";
-        tree.update(k1.into(), v1)
+        tree.insert(k1.into(), v1)
             .expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let v2 = b"DATA_2";
-        tree.update(k2.into(), v2)
+        tree.insert(k2.into(), v2)
             .expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let v3 = b"DATA_3";
-        tree.update(k3.into(), v3)
+        tree.insert(k3.into(), v3)
             .expect("Expected successful update");
 
         let root = tree.root();
@@ -520,25 +520,25 @@ mod test {
 
         let k0 = [0u8; 32].into();
         let v0 = b"DATA_0";
-        tree.update(k0, v0).expect("Expected successful update");
+        tree.insert(k0, v0).expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01000000;
         let k1 = k1.into();
         let v1 = b"DATA_1";
-        tree.update(k1, v1).expect("Expected successful update");
+        tree.insert(k1, v1).expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01100000;
         let k2 = k2.into();
         let v2 = b"DATA_2";
-        tree.update(k2, v2).expect("Expected successful update");
+        tree.insert(k2, v2).expect("Expected successful update");
 
         let mut k3 = [0u8; 32];
         k3[0] = 0b01001000;
         let k3 = k3.into();
         let v3 = b"DATA_3";
-        tree.update(k3, v3).expect("Expected successful update");
+        tree.insert(k3, v3).expect("Expected successful update");
 
         let root = tree.root();
 
@@ -578,19 +578,19 @@ mod test {
         k0[0] = 0b01000000;
         let k0 = k0.into();
         let v0 = b"DATA_0";
-        tree.update(k0, v0).expect("Expected successful update");
+        tree.insert(k0, v0).expect("Expected successful update");
 
         let mut k1 = [0u8; 32];
         k1[0] = 0b01100000;
         let k1 = k1.into();
         let v1 = b"DATA_1";
-        tree.update(k1, v1).expect("Expected successful update");
+        tree.insert(k1, v1).expect("Expected successful update");
 
         let mut k2 = [0u8; 32];
         k2[0] = 0b01001000;
         let k2 = k2.into();
         let v2 = b"DATA_2";
-        tree.update(k2, v2).expect("Expected successful update");
+        tree.insert(k2, v2).expect("Expected successful update");
 
         let root = tree.root();
 
@@ -618,17 +618,17 @@ mod test_random {
             StorageMap,
         },
         sparse::{
-            proof::Proof,
             MerkleTree,
             MerkleTreeKey,
             Primitive,
+            proof::Proof,
         },
     };
     use fuel_storage::Mappable;
 
     use rand::{
-        prelude::StdRng,
         SeedableRng,
+        prelude::StdRng,
     };
 
     #[derive(Debug)]
@@ -658,12 +658,12 @@ mod test_random {
 
         let key = random_bytes32(&mut rng).into();
         let value = random_bytes32(&mut rng);
-        tree.update(key, &value).unwrap();
+        tree.insert(key, &value).unwrap();
 
         for _ in 0..1_000 {
             let key = random_bytes32(&mut rng).into();
             let value = random_bytes32(&mut rng);
-            tree.update(key, &value).unwrap();
+            tree.insert(key, &value).unwrap();
         }
 
         let root = tree.root();
@@ -689,12 +689,12 @@ mod test_random {
 
         let key = random_bytes32(&mut rng).into();
         let value = random_bytes32(&mut rng);
-        tree.update(key, &value).unwrap();
+        tree.insert(key, &value).unwrap();
 
         for _ in 0..1_000 {
             let key = random_bytes32(&mut rng).into();
             let value = random_bytes32(&mut rng);
-            tree.update(key, &value).unwrap();
+            tree.insert(key, &value).unwrap();
         }
 
         let root = tree.root();
@@ -720,16 +720,16 @@ mod test_random {
 
         let key_1 = random_bytes32(&mut rng).into();
         let value_1 = random_bytes32(&mut rng);
-        tree.update(key_1, &value_1).unwrap();
+        tree.insert(key_1, &value_1).unwrap();
 
         let key_2 = random_bytes32(&mut rng).into();
         let value_2 = random_bytes32(&mut rng);
-        tree.update(key_2, &value_2).unwrap();
+        tree.insert(key_2, &value_2).unwrap();
 
         for _ in 0..1_000 {
             let key = random_bytes32(&mut rng).into();
             let value = random_bytes32(&mut rng);
-            tree.update(key, &value).unwrap();
+            tree.insert(key, &value).unwrap();
         }
 
         let root = tree.root();
@@ -758,7 +758,7 @@ mod test_random {
         for _ in 0..1_000 {
             let key = random_bytes32(&mut rng);
             let value = random_bytes32(&mut rng);
-            tree.update(key.into(), &value).unwrap();
+            tree.insert(key.into(), &value).unwrap();
         }
 
         let root = tree.root();

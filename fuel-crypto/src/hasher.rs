@@ -1,8 +1,8 @@
 use fuel_types::Bytes32;
 use sha2::{
-    digest::Update,
     Digest,
     Sha256,
+    digest::Update,
 };
 
 use core::iter;

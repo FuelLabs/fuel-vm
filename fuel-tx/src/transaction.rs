@@ -114,6 +114,7 @@ pub enum Transaction {
     Upgrade(Upgrade),
     Upload(Upload),
     Blob(Blob),
+    ScriptV2(ScriptV2),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -747,6 +748,7 @@ pub mod field {
         Output,
         StorageSlot,
         UpgradePurpose as UpgradePurposeType,
+        UtxoId,
         Witness,
         input,
         output,
@@ -756,6 +758,7 @@ pub mod field {
         AssetId,
         BlockHeight,
         Bytes32,
+        ContractId,
         Word,
     };
 
@@ -1012,8 +1015,9 @@ pub mod field {
     }
 
     pub trait Inputs {
-        fn inputs(&self) -> &Vec<Input>;
-        fn inputs_mut(&mut self) -> &mut Vec<Input>;
+        type MyInput;
+        fn inputs(&self) -> &Vec<Self::MyInput>;
+        fn inputs_mut(&mut self) -> &mut Vec<Self::MyInput>;
         fn inputs_offset(&self) -> usize;
 
         /// Returns the offset to the `Input` at `idx` index, if any.
@@ -1021,6 +1025,10 @@ pub mod field {
 
         /// Returns predicate's offset and length of the `Input` at `idx`, if any.
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)>;
+
+        fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId>;
+
+        fn input_contract_ids(&self) -> impl Iterator<Item = ContractId>;
     }
 
     pub trait Outputs {

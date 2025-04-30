@@ -155,7 +155,11 @@ impl PrepareSign for UpgradeBody {
 impl Chargeable for Upgrade {
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        Serialize::size(self)
+        self.metered_bytes_size()
+    }
+
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+        self.gas_used_by_inputs(gas_costs)
     }
 
     #[inline(always)]
@@ -181,6 +185,10 @@ impl Chargeable for Upgrade {
         };
 
         tx_id_gas.saturating_add(purpose_gas)
+    }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
     }
 }
 

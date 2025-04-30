@@ -289,3 +289,37 @@ impl Coin<Predicate> {
         }
     }
 }
+
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct CoinV2 {
+    pub utxo_id: UtxoId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub owner: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub amount: Word,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub asset_id: AssetId,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub tx_pointer: TxPointer,
+    pub validation: CoinValidation,
+}
+
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub enum CoinValidation {
+    Signed {
+        witness_index: u16,
+    },
+    Predicate {
+        predicate_index: u16,
+        predicate_data_index: u16,
+        predicate_gas_used: Word,
+    },
+}

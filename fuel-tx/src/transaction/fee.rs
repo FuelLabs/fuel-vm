@@ -232,63 +232,10 @@ pub trait Chargeable: field::Inputs + field::Witnesses + field::Policies {
     fn metered_bytes_size(&self) -> usize;
 
     /// Returns the gas used by the inputs.
-    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> Word {
-        let mut witness_cache: HashSet<u16> = HashSet::new();
-        self.inputs()
-            .iter()
-            .filter(|input| match input {
-                // Include signed inputs of unique witness indices
-                Input::CoinSigned(CoinSigned { witness_index, .. })
-                | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
-                | Input::MessageDataSigned(MessageDataSigned { witness_index, .. })
-                    if !witness_cache.contains(witness_index) =>
-                {
-                    witness_cache.insert(*witness_index);
-                    true
-                }
-                // Include all predicates
-                Input::CoinPredicate(_)
-                | Input::MessageCoinPredicate(_)
-                | Input::MessageDataPredicate(_) => true,
-                // Ignore all other inputs
-                _ => false,
-            })
-            .map(|input| match input {
-                // Charge EC recovery cost for signed inputs
-                Input::CoinSigned(_)
-                | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.eck1(),
-                // Charge the cost of the contract root for predicate inputs
-                Input::CoinPredicate(CoinPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
-                })
-                | Input::MessageCoinPredicate(MessageCoinPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
-                })
-                | Input::MessageDataPredicate(MessageDataPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
-                }) => {
-                    let bytes_size = self.metered_bytes_size();
-                    let vm_initialization_gas =
-                        gas_costs.vm_initialization().resolve(bytes_size as Word);
-                    gas_costs
-                        .contract_root()
-                        .resolve(predicate.len() as u64)
-                        .saturating_add(*predicate_gas_used)
-                        .saturating_add(vm_initialization_gas)
-                }
-                // Charge nothing for all other inputs
-                _ => 0,
-            })
-            .fold(0, |acc, cost| acc.saturating_add(cost))
-    }
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> Word;
 
     /// Used for accounting purposes when charging for metadata creation.
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word;
+
+    fn has_spendable_input(&self) -> bool;
 }

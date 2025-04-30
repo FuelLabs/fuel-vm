@@ -72,7 +72,11 @@ impl Chargeable for Blob {
 
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        Serialize::size(self)
+        self.metered_bytes_size()
+    }
+
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+        self.gas_used_by_inputs(gas_costs)
     }
 
     #[inline(always)]
@@ -89,6 +93,10 @@ impl Chargeable for Blob {
             .s256()
             .resolve(bytes as u64)
             .saturating_add(gas_cost.s256().resolve(blob_len as u64))
+    }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
     }
 }
 

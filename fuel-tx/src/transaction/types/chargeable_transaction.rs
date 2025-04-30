@@ -1,5 +1,6 @@
 use crate::{
     ConsensusParameters,
+    GasCosts,
     Input,
     Output,
     UniqueIdentifier,
@@ -31,10 +32,14 @@ use fuel_types::{
     bytes,
     canonical::Serialize,
 };
-use hashbrown::HashMap;
+use hashbrown::{
+    HashMap,
+    HashSet,
+};
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use fuel_asm::Word;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChargeableMetadata<Body> {
@@ -42,6 +47,22 @@ pub struct ChargeableMetadata<Body> {
     pub body: Body,
 }
 
+use crate::{
+    input::{
+        InputV2,
+        coin::{
+            CoinPredicate,
+            CoinSigned,
+        },
+        message::{
+            MessageCoinPredicate,
+            MessageCoinSigned,
+            MessageDataPredicate,
+            MessageDataSigned,
+        },
+    },
+    transaction::validity::InputValidity,
+};
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
 
@@ -92,6 +113,33 @@ where
     pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
+    #[serde(skip)]
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    #[educe(PartialEq(ignore))]
+    #[educe(Hash(ignore))]
+    #[canonical(skip)]
+    pub(crate) metadata: Option<ChargeableMetadata<MetadataBody>>,
+}
+
+#[derive(Clone, Educe)]
+#[educe(Eq, PartialEq, Hash, Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
+#[cfg_attr(feature = "da-compression", compress(discard(MetadataBody)))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct ChargeableTransactionV2<Body, MetadataBody>
+where
+    Body: BodyConstraints,
+{
+    pub(crate) body: Body,
+    pub(crate) policies: Policies,
+    pub(crate) inputs: Vec<InputV2>,
+    pub(crate) outputs: Vec<Output>,
+    pub(crate) witnesses: Vec<Witness>,
+    pub(crate) static_witnesses: Vec<Witness>,
     #[serde(skip)]
     #[cfg_attr(feature = "da-compression", compress(skip))]
     #[educe(PartialEq(ignore))]
@@ -165,6 +213,136 @@ where
     }
 }
 
+impl<Body, MetadataBody> ChargeableTransaction<Body, MetadataBody>
+where
+    Body: BodyConstraints,
+    Self: ChargeableBody<Body>,
+    Self: Serialize,
+{
+    pub(crate) fn gas_used_by_inputs_inner(&self, gas_costs: &GasCosts) -> Word {
+        let mut witness_cache: HashSet<u16> = HashSet::new();
+        self.inputs()
+            .iter()
+            .filter(|input| match input {
+                // Include signed inputs of unique witness indices
+                Input::CoinSigned(CoinSigned { witness_index, .. })
+                | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
+                | Input::MessageDataSigned(MessageDataSigned { witness_index, .. })
+                    if !witness_cache.contains(witness_index) =>
+                {
+                    witness_cache.insert(*witness_index);
+                    true
+                }
+                // Include all predicates
+                Input::CoinPredicate(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_) => true,
+                // Ignore all other inputs
+                _ => false,
+            })
+            .map(|input| match input {
+                // Charge EC recovery cost for signed inputs
+                Input::CoinSigned(_)
+                | Input::MessageCoinSigned(_)
+                | Input::MessageDataSigned(_) => gas_costs.eck1(),
+                // Charge the cost of the contract root for predicate inputs
+                Input::CoinPredicate(CoinPredicate {
+                    predicate,
+                    predicate_gas_used,
+                    ..
+                })
+                | Input::MessageCoinPredicate(MessageCoinPredicate {
+                    predicate,
+                    predicate_gas_used,
+                    ..
+                })
+                | Input::MessageDataPredicate(MessageDataPredicate {
+                    predicate,
+                    predicate_gas_used,
+                    ..
+                }) => {
+                    let bytes_size = self.metered_bytes_size_inner();
+                    let vm_initialization_gas =
+                        gas_costs.vm_initialization().resolve(bytes_size as Word);
+                    gas_costs
+                        .contract_root()
+                        .resolve(predicate.len() as u64)
+                        .saturating_add(*predicate_gas_used)
+                        .saturating_add(vm_initialization_gas)
+                }
+                // Charge nothing for all other inputs
+                _ => 0,
+            })
+            .fold(0, |acc, cost| acc.saturating_add(cost))
+    }
+
+    pub(crate) fn metered_bytes_size_inner(&self) -> usize {
+        Serialize::size(self)
+    }
+
+    pub(crate) fn has_spendable_input_inner(&self) -> bool {
+        self.inputs().iter().any(|input| match input {
+            Input::CoinSigned(_)
+            | Input::CoinPredicate(_)
+            | Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_) => true,
+            Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_)
+            | Input::Contract(_) => false,
+        })
+    }
+}
+impl<Body, MetadataBody> FormatValidityChecks
+    for ChargeableTransactionV2<Body, MetadataBody>
+where
+    Body: BodyConstraints + PrepareSign,
+    Self: Clone,
+    Self: ChargeableBody<Body>,
+    Self: fuel_types::canonical::Serialize,
+    Self: Chargeable,
+    Self: UniqueFormatValidityChecks,
+    <Self as Inputs>::MyInput: InputValidity,
+{
+    fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
+        let id = self.id(chain_id);
+
+        // There will be at most len(witnesses) signatures to cache
+        let mut recovery_cache = Some(HashMap::with_capacity(self.witnesses().len()));
+
+        self.inputs()
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, input)| {
+                input.check_signature(index, &id, self.witnesses(), &mut recovery_cache)
+            })?;
+
+        Ok(())
+    }
+
+    fn check_without_signatures(
+        &self,
+        _block_height: BlockHeight,
+        _consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
+        todo!()
+    }
+}
+
+impl<Body, MetadataBody> UniqueIdentifier for ChargeableTransactionV2<Body, MetadataBody>
+where
+    Body: BodyConstraints + PrepareSign,
+    Self: Clone,
+    Self: ChargeableBody<Body>,
+    Self: fuel_types::canonical::Serialize,
+{
+    fn id(&self, chain_id: &ChainId) -> Bytes32 {
+        todo!()
+    }
+
+    fn cached_id(&self) -> Option<Bytes32> {
+        self.metadata.as_ref().map(|m| m.common.id)
+    }
+}
 pub(crate) trait UniqueFormatValidityChecks {
     /// Checks unique rules inherited from the `Body` for chargeable transaction.
     fn check_unique_rules(
@@ -182,6 +360,7 @@ where
     Self: fuel_types::canonical::Serialize,
     Self: Chargeable,
     Self: UniqueFormatValidityChecks,
+    <Self as Inputs>::MyInput: InputValidity,
 {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         let id = self.id(chain_id);
@@ -213,7 +392,11 @@ where
 
 mod field {
     use super::*;
-    use crate::field::ChargeableBody;
+    use crate::{
+        UtxoId,
+        field::ChargeableBody,
+    };
+    use fuel_types::ContractId;
 
     impl<Body, MetadataBody> PoliciesField for ChargeableTransaction<Body, MetadataBody>
     where
@@ -236,11 +419,130 @@ mod field {
         }
     }
 
+    impl<Body, MetadataBody> PoliciesField for ChargeableTransactionV2<Body, MetadataBody>
+    where
+        Body: BodyConstraints,
+        Self: ChargeableBody<Body>,
+    {
+        #[inline(always)]
+        fn policies(&self) -> &Policies {
+            &self.policies
+        }
+
+        #[inline(always)]
+        fn policies_mut(&mut self) -> &mut Policies {
+            &mut self.policies
+        }
+
+        #[inline(always)]
+        fn policies_offset(&self) -> usize {
+            self.body_offset_end()
+        }
+    }
+
+    impl<Body, MetadataBody> Inputs for ChargeableTransactionV2<Body, MetadataBody>
+    where
+        Body: BodyConstraints,
+        Self: ChargeableBody<Body>,
+    {
+        type MyInput = InputV2;
+
+        #[inline(always)]
+        fn inputs(&self) -> &Vec<InputV2> {
+            &self.inputs
+        }
+
+        #[inline(always)]
+        fn inputs_mut(&mut self) -> &mut Vec<InputV2> {
+            &mut self.inputs
+        }
+
+        #[inline(always)]
+        fn inputs_offset(&self) -> usize {
+            if let Some(ChargeableMetadata {
+                common: CommonMetadata { inputs_offset, .. },
+                ..
+            }) = &self.metadata
+            {
+                return *inputs_offset;
+            }
+
+            self.policies_offset()
+                .saturating_add(self.policies.size_dynamic())
+        }
+
+        #[inline(always)]
+        fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        inputs_offset_at, ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return inputs_offset_at.get(idx).cloned();
+            }
+
+            if idx < self.inputs.len() {
+                Some(
+                    self.inputs_offset().saturating_add(
+                        self.inputs()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
+                )
+            } else {
+                None
+            }
+        }
+
+        #[inline(always)]
+        fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)> {
+            // if let Some(ChargeableMetadata {
+            //     common:
+            //         CommonMetadata {
+            //             inputs_predicate_offset_at,
+            //             ..
+            //         },
+            //     ..
+            // }) = &self.metadata
+            // {
+            //     return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None);
+            // }
+            //
+            // self.inputs().get(idx).and_then(|input| {
+            //     input
+            //         .predicate_offset()
+            //         .and_then(|predicate| {
+            //             self.inputs_offset_at(idx)
+            //                 .map(|inputs| inputs.saturating_add(predicate))
+            //         })
+            //         .zip(input.predicate_len().and_then(bytes::padded_len_usize))
+            // })
+            todo!()
+        }
+
+        fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
+            // TODO
+            std::iter::empty()
+        }
+
+        fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
+            // TODO
+            std::iter::empty()
+        }
+    }
     impl<Body, MetadataBody> Inputs for ChargeableTransaction<Body, MetadataBody>
     where
         Body: BodyConstraints,
         Self: ChargeableBody<Body>,
     {
+        type MyInput = Input;
+
         #[inline(always)]
         fn inputs(&self) -> &Vec<Input> {
             &self.inputs
@@ -317,6 +619,16 @@ mod field {
                     })
                     .zip(input.predicate_len().and_then(bytes::padded_len_usize))
             })
+        }
+
+        fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
+            // TODO
+            std::iter::empty()
+        }
+
+        fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
+            // TODO
+            std::iter::empty()
         }
     }
 
@@ -419,6 +731,74 @@ mod field {
                     .reduce(usize::saturating_add)
                     .unwrap_or_default(),
             )
+        }
+
+        #[inline(always)]
+        fn witnesses_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        witnesses_offset_at,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return witnesses_offset_at.get(idx).cloned();
+            }
+
+            if idx < self.witnesses.len() {
+                Some(
+                    self.witnesses_offset().saturating_add(
+                        self.witnesses()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
+                )
+            } else {
+                None
+            }
+        }
+    }
+    impl<Body, MetadataBody> Witnesses for ChargeableTransactionV2<Body, MetadataBody>
+    where
+        Body: BodyConstraints,
+        Self: ChargeableBody<Body>,
+    {
+        #[inline(always)]
+        fn witnesses(&self) -> &Vec<Witness> {
+            &self.witnesses
+        }
+
+        #[inline(always)]
+        fn witnesses_mut(&mut self) -> &mut Vec<Witness> {
+            &mut self.witnesses
+        }
+
+        #[inline(always)]
+        fn witnesses_offset(&self) -> usize {
+            // if let Some(ChargeableMetadata {
+            //     common:
+            //         CommonMetadata {
+            //             witnesses_offset, ..
+            //         },
+            //     ..
+            // }) = &self.metadata
+            // {
+            //     return *witnesses_offset;
+            // }
+            //
+            // self.outputs_offset().saturating_add(
+            //     self.outputs()
+            //         .iter()
+            //         .map(|i| i.size())
+            //         .reduce(usize::saturating_add)
+            //         .unwrap_or_default(),
+            // )
+            todo!()
         }
 
         #[inline(always)]

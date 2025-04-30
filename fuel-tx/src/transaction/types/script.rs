@@ -40,10 +40,12 @@ use fuel_types::{
     fmt_truncated_hex,
 };
 
+use crate::transaction::types::chargeable_transaction::ChargeableTransactionV2;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
 pub type Script = ChargeableTransaction<ScriptBody, ScriptMetadata>;
+pub type ScriptV2 = ChargeableTransactionV2<ScriptBody, ScriptMetadata>;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ScriptMetadata {
@@ -169,14 +171,84 @@ impl Chargeable for Script {
         Serialize::size(self)
     }
 
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+        self.gas_used_by_inputs(gas_costs)
+    }
+
     #[inline(always)]
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
         let bytes = Serialize::size(self);
         // Gas required to calculate the `tx_id`.
         gas_cost.s256().resolve(bytes as u64)
     }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
+    }
 }
 
+impl Chargeable for ScriptV2 {
+    #[inline(always)]
+    fn max_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> fuel_asm::Word {
+        // The basic implementation of the `max_gas` + `gas_limit`.
+        let remaining_allowed_witness = self
+            .witness_limit()
+            .saturating_sub(self.witnesses().size_dynamic() as u64)
+            .saturating_mul(fee.gas_per_byte());
+
+        self.min_gas(gas_costs, fee)
+            .saturating_add(remaining_allowed_witness)
+            .saturating_add(self.body.script_gas_limit)
+    }
+
+    #[inline(always)]
+    fn metered_bytes_size(&self) -> usize {
+        Serialize::size(self)
+    }
+
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+        todo!()
+    }
+
+    #[inline(always)]
+    fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
+        let bytes = Serialize::size(self);
+        // Gas required to calculate the `tx_id`.
+        gas_cost.s256().resolve(bytes as u64)
+    }
+
+    fn has_spendable_input(&self) -> bool {
+        todo!()
+    }
+}
+
+impl UniqueFormatValidityChecks for ScriptV2 {
+    fn check_unique_rules(
+        &self,
+        consensus_params: &ConsensusParameters,
+    ) -> Result<(), ValidityError> {
+        let script_params = consensus_params.script_params();
+        if self.body.script.len() as u64 > script_params.max_script_length() {
+            Err(ValidityError::TransactionScriptLength)?;
+        }
+
+        if self.body.script_data.len() as u64 > script_params.max_script_data_length() {
+            Err(ValidityError::TransactionScriptDataLength)?;
+        }
+
+        self.outputs
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, output)| match output {
+                Output::ContractCreated { .. } => {
+                    Err(ValidityError::TransactionOutputContainsContractCreated { index })
+                }
+                _ => Ok(()),
+            })?;
+
+        Ok(())
+    }
+}
 impl UniqueFormatValidityChecks for Script {
     fn check_unique_rules(
         &self,
@@ -219,6 +291,16 @@ impl crate::Cacheable for Script {
             },
         });
         Ok(())
+    }
+}
+
+impl crate::Cacheable for ScriptV2 {
+    fn is_computed(&self) -> bool {
+        todo!()
+    }
+
+    fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
+        todo!()
     }
 }
 
@@ -321,6 +403,19 @@ mod field {
             self.script_data_offset().saturating_add(
                 bytes::padded_len(self.body.script_data.as_slice()).unwrap_or(usize::MAX),
             )
+        }
+    }
+    impl ChargeableBody<ScriptBody> for ScriptV2 {
+        fn body(&self) -> &ScriptBody {
+            &self.body
+        }
+
+        fn body_mut(&mut self) -> &mut ScriptBody {
+            &mut self.body
+        }
+
+        fn body_offset_end(&self) -> usize {
+            todo!()
         }
     }
 }

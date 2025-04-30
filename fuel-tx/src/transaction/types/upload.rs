@@ -156,7 +156,11 @@ impl Chargeable for Upload {
 
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        Serialize::size(self)
+        self.metered_bytes_size()
+    }
+
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+        self.gas_used_by_inputs(gas_costs)
     }
 
     #[inline(always)]
@@ -179,6 +183,10 @@ impl Chargeable for Upload {
         tx_id_gas
             .saturating_add(leaf_hash_gas)
             .saturating_add(verify_proof_gas)
+    }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
     }
 }
 

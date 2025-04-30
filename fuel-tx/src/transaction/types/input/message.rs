@@ -477,3 +477,49 @@ pub fn compute_message_id(
 
     (*hasher.finalize()).into()
 }
+
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub struct MessageV2 {
+    /// The sender from the L1 chain.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub sender: Address,
+    /// The receiver on the `Fuel` chain.
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub recipient: Address,
+    #[cfg_attr(feature = "da-compression", compress(skip))]
+    pub amount: Word,
+    // Unique identifier of the message
+    pub nonce: Nonce,
+
+    pub validation: MessageValidation,
+}
+
+#[derive(Educe, Clone, PartialEq, Eq, Hash)]
+#[educe(Debug)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "da-compression", derive(fuel_compression::Compress))]
+#[derive(fuel_types::canonical::Deserialize, fuel_types::canonical::Serialize)]
+pub enum MessageValidation {
+    Signed {
+        witness_index: u16,
+    },
+    Predicate {
+        predicate_index: u16,
+        predicate_data_index: u16,
+        predicate_gas_used: Word,
+    },
+    SignedData {
+        data: Vec<u8>,
+        witness_index: u16,
+    },
+    PredicateData {
+        data: Vec<u8>,
+        predicate_index: u16,
+        predicate_data_index: u16,
+        predicate_gas_used: Word,
+    },
+}

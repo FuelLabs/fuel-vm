@@ -6,6 +6,7 @@ use fuel_types::{
 };
 
 use crate::{
+    Transaction,
     UniqueIdentifier,
     ValidityError,
     field,
@@ -31,6 +32,7 @@ impl Cacheable for super::Transaction {
             Self::Upgrade(tx) => tx.is_computed(),
             Self::Upload(tx) => tx.is_computed(),
             Self::Blob(tx) => tx.is_computed(),
+            Self::ScriptV2(tx) => tx.is_computed(),
         }
     }
 
@@ -42,6 +44,7 @@ impl Cacheable for super::Transaction {
             Self::Upgrade(tx) => tx.precompute(chain_id),
             Self::Upload(tx) => tx.precompute(chain_id),
             Self::Blob(tx) => tx.precompute(chain_id),
+            Self::ScriptV2(tx) => tx.precompute(chain_id),
         }
     }
 }
@@ -66,6 +69,7 @@ impl CommonMetadata {
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,
+        <Tx as field::Inputs>::MyInput: Serialize,
         Tx: field::Outputs,
         Tx: field::Witnesses,
     {

@@ -31,6 +31,7 @@ pub use script::{
     Script,
     ScriptBody,
     ScriptCode,
+    ScriptV2,
 };
 pub use storage::StorageSlot;
 pub use upgrade::{

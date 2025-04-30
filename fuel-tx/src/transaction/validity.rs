@@ -49,7 +49,48 @@ mod error;
 #[cfg(test)]
 mod tests;
 
+use crate::input::InputV2;
 pub use error::ValidityError;
+
+pub trait InputValidity {
+    fn check_signature(
+        &self,
+        index: usize,
+        txhash: &Bytes32,
+        witnesses: &[Witness],
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
+    ) -> Result<(), ValidityError>;
+
+    fn check_without_signature(
+        &self,
+        index: usize,
+        outputs: &[Output],
+        witnesses: &[Witness],
+        predicate_params: &PredicateParameters,
+    ) -> Result<(), ValidityError>;
+}
+
+impl InputValidity for Input {
+    fn check_signature(
+        &self,
+        index: usize,
+        txhash: &Bytes32,
+        witnesses: &[Witness],
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
+    ) -> Result<(), ValidityError> {
+        self.check_signature(index, txhash, witnesses, recovery_cache)
+    }
+
+    fn check_without_signature(
+        &self,
+        index: usize,
+        outputs: &[Output],
+        witnesses: &[Witness],
+        predicate_params: &PredicateParameters,
+    ) -> Result<(), ValidityError> {
+        self.check_without_signature(index, outputs, witnesses, predicate_params)
+    }
+}
 
 impl Input {
     #[cfg(any(feature = "typescript", test))]
@@ -219,6 +260,28 @@ impl Input {
     }
 }
 
+impl InputValidity for InputV2 {
+    fn check_signature(
+        &self,
+        index: usize,
+        txhash: &Bytes32,
+        witnesses: &[Witness],
+        recovery_cache: &mut Option<HashMap<u16, Address>>,
+    ) -> Result<(), ValidityError> {
+        todo!()
+    }
+
+    fn check_without_signature(
+        &self,
+        index: usize,
+        outputs: &[Output],
+        witnesses: &[Witness],
+        predicate_params: &PredicateParameters,
+    ) -> Result<(), ValidityError> {
+        todo!()
+    }
+}
+
 impl Output {
     /// Validate the output of the transaction.
     ///
@@ -279,6 +342,7 @@ impl FormatValidityChecks for Transaction {
             Self::Upgrade(tx) => tx.check_signatures(chain_id),
             Self::Upload(tx) => tx.check_signatures(chain_id),
             Self::Blob(tx) => tx.check_signatures(chain_id),
+            Self::ScriptV2(tx) => tx.check_signatures(chain_id),
         }
     }
 
@@ -377,18 +441,22 @@ where
         Err(ValidityError::TransactionWitnessesMax)?
     }
 
-    let any_spendable_input = tx.inputs().iter().find(|input| match input {
-        Input::CoinSigned(_)
-        | Input::CoinPredicate(_)
-        | Input::MessageCoinSigned(_)
-        | Input::MessageCoinPredicate(_) => true,
-        Input::MessageDataSigned(_)
-        | Input::MessageDataPredicate(_)
-        | Input::Contract(_) => false,
-    });
+    // let any_spendable_input = tx.inputs().iter().find(|input| match input {
+    //     Input::CoinSigned(_)
+    //     | Input::CoinPredicate(_)
+    //     | Input::MessageCoinSigned(_)
+    //     | Input::MessageCoinPredicate(_) => true,
+    //     Input::MessageDataSigned(_)
+    //     | Input::MessageDataPredicate(_)
+    //     | Input::Contract(_) => false,
+    // });
+    //
+    // if any_spendable_input.is_none() {
+    //     Err(ValidityError::NoSpendableInput)?
+    // }
 
-    if any_spendable_input.is_none() {
-        Err(ValidityError::NoSpendableInput)?
+    if !tx.has_spendable_input() {
+        return Err(ValidityError::NoSpendableInput)
     }
 
     tx.input_asset_ids_unique(base_asset_id)
@@ -415,19 +483,21 @@ where
         })?;
 
     // Check for duplicated input utxo id
-    let duplicated_utxo_id = tx
-        .inputs()
-        .iter()
-        .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
+    // let duplicated_utxo_id = tx
+    //     .inputs()
+    //     .iter()
+    //     .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
+    let utxo_ids_iter = tx.input_utxo_ids();
 
-    if let Some(utxo_id) = next_duplicate(duplicated_utxo_id).copied() {
+    if let Some(utxo_id) = next_duplicate(utxo_ids_iter) {
         return Err(ValidityError::DuplicateInputUtxoId { utxo_id });
     }
 
     // Check for duplicated input contract id
-    let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
+    // let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
+    let contract_ids_iter = tx.input_contract_ids();
 
-    if let Some(contract_id) = next_duplicate(duplicated_contract_id).copied() {
+    if let Some(contract_id) = next_duplicate(contract_ids_iter) {
         return Err(ValidityError::DuplicateInputContractId { contract_id });
     }
 

@@ -366,6 +366,9 @@ impl FormatValidityChecks for Transaction {
                 tx.check_without_signatures(block_height, consensus_params)
             }
             Self::Blob(tx) => tx.check_without_signatures(block_height, consensus_params),
+            Self::ScriptV2(tx) => {
+                tx.check_without_signatures(block_height, consensus_params)
+            }
         }
     }
 }
@@ -502,54 +505,57 @@ where
     }
 
     // Check for duplicated input nonce
-    let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
-    if let Some(nonce) = next_duplicate(duplicated_nonce).copied() {
+    // let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
+    let input_nonce_iter = tx.input_nonces();
+    if let Some(nonce) = next_duplicate(input_nonce_iter) {
         return Err(ValidityError::DuplicateInputNonce { nonce });
     }
 
     // Validate the inputs without checking signature
-    tx.inputs()
-        .iter()
-        .enumerate()
-        .try_for_each(|(index, input)| {
-            input.check_without_signature(
-                index,
-                tx.outputs(),
-                tx.witnesses(),
-                predicate_params,
-            )
-        })?;
+    // tx.inputs()
+    //     .iter()
+    //     .enumerate()
+    //     .try_for_each(|(index, input)| {
+    //         input.check_without_signature(
+    //             index,
+    //             tx.outputs(),
+    //             tx.witnesses(),
+    //             predicate_params,
+    //         )
+    //     })?;
+    tx.check_all_inputs(predicate_params)?;
 
-    tx.outputs()
-        .iter()
-        .enumerate()
-        .try_for_each(|(index, output)| {
-            output.check(index, tx.inputs())?;
-
-            if let Output::Change { asset_id, .. } = output {
-                if !tx
-                    .input_asset_ids(base_asset_id)
-                    .any(|input_asset_id| input_asset_id == asset_id)
-                {
-                    return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
-                        *asset_id,
-                    ));
-                }
-            }
-
-            if let Output::Coin { asset_id, .. } = output {
-                if !tx
-                    .input_asset_ids(base_asset_id)
-                    .any(|input_asset_id| input_asset_id == asset_id)
-                {
-                    return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
-                        *asset_id,
-                    ));
-                }
-            }
-
-            Ok(())
-        })?;
+    // tx.outputs()
+    //     .iter()
+    //     .enumerate()
+    //     .try_for_each(|(index, output)| {
+    //         output.check(index, tx.inputs())?;
+    //
+    //         if let Output::Change { asset_id, .. } = output {
+    //             if !tx
+    //                 .input_asset_ids(base_asset_id)
+    //                 .any(|input_asset_id| input_asset_id == asset_id)
+    //             {
+    //                 return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
+    //                     *asset_id,
+    //                 ));
+    //             }
+    //         }
+    //
+    //         if let Output::Coin { asset_id, .. } = output {
+    //             if !tx
+    //                 .input_asset_ids(base_asset_id)
+    //                 .any(|input_asset_id| input_asset_id == asset_id)
+    //             {
+    //                 return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
+    //                     *asset_id,
+    //                 ));
+    //             }
+    //         }
+    //
+    //         Ok(())
+    //     })?;
+    tx.check_all_outputs()?;
 
     Ok(())
 }

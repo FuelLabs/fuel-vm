@@ -27,10 +27,10 @@ use alloc::{
     vec::Vec,
 };
 use fuel_asm::{
-    op,
     Instruction,
     PanicReason,
     RegId,
+    op,
 };
 use fuel_tx::{
     ConsensusParameters,

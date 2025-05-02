@@ -1,4 +1,5 @@
 use crate::{
+    TxPointer,
     input::{
         coin::{
             CoinPredicate,
@@ -10,18 +11,12 @@ use crate::{
         },
     },
     policies::Policies,
-    TxPointer,
 };
 use fuel_crypto::{
     Hasher,
     PublicKey,
 };
 use fuel_types::{
-    canonical::{
-        Deserialize,
-        Error,
-        Serialize,
-    },
     Address,
     AssetId,
     BlobId,
@@ -29,6 +24,11 @@ use fuel_types::{
     Nonce,
     Salt,
     Word,
+    canonical::{
+        Deserialize,
+        Error,
+        Serialize,
+    },
 };
 
 use input::*;
@@ -743,14 +743,14 @@ impl Deserialize for Transaction {
 /// can be used to write generic code based on the different combinations of the fields.
 pub mod field {
     use crate::{
-        input,
-        output,
-        policies,
         Input,
         Output,
         StorageSlot,
         UpgradePurpose as UpgradePurposeType,
         Witness,
+        input,
+        output,
+        policies,
     };
     use fuel_types::{
         AssetId,
@@ -1110,14 +1110,14 @@ pub mod typescript {
     use wasm_bindgen::prelude::*;
 
     use crate::{
-        transaction::{
-            input_ts::Input,
-            output_ts::Output,
-            Policies,
-        },
         AssetId,
         Witness,
         Word,
+        transaction::{
+            Policies,
+            input_ts::Input,
+            output_ts::Output,
+        },
     };
     use alloc::{
         boxed::Box,

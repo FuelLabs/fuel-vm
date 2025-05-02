@@ -16,9 +16,9 @@ use proptest::{
 
 use crate::{
     binary::{
-        verify,
         MerkleTree,
         Primitive,
+        verify,
     },
     common::{
         Bytes32,

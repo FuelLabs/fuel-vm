@@ -7,17 +7,17 @@ use fuel_asm::{
 
 use crate::{
     constraints::reg_key::{
-        split_registers,
         SystemRegisters,
+        split_registers,
     },
     error::SimpleResult,
     interpreter::NotSupportedEcal,
 };
 
 use super::{
-    internal::inc_pc,
     Interpreter,
     Memory,
+    internal::inc_pc,
 };
 
 /// ECAL opcode handler

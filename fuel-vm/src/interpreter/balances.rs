@@ -13,8 +13,8 @@ use fuel_asm::{
     Word,
 };
 use fuel_tx::{
-    consts::BALANCE_ENTRY_SIZE,
     ValidityError,
+    consts::BALANCE_ENTRY_SIZE,
 };
 use fuel_types::AssetId;
 use itertools::Itertools;
@@ -231,9 +231,9 @@ fn writes_to_memory_correctly() {
     use crate::prelude::*;
     use alloc::vec;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
@@ -242,11 +242,11 @@ fn writes_to_memory_correctly() {
     let base = AssetId::zeroed();
     let base_balance = 950;
     let assets = vec![
-        (rng.gen(), 10),
-        (rng.gen(), 25),
-        (rng.gen(), 50),
+        (rng.r#gen(), 10),
+        (rng.r#gen(), 25),
+        (rng.r#gen(), 50),
         (base, base_balance),
-        (rng.gen(), 100),
+        (rng.r#gen(), 100),
     ];
 
     let mut assets_sorted = assets.clone();
@@ -280,16 +280,16 @@ fn try_from_iter_wont_overflow() {
     use crate::prelude::*;
     use alloc::vec;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
-    let a: AssetId = rng.gen();
-    let b: AssetId = rng.gen();
-    let c: AssetId = rng.gen();
+    let a: AssetId = rng.r#gen();
+    let b: AssetId = rng.r#gen();
+    let c: AssetId = rng.r#gen();
 
     // Sanity check
     let balances = vec![(a, u64::MAX), (b, 15), (c, 0)];
@@ -331,16 +331,16 @@ fn checked_add_and_sub_works() {
     use crate::prelude::*;
     use alloc::vec;
     use rand::{
-        rngs::StdRng,
         Rng,
         SeedableRng,
+        rngs::StdRng,
     };
 
     let rng = &mut StdRng::seed_from_u64(2322u64);
 
     let mut memory = vec![0u8; MEM_SIZE].into();
 
-    let asset: AssetId = rng.gen();
+    let asset: AssetId = rng.r#gen();
 
     let balances = vec![(asset, 0)];
     let mut balances =
@@ -351,7 +351,7 @@ fn checked_add_and_sub_works() {
     assert_eq!(bal, 0);
 
     // Add zero balance not in the set should result in zero and not mutate the set
-    let asset_b: AssetId = rng.gen();
+    let asset_b: AssetId = rng.r#gen();
     assert_ne!(asset, asset_b);
 
     let val = balances
@@ -404,9 +404,11 @@ fn checked_add_and_sub_works() {
     assert_eq!(bal, 5);
 
     // Balance won't panic underflow
-    assert!(balances
-        .checked_balance_sub(&mut memory, &asset, 10)
-        .is_none());
+    assert!(
+        balances
+            .checked_balance_sub(&mut memory, &asset, 10)
+            .is_none()
+    );
 
     // Balance won't panic overflow
     let val = balances
@@ -417,7 +419,9 @@ fn checked_add_and_sub_works() {
     assert_eq!(val, u64::MAX);
     assert_eq!(bal, u64::MAX);
 
-    assert!(balances
-        .checked_balance_add(&mut memory, &asset, 1)
-        .is_none());
+    assert!(
+        balances
+            .checked_balance_add(&mut memory, &asset, 1)
+            .is_none()
+    );
 }

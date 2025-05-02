@@ -2,9 +2,9 @@
 //! allowing for e.g. visualization of the execution state at each step.
 
 use fuel_asm::{
-    op,
     RawInstruction,
     RegId,
+    op,
 };
 use fuel_tx::{
     ConsensusParameters,

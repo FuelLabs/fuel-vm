@@ -1,9 +1,9 @@
 use fuel_types::{
-    bytes::WORD_SIZE,
     Address,
     AssetId,
     Bytes32,
     ChainId,
+    bytes::WORD_SIZE,
 };
 
 pub mod gas;

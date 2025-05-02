@@ -5,6 +5,8 @@ use core::{
     ops::Deref,
 };
 use fuel_types::{
+    BlockHeight,
+    Word,
     canonical::{
         Deserialize,
         Error,
@@ -12,17 +14,15 @@ use fuel_types::{
         Output,
         Serialize,
     },
-    BlockHeight,
-    Word,
 };
 
 #[cfg(feature = "random")]
 use rand::{
+    Rng,
     distributions::{
         Distribution,
         Standard,
     },
-    Rng,
 };
 use serde::ser::SerializeStruct;
 
@@ -413,12 +413,11 @@ impl<'de> serde::Deserialize<'de> for Policies {
                     let mut decoded_index = 0;
                     for (index, bit) in PoliciesBits::all().iter().enumerate() {
                         if bits.contains(bit) {
-                            values[index] =
-                                *decoded_values
-                                    .get(decoded_index)
-                                    .ok_or(serde::de::Error::custom(
+                            values[index] = *decoded_values.get(decoded_index).ok_or(
+                                serde::de::Error::custom(
                                     "The values array isn't synchronized with the bits",
-                                ))?;
+                                ),
+                            )?;
                             decoded_index = decoded_index.checked_add(1).ok_or(
                                 serde::de::Error::custom(
                                     "Too many values in the values array",
@@ -501,8 +500,8 @@ impl<'de> serde::Deserialize<'de> for Policies {
                                 }
                                 if decoded_index != decoded_values.len() {
                                     return Err(serde::de::Error::custom(
-                                            "The values array isn't synchronized with the bits",
-                                        ));
+                                        "The values array isn't synchronized with the bits",
+                                    ));
                                 }
                                 values = Some(tmp_values);
                             }
@@ -617,22 +616,22 @@ impl Deserialize for Policies {
 #[cfg(feature = "random")]
 impl Distribution<Policies> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Policies {
-        let bits: u32 = rng.gen();
+        let bits: u32 = rng.r#gen();
         let bits = bits & PoliciesBits::all().bits();
         let bits = PoliciesBits::from_bits(bits).expect("We checked that above");
-        let values = rng.gen();
+        let values = rng.r#gen();
         let mut policies = Policies {
             bits,
             values: Policies::values_for_bitmask(bits, values),
         };
 
         if policies.is_set(PolicyType::Maturity) {
-            let maturity: u32 = rng.gen();
+            let maturity: u32 = rng.r#gen();
             policies.set(PolicyType::Maturity, Some(maturity as u64));
         }
 
         if policies.is_set(PolicyType::Expiration) {
-            let expiration: u32 = rng.gen();
+            let expiration: u32 = rng.r#gen();
             policies.set(PolicyType::Expiration, Some(expiration as u64));
         }
 
@@ -750,9 +749,9 @@ fn canonical_serialization_deserialization_for_any_combination_of_values_works()
 #[test]
 fn serde_de_serialization_is_backward_compatible() {
     use serde_test::{
-        assert_tokens,
         Configure,
         Token,
+        assert_tokens,
     };
 
     // Given
@@ -790,9 +789,9 @@ fn serde_de_serialization_is_backward_compatible() {
 #[test]
 fn serde_deserialization_empty_use_backward_compatibility() {
     use serde_test::{
-        assert_tokens,
         Configure,
         Token,
+        assert_tokens,
     };
 
     // Given
@@ -827,9 +826,9 @@ fn serde_deserialization_empty_use_backward_compatibility() {
 #[test]
 fn serde_deserialization_new_format() {
     use serde_test::{
-        assert_tokens,
         Configure,
         Token,
+        assert_tokens,
     };
 
     // Given

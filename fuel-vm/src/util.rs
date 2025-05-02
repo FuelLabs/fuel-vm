@@ -59,8 +59,8 @@ macro_rules! script_with_data_offset {
             {
                 use $crate::{
                     fuel_tx::{
-                        field::Script as ScriptField,
                         Script,
+                        field::Script as ScriptField,
                     },
                     fuel_types::bytes::padded_len,
                     prelude::Immediate18,
@@ -93,9 +93,9 @@ pub mod test_helpers {
 
     use crate::{
         checked_transaction::{
-            builder::TransactionBuilderExt,
             Checked,
             IntoChecked,
+            builder::TransactionBuilderExt,
         },
         interpreter::{
             Memory,
@@ -128,17 +128,13 @@ pub mod test_helpers {
         },
     };
     use fuel_asm::{
-        op,
         GTFArgs,
         Instruction,
         PanicReason,
         RegId,
+        op,
     };
     use fuel_tx::{
-        field::{
-            Outputs,
-            ReceiptsRoot,
-        },
         BlobBody,
         BlobIdExt,
         ConsensusParameters,
@@ -159,12 +155,12 @@ pub mod test_helpers {
         TransactionBuilder,
         TxParameters,
         Witness,
+        field::{
+            Outputs,
+            ReceiptsRoot,
+        },
     };
     use fuel_types::{
-        canonical::{
-            Deserialize,
-            Serialize,
-        },
         Address,
         AssetId,
         BlobId,
@@ -174,12 +170,16 @@ pub mod test_helpers {
         Immediate12,
         Salt,
         Word,
+        canonical::{
+            Deserialize,
+            Serialize,
+        },
     };
     use itertools::Itertools;
     use rand::{
-        prelude::StdRng,
         Rng,
         SeedableRng,
+        prelude::StdRng,
     };
 
     pub struct CreatedContract {
@@ -263,7 +263,7 @@ pub mod test_helpers {
 
         pub fn change_output(&mut self, asset_id: AssetId) -> &mut TestBuilder {
             self.builder
-                .add_output(Output::change(self.rng.gen(), 0, asset_id));
+                .add_output(Output::change(self.rng.r#gen(), 0, asset_id));
             self
         }
 
@@ -273,7 +273,7 @@ pub mod test_helpers {
             amount: Word,
         ) -> &mut TestBuilder {
             self.builder
-                .add_output(Output::coin(self.rng.gen(), amount, asset_id));
+                .add_output(Output::coin(self.rng.r#gen(), amount, asset_id));
             self
         }
 
@@ -293,8 +293,8 @@ pub mod test_helpers {
 
             self.builder.add_output(Output::contract(
                 u16::try_from(input_idx.0).expect("The input index is more than allowed"),
-                self.rng.gen(),
-                self.rng.gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
             ));
 
             self
@@ -307,7 +307,7 @@ pub mod test_helpers {
         ) -> &mut TestBuilder {
             self.builder.add_unsigned_coin_input(
                 fuel_crypto::SecretKey::random(&mut self.rng),
-                self.rng.gen(),
+                self.rng.r#gen(),
                 amount,
                 asset_id,
                 Default::default(),
@@ -322,10 +322,10 @@ pub mod test_helpers {
 
         pub fn contract_input(&mut self, contract_id: ContractId) -> &mut TestBuilder {
             self.builder.add_input(Input::contract(
-                self.rng.gen(),
-                self.rng.gen(),
-                self.rng.gen(),
-                self.rng.gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
+                self.rng.r#gen(),
                 contract_id,
             ));
             self
@@ -486,7 +486,7 @@ pub mod test_helpers {
         ) -> CreatedContract {
             let storage_slots = initial_state.unwrap_or_default();
 
-            let salt: Salt = self.rng.gen();
+            let salt: Salt = self.rng.r#gen();
             let program: Witness = contract.into();
             let storage_root = Contract::initial_state_root(storage_slots.iter());
             let contract = Contract::from(program.as_ref());

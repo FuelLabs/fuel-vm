@@ -180,7 +180,7 @@ fn metadata() {
         rng.r#gen(),
         rng.r#gen(),
         rng.r#gen(),
-        contract_call,
+        contract_id,
     ));
     outputs.push(Output::contract(0, rng.r#gen(), rng.r#gen()));
 
@@ -442,7 +442,7 @@ fn get_metadata__gas_price__contract() {
         op::ret(0x10),
     ];
 
-    let salt: Salt = rng.gen();
+    let salt: Salt = rng.r#gen();
     let program: Witness = contract_bytecode.into_iter().collect::<Vec<u8>>().into();
 
     let contract = Contract::from(program.as_ref());
@@ -466,13 +466,15 @@ fn get_metadata__gas_price__contract() {
     };
 
     // Deploy the contract into the blockchain
-    assert!(Transactor::<_, _, _>::new(
-        MemoryInstance::new(),
-        &mut storage,
-        interpreter_params.clone()
-    )
-    .transact(tx)
-    .is_success());
+    assert!(
+        Transactor::<_, _, _>::new(
+            MemoryInstance::new(),
+            &mut storage,
+            interpreter_params.clone()
+        )
+        .transact(tx)
+        .is_success()
+    );
 
     let mut script = vec![
         op::movi(0x10, (1 + Bytes32::LEN + 2 * Bytes8::LEN) as Immediate18),
@@ -493,13 +495,13 @@ fn get_metadata__gas_price__contract() {
     let tx = TransactionBuilder::script(script.into_iter().collect(), vec![])
         .script_gas_limit(gas_limit)
         .add_input(Input::contract(
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
-            rng.gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
+            rng.r#gen(),
             contract_id,
         ))
-        .add_output(Output::contract(0, rng.gen(), rng.gen()))
+        .add_output(Output::contract(0, rng.r#gen(), rng.r#gen()))
         .add_fee_input()
         .add_max_fee_limit(10)
         .finalize()

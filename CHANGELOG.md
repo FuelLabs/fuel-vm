@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased (see .changes folder)]
 
+## [Version 0.61.1]
+
+### Added
+- [953](https://github.com/FuelLabs/fuel-vm/pull/953): feat: Expose SubAssetId in fuel-tx
+
 ## [Version 0.61.0]
 
 ### Added

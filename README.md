@@ -55,7 +55,7 @@ If a specific opcode has unexpected behaviors, maybe there is a unit test
 already that you can reuse to reproduce a bug. You need to add a new `test_case` like:
 
 ```rust
-#[test_case(JumpMode::Absolute, 0, 0, 100 => Ok(4); "absolute jump")]
+#[test_case(JumpMode::RelativeIS, 0, 0, 100 => Ok(4); "is-relative jump")]
 ```
 
 Before the test and run this specific test or all tests.

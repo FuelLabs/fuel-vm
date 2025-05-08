@@ -9,6 +9,8 @@ use super::{
     Imm18,
     Instruction,
     RegId,
+    narrowint,
+    wideint,
     wideint::{
         CompareArgs,
         DivArgs,
@@ -76,9 +78,48 @@ const _: () = {
 };
 
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
+impl NIOP {
+    /// Construct a `NIOP` instruction from its arguments.
+    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: narrowint::MathArgs) -> Self {
+        Self::new(ra, rb, rc, args.to_imm())
+    }
+}
+
+/// Construct a `WQCM` instruction from its arguments.
+pub fn niop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
+    ra: A,
+    rb: B,
+    rc: C,
+    args: narrowint::MathArgs,
+) -> Instruction {
+    Instruction::NIOP(NIOP::from_args(ra.check(), rb.check(), rc.check(), args))
+}
+
+#[cfg(feature = "typescript")]
+const _: () = {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    /// Construct a `WQCM` instruction from its arguments.
+    pub fn niop_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: narrowint::MathArgs,
+    ) -> typescript::Instruction {
+        crate::op::niop_args(ra, rb, rc, args).into()
+    }
+};
+
+#[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDCM {
     /// Construct a `WDCM` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: CompareArgs) -> Self {
+    pub fn from_args(
+        ra: RegId,
+        rb: RegId,
+        rc: RegId,
+        args: wideint::CompareArgs,
+    ) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -86,7 +127,12 @@ impl WDCM {
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQCM {
     /// Construct a `WQCM` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: CompareArgs) -> Self {
+    pub fn from_args(
+        ra: RegId,
+        rb: RegId,
+        rc: RegId,
+        args: wideint::CompareArgs,
+    ) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -94,7 +140,7 @@ impl WQCM {
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDOP {
     /// Construct a `WDOP` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MathArgs) -> Self {
+    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: wideint::MathArgs) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -102,7 +148,7 @@ impl WDOP {
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQOP {
     /// Construct a `WQOP` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MathArgs) -> Self {
+    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: wideint::MathArgs) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -110,7 +156,7 @@ impl WQOP {
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDML {
     /// Construct a `WDML` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MulArgs) -> Self {
+    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: wideint::MulArgs) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -118,7 +164,7 @@ impl WDML {
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQML {
     /// Construct a `WQML` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: MulArgs) -> Self {
+    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: wideint::MulArgs) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -126,7 +172,7 @@ impl WQML {
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WDDV {
     /// Construct a `WDDV` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: DivArgs) -> Self {
+    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: wideint::DivArgs) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -134,7 +180,7 @@ impl WDDV {
 #[cfg_attr(feature = "typescript", wasm_bindgen::prelude::wasm_bindgen)]
 impl WQDV {
     /// Construct a `WQDV` instruction from its arguments.
-    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: DivArgs) -> Self {
+    pub fn from_args(ra: RegId, rb: RegId, rc: RegId, args: wideint::DivArgs) -> Self {
         Self::new(ra, rb, rc, args.to_imm())
     }
 }
@@ -144,7 +190,7 @@ pub fn wdcm_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: CompareArgs,
+    args: wideint::CompareArgs,
 ) -> Instruction {
     Instruction::WDCM(WDCM::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -159,7 +205,7 @@ const _: () = {
         ra: u8,
         rb: u8,
         rc: u8,
-        args: CompareArgs,
+        args: wideint::CompareArgs,
     ) -> typescript::Instruction {
         crate::op::wdcm_args(ra, rb, rc, args).into()
     }
@@ -170,7 +216,7 @@ pub fn wqcm_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: CompareArgs,
+    args: wideint::CompareArgs,
 ) -> Instruction {
     Instruction::WQCM(WQCM::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -185,7 +231,7 @@ const _: () = {
         ra: u8,
         rb: u8,
         rc: u8,
-        args: CompareArgs,
+        args: wideint::CompareArgs,
     ) -> typescript::Instruction {
         crate::op::wqcm_args(ra, rb, rc, args).into()
     }
@@ -196,7 +242,7 @@ pub fn wdop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: MathArgs,
+    args: wideint::MathArgs,
 ) -> Instruction {
     Instruction::WDOP(WDOP::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -207,7 +253,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WDOP` instruction from its arguments.
-    pub fn wdop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> typescript::Instruction {
+    pub fn wdop_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: wideint::MathArgs,
+    ) -> typescript::Instruction {
         crate::op::wdop_args(ra, rb, rc, args).into()
     }
 };
@@ -217,7 +268,7 @@ pub fn wqop_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: MathArgs,
+    args: wideint::MathArgs,
 ) -> Instruction {
     Instruction::WQOP(WQOP::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -228,7 +279,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WQOP` instruction from its arguments.
-    pub fn wqop_args(ra: u8, rb: u8, rc: u8, args: MathArgs) -> typescript::Instruction {
+    pub fn wqop_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: wideint::MathArgs,
+    ) -> typescript::Instruction {
         crate::op::wqop_args(ra, rb, rc, args).into()
     }
 };
@@ -238,7 +294,7 @@ pub fn wdml_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: MulArgs,
+    args: wideint::MulArgs,
 ) -> Instruction {
     Instruction::WDML(WDML::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -249,7 +305,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WDML` instruction from its arguments.
-    pub fn wdml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> typescript::Instruction {
+    pub fn wdml_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: wideint::MulArgs,
+    ) -> typescript::Instruction {
         crate::op::wdml_args(ra, rb, rc, args).into()
     }
 };
@@ -259,7 +320,7 @@ pub fn wqml_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: MulArgs,
+    args: wideint::MulArgs,
 ) -> Instruction {
     Instruction::WQML(WQML::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -270,7 +331,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WQML` instruction from its arguments.
-    pub fn wqml_args(ra: u8, rb: u8, rc: u8, args: MulArgs) -> typescript::Instruction {
+    pub fn wqml_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: wideint::MulArgs,
+    ) -> typescript::Instruction {
         crate::op::wqml_args(ra, rb, rc, args).into()
     }
 };
@@ -280,7 +346,7 @@ pub fn wddv_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: DivArgs,
+    args: wideint::DivArgs,
 ) -> Instruction {
     Instruction::WDDV(WDDV::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -291,7 +357,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WDDV` instruction from its arguments.
-    pub fn wddv_args(ra: u8, rb: u8, rc: u8, args: DivArgs) -> typescript::Instruction {
+    pub fn wddv_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: wideint::DivArgs,
+    ) -> typescript::Instruction {
         crate::op::wddv_args(ra, rb, rc, args).into()
     }
 };
@@ -301,7 +372,7 @@ pub fn wqdv_args<A: CheckRegId, B: CheckRegId, C: CheckRegId>(
     ra: A,
     rb: B,
     rc: C,
-    args: DivArgs,
+    args: wideint::DivArgs,
 ) -> Instruction {
     Instruction::WQDV(WQDV::from_args(ra.check(), rb.check(), rc.check(), args))
 }
@@ -312,7 +383,12 @@ const _: () = {
 
     #[wasm_bindgen::prelude::wasm_bindgen]
     /// Construct a `WQDV` instruction from its arguments.
-    pub fn wqdv_args(ra: u8, rb: u8, rc: u8, args: DivArgs) -> typescript::Instruction {
+    pub fn wqdv_args(
+        ra: u8,
+        rb: u8,
+        rc: u8,
+        args: wideint::DivArgs,
+    ) -> typescript::Instruction {
         crate::op::wqdv_args(ra, rb, rc, args).into()
     }
 };

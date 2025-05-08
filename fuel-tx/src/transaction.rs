@@ -779,6 +779,7 @@ impl Deserialize for Transaction {
 pub mod field {
     use crate::{
         Input,
+        InputRepr,
         Output,
         PredicateParameters,
         StorageSlot,
@@ -1052,8 +1053,12 @@ pub mod field {
         }
     }
 
+    pub trait IsCoin {
+        fn is_coin(&self) -> bool;
+    }
+
     pub trait Inputs {
-        type MyInput;
+        type MyInput: Into<InputRepr> + PartialEq + std::fmt::Debug;
         fn inputs(&self) -> &Vec<Self::MyInput>;
         fn inputs_mut(&mut self) -> &mut Vec<Self::MyInput>;
         fn inputs_offset(&self) -> usize;

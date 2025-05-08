@@ -245,6 +245,12 @@ pub enum Input {
     MessageDataPredicate(MessageDataPredicate),
 }
 
+impl From<Input> for InputRepr {
+    fn from(value: Input) -> Self {
+        todo!()
+    }
+}
+
 #[derive(
     Debug,
     Clone,
@@ -263,6 +269,12 @@ pub enum InputV2 {
     Coin(CoinV2),
     Message(MessageV2),
     Contract(Contract),
+}
+
+impl From<InputV2> for InputRepr {
+    fn from(_value: InputV2) -> Self {
+        todo!()
+    }
 }
 
 impl Default for Input {

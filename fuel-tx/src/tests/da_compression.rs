@@ -18,10 +18,12 @@ use crate::{
         coin::{
             Coin,
             CoinSpecification,
+            CoinV2,
         },
         message::{
             Message,
             MessageSpecification,
+            MessageV2,
         },
     },
     test_helper::TransactionFactory,
@@ -241,6 +243,14 @@ where
         })
     }
 }
+impl DecompressibleBy<TestCompressionCtx> for CoinV2 {
+    async fn decompress_with(
+        _c: <CoinV2 as Compressible>::Compressed,
+        _ctx: &TestCompressionCtx,
+    ) -> Result<CoinV2, Infallible> {
+        todo!()
+    }
+}
 
 impl<Specification> DecompressibleBy<TestCompressionCtx> for Message<Specification>
 where
@@ -280,6 +290,15 @@ where
         }
 
         Ok(message)
+    }
+}
+
+impl DecompressibleBy<TestCompressionCtx> for MessageV2 {
+    async fn decompress_with(
+        _c: <MessageV2 as Compressible>::Compressed,
+        _ctx: &TestCompressionCtx,
+    ) -> Result<MessageV2, Infallible> {
+        todo!()
     }
 }
 

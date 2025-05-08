@@ -747,42 +747,6 @@ where
         )
     }
 
-    pub(crate) fn load_byte(&mut self, ra: RegId, b: Word, c: Word) -> SimpleResult<()> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_byte(self.memory.as_ref(), pc, result, b, c)
-    }
-
-    pub(crate) fn load_word(&mut self, ra: RegId, b: Word, c: Imm12) -> SimpleResult<()> {
-        let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
-        let result = &mut w[WriteRegKey::try_from(ra)?];
-        load_word(self.memory.as_ref(), pc, result, b, c)
-    }
-
-    pub(crate) fn store_byte(&mut self, a: Word, b: Word, c: Word) -> SimpleResult<()> {
-        let owner = self.ownership_registers();
-        store_byte(
-            self.memory.as_mut(),
-            owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-            c,
-        )
-    }
-
-    pub(crate) fn store_word(&mut self, a: Word, b: Word, c: Imm12) -> SimpleResult<()> {
-        let owner = self.ownership_registers();
-        store_word(
-            self.memory.as_mut(),
-            owner,
-            self.registers.pc_mut(),
-            a,
-            b,
-            c,
-        )
-    }
-
     /// Expand heap by `amount` bytes.
     pub fn allocate(&mut self, amount: Word) -> SimpleResult<()> {
         let (SystemRegisters { hp, sp, .. }, _) = split_registers(&mut self.registers);
@@ -942,62 +906,60 @@ pub(crate) fn pop_selected_registers(
     Ok(inc_pc(pc)?)
 }
 
-pub(crate) fn load_byte(
-    memory: &MemoryInstance,
-    pc: RegMut<PC>,
-    result: &mut Word,
-    b: Word,
-    c: Word,
-) -> SimpleResult<()> {
-    let [b] = memory.read_bytes(b.saturating_add(c))?;
-    *result = b as Word;
-    Ok(inc_pc(pc)?)
+macro_rules! store_load {
+    ($t:ident) => { paste::paste! {
+        impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
+        where
+            M: Memory,
+        {
+            pub(crate) fn [< store_ $t >](
+                &mut self,
+                dst_addr: Word,
+                value: Word,
+                offset: Imm12,
+            ) -> SimpleResult<()> {
+                let owner = self.ownership_registers();
+                let (SystemRegisters { pc, .. }, _) = split_registers(&mut self.registers);
+
+
+                let offset = u64::from(offset)
+                .checked_mul(core::mem::size_of::<$t>() as u64)
+                .expect("u12 * size_of cannot overflow a Word");
+                let addr = dst_addr.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
+
+                #[allow(clippy::cast_possible_truncation)] // We truncate here
+                let value = value as $t;
+
+                self.memory.as_mut().write_bytes(owner, addr, value.to_be_bytes())?;
+
+                Ok(inc_pc(pc)?)
+            }
+
+            pub(crate) fn [< load_ $t >](
+                &mut self,
+                result: RegId,
+                src_addr: Word,
+                offset: Imm12,
+            ) -> SimpleResult<()> {
+                let (SystemRegisters { pc, .. }, mut w) = split_registers(&mut self.registers);
+                let result = &mut w[WriteRegKey::try_from(result)?];
+
+                let offset = u64::from(offset)
+                    .checked_mul(core::mem::size_of::<$t>() as u64)
+                    .expect("u12 * size_of cannot overflow a Word");
+                let addr = src_addr.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
+                *result = $t::from_be_bytes(self.memory.as_ref().read_bytes(addr)?) as u64;
+
+                Ok(inc_pc(pc)?)
+            }
+        }
+    }};
 }
 
-pub(crate) fn load_word(
-    memory: &MemoryInstance,
-    pc: RegMut<PC>,
-    result: &mut Word,
-    b: Word,
-    c: Imm12,
-) -> SimpleResult<()> {
-    let offset = u64::from(c)
-        .checked_mul(WORD_SIZE as u64)
-        .expect("u12 * 8 cannot overflow a Word");
-    let addr = b.checked_add(offset).ok_or(PanicReason::MemoryOverflow)?;
-    *result = Word::from_be_bytes(memory.read_bytes(addr)?);
-    Ok(inc_pc(pc)?)
-}
-
-#[allow(clippy::cast_possible_truncation)]
-pub(crate) fn store_byte(
-    memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Word,
-) -> SimpleResult<()> {
-    memory.write_bytes(owner, a.saturating_add(c), [b as u8])?;
-    Ok(inc_pc(pc)?)
-}
-
-pub(crate) fn store_word(
-    memory: &mut MemoryInstance,
-    owner: OwnershipRegisters,
-    pc: RegMut<PC>,
-    a: Word,
-    b: Word,
-    c: Imm12,
-) -> SimpleResult<()> {
-    #[allow(clippy::arithmetic_side_effects)]
-    let offset = u64::from(c)
-        .checked_mul(WORD_SIZE as u64)
-        .expect("12-bits number multiplied by 8 cannot overflow a Word");
-    let addr = a.saturating_add(offset);
-    memory.write_bytes(owner, addr, b.to_be_bytes())?;
-    Ok(inc_pc(pc)?)
-}
+store_load!(u8);
+store_load!(u16);
+store_load!(u32);
+store_load!(u64);
 
 pub(crate) fn malloc(
     hp: RegMut<HP>,

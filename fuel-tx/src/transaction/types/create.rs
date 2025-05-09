@@ -90,7 +90,11 @@ impl PrepareSign for CreateBody {
 impl Chargeable for Create {
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        canonical::Serialize::size(self)
+        self.metered_bytes_size()
+    }
+
+    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+        self.gas_used_by_inputs(gas_costs)
     }
 
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word {
@@ -126,6 +130,10 @@ impl Chargeable for Create {
             .saturating_add(state_root_gas)
             .saturating_add(contract_id_gas)
             .saturating_add(tx_id_gas)
+    }
+
+    fn has_spendable_input(&self) -> bool {
+        self.has_spendable_input_inner()
     }
 }
 

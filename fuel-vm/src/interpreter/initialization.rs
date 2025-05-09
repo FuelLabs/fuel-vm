@@ -21,6 +21,7 @@ use fuel_tx::{
     Input,
     Output,
     field::{
+        Inputs,
         Script,
         ScriptGasLimit,
     },
@@ -33,6 +34,7 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
+    Tx: Inputs<MyInput = Input>,
     S: InterpreterStorage,
 {
     /// Initialize the VM with a given transaction
@@ -129,6 +131,7 @@ impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where
     M: Memory,
     Tx: ExecutableTransaction,
+    Tx: Inputs<MyInput = Input>,
     S: InterpreterStorage,
 {
     /// Initialize the VM for a predicate context
@@ -163,6 +166,7 @@ where
     S: InterpreterStorage,
     <S as InterpreterStorage>::DataError: From<S::DataError>,
     Tx: ExecutableTransaction,
+    Tx: Inputs<MyInput = Input>,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
 {
     /// Initialize the VM with a given transaction, backed by a storage provider that

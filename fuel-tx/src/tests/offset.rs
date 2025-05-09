@@ -71,6 +71,7 @@ struct TestedFields {
 fn chargeable_transaction_parts<Tx>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
 where
     Tx: Buildable,
+    Tx: Inputs<MyInput = Input>,
 {
     inputs_assert(tx, bytes, cases);
     outputs_assert(tx, bytes, cases);
@@ -78,7 +79,7 @@ where
 
 fn inputs_assert<Tx>(tx: &Tx, bytes: &[u8], cases: &mut TestedFields)
 where
-    Tx: Inputs + Buildable,
+    Tx: Inputs<MyInput = Input> + Buildable,
 {
     tx.inputs().iter().enumerate().for_each(|(idx, i)| {
         let input_ofs = tx

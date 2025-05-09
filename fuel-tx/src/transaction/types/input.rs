@@ -245,6 +245,38 @@ pub enum Input {
     MessageDataPredicate(MessageDataPredicate),
 }
 
+impl From<Input> for InputRepr {
+    fn from(value: Input) -> Self {
+        todo!()
+    }
+}
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    strum_macros::EnumCount,
+    serde::Serialize,
+    serde::Deserialize,
+)]
+#[cfg_attr(
+    feature = "da-compression",
+    derive(fuel_compression::Compress, fuel_compression::Decompress)
+)]
+pub enum InputV2 {
+    Coin(CoinV2),
+    Message(MessageV2),
+    Contract(Contract),
+}
+
+impl From<InputV2> for InputRepr {
+    fn from(_value: InputV2) -> Self {
+        todo!()
+    }
+}
+
 impl Default for Input {
     fn default() -> Self {
         Self::contract(
@@ -887,6 +919,23 @@ impl Serialize for Input {
         }
     }
 }
+impl Serialize for InputV2 {
+    fn size_static(&self) -> usize {
+        todo!()
+    }
+
+    fn size_dynamic(&self) -> usize {
+        todo!()
+    }
+
+    fn encode_static<O: Output + ?Sized>(&self, _buffer: &mut O) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn encode_dynamic<O: Output + ?Sized>(&self, _buffer: &mut O) -> Result<(), Error> {
+        todo!()
+    }
+}
 
 impl Deserialize for Input {
     fn decode_static<I: canonical::Input + ?Sized>(
@@ -945,6 +994,21 @@ impl Deserialize for Input {
             Input::MessageDataSigned(message) => message.decode_dynamic(buffer),
             Input::MessageDataPredicate(message) => message.decode_dynamic(buffer),
         }
+    }
+}
+
+impl Deserialize for InputV2 {
+    fn decode_static<I: canonical::Input + ?Sized>(
+        _buffer: &mut I,
+    ) -> Result<Self, Error> {
+        todo!()
+    }
+
+    fn decode_dynamic<I: canonical::Input + ?Sized>(
+        &mut self,
+        _buffer: &mut I,
+    ) -> Result<(), Error> {
+        todo!()
     }
 }
 

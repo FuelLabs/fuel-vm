@@ -49,6 +49,7 @@ mod use_std {
         BlobBody,
         BlobIdExt,
         Buildable,
+        ChargeableTransaction,
         ConsensusParameters,
         Contract,
         Create,
@@ -65,8 +66,10 @@ mod use_std {
         UploadBody,
         UploadSubsection,
         field,
+        field::Inputs,
     };
     use core::marker::PhantomData;
+    use fuel_compression::Compressible;
     use fuel_crypto::{
         Hasher,
         SecretKey,
@@ -84,6 +87,10 @@ mod use_std {
             Uniform,
         },
         rngs::StdRng,
+    };
+    use serde::{
+        Serialize,
+        de::DeserializeOwned,
     };
     use strum::EnumCount;
 
@@ -141,6 +148,7 @@ mod use_std {
                         Transaction::Upgrade(_) => (),
                         Transaction::Upload(_) => (),
                         Transaction::Blob(_) => (),
+                        Transaction::ScriptV2(_) => (),
                     })
                     .unwrap_or(());
 
@@ -201,14 +209,19 @@ mod use_std {
         }
     }
 
-    impl<R, Tx> TransactionFactory<R, Tx>
+    impl<R, Body, MetadataBody>
+        TransactionFactory<R, ChargeableTransaction<Body, MetadataBody>>
     where
         R: Rng + CryptoRng,
-        Tx: Buildable,
+        Body: Compressible + std::fmt::Debug,
+        ChargeableTransaction<Body, MetadataBody>: Inputs<MyInput = Input>,
+        ChargeableTransaction<Body, MetadataBody>: Buildable,
+        <Body as Compressible>::Compressed:
+            std::fmt::Debug + Clone + PartialEq + Serialize + DeserializeOwned,
     {
         fn fill_transaction(
             &mut self,
-            builder: &mut TransactionBuilder<Tx>,
+            builder: &mut TransactionBuilder<ChargeableTransaction<Body, MetadataBody>>,
         ) -> Vec<SecretKey> {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);

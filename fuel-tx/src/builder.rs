@@ -45,6 +45,7 @@ use crate::{
 
 use crate::{
     field::{
+        Inputs,
         MaxFeeLimit,
         Outputs,
         WitnessLimit,
@@ -90,7 +91,7 @@ where
     Self: BuildableSet,
 {
     /// Append an input to the transaction
-    fn add_input(&mut self, input: Input) {
+    fn add_input(&mut self, input: <Self as Inputs>::MyInput) {
         self.inputs_mut().push(input)
     }
 
@@ -472,7 +473,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self
     }
 
-    pub fn inputs(&self) -> &[Input] {
+    pub fn inputs(&self) -> &[<Tx as Inputs>::MyInput] {
         self.tx.inputs()
     }
 
@@ -484,7 +485,7 @@ impl<Tx: Buildable> TransactionBuilder<Tx> {
         self.tx.witnesses()
     }
 
-    pub fn add_input(&mut self, input: Input) -> &mut Self {
+    pub fn add_input(&mut self, input: <Tx as Inputs>::MyInput) -> &mut Self {
         self.tx.add_input(input);
 
         self

@@ -114,6 +114,7 @@ pub enum Transaction {
     Upgrade(Upgrade),
     Upload(Upload),
     Blob(Blob),
+    ScriptV2(ScriptV2),
 }
 
 #[cfg(feature = "test-helpers")]
@@ -477,25 +478,24 @@ impl Transaction {
 }
 
 pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
-    /// Returns the assets' ids used in the inputs in the order of inputs.
-    fn input_asset_ids<'a>(
-        &'a self,
-        base_asset_id: &'a AssetId,
-    ) -> IntoIter<&'a AssetId> {
-        self.inputs()
-            .iter()
-            .filter_map(|input| match input {
-                Input::CoinPredicate(CoinPredicate { asset_id, .. })
-                | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
-                Input::MessageCoinSigned(_)
-                | Input::MessageCoinPredicate(_)
-                | Input::MessageDataPredicate(_)
-                | Input::MessageDataSigned(_) => Some(base_asset_id),
-                _ => None,
-            })
-            .collect_vec()
-            .into_iter()
-    }
+    // /// Returns the assets' ids used in the inputs in the order of inputs.
+    // fn input_asset_ids<'a>(
+    //     &'a self,
+    //     base_asset_id: &'a AssetId,
+    // ) -> IntoIter<&'a AssetId> {
+    //     // self.inputs()
+    //     //     .iter()
+    //     //     .filter_map(|input| match input {
+    //     //         Input::CoinPredicate(CoinPredicate { asset_id, .. })
+    //     //         | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
+    //     //         Input::MessageCoinSigned(_)
+    //     //         | Input::MessageCoinPredicate(_)
+    //     //         | Input::MessageDataPredicate(_)
+    //     //         | Input::MessageDataSigned(_) => Some(base_asset_id),
+    //     //         _ => None,
+    //     //     })
+    //     <Self as field::Inputs>::input_asset_ids(self, base_asset_id)
+    // }
 
     /// Returns unique assets' ids used in the inputs.
     fn input_asset_ids_unique<'a>(
@@ -514,29 +514,29 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     }
 
     /// Checks that all owners of inputs in the predicates are valid.
-    fn check_predicate_owners(&self) -> bool {
-        self.inputs()
-            .iter()
-            .filter_map(|i| match i {
-                Input::CoinPredicate(CoinPredicate {
-                    owner, predicate, ..
-                }) => Some((owner, predicate)),
-                Input::MessageDataPredicate(MessageDataPredicate {
-                    recipient,
-                    predicate,
-                    ..
-                }) => Some((recipient, predicate)),
-                Input::MessageCoinPredicate(MessageCoinPredicate {
-                    recipient,
-                    predicate,
-                    ..
-                }) => Some((recipient, predicate)),
-                _ => None,
-            })
-            .fold(true, |result, (owner, predicate)| {
-                result && Input::is_predicate_owner_valid(owner, &**predicate)
-            })
-    }
+    // fn check_predicate_owners(&self) -> bool {
+    //     self.inputs()
+    //         .iter()
+    //         .filter_map(|i| match i {
+    //             Input::CoinPredicate(CoinPredicate {
+    //                 owner, predicate, ..
+    //             }) => Some((owner, predicate)),
+    //             Input::MessageDataPredicate(MessageDataPredicate {
+    //                 recipient,
+    //                 predicate,
+    //                 ..
+    //             }) => Some((recipient, predicate)),
+    //             Input::MessageCoinPredicate(MessageCoinPredicate {
+    //                 recipient,
+    //                 predicate,
+    //                 ..
+    //             }) => Some((recipient, predicate)),
+    //             _ => None,
+    //         })
+    //         .fold(true, |result, (owner, predicate)| {
+    //             result && Input::is_predicate_owner_valid(owner, &**predicate)
+    //         })
+    // }
 
     /// Append a new unsigned coin input to the transaction.
     ///
@@ -554,19 +554,20 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         asset_id: AssetId,
         tx_pointer: TxPointer,
         witness_index: u16,
-    ) {
-        let owner = Input::owner(owner);
-
-        let input = Input::coin_signed(
-            utxo_id,
-            owner,
-            amount,
-            asset_id,
-            tx_pointer,
-            witness_index,
-        );
-        self.inputs_mut().push(input);
-    }
+    );
+    // ) {
+    //     let owner = Input::owner(owner);
+    //
+    //     let input = Input::coin_signed(
+    //         utxo_id,
+    //         owner,
+    //         amount,
+    //         asset_id,
+    //         tx_pointer,
+    //         witness_index,
+    //     );
+    //     self.inputs_mut().push(input);
+    // }
 
     /// Append a new unsigned message input to the transaction.
     ///
@@ -584,25 +585,50 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
         amount: Word,
         data: Vec<u8>,
         witness_index: u16,
-    ) {
-        let input = if data.is_empty() {
-            Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
-        } else {
-            Input::message_data_signed(
-                sender,
-                recipient,
-                amount,
-                nonce,
-                witness_index,
-                data,
-            )
-        };
-
-        self.inputs_mut().push(input);
-    }
+    );
+    // ) {
+    //     let input = if data.is_empty() {
+    //         Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
+    //     } else {
+    //         Input::message_data_signed(
+    //             sender,
+    //             recipient,
+    //             amount,
+    //             nonce,
+    //             witness_index,
+    //             data,
+    //         )
+    //     };
+    //
+    //     self.inputs_mut().push(input);
+    // }
 }
 
-impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {}
+impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {
+    fn add_unsigned_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        todo!()
+    }
+
+    fn add_unsigned_message_input(
+        &mut self,
+        sender: Address,
+        recipient: Address,
+        nonce: Nonce,
+        amount: Word,
+        data: Vec<u8>,
+        witness_index: u16,
+    ) {
+        todo!()
+    }
+}
 
 impl From<Script> for Transaction {
     fn from(tx: Script) -> Self {
@@ -649,6 +675,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
             Self::Blob(tx) => tx.size_static(),
+            Self::ScriptV2(tx) => tx.size_static(),
         }
     }
 
@@ -660,6 +687,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
             Self::Blob(tx) => tx.size_dynamic(),
+            Self::ScriptV2(tx) => tx.size_dynamic(),
         }
     }
 
@@ -674,6 +702,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
             Self::Blob(tx) => tx.encode_static(buffer),
+            Self::ScriptV2(tx) => tx.encode_static(buffer),
         }
     }
 
@@ -688,6 +717,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
             Self::Blob(tx) => tx.encode_dynamic(buffer),
+            Self::ScriptV2(tx) => tx.encode_dynamic(buffer),
         }
     }
 }
@@ -721,6 +751,10 @@ impl Deserialize for Transaction {
             TransactionRepr::Blob => {
                 Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
             }
+            TransactionRepr::ScriptV2 => {
+                let inner = <ScriptV2 as Deserialize>::decode_static(buffer)?;
+                Ok(Transaction::ScriptV2(inner))
+            }
         }
     }
 
@@ -735,6 +769,7 @@ impl Deserialize for Transaction {
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
             Self::Blob(tx) => tx.decode_dynamic(buffer),
+            Self::ScriptV2(tx) => tx.decode_dynamic(buffer),
         }
     }
 }
@@ -744,18 +779,24 @@ impl Deserialize for Transaction {
 pub mod field {
     use crate::{
         Input,
+        InputRepr,
         Output,
+        PredicateParameters,
         StorageSlot,
         UpgradePurpose as UpgradePurposeType,
+        UtxoId,
+        ValidityError,
         Witness,
         input,
         output,
         policies,
     };
     use fuel_types::{
+        Address,
         AssetId,
         BlockHeight,
         Bytes32,
+        ContractId,
         Word,
     };
 
@@ -765,6 +806,7 @@ pub mod field {
         Deref,
         DerefMut,
     };
+    use std::collections::BTreeMap;
 
     pub trait Tip {
         fn tip(&self) -> Word;
@@ -1011,9 +1053,14 @@ pub mod field {
         }
     }
 
+    pub trait IsCoin {
+        fn is_coin(&self) -> bool;
+    }
+
     pub trait Inputs {
-        fn inputs(&self) -> &Vec<Input>;
-        fn inputs_mut(&mut self) -> &mut Vec<Input>;
+        type MyInput: Into<InputRepr> + PartialEq + std::fmt::Debug;
+        fn inputs(&self) -> &Vec<Self::MyInput>;
+        fn inputs_mut(&mut self) -> &mut Vec<Self::MyInput>;
         fn inputs_offset(&self) -> usize;
 
         /// Returns the offset to the `Input` at `idx` index, if any.
@@ -1021,6 +1068,30 @@ pub mod field {
 
         /// Returns predicate's offset and length of the `Input` at `idx`, if any.
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)>;
+
+        fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId>;
+
+        fn input_contract_ids(&self) -> impl Iterator<Item = ContractId>;
+
+        fn input_nonces(&self) -> impl Iterator<Item = fuel_types::Nonce>;
+
+        fn check_all_inputs(
+            &self,
+            predicate_parameters: &PredicateParameters,
+        ) -> Result<(), ValidityError>;
+
+        fn input_witness_indices(&self, owner: &Address) -> impl Iterator<Item = u16>;
+        fn input_asset_ids<'a>(
+            &'a self,
+            base_asset_id: &'a AssetId,
+        ) -> alloc::vec::IntoIter<&'a AssetId>;
+
+        fn check_predicate_owners(&self) -> bool;
+
+        fn input_balances(
+            &self,
+            base_asset_id: &AssetId,
+        ) -> Option<(BTreeMap<AssetId, Word>, Word)>;
     }
 
     pub trait Outputs {
@@ -1030,6 +1101,8 @@ pub mod field {
 
         /// Returns the offset to the `Output` at `idx` index, if any.
         fn outputs_offset_at(&self, idx: usize) -> Option<usize>;
+
+        fn check_all_outputs(&self) -> Result<(), ValidityError>;
     }
 
     pub trait Witnesses {

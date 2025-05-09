@@ -31,7 +31,10 @@ use core::{
 };
 use fuel_tx::{
     ConsensusParameters,
-    field::MaxFeeLimit,
+    field::{
+        Inputs,
+        MaxFeeLimit,
+    },
 };
 
 mod balances;
@@ -466,6 +469,7 @@ impl<Tx> CheckPredicates for Checked<Tx>
 where
     Tx: ExecutableTransaction + Send + Sync + 'static,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
+    Tx: Inputs<MyInput = Input>,
 {
     fn check_predicates(
         mut self,
@@ -503,7 +507,11 @@ where
 }
 
 #[async_trait::async_trait]
-impl<Tx: ExecutableTransaction + Send + Sync + 'static> EstimatePredicates for Tx {
+impl<Tx> EstimatePredicates for Tx
+where
+    Tx: ExecutableTransaction + Send + Sync + 'static,
+    Tx: Inputs<MyInput = Input>,
+{
     fn estimate_predicates(
         &mut self,
         params: &CheckPredicateParams,
@@ -545,6 +553,9 @@ impl EstimatePredicates for Transaction {
             Self::Upgrade(tx) => tx.estimate_predicates(params, memory, storage),
             Self::Upload(tx) => tx.estimate_predicates(params, memory, storage),
             Self::Blob(tx) => tx.estimate_predicates(params, memory, storage),
+            Transaction::ScriptV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -575,6 +586,9 @@ impl EstimatePredicates for Transaction {
             Self::Blob(tx) => {
                 tx.estimate_predicates_async::<E>(params, pool, storage)
                     .await
+            }
+            Transaction::ScriptV2(_) => {
+                todo!()
             }
         }
     }
@@ -737,6 +751,9 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Upgrade(_), _) => unreachable!(),
             (Transaction::Upload(_), _) => unreachable!(),
             (Transaction::Blob(_), _) => unreachable!(),
+            (Transaction::ScriptV2(_), _) => {
+                todo!()
+            }
         }
     }
 }
@@ -905,6 +922,9 @@ impl IntoChecked for Transaction {
                     .into_checked_basic(block_height, consensus_params)?
                     .into();
                 Ok((transaction.into(), metadata.into()))
+            }
+            Transaction::ScriptV2(_) => {
+                todo!()
             }
         }
         .map(|(transaction, metadata)| Checked::basic(transaction, metadata))

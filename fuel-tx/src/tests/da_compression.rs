@@ -2,6 +2,7 @@ use crate::{
     Blob,
     CompressedUtxoId,
     Create,
+    Input,
     Mint,
     PrepareSign,
     Script,
@@ -97,7 +98,7 @@ impl TestCompressionCtx {
 
     fn store_tx_info<Tx>(&mut self, tx: &Tx)
     where
-        Tx: Inputs,
+        Tx: Inputs<MyInput = Input>,
     {
         let latest_tx_coins =
             tx.inputs()
@@ -478,7 +479,7 @@ async fn can_decompress_compressed_transaction_mint() {
 async fn assert_can_decompress_compressed_transaction<Tx, Iterator>(iterator: Iterator)
 where
     Iterator: core::iter::Iterator<Item = Tx>,
-    Tx: PrepareSign + field::Inputs + Clone + Into<Transaction>,
+    Tx: PrepareSign + field::Inputs<MyInput = Input> + Clone + Into<Transaction>,
 {
     let mut ctx = TestCompressionCtx::default();
     let txs = iterator

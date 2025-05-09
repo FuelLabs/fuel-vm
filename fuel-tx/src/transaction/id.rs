@@ -280,7 +280,7 @@ mod tests {
         };
     }
 
-    fn assert_id_common_attrs<Tx: Buildable>(tx: &Tx) {
+    fn assert_id_common_attrs<Tx: Buildable + Inputs<MyInput = Input>>(tx: &Tx) {
         use core::ops::Deref;
         assert_id_ne(tx, |t| t.set_tip(t.tip().not()));
         assert_id_ne(tx, |t| t.set_maturity((t.maturity().deref().not()).into()));

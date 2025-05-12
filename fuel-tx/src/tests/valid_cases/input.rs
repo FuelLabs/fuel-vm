@@ -32,14 +32,14 @@ use rand::{
 fn input_coin_message_signature() {
     fn test<Tx>(txs: &mut impl Iterator<Item = (Tx, Vec<SecretKey>)>)
     where
-        Tx: Buildable + Inputs<MyInput = Input>,
+        Tx: Buildable + Inputs,
     {
         let rng = &mut StdRng::seed_from_u64(8586);
 
         fn check_inputs<Tx>(tx: Tx) -> Result<(), ValidityError>
         where
             Tx: Buildable,
-            Tx: Inputs<MyInput = Input>,
+            Tx: Inputs,
         {
             let chain_id = ChainId::default();
             let txhash = tx.id(&chain_id);
@@ -75,7 +75,7 @@ fn input_coin_message_signature() {
             I: Iterator<Item = (Tx, Vec<SecretKey>)>,
             F: Fn(&mut Tx, &PublicKey),
             Tx: Buildable,
-            Tx: Inputs<MyInput = Input>,
+            Tx: Inputs,
         {
             let (mut tx, keys) = iter.next().expect("Failed to generate a transaction");
 

@@ -136,7 +136,7 @@ where
 {
     pub(crate) body: Body,
     pub(crate) policies: Policies,
-    pub(crate) inputs: Vec<InputV2>,
+    pub(crate) inputs: Vec<Input>,
     pub(crate) outputs: Vec<Output>,
     pub(crate) witnesses: Vec<Witness>,
     pub(crate) static_witnesses: Vec<Witness>,
@@ -289,6 +289,9 @@ where
             Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_)
             | Input::Contract(_) => false,
+            Input::InputV2(_) => {
+                todo!()
+            }
         })
     }
 }
@@ -301,7 +304,6 @@ where
     Self: fuel_types::canonical::Serialize,
     Self: Chargeable,
     Self: UniqueFormatValidityChecks,
-    <Self as Inputs>::MyInput: InputValidity,
 {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         let id = self.id(chain_id);
@@ -360,7 +362,6 @@ where
     Self: fuel_types::canonical::Serialize,
     Self: Chargeable,
     Self: UniqueFormatValidityChecks,
-    <Self as Inputs>::MyInput: InputValidity,
 {
     fn check_signatures(&self, chain_id: &ChainId) -> Result<(), ValidityError> {
         let id = self.id(chain_id);
@@ -452,139 +453,6 @@ mod field {
         Body: BodyConstraints,
         Self: ChargeableBody<Body>,
     {
-        type MyInput = InputV2;
-
-        #[inline(always)]
-        fn inputs(&self) -> &Vec<InputV2> {
-            &self.inputs
-        }
-
-        #[inline(always)]
-        fn inputs_mut(&mut self) -> &mut Vec<InputV2> {
-            &mut self.inputs
-        }
-
-        #[inline(always)]
-        fn inputs_offset(&self) -> usize {
-            if let Some(ChargeableMetadata {
-                common: CommonMetadata { inputs_offset, .. },
-                ..
-            }) = &self.metadata
-            {
-                return *inputs_offset;
-            }
-
-            self.policies_offset()
-                .saturating_add(self.policies.size_dynamic())
-        }
-
-        #[inline(always)]
-        fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
-            if let Some(ChargeableMetadata {
-                common:
-                    CommonMetadata {
-                        inputs_offset_at, ..
-                    },
-                ..
-            }) = &self.metadata
-            {
-                return inputs_offset_at.get(idx).cloned();
-            }
-
-            if idx < self.inputs.len() {
-                Some(
-                    self.inputs_offset().saturating_add(
-                        self.inputs()
-                            .iter()
-                            .take(idx)
-                            .map(|i| i.size())
-                            .reduce(usize::saturating_add)
-                            .unwrap_or_default(),
-                    ),
-                )
-            } else {
-                None
-            }
-        }
-
-        #[inline(always)]
-        fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)> {
-            // if let Some(ChargeableMetadata {
-            //     common:
-            //         CommonMetadata {
-            //             inputs_predicate_offset_at,
-            //             ..
-            //         },
-            //     ..
-            // }) = &self.metadata
-            // {
-            //     return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None);
-            // }
-            //
-            // self.inputs().get(idx).and_then(|input| {
-            //     input
-            //         .predicate_offset()
-            //         .and_then(|predicate| {
-            //             self.inputs_offset_at(idx)
-            //                 .map(|inputs| inputs.saturating_add(predicate))
-            //         })
-            //         .zip(input.predicate_len().and_then(bytes::padded_len_usize))
-            // })
-            todo!()
-        }
-
-        fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
-            // TODO
-            std::iter::empty()
-        }
-
-        fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
-            // TODO
-            std::iter::empty()
-        }
-
-        fn input_nonces(&self) -> impl Iterator<Item = Nonce> {
-            // TODO
-            std::iter::empty()
-        }
-
-        fn check_all_inputs(
-            &self,
-            _predicate_params: &PredicateParameters,
-        ) -> Result<(), ValidityError> {
-            todo!()
-        }
-
-        fn input_witness_indices(&self, _owner: &Address) -> impl Iterator<Item = u16> {
-            // TODO
-            std::iter::empty()
-        }
-
-        fn input_asset_ids<'a>(
-            &self,
-            _base_asset_id: &'a AssetId,
-        ) -> alloc::vec::IntoIter<&'a AssetId> {
-            todo!()
-        }
-
-        fn check_predicate_owners(&self) -> bool {
-            todo!()
-        }
-
-        fn input_balances(
-            &self,
-            base_asset_id: &AssetId,
-        ) -> Option<(BTreeMap<AssetId, fuel_types::Word>, fuel_types::Word)> {
-            todo!()
-        }
-    }
-    impl<Body, MetadataBody> Inputs for ChargeableTransaction<Body, MetadataBody>
-    where
-        Body: BodyConstraints,
-        Self: ChargeableBody<Body>,
-    {
-        type MyInput = Input;
-
         #[inline(always)]
         fn inputs(&self) -> &Vec<Input> {
             &self.inputs
@@ -663,50 +531,178 @@ mod field {
             })
         }
 
-        fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
-            // TODO
-            std::iter::empty()
+        // fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
+        //     // TODO
+        //     std::iter::empty()
+        // }
+        //
+        // fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
+        //     // TODO
+        //     std::iter::empty()
+        // }
+        //
+        // fn input_nonces(&self) -> impl Iterator<Item = Nonce> {
+        //     // TODO
+        //     std::iter::empty()
+        // }
+        //
+        // fn check_all_inputs(
+        //     &self,
+        //     _predicate_params: &PredicateParameters,
+        // ) -> Result<(), ValidityError> {
+        //     todo!()
+        // }
+        //
+        // fn input_witness_indices(&self, _owner: &Address) -> impl Iterator<Item = u16>
+        // {     // TODO
+        //     std::iter::empty()
+        // }
+
+        // fn input_asset_ids<'a>(
+        //     &self,
+        //     _base_asset_id: &'a AssetId,
+        // ) -> alloc::vec::IntoIter<&'a AssetId> {
+        //     todo!()
+        // }
+
+        // fn check_predicate_owners(&self) -> bool {
+        //     todo!()
+        // }
+        //
+        // fn input_balances(
+        //     &self,
+        //     base_asset_id: &AssetId,
+        // ) -> Option<(BTreeMap<AssetId, fuel_types::Word>, fuel_types::Word)> {
+        //     todo!()
+        // }
+    }
+    impl<Body, MetadataBody> Inputs for ChargeableTransaction<Body, MetadataBody>
+    where
+        Body: BodyConstraints,
+        Self: ChargeableBody<Body>,
+    {
+        #[inline(always)]
+        fn inputs(&self) -> &Vec<Input> {
+            &self.inputs
         }
 
-        fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
-            // TODO
-            std::iter::empty()
+        #[inline(always)]
+        fn inputs_mut(&mut self) -> &mut Vec<Input> {
+            &mut self.inputs
         }
 
-        fn input_nonces(&self) -> impl Iterator<Item = Nonce> {
-            // TODO
-            std::iter::empty()
+        #[inline(always)]
+        fn inputs_offset(&self) -> usize {
+            if let Some(ChargeableMetadata {
+                common: CommonMetadata { inputs_offset, .. },
+                ..
+            }) = &self.metadata
+            {
+                return *inputs_offset;
+            }
+
+            self.policies_offset()
+                .saturating_add(self.policies.size_dynamic())
         }
 
-        fn check_all_inputs(
-            &self,
-            _predicate_params: &PredicateParameters,
-        ) -> Result<(), ValidityError> {
-            todo!()
+        #[inline(always)]
+        fn inputs_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        inputs_offset_at, ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return inputs_offset_at.get(idx).cloned();
+            }
+
+            if idx < self.inputs.len() {
+                Some(
+                    self.inputs_offset().saturating_add(
+                        self.inputs()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
+                )
+            } else {
+                None
+            }
         }
 
-        fn input_witness_indices(&self, _owner: &Address) -> impl Iterator<Item = u16> {
-            // TODO
-            std::iter::empty()
+        #[inline(always)]
+        fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)> {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        inputs_predicate_offset_at,
+                        ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return inputs_predicate_offset_at.get(idx).cloned().unwrap_or(None);
+            }
+
+            self.inputs().get(idx).and_then(|input| {
+                input
+                    .predicate_offset()
+                    .and_then(|predicate| {
+                        self.inputs_offset_at(idx)
+                            .map(|inputs| inputs.saturating_add(predicate))
+                    })
+                    .zip(input.predicate_len().and_then(bytes::padded_len_usize))
+            })
         }
 
-        fn input_asset_ids<'a>(
-            &self,
-            _base_asset_id: &'a AssetId,
-        ) -> alloc::vec::IntoIter<&'a AssetId> {
-            todo!()
-        }
+        // fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
+        //     // TODO
+        //     std::iter::empty()
+        // }
+        //
+        // fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
+        //     // TODO
+        //     std::iter::empty()
+        // }
+        //
+        // fn input_nonces(&self) -> impl Iterator<Item = Nonce> {
+        //     // TODO
+        //     std::iter::empty()
+        // }
+        //
+        // fn check_all_inputs(
+        //     &self,
+        //     _predicate_params: &PredicateParameters,
+        // ) -> Result<(), ValidityError> {
+        //     todo!()
+        // }
 
-        fn check_predicate_owners(&self) -> bool {
-            todo!()
-        }
+        // fn input_witness_indices(&self, _owner: &Address) -> impl Iterator<Item = u16>
+        // {     // TODO
+        //     std::iter::empty()
+        // }
 
-        fn input_balances(
-            &self,
-            base_asset_id: &AssetId,
-        ) -> Option<(BTreeMap<AssetId, fuel_types::Word>, fuel_types::Word)> {
-            todo!()
-        }
+        // fn input_asset_ids<'a>(
+        //     &self,
+        //     _base_asset_id: &'a AssetId,
+        // ) -> alloc::vec::IntoIter<&'a AssetId> {
+        //     todo!()
+        // }
+
+        // fn check_predicate_owners(&self) -> bool {
+        //     todo!()
+        // }
+
+        // fn input_balances(
+        //     &self,
+        //     base_asset_id: &AssetId,
+        // ) -> Option<(BTreeMap<AssetId, fuel_types::Word>, fuel_types::Word)> {
+        //     todo!()
+        // }
     }
 
     impl<Body, MetadataBody> Outputs for ChargeableTransaction<Body, MetadataBody>

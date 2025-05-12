@@ -486,76 +486,74 @@ where
         })?;
 
     // Check for duplicated input utxo id
-    // let duplicated_utxo_id = tx
-    //     .inputs()
-    //     .iter()
-    //     .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
-    let utxo_ids_iter = tx.input_utxo_ids();
+    let duplicated_utxo_id = tx
+        .inputs()
+        .iter()
+        .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
+    // let utxo_ids_iter = tx.input_utxo_ids();
 
-    if let Some(utxo_id) = next_duplicate(utxo_ids_iter) {
+    if let Some(utxo_id) = next_duplicate(duplicated_utxo_id).copied() {
         return Err(ValidityError::DuplicateInputUtxoId { utxo_id });
     }
 
     // Check for duplicated input contract id
-    // let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
-    let contract_ids_iter = tx.input_contract_ids();
+    let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
+    // let contract_ids_iter = tx.input_contract_ids();
 
-    if let Some(contract_id) = next_duplicate(contract_ids_iter) {
+    if let Some(contract_id) = next_duplicate(duplicated_contract_id).copied() {
         return Err(ValidityError::DuplicateInputContractId { contract_id });
     }
 
     // Check for duplicated input nonce
-    // let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
-    let input_nonce_iter = tx.input_nonces();
-    if let Some(nonce) = next_duplicate(input_nonce_iter) {
+    let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
+    // let input_nonce_iter = tx.input_nonces();
+    if let Some(nonce) = next_duplicate(duplicated_nonce).copied() {
         return Err(ValidityError::DuplicateInputNonce { nonce });
     }
 
     // Validate the inputs without checking signature
-    // tx.inputs()
-    //     .iter()
-    //     .enumerate()
-    //     .try_for_each(|(index, input)| {
-    //         input.check_without_signature(
-    //             index,
-    //             tx.outputs(),
-    //             tx.witnesses(),
-    //             predicate_params,
-    //         )
-    //     })?;
-    tx.check_all_inputs(predicate_params)?;
+    tx.inputs()
+        .iter()
+        .enumerate()
+        .try_for_each(|(index, input)| {
+            input.check_without_signature(
+                index,
+                tx.outputs(),
+                tx.witnesses(),
+                predicate_params,
+            )
+        })?;
 
-    // tx.outputs()
-    //     .iter()
-    //     .enumerate()
-    //     .try_for_each(|(index, output)| {
-    //         output.check(index, tx.inputs())?;
-    //
-    //         if let Output::Change { asset_id, .. } = output {
-    //             if !tx
-    //                 .input_asset_ids(base_asset_id)
-    //                 .any(|input_asset_id| input_asset_id == asset_id)
-    //             {
-    //                 return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
-    //                     *asset_id,
-    //                 ));
-    //             }
-    //         }
-    //
-    //         if let Output::Coin { asset_id, .. } = output {
-    //             if !tx
-    //                 .input_asset_ids(base_asset_id)
-    //                 .any(|input_asset_id| input_asset_id == asset_id)
-    //             {
-    //                 return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
-    //                     *asset_id,
-    //                 ));
-    //             }
-    //         }
-    //
-    //         Ok(())
-    //     })?;
-    tx.check_all_outputs()?;
+    tx.outputs()
+        .iter()
+        .enumerate()
+        .try_for_each(|(index, output)| {
+            output.check(index, tx.inputs())?;
+
+            if let Output::Change { asset_id, .. } = output {
+                if !tx
+                    .input_asset_ids(base_asset_id)
+                    .any(|input_asset_id| input_asset_id == asset_id)
+                {
+                    return Err(ValidityError::TransactionOutputChangeAssetIdNotFound(
+                        *asset_id,
+                    ));
+                }
+            }
+
+            if let Output::Coin { asset_id, .. } = output {
+                if !tx
+                    .input_asset_ids(base_asset_id)
+                    .any(|input_asset_id| input_asset_id == asset_id)
+                {
+                    return Err(ValidityError::TransactionOutputCoinAssetIdNotFound(
+                        *asset_id,
+                    ));
+                }
+            }
+
+            Ok(())
+        })?;
 
     Ok(())
 }

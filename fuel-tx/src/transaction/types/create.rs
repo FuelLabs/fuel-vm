@@ -93,10 +93,6 @@ impl Chargeable for Create {
         self.metered_bytes_size()
     }
 
-    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
-        self.gas_used_by_inputs(gas_costs)
-    }
-
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word {
         let Create {
             body:

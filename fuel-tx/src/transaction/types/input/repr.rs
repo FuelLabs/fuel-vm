@@ -114,6 +114,9 @@ impl InputRepr {
             | Input::MessageCoinPredicate(_)
             | Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_) => InputRepr::Message,
+            Input::InputV2(_) => {
+                todo!()
+            }
         }
     }
 }

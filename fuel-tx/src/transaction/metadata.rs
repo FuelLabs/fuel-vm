@@ -69,7 +69,6 @@ impl CommonMetadata {
     where
         Tx: UniqueIdentifier,
         Tx: field::Inputs,
-        <Tx as field::Inputs>::MyInput: Serialize,
         Tx: field::Outputs,
         Tx: field::Witnesses,
     {

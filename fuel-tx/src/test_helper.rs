@@ -127,6 +127,9 @@ mod use_std {
                         Input::MessageCoinPredicate(_) => (),
                         Input::MessageDataSigned(_) => (),
                         Input::MessageDataPredicate(_) => (),
+                        Input::InputV2(_) => {
+                            todo!()
+                        }
                     })
                     .unwrap_or(());
 
@@ -214,7 +217,6 @@ mod use_std {
     where
         R: Rng + CryptoRng,
         Body: Compressible + std::fmt::Debug,
-        ChargeableTransaction<Body, MetadataBody>: Inputs<MyInput = Input>,
         ChargeableTransaction<Body, MetadataBody>: Buildable,
         <Body as Compressible>::Compressed:
             std::fmt::Debug + Clone + PartialEq + Serialize + DeserializeOwned,

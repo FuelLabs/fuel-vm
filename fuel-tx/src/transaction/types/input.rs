@@ -236,6 +236,9 @@ impl AsFieldFmt for PredicateCode {
     derive(fuel_compression::Compress, fuel_compression::Decompress)
 )]
 pub enum Input {
+    // TODO: Consider consolidating all V1 types into single variant.
+    //   This will require us modifying the serialization, but will clean
+    //   up this code significantly.
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
     Contract(Contract),
@@ -243,6 +246,7 @@ pub enum Input {
     MessageCoinPredicate(MessageCoinPredicate),
     MessageDataSigned(MessageDataSigned),
     MessageDataPredicate(MessageDataPredicate),
+    InputV2(InputV2),
 }
 
 impl From<Input> for InputRepr {
@@ -455,6 +459,9 @@ impl Input {
             Self::MessageCoinPredicate(_) => None,
             Self::MessageDataSigned(_) => None,
             Self::MessageDataPredicate(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -469,6 +476,9 @@ impl Input {
                 Some(recipient)
             }
             Self::Contract(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -484,6 +494,9 @@ impl Input {
             | Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_) => Some(base_asset_id),
             Input::Contract(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -505,6 +518,9 @@ impl Input {
                 Some(*amount)
             }
             Input::Contract(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -519,6 +535,9 @@ impl Input {
             | Input::Contract(_)
             | Input::MessageCoinPredicate(_)
             | Input::MessageDataPredicate(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -535,6 +554,9 @@ impl Input {
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -551,6 +573,9 @@ impl Input {
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -565,6 +590,9 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -581,6 +609,9 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -601,6 +632,9 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_)
             | Input::Contract(_) => None,
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -621,6 +655,9 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_)
             | Input::Contract(_) => {}
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -630,6 +667,9 @@ impl Input {
             Self::MessageCoinPredicate(message) => Some(message.message_id()),
             Self::MessageDataPredicate(message) => Some(message.message_id()),
             Self::MessageDataSigned(message) => Some(message.message_id()),
+            Self::InputV2(_) => {
+                todo!()
+            }
             _ => None,
         }
     }
@@ -639,6 +679,9 @@ impl Input {
             Input::CoinSigned(CoinSigned { tx_pointer, .. })
             | Input::CoinPredicate(CoinPredicate { tx_pointer, .. })
             | Input::Contract(Contract { tx_pointer, .. }) => Some(tx_pointer),
+            Self::InputV2(_) => {
+                todo!()
+            }
             _ => None,
         }
     }
@@ -648,6 +691,9 @@ impl Input {
             Input::MessageDataSigned(MessageDataSigned { data, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { data, .. }) => {
                 Some(data)
+            }
+            Self::InputV2(_) => {
+                todo!()
             }
             _ => None,
         }
@@ -660,6 +706,9 @@ impl Input {
                 Some(data.len())
             }
             Input::MessageCoinSigned(_) | Input::MessageCoinPredicate(_) => Some(0),
+            Self::InputV2(_) => {
+                todo!()
+            }
             _ => None,
         }
     }
@@ -670,6 +719,9 @@ impl Input {
             | Input::MessageCoinPredicate(MessageCoinPredicate { predicate, .. })
             | Input::MessageDataPredicate(MessageDataPredicate { predicate, .. }) => {
                 Some(predicate)
+            }
+            Self::InputV2(_) => {
+                todo!()
             }
 
             _ => None,
@@ -685,6 +737,9 @@ impl Input {
             | Input::MessageDataPredicate(MessageDataPredicate {
                 predicate_data, ..
             }) => Some(predicate_data),
+            Self::InputV2(_) => {
+                todo!()
+            }
 
             _ => None,
         }
@@ -716,6 +771,9 @@ impl Input {
                 predicate_data.as_slice(),
                 predicate_gas_used,
             )),
+            Self::InputV2(_) => {
+                todo!()
+            }
 
             _ => None,
         }
@@ -828,6 +886,9 @@ impl Input {
             Input::MessageCoinPredicate(message) => message.prepare_sign(),
             Input::MessageDataSigned(message) => message.prepare_sign(),
             Input::MessageDataPredicate(message) => message.prepare_sign(),
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -875,6 +936,9 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.size_static(),
             Input::MessageDataSigned(message) => message.size_static(),
             Input::MessageDataPredicate(message) => message.size_static(),
+            Self::InputV2(_) => {
+                todo!()
+            }
         })
         .saturating_add(8) // Discriminant
     }
@@ -888,6 +952,9 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.size_dynamic(),
             Input::MessageDataSigned(message) => message.size_dynamic(),
             Input::MessageDataPredicate(message) => message.size_dynamic(),
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -902,6 +969,9 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.encode_static(buffer),
             Input::MessageDataSigned(message) => message.encode_static(buffer),
             Input::MessageDataPredicate(message) => message.encode_static(buffer),
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 
@@ -916,6 +986,9 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.encode_dynamic(buffer),
             Input::MessageDataSigned(message) => message.encode_dynamic(buffer),
             Input::MessageDataPredicate(message) => message.encode_dynamic(buffer),
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 }
@@ -993,6 +1066,9 @@ impl Deserialize for Input {
             Input::MessageCoinPredicate(message) => message.decode_dynamic(buffer),
             Input::MessageDataSigned(message) => message.decode_dynamic(buffer),
             Input::MessageDataPredicate(message) => message.decode_dynamic(buffer),
+            Self::InputV2(_) => {
+                todo!()
+            }
         }
     }
 }

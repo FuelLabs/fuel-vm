@@ -478,24 +478,28 @@ impl Transaction {
 }
 
 pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
-    // /// Returns the assets' ids used in the inputs in the order of inputs.
-    // fn input_asset_ids<'a>(
-    //     &'a self,
-    //     base_asset_id: &'a AssetId,
-    // ) -> IntoIter<&'a AssetId> {
-    //     // self.inputs()
-    //     //     .iter()
-    //     //     .filter_map(|input| match input {
-    //     //         Input::CoinPredicate(CoinPredicate { asset_id, .. })
-    //     //         | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
-    //     //         Input::MessageCoinSigned(_)
-    //     //         | Input::MessageCoinPredicate(_)
-    //     //         | Input::MessageDataPredicate(_)
-    //     //         | Input::MessageDataSigned(_) => Some(base_asset_id),
-    //     //         _ => None,
-    //     //     })
-    //     <Self as field::Inputs>::input_asset_ids(self, base_asset_id)
-    // }
+    /// Returns the assets' ids used in the inputs in the order of inputs.
+    fn input_asset_ids<'a>(
+        &'a self,
+        base_asset_id: &'a AssetId,
+    ) -> IntoIter<&'a AssetId> {
+        self.inputs()
+            .iter()
+            .filter_map(|input| match input {
+                Input::CoinPredicate(CoinPredicate { asset_id, .. })
+                | Input::CoinSigned(CoinSigned { asset_id, .. }) => Some(asset_id),
+                Input::MessageCoinSigned(_)
+                | Input::MessageCoinPredicate(_)
+                | Input::MessageDataPredicate(_)
+                | Input::MessageDataSigned(_) => Some(base_asset_id),
+                Input::InputV2(_) => {
+                    todo!()
+                }
+                _ => None,
+            })
+            .collect_vec()
+            .into_iter()
+    }
 
     /// Returns unique assets' ids used in the inputs.
     fn input_asset_ids_unique<'a>(
@@ -514,29 +518,29 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     }
 
     /// Checks that all owners of inputs in the predicates are valid.
-    // fn check_predicate_owners(&self) -> bool {
-    //     self.inputs()
-    //         .iter()
-    //         .filter_map(|i| match i {
-    //             Input::CoinPredicate(CoinPredicate {
-    //                 owner, predicate, ..
-    //             }) => Some((owner, predicate)),
-    //             Input::MessageDataPredicate(MessageDataPredicate {
-    //                 recipient,
-    //                 predicate,
-    //                 ..
-    //             }) => Some((recipient, predicate)),
-    //             Input::MessageCoinPredicate(MessageCoinPredicate {
-    //                 recipient,
-    //                 predicate,
-    //                 ..
-    //             }) => Some((recipient, predicate)),
-    //             _ => None,
-    //         })
-    //         .fold(true, |result, (owner, predicate)| {
-    //             result && Input::is_predicate_owner_valid(owner, &**predicate)
-    //         })
-    // }
+    fn check_predicate_owners(&self) -> bool {
+        self.inputs()
+            .iter()
+            .filter_map(|i| match i {
+                Input::CoinPredicate(CoinPredicate {
+                    owner, predicate, ..
+                }) => Some((owner, predicate)),
+                Input::MessageDataPredicate(MessageDataPredicate {
+                    recipient,
+                    predicate,
+                    ..
+                }) => Some((recipient, predicate)),
+                Input::MessageCoinPredicate(MessageCoinPredicate {
+                    recipient,
+                    predicate,
+                    ..
+                }) => Some((recipient, predicate)),
+                _ => None,
+            })
+            .fold(true, |result, (owner, predicate)| {
+                result && Input::is_predicate_owner_valid(owner, &**predicate)
+            })
+    }
 
     /// Append a new unsigned coin input to the transaction.
     ///
@@ -1058,9 +1062,8 @@ pub mod field {
     }
 
     pub trait Inputs {
-        type MyInput: Into<InputRepr> + PartialEq + std::fmt::Debug;
-        fn inputs(&self) -> &Vec<Self::MyInput>;
-        fn inputs_mut(&mut self) -> &mut Vec<Self::MyInput>;
+        fn inputs(&self) -> &Vec<Input>;
+        fn inputs_mut(&mut self) -> &mut Vec<Input>;
         fn inputs_offset(&self) -> usize;
 
         /// Returns the offset to the `Input` at `idx` index, if any.
@@ -1069,29 +1072,29 @@ pub mod field {
         /// Returns predicate's offset and length of the `Input` at `idx`, if any.
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)>;
 
-        fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId>;
+        // fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId>;
+        //
+        // fn input_contract_ids(&self) -> impl Iterator<Item = ContractId>;
+        //
+        // fn input_nonces(&self) -> impl Iterator<Item = fuel_types::Nonce>;
+        //
+        // fn check_all_inputs(
+        //     &self,
+        //     predicate_parameters: &PredicateParameters,
+        // ) -> Result<(), ValidityError>;
 
-        fn input_contract_ids(&self) -> impl Iterator<Item = ContractId>;
+        // fn input_witness_indices(&self, owner: &Address) -> impl Iterator<Item = u16>;
+        // fn input_asset_ids<'a>(
+        //     &'a self,
+        //     base_asset_id: &'a AssetId,
+        // ) -> alloc::vec::IntoIter<&'a AssetId>;
 
-        fn input_nonces(&self) -> impl Iterator<Item = fuel_types::Nonce>;
-
-        fn check_all_inputs(
-            &self,
-            predicate_parameters: &PredicateParameters,
-        ) -> Result<(), ValidityError>;
-
-        fn input_witness_indices(&self, owner: &Address) -> impl Iterator<Item = u16>;
-        fn input_asset_ids<'a>(
-            &'a self,
-            base_asset_id: &'a AssetId,
-        ) -> alloc::vec::IntoIter<&'a AssetId>;
-
-        fn check_predicate_owners(&self) -> bool;
-
-        fn input_balances(
-            &self,
-            base_asset_id: &AssetId,
-        ) -> Option<(BTreeMap<AssetId, Word>, Word)>;
+        // fn check_predicate_owners(&self) -> bool;
+        //
+        // fn input_balances(
+        //     &self,
+        //     base_asset_id: &AssetId,
+        // ) -> Option<(BTreeMap<AssetId, Word>, Word)>;
     }
 
     pub trait Outputs {

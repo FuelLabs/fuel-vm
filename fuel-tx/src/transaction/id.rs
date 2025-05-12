@@ -88,32 +88,31 @@ where
 
         let signature = Signature::sign(secret, message);
 
-        // let inputs = self.inputs();
+        let inputs = self.inputs();
 
-        // let witness_indexes = inputs
-        //     .iter()
-        //     .filter_map(|input| match input {
-        //         Input::CoinSigned(CoinSigned {
-        //             owner,
-        //             witness_index,
-        //             ..
-        //         })
-        //         | Input::MessageCoinSigned(MessageCoinSigned {
-        //             recipient: owner,
-        //             witness_index,
-        //             ..
-        //         })
-        //         | Input::MessageDataSigned(MessageDataSigned {
-        //             recipient: owner,
-        //             witness_index,
-        //             ..
-        //         }) if owner == &pk => Some(*witness_index as usize),
-        //         _ => None,
-        //     })
-        //     .sorted()
-        //     .dedup()
-        //     .collect_vec();
-        let witness_indexes = self.input_witness_indices(&pk).collect_vec();
+        let witness_indexes = inputs
+            .iter()
+            .filter_map(|input| match input {
+                Input::CoinSigned(CoinSigned {
+                    owner,
+                    witness_index,
+                    ..
+                })
+                | Input::MessageCoinSigned(MessageCoinSigned {
+                    recipient: owner,
+                    witness_index,
+                    ..
+                })
+                | Input::MessageDataSigned(MessageDataSigned {
+                    recipient: owner,
+                    witness_index,
+                    ..
+                }) if owner == &pk => Some(*witness_index as usize),
+                _ => None,
+            })
+            .sorted()
+            .dedup()
+            .collect_vec();
 
         for w in witness_indexes {
             if let Some(inner) = self.witnesses_mut().get_mut(w as usize) {
@@ -280,7 +279,7 @@ mod tests {
         };
     }
 
-    fn assert_id_common_attrs<Tx: Buildable + Inputs<MyInput = Input>>(tx: &Tx) {
+    fn assert_id_common_attrs<Tx: Buildable + Inputs>(tx: &Tx) {
         use core::ops::Deref;
         assert_id_ne(tx, |t| t.set_tip(t.tip().not()));
         assert_id_ne(tx, |t| t.set_maturity((t.maturity().deref().not()).into()));

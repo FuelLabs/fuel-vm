@@ -171,9 +171,9 @@ impl Chargeable for Script {
         Serialize::size(self)
     }
 
-    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
-        self.gas_used_by_inputs(gas_costs)
-    }
+    // fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+    //     self.gas_used_by_inputs(gas_costs)
+    // }
 
     #[inline(always)]
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
@@ -206,9 +206,9 @@ impl Chargeable for ScriptV2 {
         Serialize::size(self)
     }
 
-    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
-        todo!()
-    }
+    // fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
+    //     todo!()
+    // }
 
     #[inline(always)]
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {

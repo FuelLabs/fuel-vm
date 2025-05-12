@@ -557,7 +557,7 @@ pub mod test_helpers {
         where
             M: Memory,
             Tx: ExecutableTransaction,
-            Tx: Inputs<MyInput = Input>,
+            Tx: Inputs,
             <Tx as IntoChecked>::Metadata: CheckedMetadata,
             Ecal: crate::interpreter::EcalHandler,
             V: Verifier + Clone,

@@ -212,18 +212,14 @@ mod use_std {
         }
     }
 
-    impl<R, Body, MetadataBody>
-        TransactionFactory<R, ChargeableTransaction<Body, MetadataBody>>
+    impl<R, Tx> TransactionFactory<R, Tx>
     where
         R: Rng + CryptoRng,
-        Body: Compressible + std::fmt::Debug,
-        ChargeableTransaction<Body, MetadataBody>: Buildable,
-        <Body as Compressible>::Compressed:
-            std::fmt::Debug + Clone + PartialEq + Serialize + DeserializeOwned,
+        Tx: Buildable,
     {
         fn fill_transaction(
             &mut self,
-            builder: &mut TransactionBuilder<ChargeableTransaction<Body, MetadataBody>>,
+            builder: &mut TransactionBuilder<Tx>,
         ) -> Vec<SecretKey> {
             let inputs = self.rng.gen_range(0..10);
             let mut input_coin_keys = Vec::with_capacity(10);
@@ -319,6 +315,10 @@ mod use_std {
                         );
 
                         builder.add_input(input);
+                    }
+
+                    7 => {
+                        // do nothing for now...
                     }
 
                     _ => unreachable!(),

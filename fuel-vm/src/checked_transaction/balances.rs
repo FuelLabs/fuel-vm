@@ -33,8 +33,8 @@ where
     T: Chargeable + field::Inputs + field::Outputs,
 {
     let (mut non_retryable_balances, retryable_balance) =
-        // add_up_input_balances(tx, base_asset_id).ok_or(ValidityError::BalanceOverflow)?;
-    tx.input_balances(base_asset_id).ok_or(ValidityError::BalanceOverflow)?;
+        add_up_input_balances(tx, base_asset_id).ok_or(ValidityError::BalanceOverflow)?;
+    // tx.input_balances(base_asset_id).ok_or(ValidityError::BalanceOverflow)?;
 
     let max_fee = tx
         .policies()
@@ -50,45 +50,48 @@ where
     })
 }
 
-// /// Returns None if any of the balances would overflow.
-// fn add_up_input_balances<T: field::Inputs>(
-//     transaction: &T,
-//     base_asset_id: &AssetId,
-// ) -> Option<(BTreeMap<AssetId, Word>, Word)> {
-//     let mut non_retryable_balances = BTreeMap::<AssetId, Word>::new();
-//     // The sum of [`AssetId::Base`] from metadata messages.
-//     let mut retryable_balance: Word = 0;
-//
-//     // Add up all the inputs for each asset ID
-//     for input in transaction.inputs().iter() {
-//         match input {
-//             // Sum coin inputs
-//             Input::CoinPredicate(CoinPredicate {
-//                 asset_id, amount, ..
-//             })
-//             | Input::CoinSigned(CoinSigned {
-//                 asset_id, amount, ..
-//             }) => {
-//                 let balance = non_retryable_balances.entry(*asset_id).or_default();
-//                 *balance = (*balance).checked_add(*amount)?;
-//             }
-//             // Sum message coin inputs
-//             Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
-//             | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
-//                 let balance =
-// non_retryable_balances.entry(*base_asset_id).or_default();                 *balance =
-// (*balance).checked_add(*amount)?;             }
-//             // Sum data messages
-//             Input::MessageDataSigned(MessageDataSigned { amount, .. })
-//             | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
-//                 retryable_balance = retryable_balance.checked_add(*amount)?;
-//             }
-//             Input::Contract(_) => {}
-//         }
-//     }
-//
-//     Some((non_retryable_balances, retryable_balance))
-// }
+/// Returns None if any of the balances would overflow.
+fn add_up_input_balances<T: field::Inputs>(
+    transaction: &T,
+    base_asset_id: &AssetId,
+) -> Option<(BTreeMap<AssetId, Word>, Word)> {
+    let mut non_retryable_balances = BTreeMap::<AssetId, Word>::new();
+    // The sum of [`AssetId::Base`] from metadata messages.
+    let mut retryable_balance: Word = 0;
+
+    // Add up all the inputs for each asset ID
+    for input in transaction.inputs().iter() {
+        match input {
+            // Sum coin inputs
+            Input::CoinPredicate(CoinPredicate {
+                asset_id, amount, ..
+            })
+            | Input::CoinSigned(CoinSigned {
+                asset_id, amount, ..
+            }) => {
+                let balance = non_retryable_balances.entry(*asset_id).or_default();
+                *balance = (*balance).checked_add(*amount)?;
+            }
+            // Sum message coin inputs
+            Input::MessageCoinSigned(MessageCoinSigned { amount, .. })
+            | Input::MessageCoinPredicate(MessageCoinPredicate { amount, .. }) => {
+                let balance = non_retryable_balances.entry(*base_asset_id).or_default();
+                *balance = (*balance).checked_add(*amount)?;
+            }
+            // Sum data messages
+            Input::MessageDataSigned(MessageDataSigned { amount, .. })
+            | Input::MessageDataPredicate(MessageDataPredicate { amount, .. }) => {
+                retryable_balance = retryable_balance.checked_add(*amount)?;
+            }
+            Input::Contract(_) => {}
+            Input::InputV2(_) => {
+                todo!()
+            }
+        }
+    }
+
+    Some((non_retryable_balances, retryable_balance))
+}
 
 fn deduct_max_fee_from_base_asset(
     non_retryable_balances: &mut BTreeMap<AssetId, Word>,

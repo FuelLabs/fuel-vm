@@ -32,7 +32,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
     Ecal: EcalHandler,
     V: Verifier,
 {
@@ -133,7 +133,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
     Ecal: EcalHandler,
     V: Verifier,
 {

@@ -156,7 +156,7 @@ impl Chargeable for Upload {
 
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        self.metered_bytes_size()
+        Serialize::size(self)
     }
 
     // fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {

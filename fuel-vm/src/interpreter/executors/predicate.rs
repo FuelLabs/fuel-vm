@@ -29,7 +29,7 @@ impl<M, Tx, Ecal, S> Interpreter<M, PredicateStorage<S>, Tx, Ecal>
 where
     M: Memory,
     Tx: ExecutableTransaction,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
     Ecal: EcalHandler,
     S: PredicateStorageRequirements,
 {

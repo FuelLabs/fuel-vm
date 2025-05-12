@@ -618,7 +618,17 @@ impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {
         tx_pointer: TxPointer,
         witness_index: u16,
     ) {
-        todo!()
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
     }
 
     fn add_unsigned_message_input(
@@ -630,7 +640,20 @@ impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {
         data: Vec<u8>,
         witness_index: u16,
     ) {
-        todo!()
+        let input = if data.is_empty() {
+            Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
+        } else {
+            Input::message_data_signed(
+                sender,
+                recipient,
+                amount,
+                nonce,
+                witness_index,
+                data,
+            )
+        };
+
+        self.inputs_mut().push(input);
     }
 }
 

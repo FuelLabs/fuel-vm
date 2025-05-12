@@ -469,7 +469,7 @@ impl<Tx> CheckPredicates for Checked<Tx>
 where
     Tx: ExecutableTransaction + Send + Sync + 'static,
     <Tx as IntoChecked>::Metadata: crate::interpreter::CheckedMetadata + Send + Sync,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
 {
     fn check_predicates(
         mut self,
@@ -510,7 +510,7 @@ where
 impl<Tx> EstimatePredicates for Tx
 where
     Tx: ExecutableTransaction + Send + Sync + 'static,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
 {
     fn estimate_predicates(
         &mut self,

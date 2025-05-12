@@ -172,7 +172,7 @@ pub mod predicates {
     where
         Tx: ExecutableTransaction,
         <Tx as IntoChecked>::Metadata: CheckedMetadata,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
     {
         let tx = checked.transaction();
         run_predicates(
@@ -197,7 +197,7 @@ pub mod predicates {
     where
         E: ParallelExecutor,
         Tx: ExecutableTransaction + Send + 'static,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
     {
         let tx = checked.transaction();
 
@@ -226,7 +226,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
     {
         let predicates_checked = run_predicates(
             PredicateRunKind::Estimating(transaction),
@@ -251,7 +251,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
         E: ParallelExecutor,
     {
         let predicates_checked = run_predicate_async::<Tx, E>(
@@ -273,7 +273,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction + Send + 'static,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
         E: ParallelExecutor,
     {
         let mut checks = vec![];
@@ -330,7 +330,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
     {
         let mut checks = vec![];
 
@@ -380,7 +380,7 @@ pub mod predicates {
     ) -> (Word, Result<(), PredicateVerificationFailed>)
     where
         Tx: ExecutableTransaction,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
     {
         if predicate_action == PredicateAction::Verifying {
             match &tx.inputs()[index] {
@@ -479,7 +479,7 @@ pub mod predicates {
     ) -> Result<PredicatesChecked, PredicateVerificationFailed>
     where
         Tx: ExecutableTransaction,
-        Tx: Inputs<MyInput = Input>,
+        Tx: Inputs,
     {
         if let PredicateRunKind::Estimating(tx) = &mut kind {
             checks.iter().for_each(|(input_index, result)| {
@@ -878,7 +878,7 @@ where
     Tx: ExecutableTransaction,
     Ecal: EcalHandler,
     V: Verifier,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
 {
     fn update_transaction_outputs(
         &mut self,
@@ -1106,7 +1106,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
     V: Verifier,

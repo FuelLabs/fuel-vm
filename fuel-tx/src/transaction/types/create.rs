@@ -37,6 +37,7 @@ use fuel_types::{
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
+use fuel_types::canonical::Serialize;
 
 #[cfg(all(test, feature = "std"))]
 mod ser_de_tests;
@@ -90,7 +91,7 @@ impl PrepareSign for CreateBody {
 impl Chargeable for Create {
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        self.metered_bytes_size()
+        Serialize::size(self)
     }
 
     fn gas_used_by_metadata(&self, gas_costs: &GasCosts) -> Word {

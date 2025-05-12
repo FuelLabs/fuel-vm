@@ -155,12 +155,8 @@ impl PrepareSign for UpgradeBody {
 impl Chargeable for Upgrade {
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        self.metered_bytes_size()
+        Serialize::size(self)
     }
-
-    // fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
-    //     self.gas_used_by_inputs(gas_costs)
-    // }
 
     #[inline(always)]
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {

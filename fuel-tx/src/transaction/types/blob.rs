@@ -72,11 +72,7 @@ impl Chargeable for Blob {
 
     #[inline(always)]
     fn metered_bytes_size(&self) -> usize {
-        self.metered_bytes_size()
-    }
-
-    fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
-        self.gas_used_by_inputs(gas_costs)
+        Serialize::size(self)
     }
 
     #[inline(always)]

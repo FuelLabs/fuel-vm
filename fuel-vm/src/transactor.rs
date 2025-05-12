@@ -312,7 +312,7 @@ where
     M: Memory,
     S: InterpreterStorage,
     Tx: ExecutableTransaction,
-    Tx: Inputs<MyInput = Input>,
+    Tx: Inputs,
     <Tx as IntoChecked>::Metadata: CheckedMetadata,
     Ecal: EcalHandler,
     V: Verifier,

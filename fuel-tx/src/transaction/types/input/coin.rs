@@ -188,8 +188,6 @@ where
 }
 
 impl CoinV2 {
-    /// The "Note" section from the specification:
-    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
     pub fn prepare_sign(&mut self) {
         self.tx_pointer = Default::default();
     }

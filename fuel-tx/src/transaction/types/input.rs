@@ -239,6 +239,7 @@ pub enum Input {
     // TODO: Consider consolidating all V1 types into single variant.
     //   This will require us modifying the serialization, but will clean
     //   up this code significantly.
+    //   https://github.com/FuelLabs/fuel-vm/issues/956
     CoinSigned(CoinSigned),
     CoinPredicate(CoinPredicate),
     Contract(Contract),
@@ -247,12 +248,6 @@ pub enum Input {
     MessageDataSigned(MessageDataSigned),
     MessageDataPredicate(MessageDataPredicate),
     InputV2(InputV2),
-}
-
-impl From<Input> for InputRepr {
-    fn from(_value: Input) -> Self {
-        todo!()
-    }
 }
 
 #[derive(

@@ -380,20 +380,6 @@ where
         Err(ValidityError::TransactionWitnessesMax)?
     }
 
-    // let any_spendable_input = tx.inputs().iter().find(|input| match input {
-    //     Input::CoinSigned(_)
-    //     | Input::CoinPredicate(_)
-    //     | Input::MessageCoinSigned(_)
-    //     | Input::MessageCoinPredicate(_) => true,
-    //     Input::MessageDataSigned(_)
-    //     | Input::MessageDataPredicate(_)
-    //     | Input::Contract(_) => false,
-    // });
-    //
-    // if any_spendable_input.is_none() {
-    //     Err(ValidityError::NoSpendableInput)?
-    // }
-
     if !tx.has_spendable_input() {
         return Err(ValidityError::NoSpendableInput)
     }
@@ -426,7 +412,6 @@ where
         .inputs()
         .iter()
         .filter_map(|i| i.is_coin().then(|| i.utxo_id()).flatten());
-    // let utxo_ids_iter = tx.input_utxo_ids();
 
     if let Some(utxo_id) = next_duplicate(duplicated_utxo_id).copied() {
         return Err(ValidityError::DuplicateInputUtxoId { utxo_id });
@@ -434,7 +419,6 @@ where
 
     // Check for duplicated input contract id
     let duplicated_contract_id = tx.inputs().iter().filter_map(Input::contract_id);
-    // let contract_ids_iter = tx.input_contract_ids();
 
     if let Some(contract_id) = next_duplicate(duplicated_contract_id).copied() {
         return Err(ValidityError::DuplicateInputContractId { contract_id });
@@ -442,7 +426,6 @@ where
 
     // Check for duplicated input nonce
     let duplicated_nonce = tx.inputs().iter().filter_map(Input::nonce);
-    // let input_nonce_iter = tx.input_nonces();
     if let Some(nonce) = next_duplicate(duplicated_nonce).copied() {
         return Err(ValidityError::DuplicateInputNonce { nonce });
     }

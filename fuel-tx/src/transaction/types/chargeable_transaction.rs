@@ -506,52 +506,8 @@ mod field {
                     .zip(input.predicate_len().and_then(bytes::padded_len_usize))
             })
         }
-
-        // fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
-        //     // TODO
-        //     std::iter::empty()
-        // }
-        //
-        // fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
-        //     // TODO
-        //     std::iter::empty()
-        // }
-        //
-        // fn input_nonces(&self) -> impl Iterator<Item = Nonce> {
-        //     // TODO
-        //     std::iter::empty()
-        // }
-        //
-        // fn check_all_inputs(
-        //     &self,
-        //     _predicate_params: &PredicateParameters,
-        // ) -> Result<(), ValidityError> {
-        //     todo!()
-        // }
-        //
-        // fn input_witness_indices(&self, _owner: &Address) -> impl Iterator<Item = u16>
-        // {     // TODO
-        //     std::iter::empty()
-        // }
-
-        // fn input_asset_ids<'a>(
-        //     &self,
-        //     _base_asset_id: &'a AssetId,
-        // ) -> alloc::vec::IntoIter<&'a AssetId> {
-        //     todo!()
-        // }
-
-        // fn check_predicate_owners(&self) -> bool {
-        //     todo!()
-        // }
-        //
-        // fn input_balances(
-        //     &self,
-        //     base_asset_id: &AssetId,
-        // ) -> Option<(BTreeMap<AssetId, fuel_types::Word>, fuel_types::Word)> {
-        //     todo!()
-        // }
     }
+
     impl<Body, MetadataBody> Inputs for ChargeableTransaction<Body, MetadataBody>
     where
         Body: BodyConstraints,
@@ -634,51 +590,6 @@ mod field {
                     .zip(input.predicate_len().and_then(bytes::padded_len_usize))
             })
         }
-
-        // fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId> {
-        //     // TODO
-        //     std::iter::empty()
-        // }
-        //
-        // fn input_contract_ids(&self) -> impl Iterator<Item = ContractId> {
-        //     // TODO
-        //     std::iter::empty()
-        // }
-        //
-        // fn input_nonces(&self) -> impl Iterator<Item = Nonce> {
-        //     // TODO
-        //     std::iter::empty()
-        // }
-        //
-        // fn check_all_inputs(
-        //     &self,
-        //     _predicate_params: &PredicateParameters,
-        // ) -> Result<(), ValidityError> {
-        //     todo!()
-        // }
-
-        // fn input_witness_indices(&self, _owner: &Address) -> impl Iterator<Item = u16>
-        // {     // TODO
-        //     std::iter::empty()
-        // }
-
-        // fn input_asset_ids<'a>(
-        //     &self,
-        //     _base_asset_id: &'a AssetId,
-        // ) -> alloc::vec::IntoIter<&'a AssetId> {
-        //     todo!()
-        // }
-
-        // fn check_predicate_owners(&self) -> bool {
-        //     todo!()
-        // }
-
-        // fn input_balances(
-        //     &self,
-        //     base_asset_id: &AssetId,
-        // ) -> Option<(BTreeMap<AssetId, fuel_types::Word>, fuel_types::Word)> {
-        //     todo!()
-        // }
     }
     impl<Body, MetadataBody> Outputs for ChargeableTransaction<Body, MetadataBody>
     where

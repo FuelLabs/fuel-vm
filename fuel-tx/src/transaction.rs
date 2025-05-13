@@ -562,19 +562,6 @@ pub trait Executable: Inputs + field::Outputs + field::Witnesses {
         tx_pointer: TxPointer,
         witness_index: u16,
     );
-    // ) {
-    //     let owner = Input::owner(owner);
-    //
-    //     let input = Input::coin_signed(
-    //         utxo_id,
-    //         owner,
-    //         amount,
-    //         asset_id,
-    //         tx_pointer,
-    //         witness_index,
-    //     );
-    //     self.inputs_mut().push(input);
-    // }
 
     /// Append a new unsigned message input to the transaction.
     ///
@@ -593,72 +580,7 @@ pub trait Executable: Inputs + field::Outputs + field::Witnesses {
         data: Vec<u8>,
         witness_index: u16,
     );
-    // ) {
-    //     let input = if data.is_empty() {
-    //         Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
-    //     } else {
-    //         Input::message_data_signed(
-    //             sender,
-    //             recipient,
-    //             amount,
-    //             nonce,
-    //             witness_index,
-    //             data,
-    //         )
-    //     };
-    //
-    //     self.inputs_mut().push(input);
-    // }
 }
-
-// impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {
-//     fn add_unsigned_coin_input(
-//         &mut self,
-//         utxo_id: UtxoId,
-//         owner: &PublicKey,
-//         amount: Word,
-//         asset_id: AssetId,
-//         tx_pointer: TxPointer,
-//         witness_index: u16,
-//     ) {
-//         let owner = Input::owner(owner);
-//
-//         let input = Input::coin_signed(
-//             utxo_id,
-//             owner,
-//             amount,
-//             asset_id,
-//             tx_pointer,
-//             witness_index,
-//         );
-//         self.inputs_mut().push(input);
-//     }
-//
-//     fn add_unsigned_message_input(
-//         &mut self,
-//         sender: Address,
-//         recipient: Address,
-//         nonce: Nonce,
-//         amount: Word,
-//         data: Vec<u8>,
-//         witness_index: u16,
-//     ) {
-//         let input = if data.is_empty() {
-//             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
-//         } else {
-//             Input::message_data_signed(
-//                 sender,
-//                 recipient,
-//                 amount,
-//                 nonce,
-//                 witness_index,
-//                 data,
-//             )
-//         };
-//
-//         self.inputs_mut().push(input);
-//     }
-// }
 
 impl<B, M> Executable for ChargeableTransaction<B, M>
 where
@@ -1190,30 +1112,6 @@ pub mod field {
 
         /// Returns predicate's offset and length of the `Input` at `idx`, if any.
         fn inputs_predicate_offset_at(&self, idx: usize) -> Option<(usize, usize)>;
-
-        // fn input_utxo_ids(&self) -> impl Iterator<Item = UtxoId>;
-        //
-        // fn input_contract_ids(&self) -> impl Iterator<Item = ContractId>;
-        //
-        // fn input_nonces(&self) -> impl Iterator<Item = fuel_types::Nonce>;
-        //
-        // fn check_all_inputs(
-        //     &self,
-        //     predicate_parameters: &PredicateParameters,
-        // ) -> Result<(), ValidityError>;
-
-        // fn input_witness_indices(&self, owner: &Address) -> impl Iterator<Item = u16>;
-        // fn input_asset_ids<'a>(
-        //     &'a self,
-        //     base_asset_id: &'a AssetId,
-        // ) -> alloc::vec::IntoIter<&'a AssetId>;
-
-        // fn check_predicate_owners(&self) -> bool;
-        //
-        // fn input_balances(
-        //     &self,
-        //     base_asset_id: &AssetId,
-        // ) -> Option<(BTreeMap<AssetId, Word>, Word)>;
     }
 
     pub trait Outputs {

@@ -34,7 +34,6 @@ where
 {
     let (mut non_retryable_balances, retryable_balance) =
         add_up_input_balances(tx, base_asset_id).ok_or(ValidityError::BalanceOverflow)?;
-    // tx.input_balances(base_asset_id).ok_or(ValidityError::BalanceOverflow)?;
 
     let max_fee = tx
         .policies()

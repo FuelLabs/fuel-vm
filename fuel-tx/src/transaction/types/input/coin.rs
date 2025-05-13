@@ -1,10 +1,12 @@
 use core::default::Default;
 
+use super::PredicateCode;
 use crate::{
     TxPointer,
     UtxoId,
     input::{
         Empty,
+        InputV2,
         fmt_as_field,
     },
     transaction::types::input::AsField,
@@ -18,8 +20,6 @@ use fuel_types::{
     AssetId,
     Word,
 };
-
-use super::PredicateCode;
 
 pub type CoinFull = Coin<Full>;
 pub type CoinSigned = Coin<Signed>;
@@ -188,6 +188,14 @@ where
     }
 }
 
+impl CoinV2 {
+    /// The "Note" section from the specification:
+    /// <https://github.com/FuelLabs/fuel-specs/blob/master/src/tx-format/input.md#inputcoin>.
+    pub fn prepare_sign(&mut self) {
+        self.tx_pointer = Default::default();
+    }
+}
+
 impl Coin<Full> {
     pub fn into_signed(self) -> Coin<Signed> {
         let Self {
@@ -318,8 +326,10 @@ pub enum CoinValidation {
         witness_index: u16,
     },
     Predicate {
-        predicate_index: u16,
-        predicate_data_index: u16,
-        predicate_gas_used: Word,
+        predicate: PredicateCode,
+        predicate_data: Vec<u8>,
+        // predicate_index: u16,
+        // predicate_data_index: u16,
+        // predicate_gas_used: Word,
     },
 }

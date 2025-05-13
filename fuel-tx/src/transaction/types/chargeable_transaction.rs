@@ -166,6 +166,25 @@ where
     }
 }
 
+impl<Body, MetadataBody> Default for ChargeableTransactionV2<Body, MetadataBody>
+where
+    Body: BodyConstraints + Default,
+{
+    fn default() -> Self {
+        Self {
+            body: Default::default(),
+            policies: Policies::new()
+                .with_maturity(0.into())
+                .with_witness_limit(10000),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            witnesses: Default::default(),
+            static_witnesses: Vec::new(),
+            metadata: None,
+        }
+    }
+}
+
 impl<Body, MetadataBody> ChargeableTransaction<Body, MetadataBody>
 where
     Body: BodyConstraints,
@@ -176,6 +195,18 @@ where
 }
 
 impl<Body, MetadataBody> PrepareSign for ChargeableTransaction<Body, MetadataBody>
+where
+    Body: BodyConstraints + PrepareSign,
+    Self: ChargeableBody<Body>,
+{
+    fn prepare_sign(&mut self) {
+        self.body.prepare_sign();
+        self.inputs_mut().iter_mut().for_each(Input::prepare_sign);
+        self.outputs_mut().iter_mut().for_each(Output::prepare_sign);
+    }
+}
+
+impl<Body, MetadataBody> PrepareSign for ChargeableTransactionV2<Body, MetadataBody>
 where
     Body: BodyConstraints + PrepareSign,
     Self: ChargeableBody<Body>,
@@ -295,6 +326,30 @@ where
         })
     }
 }
+
+impl<Body, MetadataBody> ChargeableTransactionV2<Body, MetadataBody>
+where
+    Body: BodyConstraints,
+    Self: ChargeableBody<Body>,
+    Self: Serialize,
+{
+    pub(crate) fn has_spendable_input_inner(&self) -> bool {
+        self.inputs().iter().any(|input| match input {
+            Input::CoinSigned(_)
+            | Input::CoinPredicate(_)
+            | Input::MessageCoinSigned(_)
+            | Input::MessageCoinPredicate(_)
+            | Input::MessageDataSigned(_)
+            | Input::MessageDataPredicate(_)
+            | Input::Contract(_) => false,
+            Input::InputV2(inner) => match inner {
+                InputV2::Coin(_) | InputV2::Message(_) => true,
+                InputV2::Contract(_) => false,
+            },
+        })
+    }
+}
+
 impl<Body, MetadataBody> FormatValidityChecks
     for ChargeableTransactionV2<Body, MetadataBody>
 where
@@ -323,10 +378,13 @@ where
 
     fn check_without_signatures(
         &self,
-        _block_height: BlockHeight,
-        _consensus_params: &ConsensusParameters,
+        block_height: BlockHeight,
+        consensus_params: &ConsensusParameters,
     ) -> Result<(), ValidityError> {
-        todo!()
+        check_common_part(self, block_height, consensus_params)?;
+        self.check_unique_rules(consensus_params)?;
+
+        Ok(())
     }
 }
 
@@ -338,7 +396,17 @@ where
     Self: fuel_types::canonical::Serialize,
 {
     fn id(&self, chain_id: &ChainId) -> Bytes32 {
-        todo!()
+        if let Some(id) = self.cached_id() {
+            return id;
+        }
+
+        let mut clone = self.clone();
+
+        // Empties fields that should be zero during the signing.
+        clone.prepare_sign();
+        clone.witnesses_mut().clear();
+
+        crate::transaction::compute_transaction_id(chain_id, &mut clone)
     }
 
     fn cached_id(&self) -> Option<Bytes32> {
@@ -704,8 +772,74 @@ mod field {
         //     todo!()
         // }
     }
-
     impl<Body, MetadataBody> Outputs for ChargeableTransaction<Body, MetadataBody>
+    where
+        Body: BodyConstraints,
+        Self: ChargeableBody<Body>,
+    {
+        #[inline(always)]
+        fn outputs(&self) -> &Vec<Output> {
+            &self.outputs
+        }
+
+        #[inline(always)]
+        fn outputs_mut(&mut self) -> &mut Vec<Output> {
+            &mut self.outputs
+        }
+
+        #[inline(always)]
+        fn outputs_offset(&self) -> usize {
+            if let Some(ChargeableMetadata {
+                common: CommonMetadata { outputs_offset, .. },
+                ..
+            }) = &self.metadata
+            {
+                return *outputs_offset;
+            }
+
+            self.inputs_offset().saturating_add(
+                self.inputs()
+                    .iter()
+                    .map(|i| i.size())
+                    .reduce(usize::saturating_add)
+                    .unwrap_or_default(),
+            )
+        }
+
+        #[inline(always)]
+        fn outputs_offset_at(&self, idx: usize) -> Option<usize> {
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        outputs_offset_at, ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return outputs_offset_at.get(idx).cloned();
+            }
+
+            if idx < self.outputs.len() {
+                Some(
+                    self.outputs_offset().saturating_add(
+                        self.outputs()
+                            .iter()
+                            .take(idx)
+                            .map(|i| i.size())
+                            .reduce(usize::saturating_add)
+                            .unwrap_or_default(),
+                    ),
+                )
+            } else {
+                None
+            }
+        }
+
+        fn check_all_outputs(&self) -> Result<(), ValidityError> {
+            todo!()
+        }
+    }
+    impl<Body, MetadataBody> Outputs for ChargeableTransactionV2<Body, MetadataBody>
     where
         Body: BodyConstraints,
         Self: ChargeableBody<Body>,
@@ -857,25 +991,24 @@ mod field {
 
         #[inline(always)]
         fn witnesses_offset(&self) -> usize {
-            // if let Some(ChargeableMetadata {
-            //     common:
-            //         CommonMetadata {
-            //             witnesses_offset, ..
-            //         },
-            //     ..
-            // }) = &self.metadata
-            // {
-            //     return *witnesses_offset;
-            // }
-            //
-            // self.outputs_offset().saturating_add(
-            //     self.outputs()
-            //         .iter()
-            //         .map(|i| i.size())
-            //         .reduce(usize::saturating_add)
-            //         .unwrap_or_default(),
-            // )
-            todo!()
+            if let Some(ChargeableMetadata {
+                common:
+                    CommonMetadata {
+                        witnesses_offset, ..
+                    },
+                ..
+            }) = &self.metadata
+            {
+                return *witnesses_offset;
+            }
+
+            self.outputs_offset().saturating_add(
+                self.outputs()
+                    .iter()
+                    .map(|i| i.size())
+                    .reduce(usize::saturating_add)
+                    .unwrap_or_default(),
+            )
         }
 
         #[inline(always)]

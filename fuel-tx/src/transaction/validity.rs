@@ -394,7 +394,7 @@ pub(crate) fn check_common_part<T>(
     consensus_params: &ConsensusParameters,
 ) -> Result<(), ValidityError>
 where
-    T: canonical::Serialize + Chargeable + field::Outputs,
+    T: canonical::Serialize + Chargeable + Executable,
 {
     let tx_params = consensus_params.tx_params();
     let predicate_params = consensus_params.predicate_params();

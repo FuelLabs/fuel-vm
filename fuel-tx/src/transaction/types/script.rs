@@ -171,10 +171,6 @@ impl Chargeable for Script {
         Serialize::size(self)
     }
 
-    // fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
-    //     self.gas_used_by_inputs(gas_costs)
-    // }
-
     #[inline(always)]
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
         let bytes = Serialize::size(self);
@@ -206,10 +202,6 @@ impl Chargeable for ScriptV2 {
         Serialize::size(self)
     }
 
-    // fn gas_used_by_inputs(&self, gas_costs: &GasCosts) -> fuel_asm::Word {
-    //     todo!()
-    // }
-
     #[inline(always)]
     fn gas_used_by_metadata(&self, gas_cost: &GasCosts) -> Word {
         let bytes = Serialize::size(self);
@@ -218,7 +210,7 @@ impl Chargeable for ScriptV2 {
     }
 
     fn has_spendable_input(&self) -> bool {
-        todo!()
+        self.has_spendable_input_inner()
     }
 }
 
@@ -296,11 +288,18 @@ impl crate::Cacheable for Script {
 
 impl crate::Cacheable for ScriptV2 {
     fn is_computed(&self) -> bool {
-        todo!()
+        self.metadata.is_some()
     }
 
     fn precompute(&mut self, chain_id: &ChainId) -> Result<(), ValidityError> {
-        todo!()
+        self.metadata = None;
+        self.metadata = Some(ChargeableMetadata {
+            common: CommonMetadata::compute(self, chain_id)?,
+            body: ScriptMetadata {
+                script_data_offset: self.script_data_offset(),
+            },
+        });
+        Ok(())
     }
 }
 
@@ -325,7 +324,41 @@ mod field {
         }
     }
 
+    impl ScriptGasLimit for ScriptV2 {
+        #[inline(always)]
+        fn script_gas_limit(&self) -> &Word {
+            &self.body.script_gas_limit
+        }
+
+        #[inline(always)]
+        fn script_gas_limit_mut(&mut self) -> &mut Word {
+            &mut self.body.script_gas_limit
+        }
+
+        #[inline(always)]
+        fn script_gas_limit_offset_static() -> usize {
+            WORD_SIZE // `Transaction` enum discriminant
+        }
+    }
+
     impl ReceiptsRoot for Script {
+        #[inline(always)]
+        fn receipts_root(&self) -> &Bytes32 {
+            &self.body.receipts_root
+        }
+
+        #[inline(always)]
+        fn receipts_root_mut(&mut self) -> &mut Bytes32 {
+            &mut self.body.receipts_root
+        }
+
+        #[inline(always)]
+        fn receipts_root_offset_static() -> usize {
+            Self::script_gas_limit_offset_static().saturating_add(WORD_SIZE)
+        }
+    }
+
+    impl ReceiptsRoot for ScriptV2 {
         #[inline(always)]
         fn receipts_root(&self) -> &Bytes32 {
             &self.body.receipts_root
@@ -367,7 +400,54 @@ mod field {
         }
     }
 
+    impl ScriptField for ScriptV2 {
+        #[inline(always)]
+        fn script(&self) -> &Vec<u8> {
+            &self.body.script
+        }
+
+        #[inline(always)]
+        fn script_mut(&mut self) -> &mut Vec<u8> {
+            &mut self.body.script
+        }
+
+        #[inline(always)]
+        fn script_offset_static() -> usize {
+            Self::receipts_root_offset_static().saturating_add(
+                Bytes32::LEN // Receipts root
+                    + WORD_SIZE // Script size
+                    + WORD_SIZE // Script data size
+                    + WORD_SIZE // Policies size
+                    + WORD_SIZE // Inputs size
+                    + WORD_SIZE // Outputs size
+                    + WORD_SIZE, // Witnesses size
+            )
+        }
+    }
     impl ScriptData for Script {
+        #[inline(always)]
+        fn script_data(&self) -> &Vec<u8> {
+            &self.body.script_data
+        }
+
+        #[inline(always)]
+        fn script_data_mut(&mut self) -> &mut Vec<u8> {
+            &mut self.body.script_data
+        }
+
+        #[inline(always)]
+        fn script_data_offset(&self) -> usize {
+            if let Some(ChargeableMetadata { body, .. }) = &self.metadata {
+                return body.script_data_offset;
+            }
+
+            self.script_offset().saturating_add(
+                bytes::padded_len(self.body.script.as_slice()).unwrap_or(usize::MAX),
+            )
+        }
+    }
+
+    impl ScriptData for ScriptV2 {
         #[inline(always)]
         fn script_data(&self) -> &Vec<u8> {
             &self.body.script_data
@@ -415,7 +495,9 @@ mod field {
         }
 
         fn body_offset_end(&self) -> usize {
-            todo!()
+            self.script_data_offset().saturating_add(
+                bytes::padded_len(self.body.script_data.as_slice()).unwrap_or(usize::MAX),
+            )
         }
     }
 }

@@ -2,6 +2,7 @@ use super::{
     Input,
     consts::*,
 };
+use crate::input::InputV2;
 
 #[derive(
     Debug,
@@ -114,9 +115,11 @@ impl InputRepr {
             | Input::MessageCoinPredicate(_)
             | Input::MessageDataSigned(_)
             | Input::MessageDataPredicate(_) => InputRepr::Message,
-            Input::InputV2(_) => {
-                todo!()
-            }
+            Input::InputV2(inner) => match inner {
+                InputV2::Coin(_) => InputRepr::Coin,
+                InputV2::Contract(_) => InputRepr::Contract,
+                InputV2::Message(_) => InputRepr::Message,
+            },
         }
     }
 }

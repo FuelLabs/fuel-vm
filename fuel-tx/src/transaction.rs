@@ -72,6 +72,7 @@ pub use fee::{
     Chargeable,
     TransactionFee,
 };
+use field::Inputs;
 pub use metadata::Cacheable;
 pub use repr::TransactionRepr;
 pub use types::*;
@@ -477,7 +478,7 @@ impl Transaction {
     }
 }
 
-pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
+pub trait Executable: Inputs + field::Outputs + field::Witnesses {
     /// Returns the assets' ids used in the inputs in the order of inputs.
     fn input_asset_ids<'a>(
         &'a self,
@@ -492,10 +493,12 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
                 | Input::MessageCoinPredicate(_)
                 | Input::MessageDataPredicate(_)
                 | Input::MessageDataSigned(_) => Some(base_asset_id),
-                Input::InputV2(_) => {
-                    todo!()
-                }
-                _ => None,
+                Input::InputV2(inner) => match inner {
+                    InputV2::Coin(coin) => Some(&coin.asset_id),
+                    InputV2::Contract(_) => None,
+                    InputV2::Message(_) => Some(base_asset_id),
+                },
+                Input::Contract(_) => None,
             })
             .collect_vec()
             .into_iter()
@@ -608,7 +611,60 @@ pub trait Executable: field::Inputs + field::Outputs + field::Witnesses {
     // }
 }
 
-impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {
+// impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {
+//     fn add_unsigned_coin_input(
+//         &mut self,
+//         utxo_id: UtxoId,
+//         owner: &PublicKey,
+//         amount: Word,
+//         asset_id: AssetId,
+//         tx_pointer: TxPointer,
+//         witness_index: u16,
+//     ) {
+//         let owner = Input::owner(owner);
+//
+//         let input = Input::coin_signed(
+//             utxo_id,
+//             owner,
+//             amount,
+//             asset_id,
+//             tx_pointer,
+//             witness_index,
+//         );
+//         self.inputs_mut().push(input);
+//     }
+//
+//     fn add_unsigned_message_input(
+//         &mut self,
+//         sender: Address,
+//         recipient: Address,
+//         nonce: Nonce,
+//         amount: Word,
+//         data: Vec<u8>,
+//         witness_index: u16,
+//     ) {
+//         let input = if data.is_empty() {
+//             Input::message_coin_signed(sender, recipient, amount, nonce, witness_index)
+//         } else {
+//             Input::message_data_signed(
+//                 sender,
+//                 recipient,
+//                 amount,
+//                 nonce,
+//                 witness_index,
+//                 data,
+//             )
+//         };
+//
+//         self.inputs_mut().push(input);
+//     }
+// }
+
+impl<B, M> Executable for ChargeableTransaction<B, M>
+where
+    ChargeableTransaction<B, M>: Inputs + field::Outputs + field::Witnesses,
+    B: BodyConstraints,
+{
     fn add_unsigned_coin_input(
         &mut self,
         utxo_id: UtxoId,
@@ -657,9 +713,55 @@ impl<T: field::Inputs + field::Outputs + field::Witnesses> Executable for T {
     }
 }
 
+impl<B, M> Executable for ChargeableTransactionV2<B, M>
+where
+    ChargeableTransactionV2<B, M>: Inputs + field::Outputs + field::Witnesses,
+    B: BodyConstraints,
+{
+    fn add_unsigned_coin_input(
+        &mut self,
+        utxo_id: UtxoId,
+        owner: &PublicKey,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) {
+        let owner = Input::owner(owner);
+
+        let input = Input::coin_signed_v2(
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            witness_index,
+        );
+        self.inputs_mut().push(input);
+    }
+
+    fn add_unsigned_message_input(
+        &mut self,
+        sender: Address,
+        recipient: Address,
+        nonce: Nonce,
+        amount: Word,
+        data: Vec<u8>,
+        witness_index: u16,
+    ) {
+        todo!()
+    }
+}
+
 impl From<Script> for Transaction {
     fn from(tx: Script) -> Self {
         Self::Script(tx)
+    }
+}
+
+impl From<ScriptV2> for Transaction {
+    fn from(tx: ScriptV2) -> Self {
+        Self::ScriptV2(tx)
     }
 }
 

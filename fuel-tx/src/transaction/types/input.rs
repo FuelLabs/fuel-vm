@@ -348,6 +348,27 @@ impl Input {
         })
     }
 
+    pub const fn coin_signed_v2(
+        utxo_id: UtxoId,
+        owner: Address,
+        amount: Word,
+        asset_id: AssetId,
+        tx_pointer: TxPointer,
+        witness_index: u16,
+    ) -> Self {
+        let validation = CoinValidation::Signed { witness_index };
+        let coin = CoinV2 {
+            utxo_id,
+            owner,
+            amount,
+            asset_id,
+            tx_pointer,
+            validation,
+        };
+        let inner = InputV2::Coin(coin);
+        Self::InputV2(inner)
+    }
+
     pub const fn contract(
         utxo_id: UtxoId,
         balance_root: Bytes32,
@@ -554,8 +575,19 @@ impl Input {
             | Input::Contract(_)
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => None,
-            Self::InputV2(_) => {
-                todo!()
+            Self::InputV2(inner) => {
+                match inner {
+                    InputV2::Coin(coin) => {
+                        match coin.validation {
+                            CoinValidation::Signed { .. } => None,
+                            CoinValidation::Predicate { .. } => {
+                                // TODO: This might need to be changed for V2
+                                InputRepr::Coin.coin_predicate_offset()
+                            }
+                        }
+                    }
+                    _ => todo!(),
+                }
             }
         }
     }
@@ -590,9 +622,13 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => match &coin.validation {
+                    CoinValidation::Signed { .. } => Some(0),
+                    CoinValidation::Predicate { predicate, .. } => Some(predicate.len()),
+                },
+                _ => todo!(),
+            },
         }
     }
 
@@ -609,9 +645,15 @@ impl Input {
             | Input::MessageCoinSigned(_)
             | Input::MessageDataSigned(_) => Some(0),
             Input::Contract(_) => None,
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => match &coin.validation {
+                    CoinValidation::Signed { .. } => Some(0),
+                    CoinValidation::Predicate { predicate_data, .. } => {
+                        Some(predicate_data.len())
+                    }
+                },
+                _ => todo!(),
+            },
         }
     }
 
@@ -886,9 +928,10 @@ impl Input {
             Input::MessageCoinPredicate(message) => message.prepare_sign(),
             Input::MessageDataSigned(message) => message.prepare_sign(),
             Input::MessageDataPredicate(message) => message.prepare_sign(),
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => coin.prepare_sign(),
+                _ => todo!(),
+            },
         }
     }
 
@@ -936,9 +979,11 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.size_static(),
             Input::MessageDataSigned(message) => message.size_static(),
             Input::MessageDataPredicate(message) => message.size_static(),
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => coin.size_static(),
+                InputV2::Message(message) => message.size_static(),
+                InputV2::Contract(contract) => contract.size_static(),
+            },
         })
         .saturating_add(8) // Discriminant
     }
@@ -952,9 +997,11 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.size_dynamic(),
             Input::MessageDataSigned(message) => message.size_dynamic(),
             Input::MessageDataPredicate(message) => message.size_dynamic(),
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Self::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => coin.size_dynamic(),
+                InputV2::Message(message) => message.size_dynamic(),
+                InputV2::Contract(contract) => contract.size_dynamic(),
+            },
         }
     }
 
@@ -969,9 +1016,11 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.encode_static(buffer),
             Input::MessageDataSigned(message) => message.encode_static(buffer),
             Input::MessageDataPredicate(message) => message.encode_static(buffer),
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Input::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => coin.encode_static(buffer),
+                InputV2::Message(message) => message.encode_static(buffer),
+                InputV2::Contract(contract) => contract.encode_static(buffer),
+            },
         }
     }
 
@@ -986,9 +1035,11 @@ impl Serialize for Input {
             Input::MessageCoinPredicate(message) => message.encode_dynamic(buffer),
             Input::MessageDataSigned(message) => message.encode_dynamic(buffer),
             Input::MessageDataPredicate(message) => message.encode_dynamic(buffer),
-            Self::InputV2(_) => {
-                todo!()
-            }
+            Input::InputV2(inner) => match inner {
+                InputV2::Coin(coin) => coin.encode_dynamic(buffer),
+                InputV2::Message(message) => message.encode_dynamic(buffer),
+                InputV2::Contract(contract) => contract.encode_dynamic(buffer),
+            },
         }
     }
 }

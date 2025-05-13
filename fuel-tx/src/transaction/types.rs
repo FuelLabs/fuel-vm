@@ -21,6 +21,7 @@ pub use chargeable_transaction::{
     BodyConstraints,
     ChargeableMetadata,
     ChargeableTransaction,
+    ChargeableTransactionV2,
 };
 pub use create::{
     Create,

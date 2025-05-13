@@ -11,12 +11,6 @@ use super::{
     RegId,
     narrowint,
     wideint,
-    wideint::{
-        CompareArgs,
-        DivArgs,
-        MathArgs,
-        MulArgs,
-    },
 };
 
 // Here we re-export the generated instruction types and constructors, but extend them

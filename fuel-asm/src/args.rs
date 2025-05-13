@@ -35,6 +35,9 @@ crate::enum_try_from! {
 
         /// Get memory address of base asset ID
         BaseAssetId = 0x06,
+
+        /// Get gas price for block
+        GetGasPrice = 0x07,
     },
     Immediate18
 }

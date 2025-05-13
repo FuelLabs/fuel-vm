@@ -856,7 +856,8 @@ where
         self,
         interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
     ) -> IoResult<ExecuteState, S::DataError> {
-        interpreter.gas_charge(interpreter.gas_costs().mldv())?;
+        interpreter
+            .gas_charge(interpreter.gas_costs().niop().map_err(PanicReason::from)?)?;
         let (a, b, c, imm) = self.unpack();
         let args = narrowint::MathArgs::from_imm(imm)
             .ok_or(PanicReason::InvalidImmediateValue)?;

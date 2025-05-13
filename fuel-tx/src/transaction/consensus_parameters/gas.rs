@@ -82,6 +82,8 @@ pub enum GasCostsValues {
     V4(GasCostsValuesV4),
     /// Version 5 of the gas costs.
     V5(GasCostsValuesV5),
+    /// Version 6 of the gas costs.
+    V6(GasCostsValuesV6),
 }
 
 /// Gas cost for this instruction is not defined for this version.
@@ -102,6 +104,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.add,
             GasCostsValues::V4(v4) => v4.add,
             GasCostsValues::V5(v5) => v5.add,
+            GasCostsValues::V6(v6) => v6.add,
         }
     }
 
@@ -112,6 +115,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.addi,
             GasCostsValues::V4(v4) => v4.addi,
             GasCostsValues::V5(v5) => v5.addi,
+            GasCostsValues::V6(v6) => v6.addi,
         }
     }
 
@@ -122,6 +126,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.and,
             GasCostsValues::V4(v4) => v4.and,
             GasCostsValues::V5(v5) => v5.and,
+            GasCostsValues::V6(v6) => v6.and,
         }
     }
 
@@ -132,6 +137,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.andi,
             GasCostsValues::V4(v4) => v4.andi,
             GasCostsValues::V5(v5) => v5.andi,
+            GasCostsValues::V6(v6) => v6.andi,
         }
     }
 
@@ -142,6 +148,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.bal,
             GasCostsValues::V4(v4) => v4.bal,
             GasCostsValues::V5(v5) => v5.bal,
+            GasCostsValues::V6(v6) => v6.bal,
         }
     }
 
@@ -152,6 +159,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.bhei,
             GasCostsValues::V4(v4) => v4.bhei,
             GasCostsValues::V5(v5) => v5.bhei,
+            GasCostsValues::V6(v6) => v6.bhei,
         }
     }
 
@@ -162,6 +170,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.bhsh,
             GasCostsValues::V4(v4) => v4.bhsh,
             GasCostsValues::V5(v5) => v5.bhsh,
+            GasCostsValues::V6(v6) => v6.bhsh,
         }
     }
 
@@ -172,6 +181,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.burn,
             GasCostsValues::V4(v4) => v4.burn,
             GasCostsValues::V5(v5) => v5.burn,
+            GasCostsValues::V6(v6) => v6.burn,
         }
     }
 
@@ -182,6 +192,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.cb,
             GasCostsValues::V4(v4) => v4.cb,
             GasCostsValues::V5(v5) => v5.cb,
+            GasCostsValues::V6(v6) => v6.cb,
         }
     }
 
@@ -192,6 +203,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.cfsi,
             GasCostsValues::V4(v4) => v4.cfsi,
             GasCostsValues::V5(v5) => v5.cfsi,
+            GasCostsValues::V6(v6) => v6.cfsi,
         }
     }
 
@@ -202,6 +214,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.div,
             GasCostsValues::V4(v4) => v4.div,
             GasCostsValues::V5(v5) => v5.div,
+            GasCostsValues::V6(v6) => v6.div,
         }
     }
 
@@ -212,6 +225,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.divi,
             GasCostsValues::V4(v4) => v4.divi,
             GasCostsValues::V5(v5) => v5.divi,
+            GasCostsValues::V6(v6) => v6.divi,
         }
     }
 
@@ -222,6 +236,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.eck1,
             GasCostsValues::V4(v4) => v4.eck1,
             GasCostsValues::V5(v5) => v5.eck1,
+            GasCostsValues::V6(v6) => v6.eck1,
         }
     }
 
@@ -232,6 +247,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.ecr1,
             GasCostsValues::V4(v4) => v4.ecr1,
             GasCostsValues::V5(v5) => v5.ecr1,
+            GasCostsValues::V6(v6) => v6.ecr1,
         }
     }
 
@@ -242,6 +258,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.eq,
             GasCostsValues::V4(v4) => v4.eq,
             GasCostsValues::V5(v5) => v5.eq,
+            GasCostsValues::V6(v6) => v6.eq,
         }
     }
 
@@ -252,6 +269,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.exp,
             GasCostsValues::V4(v4) => v4.exp,
             GasCostsValues::V5(v5) => v5.exp,
+            GasCostsValues::V6(v6) => v6.exp,
         }
     }
 
@@ -262,6 +280,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.expi,
             GasCostsValues::V4(v4) => v4.expi,
             GasCostsValues::V5(v5) => v5.expi,
+            GasCostsValues::V6(v6) => v6.expi,
         }
     }
 
@@ -272,6 +291,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.flag,
             GasCostsValues::V4(v4) => v4.flag,
             GasCostsValues::V5(v5) => v5.flag,
+            GasCostsValues::V6(v6) => v6.flag,
         }
     }
 
@@ -282,6 +302,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.gm,
             GasCostsValues::V4(v4) => v4.gm,
             GasCostsValues::V5(v5) => v5.gm,
+            GasCostsValues::V6(v6) => v6.gm,
         }
     }
 
@@ -292,6 +313,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.gt,
             GasCostsValues::V4(v4) => v4.gt,
             GasCostsValues::V5(v5) => v5.gt,
+            GasCostsValues::V6(v6) => v6.gt,
         }
     }
 
@@ -302,6 +324,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.gtf,
             GasCostsValues::V4(v4) => v4.gtf,
             GasCostsValues::V5(v5) => v5.gtf,
+            GasCostsValues::V6(v6) => v6.gtf,
         }
     }
 
@@ -312,6 +335,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.ji,
             GasCostsValues::V4(v4) => v4.ji,
             GasCostsValues::V5(v5) => v5.ji,
+            GasCostsValues::V6(v6) => v6.ji,
         }
     }
 
@@ -322,6 +346,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jmp,
             GasCostsValues::V4(v4) => v4.jmp,
             GasCostsValues::V5(v5) => v5.jmp,
+            GasCostsValues::V6(v6) => v6.jmp,
         }
     }
 
@@ -332,6 +357,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jne,
             GasCostsValues::V4(v4) => v4.jne,
             GasCostsValues::V5(v5) => v5.jne,
+            GasCostsValues::V6(v6) => v6.jne,
         }
     }
 
@@ -342,6 +368,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jnei,
             GasCostsValues::V4(v4) => v4.jnei,
             GasCostsValues::V5(v5) => v5.jnei,
+            GasCostsValues::V6(v6) => v6.jnei,
         }
     }
 
@@ -352,6 +379,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jnzi,
             GasCostsValues::V4(v4) => v4.jnzi,
             GasCostsValues::V5(v5) => v5.jnzi,
+            GasCostsValues::V6(v6) => v6.jnzi,
         }
     }
 
@@ -362,6 +390,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jmpf,
             GasCostsValues::V4(v4) => v4.jmpf,
             GasCostsValues::V5(v5) => v5.jmpf,
+            GasCostsValues::V6(v6) => v6.jmpf,
         }
     }
 
@@ -372,6 +401,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jmpb,
             GasCostsValues::V4(v4) => v4.jmpb,
             GasCostsValues::V5(v5) => v5.jmpb,
+            GasCostsValues::V6(v6) => v6.jmpb,
         }
     }
 
@@ -382,6 +412,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jnzf,
             GasCostsValues::V4(v4) => v4.jnzf,
             GasCostsValues::V5(v5) => v5.jnzf,
+            GasCostsValues::V6(v6) => v6.jnzf,
         }
     }
 
@@ -392,6 +423,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jnzb,
             GasCostsValues::V4(v4) => v4.jnzb,
             GasCostsValues::V5(v5) => v5.jnzb,
+            GasCostsValues::V6(v6) => v6.jnzb,
         }
     }
 
@@ -402,6 +434,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jnef,
             GasCostsValues::V4(v4) => v4.jnef,
             GasCostsValues::V5(v5) => v5.jnef,
+            GasCostsValues::V6(v6) => v6.jnef,
         }
     }
 
@@ -412,6 +445,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.jneb,
             GasCostsValues::V4(v4) => v4.jneb,
             GasCostsValues::V5(v5) => v5.jneb,
+            GasCostsValues::V6(v6) => v6.jneb,
         }
     }
 
@@ -422,6 +456,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.lb,
             GasCostsValues::V4(v4) => v4.lb,
             GasCostsValues::V5(v5) => v5.lb,
+            GasCostsValues::V6(v6) => v6.lb,
         }
     }
 
@@ -432,6 +467,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.log,
             GasCostsValues::V4(v4) => v4.log,
             GasCostsValues::V5(v5) => v5.log,
+            GasCostsValues::V6(v6) => v6.log,
         }
     }
 
@@ -442,6 +478,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.lt,
             GasCostsValues::V4(v4) => v4.lt,
             GasCostsValues::V5(v5) => v5.lt,
+            GasCostsValues::V6(v6) => v6.lt,
         }
     }
 
@@ -452,6 +489,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.lw,
             GasCostsValues::V4(v4) => v4.lw,
             GasCostsValues::V5(v5) => v5.lw,
+            GasCostsValues::V6(v6) => v6.lw,
         }
     }
 
@@ -462,6 +500,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mint,
             GasCostsValues::V4(v4) => v4.mint,
             GasCostsValues::V5(v5) => v5.mint,
+            GasCostsValues::V6(v6) => v6.mint,
         }
     }
 
@@ -472,6 +511,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mlog,
             GasCostsValues::V4(v4) => v4.mlog,
             GasCostsValues::V5(v5) => v5.mlog,
+            GasCostsValues::V6(v6) => v6.mlog,
         }
     }
 
@@ -482,6 +522,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mod_op,
             GasCostsValues::V4(v4) => v4.mod_op,
             GasCostsValues::V5(v5) => v5.mod_op,
+            GasCostsValues::V6(v6) => v6.mod_op,
         }
     }
 
@@ -492,6 +533,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.modi,
             GasCostsValues::V4(v4) => v4.modi,
             GasCostsValues::V5(v5) => v5.modi,
+            GasCostsValues::V6(v6) => v6.modi,
         }
     }
 
@@ -502,6 +544,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.move_op,
             GasCostsValues::V4(v4) => v4.move_op,
             GasCostsValues::V5(v5) => v5.move_op,
+            GasCostsValues::V6(v6) => v6.move_op,
         }
     }
 
@@ -512,6 +555,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.movi,
             GasCostsValues::V4(v4) => v4.movi,
             GasCostsValues::V5(v5) => v5.movi,
+            GasCostsValues::V6(v6) => v6.movi,
         }
     }
 
@@ -522,6 +566,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mroo,
             GasCostsValues::V4(v4) => v4.mroo,
             GasCostsValues::V5(v5) => v5.mroo,
+            GasCostsValues::V6(v6) => v6.mroo,
         }
     }
 
@@ -532,6 +577,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mul,
             GasCostsValues::V4(v4) => v4.mul,
             GasCostsValues::V5(v5) => v5.mul,
+            GasCostsValues::V6(v6) => v6.mul,
         }
     }
 
@@ -542,6 +588,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.muli,
             GasCostsValues::V4(v4) => v4.muli,
             GasCostsValues::V5(v5) => v5.muli,
+            GasCostsValues::V6(v6) => v6.muli,
         }
     }
 
@@ -552,6 +599,18 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mldv,
             GasCostsValues::V4(v4) => v4.mldv,
             GasCostsValues::V5(v5) => v5.mldv,
+            GasCostsValues::V6(v6) => v6.mldv,
+        }
+    }
+
+    pub fn niop(&self) -> Result<Word, GasCostNotDefined> {
+        match self {
+            GasCostsValues::V1(_) => Err(GasCostNotDefined),
+            GasCostsValues::V2(_) => Err(GasCostNotDefined),
+            GasCostsValues::V3(_) => Err(GasCostNotDefined),
+            GasCostsValues::V4(_) => Err(GasCostNotDefined),
+            GasCostsValues::V5(_) => Err(GasCostNotDefined),
+            GasCostsValues::V6(v6) => Ok(v6.niop),
         }
     }
 
@@ -562,6 +621,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.noop,
             GasCostsValues::V4(v4) => v4.noop,
             GasCostsValues::V5(v5) => v5.noop,
+            GasCostsValues::V6(v6) => v6.noop,
         }
     }
 
@@ -572,6 +632,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.not,
             GasCostsValues::V4(v4) => v4.not,
             GasCostsValues::V5(v5) => v5.not,
+            GasCostsValues::V6(v6) => v6.not,
         }
     }
 
@@ -582,6 +643,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.or,
             GasCostsValues::V4(v4) => v4.or,
             GasCostsValues::V5(v5) => v5.or,
+            GasCostsValues::V6(v6) => v6.or,
         }
     }
 
@@ -592,6 +654,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.ori,
             GasCostsValues::V4(v4) => v4.ori,
             GasCostsValues::V5(v5) => v5.ori,
+            GasCostsValues::V6(v6) => v6.ori,
         }
     }
 
@@ -602,6 +665,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.poph,
             GasCostsValues::V4(v4) => v4.poph,
             GasCostsValues::V5(v5) => v5.poph,
+            GasCostsValues::V6(v6) => v6.poph,
         }
     }
 
@@ -612,6 +676,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.popl,
             GasCostsValues::V4(v4) => v4.popl,
             GasCostsValues::V5(v5) => v5.popl,
+            GasCostsValues::V6(v6) => v6.popl,
         }
     }
 
@@ -622,6 +687,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.pshh,
             GasCostsValues::V4(v4) => v4.pshh,
             GasCostsValues::V5(v5) => v5.pshh,
+            GasCostsValues::V6(v6) => v6.pshh,
         }
     }
 
@@ -632,6 +698,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.pshl,
             GasCostsValues::V4(v4) => v4.pshl,
             GasCostsValues::V5(v5) => v5.pshl,
+            GasCostsValues::V6(v6) => v6.pshl,
         }
     }
 
@@ -642,6 +709,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.ret,
             GasCostsValues::V4(v4) => v4.ret,
             GasCostsValues::V5(v5) => v5.ret,
+            GasCostsValues::V6(v6) => v6.ret,
         }
     }
 
@@ -652,6 +720,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.rvrt,
             GasCostsValues::V4(v4) => v4.rvrt,
             GasCostsValues::V5(v5) => v5.rvrt,
+            GasCostsValues::V6(v6) => v6.rvrt,
         }
     }
 
@@ -662,6 +731,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.sb,
             GasCostsValues::V4(v4) => v4.sb,
             GasCostsValues::V5(v5) => v5.sb,
+            GasCostsValues::V6(v6) => v6.sb,
         }
     }
 
@@ -672,6 +742,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.sll,
             GasCostsValues::V4(v4) => v4.sll,
             GasCostsValues::V5(v5) => v5.sll,
+            GasCostsValues::V6(v6) => v6.sll,
         }
     }
 
@@ -682,6 +753,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.slli,
             GasCostsValues::V4(v4) => v4.slli,
             GasCostsValues::V5(v5) => v5.slli,
+            GasCostsValues::V6(v6) => v6.slli,
         }
     }
 
@@ -692,6 +764,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.srl,
             GasCostsValues::V4(v4) => v4.srl,
             GasCostsValues::V5(v5) => v5.srl,
+            GasCostsValues::V6(v6) => v6.srl,
         }
     }
 
@@ -702,6 +775,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.srli,
             GasCostsValues::V4(v4) => v4.srli,
             GasCostsValues::V5(v5) => v5.srli,
+            GasCostsValues::V6(v6) => v6.srli,
         }
     }
 
@@ -712,6 +786,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.srw,
             GasCostsValues::V4(v4) => v4.srw,
             GasCostsValues::V5(v5) => v5.srw,
+            GasCostsValues::V6(v6) => v6.srw,
         }
     }
 
@@ -722,6 +797,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.sub,
             GasCostsValues::V4(v4) => v4.sub,
             GasCostsValues::V5(v5) => v5.sub,
+            GasCostsValues::V6(v6) => v6.sub,
         }
     }
 
@@ -732,6 +808,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.subi,
             GasCostsValues::V4(v4) => v4.subi,
             GasCostsValues::V5(v5) => v5.subi,
+            GasCostsValues::V6(v6) => v6.subi,
         }
     }
 
@@ -742,6 +819,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.sw,
             GasCostsValues::V4(v4) => v4.sw,
             GasCostsValues::V5(v5) => v5.sw,
+            GasCostsValues::V6(v6) => v6.sw,
         }
     }
 
@@ -752,6 +830,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.sww,
             GasCostsValues::V4(v4) => v4.sww,
             GasCostsValues::V5(v5) => v5.sww,
+            GasCostsValues::V6(v6) => v6.sww,
         }
     }
 
@@ -762,6 +841,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.time,
             GasCostsValues::V4(v4) => v4.time,
             GasCostsValues::V5(v5) => v5.time,
+            GasCostsValues::V6(v6) => v6.time,
         }
     }
 
@@ -772,6 +852,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.tr,
             GasCostsValues::V4(v4) => v4.tr,
             GasCostsValues::V5(v5) => v5.tr,
+            GasCostsValues::V6(v6) => v6.tr,
         }
     }
 
@@ -782,6 +863,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.tro,
             GasCostsValues::V4(v4) => v4.tro,
             GasCostsValues::V5(v5) => v5.tro,
+            GasCostsValues::V6(v6) => v6.tro,
         }
     }
 
@@ -792,6 +874,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wdcm,
             GasCostsValues::V4(v4) => v4.wdcm,
             GasCostsValues::V5(v5) => v5.wdcm,
+            GasCostsValues::V6(v6) => v6.wdcm,
         }
     }
 
@@ -802,6 +885,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wqcm,
             GasCostsValues::V4(v4) => v4.wqcm,
             GasCostsValues::V5(v5) => v5.wqcm,
+            GasCostsValues::V6(v6) => v6.wqcm,
         }
     }
 
@@ -812,6 +896,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wdop,
             GasCostsValues::V4(v4) => v4.wdop,
             GasCostsValues::V5(v5) => v5.wdop,
+            GasCostsValues::V6(v6) => v6.wdop,
         }
     }
 
@@ -822,6 +907,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wqop,
             GasCostsValues::V4(v4) => v4.wqop,
             GasCostsValues::V5(v5) => v5.wqop,
+            GasCostsValues::V6(v6) => v6.wqop,
         }
     }
 
@@ -832,6 +918,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wdml,
             GasCostsValues::V4(v4) => v4.wdml,
             GasCostsValues::V5(v5) => v5.wdml,
+            GasCostsValues::V6(v6) => v6.wdml,
         }
     }
 
@@ -842,6 +929,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wqml,
             GasCostsValues::V4(v4) => v4.wqml,
             GasCostsValues::V5(v5) => v5.wqml,
+            GasCostsValues::V6(v6) => v6.wqml,
         }
     }
 
@@ -852,6 +940,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wddv,
             GasCostsValues::V4(v4) => v4.wddv,
             GasCostsValues::V5(v5) => v5.wddv,
+            GasCostsValues::V6(v6) => v6.wddv,
         }
     }
 
@@ -862,6 +951,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wqdv,
             GasCostsValues::V4(v4) => v4.wqdv,
             GasCostsValues::V5(v5) => v5.wqdv,
+            GasCostsValues::V6(v6) => v6.wqdv,
         }
     }
 
@@ -872,6 +962,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wdmd,
             GasCostsValues::V4(v4) => v4.wdmd,
             GasCostsValues::V5(v5) => v5.wdmd,
+            GasCostsValues::V6(v6) => v6.wdmd,
         }
     }
 
@@ -882,6 +973,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wqmd,
             GasCostsValues::V4(v4) => v4.wqmd,
             GasCostsValues::V5(v5) => v5.wqmd,
+            GasCostsValues::V6(v6) => v6.wqmd,
         }
     }
 
@@ -892,6 +984,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wdam,
             GasCostsValues::V4(v4) => v4.wdam,
             GasCostsValues::V5(v5) => v5.wdam,
+            GasCostsValues::V6(v6) => v6.wdam,
         }
     }
 
@@ -902,6 +995,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wqam,
             GasCostsValues::V4(v4) => v4.wqam,
             GasCostsValues::V5(v5) => v5.wqam,
+            GasCostsValues::V6(v6) => v6.wqam,
         }
     }
 
@@ -912,6 +1006,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wdmm,
             GasCostsValues::V4(v4) => v4.wdmm,
             GasCostsValues::V5(v5) => v5.wdmm,
+            GasCostsValues::V6(v6) => v6.wdmm,
         }
     }
 
@@ -922,6 +1017,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.wqmm,
             GasCostsValues::V4(v4) => v4.wqmm,
             GasCostsValues::V5(v5) => v5.wqmm,
+            GasCostsValues::V6(v6) => v6.wqmm,
         }
     }
 
@@ -932,6 +1028,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.xor,
             GasCostsValues::V4(v4) => v4.xor,
             GasCostsValues::V5(v5) => v5.xor,
+            GasCostsValues::V6(v6) => v6.xor,
         }
     }
 
@@ -942,6 +1039,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.xori,
             GasCostsValues::V4(v4) => v4.xori,
             GasCostsValues::V5(v5) => v5.xori,
+            GasCostsValues::V6(v6) => v6.xori,
         }
     }
 
@@ -952,6 +1050,7 @@ impl GasCostsValues {
             GasCostsValues::V3(_) => Err(GasCostNotDefined),
             GasCostsValues::V4(_) => Err(GasCostNotDefined),
             GasCostsValues::V5(v5) => Ok(v5.ecop),
+            GasCostsValues::V6(v6) => Ok(v6.ecop),
         }
     }
 
@@ -965,6 +1064,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.aloc,
             GasCostsValues::V4(v4) => v4.aloc,
             GasCostsValues::V5(v5) => v5.aloc,
+            GasCostsValues::V6(v6) => v6.aloc,
         }
     }
 
@@ -981,6 +1081,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.cfe,
             GasCostsValues::V4(v4) => v4.cfe,
             GasCostsValues::V5(v5) => v5.cfe,
+            GasCostsValues::V6(v6) => v6.cfe,
         }
     }
 
@@ -997,6 +1098,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.cfei,
             GasCostsValues::V4(v4) => v4.cfei,
             GasCostsValues::V5(v5) => v5.cfei,
+            GasCostsValues::V6(v6) => v6.cfei,
         }
     }
 
@@ -1007,6 +1109,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.call,
             GasCostsValues::V4(v4) => v4.call,
             GasCostsValues::V5(v5) => v5.call,
+            GasCostsValues::V6(v6) => v6.call,
         }
     }
 
@@ -1017,6 +1120,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.ccp,
             GasCostsValues::V4(v4) => v4.ccp,
             GasCostsValues::V5(v5) => v5.ccp,
+            GasCostsValues::V6(v6) => v6.ccp,
         }
     }
 
@@ -1027,6 +1131,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.croo,
             GasCostsValues::V4(v4) => v4.croo,
             GasCostsValues::V5(v5) => v5.croo,
+            GasCostsValues::V6(v6) => v6.croo,
         }
     }
 
@@ -1037,6 +1142,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.csiz,
             GasCostsValues::V4(v4) => v4.csiz,
             GasCostsValues::V5(v5) => v5.csiz,
+            GasCostsValues::V6(v6) => v6.csiz,
         }
     }
 
@@ -1056,6 +1162,7 @@ impl GasCostsValues {
             },
             GasCostsValues::V4(v4) => v4.ed19,
             GasCostsValues::V5(v5) => v5.ed19,
+            GasCostsValues::V6(v6) => v6.ed19,
         }
     }
 
@@ -1066,6 +1173,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.k256,
             GasCostsValues::V4(v4) => v4.k256,
             GasCostsValues::V5(v5) => v5.k256,
+            GasCostsValues::V6(v6) => v6.k256,
         }
     }
 
@@ -1076,6 +1184,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.ldc,
             GasCostsValues::V4(v4) => v4.ldc,
             GasCostsValues::V5(v5) => v5.ldc,
+            GasCostsValues::V6(v6) => v6.ldc,
         }
     }
 
@@ -1086,6 +1195,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.logd,
             GasCostsValues::V4(v4) => v4.logd,
             GasCostsValues::V5(v5) => v5.logd,
+            GasCostsValues::V6(v6) => v6.logd,
         }
     }
 
@@ -1096,6 +1206,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mcl,
             GasCostsValues::V4(v4) => v4.mcl,
             GasCostsValues::V5(v5) => v5.mcl,
+            GasCostsValues::V6(v6) => v6.mcl,
         }
     }
 
@@ -1106,6 +1217,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mcli,
             GasCostsValues::V4(v4) => v4.mcli,
             GasCostsValues::V5(v5) => v5.mcli,
+            GasCostsValues::V6(v6) => v6.mcli,
         }
     }
 
@@ -1116,6 +1228,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mcp,
             GasCostsValues::V4(v4) => v4.mcp,
             GasCostsValues::V5(v5) => v5.mcp,
+            GasCostsValues::V6(v6) => v6.mcp,
         }
     }
 
@@ -1126,6 +1239,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.mcpi,
             GasCostsValues::V4(v4) => v4.mcpi,
             GasCostsValues::V5(v5) => v5.mcpi,
+            GasCostsValues::V6(v6) => v6.mcpi,
         }
     }
 
@@ -1136,6 +1250,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.meq,
             GasCostsValues::V4(v4) => v4.meq,
             GasCostsValues::V5(v5) => v5.meq,
+            GasCostsValues::V6(v6) => v6.meq,
         }
     }
 
@@ -1146,6 +1261,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.retd,
             GasCostsValues::V4(v4) => v4.retd,
             GasCostsValues::V5(v5) => v5.retd,
+            GasCostsValues::V6(v6) => v6.retd,
         }
     }
 
@@ -1156,6 +1272,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.s256,
             GasCostsValues::V4(v4) => v4.s256,
             GasCostsValues::V5(v5) => v5.s256,
+            GasCostsValues::V6(v6) => v6.s256,
         }
     }
 
@@ -1166,6 +1283,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.scwq,
             GasCostsValues::V4(v4) => v4.scwq,
             GasCostsValues::V5(v5) => v5.scwq,
+            GasCostsValues::V6(v6) => v6.scwq,
         }
     }
 
@@ -1176,6 +1294,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.smo,
             GasCostsValues::V4(v4) => v4.smo,
             GasCostsValues::V5(v5) => v5.smo,
+            GasCostsValues::V6(v6) => v6.smo,
         }
     }
 
@@ -1186,6 +1305,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.srwq,
             GasCostsValues::V4(v4) => v4.srwq,
             GasCostsValues::V5(v5) => v5.srwq,
+            GasCostsValues::V6(v6) => v6.srwq,
         }
     }
 
@@ -1196,6 +1316,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.swwq,
             GasCostsValues::V4(v4) => v4.swwq,
             GasCostsValues::V5(v5) => v5.swwq,
+            GasCostsValues::V6(v6) => v6.swwq,
         }
     }
 
@@ -1206,6 +1327,7 @@ impl GasCostsValues {
             GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
             GasCostsValues::V4(v4) => Ok(v4.bsiz),
             GasCostsValues::V5(v5) => Ok(v5.bsiz),
+            GasCostsValues::V6(v6) => Ok(v6.bsiz),
         }
     }
 
@@ -1216,6 +1338,7 @@ impl GasCostsValues {
             GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
             GasCostsValues::V4(v4) => Ok(v4.bldd),
             GasCostsValues::V5(v5) => Ok(v5.bldd),
+            GasCostsValues::V6(v6) => Ok(v6.bldd),
         }
     }
 
@@ -1226,6 +1349,7 @@ impl GasCostsValues {
             GasCostsValues::V3(_v3) => Err(GasCostNotDefined),
             GasCostsValues::V4(_v4) => Err(GasCostNotDefined),
             GasCostsValues::V5(v5) => Ok(v5.epar),
+            GasCostsValues::V6(v6) => Ok(v6.epar),
         }
     }
 
@@ -1236,6 +1360,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.contract_root,
             GasCostsValues::V4(v4) => v4.contract_root,
             GasCostsValues::V5(v5) => v5.contract_root,
+            GasCostsValues::V6(v6) => v6.contract_root,
         }
     }
 
@@ -1246,6 +1371,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.state_root,
             GasCostsValues::V4(v4) => v4.state_root,
             GasCostsValues::V5(v5) => v5.state_root,
+            GasCostsValues::V6(v6) => v6.state_root,
         }
     }
 
@@ -1256,6 +1382,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.new_storage_per_byte,
             GasCostsValues::V4(v4) => v4.new_storage_per_byte,
             GasCostsValues::V5(v5) => v5.new_storage_per_byte,
+            GasCostsValues::V6(v6) => v6.new_storage_per_byte,
         }
     }
 
@@ -1266,6 +1393,7 @@ impl GasCostsValues {
             GasCostsValues::V3(v3) => v3.vm_initialization,
             GasCostsValues::V4(v4) => v4.vm_initialization,
             GasCostsValues::V5(v5) => v5.vm_initialization,
+            GasCostsValues::V6(v6) => v6.vm_initialization,
         }
     }
 }
@@ -1841,6 +1969,140 @@ pub struct GasCostsValuesV5 {
     pub mul: Word,
     pub muli: Word,
     pub mldv: Word,
+    pub noop: Word,
+    pub not: Word,
+    pub or: Word,
+    pub ori: Word,
+    pub poph: Word,
+    pub popl: Word,
+    pub pshh: Word,
+    pub pshl: Word,
+    #[serde(rename = "ret_contract")]
+    pub ret: Word,
+    #[serde(rename = "rvrt_contract")]
+    pub rvrt: Word,
+    pub sb: Word,
+    pub sll: Word,
+    pub slli: Word,
+    pub srl: Word,
+    pub srli: Word,
+    pub srw: Word,
+    pub sub: Word,
+    pub subi: Word,
+    pub sw: Word,
+    pub sww: Word,
+    pub time: Word,
+    pub tr: Word,
+    pub tro: Word,
+    pub wdcm: Word,
+    pub wqcm: Word,
+    pub wdop: Word,
+    pub wqop: Word,
+    pub wdml: Word,
+    pub wqml: Word,
+    pub wddv: Word,
+    pub wqdv: Word,
+    pub wdmd: Word,
+    pub wqmd: Word,
+    pub wdam: Word,
+    pub wqam: Word,
+    pub wdmm: Word,
+    pub wqmm: Word,
+    pub xor: Word,
+    pub xori: Word,
+    pub ecop: Word,
+
+    // Dependent
+    pub aloc: DependentCost,
+    pub bsiz: DependentCost,
+    pub bldd: DependentCost,
+    pub cfe: DependentCost,
+    pub cfei: DependentCost,
+    pub call: DependentCost,
+    pub ccp: DependentCost,
+    pub croo: DependentCost,
+    pub csiz: DependentCost,
+    pub ed19: DependentCost,
+    pub k256: DependentCost,
+    pub ldc: DependentCost,
+    pub logd: DependentCost,
+    pub mcl: DependentCost,
+    pub mcli: DependentCost,
+    pub mcp: DependentCost,
+    pub mcpi: DependentCost,
+    pub meq: DependentCost,
+    #[serde(rename = "retd_contract")]
+    pub retd: DependentCost,
+    pub s256: DependentCost,
+    pub scwq: DependentCost,
+    pub smo: DependentCost,
+    pub srwq: DependentCost,
+    pub swwq: DependentCost,
+    pub epar: DependentCost,
+
+    // Non-opcode costs
+    pub contract_root: DependentCost,
+    pub state_root: DependentCost,
+    pub new_storage_per_byte: Word,
+    pub vm_initialization: DependentCost,
+}
+
+/// Gas costs for every op.
+/// The difference with [`GasCostsValuesV5`]:
+/// - Added `niop` instruction
+#[allow(missing_docs)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(default = "GasCostsValuesV6::unit")]
+pub struct GasCostsValuesV6 {
+    pub add: Word,
+    pub addi: Word,
+    pub and: Word,
+    pub andi: Word,
+    pub bal: Word,
+    pub bhei: Word,
+    pub bhsh: Word,
+    pub burn: Word,
+    pub cb: Word,
+    pub cfsi: Word,
+    pub div: Word,
+    pub divi: Word,
+    pub eck1: Word,
+    pub ecr1: Word,
+    pub eq: Word,
+    pub exp: Word,
+    pub expi: Word,
+    pub flag: Word,
+    pub gm: Word,
+    pub gt: Word,
+    pub gtf: Word,
+    pub ji: Word,
+    pub jmp: Word,
+    pub jne: Word,
+    pub jnei: Word,
+    pub jnzi: Word,
+    pub jmpf: Word,
+    pub jmpb: Word,
+    pub jnzf: Word,
+    pub jnzb: Word,
+    pub jnef: Word,
+    pub jneb: Word,
+    pub lb: Word,
+    pub log: Word,
+    pub lt: Word,
+    pub lw: Word,
+    pub mint: Word,
+    pub mlog: Word,
+    #[serde(rename = "mod")]
+    pub mod_op: Word,
+    pub modi: Word,
+    #[serde(rename = "move")]
+    pub move_op: Word,
+    pub movi: Word,
+    pub mroo: Word,
+    pub mul: Word,
+    pub muli: Word,
+    pub mldv: Word,
+    pub niop: Word,
     pub noop: Word,
     pub not: Word,
     pub or: Word,
@@ -3105,6 +3367,256 @@ impl GasCostsValuesV5 {
             mul: 1,
             muli: 1,
             mldv: 1,
+            noop: 1,
+            not: 1,
+            or: 1,
+            ori: 1,
+            ret: 1,
+            poph: 1,
+            popl: 1,
+            pshh: 1,
+            pshl: 1,
+            rvrt: 1,
+            sb: 1,
+            sll: 1,
+            slli: 1,
+            srl: 1,
+            srli: 1,
+            srw: 1,
+            sub: 1,
+            subi: 1,
+            sw: 1,
+            sww: 1,
+            time: 1,
+            tr: 1,
+            tro: 1,
+            wdcm: 1,
+            wqcm: 1,
+            wdop: 1,
+            wqop: 1,
+            wdml: 1,
+            wqml: 1,
+            wddv: 1,
+            wqdv: 1,
+            wdmd: 1,
+            wqmd: 1,
+            wdam: 1,
+            wqam: 1,
+            wdmm: 1,
+            wqmm: 1,
+            xor: 1,
+            xori: 1,
+            ecop: 1,
+            aloc: DependentCost::unit(),
+            bsiz: DependentCost::unit(),
+            bldd: DependentCost::unit(),
+            cfe: DependentCost::unit(),
+            cfei: DependentCost::unit(),
+            call: DependentCost::unit(),
+            ccp: DependentCost::unit(),
+            croo: DependentCost::unit(),
+            csiz: DependentCost::unit(),
+            ed19: DependentCost::unit(),
+            k256: DependentCost::unit(),
+            ldc: DependentCost::unit(),
+            logd: DependentCost::unit(),
+            mcl: DependentCost::unit(),
+            mcli: DependentCost::unit(),
+            mcp: DependentCost::unit(),
+            mcpi: DependentCost::unit(),
+            meq: DependentCost::unit(),
+            retd: DependentCost::unit(),
+            s256: DependentCost::unit(),
+            scwq: DependentCost::unit(),
+            smo: DependentCost::unit(),
+            srwq: DependentCost::unit(),
+            swwq: DependentCost::unit(),
+            epar: DependentCost::unit(),
+
+            // Non-opcode costs
+            contract_root: DependentCost::unit(),
+            state_root: DependentCost::unit(),
+            new_storage_per_byte: 1,
+            vm_initialization: DependentCost::unit(),
+        }
+    }
+}
+
+impl GasCostsValuesV6 {
+    /// Create costs that are all set to zero.
+    pub fn free() -> Self {
+        Self {
+            add: 0,
+            addi: 0,
+            and: 0,
+            andi: 0,
+            bal: 0,
+            bhei: 0,
+            bhsh: 0,
+            burn: 0,
+            cb: 0,
+            cfsi: 0,
+            div: 0,
+            divi: 0,
+            eck1: 0,
+            ecr1: 0,
+            eq: 0,
+            exp: 0,
+            expi: 0,
+            flag: 0,
+            gm: 0,
+            gt: 0,
+            gtf: 0,
+            ji: 0,
+            jmp: 0,
+            jne: 0,
+            jnei: 0,
+            jnzi: 0,
+            jmpf: 0,
+            jmpb: 0,
+            jnzf: 0,
+            jnzb: 0,
+            jnef: 0,
+            jneb: 0,
+            lb: 0,
+            log: 0,
+            lt: 0,
+            lw: 0,
+            mint: 0,
+            mlog: 0,
+            mod_op: 0,
+            modi: 0,
+            move_op: 0,
+            movi: 0,
+            mroo: 0,
+            mul: 0,
+            muli: 0,
+            mldv: 0,
+            niop: 0,
+            noop: 0,
+            not: 0,
+            or: 0,
+            ori: 0,
+            poph: 0,
+            popl: 0,
+            pshh: 0,
+            pshl: 0,
+            ret: 0,
+            rvrt: 0,
+            sb: 0,
+            sll: 0,
+            slli: 0,
+            srl: 0,
+            srli: 0,
+            srw: 0,
+            sub: 0,
+            subi: 0,
+            sw: 0,
+            sww: 0,
+            time: 0,
+            tr: 0,
+            tro: 0,
+            wdcm: 0,
+            wqcm: 0,
+            wdop: 0,
+            wqop: 0,
+            wdml: 0,
+            wqml: 0,
+            wddv: 0,
+            wqdv: 0,
+            wdmd: 0,
+            wqmd: 0,
+            wdam: 0,
+            wqam: 0,
+            wdmm: 0,
+            wqmm: 0,
+            xor: 0,
+            xori: 0,
+            ecop: 0,
+            aloc: DependentCost::free(),
+            bsiz: DependentCost::free(),
+            bldd: DependentCost::free(),
+            cfe: DependentCost::free(),
+            cfei: DependentCost::free(),
+            call: DependentCost::free(),
+            ccp: DependentCost::free(),
+            croo: DependentCost::free(),
+            csiz: DependentCost::free(),
+            ed19: DependentCost::free(),
+            k256: DependentCost::free(),
+            ldc: DependentCost::free(),
+            logd: DependentCost::free(),
+            mcl: DependentCost::free(),
+            mcli: DependentCost::free(),
+            mcp: DependentCost::free(),
+            mcpi: DependentCost::free(),
+            meq: DependentCost::free(),
+            retd: DependentCost::free(),
+            s256: DependentCost::free(),
+            scwq: DependentCost::free(),
+            smo: DependentCost::free(),
+            srwq: DependentCost::free(),
+            swwq: DependentCost::free(),
+            epar: DependentCost::free(),
+
+            // Non-opcode costs
+            contract_root: DependentCost::free(),
+            state_root: DependentCost::free(),
+            new_storage_per_byte: 0,
+            vm_initialization: DependentCost::free(),
+        }
+    }
+
+    /// Create costs that are all set to one.
+    pub fn unit() -> Self {
+        Self {
+            add: 1,
+            addi: 1,
+            and: 1,
+            andi: 1,
+            bal: 1,
+            bhei: 1,
+            bhsh: 1,
+            burn: 1,
+            cb: 1,
+            cfsi: 1,
+            div: 1,
+            divi: 1,
+            eck1: 1,
+            ecr1: 1,
+            eq: 1,
+            exp: 1,
+            expi: 1,
+            flag: 1,
+            gm: 1,
+            gt: 1,
+            gtf: 1,
+            ji: 1,
+            jmp: 1,
+            jne: 1,
+            jnei: 1,
+            jnzi: 1,
+            jmpf: 1,
+            jmpb: 1,
+            jnzf: 1,
+            jnzb: 1,
+            jnef: 1,
+            jneb: 1,
+            lb: 1,
+            log: 1,
+            lt: 1,
+            lw: 1,
+            mint: 1,
+            mlog: 1,
+            mod_op: 1,
+            modi: 1,
+            move_op: 1,
+            movi: 1,
+            mroo: 1,
+            mul: 1,
+            muli: 1,
+            mldv: 1,
+            niop: 1,
             noop: 1,
             not: 1,
             or: 1,

@@ -3,6 +3,22 @@ use test_case::test_case;
 
 use crate::error::PanicOrBug;
 
+#[test_case(0, 0, 0, 0 => Ok(0); "noop jump")]
+#[test_case(0, 10, 0, 0 => Ok(0); "jump to zero")]
+#[test_case(0, 10, 0, 4 => Ok(16); "jump to zero plus offset")]
+#[test_case(0, 10, 8, 0 => Ok(8); "jump to nonzero")]
+#[test_case(0, 10, 8, 4 => Ok(24); "jump to nonzero plus offset")]
+#[test_case(1234, 10, 0, 4 => Ok(16); "is won't affect jump")]
+#[test_case(0, 0, VM_MAX_RAM + 1, 0  => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump too far forward")]
+#[test_case(0, 0, 0, VM_MAX_RAM => Err(PanicOrBug::Panic(PanicReason::MemoryOverflow)); "jump too far forward with offset")]
+fn test_assign_jump(is: Word, mut pc: Word, j: Word, f: Word) -> SimpleResult<Word> {
+    JumpArgs::new(JumpMode::Assign)
+        .to_address(j)
+        .plus_fixed(f)
+        .jump(Reg::new(&is), RegMut::new(&mut pc))
+        .map(|_| pc)
+}
+
 #[test_case(0, 0, 0 => Ok(0); "noop jump")]
 #[test_case(0, 0, 20 => Ok(80); "jump forwards")]
 #[test_case(0, 80, 10 => Ok(40); "jump backwards")]

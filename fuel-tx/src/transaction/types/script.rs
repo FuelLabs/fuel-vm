@@ -40,11 +40,13 @@ use fuel_types::{
     fmt_truncated_hex,
 };
 
+#[cfg(feature = "chargeable-tx-v2")]
 use crate::transaction::types::chargeable_transaction::ChargeableTransactionV2;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
 pub type Script = ChargeableTransaction<ScriptBody, ScriptMetadata>;
+#[cfg(feature = "chargeable-tx-v2")]
 pub type ScriptV2 = ChargeableTransactionV2<ScriptBody, ScriptMetadata>;
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
@@ -183,6 +185,7 @@ impl Chargeable for Script {
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl Chargeable for ScriptV2 {
     #[inline(always)]
     fn max_gas(&self, gas_costs: &GasCosts, fee: &FeeParameters) -> fuel_asm::Word {
@@ -214,6 +217,7 @@ impl Chargeable for ScriptV2 {
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl UniqueFormatValidityChecks for ScriptV2 {
     fn check_unique_rules(
         &self,
@@ -286,6 +290,7 @@ impl crate::Cacheable for Script {
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl crate::Cacheable for ScriptV2 {
     fn is_computed(&self) -> bool {
         self.metadata.is_some()
@@ -324,6 +329,7 @@ mod field {
         }
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     impl ScriptGasLimit for ScriptV2 {
         #[inline(always)]
         fn script_gas_limit(&self) -> &Word {
@@ -358,6 +364,7 @@ mod field {
         }
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     impl ReceiptsRoot for ScriptV2 {
         #[inline(always)]
         fn receipts_root(&self) -> &Bytes32 {
@@ -400,6 +407,7 @@ mod field {
         }
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     impl ScriptField for ScriptV2 {
         #[inline(always)]
         fn script(&self) -> &Vec<u8> {
@@ -447,6 +455,7 @@ mod field {
         }
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     impl ScriptData for ScriptV2 {
         #[inline(always)]
         fn script_data(&self) -> &Vec<u8> {
@@ -485,6 +494,7 @@ mod field {
             )
         }
     }
+    #[cfg(feature = "chargeable-tx-v2")]
     impl ChargeableBody<ScriptBody> for ScriptV2 {
         fn body(&self) -> &ScriptBody {
             &self.body

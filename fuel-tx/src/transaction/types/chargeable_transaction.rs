@@ -42,7 +42,9 @@ pub struct ChargeableMetadata<Body> {
     pub body: Body,
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 use crate::input::InputV2;
+
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
 
@@ -101,6 +103,7 @@ where
     pub(crate) metadata: Option<ChargeableMetadata<MetadataBody>>,
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 #[derive(Clone, Educe)]
 #[educe(Eq, PartialEq, Hash, Debug)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -146,6 +149,7 @@ where
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl<Body, MetadataBody> Default for ChargeableTransactionV2<Body, MetadataBody>
 where
     Body: BodyConstraints + Default,
@@ -186,6 +190,7 @@ where
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl<Body, MetadataBody> PrepareSign for ChargeableTransactionV2<Body, MetadataBody>
 where
     Body: BodyConstraints + PrepareSign,
@@ -246,6 +251,7 @@ where
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl<Body, MetadataBody> ChargeableTransactionV2<Body, MetadataBody>
 where
     Body: BodyConstraints,
@@ -269,6 +275,7 @@ where
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl<Body, MetadataBody> FormatValidityChecks
     for ChargeableTransactionV2<Body, MetadataBody>
 where
@@ -307,6 +314,7 @@ where
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl<Body, MetadataBody> UniqueIdentifier for ChargeableTransactionV2<Body, MetadataBody>
 where
     Body: BodyConstraints + PrepareSign,
@@ -403,6 +411,7 @@ mod field {
         }
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     impl<Body, MetadataBody> PoliciesField for ChargeableTransactionV2<Body, MetadataBody>
     where
         Body: BodyConstraints,
@@ -424,6 +433,7 @@ mod field {
         }
     }
 
+    #[cfg(feature = "chargeable-tx-v2")]
     impl<Body, MetadataBody> Inputs for ChargeableTransactionV2<Body, MetadataBody>
     where
         Body: BodyConstraints,
@@ -658,6 +668,7 @@ mod field {
             todo!()
         }
     }
+    #[cfg(feature = "chargeable-tx-v2")]
     impl<Body, MetadataBody> Outputs for ChargeableTransactionV2<Body, MetadataBody>
     where
         Body: BodyConstraints,
@@ -793,6 +804,8 @@ mod field {
             }
         }
     }
+
+    #[cfg(feature = "chargeable-tx-v2")]
     impl<Body, MetadataBody> Witnesses for ChargeableTransactionV2<Body, MetadataBody>
     where
         Body: BodyConstraints,

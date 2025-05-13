@@ -553,6 +553,7 @@ impl EstimatePredicates for Transaction {
             Self::Upgrade(tx) => tx.estimate_predicates(params, memory, storage),
             Self::Upload(tx) => tx.estimate_predicates(params, memory, storage),
             Self::Blob(tx) => tx.estimate_predicates(params, memory, storage),
+            #[cfg(feature = "chargeable-tx-v2")]
             Transaction::ScriptV2(_) => {
                 todo!()
             }
@@ -587,6 +588,7 @@ impl EstimatePredicates for Transaction {
                 tx.estimate_predicates_async::<E>(params, pool, storage)
                     .await
             }
+            #[cfg(feature = "chargeable-tx-v2")]
             Transaction::ScriptV2(_) => {
                 todo!()
             }
@@ -751,6 +753,7 @@ impl From<Checked<Transaction>> for CheckedTransaction {
             (Transaction::Upgrade(_), _) => unreachable!(),
             (Transaction::Upload(_), _) => unreachable!(),
             (Transaction::Blob(_), _) => unreachable!(),
+            #[cfg(feature = "chargeable-tx-v2")]
             (Transaction::ScriptV2(_), _) => {
                 todo!()
             }
@@ -923,6 +926,7 @@ impl IntoChecked for Transaction {
                     .into();
                 Ok((transaction.into(), metadata.into()))
             }
+            #[cfg(feature = "chargeable-tx-v2")]
             Transaction::ScriptV2(_) => {
                 todo!()
             }

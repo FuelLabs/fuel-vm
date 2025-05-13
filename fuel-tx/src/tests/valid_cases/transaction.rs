@@ -661,6 +661,7 @@ fn script__check__happy_path() {
     .expect("Failed to validate transaction");
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 #[test]
 fn script_v2__check__happy_path() {
     let rng = &mut StdRng::seed_from_u64(8586);

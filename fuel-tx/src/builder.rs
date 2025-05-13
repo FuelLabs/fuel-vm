@@ -53,10 +53,13 @@ use crate::{
     transaction::{
         CreateBody,
         ScriptBody,
-        ScriptV2,
         UpgradeBody,
     },
 };
+
+#[cfg(feature = "chargeable-tx-v2")]
+use crate::transaction::ScriptV2;
+
 use alloc::{
     collections::BTreeMap,
     vec::Vec,
@@ -151,6 +154,7 @@ impl TransactionBuilder<Script> {
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl TransactionBuilder<ScriptV2> {
     pub fn script_v2(script: Vec<u8>, script_data: Vec<u8>) -> Self {
         let tx = ScriptV2 {

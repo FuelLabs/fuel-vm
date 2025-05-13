@@ -144,6 +144,7 @@ mod use_std {
                         Transaction::Upgrade(_) => (),
                         Transaction::Upload(_) => (),
                         Transaction::Blob(_) => (),
+                        #[cfg(feature = "chargeable-tx-v2")]
                         Transaction::ScriptV2(_) => (),
                     })
                     .unwrap_or(());

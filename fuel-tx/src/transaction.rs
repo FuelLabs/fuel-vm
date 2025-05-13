@@ -115,6 +115,7 @@ pub enum Transaction {
     Upgrade(Upgrade),
     Upload(Upload),
     Blob(Blob),
+    #[cfg(feature = "chargeable-tx-v2")]
     ScriptV2(ScriptV2),
 }
 
@@ -635,6 +636,7 @@ where
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl<B, M> Executable for ChargeableTransactionV2<B, M>
 where
     ChargeableTransactionV2<B, M>: Inputs + field::Outputs + field::Witnesses,
@@ -681,6 +683,7 @@ impl From<Script> for Transaction {
     }
 }
 
+#[cfg(feature = "chargeable-tx-v2")]
 impl From<ScriptV2> for Transaction {
     fn from(tx: ScriptV2) -> Self {
         Self::ScriptV2(tx)
@@ -726,6 +729,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_static(),
             Self::Upload(tx) => tx.size_static(),
             Self::Blob(tx) => tx.size_static(),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::ScriptV2(tx) => tx.size_static(),
         }
     }
@@ -738,6 +742,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.size_dynamic(),
             Self::Upload(tx) => tx.size_dynamic(),
             Self::Blob(tx) => tx.size_dynamic(),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::ScriptV2(tx) => tx.size_dynamic(),
         }
     }
@@ -753,6 +758,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_static(buffer),
             Self::Upload(tx) => tx.encode_static(buffer),
             Self::Blob(tx) => tx.encode_static(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::ScriptV2(tx) => tx.encode_static(buffer),
         }
     }
@@ -768,6 +774,7 @@ impl Serialize for Transaction {
             Self::Upgrade(tx) => tx.encode_dynamic(buffer),
             Self::Upload(tx) => tx.encode_dynamic(buffer),
             Self::Blob(tx) => tx.encode_dynamic(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::ScriptV2(tx) => tx.encode_dynamic(buffer),
         }
     }
@@ -802,6 +809,7 @@ impl Deserialize for Transaction {
             TransactionRepr::Blob => {
                 Ok(<Blob as Deserialize>::decode_static(buffer)?.into())
             }
+            #[cfg(feature = "chargeable-tx-v2")]
             TransactionRepr::ScriptV2 => {
                 let inner = <ScriptV2 as Deserialize>::decode_static(buffer)?;
                 Ok(Transaction::ScriptV2(inner))
@@ -820,6 +828,7 @@ impl Deserialize for Transaction {
             Self::Upgrade(tx) => tx.decode_dynamic(buffer),
             Self::Upload(tx) => tx.decode_dynamic(buffer),
             Self::Blob(tx) => tx.decode_dynamic(buffer),
+            #[cfg(feature = "chargeable-tx-v2")]
             Self::ScriptV2(tx) => tx.decode_dynamic(buffer),
         }
     }

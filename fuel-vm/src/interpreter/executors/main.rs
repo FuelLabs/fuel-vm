@@ -931,6 +931,7 @@ where
                 Transaction::Mint(_) => {
                     // The `Mint` transaction doesn't implement `ExecutableTransaction`.
                 }
+                #[cfg(feature = "chargeable-tx-v2")]
                 Transaction::ScriptV2(_) => {
                     todo!()
                 }

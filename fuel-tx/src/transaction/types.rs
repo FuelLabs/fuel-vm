@@ -17,11 +17,12 @@ pub use blob::{
     BlobIdExt,
     BlobMetadata,
 };
+#[cfg(feature = "chargeable-tx-v2")]
+pub use chargeable_transaction::ChargeableTransactionV2;
 pub use chargeable_transaction::{
     BodyConstraints,
     ChargeableMetadata,
     ChargeableTransaction,
-    ChargeableTransactionV2,
 };
 pub use create::{
     Create,
@@ -33,8 +34,11 @@ pub use script::{
     Script,
     ScriptBody,
     ScriptCode,
-    ScriptV2,
 };
+
+#[cfg(feature = "chargeable-tx-v2")]
+pub use script::ScriptV2;
+
 pub use storage::StorageSlot;
 pub use upgrade::{
     Upgrade,

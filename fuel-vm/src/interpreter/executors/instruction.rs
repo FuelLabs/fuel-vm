@@ -22,10 +22,7 @@ use fuel_asm::{
     RawInstruction,
     RegId,
 };
-use fuel_tx::{
-    Input,
-    field::Inputs,
-};
+use fuel_tx::field::Inputs;
 
 impl<M, S, Tx, Ecal, V> Interpreter<M, S, Tx, Ecal, V>
 where

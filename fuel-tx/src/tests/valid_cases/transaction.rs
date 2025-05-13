@@ -17,10 +17,7 @@ use crate::{
         PolicyType,
     },
     test_helper::generate_bytes,
-    transaction::field::{
-        Inputs,
-        Policies as PoliciesField,
-    },
+    transaction::field::Policies as PoliciesField,
     *,
 };
 use core::cmp;

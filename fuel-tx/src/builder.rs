@@ -1,7 +1,6 @@
 use crate::{
     Blob,
     BlobBody,
-    ChargeableTransaction,
     ConsensusParameters,
     ContractParameters,
     CreateMetadata,
@@ -46,7 +45,6 @@ use crate::{
 
 use crate::{
     field::{
-        Inputs,
         MaxFeeLimit,
         Outputs,
         WitnessLimit,

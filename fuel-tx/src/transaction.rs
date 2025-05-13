@@ -742,12 +742,12 @@ where
 
     fn add_unsigned_message_input(
         &mut self,
-        sender: Address,
-        recipient: Address,
-        nonce: Nonce,
-        amount: Word,
-        data: Vec<u8>,
-        witness_index: u16,
+        _sender: Address,
+        _recipient: Address,
+        _nonce: Nonce,
+        _amount: Word,
+        _data: Vec<u8>,
+        _witness_index: u16,
     ) {
         todo!()
     }
@@ -908,12 +908,9 @@ impl Deserialize for Transaction {
 pub mod field {
     use crate::{
         Input,
-        InputRepr,
         Output,
-        PredicateParameters,
         StorageSlot,
         UpgradePurpose as UpgradePurposeType,
-        UtxoId,
         ValidityError,
         Witness,
         input,
@@ -921,11 +918,9 @@ pub mod field {
         policies,
     };
     use fuel_types::{
-        Address,
         AssetId,
         BlockHeight,
         Bytes32,
-        ContractId,
         Word,
     };
 
@@ -935,7 +930,6 @@ pub mod field {
         Deref,
         DerefMut,
     };
-    use std::collections::BTreeMap;
 
     pub trait Tip {
         fn tip(&self) -> Word;

@@ -250,7 +250,7 @@ pub enum Input {
 }
 
 impl From<Input> for InputRepr {
-    fn from(value: Input) -> Self {
+    fn from(_value: Input) -> Self {
         todo!()
     }
 }

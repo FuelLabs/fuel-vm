@@ -35,7 +35,6 @@ use fuel_tx::{
     Create,
     FeeParameters,
     GasCosts,
-    Input,
     Receipt,
     Script,
     Upgrade,

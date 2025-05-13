@@ -68,8 +68,6 @@ use fuel_storage::{
 use fuel_tx::{
     Blob,
     BlobIdExt,
-    BodyConstraints,
-    ChargeableTransaction,
     ConsensusParameters,
     Contract,
     Create,
@@ -89,7 +87,6 @@ use fuel_tx::{
         BytecodeRoot,
         BytecodeWitnessIndex,
         Inputs,
-        Outputs,
         ReceiptsRoot,
         Salt,
         Script as ScriptField,
@@ -151,12 +148,7 @@ enum PredicateAction {
 pub mod predicates {
     use super::*;
     use crate::storage::predicate::PredicateStorageProvider;
-    use fuel_tx::{
-        BodyConstraints,
-        Chargeable,
-        ChargeableTransaction,
-        field::Inputs,
-    };
+    use fuel_tx::field::Inputs;
 
     /// Initialize the VM with the provided transaction and check all predicates defined
     /// in the inputs.

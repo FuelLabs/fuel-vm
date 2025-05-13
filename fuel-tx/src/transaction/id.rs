@@ -115,7 +115,7 @@ where
             .collect_vec();
 
         for w in witness_indexes {
-            if let Some(inner) = self.witnesses_mut().get_mut(w as usize) {
+            if let Some(inner) = self.witnesses_mut().get_mut(w) {
                 *inner = signature.as_ref().into();
             }
         }

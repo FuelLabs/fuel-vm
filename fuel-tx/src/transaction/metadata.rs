@@ -6,7 +6,6 @@ use fuel_types::{
 };
 
 use crate::{
-    Transaction,
     UniqueIdentifier,
     ValidityError,
     field,

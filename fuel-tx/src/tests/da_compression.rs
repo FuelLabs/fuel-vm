@@ -2,7 +2,6 @@ use crate::{
     Blob,
     CompressedUtxoId,
     Create,
-    Input,
     Mint,
     PrepareSign,
     Script,
@@ -12,7 +11,6 @@ use crate::{
     Upgrade,
     Upload,
     UtxoId,
-    field,
     input::{
         AsField,
         PredicateCode,

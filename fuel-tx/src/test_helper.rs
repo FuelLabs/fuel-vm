@@ -49,7 +49,6 @@ mod use_std {
         BlobBody,
         BlobIdExt,
         Buildable,
-        ChargeableTransaction,
         ConsensusParameters,
         Contract,
         Create,
@@ -66,10 +65,8 @@ mod use_std {
         UploadBody,
         UploadSubsection,
         field,
-        field::Inputs,
     };
     use core::marker::PhantomData;
-    use fuel_compression::Compressible;
     use fuel_crypto::{
         Hasher,
         SecretKey,
@@ -87,10 +84,6 @@ mod use_std {
             Uniform,
         },
         rngs::StdRng,
-    };
-    use serde::{
-        Serialize,
-        de::DeserializeOwned,
     };
     use strum::EnumCount;
 

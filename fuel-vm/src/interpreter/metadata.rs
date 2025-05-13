@@ -30,7 +30,6 @@ use fuel_tx::{
         BytecodeRoot,
         BytecodeWitnessIndex,
         Inputs,
-        IsCoin,
         ProofSet,
         Salt,
         Script as ScriptField,

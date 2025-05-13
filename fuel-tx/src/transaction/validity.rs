@@ -29,7 +29,6 @@ use crate::{
             PredicateParameters,
             TxParameters,
         },
-        field,
     },
 };
 use core::hash::Hash;
@@ -49,48 +48,7 @@ mod error;
 #[cfg(test)]
 mod tests;
 
-use crate::input::InputV2;
 pub use error::ValidityError;
-
-pub trait InputValidity {
-    fn check_signature(
-        &self,
-        index: usize,
-        txhash: &Bytes32,
-        witnesses: &[Witness],
-        recovery_cache: &mut Option<HashMap<u16, Address>>,
-    ) -> Result<(), ValidityError>;
-
-    fn check_without_signature(
-        &self,
-        index: usize,
-        outputs: &[Output],
-        witnesses: &[Witness],
-        predicate_params: &PredicateParameters,
-    ) -> Result<(), ValidityError>;
-}
-
-impl InputValidity for Input {
-    fn check_signature(
-        &self,
-        index: usize,
-        txhash: &Bytes32,
-        witnesses: &[Witness],
-        recovery_cache: &mut Option<HashMap<u16, Address>>,
-    ) -> Result<(), ValidityError> {
-        self.check_signature(index, txhash, witnesses, recovery_cache)
-    }
-
-    fn check_without_signature(
-        &self,
-        index: usize,
-        outputs: &[Output],
-        witnesses: &[Witness],
-        predicate_params: &PredicateParameters,
-    ) -> Result<(), ValidityError> {
-        self.check_without_signature(index, outputs, witnesses, predicate_params)
-    }
-}
 
 impl Input {
     #[cfg(any(feature = "typescript", test))]
@@ -257,28 +215,6 @@ impl Input {
             // transaction is  invalid if `blockheight() < h + maturity`.
             _ => Ok(()),
         }
-    }
-}
-
-impl InputValidity for InputV2 {
-    fn check_signature(
-        &self,
-        index: usize,
-        txhash: &Bytes32,
-        witnesses: &[Witness],
-        recovery_cache: &mut Option<HashMap<u16, Address>>,
-    ) -> Result<(), ValidityError> {
-        todo!()
-    }
-
-    fn check_without_signature(
-        &self,
-        index: usize,
-        outputs: &[Output],
-        witnesses: &[Witness],
-        predicate_params: &PredicateParameters,
-    ) -> Result<(), ValidityError> {
-        todo!()
     }
 }
 

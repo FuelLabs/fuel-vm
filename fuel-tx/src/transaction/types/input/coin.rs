@@ -6,7 +6,6 @@ use crate::{
     UtxoId,
     input::{
         Empty,
-        InputV2,
         fmt_as_field,
     },
     transaction::types::input::AsField,

@@ -1,6 +1,5 @@
 use crate::{
     ConsensusParameters,
-    GasCosts,
     Input,
     Output,
     UniqueIdentifier,
@@ -32,14 +31,10 @@ use fuel_types::{
     bytes,
     canonical::Serialize,
 };
-use hashbrown::{
-    HashMap,
-    HashSet,
-};
+use hashbrown::HashMap;
 
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
-use fuel_asm::Word;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ChargeableMetadata<Body> {
@@ -47,22 +42,7 @@ pub struct ChargeableMetadata<Body> {
     pub body: Body,
 }
 
-use crate::{
-    input::{
-        InputV2,
-        coin::{
-            CoinPredicate,
-            CoinSigned,
-        },
-        message::{
-            MessageCoinPredicate,
-            MessageCoinSigned,
-            MessageDataPredicate,
-            MessageDataSigned,
-        },
-    },
-    transaction::validity::InputValidity,
-};
+use crate::input::InputV2;
 #[cfg(feature = "da-compression")]
 use fuel_compression::Compressible;
 
@@ -250,67 +230,6 @@ where
     Self: ChargeableBody<Body>,
     Self: Serialize,
 {
-    pub(crate) fn gas_used_by_inputs_inner(&self, gas_costs: &GasCosts) -> Word {
-        let mut witness_cache: HashSet<u16> = HashSet::new();
-        self.inputs()
-            .iter()
-            .filter(|input| match input {
-                // Include signed inputs of unique witness indices
-                Input::CoinSigned(CoinSigned { witness_index, .. })
-                | Input::MessageCoinSigned(MessageCoinSigned { witness_index, .. })
-                | Input::MessageDataSigned(MessageDataSigned { witness_index, .. })
-                    if !witness_cache.contains(witness_index) =>
-                {
-                    witness_cache.insert(*witness_index);
-                    true
-                }
-                // Include all predicates
-                Input::CoinPredicate(_)
-                | Input::MessageCoinPredicate(_)
-                | Input::MessageDataPredicate(_) => true,
-                // Ignore all other inputs
-                _ => false,
-            })
-            .map(|input| match input {
-                // Charge EC recovery cost for signed inputs
-                Input::CoinSigned(_)
-                | Input::MessageCoinSigned(_)
-                | Input::MessageDataSigned(_) => gas_costs.eck1(),
-                // Charge the cost of the contract root for predicate inputs
-                Input::CoinPredicate(CoinPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
-                })
-                | Input::MessageCoinPredicate(MessageCoinPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
-                })
-                | Input::MessageDataPredicate(MessageDataPredicate {
-                    predicate,
-                    predicate_gas_used,
-                    ..
-                }) => {
-                    let bytes_size = self.metered_bytes_size_inner();
-                    let vm_initialization_gas =
-                        gas_costs.vm_initialization().resolve(bytes_size as Word);
-                    gas_costs
-                        .contract_root()
-                        .resolve(predicate.len() as u64)
-                        .saturating_add(*predicate_gas_used)
-                        .saturating_add(vm_initialization_gas)
-                }
-                // Charge nothing for all other inputs
-                _ => 0,
-            })
-            .fold(0, |acc, cost| acc.saturating_add(cost))
-    }
-
-    pub(crate) fn metered_bytes_size_inner(&self) -> usize {
-        Serialize::size(self)
-    }
-
     pub(crate) fn has_spendable_input_inner(&self) -> bool {
         self.inputs().iter().any(|input| match input {
             Input::CoinSigned(_)
@@ -461,18 +380,7 @@ where
 
 mod field {
     use super::*;
-    use crate::{
-        PredicateParameters,
-        UtxoId,
-        field::ChargeableBody,
-    };
-    use fuel_types::{
-        Address,
-        AssetId,
-        ContractId,
-        Nonce,
-    };
-    use std::collections::BTreeMap;
+    use crate::field::ChargeableBody;
 
     impl<Body, MetadataBody> PoliciesField for ChargeableTransaction<Body, MetadataBody>
     where

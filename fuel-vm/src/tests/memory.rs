@@ -20,6 +20,7 @@ use fuel_vm::{
 };
 
 use super::test_helpers::{
+    RunResult,
     assert_panics,
     assert_success,
     run_script,
@@ -100,6 +101,134 @@ fn test_lb() {
     let vm: &Interpreter<_, MemoryStorage, Script> = vm.as_ref();
     let result = vm.registers()[0x13_usize] as u8;
     assert_eq!(1, result);
+}
+
+// Test sb instruction with simple combinations
+#[test_case(op::sb, 0, 0, 0 => RunResult::Success([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sb, 1, 0, 0 => RunResult::Success([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sb, 1, 0, 1 => RunResult::Success([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sb, 1, 1, 0 => RunResult::Success([0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sb, 1, 1, 1 => RunResult::Success([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sb, u8::MAX as u64, 0, 0 => RunResult::Success([0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sb, 1, 15, 0 => RunResult::Success([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]))]
+#[test_case(op::sb, 1, 0, 15 => RunResult::Success([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]))]
+#[test_case(op::sb, 1, 10, 5 => RunResult::Success([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]))]
+// Ensure that overflow handling is done correctly
+#[test_case(op::sb, 1, 16, 0 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::sb, 1, 0, 16 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::sw, u64::MAX, 0, 2 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::sw, u64::MAX, 9, 0 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::sw, u64::MAX, 1, 1 => RunResult::Panic(PanicReason::MemoryOverflow))]
+// Ensure that diffrently sized store operations operate on the correct amount of bytes
+#[test_case(op::sb, u64::MAX, 0, 0 => RunResult::Success([0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sqw, u64::MAX, 0, 0 => RunResult::Success([0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::shw, u64::MAX, 0, 0 => RunResult::Success([0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sw, u64::MAX, 0, 0 => RunResult::Success([0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0]))]
+// Ensure that address is a pointer and not multiplied by the operation size
+#[test_case(op::sb, u64::MAX, 1, 0 => RunResult::Success([0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sqw, u64::MAX, 1, 0 => RunResult::Success([0, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::shw, u64::MAX, 1, 0 => RunResult::Success([0, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sw, u64::MAX, 1, 0 => RunResult::Success([0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0]))]
+// Ensure that offset are multiples of the operation size
+#[test_case(op::sb, u64::MAX, 0, 1 => RunResult::Success([0, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sqw, u64::MAX, 0, 1 => RunResult::Success([0, 0, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::shw, u64::MAX, 0, 1 => RunResult::Success([0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0]))]
+#[test_case(op::sw, u64::MAX, 0, 1 => RunResult::Success([0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff]))]
+fn test_store_ops(
+    op: fn(RegId, RegId, u16) -> Instruction,
+    value: Word,
+    reg_offset: u16,
+    imm_offset: u16,
+) -> RunResult<[u8; 16]> {
+    let reg_alloc_size = RegId::new(0x10);
+    let reg_tmp_addr = RegId::new(0x11);
+    let reg_value = RegId::new(0x12);
+
+    let mut ops = set_full_word(reg_value.into(), value);
+    ops.extend([
+        // Allocate 16 bytes of heap
+        op::movi(reg_alloc_size, 16),
+        op::aloc(reg_alloc_size),
+        // Run the operation targeting the heap
+        op::addi(reg_tmp_addr, RegId::HP, reg_offset),
+        op(reg_tmp_addr, reg_value, imm_offset),
+        // Log the result and return
+        op::logd(RegId::ZERO, RegId::ZERO, RegId::HP, reg_alloc_size),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = run_script(ops);
+    RunResult::extract(&receipts, |receipts| {
+        let Some(Receipt::LogData { data, .. }) = receipts.first() else {
+            return None;
+        };
+        let mut result = [0; 16];
+        result.copy_from_slice(data.as_ref().unwrap());
+        Some(result)
+    })
+}
+
+// Check that the correct number of bytes are loaded
+#[test_case(op::lb, 0, 0 => RunResult::Success(0x00))]
+#[test_case(op::lqw, 0, 0 => RunResult::Success(0x0001))]
+#[test_case(op::lhw, 0, 0 => RunResult::Success(0x0001_0203))]
+#[test_case(op::lw, 0, 0 => RunResult::Success(0x0001_0203_0405_0607))]
+// Check that the address is a pointer and not multiplied by the operation size
+#[test_case(op::lb, 1, 0 => RunResult::Success(0x01))]
+#[test_case(op::lqw, 1, 0 => RunResult::Success(0x0102))]
+#[test_case(op::lhw, 1, 0 => RunResult::Success(0x0102_0304))]
+#[test_case(op::lw, 1, 0 => RunResult::Success(0x0102_0304_0506_0708))]
+// Check that the offset is a multiple of the operation size
+#[test_case(op::lb, 0, 1 => RunResult::Success(0x01))]
+#[test_case(op::lqw, 0, 1 => RunResult::Success(0x0203))]
+#[test_case(op::lhw, 0, 1 => RunResult::Success(0x0405_0607))]
+#[test_case(op::lw, 0, 1 => RunResult::Success(0x0809_0a0b_0c0d_0e0f))]
+// Ensure that overflow cases are handled correctly
+#[test_case(op::lb, 16, 0 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::lb, 0, 16 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::lqw, 15, 0 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::lqw, 0, 8 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::lhw, 13, 0 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::lhw, 0, 4 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::lw, 9, 0 => RunResult::Panic(PanicReason::MemoryOverflow))]
+#[test_case(op::lw, 0, 2 => RunResult::Panic(PanicReason::MemoryOverflow))]
+fn test_load_ops(
+    op: fn(RegId, RegId, u16) -> Instruction,
+    reg_offset: u16,
+    imm_offset: u16,
+) -> RunResult<Word> {
+    let reg_alloc_size = RegId::new(0x10);
+    let reg_tmp_addr = RegId::new(0x11);
+    let reg_value = RegId::new(0x12);
+
+    let mut ops = vec![
+        // Allocate 16 bytes of heap
+        op::movi(reg_alloc_size, 16),
+        op::aloc(reg_alloc_size),
+    ];
+
+    // Intialize the heap with values 0x00, 0x01, 0x02, ...
+    for i in 0..16 {
+        ops.push(op::movi(reg_value, i as _));
+        ops.push(op::sb(RegId::HP, reg_value, i));
+    }
+
+    ops.extend([
+        // Run the operation targeting the heap
+        op::addi(reg_tmp_addr, RegId::HP, reg_offset),
+        op(reg_value, reg_tmp_addr, imm_offset),
+        // Log the result and return
+        op::log(reg_value, RegId::ZERO, RegId::ZERO, RegId::ZERO),
+        op::ret(RegId::ONE),
+    ]);
+
+    let receipts = run_script(ops);
+    RunResult::extract(&receipts, |receipts| {
+        let Some(Receipt::Log { ra, .. }) = receipts.first() else {
+            return None;
+        };
+        Some(*ra)
+    })
 }
 
 #[test]

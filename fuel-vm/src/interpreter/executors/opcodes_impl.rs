@@ -1670,7 +1670,45 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().lb())?;
         let (a, b, imm) = self.unpack();
-        interpreter.load_byte(a, interpreter.registers[b], imm.into())?;
+        interpreter.load_u8(a, interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LQW
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().lw())?;
+        let (a, b, imm) = self.unpack();
+        interpreter.load_u16(a, interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::LHW
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().lw())?;
+        let (a, b, imm) = self.unpack();
+        interpreter.load_u32(a, interpreter.registers[b], imm)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1689,7 +1727,7 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().lw())?;
         let (a, b, imm) = self.unpack();
-        interpreter.load_word(a, interpreter.registers[b], imm)?;
+        interpreter.load_u64(a, interpreter.registers[b], imm)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1808,11 +1846,45 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().sb())?;
         let (a, b, imm) = self.unpack();
-        interpreter.store_byte(
-            interpreter.registers[a],
-            interpreter.registers[b],
-            imm.into(),
-        )?;
+        interpreter.store_u8(interpreter.registers[a], interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SQW
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().sw())?;
+        let (a, b, imm) = self.unpack();
+        interpreter.store_u16(interpreter.registers[a], interpreter.registers[b], imm)?;
+        Ok(ExecuteState::Proceed)
+    }
+}
+
+impl<M, S, Tx, Ecal, V> Execute<M, S, Tx, Ecal, V> for fuel_asm::op::SHW
+where
+    M: Memory,
+    S: InterpreterStorage,
+    Tx: ExecutableTransaction,
+    Ecal: EcalHandler,
+    V: Verifier,
+{
+    fn execute(
+        self,
+        interpreter: &mut Interpreter<M, S, Tx, Ecal, V>,
+    ) -> IoResult<ExecuteState, S::DataError> {
+        interpreter.gas_charge(interpreter.gas_costs().sw())?;
+        let (a, b, imm) = self.unpack();
+        interpreter.store_u32(interpreter.registers[a], interpreter.registers[b], imm)?;
         Ok(ExecuteState::Proceed)
     }
 }
@@ -1831,11 +1903,7 @@ where
     ) -> IoResult<ExecuteState, S::DataError> {
         interpreter.gas_charge(interpreter.gas_costs().sw())?;
         let (a, b, imm) = self.unpack();
-        interpreter.store_word(
-            interpreter.registers[a],
-            interpreter.registers[b],
-            imm,
-        )?;
+        interpreter.store_u64(interpreter.registers[a], interpreter.registers[b], imm)?;
         Ok(ExecuteState::Proceed)
     }
 }

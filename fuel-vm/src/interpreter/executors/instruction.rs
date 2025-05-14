@@ -234,6 +234,7 @@ where
             Instruction::PSHH(op) => op.execute(interpreter),
             Instruction::POPL(op) => op.execute(interpreter),
             Instruction::POPH(op) => op.execute(interpreter),
+            Instruction::JAL(op) => op.execute(interpreter),
             Instruction::WDCM(op) => op.execute(interpreter),
             Instruction::WQCM(op) => op.execute(interpreter),
             Instruction::WDOP(op) => op.execute(interpreter),
